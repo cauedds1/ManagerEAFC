@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { ClubEntry } from "@/types/club";
-import { DOMESTIC_LEAGUES, INTERNATIONAL_LEAGUES, LeagueInfo, getLeagueLogoUrl } from "@/lib/footballApiMap";
+import { DOMESTIC_LEAGUES, INTERNATIONAL_LEAGUES, LeagueInfo } from "@/lib/footballApiMap";
 import { getClubsByLeague, searchClubs } from "@/lib/clubListCache";
 import { applyTheme, resetTheme, extractColorsFromImage, getCurrentColors } from "@/lib/themeManager";
 
@@ -9,10 +9,10 @@ interface ClubPickerProps {
   onSelectClub: (entry: ClubEntry) => void;
 }
 
-function LeagueLogo({ leagueId, size = 32 }: { leagueId: number; size?: number }) {
+function LeagueLogo({ logoUrl, size = 32 }: { logoUrl: string; size?: number }) {
   const [err, setErr] = useState(false);
   const [loaded, setLoaded] = useState(false);
-  const url = getLeagueLogoUrl(leagueId);
+  const url = logoUrl;
 
   return (
     <div
@@ -69,7 +69,7 @@ function LeagueCard({ league, count, onClick, index }: { league: LeagueInfo; cou
         animationFillMode: "both",
       }}
     >
-      <LeagueLogo leagueId={league.id} size={30} />
+      <LeagueLogo logoUrl={league.logo} size={30} />
       <span className="text-xl flex-shrink-0">{league.flag}</span>
       <div className="flex-1 min-w-0">
         <p className="text-white font-bold text-sm leading-tight truncate">

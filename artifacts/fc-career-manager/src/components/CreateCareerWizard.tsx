@@ -7,6 +7,9 @@ import { ClubPicker } from "./ClubPicker";
 import { TeamPreview } from "./TeamPreview";
 import { createCareer } from "@/lib/careerStorage";
 import { getCurrentSeason } from "@/lib/api";
+import { applyTheme, resetTheme, extractColorsFromImage } from "@/lib/themeManager";
+import { getClubColors } from "@/lib/clubColors";
+import { APIFOOTBALL_TO_FC26_NAME } from "@/lib/footballApiMap";
 
 interface CreateCareerWizardProps {
   allClubs: ClubEntry[];
@@ -89,9 +92,24 @@ export function CreateCareerWizard({
     setStep(1);
   };
 
-  const handleClubSelect = (club: ClubEntry) => {
+  const handleClubSelect = async (club: ClubEntry) => {
     setSelectedClub(club);
     setStep(2);
+
+    const directColors = getClubColors(club.name);
+    if (directColors) { applyTheme(directColors); return; }
+
+    const fc26Name = APIFOOTBALL_TO_FC26_NAME[club.name];
+    if (fc26Name) {
+      const mappedColors = getClubColors(fc26Name);
+      if (mappedColors) { applyTheme(mappedColors); return; }
+    }
+
+    const logoUrl = club.logo || (club.apiFootballId ? `https://media.api-sports.io/football/teams/${club.apiFootballId}.png` : null);
+    if (logoUrl) {
+      const extracted = await extractColorsFromImage(logoUrl);
+      applyTheme(extracted);
+    }
   };
 
   const handleConfirm = async () => {
@@ -106,6 +124,9 @@ export function CreateCareerWizard({
   };
 
   const handleBack = () => {
+    if (step === 2) {
+      resetTheme();
+    }
     if (step > 0) setStep((s) => (s - 1) as 0 | 1 | 2);
   };
 

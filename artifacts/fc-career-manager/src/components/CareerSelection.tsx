@@ -1,6 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Career } from "@/types/career";
 import { deleteCareer } from "@/lib/careerStorage";
+import { getClubColors, ClubColors } from "@/lib/clubColors";
+import { APIFOOTBALL_TO_FC26_NAME } from "@/lib/footballApiMap";
+import { hexToRgb, SYSTEM_COLORS } from "@/lib/themeManager";
 
 interface CareerSelectionProps {
   careers: Career[];
@@ -14,13 +17,28 @@ function formatDate(ts: number): string {
   return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
 }
 
-function ClubLogo({ logo, name }: { logo: string; name: string }) {
+function resolveCareerColors(clubName: string): { primary: string; primaryRgb: string; gradient: string } {
+  let colors: ClubColors | null = getClubColors(clubName);
+  if (!colors) {
+    const fc26Name = APIFOOTBALL_TO_FC26_NAME[clubName];
+    if (fc26Name) colors = getClubColors(fc26Name);
+  }
+  if (!colors) colors = SYSTEM_COLORS;
+  const [r, g, b] = hexToRgb(colors.primary);
+  return {
+    primary: colors.primary,
+    primaryRgb: `${r},${g},${b}`,
+    gradient: `linear-gradient(135deg, ${colors.primary}, ${colors.secondary})`,
+  };
+}
+
+function ClubLogo({ logo, name, rgb }: { logo: string; name: string; rgb: string }) {
   const [err, setErr] = useState(false);
   const [loaded, setLoaded] = useState(false);
   return (
     <div
       className="w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0"
-      style={{ background: "rgba(var(--club-primary-rgb),0.08)", border: "1px solid rgba(var(--club-primary-rgb),0.12)" }}
+      style={{ background: `rgba(${rgb},0.08)`, border: `1px solid rgba(${rgb},0.12)` }}
     >
       {logo && !err ? (
         <img
@@ -37,7 +55,7 @@ function ClubLogo({ logo, name }: { logo: string; name: string }) {
   );
 }
 
-function CoachPhoto({ photo, name }: { photo?: string; name: string }) {
+function CoachPhoto({ photo, name, rgb }: { photo?: string; name: string; rgb: string }) {
   const [err, setErr] = useState(false);
 
   if (photo && !err) {
@@ -49,7 +67,7 @@ function CoachPhoto({ photo, name }: { photo?: string; name: string }) {
   const initials = name.trim().split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase();
   return (
     <div className="w-full h-full flex items-center justify-center font-black text-xs text-white/60"
-      style={{ background: "rgba(var(--club-primary-rgb),0.1)" }}>
+      style={{ background: `rgba(${rgb},0.1)` }}>
       {initials}
     </div>
   );
@@ -68,6 +86,7 @@ function CareerCard({
 }) {
   const [showDelete, setShowDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const cc = useMemo(() => resolveCareerColors(career.clubName), [career.clubName]);
 
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -85,25 +104,30 @@ function CareerCard({
       <button
         onClick={onSelect}
         disabled={deleting}
-        className="w-full text-left rounded-2xl overflow-hidden glass glass-hover"
+        className="w-full text-left rounded-2xl overflow-hidden"
         style={{
           opacity: deleting ? 0 : 1,
           transform: deleting ? "scale(0.95)" : "scale(1)",
           transition: "opacity 300ms ease, transform 300ms ease, background 200ms, border-color 200ms",
+          background: `rgba(${cc.primaryRgb},0.06)`,
+          borderWidth: "1px",
+          borderStyle: "solid",
+          borderColor: `rgba(${cc.primaryRgb},0.1)`,
+          backdropFilter: "blur(16px)",
         }}
       >
-        <div className="h-0.5 w-full" style={{ background: "var(--club-gradient)" }} />
+        <div className="h-0.5 w-full" style={{ background: cc.gradient }} />
 
         <div className="p-5">
           <div className="flex items-start gap-4">
-            <ClubLogo logo={career.clubLogo} name={career.clubName} />
+            <ClubLogo logo={career.clubLogo} name={career.clubName} rgb={cc.primaryRgb} />
             <div className="flex-1 min-w-0">
               <div className="flex items-start justify-between gap-2 mb-1">
                 <h3 className="text-white font-black text-lg leading-tight truncate">
                   {career.clubName}
                 </h3>
                 <span className="text-xs font-semibold px-2.5 py-1 rounded-full flex-shrink-0"
-                  style={{ background: "rgba(var(--club-primary-rgb),0.1)", color: "var(--club-primary)" }}>
+                  style={{ background: `rgba(${cc.primaryRgb},0.1)`, color: cc.primary }}>
                   {career.season}
                 </span>
               </div>
@@ -112,12 +136,12 @@ function CareerCard({
             </div>
           </div>
 
-          <div className="my-4" style={{ height: "1px", background: "var(--surface-border)" }} />
+          <div className="my-4" style={{ height: "1px", background: `rgba(${cc.primaryRgb},0.1)` }} />
 
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0"
-              style={{ border: "1.5px solid rgba(var(--club-primary-rgb),0.2)" }}>
-              <CoachPhoto photo={career.coach.photo} name={career.coach.name} />
+              style={{ border: `1.5px solid rgba(${cc.primaryRgb},0.2)` }}>
+              <CoachPhoto photo={career.coach.photo} name={career.coach.name} rgb={cc.primaryRgb} />
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5">
@@ -133,7 +157,7 @@ function CareerCard({
           </div>
         </div>
 
-        <div className="px-5 py-3 flex items-center justify-between" style={{ borderTop: "1px solid var(--surface-border)" }}>
+        <div className="px-5 py-3 flex items-center justify-between" style={{ borderTop: `1px solid rgba(${cc.primaryRgb},0.08)` }}>
           <span className="text-white/30 text-xs font-medium group-hover:text-white/60 transition-colors">
             Clique para continuar a carreira
           </span>
