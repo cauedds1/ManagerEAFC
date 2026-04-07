@@ -105,7 +105,7 @@ export function CreateCareerWizard({
       if (mappedColors) { applyTheme(mappedColors); return; }
     }
 
-    const logoUrl = club.logo || (club.apiFootballId ? `https://media.api-sports.io/football/teams/${club.apiFootballId}.png` : null);
+    const logoUrl = club.logo || (club.id ? `https://media.api-sports.io/football/teams/${club.id}.png` : null);
     if (logoUrl) {
       const extracted = await extractColorsFromImage(logoUrl);
       applyTheme(extracted);
