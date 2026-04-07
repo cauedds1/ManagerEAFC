@@ -1,0 +1,45 @@
+Quero redefinir como o sistema carrega os clubes. Ao invés de depender da API msmc.cc para a lista de clubes, vamos usar a API-Football como fonte principal, buscando apenas os times das ligas que existem no EA FC 26.
+Lista oficial de ligas do EA FC 26 (masculinas apenas):
+Premier League (Inglaterra) - ID: 39
+EFL Championship (Inglaterra) - ID: 40
+EFL League One (Inglaterra) - ID: 41
+EFL League Two (Inglaterra) - ID: 42
+LALIGA EA SPORTS (Espanha) - ID: 140
+Bundesliga (Alemanha) - ID: 78
+2. Bundesliga (Alemanha) - ID: 79
+Ligue 1 McDonald's (França) - ID: 61
+Serie A Enilive (Itália) - ID: 135
+Major League Soccer (EUA) - ID: 253
+Liga Portugal (Portugal) - ID: 94
+Belgium Pro League (Bélgica) - ID: 144
+Eredivisie (Holanda) - ID: 88
+Liga Profesional (Argentina) - ID: 128
+Roshn Saudi League (Arábia Saudita) - ID: 307
+K League (Coreia do Sul) - ID: 292
+Chinese Super League (China) - ID: 169
+A-League (Austrália) - ID: 188
+Liga 1 (Romênia) - ID: 283
+Ekstraklasa (Polônia) - ID: 106
+Austrian Bundesliga (Áustria) - ID: 218
+Super League (Suíça) - ID: 207
+Superliga (Dinamarca) - ID: 119
+Scottish Premiership (Escócia) - ID: 179
+SSE Airtricity Premier Division (Irlanda) - ID: 357
+Allsvenskan (Suécia) - ID: 113
+Eliteserien (Noruega) - ID: 103
+UEFA Champions League - ID: 2
+UEFA Europa League - ID: 3
+UEFA Conference League - ID: 848
+CONMEBOL Libertadores - ID: 13
+CONMEBOL Sudamericana - ID: 14
+O fluxo correto a implementar:
+
+Para cada liga da lista acima, buscar os times via GET /teams?league={id}&season=2025
+Montar a lista completa de clubes do sistema a partir dessas respostas
+Cachear essa lista no localStorage por 30 dias (muda pouco)
+A navegação por ligas usa exatamente essa estrutura — o usuário vê as ligas, clica, vê os times daquela liga
+Ao selecionar um time, buscar o elenco via GET /players/squads?team={id}
+A API msmc.cc continua apenas como fallback para dados de OVR e atributos do FC26 — nunca para definir quais clubes existem
+
+Isso garante que o sistema tem apenas times reais do EA FC 26, com elencos atualizados de abril de 2026, sem nenhum time fora do jogo aparecendo.
+Antes de implementar, confirme os IDs das ligas testando pelo menos 5 delas via GET /teams?league={id}&season=2025 e me mostre o retorno.
