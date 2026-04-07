@@ -199,10 +199,7 @@ export default function App() {
 
     resetTheme();
 
-    const key = getApiKey();
-    if (!key) { setView("key-missing"); return; }
-
-    // Layer 1: localStorage (instant, sync)
+    // Layer 1: localStorage (instant, sync) — no API key needed
     const localCached = getCachedClubList();
     if (localCached && localCached.length > 0) {
       setAllClubs(localCached);
@@ -210,7 +207,7 @@ export default function App() {
       return;
     }
 
-    // Layer 2: DB cache (async, survives browser cache clears)
+    // Layer 2: DB cache (async, survives browser cache clears) — no API key needed
     getDbClubs()
       .then((dbClubs) => {
         if (dbClubs && dbClubs.length > 0) {
@@ -220,11 +217,18 @@ export default function App() {
             localStorage.setItem(CACHE_KEY, JSON.stringify({ clubs: dbClubs, cachedAt: Date.now() }));
           } catch {}
           setView("selection");
-        } else {
-          startFetching();
+          return;
         }
+        // Both caches miss — need API key to fetch from API-Football
+        const key = getApiKey();
+        if (!key) { setView("key-missing"); return; }
+        startFetching();
       })
-      .catch(() => startFetching());
+      .catch(() => {
+        const key = getApiKey();
+        if (!key) { setView("key-missing"); return; }
+        startFetching();
+      });
   }, [startFetching]);
 
   const handleKeySet = useCallback(() => {

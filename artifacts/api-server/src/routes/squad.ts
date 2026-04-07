@@ -1,10 +1,20 @@
 import { Router } from "express";
-import { db, squadsTable } from "@workspace/db";
-import { eq, sql } from "drizzle-orm";
+import { db, squadPlayersTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
 
 const router = Router();
 
 const SQUAD_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+interface SquadPlayerBody {
+  id: number;
+  name: string;
+  age: number;
+  position: string;
+  positionPtBr: string;
+  photo: string;
+  number?: number;
+}
 
 router.get("/squad/:teamId", async (req, res) => {
   try {
@@ -13,16 +23,27 @@ router.get("/squad/:teamId", async (req, res) => {
       return res.status(400).json({ error: "Invalid teamId" });
     }
 
-    const rows = await db.select().from(squadsTable).where(eq(squadsTable.teamId, teamId));
+    const rows = await db
+      .select()
+      .from(squadPlayersTable)
+      .where(eq(squadPlayersTable.teamId, teamId));
+
     if (rows.length === 0) return res.status(204).end();
 
-    const row = rows[0];
-    const cachedAt = Number(row.cachedAt);
+    const cachedAt = Number(rows[0].cachedAt);
     if (Date.now() - cachedAt > SQUAD_TTL_MS) return res.status(204).end();
 
     return res.json({
-      players: row.players,
-      source: row.source,
+      players: rows.map((r) => ({
+        id: r.playerId,
+        name: r.name,
+        age: r.age,
+        position: r.position,
+        positionPtBr: r.positionPtBr,
+        photo: r.photo,
+        number: r.playerNumber ?? undefined,
+      })),
+      source: rows[0].source,
       cachedAt,
     });
   } catch (err) {
@@ -39,7 +60,7 @@ router.put("/squad/:teamId", async (req, res) => {
     }
 
     const body = req.body as {
-      players?: unknown[];
+      players?: SquadPlayerBody[];
       source?: string;
       cachedAt?: number;
     };
@@ -49,17 +70,30 @@ router.put("/squad/:teamId", async (req, res) => {
       return res.status(400).json({ error: "players, source, and cachedAt required" });
     }
 
-    await db
-      .insert(squadsTable)
-      .values({ teamId, players, source, cachedAt })
-      .onConflictDoUpdate({
-        target: squadsTable.teamId,
-        set: {
-          players: sql`excluded.players`,
-          source: sql`excluded.source`,
-          cachedAt: sql`excluded.cached_at`,
-        },
-      });
+    if (players.length === 0) {
+      return res.status(400).json({ error: "players array must not be empty" });
+    }
+
+    const values = players.map((p) => ({
+      teamId,
+      playerId: p.id,
+      name: p.name,
+      age: p.age ?? 0,
+      position: p.position,
+      positionPtBr: p.positionPtBr,
+      photo: p.photo ?? "",
+      playerNumber: p.number ?? null,
+      source,
+      cachedAt,
+    }));
+
+    await db.transaction(async (tx) => {
+      await tx.delete(squadPlayersTable).where(eq(squadPlayersTable.teamId, teamId));
+      const CHUNK = 100;
+      for (let i = 0; i < values.length; i += CHUNK) {
+        await tx.insert(squadPlayersTable).values(values.slice(i, i + CHUNK));
+      }
+    });
 
     return res.json({ ok: true });
   } catch (err) {
