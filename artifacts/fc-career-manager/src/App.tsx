@@ -152,21 +152,32 @@ export default function App() {
     []
   );
 
-  const startFetching = useCallback(() => {
-    doFetchClubs(() => setView("career-selection"));
-  }, [doFetchClubs]);
+  // Resolve post-load view: if no careers, go straight to wizard; else career-selection
+  const resolveViewAfterClubs = useCallback((hasCareers: boolean) => {
+    if (hasCareers) {
+      setView("career-selection");
+    } else {
+      setWizardMode("new");
+      setView("create-wizard");
+    }
+  }, []);
+
+  const startFetching = useCallback((hasCareers: boolean) => {
+    doFetchClubs(() => resolveViewAfterClubs(hasCareers));
+  }, [doFetchClubs, resolveViewAfterClubs]);
 
   useEffect(() => {
     // Migrate legacy data if any
     migrateFromLegacy();
     const loadedCareers = listCareers();
     setCareers(loadedCareers);
+    const hasCareers = loadedCareers.length > 0;
 
     // Try to load clubs: localStorage → DB → API-Football
     const localCached = getCachedClubList();
     if (localCached && localCached.length > 0) {
       setAllClubs(localCached);
-      setView("career-selection");
+      resolveViewAfterClubs(hasCareers);
       return;
     }
 
@@ -177,12 +188,12 @@ export default function App() {
           try {
             localStorage.setItem(CACHE_KEY, JSON.stringify({ clubs: dbClubs, cachedAt: Date.now() }));
           } catch {}
-          setView("career-selection");
+          resolveViewAfterClubs(hasCareers);
           return;
         }
 
         // No clubs cached anywhere
-        if (loadedCareers.length > 0) {
+        if (hasCareers) {
           // User has existing careers — let them in without clubs
           // Try silent background fetch if key available
           setView("career-selection");
@@ -198,30 +209,31 @@ export default function App() {
           if (!key) {
             setView("key-missing");
           } else {
-            startFetching();
+            startFetching(hasCareers);
           }
         }
       })
       .catch(() => {
-        if (loadedCareers.length > 0) {
+        if (hasCareers) {
           setView("career-selection");
         } else {
           const key = getApiKey();
           if (!key) { setView("key-missing"); return; }
-          startFetching();
+          startFetching(hasCareers);
         }
       });
   }, [startFetching]);
 
   const handleKeySet = useCallback(() => {
     const cached = getCachedClubList();
+    const hasCareers = listCareers().length > 0;
     if (cached && cached.length > 0) {
       setAllClubs(cached);
-      setView("career-selection");
+      resolveViewAfterClubs(hasCareers);
     } else {
-      startFetching();
+      startFetching(hasCareers);
     }
-  }, [startFetching]);
+  }, [startFetching, resolveViewAfterClubs]);
 
   // Enter a career (from selection screen or after wizard)
   const enterCareer = useCallback(async (career: Career) => {
@@ -327,7 +339,7 @@ export default function App() {
   }
 
   if (view === "fetch-error") {
-    return <FetchErrorScreen onRetry={startFetching} onChangeKey={() => setView("key-missing")} />;
+    return <FetchErrorScreen onRetry={() => startFetching(listCareers().length > 0)} onChangeKey={() => setView("key-missing")} />;
   }
 
   if (view === "career-selection") {

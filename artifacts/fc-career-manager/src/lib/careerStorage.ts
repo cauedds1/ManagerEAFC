@@ -67,6 +67,13 @@ export function updateCareerSeason(id: string, season: string): void {
   }
 }
 
+export function getActiveCareer(id?: string): Career | null {
+  const careers = listCareers();
+  if (!careers.length) return null;
+  if (id) return careers.find((c) => c.id === id) ?? null;
+  return careers[careers.length - 1];
+}
+
 export function migrateFromLegacy(): void {
   try {
     const raw = localStorage.getItem(LEGACY_CLUB_KEY);
