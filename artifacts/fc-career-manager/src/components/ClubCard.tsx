@@ -1,43 +1,17 @@
-import { useState, useEffect, useRef } from "react";
-import { Club } from "@/types/club";
-import { getClubImage, leagueCache } from "@/lib/imageCache";
+import { useState } from "react";
+import { ClubEntry } from "@/types/club";
 
 interface ClubCardProps {
-  club: Club;
+  entry: ClubEntry;
   onClick: () => void;
   index: number;
-  onLeagueFound?: (clubName: string, league: string) => void;
 }
 
-export function ClubCard({ club, onClick, index, onLeagueFound }: ClubCardProps) {
-  const [imgSrc, setImgSrc] = useState<string | null>(null);
+export function ClubCard({ entry, onClick, index }: ClubCardProps) {
+  const [imgLoaded, setImgLoaded] = useState(false);
   const [imgError, setImgError] = useState(false);
-  const [loaded, setLoaded] = useState(false);
-  const cardRef = useRef<HTMLButtonElement>(null);
 
-  useEffect(() => {
-    const el = cardRef.current;
-    if (!el) return;
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          observer.disconnect();
-          getClubImage(club).then((url) => {
-            if (url) setImgSrc(url);
-            const league = leagueCache.get(club.name);
-            if (league && onLeagueFound) onLeagueFound(club.name, league);
-          });
-        }
-      },
-      { rootMargin: "200px" }
-    );
-
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [club, onLeagueFound]);
-
-  const initials = club.name
+  const initials = entry.name
     .split(" ")
     .slice(0, 2)
     .map((w) => w[0])
@@ -46,7 +20,6 @@ export function ClubCard({ club, onClick, index, onLeagueFound }: ClubCardProps)
 
   return (
     <button
-      ref={cardRef}
       onClick={onClick}
       className="group relative flex flex-col items-center gap-3 p-4 rounded-2xl cursor-pointer text-left w-full focus:outline-none focus:ring-2 focus:ring-[var(--club-primary)] focus:ring-offset-2 focus:ring-offset-black"
       style={{
@@ -73,40 +46,33 @@ export function ClubCard({ club, onClick, index, onLeagueFound }: ClubCardProps)
         className="relative flex items-center justify-center w-14 h-14 rounded-xl overflow-hidden"
         style={{ background: "rgba(255,255,255,0.06)" }}
       >
-        {imgSrc && !imgError ? (
+        {entry.logo && !imgError ? (
           <>
             <img
-              src={imgSrc}
-              alt={club.name}
-              className={`w-12 h-12 object-contain transition-opacity duration-300 ${loaded ? "opacity-100" : "opacity-0"}`}
-              onLoad={() => setLoaded(true)}
+              src={entry.logo}
+              alt={entry.name}
+              className={`w-12 h-12 object-contain transition-opacity duration-300 ${imgLoaded ? "opacity-100" : "opacity-0"}`}
+              onLoad={() => setImgLoaded(true)}
               onError={() => setImgError(true)}
             />
-            {!loaded && (
+            {!imgLoaded && (
               <div className="absolute inset-0 flex items-center justify-center">
                 <div
-                  className="w-4 h-4 rounded-full border-2 border-t-transparent animate-spin"
-                  style={{ borderColor: "var(--club-primary)80", borderTopColor: "transparent" }}
+                  className="w-4 h-4 rounded-full border border-t-transparent animate-spin"
+                  style={{ borderColor: "rgba(255,255,255,0.2)", borderTopColor: "transparent" }}
                 />
               </div>
             )}
           </>
         ) : (
-          <span className="text-base font-black select-none" style={{ color: "rgba(255,255,255,0.2)" }}>
+          <span className="text-base font-black select-none" style={{ color: "rgba(255,255,255,0.25)" }}>
             {initials}
           </span>
         )}
       </div>
 
       <div className="text-center min-w-0 w-full">
-        <p className="text-white font-semibold text-xs leading-snug line-clamp-2">
-          {club.name}
-        </p>
-        {club.league && club.league !== "Outras ligas" && (
-          <p className="text-white/35 text-xs mt-0.5 truncate leading-tight">
-            {club.league}
-          </p>
-        )}
+        <p className="text-white font-semibold text-xs leading-snug line-clamp-2">{entry.name}</p>
       </div>
     </button>
   );

@@ -2,6 +2,17 @@ export interface Club {
   name: string;
   league: string;
   sofifaId?: string;
+  apiFootballId?: number;
+  logo?: string;
+}
+
+export interface ClubEntry {
+  id: number;
+  name: string;
+  logo: string;
+  league: string;
+  leagueId: number;
+  country?: string;
 }
 
 export interface Player {

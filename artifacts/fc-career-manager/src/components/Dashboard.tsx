@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { Club } from "@/types/club";
-import { getClubImage } from "@/lib/imageCache";
 
 interface DashboardProps {
   club: Club;
@@ -75,9 +74,29 @@ const ROADMAP: RoadmapItem[] = [
   },
 ];
 
+function useClubLogo(club: Club): string | null {
+  const [src, setSrc] = useState<string | null>(() => {
+    if (club.logo) return club.logo;
+    if (club.apiFootballId) return `https://media.api-sports.io/football/teams/${club.apiFootballId}.png`;
+    return null;
+  });
+
+  useEffect(() => {
+    if (club.logo) { setSrc(club.logo); return; }
+    if (club.apiFootballId) {
+      setSrc(`https://media.api-sports.io/football/teams/${club.apiFootballId}.png`);
+      return;
+    }
+    setSrc(null);
+  }, [club.name, club.logo, club.apiFootballId]);
+
+  return src;
+}
+
 export function Dashboard({ club, season, onSeasonChange, onChangeClub }: DashboardProps) {
-  const [imgSrc, setImgSrc] = useState<string | null>(null);
+  const logoUrl = useClubLogo(club);
   const [imgLoaded, setImgLoaded] = useState(false);
+  const [imgError, setImgError] = useState(false);
   const [editingSeason, setEditingSeason] = useState(false);
   const [seasonDraft, setSeasonDraft] = useState(season);
 
@@ -86,36 +105,14 @@ export function Dashboard({ club, season, onSeasonChange, onChangeClub }: Dashbo
   }, [season]);
 
   useEffect(() => {
-    setImgSrc(null);
     setImgLoaded(false);
-    getClubImage(club).then((url) => {
-      if (url) setImgSrc(url);
-    });
-  }, [club.name]);
-
-  const handleImgError = () => {
-    setImgSrc(null);
-  };
+    setImgError(false);
+  }, [logoUrl]);
 
   const statCards: StatCard[] = [
-    {
-      label: "Partidas",
-      value: 0,
-      icon: <BallIcon />,
-      description: "partidas registradas",
-    },
-    {
-      label: "Elenco",
-      value: 0,
-      icon: <PeopleIcon />,
-      description: "jogadores cadastrados",
-    },
-    {
-      label: "Transferências",
-      value: 0,
-      icon: <TransferIcon />,
-      description: "movimentações registradas",
-    },
+    { label: "Partidas",       value: 0, icon: <BallIcon />,    description: "partidas registradas" },
+    { label: "Elenco",         value: 0, icon: <PeopleIcon />,  description: "jogadores cadastrados" },
+    { label: "Transferências", value: 0, icon: <TransferIcon />, description: "movimentações registradas" },
   ];
 
   const commitSeason = () => {
@@ -127,10 +124,7 @@ export function Dashboard({ club, season, onSeasonChange, onChangeClub }: Dashbo
   return (
     <div className="min-h-screen flex flex-col" style={{ background: "var(--app-bg, #0a0a0a)" }}>
       {/* Header */}
-      <header
-        className="relative w-full overflow-hidden"
-        style={{ background: "var(--club-gradient)" }}
-      >
+      <header className="relative w-full overflow-hidden" style={{ background: "var(--club-gradient)" }}>
         <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.6)" }} />
         <div
           className="absolute inset-0 opacity-10"
@@ -144,15 +138,19 @@ export function Dashboard({ club, season, onSeasonChange, onChangeClub }: Dashbo
             <div className="flex items-center gap-5">
               <div
                 className="w-20 h-20 rounded-2xl flex items-center justify-center flex-shrink-0"
-                style={{ background: "rgba(255,255,255,0.1)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.15)" }}
+                style={{
+                  background: "rgba(255,255,255,0.1)",
+                  backdropFilter: "blur(10px)",
+                  border: "1px solid rgba(255,255,255,0.15)",
+                }}
               >
-                {imgSrc ? (
+                {logoUrl && !imgError ? (
                   <img
-                    src={imgSrc}
+                    src={logoUrl}
                     alt={club.name}
                     className={`w-16 h-16 object-contain transition-opacity duration-300 ${imgLoaded ? "opacity-100" : "opacity-0"}`}
                     onLoad={() => setImgLoaded(true)}
-                    onError={handleImgError}
+                    onError={() => setImgError(true)}
                   />
                 ) : (
                   <span className="text-3xl font-black text-white/40">
@@ -183,13 +181,14 @@ export function Dashboard({ club, season, onSeasonChange, onChangeClub }: Dashbo
                     onBlur={commitSeason}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") commitSeason();
-                      if (e.key === "Escape") {
-                        setSeasonDraft(season);
-                        setEditingSeason(false);
-                      }
+                      if (e.key === "Escape") { setSeasonDraft(season); setEditingSeason(false); }
                     }}
                     className="px-3 py-1 rounded-lg text-white font-bold text-sm focus:outline-none focus:ring-1 focus:ring-[var(--club-primary)]"
-                    style={{ background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.2)", minWidth: "80px" }}
+                    style={{
+                      background: "rgba(255,255,255,0.12)",
+                      border: "1px solid rgba(255,255,255,0.2)",
+                      minWidth: "80px",
+                    }}
                   />
                 ) : (
                   <button
@@ -209,7 +208,11 @@ export function Dashboard({ club, season, onSeasonChange, onChangeClub }: Dashbo
               <button
                 onClick={onChangeClub}
                 className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm text-white transition-all duration-200 hover:opacity-80 active:scale-95"
-                style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.15)", backdropFilter: "blur(8px)" }}
+                style={{
+                  background: "rgba(255,255,255,0.1)",
+                  border: "1px solid rgba(255,255,255,0.15)",
+                  backdropFilter: "blur(8px)",
+                }}
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
@@ -223,9 +226,7 @@ export function Dashboard({ club, season, onSeasonChange, onChangeClub }: Dashbo
 
       {/* Stats Cards */}
       <section className="max-w-6xl mx-auto w-full px-4 sm:px-6 py-8">
-        <h2 className="text-white/40 text-xs font-semibold tracking-widest uppercase mb-5">
-          Visão Geral
-        </h2>
+        <h2 className="text-white/40 text-xs font-semibold tracking-widest uppercase mb-5">Visão Geral</h2>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {statCards.map((card) => (
             <div
@@ -296,9 +297,7 @@ export function Dashboard({ club, season, onSeasonChange, onChangeClub }: Dashbo
                 <p className="text-white font-semibold text-sm leading-tight">{item.titulo}</p>
                 <p className="text-white/40 text-xs mt-1.5 leading-relaxed">{item.descricao}</p>
               </div>
-              <div
-                className="absolute right-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center text-white/20"
-              >
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center text-white/20">
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                 </svg>
