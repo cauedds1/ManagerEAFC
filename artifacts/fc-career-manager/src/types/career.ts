@@ -16,6 +16,8 @@ export interface Career {
   clubCountry?: string;
   clubStadium?: string;
   clubFounded?: number;
+  clubPrimary?: string;
+  clubSecondary?: string;
   season: string;
   createdAt: number;
   updatedAt: number;

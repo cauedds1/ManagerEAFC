@@ -58,4 +58,6 @@ Brazilian Portuguese companion app for EA FC 26 career mode.
 - **Theme engine** (`themeManager.ts`): hex→HSL conversion, sets 12+ CSS vars (`--club-primary`, `--club-primary-rgb`, `--app-bg`, `--surface`, `--surface-border`, `--glow`, `--blob-1/2/3`, `--club-gradient`, `--club-gradient-subtle`). `resetTheme()` applies default indigo/violet.
 - **Glass utilities** (`index.css`): `.glass` = surface bg + border + backdrop blur. `.glass-hover` = hover accent border/bg. Used across all components.
 - **Position labels**: `reNormalizePlayers()` in `squadCache.ts` fixes `positionPtBr` on every cache read.
+- **FootballPitch**: `pickBestEleven()` selects best 11 by position (1 GK, 4 DEF, 3 MID, 3 ATT); `pickBestElevenIds()` exported for bench derivation. Dashboard `PitchWithBench` and `TeamPreview` both use it for consistent starter/bench split.
+- **Club colors**: `clubColors.ts` maps ~70+ clubs to hex primary/secondary. `footballApiMap.ts` maps API-Football names to FC26 names. `Career.clubPrimary`/`clubSecondary` persist resolved colors. `CreateCareerWizard` stores resolved colors in state to avoid race conditions on confirm.
 - **Settings.tsx**: Uses glass/theme CSS vars consistently with rest of app.

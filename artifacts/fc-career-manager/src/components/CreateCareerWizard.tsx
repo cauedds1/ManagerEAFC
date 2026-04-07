@@ -7,7 +7,7 @@ import { ClubPicker } from "./ClubPicker";
 import { TeamPreview } from "./TeamPreview";
 import { createCareer } from "@/lib/careerStorage";
 import { getCurrentSeason } from "@/lib/api";
-import { applyTheme, resetTheme, extractColorsFromImage } from "@/lib/themeManager";
+import { applyTheme, resetTheme, extractColorsFromImage, getCurrentColors } from "@/lib/themeManager";
 import { getClubColors } from "@/lib/clubColors";
 import { APIFOOTBALL_TO_FC26_NAME } from "@/lib/footballApiMap";
 
@@ -23,7 +23,7 @@ const STEPS = ["Tecnico", "Clube", "Preview"];
 
 function ProgressBar({ step }: { step: number }) {
   return (
-    <div className="flex items-center gap-2 mb-8">
+    <div className="flex items-center gap-2 mb-6">
       {STEPS.map((label, i) => {
         const active = i === step;
         const done = i < step;
@@ -86,6 +86,7 @@ export function CreateCareerWizard({
   const [coach, setCoach] = useState<CoachProfile | null>(initialCoach ?? null);
   const [selectedClub, setSelectedClub] = useState<ClubEntry | null>(null);
   const [confirming, setConfirming] = useState(false);
+  const [resolvedColors, setResolvedColors] = useState<{ primary: string; secondary: string } | null>(null);
 
   const handleCoachNext = (coachData: CoachProfile) => {
     setCoach(coachData);
@@ -94,28 +95,35 @@ export function CreateCareerWizard({
 
   const handleClubSelect = async (club: ClubEntry) => {
     setSelectedClub(club);
+    setResolvedColors(null);
     setStep(2);
 
     const directColors = getClubColors(club.name);
-    if (directColors) { applyTheme(directColors); return; }
+    if (directColors) { applyTheme(directColors); setResolvedColors(directColors); return; }
 
     const fc26Name = APIFOOTBALL_TO_FC26_NAME[club.name];
     if (fc26Name) {
       const mappedColors = getClubColors(fc26Name);
-      if (mappedColors) { applyTheme(mappedColors); return; }
+      if (mappedColors) { applyTheme(mappedColors); setResolvedColors(mappedColors); return; }
     }
 
     const logoUrl = club.logo || (club.id ? `https://media.api-sports.io/football/teams/${club.id}.png` : null);
     if (logoUrl) {
       const extracted = await extractColorsFromImage(logoUrl);
       applyTheme(extracted);
+      setResolvedColors(extracted);
     }
   };
 
   const handleConfirm = async () => {
     if (!coach || !selectedClub) return;
     setConfirming(true);
-    const career = createCareer(coach, selectedClub);
+    const colors = resolvedColors || getCurrentColors();
+    const career = {
+      ...createCareer(coach, selectedClub),
+      clubPrimary: colors.primary,
+      clubSecondary: colors.secondary,
+    };
     try {
       await onComplete(career);
     } finally {
@@ -134,7 +142,7 @@ export function CreateCareerWizard({
 
   return (
     <div className="relative min-h-screen flex flex-col">
-      <div className="flex items-center justify-between px-5 py-4 flex-shrink-0"
+      <div className="flex items-center justify-between px-4 sm:px-6 py-3 flex-shrink-0"
         style={{ borderBottom: "1px solid var(--surface-border)" }}>
         <button
           onClick={onCancel}
@@ -153,7 +161,7 @@ export function CreateCareerWizard({
 
       <div className="flex-1 flex flex-col overflow-hidden">
         <div className="flex-1 overflow-y-auto">
-          <div className="max-w-2xl mx-auto px-5 py-8">
+          <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6">
             <ProgressBar step={step} />
             <div key={step}>
               {step === 0 && <CoachSetup onNext={handleCoachNext} initial={coach} />}

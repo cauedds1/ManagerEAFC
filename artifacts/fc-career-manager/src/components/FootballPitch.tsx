@@ -23,40 +23,70 @@ const FORMATION_POSITIONS: [number, number][] = [
   [65, 130], [160, 130], [255, 130],
 ];
 
+const SLOT_POSITION: PositionPtBr[] = [
+  "GOL",
+  "ZAG", "ZAG", "ZAG", "ZAG",
+  "VOL", "VOL", "VOL",
+  "ATA", "ATA", "ATA",
+];
+
 function getInitials(name: string): string {
   const parts = name.trim().split(" ");
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-function assignToFormation(players: PitchPlayerData[]): (PitchPlayerData | null)[] {
+export function pickBestElevenIds(players: { id: number; positionPtBr: PositionPtBr }[]): Set<number> {
+  const slots = pickBestEleven(players as PitchPlayerData[]);
+  const ids = new Set<number>();
+  for (const s of slots) {
+    if (s) ids.add(s.id);
+  }
+  return ids;
+}
+
+function pickBestEleven(players: PitchPlayerData[]): (PitchPlayerData | null)[] {
   const slots: (PitchPlayerData | null)[] = Array(11).fill(null);
-  const gols = players.filter((p) => p.positionPtBr === "GOL");
-  const zags = players.filter((p) => p.positionPtBr === "ZAG");
-  const vols = players.filter((p) => p.positionPtBr === "VOL");
-  const atas = players.filter((p) => p.positionPtBr === "ATA");
-  const assigned = new Set<number>();
-  const assign = (slot: number, player: PitchPlayerData) => {
-    slots[slot] = player;
-    assigned.add(player.id);
+  const used = new Set<number>();
+
+  const byPos: Record<PositionPtBr, PitchPlayerData[]> = {
+    GOL: [], ZAG: [], VOL: [], ATA: [],
   };
-  if (gols[0]) assign(0, gols[0]);
-  for (let i = 0; i < 4; i++) if (zags[i]) assign(1 + i, zags[i]);
-  for (let i = 0; i < 3; i++) if (vols[i]) assign(5 + i, vols[i]);
-  for (let i = 0; i < 3; i++) if (atas[i]) assign(8 + i, atas[i]);
-  const overflow = players.filter((p) => !assigned.has(p.id));
+  for (const p of players) {
+    byPos[p.positionPtBr].push(p);
+  }
+
+  const targets: [number[], PositionPtBr][] = [
+    [[0], "GOL"],
+    [[1, 2, 3, 4], "ZAG"],
+    [[5, 6, 7], "VOL"],
+    [[8, 9, 10], "ATA"],
+  ];
+
+  for (const [slotIdxs, pos] of targets) {
+    const available = byPos[pos].filter((p) => !used.has(p.id));
+    for (let i = 0; i < slotIdxs.length && i < available.length; i++) {
+      slots[slotIdxs[i]] = available[i];
+      used.add(available[i].id);
+    }
+  }
+
+  const overflow = players.filter((p) => !used.has(p.id));
   let oi = 0;
   for (let i = 0; i < 11; i++) {
-    if (!slots[i] && oi < overflow.length) slots[i] = overflow[oi++];
+    if (!slots[i] && oi < overflow.length) {
+      slots[i] = overflow[oi++];
+    }
   }
+
   return slots;
 }
 
-function PlayerCircle({ x, y, player }: { x: number; y: number; player: PitchPlayerData }) {
+function PlayerCircle({ x, y, player, slotPos }: { x: number; y: number; player: PitchPlayerData; slotPos: PositionPtBr }) {
   const [photoState, setPhotoState] = useState<"idle" | "loaded" | "error">(
     player.photo ? "idle" : "error"
   );
-  const colors = POS_COLOR[player.positionPtBr];
+  const colors = POS_COLOR[slotPos];
   const radius = 20;
   const clipId = `clip-p-${player.id}`;
   const showPhoto = Boolean(player.photo) && photoState !== "error";
@@ -97,7 +127,7 @@ function PlayerCircle({ x, y, player }: { x: number; y: number; player: PitchPla
             <>
               <rect x={x - 11} y={y + radius - 9} width={22} height={11} rx={4} fill={colors.fill} stroke={colors.stroke} strokeWidth={0.8} opacity={0.95} />
               <text x={x} y={y + radius - 2} textAnchor="middle" dominantBaseline="middle" fill={colors.text} fontSize={7} fontWeight="900" fontFamily="Inter, sans-serif">
-                {player.positionPtBr}
+                {slotPos}
               </text>
             </>
           )}
@@ -141,15 +171,14 @@ interface FootballPitchProps {
 }
 
 export function FootballPitch({ players, loading, className }: FootballPitchProps) {
-  const starters = players.slice(0, 11);
-  const pitchData: PitchPlayerData[] = starters.map((p) => ({
+  const pitchData: PitchPlayerData[] = players.map((p) => ({
     id: p.id,
     name: p.name,
     positionPtBr: p.positionPtBr,
     number: p.number ?? undefined,
     photo: p.photo || undefined,
   }));
-  const slots = assignToFormation(pitchData);
+  const slots = pickBestEleven(pitchData);
 
   const W = 320;
   const H = 440;
@@ -195,7 +224,7 @@ export function FootballPitch({ players, loading, className }: FootballPitchProp
           {slots.map((player, i) => {
             if (!player) return null;
             const [x, y] = FORMATION_POSITIONS[i];
-            return <PlayerCircle key={`${player.id}-${i}`} x={x} y={y} player={player} />;
+            return <PlayerCircle key={`${player.id}-${i}`} x={x} y={y} player={player} slotPos={SLOT_POSITION[i]} />;
           })}
         </svg>
       )}

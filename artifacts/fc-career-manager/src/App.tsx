@@ -39,14 +39,26 @@ interface LoadingProgress {
   leagueName: string;
 }
 
-async function resolveTheme(club: { name: string; apiFootballId?: number; logo?: string }): Promise<void> {
+async function resolveTheme(club: {
+  name: string;
+  apiFootballId?: number;
+  logo?: string;
+  savedPrimary?: string;
+  savedSecondary?: string;
+}): Promise<{ primary: string; secondary: string }> {
+  if (club.savedPrimary && club.savedSecondary) {
+    const colors = { primary: club.savedPrimary, secondary: club.savedSecondary };
+    applyTheme(colors);
+    return colors;
+  }
+
   const directColors = getClubColors(club.name);
-  if (directColors) { applyTheme(directColors); return; }
+  if (directColors) { applyTheme(directColors); return directColors; }
 
   const fc26Name = APIFOOTBALL_TO_FC26_NAME[club.name];
   if (fc26Name) {
     const mappedColors = getClubColors(fc26Name);
-    if (mappedColors) { applyTheme(mappedColors); return; }
+    if (mappedColors) { applyTheme(mappedColors); return mappedColors; }
   }
 
   const logoUrl =
@@ -58,10 +70,11 @@ async function resolveTheme(club: { name: string; apiFootballId?: number; logo?:
   if (logoUrl) {
     const extracted = await extractColorsFromImage(logoUrl);
     applyTheme(extracted);
-    return;
+    return extracted;
   }
 
   resetTheme();
+  return { primary: "#8B5CF6", secondary: "#6366F1" };
 }
 
 function ClubListLoader({ progress }: { progress: LoadingProgress }) {
@@ -237,17 +250,26 @@ export default function App() {
 
   const enterCareer = useCallback(async (career: Career) => {
     setActiveCareer(career);
-    await resolveTheme({
+    const colors = await resolveTheme({
       name: career.clubName,
       apiFootballId: career.clubId > 0 ? career.clubId : undefined,
       logo: career.clubLogo || undefined,
+      savedPrimary: career.clubPrimary,
+      savedSecondary: career.clubSecondary,
     });
+    if (!career.clubPrimary || !career.clubSecondary) {
+      const updated = { ...career, clubPrimary: colors.primary, clubSecondary: colors.secondary, updatedAt: Date.now() };
+      saveCareer(updated);
+      setActiveCareer(updated);
+      const latest = listCareers();
+      setCareers(latest);
+    }
     setView("dashboard");
   }, []);
 
   const handleWizardComplete = useCallback(
     async (newCareer: Career) => {
-      let careerToEnter = newCareer;
+      let careerToEnter = { ...newCareer };
 
       if (wizardMode === "change-club" && activeCareer) {
         careerToEnter = {
@@ -259,13 +281,13 @@ export default function App() {
           clubCountry: newCareer.clubCountry,
           clubStadium: newCareer.clubStadium,
           clubFounded: newCareer.clubFounded,
+          clubPrimary: currentTheme.primary,
+          clubSecondary: currentTheme.secondary,
           updatedAt: Date.now(),
         };
-        saveCareer(careerToEnter);
-      } else {
-        saveCareer(newCareer);
       }
 
+      saveCareer(careerToEnter);
       const updatedCareers = listCareers();
       setCareers(updatedCareers);
       await enterCareer(careerToEnter);
@@ -356,7 +378,7 @@ export default function App() {
         <CreateCareerWizard
           allClubs={allClubs}
           onComplete={handleWizardComplete}
-          onCancel={activeCareer ? async () => { await resolveTheme({ name: activeCareer.clubName, apiFootballId: activeCareer.clubId > 0 ? activeCareer.clubId : undefined, logo: activeCareer.clubLogo || undefined }); setView("dashboard"); } : handleGoToCareers}
+          onCancel={activeCareer ? async () => { await resolveTheme({ name: activeCareer.clubName, apiFootballId: activeCareer.clubId > 0 ? activeCareer.clubId : undefined, logo: activeCareer.clubLogo || undefined, savedPrimary: activeCareer.clubPrimary, savedSecondary: activeCareer.clubSecondary }); setView("dashboard"); } : handleGoToCareers}
           initialStep={wizardMode === "change-club" ? 1 : 0}
           initialCoach={wizardMode === "change-club" ? activeCareer?.coach : null}
         />

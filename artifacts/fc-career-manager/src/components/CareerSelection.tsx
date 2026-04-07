@@ -17,7 +17,15 @@ function formatDate(ts: number): string {
   return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
 }
 
-function resolveCareerColors(clubName: string): { primary: string; primaryRgb: string; gradient: string } {
+function resolveCareerColors(clubName: string, savedPrimary?: string, savedSecondary?: string): { primary: string; primaryRgb: string; gradient: string } {
+  if (savedPrimary && savedSecondary) {
+    const [r, g, b] = hexToRgb(savedPrimary);
+    return {
+      primary: savedPrimary,
+      primaryRgb: `${r},${g},${b}`,
+      gradient: `linear-gradient(135deg, ${savedPrimary}, ${savedSecondary})`,
+    };
+  }
   let colors: ClubColors | null = getClubColors(clubName);
   if (!colors) {
     const fc26Name = APIFOOTBALL_TO_FC26_NAME[clubName];
@@ -86,7 +94,7 @@ function CareerCard({
 }) {
   const [showDelete, setShowDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const cc = useMemo(() => resolveCareerColors(career.clubName), [career.clubName]);
+  const cc = useMemo(() => resolveCareerColors(career.clubName, career.clubPrimary, career.clubSecondary), [career.clubName, career.clubPrimary, career.clubSecondary]);
 
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();

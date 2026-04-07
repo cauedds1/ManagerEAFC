@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { ClubEntry } from "@/types/club";
 import { getSquad, SquadPlayer } from "@/lib/squadCache";
-import { FootballPitch } from "./FootballPitch";
+import { FootballPitch, pickBestElevenIds } from "./FootballPitch";
 
 interface TeamPreviewProps {
   club: ClubEntry;
@@ -24,15 +24,15 @@ function BenchPlayerRow({ player, index }: { player: SquadPlayer; index: number 
 
   return (
     <div
-      className="flex items-center gap-2.5 px-3 py-2 rounded-xl animate-slide-up glass"
+      className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl animate-slide-up glass"
       style={{ animationDelay: `${Math.min(index * 30, 500)}ms`, animationFillMode: "both" }}
     >
-      <div className="w-8 h-8 rounded-full flex-shrink-0 overflow-hidden flex items-center justify-center"
+      <div className="w-7 h-7 rounded-full flex-shrink-0 overflow-hidden flex items-center justify-center"
         style={{ background: "rgba(255,255,255,0.06)" }}>
         {player.photo && !imgErr ? (
           <img src={player.photo} alt={player.name} className="w-full h-full object-cover" onError={() => setImgErr(true)} />
         ) : (
-          <svg viewBox="0 0 40 40" className="w-5 h-5" style={{ color: "rgba(255,255,255,0.2)" }} fill="currentColor">
+          <svg viewBox="0 0 40 40" className="w-4 h-4" style={{ color: "rgba(255,255,255,0.2)" }} fill="currentColor">
             <circle cx="20" cy="14" r="7" />
             <path d="M6 36c0-7.732 6.268-14 14-14s14 6.268 14 14H6z" />
           </svg>
@@ -53,18 +53,18 @@ function ClubLogoHero({ logo, name }: { logo: string; name: string }) {
   const [err, setErr] = useState(false);
   const [loaded, setLoaded] = useState(false);
   return (
-    <div className="w-24 h-24 rounded-3xl flex items-center justify-center"
+    <div className="w-20 h-20 rounded-2xl flex items-center justify-center flex-shrink-0"
       style={{ background: "rgba(var(--club-primary-rgb),0.1)", border: "2px solid rgba(var(--club-primary-rgb),0.2)", boxShadow: "0 0 30px rgba(var(--club-primary-rgb),0.15)" }}>
       {logo && !err ? (
         <img
           src={logo}
           alt={name}
-          className={`w-16 h-16 object-contain transition-opacity duration-300 ${loaded ? "opacity-100" : "opacity-0"}`}
+          className={`w-14 h-14 object-contain transition-opacity duration-300 ${loaded ? "opacity-100" : "opacity-0"}`}
           onLoad={() => setLoaded(true)}
           onError={() => setErr(true)}
         />
       ) : (
-        <span className="text-3xl font-black text-white/40">{name.slice(0, 2).toUpperCase()}</span>
+        <span className="text-2xl font-black text-white/40">{name.slice(0, 2).toUpperCase()}</span>
       )}
     </div>
   );
@@ -88,56 +88,38 @@ export function TeamPreview({ club, season, onConfirm, onBack, confirming }: Tea
     return () => { cancelled = true; };
   }, [club.id, club.name]);
 
-  const starters = players.slice(0, 11);
-  const bench = players.slice(11);
+  const starterIds = pickBestElevenIds(players);
+  const bench = players.filter((p) => !starterIds.has(p.id));
 
   return (
     <div className="flex flex-col animate-fade-up">
-      <div className="text-center mb-5">
+      <div className="text-center mb-4">
         <p className="text-xs font-bold tracking-widest uppercase mb-2" style={{ color: "var(--club-primary)" }}>
           Etapa 3 de 3
         </p>
-        <h2 className="text-3xl font-black text-white mb-1">Seu clube</h2>
+        <h2 className="text-2xl sm:text-3xl font-black text-white mb-1">Seu clube</h2>
         <p className="text-white/40 text-sm">Confirme e inicie sua carreira</p>
       </div>
 
-      <div className="rounded-3xl p-5 mb-5 relative overflow-hidden glass"
+      <div className="rounded-2xl p-4 mb-4 relative overflow-hidden glass"
         style={{ boxShadow: "0 8px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)" }}>
         <div className="absolute inset-0 pointer-events-none"
           style={{ background: "radial-gradient(ellipse at 20% 50%, rgba(var(--club-primary-rgb),0.08), transparent 70%)" }} />
-        <div className="relative flex items-center gap-5">
+        <div className="relative flex items-center gap-4">
           <ClubLogoHero logo={club.logo} name={club.name} />
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-bold tracking-widest uppercase mb-1" style={{ color: "var(--club-primary)" }}>
+            <p className="text-xs font-bold tracking-widest uppercase mb-0.5" style={{ color: "var(--club-primary)" }}>
               {club.league}
             </p>
-            <h3 className="text-2xl font-black text-white leading-tight">{club.name}</h3>
-            {club.country && <p className="text-white/40 text-sm mt-1">{club.country}</p>}
-            <div className="flex flex-wrap gap-1.5 mt-2">
-              {club.stadium && (
-                <span className="flex items-center gap-1 text-xs text-white/35">
-                  <svg className="w-3 h-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                  {club.stadium}
-                  {club.stadiumCapacity && <span className="text-white/20">· {club.stadiumCapacity.toLocaleString()} lug.</span>}
-                </span>
-              )}
-              {club.founded && (
-                <span className="flex items-center gap-1 text-xs text-white/35">
-                  {club.stadium && <span className="text-white/15 mx-0.5">·</span>}
-                  Fundado em {club.founded}
-                </span>
-              )}
-            </div>
-            <div className="flex items-center gap-2 mt-3">
-              <span className="text-xs font-semibold px-3 py-1 rounded-full"
+            <h3 className="text-xl font-black text-white leading-tight">{club.name}</h3>
+            {club.country && <p className="text-white/40 text-xs mt-0.5">{club.country}</p>}
+            <div className="flex flex-wrap gap-2 mt-2">
+              <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full"
                 style={{ background: "rgba(var(--club-primary-rgb),0.12)", color: "var(--club-primary)" }}>
                 Temporada {season}
               </span>
               {!loading && players.length > 0 && (
-                <span className="text-xs font-semibold px-3 py-1 rounded-full"
+                <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full"
                   style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.5)" }}>
                   {players.length} jogadores
                 </span>
@@ -147,28 +129,26 @@ export function TeamPreview({ club, season, onConfirm, onBack, confirming }: Tea
         </div>
       </div>
 
-      <div className="flex gap-4 mb-5">
-        <div className="flex-1 flex flex-col min-w-0">
-          <div className="flex items-center gap-2 mb-3">
-            <h4 className="text-white/50 text-xs font-semibold tracking-widest uppercase">Titulares</h4>
-            {!loading && starters.length > 0 && <span className="text-white/25 text-xs tabular-nums">({starters.length})</span>}
-          </div>
-          <div className="flex-1 rounded-2xl overflow-hidden" style={{ minHeight: 280 }}>
+      <div className="grid grid-cols-1 sm:grid-cols-[1fr_200px] gap-3 mb-4">
+        <div className="flex flex-col min-w-0">
+          <h4 className="text-white/50 text-xs font-semibold tracking-widest uppercase mb-2">
+            Titulares {!loading && players.length > 0 && <span className="text-white/25">({Math.min(players.length, 11)})</span>}
+          </h4>
+          <div className="rounded-2xl overflow-hidden" style={{ minHeight: 250 }}>
             <FootballPitch players={players} loading={loading} className="h-full" />
           </div>
         </div>
 
         {(loading || bench.length > 0) && (
-          <div className="flex flex-col" style={{ width: 190 }}>
-            <div className="flex items-center gap-2 mb-3">
-              <h4 className="text-white/50 text-xs font-semibold tracking-widest uppercase">Reservas</h4>
-              {!loading && bench.length > 0 && <span className="text-white/25 text-xs tabular-nums">({bench.length})</span>}
-            </div>
-            <div className="flex flex-col gap-1 overflow-y-auto flex-1">
+          <div className="flex flex-col">
+            <h4 className="text-white/50 text-xs font-semibold tracking-widest uppercase mb-2">
+              Reservas {!loading && bench.length > 0 && <span className="text-white/25">({bench.length})</span>}
+            </h4>
+            <div className="flex flex-col gap-1 overflow-y-auto flex-1" style={{ maxHeight: 400 }}>
               {loading ? (
-                Array.from({ length: 8 }).map((_, i) => (
-                  <div key={i} className="flex items-center gap-2 px-3 py-2 rounded-xl glass">
-                    <div className="w-8 h-8 rounded-full animate-pulse" style={{ background: "rgba(255,255,255,0.08)", flexShrink: 0 }} />
+                Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl glass">
+                    <div className="w-7 h-7 rounded-full animate-pulse" style={{ background: "rgba(255,255,255,0.08)", flexShrink: 0 }} />
                     <div className="flex-1 space-y-1">
                       <div className="h-2.5 rounded animate-pulse" style={{ background: "rgba(255,255,255,0.08)", width: "70%" }} />
                       <div className="h-2 rounded animate-pulse" style={{ background: "rgba(255,255,255,0.05)", width: "40%" }} />
@@ -187,7 +167,7 @@ export function TeamPreview({ club, season, onConfirm, onBack, confirming }: Tea
         <button
           onClick={onBack}
           disabled={confirming}
-          className="flex items-center justify-center gap-2 px-5 py-4 rounded-2xl font-semibold text-sm text-white/50 hover:text-white transition-all duration-200 disabled:opacity-40 glass glass-hover"
+          className="flex items-center justify-center gap-2 px-4 py-3.5 rounded-2xl font-semibold text-sm text-white/50 hover:text-white transition-all duration-200 disabled:opacity-40 glass glass-hover"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
@@ -197,17 +177,17 @@ export function TeamPreview({ club, season, onConfirm, onBack, confirming }: Tea
         <button
           onClick={onConfirm}
           disabled={confirming}
-          className="flex-1 py-4 rounded-2xl font-bold text-white text-base transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60 flex items-center justify-center gap-2"
+          className="flex-1 py-3.5 rounded-2xl font-bold text-white text-sm transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60 flex items-center justify-center gap-2"
           style={{ background: "var(--club-gradient)", boxShadow: "0 4px 20px rgba(var(--club-primary-rgb),0.25)" }}
         >
           {confirming ? (
             <>
-              <div className="w-5 h-5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+              <div className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
               Iniciando...
             </>
           ) : (
             <>
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
               </svg>
               Iniciar Carreira
