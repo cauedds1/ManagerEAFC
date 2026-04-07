@@ -1,14 +1,15 @@
 import { useState, useEffect, useRef } from "react";
 import { Club } from "@/types/club";
-import { getClubImage } from "@/lib/imageCache";
+import { getClubImage, leagueCache } from "@/lib/imageCache";
 
 interface ClubCardProps {
   club: Club;
   onClick: () => void;
   index: number;
+  onLeagueFound?: (clubName: string, league: string) => void;
 }
 
-export function ClubCard({ club, onClick, index }: ClubCardProps) {
+export function ClubCard({ club, onClick, index, onLeagueFound }: ClubCardProps) {
   const [imgSrc, setImgSrc] = useState<string | null>(null);
   const [imgError, setImgError] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -22,8 +23,10 @@ export function ClubCard({ club, onClick, index }: ClubCardProps) {
       ([entry]) => {
         if (entry.isIntersecting) {
           observer.disconnect();
-          getClubImage(club.name).then((url) => {
+          getClubImage(club).then((url) => {
             if (url) setImgSrc(url);
+            const league = leagueCache.get(club.name);
+            if (league && onLeagueFound) onLeagueFound(club.name, league);
           });
         }
       },
@@ -32,7 +35,7 @@ export function ClubCard({ club, onClick, index }: ClubCardProps) {
 
     observer.observe(el);
     return () => observer.disconnect();
-  }, [club.name]);
+  }, [club, onLeagueFound]);
 
   const initials = club.name
     .split(" ")

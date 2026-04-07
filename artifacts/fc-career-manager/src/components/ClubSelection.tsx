@@ -11,7 +11,7 @@ interface ClubSelectionProps {
 }
 
 export function ClubSelection({ onSelectClub }: ClubSelectionProps) {
-  const { clubs, leagues, loading, error, retry } = useClubData();
+  const { clubs, leagues, loading, error, retry, updateClubLeague } = useClubData();
   const [search, setSearch] = useState("");
   const [league, setLeague] = useState("Todas as ligas");
   const [selecting, setSelecting] = useState(false);
@@ -42,7 +42,7 @@ export function ClubSelection({ onSelectClub }: ClubSelectionProps) {
         return;
       }
 
-      const imageUrl = await getClubImage(club.name);
+      const imageUrl = await getClubImage(club);
       if (imageUrl) {
         const colors = await extractColorsFromImage(imageUrl);
         applyTheme(colors);
@@ -196,6 +196,7 @@ export function ClubSelection({ onSelectClub }: ClubSelectionProps) {
                     club={club}
                     onClick={() => handleSelectClub(club)}
                     index={index}
+                    onLeagueFound={updateClubLeague}
                   />
                 </div>
               ))}

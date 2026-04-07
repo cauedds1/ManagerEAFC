@@ -22,7 +22,7 @@ async function restoreTheme(club: Club) {
     return;
   }
 
-  const imageUrl = await getClubImage(club.name);
+  const imageUrl = await getClubImage(club);
   if (imageUrl) {
     const colors = await extractColorsFromImage(imageUrl);
     applyTheme(colors);

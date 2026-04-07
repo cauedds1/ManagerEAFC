@@ -88,7 +88,7 @@ export function Dashboard({ club, season, onSeasonChange, onChangeClub }: Dashbo
   useEffect(() => {
     setImgSrc(null);
     setImgLoaded(false);
-    getClubImage(club.name).then((url) => {
+    getClubImage(club).then((url) => {
       if (url) setImgSrc(url);
     });
   }, [club.name]);
