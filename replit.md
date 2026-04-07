@@ -33,14 +33,14 @@ Brazilian Portuguese companion app for EA FC 26 career mode.
 
 ### Database Schema (`lib/db/src/schema/index.ts`)
 - `clubs` — Club list cache (id PK = API-Football team ID, name, logo_url, league, league_id, country, cached_at)
-- `squads` — Squad cache per team (team_id PK, players jsonb, source, cached_at)
+- `squad_players` — One row per player per team; composite PK `(team_id, player_id)`. Columns: team_id, player_id, name, age, position, position_pt_br, photo, player_number, source, cached_at. All rows for the same team share the same source + cached_at from the last fetch.
 
 ### API Routes (`artifacts/api-server/src/routes/`)
 - `GET /api/clubs` → 200 `{clubs, cachedAt}` if fresh (<30 days), 204 if empty/stale
-- `PUT /api/clubs` → upserts club list (transaction: DELETE all + INSERT in 200-row chunks)
+- `PUT /api/clubs` → replaces club list atomically (transaction: DELETE all + INSERT in 200-row chunks)
 - `DELETE /api/clubs` → clears club list cache
-- `GET /api/squad/:teamId` → 200 `{players, source, cachedAt}` if fresh (<7 days), 204 if empty/stale
-- `PUT /api/squad/:teamId` → upserts squad (ON CONFLICT DO UPDATE)
+- `GET /api/squad/:teamId` → 200 `{players, source, cachedAt}` if fresh (<7 days), 204 if empty/stale. Reconstructs SquadResult from individual player rows.
+- `PUT /api/squad/:teamId` → replaces squad atomically (transaction: DELETE WHERE team_id + INSERT up to 100 rows per chunk)
 
 ### Two-Layer Cache Strategy
 1. **Layer 1 localStorage** — instant sync read/write, key `fc-career-manager-clubs` and `fc-career-manager-squad-{teamId}`
