@@ -10,6 +10,7 @@ import {
   getApiKey,
   fetchAndCacheClubList,
   getCachedClubList,
+  ApiAuthError,
   ProgressCallback,
 } from "@/lib/clubListCache";
 import { getCurrentSeason } from "@/lib/api";
@@ -124,7 +125,12 @@ export default function App() {
         setAllClubs(clubs);
         setView("selection");
       })
-      .catch(() => {
+      .catch((err: unknown) => {
+        if (err instanceof ApiAuthError) {
+          setView("key-missing");
+          return;
+        }
+        // Rate-limit or network error: use cached data if available
         const cached = getCachedClubList();
         if (cached && cached.length > 0) {
           setAllClubs(cached);

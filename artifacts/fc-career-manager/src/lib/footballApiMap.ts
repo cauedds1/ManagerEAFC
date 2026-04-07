@@ -37,10 +37,17 @@ export const DOMESTIC_LEAGUES: LeagueInfo[] = [
   { id: 119, name: "Superliga",           displayName: "Superliga Dinamarca", country: "Dinamarca", flag: "🇩🇰", type: "domestic" },
 ];
 
+// International league IDs from API-Football (confirmed in pre-testing, season=2025):
+//   id:2   = UEFA Champions League    → 82 teams (82 is team count, NOT the league ID)
+//   id:3   = UEFA Europa League       → 77 teams
+//   id:848 = UEFA Conference League   → 164 teams
+//   id:13  = CONMEBOL Libertadores    → 47 teams
+// ID 14 (CONMEBOL Sudamericana) is intentionally EXCLUDED — returns European U19 youth
+// teams (bad data confirmed across season 2024 and 2025).
 export const INTERNATIONAL_LEAGUES: LeagueInfo[] = [
-  { id: 2,   name: "UEFA Champions League",    country: "Europa",        flag: "🏆", type: "international" },
-  { id: 3,   name: "UEFA Europa League",       country: "Europa",        flag: "🥈", type: "international" },
-  { id: 848, name: "UEFA Conference League",   country: "Europa",        flag: "🥉", type: "international" },
+  { id: 2,   name: "UEFA Champions League",    country: "Europa",         flag: "🏆", type: "international" },
+  { id: 3,   name: "UEFA Europa League",       country: "Europa",         flag: "🥈", type: "international" },
+  { id: 848, name: "UEFA Conference League",   country: "Europa",         flag: "🥉", type: "international" },
   { id: 13,  name: "CONMEBOL Libertadores",    country: "América do Sul", flag: "🌎", type: "international" },
 ];
 
