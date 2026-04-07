@@ -16,7 +16,7 @@ interface CreateCareerWizardProps {
   initialCoach?: CoachProfile | null;
 }
 
-const STEPS = ["Técnico", "Clube", "Preview"];
+const STEPS = ["Tecnico", "Clube", "Preview"];
 
 function ProgressBar({ step }: { step: number }) {
   return (
@@ -31,17 +31,17 @@ function ProgressBar({ step }: { step: number }) {
                 className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300"
                 style={{
                   background: done
-                    ? "var(--club-primary, #6366f1)"
+                    ? "var(--club-primary)"
                     : active
-                    ? "rgba(255,255,255,0.12)"
-                    : "rgba(255,255,255,0.06)",
+                    ? "rgba(var(--club-primary-rgb),0.15)"
+                    : "rgba(255,255,255,0.05)",
                   border: active
-                    ? "2px solid var(--club-primary, #6366f1)"
+                    ? "2px solid var(--club-primary)"
                     : done
-                    ? "2px solid var(--club-primary, #6366f1)"
-                    : "2px solid rgba(255,255,255,0.1)",
+                    ? "2px solid var(--club-primary)"
+                    : "2px solid rgba(255,255,255,0.08)",
                   color: done || active ? "white" : "rgba(255,255,255,0.3)",
-                  boxShadow: active ? "0 0 12px var(--club-primary, #6366f1)40" : "none",
+                  boxShadow: active ? "0 0 16px rgba(var(--club-primary-rgb),0.3)" : "none",
                 }}
               >
                 {done ? (
@@ -62,11 +62,7 @@ function ProgressBar({ step }: { step: number }) {
             {i < STEPS.length - 1 && (
               <div
                 className="flex-1 h-px transition-all duration-500"
-                style={{
-                  background: done
-                    ? "var(--club-primary, #6366f1)"
-                    : "rgba(255,255,255,0.08)",
-                }}
+                style={{ background: done ? "var(--club-primary)" : "rgba(255,255,255,0.06)" }}
               />
             )}
           </div>
@@ -116,15 +112,9 @@ export function CreateCareerWizard({
   const season = getCurrentSeason();
 
   return (
-    <div
-      className="min-h-screen flex flex-col"
-      style={{ background: "var(--app-bg, #0a0a0a)" }}
-    >
-      {/* Top bar */}
-      <div
-        className="flex items-center justify-between px-5 py-4 flex-shrink-0"
-        style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}
-      >
+    <div className="relative min-h-screen flex flex-col">
+      <div className="flex items-center justify-between px-5 py-4 flex-shrink-0"
+        style={{ borderBottom: "1px solid var(--surface-border)" }}>
         <button
           onClick={onCancel}
           className="flex items-center gap-2 text-white/40 hover:text-white transition-colors duration-200 text-sm font-medium"
@@ -140,19 +130,13 @@ export function CreateCareerWizard({
         <div style={{ width: 80 }} />
       </div>
 
-      {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         <div className="flex-1 overflow-y-auto">
           <div className="max-w-2xl mx-auto px-5 py-8">
             <ProgressBar step={step} />
-
-            <div className="animate-fade-in" key={step}>
-              {step === 0 && (
-                <CoachSetup onNext={handleCoachNext} initial={coach} />
-              )}
-              {step === 1 && (
-                <ClubPicker allClubs={allClubs} onSelectClub={handleClubSelect} />
-              )}
+            <div key={step}>
+              {step === 0 && <CoachSetup onNext={handleCoachNext} initial={coach} />}
+              {step === 1 && <ClubPicker allClubs={allClubs} onSelectClub={handleClubSelect} />}
               {step === 2 && selectedClub && (
                 <TeamPreview
                   club={selectedClub}

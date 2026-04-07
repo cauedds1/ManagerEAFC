@@ -16,7 +16,6 @@ const POS_COLOR: Record<PositionPtBr, { fill: string; stroke: string; text: stri
   ATA: { fill: "#ef4444", stroke: "#f87171", text: "#ffe0e0" },
 };
 
-// 4-3-3 formation positions [x, y] within a 320x440 viewBox
 const FORMATION_POSITIONS: [number, number][] = [
   [160, 400],
   [40, 315], [115, 315], [205, 315], [280, 315],
@@ -53,15 +52,7 @@ function assignToFormation(players: PitchPlayerData[]): (PitchPlayerData | null)
   return slots;
 }
 
-function PlayerCircle({
-  x,
-  y,
-  player,
-}: {
-  x: number;
-  y: number;
-  player: PitchPlayerData;
-}) {
+function PlayerCircle({ x, y, player }: { x: number; y: number; player: PitchPlayerData }) {
   const [photoState, setPhotoState] = useState<"idle" | "loaded" | "error">(
     player.photo ? "idle" : "error"
   );
@@ -78,29 +69,17 @@ function PlayerCircle({
 
   return (
     <g>
-      {/* Clip path for circular photo */}
       <defs>
         <clipPath id={clipId}>
           <circle cx={x} cy={y} r={radius - 1} />
         </clipPath>
       </defs>
 
-      {/* Glow */}
       <circle cx={x} cy={y} r={radius + 4} fill={colors.fill} opacity={0.2} />
-
-      {/* Base filled circle (always visible, acts as background) */}
-      <circle
-        cx={x}
-        cy={y}
-        r={radius}
-        fill={colors.fill}
-        stroke={colors.stroke}
-        strokeWidth={1.5}
-      />
+      <circle cx={x} cy={y} r={radius} fill={colors.fill} stroke={colors.stroke} strokeWidth={1.5} />
 
       {showPhoto ? (
         <>
-          {/* Player photo clipped to circle */}
           <image
             href={player.photo}
             x={x - radius}
@@ -109,87 +88,32 @@ function PlayerCircle({
             height={radius * 2}
             clipPath={`url(#${clipId})`}
             preserveAspectRatio="xMidYMid slice"
-            style={{
-              opacity: photoState === "loaded" ? 1 : 0,
-              transition: "opacity 0.25s ease",
-            }}
+            style={{ opacity: photoState === "loaded" ? 1 : 0, transition: "opacity 0.25s ease" }}
             onLoad={() => setPhotoState("loaded")}
             onError={() => setPhotoState("error")}
           />
-          {/* Stroke ring over photo */}
           <circle cx={x} cy={y} r={radius} fill="none" stroke={colors.stroke} strokeWidth={1.5} />
-          {/* Position badge pill at the bottom of the circle */}
           {photoState === "loaded" && (
             <>
-              <rect
-                x={x - 11}
-                y={y + radius - 9}
-                width={22}
-                height={11}
-                rx={4}
-                fill={colors.fill}
-                stroke={colors.stroke}
-                strokeWidth={0.8}
-                opacity={0.95}
-              />
-              <text
-                x={x}
-                y={y + radius - 2}
-                textAnchor="middle"
-                dominantBaseline="middle"
-                fill={colors.text}
-                fontSize={7}
-                fontWeight="900"
-                fontFamily="Inter, sans-serif"
-              >
+              <rect x={x - 11} y={y + radius - 9} width={22} height={11} rx={4} fill={colors.fill} stroke={colors.stroke} strokeWidth={0.8} opacity={0.95} />
+              <text x={x} y={y + radius - 2} textAnchor="middle" dominantBaseline="middle" fill={colors.text} fontSize={7} fontWeight="900" fontFamily="Inter, sans-serif">
                 {player.positionPtBr}
               </text>
             </>
           )}
-          {/* Loading placeholder initials while photo loads */}
           {photoState === "idle" && (
-            <text
-              x={x}
-              y={y + 1}
-              textAnchor="middle"
-              dominantBaseline="middle"
-              fill={colors.text}
-              fontSize={label.length > 2 ? 9 : 11}
-              fontWeight="800"
-              fontFamily="Inter, sans-serif"
-            >
+            <text x={x} y={y + 1} textAnchor="middle" dominantBaseline="middle" fill={colors.text} fontSize={label.length > 2 ? 9 : 11} fontWeight="800" fontFamily="Inter, sans-serif">
               {label}
             </text>
           )}
         </>
       ) : (
-        /* No photo / CORS error — show number or initials */
-        <text
-          x={x}
-          y={y + 1}
-          textAnchor="middle"
-          dominantBaseline="middle"
-          fill={colors.text}
-          fontSize={label.length > 2 ? 9 : 11}
-          fontWeight="800"
-          fontFamily="Inter, sans-serif"
-        >
+        <text x={x} y={y + 1} textAnchor="middle" dominantBaseline="middle" fill={colors.text} fontSize={label.length > 2 ? 9 : 11} fontWeight="800" fontFamily="Inter, sans-serif">
           {label}
         </text>
       )}
 
-      {/* Player surname below circle */}
-      <text
-        x={x}
-        y={y + radius + 11}
-        textAnchor="middle"
-        dominantBaseline="middle"
-        fill="white"
-        opacity={0.85}
-        fontSize={8}
-        fontWeight="500"
-        fontFamily="Inter, sans-serif"
-      >
+      <text x={x} y={y + radius + 11} textAnchor="middle" dominantBaseline="middle" fill="white" opacity={0.85} fontSize={8} fontWeight="500" fontFamily="Inter, sans-serif">
         {displayName.length > 11 ? displayName.slice(0, 10) + "." : displayName}
       </text>
     </g>
@@ -202,11 +126,7 @@ function PitchSkeleton() {
       {Array.from({ length: 4 }).map((_, row) => (
         <div key={row} className="flex gap-4">
           {Array.from({ length: row === 0 || row === 3 ? 1 : row === 2 ? 3 : 4 }).map((_, i) => (
-            <div
-              key={i}
-              className="w-10 h-10 rounded-full animate-pulse"
-              style={{ background: "rgba(255,255,255,0.1)" }}
-            />
+            <div key={i} className="w-10 h-10 rounded-full animate-pulse" style={{ background: "rgba(255,255,255,0.1)" }} />
           ))}
         </div>
       ))}
@@ -235,22 +155,13 @@ export function FootballPitch({ players, loading, className }: FootballPitchProp
   const H = 440;
 
   return (
-    <div
-      className={`relative rounded-2xl overflow-hidden ${className ?? ""}`}
-      style={{ background: "#0d2218" }}
-    >
+    <div className={`relative rounded-2xl overflow-hidden ${className ?? ""}`} style={{ background: "#0d2218" }}>
       {loading ? (
         <div className="flex items-center justify-center" style={{ height: 400 }}>
           <PitchSkeleton />
         </div>
       ) : (
-        <svg
-          viewBox={`0 0 ${W} ${H}`}
-          width="100%"
-          style={{ display: "block", maxHeight: 500 }}
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          {/* Pitch background gradient */}
+        <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: "block", maxHeight: 500 }} xmlns="http://www.w3.org/2000/svg">
           <defs>
             <linearGradient id="pitchGrad" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="#143520" />
@@ -260,12 +171,10 @@ export function FootballPitch({ players, loading, className }: FootballPitchProp
           </defs>
           <rect width={W} height={H} fill="url(#pitchGrad)" />
 
-          {/* Stripe pattern */}
           {Array.from({ length: 8 }).map((_, i) => (
             <rect key={i} x={0} y={i * 55} width={W} height={27.5} fill="rgba(255,255,255,0.015)" />
           ))}
 
-          {/* Pitch lines */}
           <g fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth={1.2} strokeLinecap="round">
             <rect x={12} y={12} width={W - 24} height={H - 24} />
             <line x1={12} y1={H / 2} x2={W - 12} y2={H / 2} />
@@ -283,7 +192,6 @@ export function FootballPitch({ players, loading, className }: FootballPitchProp
             <path d="M 298 418 A 10 10 0 0 1 308 428" />
           </g>
 
-          {/* Player circles */}
           {slots.map((player, i) => {
             if (!player) return null;
             const [x, y] = FORMATION_POSITIONS[i];

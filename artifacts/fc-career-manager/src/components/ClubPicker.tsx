@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { ClubEntry } from "@/types/club";
-import { DOMESTIC_LEAGUES, INTERNATIONAL_LEAGUES, LeagueInfo } from "@/lib/footballApiMap";
+import { DOMESTIC_LEAGUES, INTERNATIONAL_LEAGUES, LeagueInfo, getLeagueLogoUrl } from "@/lib/footballApiMap";
 import { getClubsByLeague, searchClubs } from "@/lib/clubListCache";
 import { applyTheme, resetTheme, extractColorsFromImage, getCurrentColors } from "@/lib/themeManager";
 
@@ -9,25 +9,49 @@ interface ClubPickerProps {
   onSelectClub: (entry: ClubEntry) => void;
 }
 
-function ClubLogo({ logo, name, size = 56 }: { logo: string; name: string; size?: number }) {
+function LeagueLogo({ leagueId, size = 32 }: { leagueId: number; size?: number }) {
+  const [err, setErr] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const url = getLeagueLogoUrl(leagueId);
+
+  return (
+    <div
+      className="flex items-center justify-center rounded-xl flex-shrink-0 overflow-hidden"
+      style={{ width: size + 8, height: size + 8, background: "rgba(255,255,255,0.06)" }}
+    >
+      {!err ? (
+        <img
+          src={url}
+          alt=""
+          className={`object-contain transition-opacity duration-200 ${loaded ? "opacity-100" : "opacity-0"}`}
+          style={{ width: size, height: size }}
+          onLoad={() => setLoaded(true)}
+          onError={() => setErr(true)}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function ClubLogo({ logo, name, size = 48 }: { logo: string; name: string; size?: number }) {
   const [err, setErr] = useState(false);
   const [loaded, setLoaded] = useState(false);
   return (
     <div
       className="flex items-center justify-center rounded-xl flex-shrink-0 overflow-hidden"
-      style={{ width: size, height: size, background: "rgba(255,255,255,0.08)" }}
+      style={{ width: size, height: size, background: "rgba(255,255,255,0.06)" }}
     >
       {logo && !err ? (
         <img
           src={logo}
           alt={name}
           className={`object-contain transition-opacity duration-200 ${loaded ? "opacity-100" : "opacity-0"}`}
-          style={{ width: size - 12, height: size - 12 }}
+          style={{ width: size - 10, height: size - 10 }}
           onLoad={() => setLoaded(true)}
           onError={() => setErr(true)}
         />
       ) : (
-        <span className="text-white/40 font-black text-sm">
+        <span className="text-white/40 font-black text-xs">
           {name.slice(0, 2).toUpperCase()}
         </span>
       )}
@@ -39,27 +63,14 @@ function LeagueCard({ league, count, onClick, index }: { league: LeagueInfo; cou
   return (
     <button
       onClick={onClick}
-      className="group flex items-center gap-4 p-4 rounded-2xl text-left w-full transition-all duration-200 animate-slide-up"
+      className="group flex items-center gap-3.5 p-3.5 rounded-2xl text-left w-full transition-all duration-200 animate-slide-up glass glass-hover"
       style={{
         animationDelay: `${Math.min(index * 25, 400)}ms`,
         animationFillMode: "both",
-        background: "rgba(255,255,255,0.04)",
-        border: "1px solid rgba(255,255,255,0.07)",
-      }}
-      onMouseEnter={(e) => {
-        const el = e.currentTarget;
-        el.style.background = "rgba(255,255,255,0.08)";
-        el.style.borderColor = "var(--club-primary, #6366f1)50";
-        el.style.transform = "translateY(-1px)";
-      }}
-      onMouseLeave={(e) => {
-        const el = e.currentTarget;
-        el.style.background = "rgba(255,255,255,0.04)";
-        el.style.borderColor = "rgba(255,255,255,0.07)";
-        el.style.transform = "translateY(0)";
       }}
     >
-      <span className="text-3xl flex-shrink-0">{league.flag}</span>
+      <LeagueLogo leagueId={league.id} size={30} />
+      <span className="text-xl flex-shrink-0">{league.flag}</span>
       <div className="flex-1 min-w-0">
         <p className="text-white font-bold text-sm leading-tight truncate">
           {league.displayName ?? league.name}
@@ -69,7 +80,7 @@ function LeagueCard({ league, count, onClick, index }: { league: LeagueInfo; cou
       {count > 0 && (
         <span
           className="text-xs font-bold px-2.5 py-1 rounded-full flex-shrink-0 tabular-nums"
-          style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.45)" }}
+          style={{ background: "rgba(var(--club-primary-rgb),0.1)", color: "var(--club-primary)" }}
         >
           {count}
         </span>
@@ -87,8 +98,8 @@ function BigClubCard({ entry, onClick, index }: { entry: ClubEntry; onClick: () 
 
   const handleMouseEnter = useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
     const el = e.currentTarget;
-    el.style.background = "rgba(255,255,255,0.09)";
-    el.style.borderColor = "var(--club-primary, #6366f1)60";
+    el.style.background = "var(--surface-hover)";
+    el.style.borderColor = "rgba(var(--club-primary-rgb),0.3)";
     el.style.transform = "translateY(-2px)";
     el.style.boxShadow = "0 8px 24px rgba(0,0,0,0.3)";
 
@@ -104,8 +115,8 @@ function BigClubCard({ entry, onClick, index }: { entry: ClubEntry; onClick: () 
 
   const handleMouseLeave = useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
     const el = e.currentTarget;
-    el.style.background = "rgba(255,255,255,0.04)";
-    el.style.borderColor = "rgba(255,255,255,0.07)";
+    el.style.background = "";
+    el.style.borderColor = "";
     el.style.transform = "translateY(0)";
     el.style.boxShadow = "none";
 
@@ -121,17 +132,15 @@ function BigClubCard({ entry, onClick, index }: { entry: ClubEntry; onClick: () 
   return (
     <button
       onClick={onClick}
-      className="group flex items-center gap-4 p-4 rounded-2xl text-left w-full transition-all duration-200 animate-slide-up"
+      className="group flex items-center gap-3.5 p-3.5 rounded-2xl text-left w-full transition-all duration-200 animate-slide-up glass"
       style={{
         animationDelay: `${Math.min(index * 18, 350)}ms`,
         animationFillMode: "both",
-        background: "rgba(255,255,255,0.04)",
-        border: "1px solid rgba(255,255,255,0.07)",
       }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      <ClubLogo logo={entry.logo} name={entry.name} size={56} />
+      <ClubLogo logo={entry.logo} name={entry.name} size={48} />
       <div className="flex-1 min-w-0">
         <p className="text-white font-bold text-sm leading-tight truncate">{entry.name}</p>
         <p className="text-white/35 text-xs mt-0.5 truncate">{entry.league}</p>
@@ -154,7 +163,6 @@ export function ClubPicker({ allClubs, onSelectClub }: ClubPickerProps) {
   const [search, setSearch] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
 
-  // Focus search on mount
   useEffect(() => {
     searchRef.current?.focus();
   }, []);
@@ -191,13 +199,9 @@ export function ClubPicker({ allClubs, onSelectClub }: ClubPickerProps) {
   const isSearching = search.trim().length > 0;
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Header */}
+    <div className="flex flex-col h-full animate-fade-up">
       <div className="text-center mb-6">
-        <p
-          className="text-xs font-bold tracking-widest uppercase mb-2"
-          style={{ color: "var(--club-primary, #6366f1)" }}
-        >
+        <p className="text-xs font-bold tracking-widest uppercase mb-2" style={{ color: "var(--club-primary)" }}>
           Etapa 2 de 3
         </p>
         <h2 className="text-3xl font-black text-white mb-2">
@@ -206,13 +210,10 @@ export function ClubPicker({ allClubs, onSelectClub }: ClubPickerProps) {
             : "Escolha seu clube"}
         </h2>
         <p className="text-white/40 text-sm">
-          {selectedLeague
-            ? selectedLeague.country
-            : "Pesquise ou navegue pelas ligas"}
+          {selectedLeague ? selectedLeague.country : "Pesquise ou navegue pelas ligas"}
         </p>
       </div>
 
-      {/* Search bar */}
       <div className="relative mb-5">
         <svg
           className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 pointer-events-none"
@@ -226,13 +227,9 @@ export function ClubPicker({ allClubs, onSelectClub }: ClubPickerProps) {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder={selectedLeague ? `Buscar em ${selectedLeague.displayName ?? selectedLeague.name}...` : "Buscar clube em todas as ligas..."}
-          className="w-full pl-11 pr-4 py-3 rounded-2xl text-white placeholder-white/25 focus:outline-none transition-all duration-200 text-sm"
-          style={{
-            background: "rgba(255,255,255,0.06)",
-            border: "1px solid rgba(255,255,255,0.1)",
-          }}
-          onFocus={(e) => (e.currentTarget.style.borderColor = "var(--club-primary, #6366f1)60")}
-          onBlur={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)")}
+          className="w-full pl-11 pr-10 py-3 rounded-2xl text-white placeholder-white/25 focus:outline-none transition-all duration-200 text-sm glass"
+          onFocus={(e) => (e.currentTarget.style.borderColor = "rgba(var(--club-primary-rgb),0.3)")}
+          onBlur={(e) => (e.currentTarget.style.borderColor = "")}
         />
         {search && (
           <button
@@ -246,9 +243,7 @@ export function ClubPicker({ allClubs, onSelectClub }: ClubPickerProps) {
         )}
       </div>
 
-      {/* Content */}
       <div className="flex-1 overflow-y-auto -mx-2 px-2">
-        {/* Global search results */}
         {isSearching && !selectedLeague ? (
           <div>
             <p className="text-white/25 text-xs mb-3 tabular-nums">
@@ -265,7 +260,6 @@ export function ClubPicker({ allClubs, onSelectClub }: ClubPickerProps) {
             )}
           </div>
         ) : selectedLeague ? (
-          /* Club list inside a league */
           <div>
             <div className="flex items-center gap-3 mb-4">
               <button
@@ -296,21 +290,16 @@ export function ClubPicker({ allClubs, onSelectClub }: ClubPickerProps) {
             )}
           </div>
         ) : (
-          /* League grid */
           <div>
-            {/* Tabs */}
-            <div
-              className="flex rounded-xl p-1 mb-5"
-              style={{ background: "rgba(255,255,255,0.05)" }}
-            >
+            <div className="flex rounded-xl p-1 mb-5" style={{ background: "rgba(255,255,255,0.04)" }}>
               {(["domestic", "international"] as Tab[]).map((t) => (
                 <button
                   key={t}
                   onClick={() => setTab(t)}
-                  className="flex-1 py-2 rounded-lg text-sm font-semibold transition-all duration-200"
+                  className="flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200"
                   style={{
-                    background: tab === t ? "rgba(255,255,255,0.12)" : "transparent",
-                    color: tab === t ? "white" : "rgba(255,255,255,0.4)",
+                    background: tab === t ? "rgba(var(--club-primary-rgb),0.15)" : "transparent",
+                    color: tab === t ? "var(--club-primary)" : "rgba(255,255,255,0.4)",
                   }}
                 >
                   {t === "domestic" ? "Ligas Domésticas" : "Competições Internacionais"}

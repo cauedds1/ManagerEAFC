@@ -52,3 +52,10 @@ Brazilian Portuguese companion app for EA FC 26 career mode.
 ### TTLs
 - Club list: 30 days
 - Squad: 7 days
+
+### Design System (Task #6 Redesign)
+- **AnimatedBackground**: 3 CSS-animated gradient blobs (`--blob-1/2/3`) + dot-grid overlay. Fixed `inset-0 -z-10` behind all content.
+- **Theme engine** (`themeManager.ts`): hex→HSL conversion, sets 12+ CSS vars (`--club-primary`, `--club-primary-rgb`, `--app-bg`, `--surface`, `--surface-border`, `--glow`, `--blob-1/2/3`, `--club-gradient`, `--club-gradient-subtle`). `resetTheme()` applies default indigo/violet.
+- **Glass utilities** (`index.css`): `.glass` = surface bg + border + backdrop blur. `.glass-hover` = hover accent border/bg. Used across all components.
+- **Position labels**: `reNormalizePlayers()` in `squadCache.ts` fixes `positionPtBr` on every cache read.
+- **Settings.tsx**: Uses glass/theme CSS vars consistently with rest of app.

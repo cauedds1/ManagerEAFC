@@ -62,12 +62,20 @@ function getCacheKey(teamId: number, clubName: string): string {
   return `${CACHE_PREFIX}name-${clubName.toLowerCase().replace(/\s+/g, "_")}`;
 }
 
+function reNormalizePlayers(players: SquadPlayer[]): SquadPlayer[] {
+  return players.map((p) => {
+    const pos = normalizePosToGroup(p.position);
+    return { ...p, position: pos, positionPtBr: POSITION_PT_BR[pos] };
+  });
+}
+
 function readLocalCache(teamId: number, clubName: string): SquadResult | null {
   try {
     const raw = localStorage.getItem(getCacheKey(teamId, clubName));
     if (!raw) return null;
     const data = JSON.parse(raw) as SquadResult;
     if (Date.now() - data.cachedAt >= CACHE_TTL_MS) return null;
+    data.players = reNormalizePlayers(data.players);
     return data;
   } catch {
     return null;
@@ -92,7 +100,7 @@ async function readDbSquad(teamId: number): Promise<SquadResult | null> {
     const data = await res.json() as { players: SquadPlayer[]; source: string; cachedAt: number };
     if (!Array.isArray(data.players) || data.players.length === 0) return null;
     return {
-      players: data.players as SquadPlayer[],
+      players: reNormalizePlayers(data.players as SquadPlayer[]),
       source: data.source as SquadSource,
       cachedAt: data.cachedAt,
     };

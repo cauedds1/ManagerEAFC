@@ -5,6 +5,7 @@ import { CareerSelection } from "@/components/CareerSelection";
 import { CreateCareerWizard } from "@/components/CreateCareerWizard";
 import { Dashboard } from "@/components/Dashboard";
 import { ApiKeySetup } from "@/components/ApiKeySetup";
+import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { applyTheme, resetTheme, extractColorsFromImage } from "@/lib/themeManager";
 import { getClubColors } from "@/lib/clubColors";
 import { APIFOOTBALL_TO_FC26_NAME } from "@/lib/footballApiMap";
@@ -66,27 +67,23 @@ async function resolveTheme(club: { name: string; apiFootballId?: number; logo?:
 function ClubListLoader({ progress }: { progress: LoadingProgress }) {
   const pct = progress.total > 0 ? Math.round((progress.loaded / progress.total) * 100) : 0;
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-8" style={{ background: "var(--app-bg, #0a0a0a)" }}>
+    <div className="relative min-h-screen flex flex-col items-center justify-center p-8">
       <div className="w-full max-w-sm text-center">
-        <div
-          className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-8"
-          style={{ background: "var(--club-primary, #4f46e5)18", border: "1px solid var(--club-primary, #4f46e5)30" }}
-        >
-          <svg className="w-8 h-8 animate-spin" style={{ color: "var(--club-primary, #4f46e5)" }} fill="none" viewBox="0 0 24 24">
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-8 animate-float"
+          style={{ background: "rgba(var(--club-primary-rgb),0.1)", border: "1px solid rgba(var(--club-primary-rgb),0.2)" }}>
+          <svg className="w-8 h-8 animate-spin" style={{ color: "var(--club-primary)" }} fill="none" viewBox="0 0 24 24">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
           </svg>
         </div>
         <h2 className="text-white font-black text-xl mb-2">Carregando clubes</h2>
         <p className="text-white/40 text-sm mb-8 min-h-5 truncate">
-          {progress.leagueName ? `${progress.leagueName}...` : "Conectando à API-Football..."}
+          {progress.leagueName ? `${progress.leagueName}...` : "Conectando a API-Football..."}
         </p>
         <div className="mb-3">
-          <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.08)" }}>
-            <div
-              className="h-full rounded-full transition-all duration-500 ease-out"
-              style={{ width: `${pct}%`, background: "var(--club-primary, #4f46e5)" }}
-            />
+          <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+            <div className="h-full rounded-full transition-all duration-500 ease-out"
+              style={{ width: `${pct}%`, background: "var(--club-gradient)" }} />
           </div>
         </div>
         <p className="text-white/25 text-xs tabular-nums">{progress.loaded} / {progress.total} ligas</p>
@@ -97,18 +94,24 @@ function ClubListLoader({ progress }: { progress: LoadingProgress }) {
 
 function FetchErrorScreen({ onRetry, onChangeKey }: { onRetry: () => void; onChangeKey: () => void }) {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-8" style={{ background: "var(--app-bg, #0a0a0a)" }}>
+    <div className="relative min-h-screen flex flex-col items-center justify-center p-8">
       <div className="w-full max-w-sm text-center">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-8" style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)" }}>
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-8"
+          style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)" }}>
           <svg className="w-8 h-8 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
         </div>
-        <h2 className="text-white font-black text-xl mb-2">Limite de requisições</h2>
+        <h2 className="text-white font-black text-xl mb-2">Limite de requisicoes</h2>
         <p className="text-white/40 text-sm mb-8 leading-relaxed">A API-Football atingiu o limite de chamadas. Aguarde alguns minutos e tente novamente.</p>
         <div className="flex flex-col gap-3">
-          <button onClick={onRetry} className="w-full py-3 rounded-xl font-bold text-sm text-white transition-all duration-200 hover:opacity-85 active:scale-95" style={{ background: "var(--club-primary, #4f46e5)" }}>Tentar novamente</button>
-          <button onClick={onChangeKey} className="w-full py-3 rounded-xl font-semibold text-sm text-white/60 hover:text-white transition-all duration-200" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>Alterar chave de API</button>
+          <button onClick={onRetry} className="w-full py-3 rounded-xl font-bold text-sm text-white transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
+            style={{ background: "var(--club-gradient)", boxShadow: "0 4px 20px rgba(var(--club-primary-rgb),0.25)" }}>
+            Tentar novamente
+          </button>
+          <button onClick={onChangeKey} className="w-full py-3 rounded-xl font-semibold text-sm text-white/60 hover:text-white transition-all duration-200 glass glass-hover">
+            Alterar chave de API
+          </button>
         </div>
       </div>
     </div>
@@ -122,6 +125,10 @@ export default function App() {
   const [activeCareer, setActiveCareer] = useState<Career | null>(null);
   const [wizardMode, setWizardMode] = useState<WizardMode>("new");
   const [progress, setProgress] = useState<LoadingProgress>({ loaded: 0, total: 31, leagueName: "" });
+
+  useEffect(() => {
+    resetTheme();
+  }, []);
 
   const doFetchClubs = useCallback(
     (afterFetch: (clubs: ClubEntry[]) => void) => {
@@ -152,7 +159,6 @@ export default function App() {
     []
   );
 
-  // Resolve post-load view: if no careers, go straight to wizard; else career-selection
   const resolveViewAfterClubs = useCallback((hasCareers: boolean) => {
     if (hasCareers) {
       setView("career-selection");
@@ -167,13 +173,11 @@ export default function App() {
   }, [doFetchClubs, resolveViewAfterClubs]);
 
   useEffect(() => {
-    // Migrate legacy data if any
     migrateFromLegacy();
     const loadedCareers = listCareers();
     setCareers(loadedCareers);
     const hasCareers = loadedCareers.length > 0;
 
-    // Try to load clubs: localStorage → DB → API-Football
     const localCached = getCachedClubList();
     if (localCached && localCached.length > 0) {
       setAllClubs(localCached);
@@ -192,10 +196,7 @@ export default function App() {
           return;
         }
 
-        // No clubs cached anywhere
         if (hasCareers) {
-          // User has existing careers — let them in without clubs
-          // Try silent background fetch if key available
           setView("career-selection");
           const key = getApiKey();
           if (key) {
@@ -204,7 +205,6 @@ export default function App() {
               .catch(() => {});
           }
         } else {
-          // No careers, no clubs — need API key setup
           const key = getApiKey();
           if (!key) {
             setView("key-missing");
@@ -235,7 +235,6 @@ export default function App() {
     }
   }, [startFetching, resolveViewAfterClubs]);
 
-  // Enter a career (from selection screen or after wizard)
   const enterCareer = useCallback(async (career: Career) => {
     setActiveCareer(career);
     await resolveTheme({
@@ -246,13 +245,11 @@ export default function App() {
     setView("dashboard");
   }, []);
 
-  // Wizard complete: save career and enter dashboard
   const handleWizardComplete = useCallback(
     async (newCareer: Career) => {
       let careerToEnter = newCareer;
 
       if (wizardMode === "change-club" && activeCareer) {
-        // Update existing career with new club info but preserve the existing season
         careerToEnter = {
           ...activeCareer,
           clubId: newCareer.clubId,
@@ -322,28 +319,62 @@ export default function App() {
     setCareers(updated);
   }, []);
 
-  // Render
-  if (view === "init") {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--app-bg, #0a0a0a)" }}>
-        <div className="w-8 h-8 rounded-full border-2 animate-spin" style={{ borderColor: "var(--club-primary, #4f46e5)", borderTopColor: "transparent" }} />
-      </div>
-    );
-  }
+  const renderView = () => {
+    if (view === "init") {
+      return (
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="w-8 h-8 rounded-full border-2 animate-spin" style={{ borderColor: "var(--club-primary)", borderTopColor: "transparent" }} />
+        </div>
+      );
+    }
 
-  if (view === "key-missing") {
-    return <ApiKeySetup onKeySet={handleKeySet} />;
-  }
+    if (view === "key-missing") {
+      return <ApiKeySetup onKeySet={handleKeySet} />;
+    }
 
-  if (view === "loading-clubs") {
-    return <ClubListLoader progress={progress} />;
-  }
+    if (view === "loading-clubs") {
+      return <ClubListLoader progress={progress} />;
+    }
 
-  if (view === "fetch-error") {
-    return <FetchErrorScreen onRetry={() => startFetching(listCareers().length > 0)} onChangeKey={() => setView("key-missing")} />;
-  }
+    if (view === "fetch-error") {
+      return <FetchErrorScreen onRetry={() => startFetching(listCareers().length > 0)} onChangeKey={() => setView("key-missing")} />;
+    }
 
-  if (view === "career-selection") {
+    if (view === "career-selection") {
+      return (
+        <CareerSelection
+          careers={careers}
+          onSelectCareer={enterCareer}
+          onCreateNew={handleCreateNew}
+          onCareersChange={handleCareersChange}
+        />
+      );
+    }
+
+    if (view === "create-wizard") {
+      return (
+        <CreateCareerWizard
+          allClubs={allClubs}
+          onComplete={handleWizardComplete}
+          onCancel={activeCareer ? () => setView("dashboard") : handleGoToCareers}
+          initialStep={wizardMode === "change-club" ? 1 : 0}
+          initialCoach={wizardMode === "change-club" ? activeCareer?.coach : null}
+        />
+      );
+    }
+
+    if (view === "dashboard" && activeCareer) {
+      return (
+        <Dashboard
+          career={activeCareer}
+          onSeasonChange={handleSeasonChange}
+          onGoToCareers={handleGoToCareers}
+          onChangeClub={handleChangeClub}
+          onReloadClubs={handleReloadClubs}
+        />
+      );
+    }
+
     return (
       <CareerSelection
         careers={careers}
@@ -352,39 +383,14 @@ export default function App() {
         onCareersChange={handleCareersChange}
       />
     );
-  }
+  };
 
-  if (view === "create-wizard") {
-    return (
-      <CreateCareerWizard
-        allClubs={allClubs}
-        onComplete={handleWizardComplete}
-        onCancel={activeCareer ? () => setView("dashboard") : handleGoToCareers}
-        initialStep={wizardMode === "change-club" ? 1 : 0}
-        initialCoach={wizardMode === "change-club" ? activeCareer?.coach : null}
-      />
-    );
-  }
-
-  if (view === "dashboard" && activeCareer) {
-    return (
-      <Dashboard
-        career={activeCareer}
-        onSeasonChange={handleSeasonChange}
-        onGoToCareers={handleGoToCareers}
-        onChangeClub={handleChangeClub}
-        onReloadClubs={handleReloadClubs}
-      />
-    );
-  }
-
-  // Fallback
   return (
-    <CareerSelection
-      careers={careers}
-      onSelectCareer={enterCareer}
-      onCreateNew={handleCreateNew}
-      onCareersChange={handleCareersChange}
-    />
+    <>
+      <AnimatedBackground />
+      <div className="relative z-10">
+        {renderView()}
+      </div>
+    </>
   );
 }

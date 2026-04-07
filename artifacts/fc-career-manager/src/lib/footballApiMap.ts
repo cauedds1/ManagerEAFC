@@ -7,6 +7,10 @@ export interface LeagueInfo {
   type: "domestic" | "international";
 }
 
+export function getLeagueLogoUrl(leagueId: number): string {
+  return `https://media.api-sports.io/football/leagues/${leagueId}.png`;
+}
+
 export const DOMESTIC_LEAGUES: LeagueInfo[] = [
   { id: 39,  name: "Premier League",      country: "Inglaterra",     flag: "🏴󠁧󠁢󠁥󠁮󠁧󠁿", type: "domestic" },
   { id: 40,  name: "Championship",        country: "Inglaterra",     flag: "🏴󠁧󠁢󠁥󠁮󠁧󠁿", type: "domestic" },
