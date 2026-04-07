@@ -163,7 +163,7 @@ export function Dashboard({ club, season, onSeasonChange, onChangeClub }: Dashbo
 
               <div>
                 <p className="text-[var(--club-primary)] text-xs font-semibold tracking-widest uppercase mb-1">
-                  FC Career Manager
+                  Gerenciador de Carreira
                 </p>
                 <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
                   {club.name}

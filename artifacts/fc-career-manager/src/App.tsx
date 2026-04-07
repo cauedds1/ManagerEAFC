@@ -65,6 +65,8 @@ function App() {
   };
 
   const handleChangeClub = () => {
+    localStorage.removeItem(STORAGE_KEY);
+    setStored(null);
     resetTheme();
     setView("selection");
   };
