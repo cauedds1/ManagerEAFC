@@ -141,7 +141,7 @@ export function CreateCareerWizard({
   const season = getCurrentSeason();
 
   return (
-    <div className="relative min-h-screen flex flex-col">
+    <div className="relative h-screen flex flex-col">
       <div className="flex items-center justify-between px-4 sm:px-6 py-3 flex-shrink-0"
         style={{ borderBottom: "1px solid var(--surface-border)" }}>
         <button

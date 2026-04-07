@@ -9,19 +9,18 @@ interface ClubPickerProps {
   onSelectClub: (entry: ClubEntry) => void;
 }
 
-function LeagueLogo({ logoUrl, size = 32 }: { logoUrl: string; size?: number }) {
+function LeagueLogo({ logoUrl, size = 28 }: { logoUrl: string; size?: number }) {
   const [err, setErr] = useState(false);
   const [loaded, setLoaded] = useState(false);
-  const url = logoUrl;
 
   return (
     <div
-      className="flex items-center justify-center rounded-xl flex-shrink-0 overflow-hidden"
-      style={{ width: size + 8, height: size + 8, background: "rgba(255,255,255,0.06)" }}
+      className="flex items-center justify-center rounded-lg flex-shrink-0 overflow-hidden"
+      style={{ width: size + 6, height: size + 6, background: "rgba(255,255,255,0.06)" }}
     >
       {!err ? (
         <img
-          src={url}
+          src={logoUrl}
           alt=""
           className={`object-contain transition-opacity duration-200 ${loaded ? "opacity-100" : "opacity-0"}`}
           style={{ width: size, height: size }}
@@ -33,12 +32,12 @@ function LeagueLogo({ logoUrl, size = 32 }: { logoUrl: string; size?: number }) 
   );
 }
 
-function ClubLogo({ logo, name, size = 48 }: { logo: string; name: string; size?: number }) {
+function ClubLogo({ logo, name, size = 40 }: { logo: string; name: string; size?: number }) {
   const [err, setErr] = useState(false);
   const [loaded, setLoaded] = useState(false);
   return (
     <div
-      className="flex items-center justify-center rounded-xl flex-shrink-0 overflow-hidden"
+      className="flex items-center justify-center rounded-lg flex-shrink-0 overflow-hidden"
       style={{ width: size, height: size, background: "rgba(255,255,255,0.06)" }}
     >
       {logo && !err ? (
@@ -46,12 +45,12 @@ function ClubLogo({ logo, name, size = 48 }: { logo: string; name: string; size?
           src={logo}
           alt={name}
           className={`object-contain transition-opacity duration-200 ${loaded ? "opacity-100" : "opacity-0"}`}
-          style={{ width: size - 10, height: size - 10 }}
+          style={{ width: size - 8, height: size - 8 }}
           onLoad={() => setLoaded(true)}
           onError={() => setErr(true)}
         />
       ) : (
-        <span className="text-white/40 font-black text-xs">
+        <span className="text-white/40 font-black text-[10px]">
           {name.slice(0, 2).toUpperCase()}
         </span>
       )}
@@ -63,36 +62,34 @@ function LeagueCard({ league, count, onClick, index }: { league: LeagueInfo; cou
   return (
     <button
       onClick={onClick}
-      className="group flex items-center gap-3.5 p-3.5 rounded-2xl text-left w-full transition-all duration-200 animate-slide-up glass glass-hover"
+      className="group flex items-center gap-3 px-3 py-2.5 rounded-xl text-left w-full transition-all duration-200 animate-slide-up glass glass-hover"
       style={{
-        animationDelay: `${Math.min(index * 25, 400)}ms`,
+        animationDelay: `${Math.min(index * 20, 300)}ms`,
         animationFillMode: "both",
       }}
     >
-      <LeagueLogo logoUrl={league.logo} size={30} />
-      <span className="text-xl flex-shrink-0">{league.flag}</span>
+      <LeagueLogo logoUrl={league.logo} size={24} />
       <div className="flex-1 min-w-0">
-        <p className="text-white font-bold text-sm leading-tight truncate">
+        <p className="text-white font-semibold text-sm leading-tight truncate">
           {league.displayName ?? league.name}
         </p>
-        <p className="text-white/35 text-xs mt-0.5">{league.country}</p>
       </div>
       {count > 0 && (
         <span
-          className="text-xs font-bold px-2.5 py-1 rounded-full flex-shrink-0 tabular-nums"
+          className="text-[11px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 tabular-nums"
           style={{ background: "rgba(var(--club-primary-rgb),0.1)", color: "var(--club-primary)" }}
         >
           {count}
         </span>
       )}
-      <svg className="w-4 h-4 text-white/20 group-hover:text-white/50 transition-colors flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <svg className="w-3.5 h-3.5 text-white/20 group-hover:text-white/50 transition-colors flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
       </svg>
     </button>
   );
 }
 
-function BigClubCard({ entry, onClick, index }: { entry: ClubEntry; onClick: () => void; index: number }) {
+function CompactClubCard({ entry, onClick, index }: { entry: ClubEntry; onClick: () => void; index: number }) {
   const hoverTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const prevColors = useRef<ReturnType<typeof getCurrentColors> | null>(null);
 
@@ -100,8 +97,8 @@ function BigClubCard({ entry, onClick, index }: { entry: ClubEntry; onClick: () 
     const el = e.currentTarget;
     el.style.background = "var(--surface-hover)";
     el.style.borderColor = "rgba(var(--club-primary-rgb),0.3)";
-    el.style.transform = "translateY(-2px)";
-    el.style.boxShadow = "0 8px 24px rgba(0,0,0,0.3)";
+    el.style.transform = "translateY(-1px)";
+    el.style.boxShadow = "0 4px 16px rgba(0,0,0,0.25)";
 
     if (!entry.logo) return;
     prevColors.current = getCurrentColors();
@@ -132,23 +129,20 @@ function BigClubCard({ entry, onClick, index }: { entry: ClubEntry; onClick: () 
   return (
     <button
       onClick={onClick}
-      className="group flex items-center gap-3.5 p-3.5 rounded-2xl text-left w-full transition-all duration-200 animate-slide-up glass"
+      className="group flex items-center gap-2.5 px-3 py-2 rounded-xl text-left w-full transition-all duration-200 animate-slide-up glass"
       style={{
-        animationDelay: `${Math.min(index * 18, 350)}ms`,
+        animationDelay: `${Math.min(index * 15, 250)}ms`,
         animationFillMode: "both",
       }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      <ClubLogo logo={entry.logo} name={entry.name} size={48} />
+      <ClubLogo logo={entry.logo} name={entry.name} size={36} />
       <div className="flex-1 min-w-0">
-        <p className="text-white font-bold text-sm leading-tight truncate">{entry.name}</p>
-        <p className="text-white/35 text-xs mt-0.5 truncate">{entry.league}</p>
-        {entry.country && (
-          <p className="text-white/20 text-xs mt-0.5">{entry.country}</p>
-        )}
+        <p className="text-white font-semibold text-sm leading-tight truncate">{entry.name}</p>
+        <p className="text-white/30 text-xs mt-0.5 truncate">{entry.league}</p>
       </div>
-      <svg className="w-4 h-4 text-white/20 group-hover:text-white/60 transition-colors flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <svg className="w-3.5 h-3.5 text-white/15 group-hover:text-white/50 transition-colors flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
       </svg>
     </button>
@@ -200,13 +194,13 @@ export function ClubPicker({ allClubs, onSelectClub }: ClubPickerProps) {
 
   return (
     <div className="flex flex-col h-full animate-fade-up">
-      <div className="text-center mb-6">
-        <p className="text-xs font-bold tracking-widest uppercase mb-2" style={{ color: "var(--club-primary)" }}>
+      <div className="text-center mb-4">
+        <p className="text-xs font-bold tracking-widest uppercase mb-1.5" style={{ color: "var(--club-primary)" }}>
           Etapa 2 de 3
         </p>
-        <h2 className="text-3xl font-black text-white mb-2">
+        <h2 className="text-2xl sm:text-3xl font-black text-white mb-1">
           {selectedLeague
-            ? `${selectedLeague.flag} ${selectedLeague.displayName ?? selectedLeague.name}`
+            ? (selectedLeague.displayName ?? selectedLeague.name)
             : "Escolha seu clube"}
         </h2>
         <p className="text-white/40 text-sm">
@@ -214,9 +208,9 @@ export function ClubPicker({ allClubs, onSelectClub }: ClubPickerProps) {
         </p>
       </div>
 
-      <div className="relative mb-5">
+      <div className="relative mb-4">
         <svg
-          className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 pointer-events-none"
+          className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 pointer-events-none"
           fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
         >
           <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -227,7 +221,7 @@ export function ClubPicker({ allClubs, onSelectClub }: ClubPickerProps) {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder={selectedLeague ? `Buscar em ${selectedLeague.displayName ?? selectedLeague.name}...` : "Buscar clube em todas as ligas..."}
-          className="w-full pl-11 pr-10 py-3 rounded-2xl text-white placeholder-white/25 focus:outline-none transition-all duration-200 text-sm glass"
+          className="w-full pl-10 pr-9 py-2.5 rounded-xl text-white placeholder-white/25 focus:outline-none transition-all duration-200 text-sm glass"
           onFocus={(e) => (e.currentTarget.style.borderColor = "rgba(var(--club-primary-rgb),0.3)")}
           onBlur={(e) => (e.currentTarget.style.borderColor = "")}
         />
@@ -243,36 +237,36 @@ export function ClubPicker({ allClubs, onSelectClub }: ClubPickerProps) {
         )}
       </div>
 
-      <div className="flex-1 overflow-y-auto -mx-2 px-2">
+      <div className="flex-1 overflow-y-auto -mx-1 px-1">
         {isSearching && !selectedLeague ? (
           <div>
-            <p className="text-white/25 text-xs mb-3 tabular-nums">
+            <p className="text-white/25 text-xs mb-2 tabular-nums">
               {globalSearchResults.length} {globalSearchResults.length === 1 ? "clube encontrado" : "clubes encontrados"}
             </p>
             {globalSearchResults.length === 0 ? (
               <EmptySearchState />
             ) : (
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-1">
                 {globalSearchResults.map((entry, i) => (
-                  <BigClubCard key={entry.id} entry={entry} onClick={() => onSelectClub(entry)} index={i} />
+                  <CompactClubCard key={entry.id} entry={entry} onClick={() => onSelectClub(entry)} index={i} />
                 ))}
               </div>
             )}
           </div>
         ) : selectedLeague ? (
           <div>
-            <div className="flex items-center gap-3 mb-4">
+            <div className="flex items-center gap-2.5 mb-3">
               <button
                 onClick={handleBack}
-                className="flex items-center gap-1.5 text-white/40 hover:text-white text-sm font-medium transition-colors duration-200"
+                className="flex items-center gap-1 text-white/40 hover:text-white text-sm font-medium transition-colors duration-200"
               >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
                 </svg>
                 Ligas
               </button>
-              <span className="text-white/15 text-sm">/</span>
-              <span className="text-white/50 text-sm truncate">
+              <span className="text-white/15 text-xs">/</span>
+              <span className="text-white/50 text-xs truncate">
                 {selectedLeague.displayName ?? selectedLeague.name}
               </span>
               <span className="text-white/20 text-xs ml-auto tabular-nums">
@@ -282,32 +276,32 @@ export function ClubPicker({ allClubs, onSelectClub }: ClubPickerProps) {
             {clubsInLeague.length === 0 ? (
               <EmptySearchState />
             ) : (
-              <div className="flex flex-col gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
                 {clubsInLeague.map((entry, i) => (
-                  <BigClubCard key={entry.id} entry={entry} onClick={() => onSelectClub(entry)} index={i} />
+                  <CompactClubCard key={entry.id} entry={entry} onClick={() => onSelectClub(entry)} index={i} />
                 ))}
               </div>
             )}
           </div>
         ) : (
           <div>
-            <div className="flex rounded-xl p-1 mb-5" style={{ background: "rgba(255,255,255,0.04)" }}>
+            <div className="flex rounded-lg p-0.5 mb-4" style={{ background: "rgba(255,255,255,0.04)" }}>
               {(["domestic", "international"] as Tab[]).map((t) => (
                 <button
                   key={t}
                   onClick={() => setTab(t)}
-                  className="flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200"
+                  className="flex-1 py-2 rounded-md text-sm font-semibold transition-all duration-200"
                   style={{
                     background: tab === t ? "rgba(var(--club-primary-rgb),0.15)" : "transparent",
                     color: tab === t ? "var(--club-primary)" : "rgba(255,255,255,0.4)",
                   }}
                 >
-                  {t === "domestic" ? "Ligas Domésticas" : "Competições Internacionais"}
+                  {t === "domestic" ? "Ligas Domesticas" : "Internacionais"}
                 </button>
               ))}
             </div>
 
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-1">
               {(tab === "domestic" ? domesticLeagues : internationalLeagues).map(({ league, count }, i) => (
                 <LeagueCard
                   key={league.id}
@@ -327,8 +321,8 @@ export function ClubPicker({ allClubs, onSelectClub }: ClubPickerProps) {
 
 function EmptySearchState() {
   return (
-    <div className="flex flex-col items-center justify-center py-16 gap-3">
-      <svg className="w-10 h-10 text-white/10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+    <div className="flex flex-col items-center justify-center py-12 gap-2">
+      <svg className="w-8 h-8 text-white/10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
       </svg>
       <p className="text-white/25 text-sm">Nenhum clube encontrado</p>

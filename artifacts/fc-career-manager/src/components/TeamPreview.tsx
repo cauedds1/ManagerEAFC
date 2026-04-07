@@ -93,15 +93,15 @@ export function TeamPreview({ club, season, onConfirm, onBack, confirming }: Tea
 
   return (
     <div className="flex flex-col animate-fade-up">
-      <div className="text-center mb-4">
-        <p className="text-xs font-bold tracking-widest uppercase mb-2" style={{ color: "var(--club-primary)" }}>
+      <div className="text-center mb-3">
+        <p className="text-xs font-bold tracking-widest uppercase mb-1.5" style={{ color: "var(--club-primary)" }}>
           Etapa 3 de 3
         </p>
         <h2 className="text-2xl sm:text-3xl font-black text-white mb-1">Seu clube</h2>
         <p className="text-white/40 text-sm">Confirme e inicie sua carreira</p>
       </div>
 
-      <div className="rounded-2xl p-4 mb-4 relative overflow-hidden glass"
+      <div className="rounded-2xl p-3.5 mb-3 relative overflow-hidden glass"
         style={{ boxShadow: "0 8px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)" }}>
         <div className="absolute inset-0 pointer-events-none"
           style={{ background: "radial-gradient(ellipse at 20% 50%, rgba(var(--club-primary-rgb),0.08), transparent 70%)" }} />
@@ -113,7 +113,7 @@ export function TeamPreview({ club, season, onConfirm, onBack, confirming }: Tea
             </p>
             <h3 className="text-xl font-black text-white leading-tight">{club.name}</h3>
             {club.country && <p className="text-white/40 text-xs mt-0.5">{club.country}</p>}
-            <div className="flex flex-wrap gap-2 mt-2">
+            <div className="flex flex-wrap gap-2 mt-1.5">
               <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full"
                 style={{ background: "rgba(var(--club-primary-rgb),0.12)", color: "var(--club-primary)" }}>
                 Temporada {season}
@@ -129,24 +129,24 @@ export function TeamPreview({ club, season, onConfirm, onBack, confirming }: Tea
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-[1fr_200px] gap-3 mb-4">
+      <div className="grid grid-cols-1 sm:grid-cols-[1fr_200px] gap-3 mb-3">
         <div className="flex flex-col min-w-0">
-          <h4 className="text-white/50 text-xs font-semibold tracking-widest uppercase mb-2">
+          <h4 className="text-white/50 text-xs font-semibold tracking-widest uppercase mb-1.5">
             Titulares {!loading && players.length > 0 && <span className="text-white/25">({Math.min(players.length, 11)})</span>}
           </h4>
-          <div className="rounded-2xl overflow-hidden" style={{ minHeight: 250 }}>
+          <div className="rounded-2xl overflow-hidden" style={{ minHeight: 220 }}>
             <FootballPitch players={players} loading={loading} className="h-full" />
           </div>
         </div>
 
         {(loading || bench.length > 0) && (
           <div className="flex flex-col">
-            <h4 className="text-white/50 text-xs font-semibold tracking-widest uppercase mb-2">
+            <h4 className="text-white/50 text-xs font-semibold tracking-widest uppercase mb-1.5">
               Reservas {!loading && bench.length > 0 && <span className="text-white/25">({bench.length})</span>}
             </h4>
-            <div className="flex flex-col gap-1 overflow-y-auto flex-1" style={{ maxHeight: 400 }}>
+            <div className="flex flex-col gap-1 overflow-y-auto flex-1" style={{ maxHeight: 320 }}>
               {loading ? (
-                Array.from({ length: 6 }).map((_, i) => (
+                Array.from({ length: 5 }).map((_, i) => (
                   <div key={i} className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl glass">
                     <div className="w-7 h-7 rounded-full animate-pulse" style={{ background: "rgba(255,255,255,0.08)", flexShrink: 0 }} />
                     <div className="flex-1 space-y-1">
@@ -163,11 +163,11 @@ export function TeamPreview({ club, season, onConfirm, onBack, confirming }: Tea
         )}
       </div>
 
-      <div className="flex gap-3 mt-auto">
+      <div className="flex gap-3">
         <button
           onClick={onBack}
           disabled={confirming}
-          className="flex items-center justify-center gap-2 px-4 py-3.5 rounded-2xl font-semibold text-sm text-white/50 hover:text-white transition-all duration-200 disabled:opacity-40 glass glass-hover"
+          className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold text-sm text-white/50 hover:text-white transition-all duration-200 disabled:opacity-40 glass glass-hover"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
@@ -177,7 +177,7 @@ export function TeamPreview({ club, season, onConfirm, onBack, confirming }: Tea
         <button
           onClick={onConfirm}
           disabled={confirming}
-          className="flex-1 py-3.5 rounded-2xl font-bold text-white text-sm transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60 flex items-center justify-center gap-2"
+          className="flex-1 py-3 rounded-xl font-bold text-white text-sm transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60 flex items-center justify-center gap-2"
           style={{ background: "var(--club-gradient)", boxShadow: "0 4px 20px rgba(var(--club-primary-rgb),0.25)" }}
         >
           {confirming ? (
