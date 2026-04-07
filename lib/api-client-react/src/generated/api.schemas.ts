@@ -8,3 +8,49 @@
 export interface HealthStatus {
   status: string;
 }
+
+export interface ClubEntry {
+  id: number;
+  name: string;
+  logo: string;
+  league: string;
+  leagueId: number;
+  country?: string;
+}
+
+export interface ClubsResponse {
+  clubs: ClubEntry[];
+  cachedAt: number;
+}
+
+export interface PutClubsBody {
+  clubs: ClubEntry[];
+  cachedAt: number;
+}
+
+export interface SquadPlayer {
+  id: number;
+  name: string;
+  age: number;
+  position: string;
+  positionPtBr: string;
+  photo: string;
+  number?: number;
+}
+
+export interface SquadResponse {
+  players: SquadPlayer[];
+  source: string;
+  cachedAt: number;
+}
+
+export interface PutSquadBody {
+  players: SquadPlayer[];
+  source: string;
+  cachedAt: number;
+}
+
+export interface OkResponse {
+  ok: boolean;
+  count?: number;
+}

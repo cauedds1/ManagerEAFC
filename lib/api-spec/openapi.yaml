@@ -10,6 +10,10 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: clubs
+    description: Club list cache
+  - name: squad
+    description: Squad cache
 paths:
   /healthz:
     get:
@@ -24,6 +28,105 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /clubs:
+    get:
+      operationId: getClubs
+      tags: [clubs]
+      summary: Get cached club list
+      description: Returns the cached club list from the database. Returns 204 if the cache is empty or stale (>30 days).
+      responses:
+        "200":
+          description: Cached club list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClubsResponse"
+        "204":
+          description: No valid cache available
+    put:
+      operationId: putClubs
+      tags: [clubs]
+      summary: Save club list to cache
+      description: Saves the club list to the database cache, replacing any existing data.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PutClubsBody"
+      responses:
+        "200":
+          description: Cache updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+        "400":
+          description: Invalid request body
+    delete:
+      operationId: deleteClubs
+      tags: [clubs]
+      summary: Clear club list cache
+      description: Deletes all clubs from the database cache.
+      responses:
+        "200":
+          description: Cache cleared
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+
+  /squad/{teamId}:
+    get:
+      operationId: getSquad
+      tags: [squad]
+      summary: Get cached squad
+      description: Returns the cached squad for a team. Returns 204 if the cache is empty or stale (>7 days).
+      parameters:
+        - name: teamId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Cached squad
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SquadResponse"
+        "204":
+          description: No valid cache available
+        "400":
+          description: Invalid teamId
+    put:
+      operationId: putSquad
+      tags: [squad]
+      summary: Save squad to cache
+      description: Saves or updates the squad for a team in the database cache.
+      parameters:
+        - name: teamId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PutSquadBody"
+      responses:
+        "200":
+          description: Cache updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+        "400":
+          description: Invalid request body
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +137,117 @@ components:
       required:
         - status
 
+    ClubEntry:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        logo:
+          type: string
+        league:
+          type: string
+        leagueId:
+          type: integer
+        country:
+          type: string
+      required:
+        - id
+        - name
+        - logo
+        - league
+        - leagueId
+
+    ClubsResponse:
+      type: object
+      properties:
+        clubs:
+          type: array
+          items:
+            $ref: "#/components/schemas/ClubEntry"
+        cachedAt:
+          type: integer
+      required:
+        - clubs
+        - cachedAt
+
+    PutClubsBody:
+      type: object
+      properties:
+        clubs:
+          type: array
+          items:
+            $ref: "#/components/schemas/ClubEntry"
+        cachedAt:
+          type: integer
+      required:
+        - clubs
+        - cachedAt
+
+    SquadPlayer:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        age:
+          type: integer
+        position:
+          type: string
+        positionPtBr:
+          type: string
+        photo:
+          type: string
+        number:
+          type: integer
+      required:
+        - id
+        - name
+        - age
+        - position
+        - positionPtBr
+        - photo
+
+    SquadResponse:
+      type: object
+      properties:
+        players:
+          type: array
+          items:
+            $ref: "#/components/schemas/SquadPlayer"
+        source:
+          type: string
+        cachedAt:
+          type: integer
+      required:
+        - players
+        - source
+        - cachedAt
+
+    PutSquadBody:
+      type: object
+      properties:
+        players:
+          type: array
+          items:
+            $ref: "#/components/schemas/SquadPlayer"
+        source:
+          type: string
+        cachedAt:
+          type: integer
+      required:
+        - players
+        - source
+        - cachedAt
+
+    OkResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        count:
+          type: integer
+      required:
+        - ok

@@ -5,18 +5,28 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import type {
+  MutationFunction,
   QueryFunction,
   QueryKey,
+  UseMutationOptions,
+  UseMutationResult,
   UseQueryOptions,
   UseQueryResult,
 } from "@tanstack/react-query";
 
-import type { HealthStatus } from "./api.schemas";
+import type {
+  ClubsResponse,
+  HealthStatus,
+  OkResponse,
+  PutClubsBody,
+  PutSquadBody,
+  SquadResponse,
+} from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
-import type { ErrorType } from "../custom-fetch";
+import type { ErrorType, BodyType } from "../custom-fetch";
 
 type AwaitedInput<T> = PromiseLike<T> | T;
 
@@ -99,3 +109,414 @@ export function useHealthCheck<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * Returns the cached club list from the database. Returns 204 if the cache is empty or stale (>30 days).
+ * @summary Get cached club list
+ */
+export const getGetClubsUrl = () => {
+  return `/api/clubs`;
+};
+
+export const getClubs = async (
+  options?: RequestInit,
+): Promise<ClubsResponse | void> => {
+  return customFetch<ClubsResponse | void>(getGetClubsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetClubsQueryKey = () => {
+  return [`/api/clubs`] as const;
+};
+
+export const getGetClubsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getClubs>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<Awaited<ReturnType<typeof getClubs>>, TError, TData>;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetClubsQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getClubs>>> = ({
+    signal,
+  }) => getClubs({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getClubs>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetClubsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getClubs>>
+>;
+export type GetClubsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get cached club list
+ */
+
+export function useGetClubs<
+  TData = Awaited<ReturnType<typeof getClubs>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<Awaited<ReturnType<typeof getClubs>>, TError, TData>;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetClubsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Saves the club list to the database cache, replacing any existing data.
+ * @summary Save club list to cache
+ */
+export const getPutClubsUrl = () => {
+  return `/api/clubs`;
+};
+
+export const putClubs = async (
+  putClubsBody: PutClubsBody,
+  options?: RequestInit,
+): Promise<OkResponse> => {
+  return customFetch<OkResponse>(getPutClubsUrl(), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(putClubsBody),
+  });
+};
+
+export const getPutClubsMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof putClubs>>,
+    TError,
+    { data: BodyType<PutClubsBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof putClubs>>,
+  TError,
+  { data: BodyType<PutClubsBody> },
+  TContext
+> => {
+  const mutationKey = ["putClubs"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof putClubs>>,
+    { data: BodyType<PutClubsBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return putClubs(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PutClubsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof putClubs>>
+>;
+export type PutClubsMutationBody = BodyType<PutClubsBody>;
+export type PutClubsMutationError = ErrorType<void>;
+
+/**
+ * @summary Save club list to cache
+ */
+export const usePutClubs = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof putClubs>>,
+    TError,
+    { data: BodyType<PutClubsBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof putClubs>>,
+  TError,
+  { data: BodyType<PutClubsBody> },
+  TContext
+> => {
+  return useMutation(getPutClubsMutationOptions(options));
+};
+
+/**
+ * Deletes all clubs from the database cache.
+ * @summary Clear club list cache
+ */
+export const getDeleteClubsUrl = () => {
+  return `/api/clubs`;
+};
+
+export const deleteClubs = async (
+  options?: RequestInit,
+): Promise<OkResponse> => {
+  return customFetch<OkResponse>(getDeleteClubsUrl(), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteClubsMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteClubs>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteClubs>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["deleteClubs"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteClubs>>,
+    void
+  > = () => {
+    return deleteClubs(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteClubsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteClubs>>
+>;
+
+export type DeleteClubsMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Clear club list cache
+ */
+export const useDeleteClubs = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteClubs>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteClubs>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getDeleteClubsMutationOptions(options));
+};
+
+/**
+ * Returns the cached squad for a team. Returns 204 if the cache is empty or stale (>7 days).
+ * @summary Get cached squad
+ */
+export const getGetSquadUrl = (teamId: number) => {
+  return `/api/squad/${teamId}`;
+};
+
+export const getSquad = async (
+  teamId: number,
+  options?: RequestInit,
+): Promise<SquadResponse | void> => {
+  return customFetch<SquadResponse | void>(getGetSquadUrl(teamId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetSquadQueryKey = (teamId: number) => {
+  return [`/api/squad/${teamId}`] as const;
+};
+
+export const getGetSquadQueryOptions = <
+  TData = Awaited<ReturnType<typeof getSquad>>,
+  TError = ErrorType<void>,
+>(
+  teamId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getSquad>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetSquadQueryKey(teamId);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getSquad>>> = ({
+    signal,
+  }) => getSquad(teamId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!teamId,
+    ...queryOptions,
+  } as UseQueryOptions<Awaited<ReturnType<typeof getSquad>>, TError, TData> & {
+    queryKey: QueryKey;
+  };
+};
+
+export type GetSquadQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getSquad>>
+>;
+export type GetSquadQueryError = ErrorType<void>;
+
+/**
+ * @summary Get cached squad
+ */
+
+export function useGetSquad<
+  TData = Awaited<ReturnType<typeof getSquad>>,
+  TError = ErrorType<void>,
+>(
+  teamId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getSquad>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetSquadQueryOptions(teamId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Saves or updates the squad for a team in the database cache.
+ * @summary Save squad to cache
+ */
+export const getPutSquadUrl = (teamId: number) => {
+  return `/api/squad/${teamId}`;
+};
+
+export const putSquad = async (
+  teamId: number,
+  putSquadBody: PutSquadBody,
+  options?: RequestInit,
+): Promise<OkResponse> => {
+  return customFetch<OkResponse>(getPutSquadUrl(teamId), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(putSquadBody),
+  });
+};
+
+export const getPutSquadMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof putSquad>>,
+    TError,
+    { teamId: number; data: BodyType<PutSquadBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof putSquad>>,
+  TError,
+  { teamId: number; data: BodyType<PutSquadBody> },
+  TContext
+> => {
+  const mutationKey = ["putSquad"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof putSquad>>,
+    { teamId: number; data: BodyType<PutSquadBody> }
+  > = (props) => {
+    const { teamId, data } = props ?? {};
+
+    return putSquad(teamId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PutSquadMutationResult = NonNullable<
+  Awaited<ReturnType<typeof putSquad>>
+>;
+export type PutSquadMutationBody = BodyType<PutSquadBody>;
+export type PutSquadMutationError = ErrorType<void>;
+
+/**
+ * @summary Save squad to cache
+ */
+export const usePutSquad = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof putSquad>>,
+    TError,
+    { teamId: number; data: BodyType<PutSquadBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof putSquad>>,
+  TError,
+  { teamId: number; data: BodyType<PutSquadBody> },
+  TContext
+> => {
+  return useMutation(getPutSquadMutationOptions(options));
+};

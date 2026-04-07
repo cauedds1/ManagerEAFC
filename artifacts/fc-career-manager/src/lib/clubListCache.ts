@@ -10,7 +10,7 @@ import { DOMESTIC_LEAGUES, INTERNATIONAL_LEAGUES, LeagueInfo } from "./footballA
 
 const API_BASE = "https://v3.football.api-sports.io";
 const API_KEY_STORAGE = "fc-career-manager-api-key";
-const CACHE_KEY = "fc-career-manager-clubs";
+export const CACHE_KEY = "fc-career-manager-clubs";
 const CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const REQUEST_DELAY_MS = 500;
 
@@ -97,6 +97,38 @@ async function fetchLeagueTeams(league: LeagueInfo, apiKey: string): Promise<Clu
   }));
 }
 
+// ---------------------------------------------------------------------------
+// DB cache layer (two-level cache: localStorage → DB → API-Football)
+// ---------------------------------------------------------------------------
+
+export async function getDbClubs(): Promise<ClubEntry[] | null> {
+  try {
+    const res = await fetch("/api/clubs");
+    if (res.status === 204 || !res.ok) return null;
+    const data = await res.json() as { clubs: ClubEntry[]; cachedAt: number };
+    if (!Array.isArray(data.clubs) || data.clubs.length === 0) return null;
+    return data.clubs;
+  } catch {
+    return null;
+  }
+}
+
+function writeDbClubs(clubs: ClubEntry[], cachedAt: number): void {
+  fetch("/api/clubs", {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ clubs, cachedAt }),
+  }).catch(() => {});
+}
+
+function deleteDbClubs(): void {
+  fetch("/api/clubs", { method: "DELETE" }).catch(() => {});
+}
+
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
+
 export async function fetchAndCacheClubList(onProgress?: ProgressCallback): Promise<ClubEntry[]> {
   const apiKey = getApiKey();
   if (!apiKey) throw new ApiAuthError("Nenhuma chave de API configurada");
@@ -129,12 +161,16 @@ export async function fetchAndCacheClubList(onProgress?: ProgressCallback): Prom
   const clubs = Array.from(teamsMap.values());
 
   if (clubs.length > 0) {
+    const cachedAt = Date.now();
+    // Layer 1: localStorage
     try {
-      const data: CacheData = { clubs, cachedAt: Date.now() };
+      const data: CacheData = { clubs, cachedAt };
       localStorage.setItem(CACHE_KEY, JSON.stringify(data));
     } catch {
       // quota exceeded — data still in memory
     }
+    // Layer 2: DB (fire-and-forget)
+    writeDbClubs(clubs, cachedAt);
   }
 
   return clubs;
@@ -172,4 +208,6 @@ export function searchClubs(query: string, clubs: ClubEntry[]): ClubEntry[] {
 
 export function clearClubCache(): void {
   localStorage.removeItem(CACHE_KEY);
+  // Also clear DB cache (fire-and-forget)
+  deleteDbClubs();
 }

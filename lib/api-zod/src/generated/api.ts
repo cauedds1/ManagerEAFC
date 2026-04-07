@@ -14,3 +14,106 @@ import * as zod from "zod";
 export const HealthCheckResponse = zod.object({
   status: zod.string(),
 });
+
+/**
+ * Returns the cached club list from the database. Returns 204 if the cache is empty or stale (>30 days).
+ * @summary Get cached club list
+ */
+export const GetClubsResponse = zod.object({
+  clubs: zod.array(
+    zod.object({
+      id: zod.number(),
+      name: zod.string(),
+      logo: zod.string(),
+      league: zod.string(),
+      leagueId: zod.number(),
+      country: zod.string().optional(),
+    }),
+  ),
+  cachedAt: zod.number(),
+});
+
+/**
+ * Saves the club list to the database cache, replacing any existing data.
+ * @summary Save club list to cache
+ */
+export const PutClubsBody = zod.object({
+  clubs: zod.array(
+    zod.object({
+      id: zod.number(),
+      name: zod.string(),
+      logo: zod.string(),
+      league: zod.string(),
+      leagueId: zod.number(),
+      country: zod.string().optional(),
+    }),
+  ),
+  cachedAt: zod.number(),
+});
+
+export const PutClubsResponse = zod.object({
+  ok: zod.boolean(),
+  count: zod.number().optional(),
+});
+
+/**
+ * Deletes all clubs from the database cache.
+ * @summary Clear club list cache
+ */
+export const DeleteClubsResponse = zod.object({
+  ok: zod.boolean(),
+  count: zod.number().optional(),
+});
+
+/**
+ * Returns the cached squad for a team. Returns 204 if the cache is empty or stale (>7 days).
+ * @summary Get cached squad
+ */
+export const GetSquadParams = zod.object({
+  teamId: zod.coerce.number(),
+});
+
+export const GetSquadResponse = zod.object({
+  players: zod.array(
+    zod.object({
+      id: zod.number(),
+      name: zod.string(),
+      age: zod.number(),
+      position: zod.string(),
+      positionPtBr: zod.string(),
+      photo: zod.string(),
+      number: zod.number().optional(),
+    }),
+  ),
+  source: zod.string(),
+  cachedAt: zod.number(),
+});
+
+/**
+ * Saves or updates the squad for a team in the database cache.
+ * @summary Save squad to cache
+ */
+export const PutSquadParams = zod.object({
+  teamId: zod.coerce.number(),
+});
+
+export const PutSquadBody = zod.object({
+  players: zod.array(
+    zod.object({
+      id: zod.number(),
+      name: zod.string(),
+      age: zod.number(),
+      position: zod.string(),
+      positionPtBr: zod.string(),
+      photo: zod.string(),
+      number: zod.number().optional(),
+    }),
+  ),
+  source: zod.string(),
+  cachedAt: zod.number(),
+});
+
+export const PutSquadResponse = zod.object({
+  ok: zod.boolean(),
+  count: zod.number().optional(),
+});

@@ -10,6 +10,8 @@ import {
   getApiKey,
   fetchAndCacheClubList,
   getCachedClubList,
+  getDbClubs,
+  CACHE_KEY,
   clearClubCache,
   ApiAuthError,
   ApiRateLimitError,
@@ -200,14 +202,29 @@ export default function App() {
     const key = getApiKey();
     if (!key) { setView("key-missing"); return; }
 
-    const cached = getCachedClubList();
-    if (cached && cached.length > 0) {
-      setAllClubs(cached);
+    // Layer 1: localStorage (instant, sync)
+    const localCached = getCachedClubList();
+    if (localCached && localCached.length > 0) {
+      setAllClubs(localCached);
       setView("selection");
       return;
     }
 
-    startFetching();
+    // Layer 2: DB cache (async, survives browser cache clears)
+    getDbClubs()
+      .then((dbClubs) => {
+        if (dbClubs && dbClubs.length > 0) {
+          setAllClubs(dbClubs);
+          // Warm localStorage for next time
+          try {
+            localStorage.setItem(CACHE_KEY, JSON.stringify({ clubs: dbClubs, cachedAt: Date.now() }));
+          } catch {}
+          setView("selection");
+        } else {
+          startFetching();
+        }
+      })
+      .catch(() => startFetching());
   }, [startFetching]);
 
   const handleKeySet = useCallback(() => {

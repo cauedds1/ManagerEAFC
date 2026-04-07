@@ -6,4 +6,11 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from "./clubEntry";
+export * from "./clubsResponse";
 export * from "./healthStatus";
+export * from "./okResponse";
+export * from "./putClubsBody";
+export * from "./putSquadBody";
+export * from "./squadPlayer";
+export * from "./squadResponse";

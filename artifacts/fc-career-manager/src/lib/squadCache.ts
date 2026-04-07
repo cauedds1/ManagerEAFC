@@ -62,7 +62,7 @@ function getCacheKey(teamId: number, clubName: string): string {
   return `${CACHE_PREFIX}name-${clubName.toLowerCase().replace(/\s+/g, "_")}`;
 }
 
-function readCache(teamId: number, clubName: string): SquadResult | null {
+function readLocalCache(teamId: number, clubName: string): SquadResult | null {
   try {
     const raw = localStorage.getItem(getCacheKey(teamId, clubName));
     if (!raw) return null;
@@ -74,11 +74,49 @@ function readCache(teamId: number, clubName: string): SquadResult | null {
   }
 }
 
-function writeCache(teamId: number, clubName: string, result: SquadResult): void {
+function writeLocalCache(teamId: number, clubName: string, result: SquadResult): void {
   try {
     localStorage.setItem(getCacheKey(teamId, clubName), JSON.stringify(result));
   } catch {}
 }
+
+// ---------------------------------------------------------------------------
+// DB cache layer
+// ---------------------------------------------------------------------------
+
+async function readDbSquad(teamId: number): Promise<SquadResult | null> {
+  if (teamId <= 0) return null;
+  try {
+    const res = await fetch(`/api/squad/${teamId}`);
+    if (res.status === 204 || !res.ok) return null;
+    const data = await res.json() as { players: SquadPlayer[]; source: string; cachedAt: number };
+    if (!Array.isArray(data.players) || data.players.length === 0) return null;
+    return {
+      players: data.players as SquadPlayer[],
+      source: data.source as SquadSource,
+      cachedAt: data.cachedAt,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writeDbSquad(teamId: number, result: SquadResult): void {
+  if (teamId <= 0) return;
+  fetch(`/api/squad/${teamId}`, {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      players: result.players,
+      source: result.source,
+      cachedAt: result.cachedAt,
+    }),
+  }).catch(() => {});
+}
+
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
 
 export function clearSquadCache(teamId: number, clubName = ""): void {
   localStorage.removeItem(getCacheKey(teamId, clubName));
@@ -173,9 +211,19 @@ async function fetchFromMsmc(fc26Name: string): Promise<SquadPlayer[] | null> {
 }
 
 export async function getSquad(teamId: number, clubName: string): Promise<SquadResult> {
-  const cached = readCache(teamId, clubName);
-  if (cached) return cached;
+  // Layer 1: localStorage (sync, fast)
+  const localCached = readLocalCache(teamId, clubName);
+  if (localCached) return localCached;
 
+  // Layer 2: DB cache (async, survives browser cache clears)
+  const dbCached = await readDbSquad(teamId);
+  if (dbCached) {
+    // Warm localStorage so subsequent calls are instant
+    writeLocalCache(teamId, clubName, dbCached);
+    return dbCached;
+  }
+
+  // Layer 3: External APIs (API-Football → msmc.cc fallback)
   const apiKey = getApiKey();
   const fc26Name = APIFOOTBALL_TO_FC26_NAME[clubName] ?? clubName;
 
@@ -188,7 +236,8 @@ export async function getSquad(teamId: number, clubName: string): Promise<SquadR
           source: "api-football",
           cachedAt: Date.now(),
         };
-        writeCache(teamId, clubName, result);
+        writeLocalCache(teamId, clubName, result);
+        writeDbSquad(teamId, result); // fire-and-forget
         return result;
       }
     } catch (err) {
@@ -206,7 +255,8 @@ export async function getSquad(teamId: number, clubName: string): Promise<SquadR
       source: "fc26",
       cachedAt: Date.now(),
     };
-    writeCache(teamId, clubName, result);
+    writeLocalCache(teamId, clubName, result);
+    writeDbSquad(teamId, result); // fire-and-forget
     return result;
   }
 
