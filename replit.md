@@ -41,6 +41,7 @@ Brazilian Portuguese companion app for EA FC 26 career mode.
 - `DELETE /api/clubs` → clears club list cache
 - `GET /api/squad/:teamId` → 200 `{players, source, cachedAt}` if fresh (<7 days), 204 if empty/stale. Reconstructs SquadResult from individual player rows.
 - `PUT /api/squad/:teamId` → replaces squad atomically (transaction: DELETE WHERE team_id + INSERT up to 100 rows per chunk)
+- `GET /api/proxy/image?url=...` → proxies images from allowed domains (media.api-sports.io, cdn.sofifa.net) with CORS headers. Cached 24h.
 
 ### Two-Layer Cache Strategy
 1. **Layer 1 localStorage** — instant sync read/write, key `fc-career-manager-clubs` and `fc-career-manager-squad-{teamId}`
@@ -59,5 +60,6 @@ Brazilian Portuguese companion app for EA FC 26 career mode.
 - **Glass utilities** (`index.css`): `.glass` = surface bg + border + backdrop blur. `.glass-hover` = hover accent border/bg. Used across all components.
 - **Position labels**: `reNormalizePlayers()` in `squadCache.ts` fixes `positionPtBr` on every cache read.
 - **FootballPitch**: `pickBestEleven()` selects best 11 by position (1 GK, 4 DEF, 3 MID, 3 ATT); `pickBestElevenIds()` exported for bench derivation. Dashboard `PitchWithBench` and `TeamPreview` both use it for consistent starter/bench split.
-- **Club colors**: `clubColors.ts` maps ~70+ clubs to hex primary/secondary. `footballApiMap.ts` maps API-Football names to FC26 names. `Career.clubPrimary`/`clubSecondary` persist resolved colors. `CreateCareerWizard` stores resolved colors in state to avoid race conditions on confirm.
+- **Club colors**: `clubColors.ts` maps ~760 club entries (with aliases) to hex primary/secondary, covering Premier League, Championship, League One/Two, Bundesliga, 2. Bundesliga, Ligue 1, Serie A/B, LaLiga 1/2, Eredivisie, Liga Portugal, Belgian Pro League, Scottish Premiership, Turkish Süper Lig, Saudi Pro League, Argentine Liga Profesional, MLS, Swiss/Austrian/Polish/Scandinavian leagues, K League, A-League, Chinese Super League, Liga MX, Brasileirão, Romanian Liga 1, and League of Ireland. `footballApiMap.ts` maps API-Football names to FC26/internal names. `Career.clubPrimary`/`clubSecondary` persist resolved colors. `CreateCareerWizard` stores resolved colors in state to avoid race conditions on confirm.
+- **Image proxy**: `GET /api/proxy/image?url=...` proxies images from `media.api-sports.io` and `cdn.sofifa.net` to bypass CORS. Used by `extractColorsFromImage()` in `themeManager.ts` as fallback for clubs not in the color map.
 - **Settings.tsx**: Uses glass/theme CSS vars consistently with rest of app.

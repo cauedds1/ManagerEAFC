@@ -141,16 +141,22 @@ export function getContrastText(hex: string): string {
 
 export { darken, withAlpha, hexToRgb, rgbToHsl };
 
-export async function extractColorsFromImage(
-  imageUrl: string
-): Promise<ClubColors> {
+function proxyUrl(original: string): string {
+  try {
+    const u = new URL(original);
+    if (u.hostname === "media.api-sports.io" || u.hostname === "cdn.sofifa.net") {
+      return `/api/proxy/image?url=${encodeURIComponent(original)}`;
+    }
+  } catch { /* ignore */ }
+  return original;
+}
+
+function extractWithImg(src: string): Promise<ClubColors | null> {
   return new Promise((resolve) => {
     const img = new Image();
     img.crossOrigin = "anonymous";
 
-    const timeout = setTimeout(() => {
-      resolve(SYSTEM_COLORS);
-    }, 5000);
+    const timeout = setTimeout(() => resolve(null), 6000);
 
     img.onload = async () => {
       clearTimeout(timeout);
@@ -161,23 +167,31 @@ export async function extractColorsFromImage(
         if (palette && palette.length >= 2) {
           const toHex = (rgb: number[]) =>
             "#" + rgb.map((v) => v.toString(16).padStart(2, "0")).join("");
-          resolve({
-            primary: toHex(palette[0]),
-            secondary: toHex(palette[1]),
-          });
+          resolve({ primary: toHex(palette[0]), secondary: toHex(palette[1]) });
         } else {
-          resolve(SYSTEM_COLORS);
+          resolve(null);
         }
       } catch {
-        resolve(SYSTEM_COLORS);
+        resolve(null);
       }
     };
 
-    img.onerror = () => {
-      clearTimeout(timeout);
-      resolve(SYSTEM_COLORS);
-    };
-
-    img.src = imageUrl;
+    img.onerror = () => { clearTimeout(timeout); resolve(null); };
+    img.src = src;
   });
+}
+
+export async function extractColorsFromImage(
+  imageUrl: string
+): Promise<ClubColors> {
+  const proxied = proxyUrl(imageUrl);
+  const result = await extractWithImg(proxied);
+  if (result) return result;
+
+  if (proxied !== imageUrl) {
+    const direct = await extractWithImg(imageUrl);
+    if (direct) return direct;
+  }
+
+  return SYSTEM_COLORS;
 }
