@@ -13,6 +13,9 @@ export interface ClubEntry {
   league: string;
   leagueId: number;
   country?: string;
+  founded?: number;
+  stadium?: string;
+  stadiumCapacity?: number;
 }
 
 export interface Player {

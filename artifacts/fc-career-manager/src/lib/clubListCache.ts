@@ -20,6 +20,12 @@ interface ApiTeamItem {
     name: string;
     logo: string;
     country: string;
+    founded?: number;
+  };
+  venue?: {
+    name?: string;
+    city?: string;
+    capacity?: number;
   };
 }
 
@@ -94,6 +100,9 @@ async function fetchLeagueTeams(league: LeagueInfo, apiKey: string): Promise<Clu
     league: league.displayName ?? league.name,
     leagueId: league.id,
     country: item.team.country,
+    ...(item.team.founded ? { founded: item.team.founded } : {}),
+    ...(item.venue?.name ? { stadium: item.venue.name } : {}),
+    ...(item.venue?.capacity ? { stadiumCapacity: item.venue.capacity } : {}),
   }));
 }
 

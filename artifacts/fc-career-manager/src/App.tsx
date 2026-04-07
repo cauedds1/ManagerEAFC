@@ -252,7 +252,7 @@ export default function App() {
       let careerToEnter = newCareer;
 
       if (wizardMode === "change-club" && activeCareer) {
-        // Update existing career with new club info
+        // Update existing career with new club info but preserve the existing season
         careerToEnter = {
           ...activeCareer,
           clubId: newCareer.clubId,
@@ -260,7 +260,8 @@ export default function App() {
           clubLogo: newCareer.clubLogo,
           clubLeague: newCareer.clubLeague,
           clubCountry: newCareer.clubCountry,
-          season: newCareer.season,
+          clubStadium: newCareer.clubStadium,
+          clubFounded: newCareer.clubFounded,
           updatedAt: Date.now(),
         };
         saveCareer(careerToEnter);

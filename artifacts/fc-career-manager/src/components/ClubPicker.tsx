@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { ClubEntry } from "@/types/club";
 import { DOMESTIC_LEAGUES, INTERNATIONAL_LEAGUES, LeagueInfo } from "@/lib/footballApiMap";
 import { getClubsByLeague, searchClubs } from "@/lib/clubListCache";
+import { applyTheme, resetTheme, extractColorsFromImage, getCurrentColors } from "@/lib/themeManager";
 
 interface ClubPickerProps {
   allClubs: ClubEntry[];
@@ -81,6 +82,42 @@ function LeagueCard({ league, count, onClick, index }: { league: LeagueInfo; cou
 }
 
 function BigClubCard({ entry, onClick, index }: { entry: ClubEntry; onClick: () => void; index: number }) {
+  const hoverTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const prevColors = useRef<ReturnType<typeof getCurrentColors> | null>(null);
+
+  const handleMouseEnter = useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
+    const el = e.currentTarget;
+    el.style.background = "rgba(255,255,255,0.09)";
+    el.style.borderColor = "var(--club-primary, #6366f1)60";
+    el.style.transform = "translateY(-2px)";
+    el.style.boxShadow = "0 8px 24px rgba(0,0,0,0.3)";
+
+    if (!entry.logo) return;
+    prevColors.current = getCurrentColors();
+    hoverTimer.current = setTimeout(async () => {
+      try {
+        const colors = await extractColorsFromImage(entry.logo);
+        applyTheme(colors);
+      } catch {}
+    }, 150);
+  }, [entry.logo]);
+
+  const handleMouseLeave = useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
+    const el = e.currentTarget;
+    el.style.background = "rgba(255,255,255,0.04)";
+    el.style.borderColor = "rgba(255,255,255,0.07)";
+    el.style.transform = "translateY(0)";
+    el.style.boxShadow = "none";
+
+    clearTimeout(hoverTimer.current);
+    if (prevColors.current) {
+      applyTheme(prevColors.current);
+      prevColors.current = null;
+    } else {
+      resetTheme();
+    }
+  }, []);
+
   return (
     <button
       onClick={onClick}
@@ -91,20 +128,8 @@ function BigClubCard({ entry, onClick, index }: { entry: ClubEntry; onClick: () 
         background: "rgba(255,255,255,0.04)",
         border: "1px solid rgba(255,255,255,0.07)",
       }}
-      onMouseEnter={(e) => {
-        const el = e.currentTarget;
-        el.style.background = "rgba(255,255,255,0.09)";
-        el.style.borderColor = "var(--club-primary, #6366f1)60";
-        el.style.transform = "translateY(-2px)";
-        el.style.boxShadow = "0 8px 24px rgba(0,0,0,0.3)";
-      }}
-      onMouseLeave={(e) => {
-        const el = e.currentTarget;
-        el.style.background = "rgba(255,255,255,0.04)";
-        el.style.borderColor = "rgba(255,255,255,0.07)";
-        el.style.transform = "translateY(0)";
-        el.style.boxShadow = "none";
-      }}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
       <ClubLogo logo={entry.logo} name={entry.name} size={56} />
       <div className="flex-1 min-w-0">

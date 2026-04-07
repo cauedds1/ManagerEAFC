@@ -376,6 +376,13 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
                 {career.clubCountry && (
                   <p className="text-white/30 text-xs mt-0.5">{career.clubCountry}</p>
                 )}
+                {(career.clubStadium || career.clubFounded) && (
+                  <p className="text-white/20 text-xs mt-0.5 truncate">
+                    {career.clubStadium && <span>{career.clubStadium}</span>}
+                    {career.clubStadium && career.clubFounded && <span> · </span>}
+                    {career.clubFounded && <span>Fundado em {career.clubFounded}</span>}
+                  </p>
+                )}
               </div>
             </div>
 

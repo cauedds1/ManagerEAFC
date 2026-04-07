@@ -50,6 +50,8 @@ export function createCareer(coach: CoachProfile, club: ClubEntry): Career {
     clubLogo: club.logo,
     clubLeague: club.league,
     clubCountry: club.country,
+    ...(club.stadium ? { clubStadium: club.stadium } : {}),
+    ...(club.founded ? { clubFounded: club.founded } : {}),
     season: getCurrentSeason(),
     createdAt: Date.now(),
     updatedAt: Date.now(),
