@@ -356,7 +356,7 @@ export default function App() {
         <CreateCareerWizard
           allClubs={allClubs}
           onComplete={handleWizardComplete}
-          onCancel={activeCareer ? () => setView("dashboard") : handleGoToCareers}
+          onCancel={activeCareer ? async () => { await resolveTheme({ name: activeCareer.clubName, apiFootballId: activeCareer.clubId > 0 ? activeCareer.clubId : undefined, logo: activeCareer.clubLogo || undefined }); setView("dashboard"); } : handleGoToCareers}
           initialStep={wizardMode === "change-club" ? 1 : 0}
           initialCoach={wizardMode === "change-club" ? activeCareer?.coach : null}
         />
