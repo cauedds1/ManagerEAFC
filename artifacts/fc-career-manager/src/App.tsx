@@ -11,13 +11,14 @@ import {
   fetchAndCacheClubList,
   getCachedClubList,
   ApiAuthError,
+  ApiRateLimitError,
   ProgressCallback,
 } from "@/lib/clubListCache";
 import { getCurrentSeason } from "@/lib/api";
 
 const CLUB_STORAGE_KEY = "fc-career-manager-club";
 
-type AppView = "init" | "key-missing" | "loading-clubs" | "selection" | "dashboard";
+type AppView = "init" | "key-missing" | "loading-clubs" | "fetch-error" | "selection" | "dashboard";
 
 interface StoredData {
   club: Club;
@@ -74,32 +75,61 @@ function ClubListLoader({ progress }: { progress: LoadingProgress }) {
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
           </svg>
         </div>
-
         <h2 className="text-white font-black text-xl mb-2">Carregando clubes</h2>
-
-        {progress.leagueName ? (
-          <p className="text-white/40 text-sm mb-8 min-h-5 truncate">
-            {progress.leagueName}...
-          </p>
-        ) : (
-          <p className="text-white/40 text-sm mb-8 min-h-5">Conectando à API-Football...</p>
-        )}
-
+        <p className="text-white/40 text-sm mb-8 min-h-5 truncate">
+          {progress.leagueName ? `${progress.leagueName}...` : "Conectando à API-Football..."}
+        </p>
         <div className="mb-3">
-          <div
-            className="h-1.5 rounded-full overflow-hidden"
-            style={{ background: "rgba(255,255,255,0.08)" }}
-          >
+          <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.08)" }}>
             <div
               className="h-full rounded-full transition-all duration-500 ease-out"
               style={{ width: `${pct}%`, background: "var(--club-primary, #4f46e5)" }}
             />
           </div>
         </div>
-
         <p className="text-white/25 text-xs tabular-nums">
           {progress.loaded} / {progress.total} ligas
         </p>
+      </div>
+    </div>
+  );
+}
+
+function FetchErrorScreen({ onRetry, onChangeKey }: { onRetry: () => void; onChangeKey: () => void }) {
+  return (
+    <div
+      className="min-h-screen flex flex-col items-center justify-center p-8"
+      style={{ background: "var(--app-bg, #0a0a0a)" }}
+    >
+      <div className="w-full max-w-sm text-center">
+        <div
+          className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-8"
+          style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)" }}
+        >
+          <svg className="w-8 h-8 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+        </div>
+        <h2 className="text-white font-black text-xl mb-2">Limite de requisições</h2>
+        <p className="text-white/40 text-sm mb-8 leading-relaxed">
+          A API-Football atingiu o limite de chamadas. Aguarde alguns minutos e tente novamente.
+        </p>
+        <div className="flex flex-col gap-3">
+          <button
+            onClick={onRetry}
+            className="w-full py-3 rounded-xl font-bold text-sm text-white transition-all duration-200 hover:opacity-85 active:scale-95"
+            style={{ background: "var(--club-primary, #4f46e5)" }}
+          >
+            Tentar novamente
+          </button>
+          <button
+            onClick={onChangeKey}
+            className="w-full py-3 rounded-xl font-semibold text-sm text-white/60 hover:text-white transition-all duration-200"
+            style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
+          >
+            Alterar chave de API
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -130,7 +160,11 @@ export default function App() {
           setView("key-missing");
           return;
         }
-        // Rate-limit or network error: use cached data if available
+        if (err instanceof ApiRateLimitError) {
+          setView("fetch-error");
+          return;
+        }
+        // Other errors: use cached data if available, else key-missing
         const cached = getCachedClubList();
         if (cached && cached.length > 0) {
           setAllClubs(cached);
@@ -259,6 +293,15 @@ export default function App() {
 
   if (view === "loading-clubs") {
     return <ClubListLoader progress={progress} />;
+  }
+
+  if (view === "fetch-error") {
+    return (
+      <FetchErrorScreen
+        onRetry={startFetching}
+        onChangeKey={() => setView("key-missing")}
+      />
+    );
   }
 
   if (view === "dashboard" && stored) {
