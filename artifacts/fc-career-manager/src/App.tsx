@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { Club, ClubEntry } from "@/types/club";
-import { ClubSelection } from "@/components/ClubSelection";
+import { Career } from "@/types/career";
+import { CareerSelection } from "@/components/CareerSelection";
+import { CreateCareerWizard } from "@/components/CreateCareerWizard";
 import { Dashboard } from "@/components/Dashboard";
 import { ApiKeySetup } from "@/components/ApiKeySetup";
 import { applyTheme, resetTheme, extractColorsFromImage } from "@/lib/themeManager";
@@ -17,23 +19,18 @@ import {
   ApiRateLimitError,
   ProgressCallback,
 } from "@/lib/clubListCache";
-import { getCurrentSeason } from "@/lib/api";
-
-const CLUB_STORAGE_KEY = "fc-career-manager-club";
+import { listCareers, saveCareer, migrateFromLegacy, updateCareerSeason } from "@/lib/careerStorage";
 
 type AppView =
   | "init"
   | "key-missing"
   | "loading-clubs"
   | "fetch-error"
-  | "selection"
+  | "career-selection"
+  | "create-wizard"
   | "dashboard";
 
-interface StoredData {
-  club: Club;
-  season: string;
-  selectedAt: number;
-}
+type WizardMode = "new" | "change-club";
 
 interface LoadingProgress {
   loaded: number;
@@ -41,7 +38,7 @@ interface LoadingProgress {
   leagueName: string;
 }
 
-async function resolveTheme(club: Club): Promise<void> {
+async function resolveTheme(club: { name: string; apiFootballId?: number; logo?: string }): Promise<void> {
   const directColors = getClubColors(club.name);
   if (directColors) { applyTheme(directColors); return; }
 
@@ -69,10 +66,7 @@ async function resolveTheme(club: Club): Promise<void> {
 function ClubListLoader({ progress }: { progress: LoadingProgress }) {
   const pct = progress.total > 0 ? Math.round((progress.loaded / progress.total) * 100) : 0;
   return (
-    <div
-      className="min-h-screen flex flex-col items-center justify-center p-8"
-      style={{ background: "var(--app-bg, #0a0a0a)" }}
-    >
+    <div className="min-h-screen flex flex-col items-center justify-center p-8" style={{ background: "var(--app-bg, #0a0a0a)" }}>
       <div className="w-full max-w-sm text-center">
         <div
           className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-8"
@@ -95,9 +89,7 @@ function ClubListLoader({ progress }: { progress: LoadingProgress }) {
             />
           </div>
         </div>
-        <p className="text-white/25 text-xs tabular-nums">
-          {progress.loaded} / {progress.total} ligas
-        </p>
+        <p className="text-white/25 text-xs tabular-nums">{progress.loaded} / {progress.total} ligas</p>
       </div>
     </div>
   );
@@ -105,38 +97,18 @@ function ClubListLoader({ progress }: { progress: LoadingProgress }) {
 
 function FetchErrorScreen({ onRetry, onChangeKey }: { onRetry: () => void; onChangeKey: () => void }) {
   return (
-    <div
-      className="min-h-screen flex flex-col items-center justify-center p-8"
-      style={{ background: "var(--app-bg, #0a0a0a)" }}
-    >
+    <div className="min-h-screen flex flex-col items-center justify-center p-8" style={{ background: "var(--app-bg, #0a0a0a)" }}>
       <div className="w-full max-w-sm text-center">
-        <div
-          className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-8"
-          style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)" }}
-        >
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-8" style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)" }}>
           <svg className="w-8 h-8 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
         </div>
         <h2 className="text-white font-black text-xl mb-2">Limite de requisições</h2>
-        <p className="text-white/40 text-sm mb-8 leading-relaxed">
-          A API-Football atingiu o limite de chamadas. Aguarde alguns minutos e tente novamente.
-        </p>
+        <p className="text-white/40 text-sm mb-8 leading-relaxed">A API-Football atingiu o limite de chamadas. Aguarde alguns minutos e tente novamente.</p>
         <div className="flex flex-col gap-3">
-          <button
-            onClick={onRetry}
-            className="w-full py-3 rounded-xl font-bold text-sm text-white transition-all duration-200 hover:opacity-85 active:scale-95"
-            style={{ background: "var(--club-primary, #4f46e5)" }}
-          >
-            Tentar novamente
-          </button>
-          <button
-            onClick={onChangeKey}
-            className="w-full py-3 rounded-xl font-semibold text-sm text-white/60 hover:text-white transition-all duration-200"
-            style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
-          >
-            Alterar chave de API
-          </button>
+          <button onClick={onRetry} className="w-full py-3 rounded-xl font-bold text-sm text-white transition-all duration-200 hover:opacity-85 active:scale-95" style={{ background: "var(--club-primary, #4f46e5)" }}>Tentar novamente</button>
+          <button onClick={onChangeKey} className="w-full py-3 rounded-xl font-semibold text-sm text-white/60 hover:text-white transition-all duration-200" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>Alterar chave de API</button>
         </div>
       </div>
     </div>
@@ -145,10 +117,11 @@ function FetchErrorScreen({ onRetry, onChangeKey }: { onRetry: () => void; onCha
 
 export default function App() {
   const [view, setView] = useState<AppView>("init");
-  const [stored, setStored] = useState<StoredData | null>(null);
+  const [careers, setCareers] = useState<Career[]>([]);
   const [allClubs, setAllClubs] = useState<ClubEntry[]>([]);
+  const [activeCareer, setActiveCareer] = useState<Career | null>(null);
+  const [wizardMode, setWizardMode] = useState<WizardMode>("new");
   const [progress, setProgress] = useState<LoadingProgress>({ loaded: 0, total: 31, leagueName: "" });
-  const [selecting, setSelecting] = useState(false);
 
   const doFetchClubs = useCallback(
     (afterFetch: (clubs: ClubEntry[]) => void) => {
@@ -180,54 +153,63 @@ export default function App() {
   );
 
   const startFetching = useCallback(() => {
-    doFetchClubs(() => setView("selection"));
+    doFetchClubs(() => setView("career-selection"));
   }, [doFetchClubs]);
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(CLUB_STORAGE_KEY);
-      if (raw) {
-        const data: StoredData = JSON.parse(raw);
-        if (data.club?.name && data.season) {
-          setStored(data);
-          resolveTheme(data.club).catch(() => resetTheme());
-          setView("dashboard");
-          return;
-        }
-      }
-    } catch {}
+    // Migrate legacy data if any
+    migrateFromLegacy();
+    const loadedCareers = listCareers();
+    setCareers(loadedCareers);
 
-    resetTheme();
-
-    // Layer 1: localStorage (instant, sync) — no API key needed
+    // Try to load clubs: localStorage → DB → API-Football
     const localCached = getCachedClubList();
     if (localCached && localCached.length > 0) {
       setAllClubs(localCached);
-      setView("selection");
+      setView("career-selection");
       return;
     }
 
-    // Layer 2: DB cache (async, survives browser cache clears) — no API key needed
     getDbClubs()
       .then((dbClubs) => {
         if (dbClubs && dbClubs.length > 0) {
           setAllClubs(dbClubs);
-          // Warm localStorage for next time
           try {
             localStorage.setItem(CACHE_KEY, JSON.stringify({ clubs: dbClubs, cachedAt: Date.now() }));
           } catch {}
-          setView("selection");
+          setView("career-selection");
           return;
         }
-        // Both caches miss — need API key to fetch from API-Football
-        const key = getApiKey();
-        if (!key) { setView("key-missing"); return; }
-        startFetching();
+
+        // No clubs cached anywhere
+        if (loadedCareers.length > 0) {
+          // User has existing careers — let them in without clubs
+          // Try silent background fetch if key available
+          setView("career-selection");
+          const key = getApiKey();
+          if (key) {
+            fetchAndCacheClubList()
+              .then((clubs) => setAllClubs(clubs))
+              .catch(() => {});
+          }
+        } else {
+          // No careers, no clubs — need API key setup
+          const key = getApiKey();
+          if (!key) {
+            setView("key-missing");
+          } else {
+            startFetching();
+          }
+        }
       })
       .catch(() => {
-        const key = getApiKey();
-        if (!key) { setView("key-missing"); return; }
-        startFetching();
+        if (loadedCareers.length > 0) {
+          setView("career-selection");
+        } else {
+          const key = getApiKey();
+          if (!key) { setView("key-missing"); return; }
+          startFetching();
+        }
       });
   }, [startFetching]);
 
@@ -235,88 +217,103 @@ export default function App() {
     const cached = getCachedClubList();
     if (cached && cached.length > 0) {
       setAllClubs(cached);
-      setView("selection");
+      setView("career-selection");
     } else {
       startFetching();
     }
   }, [startFetching]);
 
-  const handleSelectClub = useCallback(
-    async (entry: ClubEntry) => {
-      if (selecting) return;
-      setSelecting(true);
-      try {
-        const club: Club = {
-          name: entry.name,
-          league: entry.league,
-          apiFootballId: entry.id,
-          logo: entry.logo,
+  // Enter a career (from selection screen or after wizard)
+  const enterCareer = useCallback(async (career: Career) => {
+    setActiveCareer(career);
+    await resolveTheme({
+      name: career.clubName,
+      apiFootballId: career.clubId > 0 ? career.clubId : undefined,
+      logo: career.clubLogo || undefined,
+    });
+    setView("dashboard");
+  }, []);
+
+  // Wizard complete: save career and enter dashboard
+  const handleWizardComplete = useCallback(
+    async (newCareer: Career) => {
+      let careerToEnter = newCareer;
+
+      if (wizardMode === "change-club" && activeCareer) {
+        // Update existing career with new club info
+        careerToEnter = {
+          ...activeCareer,
+          clubId: newCareer.clubId,
+          clubName: newCareer.clubName,
+          clubLogo: newCareer.clubLogo,
+          clubLeague: newCareer.clubLeague,
+          clubCountry: newCareer.clubCountry,
+          season: newCareer.season,
+          updatedAt: Date.now(),
         };
-        await resolveTheme(club);
-        const season = getCurrentSeason();
-        const data: StoredData = { club, season, selectedAt: Date.now() };
-        localStorage.setItem(CLUB_STORAGE_KEY, JSON.stringify(data));
-        setStored(data);
-        setView("dashboard");
-      } finally {
-        setSelecting(false);
+        saveCareer(careerToEnter);
+      } else {
+        saveCareer(newCareer);
       }
+
+      const updatedCareers = listCareers();
+      setCareers(updatedCareers);
+      await enterCareer(careerToEnter);
     },
-    [selecting]
+    [wizardMode, activeCareer, enterCareer]
   );
 
-  const handleChangeClub = useCallback(() => {
-    localStorage.removeItem(CLUB_STORAGE_KEY);
-    setStored(null);
+  const handleCreateNew = useCallback(() => {
+    setWizardMode("new");
+    setView("create-wizard");
+  }, []);
+
+  const handleGoToCareers = useCallback(() => {
+    setActiveCareer(null);
     resetTheme();
-    if (allClubs.length > 0) {
-      setView("selection");
-    } else {
-      const cached = getCachedClubList();
-      if (cached && cached.length > 0) {
-        setAllClubs(cached);
-        setView("selection");
-      } else if (getApiKey()) {
-        startFetching();
-      } else {
-        setView("key-missing");
-      }
-    }
-  }, [allClubs.length, startFetching]);
+    const latest = listCareers();
+    setCareers(latest);
+    setView("career-selection");
+  }, []);
+
+  const handleChangeClub = useCallback(() => {
+    setWizardMode("change-club");
+    setView("create-wizard");
+  }, []);
 
   const handleSeasonChange = useCallback(
     (season: string) => {
-      if (!stored) return;
-      const data = { ...stored, season };
-      localStorage.setItem(CLUB_STORAGE_KEY, JSON.stringify(data));
-      setStored(data);
+      if (!activeCareer) return;
+      updateCareerSeason(activeCareer.id, season);
+      const updated = { ...activeCareer, season, updatedAt: Date.now() };
+      setActiveCareer(updated);
+      const latest = listCareers();
+      setCareers(latest);
     },
-    [stored]
+    [activeCareer]
   );
 
-  // Called from Dashboard → Settings when "Atualizar lista de clubes" is clicked.
-  // clearClubCache() is already called inside Settings.tsx before this fires.
   const handleReloadClubs = useCallback(() => {
     clearClubCache();
     setAllClubs([]);
-    // Re-fetch. If a club is already selected, go back to dashboard when done.
-    const currentStored = stored;
     doFetchClubs(() => {
-      if (currentStored) {
+      if (activeCareer) {
         setView("dashboard");
       } else {
-        setView("selection");
+        setView("career-selection");
       }
     });
-  }, [stored, doFetchClubs]);
+  }, [activeCareer, doFetchClubs]);
 
+  const handleCareersChange = useCallback((updated: Career[]) => {
+    setCareers(updated);
+  }, []);
+
+  // Render
   if (view === "init") {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--app-bg, #0a0a0a)" }}>
-        <div
-          className="w-8 h-8 rounded-full border-2 animate-spin"
-          style={{ borderColor: "var(--club-primary, #4f46e5)", borderTopColor: "transparent" }}
-        />
+        <div className="w-8 h-8 rounded-full border-2 animate-spin" style={{ borderColor: "var(--club-primary, #4f46e5)", borderTopColor: "transparent" }} />
       </div>
     );
   }
@@ -330,31 +327,51 @@ export default function App() {
   }
 
   if (view === "fetch-error") {
+    return <FetchErrorScreen onRetry={startFetching} onChangeKey={() => setView("key-missing")} />;
+  }
+
+  if (view === "career-selection") {
     return (
-      <FetchErrorScreen
-        onRetry={startFetching}
-        onChangeKey={() => setView("key-missing")}
+      <CareerSelection
+        careers={careers}
+        onSelectCareer={enterCareer}
+        onCreateNew={handleCreateNew}
+        onCareersChange={handleCareersChange}
       />
     );
   }
 
-  if (view === "dashboard" && stored) {
+  if (view === "create-wizard") {
+    return (
+      <CreateCareerWizard
+        allClubs={allClubs}
+        onComplete={handleWizardComplete}
+        onCancel={activeCareer ? () => setView("dashboard") : handleGoToCareers}
+        initialStep={wizardMode === "change-club" ? 1 : 0}
+        initialCoach={wizardMode === "change-club" ? activeCareer?.coach : null}
+      />
+    );
+  }
+
+  if (view === "dashboard" && activeCareer) {
     return (
       <Dashboard
-        club={stored.club}
-        season={stored.season}
+        career={activeCareer}
         onSeasonChange={handleSeasonChange}
+        onGoToCareers={handleGoToCareers}
         onChangeClub={handleChangeClub}
         onReloadClubs={handleReloadClubs}
       />
     );
   }
 
+  // Fallback
   return (
-    <ClubSelection
-      allClubs={allClubs}
-      onSelectClub={handleSelectClub}
-      selecting={selecting}
+    <CareerSelection
+      careers={careers}
+      onSelectCareer={enterCareer}
+      onCreateNew={handleCreateNew}
+      onCareersChange={handleCareersChange}
     />
   );
 }
