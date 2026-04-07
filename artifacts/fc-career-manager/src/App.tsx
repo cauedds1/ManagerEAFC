@@ -10,6 +10,7 @@ import {
   getApiKey,
   fetchAndCacheClubList,
   getCachedClubList,
+  clearClubCache,
   ApiAuthError,
   ApiRateLimitError,
   ProgressCallback,
@@ -18,7 +19,13 @@ import { getCurrentSeason } from "@/lib/api";
 
 const CLUB_STORAGE_KEY = "fc-career-manager-club";
 
-type AppView = "init" | "key-missing" | "loading-clubs" | "fetch-error" | "selection" | "dashboard";
+type AppView =
+  | "init"
+  | "key-missing"
+  | "loading-clubs"
+  | "fetch-error"
+  | "selection"
+  | "dashboard";
 
 interface StoredData {
   club: Club;
@@ -59,7 +66,6 @@ async function resolveTheme(club: Club): Promise<void> {
 
 function ClubListLoader({ progress }: { progress: LoadingProgress }) {
   const pct = progress.total > 0 ? Math.round((progress.loaded / progress.total) * 100) : 0;
-
   return (
     <div
       className="min-h-screen flex flex-col items-center justify-center p-8"
@@ -142,38 +148,38 @@ export default function App() {
   const [progress, setProgress] = useState<LoadingProgress>({ loaded: 0, total: 31, leagueName: "" });
   const [selecting, setSelecting] = useState(false);
 
+  const doFetchClubs = useCallback(
+    (afterFetch: (clubs: ClubEntry[]) => void) => {
+      setView("loading-clubs");
+      setProgress({ loaded: 0, total: 31, leagueName: "" });
+
+      const onProgress: ProgressCallback = (loaded, total, leagueName) => {
+        setProgress({ loaded, total, leagueName });
+      };
+
+      fetchAndCacheClubList(onProgress)
+        .then((clubs) => {
+          setAllClubs(clubs);
+          afterFetch(clubs);
+        })
+        .catch((err: unknown) => {
+          if (err instanceof ApiAuthError) { setView("key-missing"); return; }
+          if (err instanceof ApiRateLimitError) { setView("fetch-error"); return; }
+          const cached = getCachedClubList();
+          if (cached && cached.length > 0) {
+            setAllClubs(cached);
+            afterFetch(cached);
+          } else {
+            setView("key-missing");
+          }
+        });
+    },
+    []
+  );
+
   const startFetching = useCallback(() => {
-    setView("loading-clubs");
-    setProgress({ loaded: 0, total: 31, leagueName: "" });
-
-    const onProgress: ProgressCallback = (loaded, total, leagueName) => {
-      setProgress({ loaded, total, leagueName });
-    };
-
-    fetchAndCacheClubList(onProgress)
-      .then((clubs) => {
-        setAllClubs(clubs);
-        setView("selection");
-      })
-      .catch((err: unknown) => {
-        if (err instanceof ApiAuthError) {
-          setView("key-missing");
-          return;
-        }
-        if (err instanceof ApiRateLimitError) {
-          setView("fetch-error");
-          return;
-        }
-        // Other errors: use cached data if available, else key-missing
-        const cached = getCachedClubList();
-        if (cached && cached.length > 0) {
-          setAllClubs(cached);
-          setView("selection");
-        } else {
-          setView("key-missing");
-        }
-      });
-  }, []);
+    doFetchClubs(() => setView("selection"));
+  }, [doFetchClubs]);
 
   useEffect(() => {
     try {
@@ -192,10 +198,7 @@ export default function App() {
     resetTheme();
 
     const key = getApiKey();
-    if (!key) {
-      setView("key-missing");
-      return;
-    }
+    if (!key) { setView("key-missing"); return; }
 
     const cached = getCachedClubList();
     if (cached && cached.length > 0) {
@@ -207,18 +210,15 @@ export default function App() {
     startFetching();
   }, [startFetching]);
 
-  const handleKeySet = useCallback(
-    (_key: string) => {
-      const cached = getCachedClubList();
-      if (cached && cached.length > 0) {
-        setAllClubs(cached);
-        setView("selection");
-      } else {
-        startFetching();
-      }
-    },
-    [startFetching]
-  );
+  const handleKeySet = useCallback(() => {
+    const cached = getCachedClubList();
+    if (cached && cached.length > 0) {
+      setAllClubs(cached);
+      setView("selection");
+    } else {
+      startFetching();
+    }
+  }, [startFetching]);
 
   const handleSelectClub = useCallback(
     async (entry: ClubEntry) => {
@@ -273,14 +273,27 @@ export default function App() {
     [stored]
   );
 
+  // Called from Dashboard → Settings when "Atualizar lista de clubes" is clicked.
+  // clearClubCache() is already called inside Settings.tsx before this fires.
+  const handleReloadClubs = useCallback(() => {
+    clearClubCache();
+    setAllClubs([]);
+    // Re-fetch. If a club is already selected, go back to dashboard when done.
+    const currentStored = stored;
+    doFetchClubs(() => {
+      if (currentStored) {
+        setView("dashboard");
+      } else {
+        setView("selection");
+      }
+    });
+  }, [stored, doFetchClubs]);
+
   if (view === "init") {
     return (
-      <div
-        className="min-h-screen flex items-center justify-center"
-        style={{ background: "var(--app-bg, #0a0a0a)" }}
-      >
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--app-bg, #0a0a0a)" }}>
         <div
-          className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin"
+          className="w-8 h-8 rounded-full border-2 animate-spin"
           style={{ borderColor: "var(--club-primary, #4f46e5)", borderTopColor: "transparent" }}
         />
       </div>
@@ -311,6 +324,7 @@ export default function App() {
         season={stored.season}
         onSeasonChange={handleSeasonChange}
         onChangeClub={handleChangeClub}
+        onReloadClubs={handleReloadClubs}
       />
     );
   }
