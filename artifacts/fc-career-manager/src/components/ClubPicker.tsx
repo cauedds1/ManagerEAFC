@@ -6,7 +6,8 @@ import { applyTheme, resetTheme, extractColorsFromImage, getCurrentColors } from
 
 interface ClubPickerProps {
   allClubs: ClubEntry[];
-  onSelectClub: (entry: ClubEntry) => void;
+  onSelectClub: (entry: ClubEntry, league: LeagueInfo | null) => void;
+  initialLeague?: LeagueInfo | null;
 }
 
 function LeagueLogo({ logoUrl, size = 28 }: { logoUrl: string; size?: number }) {
@@ -151,9 +152,9 @@ function CompactClubCard({ entry, onClick, index }: { entry: ClubEntry; onClick:
 
 type Tab = "domestic" | "international";
 
-export function ClubPicker({ allClubs, onSelectClub }: ClubPickerProps) {
-  const [tab, setTab] = useState<Tab>("domestic");
-  const [selectedLeague, setSelectedLeague] = useState<LeagueInfo | null>(null);
+export function ClubPicker({ allClubs, onSelectClub, initialLeague }: ClubPickerProps) {
+  const [tab, setTab] = useState<Tab>(initialLeague?.type === "international" ? "international" : "domestic");
+  const [selectedLeague, setSelectedLeague] = useState<LeagueInfo | null>(initialLeague ?? null);
   const [search, setSearch] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
 
@@ -248,7 +249,7 @@ export function ClubPicker({ allClubs, onSelectClub }: ClubPickerProps) {
             ) : (
               <div className="flex flex-col gap-1">
                 {globalSearchResults.map((entry, i) => (
-                  <CompactClubCard key={entry.id} entry={entry} onClick={() => onSelectClub(entry)} index={i} />
+                  <CompactClubCard key={entry.id} entry={entry} onClick={() => onSelectClub(entry, selectedLeague)} index={i} />
                 ))}
               </div>
             )}
@@ -278,7 +279,7 @@ export function ClubPicker({ allClubs, onSelectClub }: ClubPickerProps) {
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
                 {clubsInLeague.map((entry, i) => (
-                  <CompactClubCard key={entry.id} entry={entry} onClick={() => onSelectClub(entry)} index={i} />
+                  <CompactClubCard key={entry.id} entry={entry} onClick={() => onSelectClub(entry, selectedLeague)} index={i} />
                 ))}
               </div>
             )}

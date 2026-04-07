@@ -9,7 +9,7 @@ import { createCareer } from "@/lib/careerStorage";
 import { getCurrentSeason } from "@/lib/api";
 import { applyTheme, resetTheme, extractColorsFromImage, getCurrentColors } from "@/lib/themeManager";
 import { getClubColors } from "@/lib/clubColors";
-import { APIFOOTBALL_TO_FC26_NAME } from "@/lib/footballApiMap";
+import { APIFOOTBALL_TO_FC26_NAME, LeagueInfo } from "@/lib/footballApiMap";
 
 interface CreateCareerWizardProps {
   allClubs: ClubEntry[];
@@ -85,6 +85,7 @@ export function CreateCareerWizard({
   const [step, setStep] = useState<0 | 1 | 2>(initialStep);
   const [coach, setCoach] = useState<CoachProfile | null>(initialCoach ?? null);
   const [selectedClub, setSelectedClub] = useState<ClubEntry | null>(null);
+  const [selectedLeague, setSelectedLeague] = useState<LeagueInfo | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [resolvedColors, setResolvedColors] = useState<{ primary: string; secondary: string } | null>(null);
 
@@ -93,7 +94,8 @@ export function CreateCareerWizard({
     setStep(1);
   };
 
-  const handleClubSelect = async (club: ClubEntry) => {
+  const handleClubSelect = async (club: ClubEntry, league: LeagueInfo | null) => {
+    setSelectedLeague(league);
     setSelectedClub(club);
     setResolvedColors(null);
     setStep(2);
@@ -165,7 +167,7 @@ export function CreateCareerWizard({
             <ProgressBar step={step} />
             <div key={step}>
               {step === 0 && <CoachSetup onNext={handleCoachNext} initial={coach} />}
-              {step === 1 && <ClubPicker allClubs={allClubs} onSelectClub={handleClubSelect} />}
+              {step === 1 && <ClubPicker allClubs={allClubs} onSelectClub={handleClubSelect} initialLeague={selectedLeague} />}
               {step === 2 && selectedClub && (
                 <TeamPreview
                   club={selectedClub}
