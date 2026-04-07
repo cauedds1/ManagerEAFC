@@ -296,7 +296,7 @@ export function ClubPicker({ allClubs, onSelectClub }: ClubPickerProps) {
                     color: tab === t ? "var(--club-primary)" : "rgba(255,255,255,0.4)",
                   }}
                 >
-                  {t === "domestic" ? "Ligas Domesticas" : "Internacionais"}
+                  {t === "domestic" ? "Ligas Dom\u00e9sticas" : "Internacionais"}
                 </button>
               ))}
             </div>
