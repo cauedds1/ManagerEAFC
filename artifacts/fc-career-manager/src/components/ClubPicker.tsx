@@ -93,6 +93,15 @@ function LeagueCard({ league, count, onClick, index }: { league: LeagueInfo; cou
 function CompactClubCard({ entry, onClick, index }: { entry: ClubEntry; onClick: () => void; index: number }) {
   const hoverTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const prevColors = useRef<ReturnType<typeof getCurrentColors> | null>(null);
+  const isSelected = useRef(false);
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
 
   const handleMouseEnter = useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
     const el = e.currentTarget;
@@ -106,7 +115,9 @@ function CompactClubCard({ entry, onClick, index }: { entry: ClubEntry; onClick:
     hoverTimer.current = setTimeout(async () => {
       try {
         const colors = await extractColorsFromImage(entry.logo);
-        applyTheme(colors);
+        if (isMounted.current && !isSelected.current) {
+          applyTheme(colors);
+        }
       } catch {}
     }, 150);
   }, [entry.logo]);
@@ -119,6 +130,7 @@ function CompactClubCard({ entry, onClick, index }: { entry: ClubEntry; onClick:
     el.style.boxShadow = "none";
 
     clearTimeout(hoverTimer.current);
+    if (isSelected.current) return;
     if (prevColors.current) {
       applyTheme(prevColors.current);
       prevColors.current = null;
@@ -127,9 +139,15 @@ function CompactClubCard({ entry, onClick, index }: { entry: ClubEntry; onClick:
     }
   }, []);
 
+  const handleClick = useCallback(() => {
+    isSelected.current = true;
+    clearTimeout(hoverTimer.current);
+    onClick();
+  }, [onClick]);
+
   return (
     <button
-      onClick={onClick}
+      onClick={handleClick}
       className="group flex items-center gap-2.5 px-3 py-2 rounded-xl text-left w-full transition-all duration-200 animate-slide-up glass"
       style={{
         animationDelay: `${Math.min(index * 15, 250)}ms`,
