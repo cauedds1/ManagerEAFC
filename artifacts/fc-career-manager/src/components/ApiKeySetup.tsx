@@ -37,17 +37,8 @@ export function ApiKeySetup({ onKeySet }: ApiKeySetupProps) {
           </div>
           <h1 className="text-2xl font-black text-white mb-2">FC Career Manager</h1>
           <p className="text-white/40 text-sm leading-relaxed">
-            Para buscar clubes reais com escudos oficiais, você precisa de uma chave da{" "}
-            <a
-              href="https://www.api-football.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline"
-              style={{ color: "var(--club-primary, #4f46e5)" }}
-            >
-              API-Football
-            </a>
-            . O plano gratuito é suficiente para uso pessoal.
+            Configuração única necessária para buscar os clubes e salvar no banco de dados.
+            Após isso, o app funciona sem a chave — mesmo limpando o cache do navegador.
           </p>
         </div>
 
@@ -110,7 +101,17 @@ export function ApiKeySetup({ onKeySet }: ApiKeySetupProps) {
           style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}
         >
           <p className="text-white/30 text-xs leading-relaxed">
-            🔒 Sua chave é armazenada apenas localmente no seu navegador e nunca é enviada a terceiros além da API-Football.
+            🔒 Sua chave fica salva localmente no navegador e nunca é enviada a terceiros além da{" "}
+            <a
+              href="https://www.api-football.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline"
+              style={{ color: "inherit" }}
+            >
+              API-Football
+            </a>
+            . A lista de clubes é salva no banco de dados e não é perdida ao limpar o cache.
           </p>
         </div>
       </div>
