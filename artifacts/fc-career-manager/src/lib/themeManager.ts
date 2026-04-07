@@ -108,7 +108,8 @@ export function applyTheme(colors: ClubColors): void {
   );
 
   const [bgR, bgG, bgB] = hexToRgb(bgHex);
-  root.style.setProperty("--background", `${rgbToHsl(bgR, bgG, bgB).join(" ").replace(/ /g, " ")}`);
+  const [bgH, bgS, bgL] = rgbToHsl(bgR, bgG, bgB);
+  root.style.setProperty("--background", `${bgH} ${bgS}% ${bgL}%`);
 
   root.style.setProperty(
     "--blob-1",
