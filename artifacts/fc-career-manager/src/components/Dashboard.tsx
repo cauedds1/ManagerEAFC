@@ -155,7 +155,7 @@ function SquadSection({ club, onOpenSettings, onPlayersLoaded }: SquadSectionPro
   }, [teamId, club.name, refetchKey]);
 
   const handleRefresh = useCallback(() => {
-    clearSquadCache(teamId);
+    clearSquadCache(teamId, club.name);
     setSquad(null);
     setRefetchKey((k) => k + 1);
   }, [teamId]);

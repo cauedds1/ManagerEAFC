@@ -57,9 +57,14 @@ function sortSquad(players: SquadPlayer[]): SquadPlayer[] {
   });
 }
 
-function readCache(teamId: number): SquadResult | null {
+function getCacheKey(teamId: number, clubName: string): string {
+  if (teamId > 0) return `${CACHE_PREFIX}${teamId}`;
+  return `${CACHE_PREFIX}name-${clubName.toLowerCase().replace(/\s+/g, "_")}`;
+}
+
+function readCache(teamId: number, clubName: string): SquadResult | null {
   try {
-    const raw = localStorage.getItem(`${CACHE_PREFIX}${teamId}`);
+    const raw = localStorage.getItem(getCacheKey(teamId, clubName));
     if (!raw) return null;
     const data = JSON.parse(raw) as SquadResult;
     if (Date.now() - data.cachedAt >= CACHE_TTL_MS) return null;
@@ -69,14 +74,23 @@ function readCache(teamId: number): SquadResult | null {
   }
 }
 
-function writeCache(teamId: number, result: SquadResult): void {
+function writeCache(teamId: number, clubName: string, result: SquadResult): void {
   try {
-    localStorage.setItem(`${CACHE_PREFIX}${teamId}`, JSON.stringify(result));
+    localStorage.setItem(getCacheKey(teamId, clubName), JSON.stringify(result));
   } catch {}
 }
 
-export function clearSquadCache(teamId: number): void {
-  localStorage.removeItem(`${CACHE_PREFIX}${teamId}`);
+export function clearSquadCache(teamId: number, clubName = ""): void {
+  localStorage.removeItem(getCacheKey(teamId, clubName));
+}
+
+export function clearAllSquadCaches(): void {
+  const keys: string[] = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k && k.startsWith(CACHE_PREFIX)) keys.push(k);
+  }
+  for (const k of keys) localStorage.removeItem(k);
 }
 
 interface ApiFootballPlayer {
@@ -159,7 +173,7 @@ async function fetchFromMsmc(fc26Name: string): Promise<SquadPlayer[] | null> {
 }
 
 export async function getSquad(teamId: number, clubName: string): Promise<SquadResult> {
-  const cached = readCache(teamId);
+  const cached = readCache(teamId, clubName);
   if (cached) return cached;
 
   const apiKey = getApiKey();
@@ -174,7 +188,7 @@ export async function getSquad(teamId: number, clubName: string): Promise<SquadR
           source: "api-football",
           cachedAt: Date.now(),
         };
-        writeCache(teamId, result);
+        writeCache(teamId, clubName, result);
         return result;
       }
     } catch (err) {
@@ -192,7 +206,7 @@ export async function getSquad(teamId: number, clubName: string): Promise<SquadR
       source: "fc26",
       cachedAt: Date.now(),
     };
-    writeCache(teamId, result);
+    writeCache(teamId, clubName, result);
     return result;
   }
 

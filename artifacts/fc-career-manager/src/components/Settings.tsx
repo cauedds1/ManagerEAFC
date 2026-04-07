@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { getApiKey, setApiKey, clearClubCache } from "@/lib/clubListCache";
+import { clearAllSquadCaches } from "@/lib/squadCache";
 
 interface SettingsProps {
   isOpen: boolean;
@@ -23,7 +24,11 @@ export function Settings({ isOpen, onClose, onReloadClubs }: SettingsProps) {
 
   const handleSaveKey = () => {
     const trimmed = apiKey.trim();
-    if (trimmed) setApiKey(trimmed);
+    if (trimmed) {
+      setApiKey(trimmed);
+      // Invalidate all squad caches so the new key is used immediately
+      clearAllSquadCaches();
+    }
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
