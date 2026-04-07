@@ -1,0 +1,154 @@
+Quero criar um sistema web chamado FC Career Manager para gerenciar o modo carreira do EA FC 26. O problema que resolvo: o jogo salva estatísticas de forma muito pobre, então quero um lugar externo para registrar partidas, jogadores e evolução da temporada com imersão máxima.
+O sistema deve ser 100% em Português do Brasil (PT-BR) — todos os textos, labels, botões, mensagens de erro, placeholders, tooltips e qualquer string visível ao usuário deve estar em PT-BR. Nenhuma palavra em inglês deve aparecer na interface.
+
+FONTE DE DADOS — Leia com atenção
+Todos os dados de jogadores e clubes vêm exclusivamente desta API:
+Base URL: https://api.msmc.cc/api/eafc
+Endpoints que você vai usar:
+# Todos os jogadores do FC26
+GET https://api.msmc.cc/api/eafc/players?game=fc26
+
+# Todos os clubes masculinos do FC26
+GET https://api.msmc.cc/api/eafc/clubs?gender=m&game=fc26
+
+# Todas as ligas masculinas do FC26
+GET https://api.msmc.cc/api/eafc/leagues?gender=m&game=fc26
+
+# Filtrar jogadores por clube
+GET https://api.msmc.cc/api/eafc/players?game=fc26&team=Barcelona
+Estrutura de um jogador retornado pela API:
+json{
+  "id": "231747",
+  "name": "Kylian Mbappé",
+  "ovr": "91",
+  "position": "ST",
+  "team": "Real Madrid",
+  "league": "LALIGA EA SPORTS",
+  "nation": "France",
+  "age": "25",
+  "height": "182",
+  "weight": "75",
+  "pac": "97", "sho": "90", "pas": "80",
+  "dri": "92", "def": "36", "phy": "78",
+  "preferred foot": "Right",
+  "weak foot": "4",
+  "skill moves": "5",
+  "play style": ["Quick Step+", "Rapid", "Finesse Shot"],
+  "card": "https://ratings-images-prod.pulse.ea.com/FC25/full/player-shields/en/231747.png",
+  "game": "fc26"
+}
+Foto do rosto de cada jogador (use o id do jogador):
+https://cdn.sofifa.net/players/{id}/26_60.png
+Regra absoluta: nunca use game=fc25 ou qualquer outra versão. Sempre filtre com game=fc26. Os dados devem ser exclusivamente do FC 26.
+
+CONCEITO CENTRAL — Temas dinâmicos por clube
+Ao selecionar um clube, o sistema inteiro muda visualmente para as cores oficiais daquele clube. Isso é o coração do produto — deve ser fluido, bonito e imersivo.
+Como resolver as cores de cada clube:
+Passo 1 — Mapeamento manual dos 60 clubes mais populares. Hardcode as cores primária e secundária desses clubes. Exemplos obrigatórios:
+jsconst CLUB_COLORS = {
+  "Barcelona":          { primary: "#A50044", secondary: "#004D98" },
+  "Real Madrid":        { primary: "#FEBE10", secondary: "#00529F" },
+  "Manchester United":  { primary: "#DA291C", secondary: "#000000" },
+  "Manchester City":    { primary: "#6CABDD", secondary: "#1C2C5B" },
+  "Liverpool":          { primary: "#C8102E", secondary: "#00B2A9" },
+  "Chelsea":            { primary: "#034694", secondary: "#DBA111" },
+  "Arsenal":            { primary: "#EF0107", secondary: "#9C824A" },
+  "Juventus":           { primary: "#000000", secondary: "#FFFFFF" },
+  "AC Milan":           { primary: "#FB090B", secondary: "#000000" },
+  "Inter Milan":        { primary: "#010E80", secondary: "#000000" },
+  "Bayern Munich":      { primary: "#DC052D", secondary: "#0066B2" },
+  "Borussia Dortmund":  { primary: "#FDE100", secondary: "#000000" },
+  "PSG":                { primary: "#003370", secondary: "#DA291C" },
+  "Atlético Madrid":    { primary: "#CB3524", secondary: "#272E61" },
+  "Tottenham":          { primary: "#132257", secondary: "#FFFFFF" },
+  "Ajax":               { primary: "#D2122E", secondary: "#FFFFFF" },
+  "Porto":              { primary: "#003087", secondary: "#FFF200" },
+  "Benfica":            { primary: "#CC0000", secondary: "#FFFFFF" },
+  "Flamengo":           { primary: "#CC0000", secondary: "#000000" },
+  "Boca Juniors":       { primary: "#003087", secondary: "#FFF200" },
+  "River Plate":        { primary: "#CC0000", secondary: "#FFFFFF" },
+  // Continue mapeando até cobrir ~60 clubes populares de todas as ligas
+}
+Passo 2 — Fallback automático com Color Thief. Para qualquer clube não mapeado, use a biblioteca color-thief-browser para extrair automaticamente a cor dominante e a segunda cor mais presente no escudo do clube. O escudo pode ser buscado via:
+https://cdn.sofifa.net/teams/{team_id}/light_60.png
+Passo 3 — Aplicação do tema. As cores devem ser aplicadas como CSS variables no :root e propagadas para todo o sistema:
+css:root {
+  --club-primary: #A50044;
+  --club-secondary: #004D98;
+  --club-gradient: linear-gradient(135deg, #A50044, #004D98);
+}
+
+FASE 1 — O que construir agora
+Implemente apenas o seguinte. Nada além disso.
+1. Tela de Seleção de Clube
+
+Buscar todos os clubes via GET /clubs?gender=m&game=fc26
+Grid visual com escudo + nome + liga de cada clube
+Campo de busca por nome do clube em tempo real — placeholder: "Buscar clube..."
+Filtro por liga — label: "Filtrar por liga"
+Ao clicar em um clube, salvar a seleção e entrar no dashboard
+Animação suave de entrada dos cards
+
+2. Sistema de Temas Dinâmicos
+
+Ao selecionar o clube, aplicar imediatamente as cores no CSS via variáveis
+Transição animada entre temas (300ms ease)
+Todo o sistema — sidebar, botões, headers, cards, gradientes — deve usar var(--club-primary) e var(--club-secondary)
+Nenhuma cor hardcoded fora do mapeamento de clubes
+
+3. Dashboard Principal
+
+Header com escudo + nome do clube + temporada atual (ex: 2025/26)
+3 cards de estatísticas placeholder com os seguintes textos em PT-BR:
+
+"Partidas" — ícone de bola, valor: 0
+"Elenco" — ícone de pessoas, valor: 0
+"Transferências" — ícone de setas, valor: 0
+
+
+Seção "Próximas funcionalidades" mostrando o roadmap visual do que vem nas próximas fases
+Botão "Trocar de clube" que volta para a tela de seleção
+
+4. Persistência
+
+Salvar clube selecionado e temporada no localStorage
+Ao reabrir o app, carregar direto no dashboard do clube salvo sem passar pela tela de seleção novamente
+
+
+TRADUÇÕES OBRIGATÓRIAS — use exatamente estes textos
+"Search club..."        → "Buscar clube..."
+"Filter by league"      → "Filtrar por liga"
+"All leagues"           → "Todas as ligas"
+"Select your club"      → "Selecione seu clube"
+"Current season"        → "Temporada atual"
+"Change club"           → "Trocar de clube"
+"Matches"               → "Partidas"
+"Squad"                 → "Elenco"
+"Transfers"             → "Transferências"
+"Loading..."            → "Carregando..."
+"No clubs found"        → "Nenhum clube encontrado"
+"Coming soon"           → "Em breve"
+"Next features"         → "Próximas funcionalidades"
+"Error loading data"    → "Erro ao carregar os dados"
+"Try again"             → "Tentar novamente"
+
+DESIGN — Regras obrigatórias
+
+Tema base: escuro (background #0a0a0a ou similar)
+Tipografia: Inter (Google Fonts)
+Cards: glassmorphism — background: rgba(255,255,255,0.05), backdrop-filter: blur(10px), borda sutil com a cor primária do clube
+Animações: transições suaves em hover, entrada com fade+slide, troca de tema com cross-fade
+Responsivo: funcionar bem em desktop e mobile
+Qualidade: deve parecer um produto comercial real, não um projeto de faculdade
+
+
+STACK
+
+React + TypeScript
+Tailwind CSS
+localStorage para persistência (por agora)
+color-thief-browser para extração de cores automática
+Sem backend por enquanto — tudo client-side
+
+
+Quando a Fase 1 estiver pronta e funcionando corretamente, eu direi "próxima fase" para continuarmos com registro de partidas, elenco e estatísticas.
