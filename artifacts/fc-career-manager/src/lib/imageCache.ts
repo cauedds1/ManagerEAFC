@@ -14,8 +14,8 @@ async function fetchPlayerImageAndLeague(clubName: string): Promise<string | nul
     `https://api.msmc.cc/api/eafc/players?game=fc26&team=${encodeURIComponent(clubName)}`
   )
     .then((res) => (res.ok ? res.json() : []))
-    .then((data: Array<{ card?: string; league?: string }>) => {
-      const arr = Array.isArray(data) ? data : [];
+    .then((data: { data?: Array<{ card?: string; league?: string }> } | Array<{ card?: string; league?: string }>) => {
+      const arr = Array.isArray(data) ? data : (data?.data ?? []);
       const player = arr.find((p) => p.card);
       const url = player?.card ?? null;
 

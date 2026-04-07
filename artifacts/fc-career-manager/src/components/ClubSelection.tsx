@@ -55,7 +55,7 @@ export function ClubSelection({ onSelectClub }: ClubSelectionProps) {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center" style={{ background: "#0a0a0a" }}>
+      <div className="min-h-screen flex flex-col items-center justify-center" style={{ background: "var(--app-bg, #0a0a0a)" }}>
         <div className="flex flex-col items-center gap-4">
           <div
             className="w-12 h-12 rounded-full border-2 border-t-transparent animate-spin"
@@ -69,7 +69,7 @@ export function ClubSelection({ onSelectClub }: ClubSelectionProps) {
 
   if (error) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4" style={{ background: "#0a0a0a" }}>
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4" style={{ background: "var(--app-bg, #0a0a0a)" }}>
         <div className="text-center">
           <svg className="w-12 h-12 text-white/20 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
@@ -89,7 +89,7 @@ export function ClubSelection({ onSelectClub }: ClubSelectionProps) {
   }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "#0a0a0a" }}>
+    <div className="min-h-screen flex flex-col" style={{ background: "var(--app-bg, #0a0a0a)" }}>
       {/* Hero header */}
       <div
         className="w-full py-14 px-4 text-center relative overflow-hidden"

@@ -48,10 +48,6 @@ export function getPlayerFaceUrl(playerId: string): string {
 }
 
 export function getCurrentSeason(): string {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = now.getMonth() + 1;
-  const startYear = month >= 7 ? year : year - 1;
-  const endYear = startYear + 1;
-  return `${startYear}/${String(endYear).slice(2)}`;
+  const year = new Date().getFullYear();
+  return `${year}/${String(year + 1).slice(2)}`;
 }

@@ -45,7 +45,7 @@ interface RoadmapItem {
   fase: string;
   titulo: string;
   descricao: string;
-  cor: string;
+  accentOpacity: string;
 }
 
 const ROADMAP: RoadmapItem[] = [
@@ -53,25 +53,25 @@ const ROADMAP: RoadmapItem[] = [
     fase: "Fase 2",
     titulo: "Registro de Partidas",
     descricao: "Registre resultados, gols, assistências e estatísticas de cada partida",
-    cor: "from-blue-500/20 to-blue-600/10",
+    accentOpacity: "18",
   },
   {
     fase: "Fase 3",
     titulo: "Gestão do Elenco",
     descricao: "Acompanhe cada jogador — evolução, desempenho e potencial ao longo da temporada",
-    cor: "from-purple-500/20 to-purple-600/10",
+    accentOpacity: "12",
   },
   {
     fase: "Fase 4",
     titulo: "Mercado de Transferências",
     descricao: "Registre chegadas e saídas, controle investimentos e o valor do seu elenco",
-    cor: "from-amber-500/20 to-amber-600/10",
+    accentOpacity: "16",
   },
   {
     fase: "Fase 5",
     titulo: "Estatísticas da Temporada",
     descricao: "Gráficos, artilheiros, sequências, médias e análise completa do desempenho",
-    cor: "from-emerald-500/20 to-emerald-600/10",
+    accentOpacity: "10",
   },
 ];
 
@@ -125,7 +125,7 @@ export function Dashboard({ club, season, onSeasonChange, onChangeClub }: Dashbo
   };
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "#0a0a0a" }}>
+    <div className="min-h-screen flex flex-col" style={{ background: "var(--app-bg, #0a0a0a)" }}>
       {/* Header */}
       <header
         className="relative w-full overflow-hidden"
@@ -278,8 +278,11 @@ export function Dashboard({ club, season, onSeasonChange, onChangeClub }: Dashbo
           {ROADMAP.map((item) => (
             <div
               key={item.fase}
-              className={`relative flex gap-4 p-5 rounded-2xl bg-gradient-to-br ${item.cor} overflow-hidden`}
-              style={{ border: "1px solid rgba(255,255,255,0.06)" }}
+              className="relative flex gap-4 p-5 rounded-2xl overflow-hidden"
+              style={{
+                background: `linear-gradient(135deg, var(--club-primary)${item.accentOpacity}, var(--club-secondary)0a)`,
+                border: "1px solid rgba(255,255,255,0.06)",
+              }}
             >
               <div className="flex-shrink-0">
                 <span
