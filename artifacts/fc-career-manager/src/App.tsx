@@ -78,7 +78,7 @@ function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: "#0a0a0a" }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--app-bg, #0a0a0a)" }}>
         <div className="w-8 h-8 rounded-full border-2 border-[var(--club-primary)] border-t-transparent animate-spin" />
       </div>
     );

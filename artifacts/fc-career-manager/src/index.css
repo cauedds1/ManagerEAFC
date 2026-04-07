@@ -47,6 +47,9 @@
 
   --destructive: 0 84% 60%;
 
+  /* App base colors */
+  --app-bg: #0a0a0a;
+
   /* Club-specific theme variables – updated dynamically via themeManager.ts */
   --club-primary: #1a1a2e;
   --club-secondary: #16213e;
