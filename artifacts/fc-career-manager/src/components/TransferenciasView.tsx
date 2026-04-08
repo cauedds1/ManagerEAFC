@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useMemo, useRef } from "react";
+import { createPortal } from "react-dom";
 import type { PositionPtBr } from "@/lib/squadCache";
 import type { TransferRecord } from "@/types/transfer";
 import {
@@ -11,6 +12,8 @@ import {
   generateTransferId,
 } from "@/lib/transferStorage";
 import { setPlayerStats, defaultStats } from "@/lib/playerStatsStorage";
+import { getCachedClubList } from "@/lib/clubListCache";
+import { searchStaticClubs } from "@/lib/staticClubList";
 
 const ALL_POSITIONS: PositionPtBr[] = [
   "GOL","ZAG","LAT","VOL","MC","MEI","PE","PD","SA","CA","ATA",
@@ -43,6 +46,90 @@ function formatFee(fee: number): string {
   return `€${(fee * 1000).toFixed(0)}k`;
 }
 
+function ClubBadge({ src, name, size = 24 }: { src?: string | null; name: string; size?: number }) {
+  const [err, setErr] = useState(false);
+  if (!src || err) {
+    return (
+      <div
+        className="rounded-lg flex items-center justify-center font-black text-white/40 flex-shrink-0"
+        style={{ width: size, height: size, background: "rgba(255,255,255,0.06)", fontSize: size / 3 }}
+      >
+        {name.slice(0, 2).toUpperCase()}
+      </div>
+    );
+  }
+  return <img src={src} alt={name} style={{ width: size, height: size, objectFit: "contain", flexShrink: 0 }} onError={() => setErr(true)} />;
+}
+
+function ClubAutocomplete({
+  value,
+  onChange,
+  onSelectLogo,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  onSelectLogo: (logo: string | null) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const suggestions = useMemo(() => {
+    if (!value.trim() || !open) return [];
+    const cached = getCachedClubList();
+    if (cached && cached.length > 0) {
+      const q = value.toLowerCase().trim();
+      return cached
+        .filter((c) => c.name.toLowerCase().includes(q) || c.league.toLowerCase().includes(q))
+        .slice(0, 8);
+    }
+    return searchStaticClubs(value);
+  }, [value, open]);
+
+  const inputClass =
+    "w-full px-3 py-2.5 rounded-xl text-white text-sm focus:outline-none glass placeholder:text-white/20";
+
+  return (
+    <div className="relative">
+      <input
+        ref={inputRef}
+        type="text"
+        value={value}
+        onChange={(e) => { onChange(e.target.value); setOpen(true); }}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setTimeout(() => setOpen(false), 180)}
+        placeholder="Ex: Manchester City (vazio = Jogador Livre)"
+        className={inputClass}
+      />
+      {open && suggestions.length > 0 && (
+        <div
+          className="absolute z-30 left-0 right-0 mt-1 rounded-2xl overflow-hidden shadow-2xl"
+          style={{ background: "rgba(15,15,20,0.97)", border: "1px solid rgba(255,255,255,0.1)", backdropFilter: "blur(20px)" }}
+        >
+          {suggestions.map((club) => (
+            <button
+              key={club.id}
+              type="button"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => {
+                onChange(club.name);
+                onSelectLogo(club.logo || null);
+                setOpen(false);
+              }}
+              className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-white/5 transition-colors text-left"
+            >
+              <ClubBadge src={club.logo} name={club.name} size={24} />
+              <div className="flex-1 min-w-0">
+                <p className="text-white text-sm font-semibold truncate">{club.name}</p>
+                <p className="text-white/35 text-xs truncate">{club.league}</p>
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function PlayerPhoto({ src, name }: { src: string; name: string }) {
   const [err, setErr] = useState(!src);
   const initials = name
@@ -70,9 +157,7 @@ function TransferCard({ transfer }: { transfer: TransferRecord }) {
   const pos = POS_STYLE[transfer.playerPositionPtBr] ?? POS_STYLE.MC;
   const role = ROLE_COLORS[transfer.role];
   return (
-    <div
-      className="flex items-center gap-4 p-4 rounded-2xl transition-all duration-200 glass glass-hover"
-    >
+    <div className="flex items-center gap-4 p-4 rounded-2xl transition-all duration-200 glass glass-hover">
       <PlayerPhoto src={transfer.playerPhoto} name={transfer.playerName} />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap mb-1">
@@ -92,6 +177,20 @@ function TransferCard({ transfer }: { transfer: TransferRecord }) {
             {ROLE_LABELS[transfer.role]}
           </span>
           <span className="text-white/30 text-xs">{transfer.playerAge} anos</span>
+          {transfer.fromClub ? (
+            <>
+              <span className="text-white/20 text-xs">·</span>
+              <div className="flex items-center gap-1">
+                {transfer.fromClubLogo && <ClubBadge src={transfer.fromClubLogo} name={transfer.fromClub} size={14} />}
+                <span className="text-white/35 text-xs truncate max-w-28">{transfer.fromClub}</span>
+              </div>
+            </>
+          ) : (
+            <>
+              <span className="text-white/20 text-xs">·</span>
+              <span className="text-white/25 text-xs">Jogador Livre</span>
+            </>
+          )}
           <span className="text-white/20 text-xs">·</span>
           <span className="text-white/30 text-xs">{transfer.season}</span>
         </div>
@@ -117,6 +216,8 @@ interface FormData {
   salary: string;
   contractYears: string;
   role: TeamRole;
+  fromClub: string;
+  fromClubLogo: string;
 }
 
 const DEFAULT_FORM: FormData = {
@@ -129,6 +230,8 @@ const DEFAULT_FORM: FormData = {
   salary: "",
   contractYears: "4",
   role: "importante",
+  fromClub: "",
+  fromClubLogo: "",
 };
 
 interface TransferenciasViewProps {
@@ -179,6 +282,8 @@ export function TransferenciasView({
       salary: parseFloat(form.salary) || 0,
       contractYears: parseInt(form.contractYears, 10) || 1,
       role: form.role,
+      fromClub: form.fromClub.trim() || undefined,
+      fromClubLogo: form.fromClubLogo.trim() || undefined,
       transferredAt: Date.now(),
     };
 
@@ -219,9 +324,7 @@ export function TransferenciasView({
       </div>
 
       {sortedTransfers.length === 0 ? (
-        <div
-          className="flex flex-col items-center justify-center py-16 rounded-2xl gap-4 glass text-center"
-        >
+        <div className="flex flex-col items-center justify-center py-16 rounded-2xl gap-4 glass text-center">
           <div
             className="w-16 h-16 rounded-2xl flex items-center justify-center"
             style={{ background: "rgba(var(--club-primary-rgb),0.08)" }}
@@ -252,11 +355,11 @@ export function TransferenciasView({
         </div>
       )}
 
-      {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {showForm && createPortal(
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
           <div
             className="absolute inset-0"
-            style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(8px)" }}
+            style={{ background: "rgba(0,0,0,0.45)", backdropFilter: "blur(6px)" }}
             onClick={() => setShowForm(false)}
           />
           <div
@@ -278,9 +381,9 @@ export function TransferenciasView({
               </div>
               <button
                 onClick={() => setShowForm(false)}
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-white/40 hover:text-white/80 hover:bg-white/8 transition-all"
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-white/40 hover:text-white/80 hover:bg-white/10 transition-all"
               >
-                <svg className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
@@ -351,6 +454,15 @@ export function TransferenciasView({
                       </option>
                     ))}
                   </select>
+                </div>
+                <div className="sm:col-span-2">
+                  <label className={labelClass}>Clube de origem</label>
+                  <ClubAutocomplete
+                    value={form.fromClub}
+                    onChange={(v) => set("fromClub", v)}
+                    onSelectLogo={(logo) => set("fromClubLogo", logo ?? "")}
+                  />
+                  <p className="text-white/20 text-xs mt-1">Deixe vazio se for Jogador Livre</p>
                 </div>
               </div>
 
@@ -443,7 +555,8 @@ export function TransferenciasView({
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
