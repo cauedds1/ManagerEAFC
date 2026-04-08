@@ -31,6 +31,7 @@ const POS_STYLE: Record<PositionPtBr, { bg: string; color: string }> = {
   PD:  { bg: "rgba(249,115,22,0.18)",  color: "#fb923c" },
   SA:  { bg: "rgba(244,63,94,0.18)",   color: "#fb7185" },
   CA:  { bg: "rgba(239,68,68,0.18)",   color: "#f87171" },
+  ATA: { bg: "rgba(220,38,38,0.18)",   color: "#f87171" },
 };
 
 function formatDate(ts: number): string {

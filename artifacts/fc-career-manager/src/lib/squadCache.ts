@@ -16,9 +16,10 @@ export type PositionGroup =
   | "LeftWing"
   | "RightWing"
   | "SecondStriker"
-  | "Striker";
+  | "Striker"
+  | "BroadForward"; // usado para "Attacker" genérico da API-Football
 
-export type PositionPtBr = "GOL" | "ZAG" | "LAT" | "VOL" | "MC" | "MEI" | "PE" | "PD" | "SA" | "CA";
+export type PositionPtBr = "GOL" | "ZAG" | "LAT" | "VOL" | "MC" | "MEI" | "PE" | "PD" | "SA" | "CA" | "ATA";
 
 export type FormationGroup = "GOL" | "ZAG" | "VOL" | "ATA";
 
@@ -41,16 +42,17 @@ export interface SquadResult {
 }
 
 const POSITION_PT_BR: Record<PositionGroup, PositionPtBr> = {
-  Goalkeeper: "GOL",
-  CentreBack: "ZAG",
-  FullBack: "LAT",
+  Goalkeeper:   "GOL",
+  CentreBack:   "ZAG",
+  FullBack:     "LAT",
   DefensiveMid: "VOL",
-  CentralMid: "MC",
+  CentralMid:   "MC",
   AttackingMid: "MEI",
-  LeftWing: "PE",
-  RightWing: "PD",
-  SecondStriker: "SA",
-  Striker: "CA",
+  LeftWing:     "PE",
+  RightWing:    "PD",
+  SecondStriker:"SA",
+  Striker:      "CA",
+  BroadForward: "ATA", // "Attacker" genérico da API-Football
 };
 
 export const FORMATION_GROUP: Record<PositionPtBr, FormationGroup> = {
@@ -58,25 +60,27 @@ export const FORMATION_GROUP: Record<PositionPtBr, FormationGroup> = {
   ZAG: "ZAG",
   LAT: "ZAG",
   VOL: "VOL",
-  MC: "VOL",
+  MC:  "VOL",
   MEI: "VOL",
-  PE: "VOL",
-  PD: "VOL",
-  SA: "ATA",
-  CA: "ATA",
+  PE:  "VOL",
+  PD:  "VOL",
+  SA:  "ATA",
+  CA:  "ATA",
+  ATA: "ATA",
 };
 
 const POSITION_SORT: Record<PositionGroup, number> = {
-  Goalkeeper: 0,
-  CentreBack: 1,
-  FullBack: 2,
+  Goalkeeper:   0,
+  CentreBack:   1,
+  FullBack:     2,
   DefensiveMid: 3,
-  CentralMid: 4,
+  CentralMid:   4,
   AttackingMid: 5,
-  LeftWing: 6,
-  RightWing: 7,
-  SecondStriker: 8,
-  Striker: 9,
+  LeftWing:     6,
+  RightWing:    7,
+  SecondStriker:8,
+  Striker:      9,
+  BroadForward: 9,
 };
 
 function normalizePosToGroup(pos: string): PositionGroup {
@@ -103,16 +107,22 @@ function normalizePosToGroup(pos: string): PositionGroup {
   // Attacking midfielders (meia ofensivo)
   if (["CAM", "AM", "AMF", "MEI"].includes(p)) return "AttackingMid";
 
-  // Central midfielders — default for broad "MIDFIELDER"
-  if (["CM", "MC", "MIDFIELDER"].includes(p)) return "CentralMid";
+  // Central midfielders
+  if (["CM", "MC"].includes(p)) return "CentralMid";
+
+  // Broad "Midfielder" from API-Football → volante (broad VOL)
+  if (p === "MIDFIELDER") return "DefensiveMid";
 
   // Second striker / false 9 (segundo atacante)
   if (["CF", "SS", "SA"].includes(p)) return "SecondStriker";
 
   // Striker / centre forward (centroavante)
-  if (["ST", "FW", "WF", "ATTACKER", "CA", "ATA"].includes(p)) return "Striker";
+  if (["ST", "FW", "WF", "CA"].includes(p)) return "Striker";
 
-  // Backward compat: old granular group names stored in cache
+  // Broad "Attacker" / "Forward" from API-Football → ATA genérico
+  if (["ATTACKER", "FORWARD", "ATA"].includes(p)) return "BroadForward";
+
+  // Backward compat: old group names stored in cache
   if (p === "CENTREBACK" || p === "CENTRECBACK") return "CentreBack";
   if (p === "FULLBACK") return "FullBack";
   if (p === "DEFENSIVEMID") return "DefensiveMid";
@@ -123,6 +133,7 @@ function normalizePosToGroup(pos: string): PositionGroup {
   if (p === "SECONDSTRIKER") return "SecondStriker";
   if (p === "STRIKER") return "Striker";
   if (p === "GOALKEEPER") return "Goalkeeper";
+  if (p === "BROADFORWARD") return "BroadForward";
 
   return "CentralMid"; // safe fallback
 }

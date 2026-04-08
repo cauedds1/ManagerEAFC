@@ -20,6 +20,7 @@ const POS_COLOR: Record<PositionPtBr, { fill: string; stroke: string; text: stri
   PD:  { fill: "#f97316", stroke: "#fb923c", text: "#2a0e00" },
   SA:  { fill: "#f43f5e", stroke: "#fb7185", text: "#2d0010" },
   CA:  { fill: "#ef4444", stroke: "#f87171", text: "#ffe0e0" },
+  ATA: { fill: "#dc2626", stroke: "#f87171", text: "#ffe0e0" },
 };
 
 const FORMATION_POSITIONS: [number, number][] = [
@@ -57,21 +58,43 @@ function pickBestEleven(players: PitchPlayerData[]): (PitchPlayerData | null)[] 
     byGroup[fg].push(p);
   }
 
-  const targets: [number[], FormationGroup][] = [
-    [[0], "GOL"],
-    [[1, 2, 3, 4], "ZAG"],
-    [[5, 6, 7], "VOL"],
-    [[8, 9, 10], "ATA"],
-  ];
+  // GK
+  const gks = byGroup["GOL"].filter((p) => !used.has(p.id));
+  if (gks[0]) { slots[0] = gks[0]; used.add(gks[0].id); }
 
-  for (const [slotIdxs, group] of targets) {
-    const available = byGroup[group].filter((p) => !used.has(p.id));
-    for (let i = 0; i < slotIdxs.length && i < available.length; i++) {
-      slots[slotIdxs[i]] = available[i];
-      used.add(available[i].id);
-    }
+  // Defenders: slots 1 (left) and 4 (right) prefer LAT; 2 and 3 prefer ZAG/CB
+  const defs = byGroup["ZAG"].filter((p) => !used.has(p.id));
+  const lats = defs.filter((p) => p.positionPtBr === "LAT");
+  const cbs  = defs.filter((p) => p.positionPtBr !== "LAT");
+  // Fill lateral slots first with LATs, fallback to CBs
+  const latPool = [...lats, ...cbs];
+  // Fill center-back slots first with CBs, fallback to LATs
+  const cbPool  = [...cbs, ...lats];
+  // Slot 1 (left lateral)
+  const lat1 = latPool.find((p) => !used.has(p.id));
+  if (lat1) { slots[1] = lat1; used.add(lat1.id); }
+  // Slot 4 (right lateral)
+  const lat4 = latPool.find((p) => !used.has(p.id));
+  if (lat4) { slots[4] = lat4; used.add(lat4.id); }
+  // Slots 2 and 3 (centre-backs)
+  for (const si of [2, 3]) {
+    const cb = cbPool.find((p) => !used.has(p.id));
+    if (cb) { slots[si] = cb; used.add(cb.id); }
   }
 
+  // Midfielders: slots 5, 6, 7
+  const mids = byGroup["VOL"].filter((p) => !used.has(p.id));
+  for (let i = 0; i < 3 && i < mids.length; i++) {
+    slots[5 + i] = mids[i]; used.add(mids[i].id);
+  }
+
+  // Attackers: slots 8, 9, 10
+  const atks = byGroup["ATA"].filter((p) => !used.has(p.id));
+  for (let i = 0; i < 3 && i < atks.length; i++) {
+    slots[8 + i] = atks[i]; used.add(atks[i].id);
+  }
+
+  // Fill any remaining empty slots with unused players
   const overflow = players.filter((p) => !used.has(p.id));
   let oi = 0;
   for (let i = 0; i < 11; i++) {
