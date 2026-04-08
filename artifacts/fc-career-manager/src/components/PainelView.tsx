@@ -7,7 +7,41 @@ import {
   type LeaguePosition,
 } from "@/lib/leagueStorage";
 import type { MatchRecord } from "@/types/match";
-import { getMatchResult, RESULT_STYLE, LOCATION_ICONS } from "@/types/match";
+import { getMatchResult, RESULT_STYLE } from "@/types/match";
+import { getCachedClubList } from "@/lib/clubListCache";
+import { searchStaticClubs } from "@/lib/staticClubList";
+
+function resolveOpponentLogo(name: string, stored?: string): string | undefined {
+  if (stored) return stored;
+  const q = name.toLowerCase().trim();
+  const cached = getCachedClubList();
+  if (cached && cached.length > 0) {
+    const exact = cached.find((c) => c.name.toLowerCase() === q);
+    if (exact?.logo) return exact.logo;
+    const partial = cached.find((c) => c.name.toLowerCase().includes(q) || q.includes(c.name.toLowerCase()));
+    if (partial?.logo) return partial.logo;
+  }
+  const statics = searchStaticClubs(name);
+  return statics[0]?.logo ?? undefined;
+}
+
+function MiniCrest({ logoUrl, name, size = 26, themed = false }: { logoUrl?: string | null; name: string; size?: number; themed?: boolean }) {
+  const [failed, setFailed] = useState(false);
+  const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join("");
+  if (!logoUrl || failed) {
+    return (
+      <div style={{
+        width: size, height: size, borderRadius: "50%", flexShrink: 0,
+        background: themed ? "rgba(var(--club-primary-rgb),0.18)" : "rgba(255,255,255,0.08)",
+        border: themed ? "1px solid rgba(var(--club-primary-rgb),0.3)" : "1px solid rgba(255,255,255,0.1)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        fontSize: size * 0.36, fontWeight: 900,
+        color: themed ? "var(--club-primary)" : "rgba(255,255,255,0.5)",
+      }}>{initials}</div>
+    );
+  }
+  return <img src={logoUrl} alt={name} width={size} height={size} style={{ width: size, height: size, objectFit: "contain", flexShrink: 0 }} onError={() => setFailed(true)} />;
+}
 
 const POS_STYLE: Record<PositionPtBr, { bg: string; color: string }> = {
   GOL: { bg: "rgba(245,158,11,0.18)",  color: "#f59e0b" },
@@ -25,6 +59,8 @@ const POS_STYLE: Record<PositionPtBr, { bg: string; color: string }> = {
 
 interface PainelViewProps {
   careerId: string;
+  clubName: string;
+  clubLogoUrl?: string | null;
   allPlayers: SquadPlayer[];
   season: string;
   matches: MatchRecord[];
@@ -274,7 +310,15 @@ function TopPerformers({
   );
 }
 
-function LastMatches({ matches }: { matches: MatchRecord[] }) {
+function LastMatches({
+  matches,
+  clubName,
+  clubLogoUrl,
+}: {
+  matches: MatchRecord[];
+  clubName: string;
+  clubLogoUrl?: string | null;
+}) {
   const last5 = [...matches].sort((a, b) => b.createdAt - a.createdAt).slice(0, 5);
 
   if (matches.length === 0) {
@@ -285,18 +329,19 @@ function LastMatches({ matches }: { matches: MatchRecord[] }) {
           {Array.from({ length: 5 }).map((_, i) => (
             <div
               key={i}
-              className="rounded-xl flex flex-col items-center justify-center gap-1.5 py-4"
+              className="rounded-xl flex flex-col items-center justify-center gap-2 py-5"
               style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}
             >
-              <div className="w-6 h-6 rounded-full" style={{ background: "rgba(255,255,255,0.06)" }} />
-              <div className="w-8 h-2 rounded" style={{ background: "rgba(255,255,255,0.06)" }} />
-              <div className="w-6 h-1.5 rounded" style={{ background: "rgba(255,255,255,0.04)" }} />
+              <div className="flex items-center gap-1.5">
+                <div className="w-6 h-6 rounded-full" style={{ background: "rgba(255,255,255,0.06)" }} />
+                <div className="w-6 h-6 rounded-full" style={{ background: "rgba(255,255,255,0.04)" }} />
+              </div>
+              <div className="w-8 h-2 rounded" style={{ background: "rgba(255,255,255,0.05)" }} />
+              <div className="w-5 h-1.5 rounded-full" style={{ background: "rgba(255,255,255,0.04)" }} />
             </div>
           ))}
         </div>
-        <p className="text-white/20 text-xs text-center">
-          Nenhuma partida registrada ainda
-        </p>
+        <p className="text-white/20 text-xs text-center">Nenhuma partida registrada ainda</p>
       </div>
     );
   }
@@ -313,7 +358,7 @@ function LastMatches({ matches }: { matches: MatchRecord[] }) {
             return (
               <div
                 key={`empty-${i}`}
-                className="rounded-xl flex flex-col items-center justify-center gap-1.5 py-4"
+                className="rounded-xl flex flex-col items-center justify-center gap-2 py-5"
                 style={{ background: "rgba(255,255,255,0.02)", border: "1px dashed rgba(255,255,255,0.05)" }}
               >
                 <div className="w-5 h-5 rounded-full" style={{ background: "rgba(255,255,255,0.05)" }} />
@@ -322,24 +367,37 @@ function LastMatches({ matches }: { matches: MatchRecord[] }) {
           }
           const result = getMatchResult(m.myScore, m.opponentScore);
           const rs = RESULT_STYLE[result];
-          const shortOpp = m.opponent.split(" ").slice(0, 2).join(" ");
+          const oppLogoUrl = resolveOpponentLogo(m.opponent, m.opponentLogoUrl);
           return (
             <div
               key={m.id}
-              className="rounded-xl flex flex-col items-center gap-1.5 py-3 px-1"
-              style={{ background: rs.bg, border: `1px solid ${rs.border}` }}
+              className="rounded-xl flex flex-col items-center gap-2 py-3 px-1.5"
+              style={{
+                background: rs.bg,
+                borderTop: `1px solid ${rs.border}`,
+                borderRight: `1px solid ${rs.border}`,
+                borderBottom: `1px solid ${rs.border}`,
+                borderLeft: `2px solid ${rs.color}`,
+              }}
             >
-              <span className="text-lg">{LOCATION_ICONS[m.location]}</span>
-              <span className="text-sm font-black tabular-nums text-white leading-none">
+              {/* Both crests side by side */}
+              <div className="flex items-center gap-1.5">
+                <MiniCrest logoUrl={clubLogoUrl} name={clubName} size={24} themed />
+                <MiniCrest logoUrl={oppLogoUrl} name={m.opponent} size={24} />
+              </div>
+
+              {/* Score */}
+              <span className="text-sm font-black tabular-nums text-white leading-none tracking-tight">
                 {m.myScore}–{m.opponentScore}
               </span>
+
+              {/* Result pill */}
               <span
-                className="w-6 h-6 rounded-lg flex items-center justify-center text-xs font-black"
-                style={{ background: rs.bg, color: rs.color }}
+                className="px-2 py-0.5 rounded-full text-xs font-black"
+                style={{ background: `rgba(0,0,0,0.25)`, color: rs.color }}
               >
                 {rs.label}
               </span>
-              <span className="text-white/40 text-xs text-center leading-tight truncate w-full px-1">{shortOpp}</span>
             </div>
           );
         })}
@@ -402,6 +460,8 @@ function MessagesSection() {
 
 export function PainelView({
   careerId,
+  clubName,
+  clubLogoUrl,
   allPlayers,
   season,
   matches,
@@ -476,7 +536,7 @@ export function PainelView({
         ))}
       </div>
 
-      <LastMatches matches={matches} />
+      <LastMatches matches={matches} clubName={clubName} clubLogoUrl={clubLogoUrl} />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <LeagueCard careerId={careerId} />

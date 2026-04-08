@@ -353,6 +353,8 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
         {activeTab === "painel" && (
           <PainelView
             careerId={career.id}
+            clubName={career.clubName}
+            clubLogoUrl={logoUrl}
             allPlayers={allPlayers}
             season={career.season}
             matches={matches}
