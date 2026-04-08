@@ -57,6 +57,8 @@ export interface PlayerSeasonStats {
   matchesAsStarter: number;
   matchesAsSubstitute: number;
   totalMinutes: number;
+  yellowCards: number;
+  redCards: number;
   mood: Mood;
   fanMoral: FanMoral;
 }

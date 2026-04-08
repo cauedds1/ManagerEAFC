@@ -6,6 +6,8 @@ import {
   setLeaguePosition,
   type LeaguePosition,
 } from "@/lib/leagueStorage";
+import type { MatchRecord } from "@/types/match";
+import { getMatchResult, RESULT_STYLE, LOCATION_ICONS } from "@/types/match";
 
 const POS_STYLE: Record<PositionPtBr, { bg: string; color: string }> = {
   GOL: { bg: "rgba(245,158,11,0.18)",  color: "#f59e0b" },
@@ -25,7 +27,7 @@ interface PainelViewProps {
   careerId: string;
   allPlayers: SquadPlayer[];
   season: string;
-  matchCount: number;
+  matches: MatchRecord[];
   transferCount: number;
 }
 
@@ -272,34 +274,76 @@ function TopPerformers({
   );
 }
 
-function MatchesPlaceholder() {
+function LastMatches({ matches }: { matches: MatchRecord[] }) {
+  const last5 = [...matches].sort((a, b) => b.createdAt - a.createdAt).slice(0, 5);
+
+  if (matches.length === 0) {
+    return (
+      <div className="glass rounded-2xl p-5 flex flex-col gap-3">
+        <SectionTitle>Últimas Partidas</SectionTitle>
+        <div className="grid grid-cols-5 gap-2">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div
+              key={i}
+              className="rounded-xl flex flex-col items-center justify-center gap-1.5 py-4"
+              style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}
+            >
+              <div className="w-6 h-6 rounded-full" style={{ background: "rgba(255,255,255,0.06)" }} />
+              <div className="w-8 h-2 rounded" style={{ background: "rgba(255,255,255,0.06)" }} />
+              <div className="w-6 h-1.5 rounded" style={{ background: "rgba(255,255,255,0.04)" }} />
+            </div>
+          ))}
+        </div>
+        <p className="text-white/20 text-xs text-center">
+          Nenhuma partida registrada ainda
+        </p>
+      </div>
+    );
+  }
+
+  const filled = [...last5];
+  while (filled.length < 5) filled.unshift(null as unknown as MatchRecord);
+
   return (
     <div className="glass rounded-2xl p-5 flex flex-col gap-3">
-      <div className="flex items-center justify-between">
-        <SectionTitle>Últimas Partidas</SectionTitle>
-        <span
-          className="text-xs font-semibold px-2.5 py-1 rounded-full"
-          style={{ background: "rgba(var(--club-primary-rgb),0.12)", color: "var(--club-primary)" }}
-        >
-          Em breve
-        </span>
-      </div>
+      <SectionTitle>Últimas Partidas</SectionTitle>
       <div className="grid grid-cols-5 gap-2">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <div
-            key={i}
-            className="rounded-xl flex flex-col items-center justify-center gap-1.5 py-4"
-            style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}
-          >
-            <div className="w-6 h-6 rounded-full" style={{ background: "rgba(255,255,255,0.06)" }} />
-            <div className="w-8 h-2 rounded" style={{ background: "rgba(255,255,255,0.06)" }} />
-            <div className="w-6 h-1.5 rounded" style={{ background: "rgba(255,255,255,0.04)" }} />
-          </div>
-        ))}
+        {filled.map((m, i) => {
+          if (!m) {
+            return (
+              <div
+                key={`empty-${i}`}
+                className="rounded-xl flex flex-col items-center justify-center gap-1.5 py-4"
+                style={{ background: "rgba(255,255,255,0.02)", border: "1px dashed rgba(255,255,255,0.05)" }}
+              >
+                <div className="w-5 h-5 rounded-full" style={{ background: "rgba(255,255,255,0.05)" }} />
+              </div>
+            );
+          }
+          const result = getMatchResult(m.myScore, m.opponentScore);
+          const rs = RESULT_STYLE[result];
+          const shortOpp = m.opponent.split(" ").slice(0, 2).join(" ");
+          return (
+            <div
+              key={m.id}
+              className="rounded-xl flex flex-col items-center gap-1.5 py-3 px-1"
+              style={{ background: rs.bg, border: `1px solid ${rs.border}` }}
+            >
+              <span className="text-lg">{LOCATION_ICONS[m.location]}</span>
+              <span className="text-sm font-black tabular-nums text-white leading-none">
+                {m.myScore}–{m.opponentScore}
+              </span>
+              <span
+                className="w-6 h-6 rounded-lg flex items-center justify-center text-xs font-black"
+                style={{ background: rs.bg, color: rs.color }}
+              >
+                {rs.label}
+              </span>
+              <span className="text-white/40 text-xs text-center leading-tight truncate w-full px-1">{shortOpp}</span>
+            </div>
+          );
+        })}
       </div>
-      <p className="text-white/20 text-xs text-center">
-        O registro de partidas estará disponível na próxima fase
-      </p>
     </div>
   );
 }
@@ -360,13 +404,13 @@ export function PainelView({
   careerId,
   allPlayers,
   season,
-  matchCount,
+  matches,
   transferCount,
 }: PainelViewProps) {
   const quickStats = [
     {
       label: "Partidas",
-      value: matchCount,
+      value: matches.length,
       sub: "registradas",
       icon: (
         <svg className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -432,7 +476,7 @@ export function PainelView({
         ))}
       </div>
 
-      <MatchesPlaceholder />
+      <LastMatches matches={matches} />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <LeagueCard careerId={careerId} />

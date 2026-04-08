@@ -12,9 +12,12 @@ import { getApiKey } from "@/lib/clubListCache";
 import { getAllPlayerOverrides } from "@/lib/playerStatsStorage";
 import { getTransfers, addTransfer } from "@/lib/transferStorage";
 import type { TransferRecord } from "@/types/transfer";
+import { getMatches } from "@/lib/matchStorage";
+import type { MatchRecord } from "@/types/match";
 import { PainelView } from "./PainelView";
 import { ElencoView } from "./ElencoView";
 import { TransferenciasView } from "./TransferenciasView";
+import { PartidasView } from "./PartidasView";
 
 interface DashboardProps {
   career: Career;
@@ -24,7 +27,7 @@ interface DashboardProps {
   onReloadClubs: () => void;
 }
 
-type CareerTab = "painel" | "elenco" | "transferencias";
+type CareerTab = "painel" | "partidas" | "elenco" | "transferencias";
 
 const TABS: { id: CareerTab; label: string; icon: React.ReactNode }[] = [
   {
@@ -33,6 +36,16 @@ const TABS: { id: CareerTab; label: string; icon: React.ReactNode }[] = [
     icon: (
       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+      </svg>
+    ),
+  },
+  {
+    id: "partidas",
+    label: "Partidas",
+    icon: (
+      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <circle cx="12" cy="12" r="9" strokeLinecap="round" strokeLinejoin="round" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 3c0 0 2.5 4 2.5 9s-2.5 9-2.5 9M12 3c0 0-2.5 4-2.5 9s2.5 9 2.5 9M3 12h18" />
       </svg>
     ),
   },
@@ -110,6 +123,10 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     () => getTransfers(career.id)
   );
 
+  const [matches, setMatches] = useState<MatchRecord[]>(
+    () => getMatches(career.id)
+  );
+
   useEffect(() => { setSeasonDraft(career.season); }, [career.season]);
   useEffect(() => { setImgLoaded(false); setImgError(false); }, [logoUrl]);
 
@@ -163,6 +180,10 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     addTransfer(career.id, transfer);
     setTransfers((prev) => [...prev, transfer]);
   }, [career.id]);
+
+  const handleMatchAdded = useCallback((match: MatchRecord) => {
+    setMatches((prev) => [...prev, match]);
+  }, []);
 
   const commitSeason = () => {
     const trimmed = seasonDraft.trim();
@@ -334,8 +355,18 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
             careerId={career.id}
             allPlayers={allPlayers}
             season={career.season}
-            matchCount={0}
+            matches={matches}
             transferCount={transfers.length}
+          />
+        )}
+        {activeTab === "partidas" && (
+          <PartidasView
+            careerId={career.id}
+            season={career.season}
+            clubName={career.clubName}
+            matches={matches}
+            allPlayers={allPlayers}
+            onMatchAdded={handleMatchAdded}
           />
         )}
         {activeTab === "elenco" && (
