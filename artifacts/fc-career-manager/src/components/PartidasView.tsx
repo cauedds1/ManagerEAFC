@@ -122,6 +122,16 @@ function MatchCard({
   const result = getMatchResult(match.myScore, match.opponentScore);
   const rs = RESULT_STYLE[result];
   const motm = match.motmPlayerId != null ? allPlayers.find((p) => p.id === match.motmPlayerId) : null;
+  const isHome = match.location !== "fora";
+  const oppResolvedLogo = resolveOpponentLogo(match.opponent, match.opponentLogoUrl);
+  const leftLogo = isHome ? clubLogoUrl : oppResolvedLogo;
+  const leftName = isHome ? clubName : match.opponent;
+  const leftScore = isHome ? match.myScore : match.opponentScore;
+  const leftThemed = isHome;
+  const rightLogo = isHome ? oppResolvedLogo : clubLogoUrl;
+  const rightName = isHome ? match.opponent : clubName;
+  const rightScore = isHome ? match.opponentScore : match.myScore;
+  const rightThemed = !isHome;
 
   const allParticipantIds = [...match.starterIds, ...match.subIds];
   const goalScorers: { name: string; minute: number }[] = [];
@@ -186,20 +196,20 @@ function MatchCard({
 
       {/* Score body — 3 columns */}
       <div className="flex items-center gap-2 px-4 pb-3">
-        {/* My club */}
+        {/* Left club */}
         <div className="flex flex-col items-center gap-1.5 flex-1 min-w-0">
-          <ClubCrest logoUrl={clubLogoUrl} name={clubName} size={48} themed />
-          <span className="text-white/40 text-xs font-medium text-center leading-tight truncate w-full text-center">
-            {clubName}
+          <ClubCrest logoUrl={leftLogo} name={leftName} size={48} themed={leftThemed} />
+          <span className="text-white/40 text-xs font-medium text-center leading-tight truncate w-full">
+            {leftName}
           </span>
         </div>
 
         {/* Score + result */}
         <div className="flex flex-col items-center gap-1.5 flex-shrink-0 px-2">
           <div className="flex items-center gap-3 tabular-nums">
-            <span className="text-4xl font-black text-white leading-none">{match.myScore}</span>
+            <span className="text-4xl font-black text-white leading-none">{leftScore}</span>
             <span className="text-white/20 text-2xl font-light leading-none">–</span>
-            <span className="text-4xl font-black text-white leading-none">{match.opponentScore}</span>
+            <span className="text-4xl font-black text-white leading-none">{rightScore}</span>
           </div>
           <span
             className="px-3 py-0.5 rounded-full text-xs font-black tracking-widest"
@@ -209,11 +219,11 @@ function MatchCard({
           </span>
         </div>
 
-        {/* Opponent */}
+        {/* Right club */}
         <div className="flex flex-col items-center gap-1.5 flex-1 min-w-0">
-          <ClubCrest logoUrl={resolveOpponentLogo(match.opponent, match.opponentLogoUrl)} name={match.opponent} size={48} />
-          <span className="text-white/40 text-xs font-medium text-center leading-tight truncate w-full text-center">
-            {match.opponent}
+          <ClubCrest logoUrl={rightLogo} name={rightName} size={48} themed={rightThemed} />
+          <span className="text-white/40 text-xs font-medium text-center leading-tight truncate w-full">
+            {rightName}
           </span>
         </div>
       </div>

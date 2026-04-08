@@ -366,6 +366,15 @@ function LastMatches({
             : null;
           const shortOpp = m.opponent.length > 14 ? m.opponent.split(" ").slice(0, 2).join(" ") : m.opponent;
           const shortClub = clubName.length > 14 ? clubName.split(" ").slice(0, 2).join(" ") : clubName;
+          const isHome = m.location !== "fora";
+          const leftLogo = isHome ? clubLogoUrl : oppLogoUrl;
+          const leftName = isHome ? shortClub : shortOpp;
+          const leftThemed = isHome;
+          const leftScore = isHome ? m.myScore : m.opponentScore;
+          const rightLogo = isHome ? oppLogoUrl : clubLogoUrl;
+          const rightName = isHome ? shortOpp : shortClub;
+          const rightThemed = !isHome;
+          const rightScore = isHome ? m.opponentScore : m.myScore;
 
           return (
             <div
@@ -398,23 +407,23 @@ function LastMatches({
 
               {/* Middle: crests + score — perfectly symmetric 3 columns */}
               <div className="flex items-center justify-between px-3 py-4 gap-1">
-                {/* My club */}
+                {/* Left club */}
                 <div className="flex flex-col items-center gap-1.5" style={{ width: 52 }}>
-                  <MiniCrest logoUrl={clubLogoUrl} name={clubName} size={36} themed />
+                  <MiniCrest logoUrl={leftLogo} name={leftName} size={36} themed={leftThemed} />
                   <span
                     className="text-white/40 text-center leading-tight w-full"
                     style={{ fontSize: 10, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
                   >
-                    {shortClub}
+                    {leftName}
                   </span>
                 </div>
 
                 {/* Score + badge — center column */}
                 <div className="flex flex-col items-center gap-1.5 flex-1">
                   <span className="text-white font-black tabular-nums leading-none" style={{ fontSize: 24 }}>
-                    {m.myScore}
+                    {leftScore}
                     <span className="text-white/20 font-light" style={{ fontSize: 16, margin: "0 3px" }}>–</span>
-                    {m.opponentScore}
+                    {rightScore}
                   </span>
                   <span
                     className="px-2.5 py-0.5 rounded-full font-black"
@@ -424,14 +433,14 @@ function LastMatches({
                   </span>
                 </div>
 
-                {/* Opponent */}
+                {/* Right club */}
                 <div className="flex flex-col items-center gap-1.5" style={{ width: 52 }}>
-                  <MiniCrest logoUrl={oppLogoUrl} name={m.opponent} size={36} />
+                  <MiniCrest logoUrl={rightLogo} name={rightName} size={36} themed={rightThemed} />
                   <span
                     className="text-white/40 text-center leading-tight w-full"
                     style={{ fontSize: 10, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
                   >
-                    {shortOpp}
+                    {rightName}
                   </span>
                 </div>
               </div>
