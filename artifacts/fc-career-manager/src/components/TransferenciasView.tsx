@@ -1,6 +1,6 @@
-import { useState, useMemo, useRef, useEffect, useCallback } from "react";
+import { useState, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
-import type { PositionPtBr } from "@/lib/squadCache";
+import type { PositionPtBr, SquadPlayer } from "@/lib/squadCache";
 import type { TransferRecord } from "@/types/transfer";
 import {
   ROLE_LABELS,
@@ -12,7 +12,7 @@ import {
   generateTransferId,
 } from "@/lib/transferStorage";
 import { setPlayerStats, defaultStats } from "@/lib/playerStatsStorage";
-import { getCachedClubList, getApiKey } from "@/lib/clubListCache";
+import { getCachedClubList } from "@/lib/clubListCache";
 import { searchStaticClubs } from "@/lib/staticClubList";
 
 const ALL_POSITIONS: PositionPtBr[] = [
@@ -54,14 +54,6 @@ function formatFee(fee: number): string {
   return `€${(fee * 1000).toFixed(0)}k`;
 }
 
-function mapApiPositionToPtBr(pos: string): PositionPtBr {
-  const p = (pos ?? "").toLowerCase();
-  if (p.includes("goalkeeper")) return "GOL";
-  if (p.includes("defender")) return "ZAG";
-  if (p.includes("midfielder")) return "MC";
-  if (p.includes("attacker") || p.includes("forward")) return "CA";
-  return "MC";
-}
 
 function ClubBadge({ src, name, size = 24 }: { src?: string | null; name: string; size?: number }) {
   const [err, setErr] = useState(false);
@@ -107,65 +99,34 @@ function PlayerFace({ src, name, size = 40 }: { src: string; name: string; size?
 function PlayerAutocomplete({
   value,
   photo,
+  allPlayers,
   onChange,
   onSelect,
 }: {
   value: string;
   photo: string;
+  allPlayers: SquadPlayer[];
   onChange: (name: string) => void;
   onSelect: (p: PlayerSuggestion) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState<PlayerSuggestion[]>([]);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const apiKey = getApiKey();
 
-  const search = useCallback(async (q: string) => {
-    if (!q.trim() || q.trim().length < 3) { setResults([]); return; }
-    setLoading(true);
-    try {
-      if (apiKey) {
-        const res = await fetch(
-          `https://v3.football.api-sports.io/players?search=${encodeURIComponent(q.trim())}&season=2024`,
-          { headers: { "x-apisports-key": apiKey }, signal: AbortSignal.timeout(6000) }
-        );
-        if (res.ok) {
-          const data = await res.json();
-          const players: PlayerSuggestion[] = (data.response ?? []).slice(0, 8).map((item: Record<string, unknown>) => {
-            const pl = item.player as Record<string, unknown>;
-            const stats = (item.statistics as Record<string, unknown>[])?.[0] ?? {};
-            const games = (stats.games as Record<string, unknown>) ?? {};
-            return {
-              id: pl.id as number,
-              name: pl.name as string,
-              photo: pl.photo as string ?? "",
-              age: pl.age as number ?? 0,
-              nationality: pl.nationality as string ?? "",
-              position: games.position as string ?? "",
-            };
-          });
-          setResults(players);
-          setLoading(false);
-          return;
-        }
-      }
-    } catch { /* fallthrough */ }
-    setLoading(false);
-    setResults([]);
-  }, [apiKey]);
-
-  const handleChange = (v: string) => {
-    onChange(v);
-    setOpen(true);
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => search(v), 300);
-  };
-
-  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
-
-  const inputClass = "w-full pl-12 pr-3 py-2.5 rounded-xl text-white text-sm focus:outline-none glass placeholder:text-white/20";
+  const results = useMemo<PlayerSuggestion[]>(() => {
+    const q = value.trim().toLowerCase();
+    if (!q || q.length < 2) return [];
+    return allPlayers
+      .filter((p) => p.name.toLowerCase().includes(q))
+      .slice(0, 8)
+      .map((p) => ({
+        id: p.id,
+        name: p.name,
+        photo: p.photo,
+        age: p.age,
+        nationality: "",
+        position: p.positionPtBr,
+      }));
+  }, [value, allPlayers]);
 
   return (
     <div className="relative">
@@ -176,18 +137,13 @@ function PlayerAutocomplete({
         ref={inputRef}
         type="text"
         value={value}
-        onChange={(e) => handleChange(e.target.value)}
-        onFocus={() => { setOpen(true); if (value.trim().length >= 3) search(value); }}
+        onChange={(e) => { onChange(e.target.value); setOpen(true); }}
+        onFocus={() => setOpen(true)}
         onBlur={() => setTimeout(() => setOpen(false), 180)}
         placeholder="Ex: Mikel Merino"
-        className={inputClass}
+        className="w-full pl-12 pr-3 py-2.5 rounded-xl text-white text-sm focus:outline-none glass placeholder:text-white/20"
         autoFocus
       />
-      {loading && (
-        <div className="absolute right-3 top-1/2 -translate-y-1/2">
-          <div className="w-4 h-4 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
-        </div>
-      )}
       {open && results.length > 0 && (
         <div
           className="absolute z-50 left-0 right-0 mt-1 rounded-2xl overflow-hidden shadow-2xl"
@@ -198,24 +154,24 @@ function PlayerAutocomplete({
               key={pl.id}
               type="button"
               onMouseDown={(e) => e.preventDefault()}
-              onClick={() => { onSelect(pl); setOpen(false); setResults([]); }}
+              onClick={() => { onSelect(pl); setOpen(false); }}
               className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/5 transition-colors text-left"
             >
               <PlayerFace src={pl.photo} name={pl.name} size={36} />
               <div className="flex-1 min-w-0">
                 <p className="text-white text-sm font-bold truncate">{pl.name}</p>
-                <p className="text-white/35 text-xs">{pl.nationality}{pl.position ? ` · ${pl.position}` : ""}{pl.age ? ` · ${pl.age} anos` : ""}</p>
+                <p className="text-white/35 text-xs">{pl.position}{pl.age ? ` · ${pl.age} anos` : ""}</p>
               </div>
             </button>
           ))}
         </div>
       )}
-      {open && !loading && results.length === 0 && value.trim().length >= 3 && apiKey && (
+      {open && results.length === 0 && value.trim().length >= 2 && (
         <div
           className="absolute z-50 left-0 right-0 mt-1 rounded-xl px-4 py-3"
           style={{ background: "rgba(12,12,18,0.98)", border: "1px solid rgba(255,255,255,0.08)" }}
         >
-          <p className="text-white/30 text-xs">Nenhum jogador encontrado</p>
+          <p className="text-white/30 text-xs">Nenhum jogador encontrado no elenco</p>
         </div>
       )}
     </div>
@@ -385,6 +341,7 @@ interface TransferenciasViewProps {
   season: string;
   clubName: string;
   clubLogoUrl?: string | null;
+  allPlayers: SquadPlayer[];
   onTransferAdded: (transfer: TransferRecord) => void;
 }
 
@@ -394,6 +351,7 @@ export function TransferenciasView({
   season,
   clubName,
   clubLogoUrl,
+  allPlayers,
   onTransferAdded,
 }: TransferenciasViewProps) {
   const [showForm, setShowForm] = useState(false);
@@ -540,6 +498,7 @@ export function TransferenciasView({
                 <PlayerAutocomplete
                   value={form.playerName}
                   photo={form.playerPhoto}
+                  allPlayers={allPlayers}
                   onChange={(v) => set("playerName", v)}
                   onSelect={(p) => {
                     setForm((f) => ({
@@ -547,13 +506,10 @@ export function TransferenciasView({
                       playerName: p.name,
                       playerPhoto: p.photo,
                       playerAge: p.age ? String(p.age) : f.playerAge,
-                      playerPositionPtBr: p.position ? mapApiPositionToPtBr(p.position) : f.playerPositionPtBr,
+                      playerPositionPtBr: (p.position as PositionPtBr) || f.playerPositionPtBr,
                     }));
                   }}
                 />
-                {!getApiKey() && (
-                  <p className="text-white/20 text-xs mt-1">Configure a chave de API nas Configurações para buscar jogadores automaticamente.</p>
-                )}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
