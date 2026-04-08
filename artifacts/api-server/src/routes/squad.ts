@@ -45,6 +45,7 @@ router.get("/squad/:teamId", async (req, res) => {
       })),
       source: rows[0].source,
       cachedAt,
+      schemaVersion: rows[0].schemaVersion ?? null,
     });
   } catch (err) {
     console.error("GET /squad/:teamId error:", err);
@@ -63,9 +64,10 @@ router.put("/squad/:teamId", async (req, res) => {
       players?: SquadPlayerBody[];
       source?: string;
       cachedAt?: number;
+      schemaVersion?: string;
     };
 
-    const { players, source, cachedAt } = body;
+    const { players, source, cachedAt, schemaVersion } = body;
     if (!Array.isArray(players) || typeof source !== "string" || typeof cachedAt !== "number") {
       return res.status(400).json({ error: "players, source, and cachedAt required" });
     }
@@ -85,6 +87,7 @@ router.put("/squad/:teamId", async (req, res) => {
       playerNumber: p.number ?? null,
       source,
       cachedAt,
+      schemaVersion: schemaVersion ?? null,
     }));
 
     await db.transaction(async (tx) => {

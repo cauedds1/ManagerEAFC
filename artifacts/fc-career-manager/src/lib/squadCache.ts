@@ -3,7 +3,9 @@ import { getApiKey } from "./clubListCache";
 
 const API_BASE = "https://v3.football.api-sports.io";
 const MSMC_BASE = "https://api.msmc.cc/api/eafc";
-const CACHE_PREFIX = "fc-career-manager-squad-";
+const CACHE_VERSION = "v2";
+const BASE_CACHE_PREFIX = "fc-career-manager-squad-";
+const CACHE_PREFIX = `${BASE_CACHE_PREFIX}${CACHE_VERSION}-`;
 const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 export type PositionGroup =
@@ -186,8 +188,14 @@ async function readDbSquad(teamId: number): Promise<SquadResult | null> {
   try {
     const res = await fetch(`/api/squad/${teamId}`);
     if (res.status === 204 || !res.ok) return null;
-    const data = await res.json() as { players: SquadPlayer[]; source: string; cachedAt: number };
+    const data = await res.json() as {
+      players: SquadPlayer[];
+      source: string;
+      cachedAt: number;
+      schemaVersion?: string;
+    };
     if (!Array.isArray(data.players) || data.players.length === 0) return null;
+    if (data.schemaVersion !== CACHE_VERSION) return null; // schema desatualizado → cache miss
     return {
       players: reNormalizePlayers(data.players as SquadPlayer[]),
       source: data.source as SquadSource,
@@ -207,6 +215,7 @@ function writeDbSquad(teamId: number, result: SquadResult): void {
       players: result.players,
       source: result.source,
       cachedAt: result.cachedAt,
+      schemaVersion: CACHE_VERSION,
     }),
   }).catch(() => {});
 }
@@ -223,7 +232,8 @@ export function clearAllSquadCaches(): void {
   const keys: string[] = [];
   for (let i = 0; i < localStorage.length; i++) {
     const k = localStorage.key(i);
-    if (k && k.startsWith(CACHE_PREFIX)) keys.push(k);
+    // Remove todas as versões (prefixo base) para não deixar chaves órfãs de versões antigas
+    if (k && k.startsWith(BASE_CACHE_PREFIX)) keys.push(k);
   }
   for (const k of keys) localStorage.removeItem(k);
 }
