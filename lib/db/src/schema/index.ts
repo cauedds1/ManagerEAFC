@@ -23,7 +23,6 @@ export const squadPlayersTable = pgTable(
     playerNumber: integer("player_number"),
     source: text("source").notNull(),
     cachedAt: bigint("cached_at", { mode: "number" }).notNull(),
-    schemaVersion: text("schema_version"),
   },
   (table) => [primaryKey({ columns: [table.teamId, table.playerId] })],
 );

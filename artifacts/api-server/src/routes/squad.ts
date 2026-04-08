@@ -33,6 +33,9 @@ router.get("/squad/:teamId", async (req, res) => {
     const cachedAt = Number(rows[0].cachedAt);
     if (Date.now() - cachedAt > SQUAD_TTL_MS) return res.status(204).end();
 
+    // schemaVersion is encoded in source as "api-football@v2" or "fc26@v2"
+    const [rawSource, schemaVersion = null] = rows[0].source.split("@");
+
     return res.json({
       players: rows.map((r) => ({
         id: r.playerId,
@@ -43,9 +46,9 @@ router.get("/squad/:teamId", async (req, res) => {
         photo: r.photo,
         number: r.playerNumber ?? undefined,
       })),
-      source: rows[0].source,
+      source: rawSource,
       cachedAt,
-      schemaVersion: rows[0].schemaVersion ?? null,
+      schemaVersion,
     });
   } catch (err) {
     console.error("GET /squad/:teamId error:", err);
@@ -76,6 +79,9 @@ router.put("/squad/:teamId", async (req, res) => {
       return res.status(400).json({ error: "players array must not be empty" });
     }
 
+    // Encode schemaVersion into the source column: "api-football@v2" / "fc26@v2"
+    const storedSource = schemaVersion ? `${source}@${schemaVersion}` : source;
+
     const values = players.map((p) => ({
       teamId,
       playerId: p.id,
@@ -85,9 +91,8 @@ router.put("/squad/:teamId", async (req, res) => {
       positionPtBr: p.positionPtBr,
       photo: p.photo ?? "",
       playerNumber: p.number ?? null,
-      source,
+      source: storedSource,
       cachedAt,
-      schemaVersion: schemaVersion ?? null,
     }));
 
     await db.transaction(async (tx) => {
