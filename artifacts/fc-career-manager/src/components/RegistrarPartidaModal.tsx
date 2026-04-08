@@ -934,6 +934,7 @@ export function RegistrarPartidaModal({
       },
       motmPlayerId: draft.motmPlayerId ?? undefined,
       tablePositionBefore: draft.tablePosition ? Number(draft.tablePosition) : undefined,
+      opponentLogoUrl: draft.opponentLogoUrl ?? undefined,
       createdAt: Date.now(),
     };
     addMatch(careerId, match);

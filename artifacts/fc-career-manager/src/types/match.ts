@@ -66,6 +66,7 @@ export interface MatchRecord {
   matchStats: MatchStats;
   motmPlayerId?: number;
   tablePositionBefore?: number;
+  opponentLogoUrl?: string;
   createdAt: number;
 }
 
