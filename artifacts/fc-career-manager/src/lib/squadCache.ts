@@ -6,8 +6,22 @@ const MSMC_BASE = "https://api.msmc.cc/api/eafc";
 const CACHE_PREFIX = "fc-career-manager-squad-";
 const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
-export type PositionGroup = "Goalkeeper" | "Defender" | "Midfielder" | "Attacker";
-export type PositionPtBr = "GOL" | "ZAG" | "VOL" | "ATA";
+export type PositionGroup =
+  | "Goalkeeper"
+  | "CentreBack"
+  | "FullBack"
+  | "DefensiveMid"
+  | "CentralMid"
+  | "AttackingMid"
+  | "LeftWing"
+  | "RightWing"
+  | "SecondStriker"
+  | "Striker";
+
+export type PositionPtBr = "GOL" | "ZAG" | "LAT" | "VOL" | "MC" | "MEI" | "PE" | "PD" | "SA" | "CA";
+
+export type FormationGroup = "GOL" | "ZAG" | "VOL" | "ATA";
+
 export type SquadSource = "api-football" | "fc26";
 
 export interface SquadPlayer {
@@ -28,25 +42,89 @@ export interface SquadResult {
 
 const POSITION_PT_BR: Record<PositionGroup, PositionPtBr> = {
   Goalkeeper: "GOL",
-  Defender: "ZAG",
-  Midfielder: "VOL",
-  Attacker: "ATA",
+  CentreBack: "ZAG",
+  FullBack: "LAT",
+  DefensiveMid: "VOL",
+  CentralMid: "MC",
+  AttackingMid: "MEI",
+  LeftWing: "PE",
+  RightWing: "PD",
+  SecondStriker: "SA",
+  Striker: "CA",
+};
+
+export const FORMATION_GROUP: Record<PositionPtBr, FormationGroup> = {
+  GOL: "GOL",
+  ZAG: "ZAG",
+  LAT: "ZAG",
+  VOL: "VOL",
+  MC: "VOL",
+  MEI: "VOL",
+  PE: "VOL",
+  PD: "VOL",
+  SA: "ATA",
+  CA: "ATA",
 };
 
 const POSITION_SORT: Record<PositionGroup, number> = {
   Goalkeeper: 0,
-  Defender: 1,
-  Midfielder: 2,
-  Attacker: 3,
+  CentreBack: 1,
+  FullBack: 2,
+  DefensiveMid: 3,
+  CentralMid: 4,
+  AttackingMid: 5,
+  LeftWing: 6,
+  RightWing: 7,
+  SecondStriker: 8,
+  Striker: 9,
 };
 
 function normalizePosToGroup(pos: string): PositionGroup {
   const p = (pos ?? "").toUpperCase().trim();
-  if (p === "GOALKEEPER" || p === "GK") return "Goalkeeper";
-  if (p === "DEFENDER" || ["CB", "LB", "RB", "LWB", "RWB", "SW", "WB"].includes(p)) return "Defender";
-  if (p === "MIDFIELDER" || ["CM", "CDM", "CAM", "LM", "RM", "DM", "AM", "DMF", "AMF"].includes(p)) return "Midfielder";
-  if (p === "ATTACKER" || ["ST", "LW", "RW", "CF", "SS", "FW", "WF"].includes(p)) return "Attacker";
-  return "Midfielder"; // safe fallback
+
+  // Goalkeeper
+  if (["GOALKEEPER", "GK", "GOL"].includes(p)) return "Goalkeeper";
+
+  // Full backs (lateral)
+  if (["LB", "RB", "LWB", "RWB", "WB", "LAT"].includes(p)) return "FullBack";
+
+  // Centre backs
+  if (["CB", "SW", "DEFENDER", "CENTREBACK", "CENTREBACK"].includes(p)) return "CentreBack";
+
+  // Defensive midfielders (volante)
+  if (["CDM", "DM", "DMF", "VOL"].includes(p)) return "DefensiveMid";
+
+  // Left wing / left mid (ponta esquerda)
+  if (["LW", "LM", "PE", "ME"].includes(p)) return "LeftWing";
+
+  // Right wing / right mid (ponta direita)
+  if (["RW", "RM", "PD", "MD"].includes(p)) return "RightWing";
+
+  // Attacking midfielders (meia ofensivo)
+  if (["CAM", "AM", "AMF", "MEI"].includes(p)) return "AttackingMid";
+
+  // Central midfielders — default for broad "MIDFIELDER"
+  if (["CM", "MC", "MIDFIELDER"].includes(p)) return "CentralMid";
+
+  // Second striker / false 9 (segundo atacante)
+  if (["CF", "SS", "SA"].includes(p)) return "SecondStriker";
+
+  // Striker / centre forward (centroavante)
+  if (["ST", "FW", "WF", "ATTACKER", "CA", "ATA"].includes(p)) return "Striker";
+
+  // Backward compat: old granular group names stored in cache
+  if (p === "CENTREBACK" || p === "CENTRECBACK") return "CentreBack";
+  if (p === "FULLBACK") return "FullBack";
+  if (p === "DEFENSIVEMID") return "DefensiveMid";
+  if (p === "CENTRALMID") return "CentralMid";
+  if (p === "ATTACKINGMID") return "AttackingMid";
+  if (p === "LEFTWING") return "LeftWing";
+  if (p === "RIGHTWING") return "RightWing";
+  if (p === "SECONDSTRIKER") return "SecondStriker";
+  if (p === "STRIKER") return "Striker";
+  if (p === "GOALKEEPER") return "Goalkeeper";
+
+  return "CentralMid"; // safe fallback
 }
 
 function sortSquad(players: SquadPlayer[]): SquadPlayer[] {

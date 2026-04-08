@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { SquadPlayer, PositionPtBr } from "@/lib/squadCache";
+import { SquadPlayer, PositionPtBr, FormationGroup, FORMATION_GROUP } from "@/lib/squadCache";
 
 interface PitchPlayerData {
   id: number;
@@ -12,8 +12,14 @@ interface PitchPlayerData {
 const POS_COLOR: Record<PositionPtBr, { fill: string; stroke: string; text: string }> = {
   GOL: { fill: "#f59e0b", stroke: "#fbbf24", text: "#1c1000" },
   ZAG: { fill: "#3b82f6", stroke: "#60a5fa", text: "#e0eeff" },
+  LAT: { fill: "#0ea5e9", stroke: "#38bdf8", text: "#001e2e" },
   VOL: { fill: "#10b981", stroke: "#34d399", text: "#003322" },
-  ATA: { fill: "#ef4444", stroke: "#f87171", text: "#ffe0e0" },
+  MC:  { fill: "#14b8a6", stroke: "#2dd4bf", text: "#002920" },
+  MEI: { fill: "#84cc16", stroke: "#a3e635", text: "#1a2600" },
+  PE:  { fill: "#f97316", stroke: "#fb923c", text: "#2a0e00" },
+  PD:  { fill: "#f97316", stroke: "#fb923c", text: "#2a0e00" },
+  SA:  { fill: "#f43f5e", stroke: "#fb7185", text: "#2d0010" },
+  CA:  { fill: "#ef4444", stroke: "#f87171", text: "#ffe0e0" },
 };
 
 const FORMATION_POSITIONS: [number, number][] = [
@@ -23,12 +29,6 @@ const FORMATION_POSITIONS: [number, number][] = [
   [65, 130], [160, 130], [255, 130],
 ];
 
-const SLOT_POSITION: PositionPtBr[] = [
-  "GOL",
-  "ZAG", "ZAG", "ZAG", "ZAG",
-  "VOL", "VOL", "VOL",
-  "ATA", "ATA", "ATA",
-];
 
 function getInitials(name: string): string {
   const parts = name.trim().split(" ");
@@ -49,22 +49,23 @@ function pickBestEleven(players: PitchPlayerData[]): (PitchPlayerData | null)[] 
   const slots: (PitchPlayerData | null)[] = Array(11).fill(null);
   const used = new Set<number>();
 
-  const byPos: Record<PositionPtBr, PitchPlayerData[]> = {
+  const byGroup: Record<FormationGroup, PitchPlayerData[]> = {
     GOL: [], ZAG: [], VOL: [], ATA: [],
   };
   for (const p of players) {
-    byPos[p.positionPtBr].push(p);
+    const fg = FORMATION_GROUP[p.positionPtBr] ?? "VOL";
+    byGroup[fg].push(p);
   }
 
-  const targets: [number[], PositionPtBr][] = [
+  const targets: [number[], FormationGroup][] = [
     [[0], "GOL"],
     [[1, 2, 3, 4], "ZAG"],
     [[5, 6, 7], "VOL"],
     [[8, 9, 10], "ATA"],
   ];
 
-  for (const [slotIdxs, pos] of targets) {
-    const available = byPos[pos].filter((p) => !used.has(p.id));
+  for (const [slotIdxs, group] of targets) {
+    const available = byGroup[group].filter((p) => !used.has(p.id));
     for (let i = 0; i < slotIdxs.length && i < available.length; i++) {
       slots[slotIdxs[i]] = available[i];
       used.add(available[i].id);
@@ -82,11 +83,11 @@ function pickBestEleven(players: PitchPlayerData[]): (PitchPlayerData | null)[] 
   return slots;
 }
 
-function PlayerCircle({ x, y, player, slotPos }: { x: number; y: number; player: PitchPlayerData; slotPos: PositionPtBr }) {
+function PlayerCircle({ x, y, player }: { x: number; y: number; player: PitchPlayerData }) {
   const [photoState, setPhotoState] = useState<"idle" | "loaded" | "error">(
     player.photo ? "idle" : "error"
   );
-  const colors = POS_COLOR[slotPos];
+  const colors = POS_COLOR[player.positionPtBr] ?? POS_COLOR.MC;
   const radius = 20;
   const clipId = `clip-p-${player.id}`;
   const showPhoto = Boolean(player.photo) && photoState !== "error";
@@ -127,7 +128,7 @@ function PlayerCircle({ x, y, player, slotPos }: { x: number; y: number; player:
             <>
               <rect x={x - 11} y={y + radius - 9} width={22} height={11} rx={4} fill={colors.fill} stroke={colors.stroke} strokeWidth={0.8} opacity={0.95} />
               <text x={x} y={y + radius - 2} textAnchor="middle" dominantBaseline="middle" fill={colors.text} fontSize={7} fontWeight="900" fontFamily="Inter, sans-serif">
-                {slotPos}
+                {player.positionPtBr}
               </text>
             </>
           )}
@@ -224,7 +225,7 @@ export function FootballPitch({ players, loading, className }: FootballPitchProp
           {slots.map((player, i) => {
             if (!player) return null;
             const [x, y] = FORMATION_POSITIONS[i];
-            return <PlayerCircle key={`${player.id}-${i}`} x={x} y={y} player={player} slotPos={SLOT_POSITION[i]} />;
+            return <PlayerCircle key={`${player.id}-${i}`} x={x} y={y} player={player} />;
           })}
         </svg>
       )}

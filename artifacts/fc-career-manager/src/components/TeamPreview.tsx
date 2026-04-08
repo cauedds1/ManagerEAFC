@@ -12,10 +12,16 @@ interface TeamPreviewProps {
 }
 
 const POS_COLOR: Record<string, { bg: string; color: string }> = {
-  GOL: { bg: "rgba(245,158,11,0.18)", color: "#f59e0b" },
-  ZAG: { bg: "rgba(59,130,246,0.18)", color: "#60a5fa" },
-  VOL: { bg: "rgba(16,185,129,0.18)", color: "#34d399" },
-  ATA: { bg: "rgba(239,68,68,0.18)", color: "#f87171" },
+  GOL: { bg: "rgba(245,158,11,0.18)",  color: "#f59e0b" },
+  ZAG: { bg: "rgba(59,130,246,0.18)",  color: "#60a5fa" },
+  LAT: { bg: "rgba(14,165,233,0.18)",  color: "#38bdf8" },
+  VOL: { bg: "rgba(16,185,129,0.18)",  color: "#34d399" },
+  MC:  { bg: "rgba(20,184,166,0.18)",  color: "#2dd4bf" },
+  MEI: { bg: "rgba(132,204,22,0.18)",  color: "#a3e635" },
+  PE:  { bg: "rgba(249,115,22,0.18)",  color: "#fb923c" },
+  PD:  { bg: "rgba(249,115,22,0.18)",  color: "#fb923c" },
+  SA:  { bg: "rgba(244,63,94,0.18)",   color: "#fb7185" },
+  CA:  { bg: "rgba(239,68,68,0.18)",   color: "#f87171" },
 };
 
 function BenchPlayerRow({ player, index }: { player: SquadPlayer; index: number }) {
