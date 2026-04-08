@@ -321,23 +321,30 @@ function LastMatches({
 }) {
   const last5 = [...matches].sort((a, b) => b.createdAt - a.createdAt).slice(0, 5);
 
+  const LOCATION_LABEL: Record<string, string> = { casa: "Casa", fora: "Fora", neutro: "Neutro" };
+  const LOCATION_ICON: Record<string, string> = { casa: "🏠", fora: "✈️", neutro: "⚖️" };
+
   if (matches.length === 0) {
     return (
       <div className="glass rounded-2xl p-5 flex flex-col gap-3">
         <SectionTitle>Últimas Partidas</SectionTitle>
-        <div className="grid grid-cols-5 gap-2">
+        <div className="flex gap-3 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
           {Array.from({ length: 5 }).map((_, i) => (
             <div
               key={i}
-              className="rounded-xl flex flex-col items-center justify-center gap-2 py-5"
-              style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}
+              className="rounded-2xl flex-shrink-0 flex flex-col items-center justify-center gap-3 p-4"
+              style={{
+                width: 136, minHeight: 168,
+                background: "rgba(255,255,255,0.025)",
+                border: "1px dashed rgba(255,255,255,0.07)",
+              }}
             >
-              <div className="flex items-center gap-1.5">
-                <div className="w-6 h-6 rounded-full" style={{ background: "rgba(255,255,255,0.06)" }} />
-                <div className="w-6 h-6 rounded-full" style={{ background: "rgba(255,255,255,0.04)" }} />
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full" style={{ background: "rgba(255,255,255,0.06)" }} />
+                <div className="w-8 h-8 rounded-full" style={{ background: "rgba(255,255,255,0.04)" }} />
               </div>
-              <div className="w-8 h-2 rounded" style={{ background: "rgba(255,255,255,0.05)" }} />
-              <div className="w-5 h-1.5 rounded-full" style={{ background: "rgba(255,255,255,0.04)" }} />
+              <div className="w-14 h-3 rounded" style={{ background: "rgba(255,255,255,0.05)" }} />
+              <div className="w-8 h-2 rounded-full" style={{ background: "rgba(255,255,255,0.04)" }} />
             </div>
           ))}
         </div>
@@ -346,58 +353,91 @@ function LastMatches({
     );
   }
 
-  const filled = [...last5];
-  while (filled.length < 5) filled.unshift(null as unknown as MatchRecord);
-
   return (
     <div className="glass rounded-2xl p-5 flex flex-col gap-3">
       <SectionTitle>Últimas Partidas</SectionTitle>
-      <div className="grid grid-cols-5 gap-2">
-        {filled.map((m, i) => {
-          if (!m) {
-            return (
-              <div
-                key={`empty-${i}`}
-                className="rounded-xl flex flex-col items-center justify-center gap-2 py-5"
-                style={{ background: "rgba(255,255,255,0.02)", border: "1px dashed rgba(255,255,255,0.05)" }}
-              >
-                <div className="w-5 h-5 rounded-full" style={{ background: "rgba(255,255,255,0.05)" }} />
-              </div>
-            );
-          }
+      <div className="flex gap-3 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
+        {last5.map((m) => {
           const result = getMatchResult(m.myScore, m.opponentScore);
           const rs = RESULT_STYLE[result];
           const oppLogoUrl = resolveOpponentLogo(m.opponent, m.opponentLogoUrl);
+          const dateStr = m.date
+            ? new Date(m.date + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })
+            : null;
+          const shortOpp = m.opponent.length > 14 ? m.opponent.split(" ").slice(0, 2).join(" ") : m.opponent;
+          const shortClub = clubName.length > 14 ? clubName.split(" ").slice(0, 2).join(" ") : clubName;
+
           return (
             <div
               key={m.id}
-              className="rounded-xl flex flex-col items-center gap-2 py-3 px-1.5"
+              className="rounded-2xl flex-shrink-0 flex flex-col overflow-hidden"
               style={{
-                background: rs.bg,
+                width: 136,
                 borderTop: `1px solid ${rs.border}`,
                 borderRight: `1px solid ${rs.border}`,
                 borderBottom: `1px solid ${rs.border}`,
-                borderLeft: `2px solid ${rs.color}`,
+                borderLeft: `3px solid ${rs.color}`,
+                background: `linear-gradient(160deg, ${rs.bg} 0%, rgba(0,0,0,0.15) 100%)`,
               }}
             >
-              {/* Both crests side by side */}
-              <div className="flex items-center gap-1.5">
-                <MiniCrest logoUrl={clubLogoUrl} name={clubName} size={24} themed />
-                <MiniCrest logoUrl={oppLogoUrl} name={m.opponent} size={24} />
+              {/* Header: tournament + date */}
+              <div
+                className="flex items-center justify-between px-3 pt-2.5 pb-1.5 gap-1"
+                style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}
+              >
+                <span
+                  className="text-xs font-semibold truncate leading-tight"
+                  style={{ color: rs.color, maxWidth: 82 }}
+                  title={m.tournament || "Amistoso"}
+                >
+                  {m.tournament || "Amistoso"}
+                </span>
+                {dateStr && (
+                  <span className="text-white/30 text-xs flex-shrink-0">{dateStr}</span>
+                )}
               </div>
 
-              {/* Score */}
-              <span className="text-sm font-black tabular-nums text-white leading-none tracking-tight">
-                {m.myScore}–{m.opponentScore}
-              </span>
+              {/* Middle: crests + score */}
+              <div className="flex flex-col items-center gap-2 px-3 py-3 flex-1">
+                {/* Crests row */}
+                <div className="flex items-center justify-between w-full">
+                  <div className="flex flex-col items-center gap-1" style={{ width: 40 }}>
+                    <MiniCrest logoUrl={clubLogoUrl} name={clubName} size={32} themed />
+                    <span className="text-white/35 text-center leading-tight" style={{ fontSize: 9, maxWidth: 40, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{shortClub}</span>
+                  </div>
 
-              {/* Result pill */}
-              <span
-                className="px-2 py-0.5 rounded-full text-xs font-black"
-                style={{ background: `rgba(0,0,0,0.25)`, color: rs.color }}
+                  {/* Score */}
+                  <div className="flex flex-col items-center gap-0.5">
+                    <span className="text-white font-black tabular-nums leading-none" style={{ fontSize: 22 }}>
+                      {m.myScore}<span className="text-white/25 mx-0.5" style={{ fontSize: 14 }}>–</span>{m.opponentScore}
+                    </span>
+                    <span
+                      className="px-2 py-0.5 rounded-full font-black"
+                      style={{ background: "rgba(0,0,0,0.3)", color: rs.color, fontSize: 10 }}
+                    >
+                      {rs.label}
+                    </span>
+                  </div>
+
+                  <div className="flex flex-col items-center gap-1" style={{ width: 40 }}>
+                    <MiniCrest logoUrl={oppLogoUrl} name={m.opponent} size={32} />
+                    <span className="text-white/35 text-center leading-tight" style={{ fontSize: 9, maxWidth: 40, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{shortOpp}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer: stage + location */}
+              <div
+                className="flex items-center justify-between px-3 py-2 gap-1"
+                style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}
               >
-                {rs.label}
-              </span>
+                <span className="text-white/25 text-xs truncate leading-tight" style={{ maxWidth: 76 }}>
+                  {m.stage || "—"}
+                </span>
+                <span className="text-white/30 flex-shrink-0" style={{ fontSize: 11 }} title={LOCATION_LABEL[m.location]}>
+                  {LOCATION_ICON[m.location]}
+                </span>
+              </div>
             </div>
           );
         })}
