@@ -1000,37 +1000,56 @@ export function RegistrarPartidaModal({
             className="rounded-2xl px-4 py-3"
             style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
           >
-            <div className="flex items-center gap-3">
-              {/* My club */}
-              <div className="flex flex-col items-center gap-1 flex-shrink-0" style={{ width: 52 }}>
-                <ClubBadge src={clubLogoUrl ?? null} name={clubName} size={36} />
-                <span className="text-white/35 text-center font-medium leading-tight w-full truncate" style={{ fontSize: 10 }}>{clubName}</span>
-              </div>
+            {(() => {
+              const isHome = draft.location !== "fora";
+              const leftBadge = isHome
+                ? <ClubBadge src={clubLogoUrl ?? null} name={clubName} size={36} />
+                : <ClubBadge src={draft.opponentLogoUrl ?? null} name={draft.opponent || "?"} size={36} />;
+              const leftName  = isHome ? clubName : (draft.opponent || "Adversário");
+              const rightBadge = isHome
+                ? <ClubBadge src={draft.opponentLogoUrl ?? null} name={draft.opponent || "?"} size={36} />
+                : <ClubBadge src={clubLogoUrl ?? null} name={clubName} size={36} />;
+              const rightName  = isHome ? (draft.opponent || "Adversário") : clubName;
+              const leftInput  = isHome
+                ? <ScoreInput value={draft.myScore} onChange={(v) => onChange({ myScore: v })} />
+                : <ScoreInput value={draft.opponentScore} onChange={(v) => onChange({ opponentScore: v })} />;
+              const rightInput = isHome
+                ? <ScoreInput value={draft.opponentScore} onChange={(v) => onChange({ opponentScore: v })} />
+                : <ScoreInput value={draft.myScore} onChange={(v) => onChange({ myScore: v })} />;
+              return (
+                <div className="flex items-center gap-3">
+                  {/* Left team */}
+                  <div className="flex flex-col items-center gap-1 flex-shrink-0" style={{ width: 52 }}>
+                    {leftBadge}
+                    <span className="text-white/35 text-center font-medium leading-tight w-full truncate" style={{ fontSize: 10 }}>{leftName}</span>
+                  </div>
 
-              {/* Score inputs + result */}
-              <div className="flex flex-col items-center gap-1.5 flex-1">
-                <div className="flex items-center gap-2">
-                  <ScoreInput value={draft.myScore} onChange={(v) => onChange({ myScore: v })} />
-                  <span className="text-white/20 font-light" style={{ fontSize: 22 }}>–</span>
-                  <ScoreInput value={draft.opponentScore} onChange={(v) => onChange({ opponentScore: v })} />
+                  {/* Score inputs + result */}
+                  <div className="flex flex-col items-center gap-1.5 flex-1">
+                    <div className="flex items-center gap-2">
+                      {leftInput}
+                      <span className="text-white/20 font-light" style={{ fontSize: 22 }}>–</span>
+                      {rightInput}
+                    </div>
+                    <span
+                      className="text-xs font-bold px-3 py-0.5 rounded-full"
+                      style={{
+                        background: draft.myScore > draft.opponentScore ? "rgba(16,185,129,0.15)" : draft.myScore < draft.opponentScore ? "rgba(239,68,68,0.15)" : "rgba(148,163,184,0.1)",
+                        color: resultColor,
+                      }}
+                    >
+                      {draft.myScore > draft.opponentScore ? "Vitória" : draft.myScore < draft.opponentScore ? "Derrota" : "Empate"}
+                    </span>
+                  </div>
+
+                  {/* Right team */}
+                  <div className="flex flex-col items-center gap-1 flex-shrink-0" style={{ width: 52 }}>
+                    {rightBadge}
+                    <span className="text-white/35 text-center font-medium leading-tight w-full truncate" style={{ fontSize: 10 }}>{rightName}</span>
+                  </div>
                 </div>
-                <span
-                  className="text-xs font-bold px-3 py-0.5 rounded-full"
-                  style={{
-                    background: draft.myScore > draft.opponentScore ? "rgba(16,185,129,0.15)" : draft.myScore < draft.opponentScore ? "rgba(239,68,68,0.15)" : "rgba(148,163,184,0.1)",
-                    color: resultColor,
-                  }}
-                >
-                  {draft.myScore > draft.opponentScore ? "Vitória" : draft.myScore < draft.opponentScore ? "Derrota" : "Empate"}
-                </span>
-              </div>
-
-              {/* Opponent */}
-              <div className="flex flex-col items-center gap-1 flex-shrink-0" style={{ width: 52 }}>
-                <ClubBadge src={draft.opponentLogoUrl ?? null} name={draft.opponent || "?"} size={36} />
-                <span className="text-white/35 text-center font-medium leading-tight w-full truncate" style={{ fontSize: 10 }}>{draft.opponent || "Adversário"}</span>
-              </div>
-            </div>
+              );
+            })()}
           </div>
 
           {/* Data + Local */}
