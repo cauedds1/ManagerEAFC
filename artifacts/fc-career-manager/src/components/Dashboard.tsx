@@ -306,7 +306,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
 
       <div
         className="sticky top-0 z-30"
-        style={{ background: "var(--app-bg)", borderBottom: "1px solid var(--surface-border)" }}
+        style={{ background: "rgba(var(--club-primary-rgb), 0.06)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", borderBottom: "1px solid var(--surface-border)" }}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex">

@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useMemo, useEffect } from "react";
+import { createPortal } from "react-dom";
 import type { SquadPlayer } from "@/lib/squadCache";
 import type {
   MatchRecord,
@@ -843,21 +844,21 @@ export function RegistrarPartidaModal({
     return () => document.removeEventListener("keydown", handler);
   }, [onClose]);
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+  return createPortal(
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
       <div
         className="absolute inset-0"
-        style={{ background: "rgba(0,0,0,0.65)", backdropFilter: "blur(4px)" }}
+        style={{ background: "rgba(0,0,0,0.45)", backdropFilter: "blur(4px)" }}
         onClick={onClose}
       />
 
       <div
-        className="relative z-10 w-full sm:max-w-2xl flex flex-col rounded-t-3xl sm:rounded-2xl"
+        className="relative z-10 w-full sm:max-w-2xl flex flex-col rounded-2xl"
         style={{
           background: "rgba(12,12,20,0.97)",
           border: "1px solid rgba(255,255,255,0.1)",
           boxShadow: "0 24px 64px rgba(0,0,0,0.6)",
-          maxHeight: "92vh",
+          maxHeight: "90vh",
         }}
       >
         <div
@@ -1226,6 +1227,7 @@ export function RegistrarPartidaModal({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
