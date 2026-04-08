@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useMemo, useEffect } from "react";
 import type { SquadPlayer } from "@/lib/squadCache";
 import type {
   MatchRecord,
@@ -6,21 +6,24 @@ import type {
   MatchLocation,
   GoalEntry,
 } from "@/types/match";
-import {
-  LOCATION_LABELS,
-  LOCATION_ICONS,
-} from "@/types/match";
+import { LOCATION_LABELS, LOCATION_ICONS } from "@/types/match";
 import {
   addMatch,
   generateMatchId,
   generateGoalId,
   applyMatchToPlayerStats,
+  getMatches,
 } from "@/lib/matchStorage";
+import { getCustomLineup } from "@/lib/lineupStorage";
+import { getCachedClubList } from "@/lib/clubListCache";
+import { pickBestEleven } from "@/components/FootballPitch";
+import type { ClubEntry } from "@/types/club";
 
 interface Props {
   careerId: string;
   season: string;
   clubName: string;
+  clubLogoUrl?: string | null;
   allPlayers: SquadPlayer[];
   onMatchAdded: (match: MatchRecord) => void;
   onClose: () => void;
@@ -28,6 +31,7 @@ interface Props {
 
 interface MatchDraft {
   opponent: string;
+  opponentLogoUrl: string | null;
   date: string;
   location: MatchLocation;
   tournament: string;
@@ -77,6 +81,95 @@ function todayIso(): string {
   return new Date().toISOString().split("T")[0];
 }
 
+function buildInitialDraft(careerId: string): Pick<MatchDraft, "date" | "tournament" | "stage"> {
+  const matches = getMatches(careerId);
+  if (matches.length === 0) return { date: todayIso(), tournament: "", stage: "" };
+  const last = matches[matches.length - 1];
+  const date = last.date ?? todayIso();
+  const tournament = last.tournament ?? "";
+  let stage = "";
+  if (tournament) {
+    const sameTournament = matches.filter((m) => m.tournament === tournament);
+    const lastSame = sameTournament[sameTournament.length - 1];
+    if (lastSame?.stage) {
+      const m = lastSame.stage.match(/^(.+?\s)(\d+)(\s*.*)?$/);
+      if (m) {
+        stage = m[1] + (parseInt(m[2], 10) + 1) + (m[3] ?? "");
+      } else {
+        stage = "";
+      }
+    }
+  }
+  return { date, tournament, stage };
+}
+
+const FALLBACK_CLUBS: Pick<ClubEntry, "id" | "name" | "logo" | "league">[] = [
+  { id: 541, name: "Real Madrid", logo: "https://media.api-sports.io/football/teams/541.png", league: "La Liga" },
+  { id: 529, name: "Barcelona", logo: "https://media.api-sports.io/football/teams/529.png", league: "La Liga" },
+  { id: 530, name: "Atlético de Madrid", logo: "https://media.api-sports.io/football/teams/530.png", league: "La Liga" },
+  { id: 533, name: "Villarreal", logo: "https://media.api-sports.io/football/teams/533.png", league: "La Liga" },
+  { id: 532, name: "Valencia", logo: "https://media.api-sports.io/football/teams/532.png", league: "La Liga" },
+  { id: 728, name: "Real Sociedad", logo: "https://media.api-sports.io/football/teams/728.png", league: "La Liga" },
+  { id: 543, name: "Real Betis", logo: "https://media.api-sports.io/football/teams/543.png", league: "La Liga" },
+  { id: 157, name: "Bayern Munich", logo: "https://media.api-sports.io/football/teams/157.png", league: "Bundesliga" },
+  { id: 165, name: "Borussia Dortmund", logo: "https://media.api-sports.io/football/teams/165.png", league: "Bundesliga" },
+  { id: 168, name: "Bayer Leverkusen", logo: "https://media.api-sports.io/football/teams/168.png", league: "Bundesliga" },
+  { id: 173, name: "RB Leipzig", logo: "https://media.api-sports.io/football/teams/173.png", league: "Bundesliga" },
+  { id: 169, name: "Eintracht Frankfurt", logo: "https://media.api-sports.io/football/teams/169.png", league: "Bundesliga" },
+  { id: 40, name: "Liverpool", logo: "https://media.api-sports.io/football/teams/40.png", league: "Premier League" },
+  { id: 50, name: "Manchester City", logo: "https://media.api-sports.io/football/teams/50.png", league: "Premier League" },
+  { id: 33, name: "Manchester United", logo: "https://media.api-sports.io/football/teams/33.png", league: "Premier League" },
+  { id: 42, name: "Arsenal", logo: "https://media.api-sports.io/football/teams/42.png", league: "Premier League" },
+  { id: 49, name: "Chelsea", logo: "https://media.api-sports.io/football/teams/49.png", league: "Premier League" },
+  { id: 47, name: "Tottenham", logo: "https://media.api-sports.io/football/teams/47.png", league: "Premier League" },
+  { id: 48, name: "West Ham", logo: "https://media.api-sports.io/football/teams/48.png", league: "Premier League" },
+  { id: 51, name: "Brighton", logo: "https://media.api-sports.io/football/teams/51.png", league: "Premier League" },
+  { id: 45, name: "Everton", logo: "https://media.api-sports.io/football/teams/45.png", league: "Premier League" },
+  { id: 66, name: "Aston Villa", logo: "https://media.api-sports.io/football/teams/66.png", league: "Premier League" },
+  { id: 55, name: "Brentford", logo: "https://media.api-sports.io/football/teams/55.png", league: "Premier League" },
+  { id: 505, name: "Nottingham Forest", logo: "https://media.api-sports.io/football/teams/505.png", league: "Premier League" },
+  { id: 496, name: "Newcastle", logo: "https://media.api-sports.io/football/teams/496.png", league: "Premier League" },
+  { id: 489, name: "AC Milan", logo: "https://media.api-sports.io/football/teams/489.png", league: "Serie A" },
+  { id: 505, name: "Inter", logo: "https://media.api-sports.io/football/teams/505.png", league: "Serie A" },
+  { id: 492, name: "Napoli", logo: "https://media.api-sports.io/football/teams/492.png", league: "Serie A" },
+  { id: 496, name: "Juventus", logo: "https://media.api-sports.io/football/teams/496.png", league: "Serie A" },
+  { id: 487, name: "Roma", logo: "https://media.api-sports.io/football/teams/487.png", league: "Serie A" },
+  { id: 488, name: "Lazio", logo: "https://media.api-sports.io/football/teams/488.png", league: "Serie A" },
+  { id: 500, name: "Atalanta", logo: "https://media.api-sports.io/football/teams/500.png", league: "Serie A" },
+  { id: 91, name: "Paris Saint-Germain", logo: "https://media.api-sports.io/football/teams/91.png", league: "Ligue 1" },
+  { id: 80, name: "Lyon", logo: "https://media.api-sports.io/football/teams/80.png", league: "Ligue 1" },
+  { id: 81, name: "Marseille", logo: "https://media.api-sports.io/football/teams/81.png", league: "Ligue 1" },
+  { id: 93, name: "Monaco", logo: "https://media.api-sports.io/football/teams/93.png", league: "Ligue 1" },
+  { id: 212, name: "Porto", logo: "https://media.api-sports.io/football/teams/212.png", league: "Liga Portugal" },
+  { id: 211, name: "Benfica", logo: "https://media.api-sports.io/football/teams/211.png", league: "Liga Portugal" },
+  { id: 228, name: "Sporting CP", logo: "https://media.api-sports.io/football/teams/228.png", league: "Liga Portugal" },
+  { id: 194, name: "Ajax", logo: "https://media.api-sports.io/football/teams/194.png", league: "Eredivisie" },
+  { id: 197, name: "PSV Eindhoven", logo: "https://media.api-sports.io/football/teams/197.png", league: "Eredivisie" },
+  { id: 193, name: "Feyenoord", logo: "https://media.api-sports.io/football/teams/193.png", league: "Eredivisie" },
+  { id: 131, name: "Celtic", logo: "https://media.api-sports.io/football/teams/131.png", league: "Scottish Premiership" },
+  { id: 132, name: "Rangers", logo: "https://media.api-sports.io/football/teams/132.png", league: "Scottish Premiership" },
+  { id: 568, name: "Flamengo", logo: "https://media.api-sports.io/football/teams/568.png", league: "Brasileirão" },
+  { id: 119, name: "Palmeiras", logo: "https://media.api-sports.io/football/teams/119.png", league: "Brasileirão" },
+  { id: 118, name: "São Paulo", logo: "https://media.api-sports.io/football/teams/118.png", league: "Brasileirão" },
+  { id: 121, name: "Santos", logo: "https://media.api-sports.io/football/teams/121.png", league: "Brasileirão" },
+  { id: 116, name: "Corinthians", logo: "https://media.api-sports.io/football/teams/116.png", league: "Brasileirão" },
+  { id: 130, name: "Grêmio", logo: "https://media.api-sports.io/football/teams/130.png", league: "Brasileirão" },
+  { id: 115, name: "Internacional", logo: "https://media.api-sports.io/football/teams/115.png", league: "Brasileirão" },
+  { id: 124, name: "Athletico Paranaense", logo: "https://media.api-sports.io/football/teams/124.png", league: "Brasileirão" },
+  { id: 126, name: "Cruzeiro", logo: "https://media.api-sports.io/football/teams/126.png", league: "Brasileirão" },
+  { id: 127, name: "Atlético Mineiro", logo: "https://media.api-sports.io/football/teams/127.png", league: "Brasileirão" },
+  { id: 120, name: "Fluminense", logo: "https://media.api-sports.io/football/teams/120.png", league: "Brasileirão" },
+  { id: 7323, name: "Botafogo", logo: "https://media.api-sports.io/football/teams/7323.png", league: "Brasileirão" },
+  { id: 435, name: "Boca Juniors", logo: "https://media.api-sports.io/football/teams/435.png", league: "Argentina" },
+  { id: 436, name: "River Plate", logo: "https://media.api-sports.io/football/teams/436.png", league: "Argentina" },
+  { id: 246, name: "Celtic FC", logo: "https://media.api-sports.io/football/teams/246.png", league: "Escócia" },
+  { id: 569, name: "Club América", logo: "https://media.api-sports.io/football/teams/569.png", league: "Liga MX" },
+  { id: 570, name: "Cruz Azul", logo: "https://media.api-sports.io/football/teams/570.png", league: "Liga MX" },
+  { id: 571, name: "Chivas Guadalajara", logo: "https://media.api-sports.io/football/teams/571.png", league: "Liga MX" },
+];
+
+const TOURNAMENT_CHIPS = ["Campeonato Nacional", "Copa Nacional", "Champions League", "Europa League", "Liga Europa", "Liga dos Campeões", "Copa do Mundo de Clubes"];
+
 function NumericInput({
   value,
   onChange,
@@ -107,6 +200,52 @@ function NumericInput({
       }}
       className={`px-2.5 py-1.5 rounded-xl text-white text-sm font-semibold focus:outline-none glass tabular-nums ${className}`}
     />
+  );
+}
+
+function ScoreInput({
+  value,
+  onChange,
+  label,
+}: {
+  value: number;
+  onChange: (v: number) => void;
+  label: string;
+}) {
+  const [raw, setRaw] = useState(value === 0 ? "0" : String(value));
+
+  useEffect(() => {
+    const n = parseInt(raw, 10);
+    if (!isNaN(n) && n !== value) {
+      setRaw(value === 0 ? "0" : String(value));
+    }
+  }, [value]);
+
+  return (
+    <div className="flex flex-col items-center gap-1 flex-1">
+      <p className="text-white/30 text-xs truncate max-w-full text-center">{label}</p>
+      <input
+        type="text"
+        inputMode="numeric"
+        value={raw}
+        onChange={(e) => {
+          const s = e.target.value.replace(/[^\d]/g, "").slice(0, 2);
+          const num = s === "" ? 0 : Math.min(99, parseInt(s, 10));
+          setRaw(s === "" ? "0" : String(num));
+          onChange(num);
+        }}
+        onFocus={(e) => {
+          if (raw === "0") {
+            e.target.select();
+          }
+        }}
+        onBlur={() => {
+          if (raw === "") setRaw("0");
+        }}
+        className="w-full px-3 py-3 rounded-xl text-white text-3xl font-black text-center focus:outline-none glass tabular-nums"
+        style={{ border: "1px solid rgba(255,255,255,0.08)", caretColor: "var(--club-primary)", minWidth: 0 }}
+      />
+    </div>
   );
 }
 
@@ -143,7 +282,6 @@ function RatingBar({ value, onChange }: { value: number; onChange: (v: number) =
   const rc = getRatingColor(value);
   const pct = (value / 10) * 100;
   const stops = ["0", "2", "4", "6", "8", "10"];
-
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
@@ -158,7 +296,8 @@ function RatingBar({ value, onChange }: { value: number; onChange: (v: number) =
           className="absolute inset-y-0 left-0 rounded-full transition-all duration-100"
           style={{
             width: `${pct}%`,
-            background: value < 5 ? "linear-gradient(to right,#b91c1c,#ef4444)"
+            background:
+              value < 5 ? "linear-gradient(to right,#b91c1c,#ef4444)"
               : value < 6 ? "linear-gradient(to right,#ef4444,#f97316)"
               : value < 7 ? "linear-gradient(to right,#f97316,#eab308)"
               : value < 8 ? "linear-gradient(to right,#eab308,#84cc16)"
@@ -166,10 +305,7 @@ function RatingBar({ value, onChange }: { value: number; onChange: (v: number) =
           }}
         />
         <input
-          type="range"
-          min={0}
-          max={100}
-          step={1}
+          type="range" min={0} max={100} step={1}
           value={Math.round(value * 10)}
           onChange={(e) => onChange(Number(e.target.value) / 10)}
           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
@@ -185,19 +321,10 @@ function RatingBar({ value, onChange }: { value: number; onChange: (v: number) =
 }
 
 function GoalEditor({
-  goal,
-  playerIndex,
-  allParticipants,
-  currentPlayerId,
-  onChange,
-  onRemove,
+  goal, playerIndex, allParticipants, currentPlayerId, onChange, onRemove,
 }: {
-  goal: GoalEntry;
-  playerIndex: number;
-  allParticipants: SquadPlayer[];
-  currentPlayerId: number;
-  onChange: (g: GoalEntry) => void;
-  onRemove: () => void;
+  goal: GoalEntry; playerIndex: number; allParticipants: SquadPlayer[];
+  currentPlayerId: number; onChange: (g: GoalEntry) => void; onRemove: () => void;
 }) {
   const others = allParticipants.filter((p) => p.id !== currentPlayerId);
   return (
@@ -205,26 +332,11 @@ function GoalEditor({
       <div className="flex items-center gap-2">
         <span className="text-base">⚽</span>
         <span className="text-white/50 text-xs">Gol {playerIndex + 1}</span>
-        <div className="ml-auto">
-          <button
-            type="button"
-            onClick={onRemove}
-            className="w-5 h-5 rounded-full flex items-center justify-center text-white/30 hover:text-red-400 hover:bg-red-400/10 transition-colors text-xs"
-          >
-            ×
-          </button>
-        </div>
+        <button type="button" onClick={onRemove} className="ml-auto w-5 h-5 rounded-full flex items-center justify-center text-white/30 hover:text-red-400 hover:bg-red-400/10 transition-colors text-xs">×</button>
       </div>
       <div className="flex items-center gap-2">
         <label className="text-white/40 text-xs w-14 flex-shrink-0">Minuto</label>
-        <NumericInput
-          value={goal.minute}
-          onChange={(v) => onChange({ ...goal, minute: v ?? 0 })}
-          min={1}
-          max={120}
-          placeholder="Min"
-          className="w-16"
-        />
+        <NumericInput value={goal.minute} onChange={(v) => onChange({ ...goal, minute: v ?? 0 })} min={1} max={120} placeholder="Min" className="w-16" />
       </div>
       <div className="flex items-center gap-2">
         <label className="text-white/40 text-xs w-14 flex-shrink-0">Assist.</label>
@@ -235,962 +347,425 @@ function GoalEditor({
           style={{ background: "rgba(255,255,255,0.05)" }}
         >
           <option value="">Sem assistência</option>
-          {others.map((p) => (
-            <option key={p.id} value={p.id}>{p.name}</option>
-          ))}
+          {others.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
         </select>
       </div>
     </div>
   );
 }
 
-function StatRow({
-  label,
-  icon,
-  children,
+function ClubBadge({ src, name, size = 28 }: { src: string | null; name: string; size?: number }) {
+  const [err, setErr] = useState(false);
+  if (!src || err) {
+    return (
+      <div
+        className="rounded-lg flex items-center justify-center font-black text-white/40 flex-shrink-0"
+        style={{ width: size, height: size, background: "rgba(255,255,255,0.06)", fontSize: size / 3 }}
+      >
+        {name.slice(0, 2).toUpperCase()}
+      </div>
+    );
+  }
+  return <img src={src} alt={name} style={{ width: size, height: size, objectFit: "contain", flexShrink: 0 }} onError={() => setErr(true)} />;
+}
+
+function OpponentAutocomplete({
+  value,
+  onChange,
+  onSelectClub,
 }: {
-  label: string;
-  icon: string;
-  children: React.ReactNode;
+  value: string;
+  onChange: (v: string) => void;
+  onSelectClub: (logo: string | null) => void;
 }) {
+  const [open, setOpen] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const clubs = useMemo<Pick<ClubEntry, "id" | "name" | "logo" | "league">[]>(() => {
+    const cached = getCachedClubList();
+    return cached && cached.length > 0 ? cached : FALLBACK_CLUBS;
+  }, []);
+
+  const suggestions = useMemo(() => {
+    if (!value.trim() || !open) return [];
+    const q = value.toLowerCase().trim();
+    return clubs
+      .filter((c) => c.name.toLowerCase().includes(q) || c.league.toLowerCase().includes(q))
+      .slice(0, 8);
+  }, [value, open, clubs]);
+
   return (
-    <div className="flex items-center gap-3 py-2 border-b" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
-      <span className="text-base w-6 text-center flex-shrink-0">{icon}</span>
-      <span className="text-white/60 text-sm flex-shrink-0 w-28">{label}</span>
-      <div className="flex-1 flex items-center justify-end">{children}</div>
+    <div className="relative">
+      <input
+        ref={inputRef}
+        type="text"
+        value={value}
+        onChange={(e) => { onChange(e.target.value); setOpen(true); }}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setTimeout(() => setOpen(false), 180)}
+        placeholder="Ex: Real Madrid"
+        autoFocus
+        className="w-full px-3 py-2.5 rounded-xl text-white text-sm focus:outline-none glass"
+        style={{ border: "1px solid rgba(255,255,255,0.08)" }}
+      />
+      {open && suggestions.length > 0 && (
+        <div
+          className="absolute z-30 left-0 right-0 mt-1 rounded-2xl overflow-hidden shadow-2xl"
+          style={{ background: "rgba(15,15,20,0.97)", border: "1px solid rgba(255,255,255,0.1)", backdropFilter: "blur(20px)" }}
+        >
+          {suggestions.map((club) => (
+            <button
+              key={club.id}
+              type="button"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => {
+                onChange(club.name);
+                onSelectClub(club.logo || null);
+                setOpen(false);
+              }}
+              className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-white/05 transition-colors text-left"
+            >
+              <ClubBadge src={club.logo} name={club.name} size={24} />
+              <div className="flex-1 min-w-0">
+                <p className="text-white text-sm font-semibold truncate">{club.name}</p>
+                <p className="text-white/35 text-xs truncate">{club.league}</p>
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
-function PlayerStatsPanel({
-  player,
-  stats,
-  allParticipants,
-  allUnused,
-  onUpdate,
+function PlayerPicker({
+  allPlayers,
+  usedIds,
+  onSelect,
   onClose,
-  onAddSub,
-  onRemoveSub,
 }: {
-  player: SquadPlayer;
-  stats: PlayerMatchStats;
-  allParticipants: SquadPlayer[];
-  allUnused: SquadPlayer[];
-  onUpdate: (patch: Partial<PlayerMatchStats>) => void;
+  allPlayers: SquadPlayer[];
+  usedIds: Set<number>;
+  onSelect: (player: SquadPlayer) => void;
   onClose: () => void;
-  onAddSub: (subId: number) => void;
-  onRemoveSub: (subId: number) => void;
 }) {
-  const isGK = player.positionPtBr === "GOL";
+  const [filter, setFilter] = useState("");
+  const available = allPlayers.filter(
+    (p) => !usedIds.has(p.id) && (filter === "" || p.name.toLowerCase().includes(filter.toLowerCase()) || p.positionPtBr.toLowerCase().includes(filter.toLowerCase()))
+  );
 
-  const addGoal = () => {
-    const newGoal: GoalEntry = { id: generateGoalId(), minute: 0, assistPlayerId: undefined };
-    onUpdate({ goals: [...stats.goals, newGoal] });
-  };
-
-  const updateGoal = (idx: number, g: GoalEntry) => {
-    const next = stats.goals.map((gp, i) => (i === idx ? g : gp));
-    onUpdate({ goals: next });
-  };
-
-  const removeGoal = (idx: number) => {
-    onUpdate({ goals: stats.goals.filter((_, i) => i !== idx) });
-  };
-
-  const handleSubToggle = (on: boolean) => {
-    if (!on) {
-      if (stats.substitutedInPlayerId != null) {
-        onRemoveSub(stats.substitutedInPlayerId);
-      }
-      onUpdate({ substituted: false, substitutedAtMinute: undefined, substitutedInPlayerId: undefined });
-    } else {
-      onUpdate({ substituted: true });
-    }
-  };
-
-  const handleSubPlayerSelect = (newSubId: number | undefined) => {
-    if (stats.substitutedInPlayerId != null && stats.substitutedInPlayerId !== newSubId) {
-      onRemoveSub(stats.substitutedInPlayerId);
-    }
-    if (newSubId != null) {
-      onAddSub(newSubId);
-      onUpdate({ substitutedInPlayerId: newSubId });
-    } else {
-      onUpdate({ substitutedInPlayerId: undefined });
-    }
-  };
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [onClose]);
 
   return (
-    <div className="flex flex-col h-full">
-      <div
-        className="flex items-center justify-between px-4 py-3 flex-shrink-0"
-        style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}
-      >
-        <div className="flex items-center gap-2">
-          <div
-            className="w-7 h-7 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center"
-            style={{ background: "rgba(var(--club-primary-rgb),0.1)" }}
-          >
-            {player.photo ? (
-              <img src={player.photo} alt={player.name} className="w-full h-full object-cover" />
-            ) : (
-              <svg viewBox="0 0 40 40" className="w-4 h-4 text-white/30" fill="currentColor">
-                <circle cx="20" cy="14" r="7" />
-                <path d="M6 36c0-7.732 6.268-14 14-14s14 6.268 14 14H6z" />
-              </svg>
-            )}
-          </div>
-          <div>
-            <p className="text-white font-semibold text-sm leading-tight">{player.name}</p>
-            {stats.startedOnBench && (
-              <span className="text-xs" style={{ color: "#2dd4bf" }}>Substituto</span>
-            )}
-          </div>
-        </div>
-        <button
-          onClick={onClose}
-          className="w-7 h-7 rounded-lg flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-colors"
-        >
+    <div
+      className="rounded-2xl overflow-hidden shadow-2xl"
+      style={{ background: "rgba(12,12,18,0.98)", border: "1px solid rgba(255,255,255,0.12)", backdropFilter: "blur(24px)" }}
+    >
+      <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
+        <p className="text-white/70 text-sm font-semibold">Adicionar jogador</p>
+        <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-colors">
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
       </div>
-
-      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
-        <RatingBar value={stats.rating} onChange={(v) => onUpdate({ rating: v })} />
-
-        <div className="space-y-1">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-white/50 text-xs font-medium uppercase tracking-wider">Gols</span>
-            <button
-              type="button"
-              onClick={addGoal}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors"
-              style={{ background: "rgba(var(--club-primary-rgb),0.15)", color: "var(--club-primary)" }}
-            >
-              + Gol
-            </button>
-          </div>
-          {stats.goals.length === 0 && (
-            <p className="text-white/20 text-xs text-center py-2">Nenhum gol marcado</p>
-          )}
-          {stats.goals.map((g, i) => (
-            <GoalEditor
-              key={g.id}
-              goal={g}
-              playerIndex={i}
-              allParticipants={allParticipants}
-              currentPlayerId={player.id}
-              onChange={(gp) => updateGoal(i, gp)}
-              onRemove={() => removeGoal(i)}
-            />
-          ))}
-        </div>
-
-        <div>
-          <span className="text-white/50 text-xs font-medium uppercase tracking-wider block mb-2">Estatísticas</span>
-          <div className="space-y-0">
-            <StatRow label="Passes" icon="🎯">
-              <div className="flex items-center gap-1">
-                <NumericInput
-                  value={stats.passes}
-                  onChange={(v) => onUpdate({ passes: v })}
-                  placeholder="Total"
-                  className="w-14 text-right"
-                />
-                <NumericInput
-                  value={stats.passAccuracy}
-                  onChange={(v) => onUpdate({ passAccuracy: v ? Math.min(100, v) : undefined })}
-                  max={100}
-                  placeholder="%"
-                  className="w-12 text-right"
-                />
-                <span className="text-white/30 text-xs">%</span>
-                <NumericInput
-                  value={stats.keyPasses}
-                  onChange={(v) => onUpdate({ keyPasses: v })}
-                  placeholder="Chave"
-                  className="w-14 text-right"
-                />
-              </div>
-            </StatRow>
-            <StatRow label="Dribles" icon="🔄">
-              <NumericInput
-                value={stats.dribblesCompleted}
-                onChange={(v) => onUpdate({ dribblesCompleted: v })}
-                placeholder="Completos"
-                className="w-20 text-right"
-              />
-            </StatRow>
-            <StatRow label="Recuperações" icon="🛡️">
-              <div className="flex items-center gap-1">
-                <NumericInput
-                  value={stats.ballRecoveries}
-                  onChange={(v) => onUpdate({ ballRecoveries: v })}
-                  placeholder="Rec."
-                  className="w-14 text-right"
-                />
-                <span className="text-white/20 text-xs">|</span>
-                <NumericInput
-                  value={stats.ballLosses}
-                  onChange={(v) => onUpdate({ ballLosses: v })}
-                  placeholder="Perdas"
-                  className="w-14 text-right"
-                />
-              </div>
-            </StatRow>
-            {isGK && (
-              <>
-                <StatRow label="Defesas" icon="🧤">
-                  <NumericInput
-                    value={stats.saves}
-                    onChange={(v) => onUpdate({ saves: v })}
-                    placeholder="Total"
-                    className="w-16 text-right"
-                  />
-                </StatRow>
-                <StatRow label="Pên. Def." icon="🥅">
-                  <NumericInput
-                    value={stats.penaltiesSaved}
-                    onChange={(v) => onUpdate({ penaltiesSaved: v })}
-                    placeholder="—"
-                    className="w-16 text-right"
-                  />
-                </StatRow>
-              </>
-            )}
-          </div>
-        </div>
-
-        <div>
-          <span className="text-white/50 text-xs font-medium uppercase tracking-wider block mb-2">Eventos</span>
-          <div className="space-y-3">
-            <div className="glass rounded-xl p-3 space-y-2">
-              <Toggle
-                checked={stats.ownGoal}
-                onChange={(v) => onUpdate({ ownGoal: v, ownGoalMinute: v ? stats.ownGoalMinute : undefined })}
-                label="Gol contra"
-              />
-              {stats.ownGoal && (
-                <div className="flex items-center gap-2 pl-11">
-                  <span className="text-white/40 text-xs">Minuto:</span>
-                  <NumericInput
-                    value={stats.ownGoalMinute}
-                    onChange={(v) => onUpdate({ ownGoalMinute: v })}
-                    min={1}
-                    max={120}
-                    placeholder="Min"
-                    className="w-16"
-                  />
-                </div>
-              )}
-            </div>
-
-            <div className="glass rounded-xl p-3 space-y-2">
-              <Toggle
-                checked={stats.missedPenalty}
-                onChange={(v) => onUpdate({ missedPenalty: v, missedPenaltyMinute: v ? stats.missedPenaltyMinute : undefined })}
-                label="Pênalti perdido"
-              />
-              {stats.missedPenalty && (
-                <div className="flex items-center gap-2 pl-11">
-                  <span className="text-white/40 text-xs">Minuto:</span>
-                  <NumericInput
-                    value={stats.missedPenaltyMinute}
-                    onChange={(v) => onUpdate({ missedPenaltyMinute: v })}
-                    min={1}
-                    max={120}
-                    placeholder="Min"
-                    className="w-16"
-                  />
-                </div>
-              )}
-            </div>
-
-            <div className="glass rounded-xl p-3 space-y-2">
-              <Toggle
-                checked={stats.injured}
-                onChange={(v) => onUpdate({ injured: v, injuryMinute: v ? stats.injuryMinute : undefined })}
-                label="Lesionado"
-              />
-              {stats.injured && (
-                <div className="flex items-center gap-2 pl-11">
-                  <span className="text-white/40 text-xs">Minuto:</span>
-                  <NumericInput
-                    value={stats.injuryMinute}
-                    onChange={(v) => onUpdate({ injuryMinute: v })}
-                    min={1}
-                    max={120}
-                    placeholder="Min"
-                    className="w-16"
-                  />
-                </div>
-              )}
-            </div>
-
-            {!stats.startedOnBench && (
-              <div className="glass rounded-xl p-3 space-y-2">
-                <Toggle
-                  checked={stats.substituted}
-                  onChange={handleSubToggle}
-                  label="Substituído"
-                />
-                {stats.substituted && (
-                  <div className="space-y-2 pl-11">
-                    <div className="flex items-center gap-2">
-                      <span className="text-white/40 text-xs">Minuto:</span>
-                      <NumericInput
-                        value={stats.substitutedAtMinute}
-                        onChange={(v) => onUpdate({ substitutedAtMinute: v })}
-                        min={1}
-                        max={120}
-                        placeholder="Min"
-                        className="w-16"
-                      />
-                    </div>
-                    <div>
-                      <span className="text-white/40 text-xs block mb-1">Quem entrou:</span>
-                      <select
-                        value={stats.substitutedInPlayerId ?? ""}
-                        onChange={(e) => handleSubPlayerSelect(e.target.value ? Number(e.target.value) : undefined)}
-                        className="w-full px-2.5 py-1.5 rounded-xl text-white text-sm focus:outline-none glass"
-                        style={{ background: "rgba(255,255,255,0.05)" }}
-                      >
-                        <option value="">Selecionar jogador</option>
-                        {allUnused.map((p) => (
-                          <option key={p.id} value={p.id}>{p.name} ({p.positionPtBr})</option>
-                        ))}
-                        {stats.substitutedInPlayerId != null && !allUnused.find((p) => p.id === stats.substitutedInPlayerId) && (
-                          <option value={stats.substitutedInPlayerId}>
-                            {allParticipants.find((p) => p.id === stats.substitutedInPlayerId)?.name ?? `#${stats.substitutedInPlayerId}`}
-                          </option>
-                        )}
-                      </select>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function Step1({
-  draft,
-  clubName,
-  onChange,
-}: {
-  draft: MatchDraft;
-  clubName: string;
-  onChange: (patch: Partial<MatchDraft>) => void;
-}) {
-  const tournamentChips = ["Campeonato Nacional", "Copa Nacional", "Champions League", "Europa League", "Liga Europa", "Liga dos Campeões"];
-
-  return (
-    <div className="space-y-5">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="space-y-1.5">
-          <label className="text-white/50 text-xs font-medium uppercase tracking-wider">Adversário *</label>
-          <input
-            type="text"
-            value={draft.opponent}
-            onChange={(e) => onChange({ opponent: e.target.value })}
-            placeholder="Ex: Real Madrid"
-            className="w-full px-3 py-2.5 rounded-xl text-white text-sm focus:outline-none glass"
-            style={{ border: "1px solid rgba(255,255,255,0.08)" }}
-            autoFocus
-          />
-        </div>
-        <div className="space-y-1.5">
-          <label className="text-white/50 text-xs font-medium uppercase tracking-wider">Data da Partida</label>
-          <input
-            type="date"
-            value={draft.date}
-            onChange={(e) => onChange({ date: e.target.value })}
-            className="w-full px-3 py-2.5 rounded-xl text-white text-sm focus:outline-none glass"
-            style={{ border: "1px solid rgba(255,255,255,0.08)", colorScheme: "dark" }}
-          />
-        </div>
-      </div>
-
-      <div className="space-y-1.5">
-        <label className="text-white/50 text-xs font-medium uppercase tracking-wider">Local</label>
-        <div className="flex gap-2">
-          {(["casa", "fora", "neutro"] as MatchLocation[]).map((loc) => (
-            <button
-              key={loc}
-              type="button"
-              onClick={() => onChange({ location: loc })}
-              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl font-semibold text-sm transition-all duration-200"
-              style={{
-                background: draft.location === loc ? "rgba(var(--club-primary-rgb),0.2)" : "rgba(255,255,255,0.05)",
-                color: draft.location === loc ? "var(--club-primary)" : "rgba(255,255,255,0.4)",
-                border: draft.location === loc ? "1px solid rgba(var(--club-primary-rgb),0.4)" : "1px solid rgba(255,255,255,0.08)",
-              }}
-            >
-              <span>{LOCATION_ICONS[loc]}</span>
-              <span>{LOCATION_LABELS[loc]}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="space-y-1.5">
-          <label className="text-white/50 text-xs font-medium uppercase tracking-wider">Torneio</label>
-          <input
-            type="text"
-            value={draft.tournament}
-            onChange={(e) => onChange({ tournament: e.target.value })}
-            placeholder="Ex: Premier League"
-            className="w-full px-3 py-2.5 rounded-xl text-white text-sm focus:outline-none glass"
-            style={{ border: "1px solid rgba(255,255,255,0.08)" }}
-          />
-          <div className="flex flex-wrap gap-1.5 mt-1">
-            {tournamentChips.map((t) => (
-              <button
-                key={t}
-                type="button"
-                onClick={() => onChange({ tournament: t })}
-                className="px-2 py-0.5 rounded-full text-xs transition-colors"
-                style={{
-                  background: draft.tournament === t ? "rgba(var(--club-primary-rgb),0.2)" : "rgba(255,255,255,0.06)",
-                  color: draft.tournament === t ? "var(--club-primary)" : "rgba(255,255,255,0.35)",
-                }}
-              >
-                {t}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="space-y-1.5">
-          <label className="text-white/50 text-xs font-medium uppercase tracking-wider">Estágio / Rodada</label>
-          <input
-            type="text"
-            value={draft.stage}
-            onChange={(e) => onChange({ stage: e.target.value })}
-            placeholder="Ex: Rodada 15"
-            className="w-full px-3 py-2.5 rounded-xl text-white text-sm focus:outline-none glass"
-            style={{ border: "1px solid rgba(255,255,255,0.08)" }}
-          />
-        </div>
-      </div>
-
-      <div className="space-y-1.5">
-        <label className="text-white/50 text-xs font-medium uppercase tracking-wider">Placar Final</label>
-        <div className="flex items-center gap-4">
-          <div className="flex-1 space-y-1">
-            <p className="text-white/30 text-xs text-center truncate">{clubName}</p>
-            <input
-              type="number"
-              min={0}
-              max={99}
-              value={draft.myScore}
-              onChange={(e) => onChange({ myScore: Math.max(0, Number(e.target.value) || 0) })}
-              className="w-full px-3 py-3 rounded-xl text-white text-3xl font-black text-center focus:outline-none glass tabular-nums"
-              style={{ border: "1px solid rgba(255,255,255,0.08)" }}
-            />
-          </div>
-          <span className="text-white/20 text-2xl font-black flex-shrink-0">×</span>
-          <div className="flex-1 space-y-1">
-            <p className="text-white/30 text-xs text-center truncate">{draft.opponent || "Adversário"}</p>
-            <input
-              type="number"
-              min={0}
-              max={99}
-              value={draft.opponentScore}
-              onChange={(e) => onChange({ opponentScore: Math.max(0, Number(e.target.value) || 0) })}
-              className="w-full px-3 py-3 rounded-xl text-white text-3xl font-black text-center focus:outline-none glass tabular-nums"
-              style={{ border: "1px solid rgba(255,255,255,0.08)" }}
-            />
-          </div>
-        </div>
-      </div>
-
-      <div className="space-y-1.5">
-        <label className="text-white/50 text-xs font-medium uppercase tracking-wider">Posição na Tabela (naquele momento)</label>
+      <div className="px-4 py-2.5" style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
         <input
-          type="number"
-          min={1}
-          max={40}
-          value={draft.tablePosition}
-          onChange={(e) => onChange({ tablePosition: e.target.value })}
-          placeholder="Ex: 3"
-          className="w-24 px-3 py-2.5 rounded-xl text-white text-sm focus:outline-none glass tabular-nums"
+          type="text"
+          autoFocus
+          placeholder="Buscar jogador..."
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          className="w-full px-3 py-1.5 rounded-xl text-white text-sm focus:outline-none glass"
           style={{ border: "1px solid rgba(255,255,255,0.08)" }}
         />
       </div>
+      <div className="overflow-y-auto" style={{ maxHeight: 240 }}>
+        {available.length === 0 ? (
+          <p className="text-white/25 text-xs text-center py-6">Nenhum jogador disponível</p>
+        ) : (
+          available.map((p) => (
+            <button
+              key={p.id}
+              onClick={() => onSelect(p)}
+              className="w-full flex items-center gap-3 px-4 py-2 hover:bg-white/05 transition-colors text-left"
+            >
+              <div className="w-7 h-7 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center" style={{ background: "rgba(var(--club-primary-rgb),0.06)" }}>
+                {p.photo ? <img src={p.photo} alt={p.name} className="w-full h-full object-cover" /> : (
+                  <svg viewBox="0 0 40 40" className="w-4 h-4 text-white/20" fill="currentColor">
+                    <circle cx="20" cy="14" r="7" />
+                    <path d="M6 36c0-7.732 6.268-14 14-14s14 6.268 14 14H6z" />
+                  </svg>
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-white text-sm font-semibold truncate">{p.name}</p>
+              </div>
+              <span className="text-xs font-bold px-2 py-0.5 rounded-md flex-shrink-0" style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.5)" }}>
+                {p.positionPtBr}
+              </span>
+            </button>
+          ))
+        )}
+      </div>
     </div>
   );
 }
 
-function PlayerCard({
+function PlayerLineupRow({
   player,
-  status,
   stats,
-  isOpen,
-  onClick,
+  isSub,
+  allParticipants,
+  allUnused,
+  onUpdate,
   onRemove,
 }: {
   player: SquadPlayer;
-  status: "starter" | "sub" | "unused";
-  stats?: PlayerMatchStats;
-  isOpen: boolean;
-  onClick: () => void;
+  stats: PlayerMatchStats;
+  isSub: boolean;
+  allParticipants: SquadPlayer[];
+  allUnused: SquadPlayer[];
+  onUpdate: (patch: Partial<PlayerMatchStats>) => void;
   onRemove: () => void;
 }) {
-  const rc = stats ? getRatingColor(stats.rating) : null;
-  const goalCount = stats?.goals.length ?? 0;
+  const [expanded, setExpanded] = useState(false);
+  const isGK = player.positionPtBr === "GOL";
+  const rc = getRatingColor(stats.rating);
+
+  const addGoal = () => {
+    onUpdate({ goals: [...stats.goals, { id: generateGoalId(), minute: 0 }] });
+  };
+  const updateGoal = (idx: number, g: GoalEntry) => {
+    onUpdate({ goals: stats.goals.map((gp, i) => (i === idx ? g : gp)) });
+  };
+  const removeGoal = (idx: number) => {
+    onUpdate({ goals: stats.goals.filter((_, i) => i !== idx) });
+  };
+
+  const handleSubToggle = (on: boolean) => {
+    if (!on) onUpdate({ substituted: false, substitutedAtMinute: undefined, substitutedInPlayerId: undefined });
+    else onUpdate({ substituted: true });
+  };
 
   return (
-    <div
-      className="relative flex items-center gap-2.5 p-2.5 rounded-xl cursor-pointer transition-all duration-150 select-none"
-      style={{
-        background: isOpen
-          ? "rgba(var(--club-primary-rgb),0.15)"
-          : status === "starter" ? "rgba(var(--club-primary-rgb),0.08)"
-          : status === "sub" ? "rgba(45,212,191,0.08)"
-          : "rgba(255,255,255,0.03)",
-        border: isOpen
-          ? "1px solid rgba(var(--club-primary-rgb),0.5)"
-          : status === "starter" ? "1px solid rgba(var(--club-primary-rgb),0.2)"
-          : status === "sub" ? "1px solid rgba(45,212,191,0.2)"
-          : "1px solid rgba(255,255,255,0.06)",
-      }}
-      onClick={onClick}
-    >
-      <div
-        className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center"
-        style={{ background: "rgba(255,255,255,0.06)" }}
-      >
-        {player.photo ? (
-          <img src={player.photo} alt={player.name} className="w-full h-full object-cover" />
-        ) : (
-          <svg viewBox="0 0 40 40" className="w-4 h-4 text-white/20" fill="currentColor">
-            <circle cx="20" cy="14" r="7" />
-            <path d="M6 36c0-7.732 6.268-14 14-14s14 6.268 14 14H6z" />
-          </svg>
-        )}
-      </div>
-      <div className="min-w-0 flex-1">
-        <p
-          className="text-sm font-semibold truncate leading-tight"
-          style={{ color: status === "unused" ? "rgba(255,255,255,0.35)" : "white" }}
-        >
-          {player.name}
-        </p>
-        <span
-          className="text-xs font-bold"
-          style={{ color: status === "unused" ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.45)" }}
-        >
-          {player.positionPtBr}
-        </span>
-      </div>
-      {stats && (
-        <div className="flex items-center gap-1.5 flex-shrink-0">
-          {goalCount > 0 && (
-            <span className="text-xs">⚽{goalCount > 1 ? `×${goalCount}` : ""}</span>
-          )}
-          {stats.ownGoal && <span className="text-xs">🔴</span>}
-          {stats.injured && <span className="text-xs">🤕</span>}
-          <span
-            className="text-sm font-black tabular-nums"
-            style={{ color: rc!.color }}
-          >
-            {stats.rating.toFixed(1)}
-          </span>
-        </div>
-      )}
-      {status !== "unused" && (
+    <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.02)" }}>
+      <div className="flex items-center gap-2 px-3 py-2.5">
         <button
           type="button"
-          onClick={(e) => { e.stopPropagation(); onRemove(); }}
-          className="w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center text-white/20 hover:text-red-400 hover:bg-red-400/10 transition-colors text-sm"
+          onClick={() => setExpanded(!expanded)}
+          className="flex-1 flex items-center gap-2.5 text-left min-w-0"
+        >
+          <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center" style={{ background: "rgba(var(--club-primary-rgb),0.07)" }}>
+            {player.photo ? (
+              <img src={player.photo} alt={player.name} className="w-full h-full object-cover" />
+            ) : (
+              <svg viewBox="0 0 40 40" className="w-4 h-4 text-white/20" fill="currentColor">
+                <circle cx="20" cy="14" r="7" />
+                <path d="M6 36c0-7.732 6.268-14 14-14s14 6.268 14 14H6z" />
+              </svg>
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-white font-semibold text-sm leading-tight truncate">{player.name}</p>
+            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+              <span className="text-xs font-bold" style={{ color: rc.color }}>{stats.rating.toFixed(1)}</span>
+              <span className="text-white/30 text-xs">{player.positionPtBr}</span>
+              {isSub && <span className="text-xs" style={{ color: "#2dd4bf" }}>sub</span>}
+              {stats.goals.length > 0 && <span className="text-xs text-white/60">⚽ {stats.goals.length}</span>}
+              {stats.ownGoal && <span className="text-xs" style={{ color: "#f87171" }}>GC</span>}
+              {stats.substituted && <span className="text-xs text-white/40">🔄</span>}
+              {stats.injured && <span className="text-xs text-white/40">🚑</span>}
+            </div>
+          </div>
+          <svg
+            className="w-4 h-4 text-white/25 flex-shrink-0 transition-transform duration-200"
+            style={{ transform: expanded ? "rotate(180deg)" : "rotate(0)" }}
+            fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+        <button
+          type="button"
+          onClick={onRemove}
+          className="w-7 h-7 rounded-lg flex items-center justify-center text-white/25 hover:text-red-400 hover:bg-red-400/10 transition-colors flex-shrink-0 text-lg leading-none"
         >
           ×
         </button>
-      )}
-    </div>
-  );
-}
+      </div>
 
-function Step2({
-  draft,
-  allPlayers,
-  onChange,
-}: {
-  draft: MatchDraft;
-  allPlayers: SquadPlayer[];
-  onChange: (patch: Partial<MatchDraft>) => void;
-}) {
-  const [openPlayerId, setOpenPlayerId] = useState<number | null>(null);
+      {expanded && (
+        <div className="px-4 pb-4 space-y-4 pt-1" style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+          <RatingBar value={stats.rating} onChange={(v) => onUpdate({ rating: v })} />
 
-  const starterSet = new Set(draft.starterIds);
-  const subSet = new Set(draft.subIds);
-  const allParticipantIds = [...draft.starterIds, ...draft.subIds];
-  const allParticipants = allPlayers.filter((p) => allParticipantIds.includes(p.id));
-  const unused = allPlayers.filter((p) => !starterSet.has(p.id) && !subSet.has(p.id));
-
-  const openPlayer = openPlayerId != null ? allPlayers.find((p) => p.id === openPlayerId) : null;
-  const openStats = openPlayerId != null ? draft.playerStats[openPlayerId] : null;
-
-  const handlePlayerClick = (player: SquadPlayer) => {
-    if (starterSet.has(player.id) || subSet.has(player.id)) {
-      setOpenPlayerId(openPlayerId === player.id ? null : player.id);
-    } else {
-      const newStats = { ...draft.playerStats, [player.id]: mkDefault(false) };
-      onChange({ starterIds: [...draft.starterIds, player.id], playerStats: newStats });
-    }
-  };
-
-  const handleRemovePlayer = (player: SquadPlayer) => {
-    const ps = draft.playerStats[player.id];
-    let newStarterIds = draft.starterIds.filter((id) => id !== player.id);
-    let newSubIds = draft.subIds.filter((id) => id !== player.id);
-    const newStats = { ...draft.playerStats };
-
-    if (starterSet.has(player.id) && ps?.substitutedInPlayerId != null) {
-      const subId = ps.substitutedInPlayerId;
-      newSubIds = newSubIds.filter((id) => id !== subId);
-      delete newStats[subId];
-    }
-    if (subSet.has(player.id)) {
-      for (const sid of draft.starterIds) {
-        if (newStats[sid]?.substitutedInPlayerId === player.id) {
-          newStats[sid] = { ...newStats[sid], substituted: false, substitutedAtMinute: undefined, substitutedInPlayerId: undefined };
-          break;
-        }
-      }
-    }
-    delete newStats[player.id];
-
-    if (openPlayerId === player.id) setOpenPlayerId(null);
-    let newMotm = draft.motmPlayerId;
-    if (newMotm === player.id) newMotm = null;
-
-    onChange({ starterIds: newStarterIds, subIds: newSubIds, playerStats: newStats, motmPlayerId: newMotm });
-  };
-
-  const updatePlayerStats = useCallback((playerId: number, patch: Partial<PlayerMatchStats>) => {
-    const current = draft.playerStats[playerId] ?? mkDefault();
-    onChange({ playerStats: { ...draft.playerStats, [playerId]: { ...current, ...patch } } });
-  }, [draft.playerStats, onChange]);
-
-  const handleAddSub = (subId: number) => {
-    if (subSet.has(subId)) return;
-    const newStats = { ...draft.playerStats, [subId]: mkDefault(true) };
-    onChange({ subIds: [...draft.subIds, subId], playerStats: newStats });
-  };
-
-  const handleRemoveSub = (subId: number) => {
-    const newSubIds = draft.subIds.filter((id) => id !== subId);
-    const newStats = { ...draft.playerStats };
-    delete newStats[subId];
-    if (openPlayerId === subId) setOpenPlayerId(null);
-    onChange({ subIds: newSubIds, playerStats: newStats });
-  };
-
-  const starters = allPlayers.filter((p) => starterSet.has(p.id));
-  const subs = allPlayers.filter((p) => subSet.has(p.id));
-
-  return (
-    <div className="flex gap-4 h-full min-h-0">
-      <div className={`flex flex-col min-h-0 overflow-y-auto space-y-4 transition-all duration-200 ${openPlayer ? "w-1/2 lg:w-3/5" : "w-full"}`}>
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-white/50 text-xs font-medium uppercase tracking-wider">
-              Em Campo ({starters.length})
-            </span>
-            <span className="text-white/20 text-xs">Clique para adicionar / selecionar</span>
-          </div>
-          {starters.length === 0 && (
-            <p className="text-white/20 text-xs text-center py-3 rounded-xl glass">Nenhum jogador adicionado</p>
-          )}
-          <div className="space-y-1.5">
-            {starters.map((p) => (
-              <PlayerCard
-                key={p.id}
-                player={p}
-                status="starter"
-                stats={draft.playerStats[p.id]}
-                isOpen={openPlayerId === p.id}
-                onClick={() => handlePlayerClick(p)}
-                onRemove={() => handleRemovePlayer(p)}
-              />
-            ))}
-          </div>
-        </div>
-
-        {subs.length > 0 && (
           <div>
-            <span className="text-white/50 text-xs font-medium uppercase tracking-wider block mb-2">
-              Reservas Que Entraram ({subs.length})
-            </span>
-            <div className="space-y-1.5">
-              {subs.map((p) => (
-                <PlayerCard
-                  key={p.id}
-                  player={p}
-                  status="sub"
-                  stats={draft.playerStats[p.id]}
-                  isOpen={openPlayerId === p.id}
-                  onClick={() => handlePlayerClick(p)}
-                  onRemove={() => handleRemovePlayer(p)}
-                />
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-white/50 text-xs font-medium uppercase tracking-wider">Gols</span>
+              <button
+                type="button"
+                onClick={addGoal}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors"
+                style={{ background: "rgba(var(--club-primary-rgb),0.15)", color: "var(--club-primary)" }}
+              >
+                + Gol
+              </button>
+            </div>
+            {stats.goals.length === 0 ? (
+              <p className="text-white/20 text-xs text-center py-1">Nenhum gol</p>
+            ) : (
+              <div className="space-y-2">
+                {stats.goals.map((g, i) => (
+                  <GoalEditor
+                    key={g.id}
+                    goal={g}
+                    playerIndex={i}
+                    allParticipants={allParticipants}
+                    currentPlayerId={player.id}
+                    onChange={(gp) => updateGoal(i, gp)}
+                    onRemove={() => removeGoal(i)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div>
+            <span className="text-white/50 text-xs font-medium uppercase tracking-wider block mb-2">Estatísticas</span>
+            <div className="space-y-0">
+              {[
+                {
+                  label: "Passes", icon: "🎯",
+                  node: (
+                    <div className="flex items-center gap-1">
+                      <NumericInput value={stats.passes} onChange={(v) => onUpdate({ passes: v })} placeholder="Total" className="w-14 text-right" />
+                      <NumericInput value={stats.passAccuracy} onChange={(v) => onUpdate({ passAccuracy: v ? Math.min(100, v) : undefined })} max={100} placeholder="%" className="w-12 text-right" />
+                      <span className="text-white/30 text-xs">%</span>
+                      <NumericInput value={stats.keyPasses} onChange={(v) => onUpdate({ keyPasses: v })} placeholder="Chave" className="w-14 text-right" />
+                    </div>
+                  ),
+                },
+                {
+                  label: "Dribles", icon: "🔄",
+                  node: <NumericInput value={stats.dribblesCompleted} onChange={(v) => onUpdate({ dribblesCompleted: v })} placeholder="Completos" className="w-20 text-right" />,
+                },
+                {
+                  label: "Rec. / Perdas", icon: "🛡️",
+                  node: (
+                    <div className="flex items-center gap-1">
+                      <NumericInput value={stats.ballRecoveries} onChange={(v) => onUpdate({ ballRecoveries: v })} placeholder="Rec." className="w-14 text-right" />
+                      <span className="text-white/20 text-xs">|</span>
+                      <NumericInput value={stats.ballLosses} onChange={(v) => onUpdate({ ballLosses: v })} placeholder="Perda" className="w-14 text-right" />
+                    </div>
+                  ),
+                },
+                ...(isGK ? [
+                  { label: "Defesas", icon: "🧤", node: <NumericInput value={stats.saves} onChange={(v) => onUpdate({ saves: v })} placeholder="Total" className="w-16 text-right" /> },
+                  { label: "Pên. Def.", icon: "🥅", node: <NumericInput value={stats.penaltiesSaved} onChange={(v) => onUpdate({ penaltiesSaved: v })} placeholder="—" className="w-16 text-right" /> },
+                ] : []),
+              ].map(({ label, icon, node }) => (
+                <div key={label} className="flex items-center gap-3 py-2 border-b" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
+                  <span className="text-base w-6 text-center flex-shrink-0">{icon}</span>
+                  <span className="text-white/55 text-xs flex-shrink-0 w-24">{label}</span>
+                  <div className="flex-1 flex items-center justify-end">{node}</div>
+                </div>
               ))}
             </div>
           </div>
-        )}
 
-        <div>
-          <span className="text-white/30 text-xs font-medium uppercase tracking-wider block mb-2">
-            Banco / Não Jogou ({unused.length})
-          </span>
-          <div className="space-y-1.5">
-            {unused.map((p) => (
-              <PlayerCard
-                key={p.id}
-                player={p}
-                status="unused"
-                isOpen={false}
-                onClick={() => handlePlayerClick(p)}
-                onRemove={() => {}}
-              />
-            ))}
-          </div>
-        </div>
-
-        {allParticipants.length > 0 && (
-          <div className="pt-2">
-            <span className="text-white/50 text-xs font-medium uppercase tracking-wider block mb-2">
-              Jogador do Jogo (MOTM)
-            </span>
-            <div className="grid grid-cols-2 gap-1.5">
-              {allParticipants.map((p) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => onChange({ motmPlayerId: draft.motmPlayerId === p.id ? null : p.id })}
-                  className="flex items-center gap-2 p-2 rounded-xl text-left transition-all duration-150"
-                  style={{
-                    background: draft.motmPlayerId === p.id ? "rgba(245,158,11,0.15)" : "rgba(255,255,255,0.04)",
-                    border: draft.motmPlayerId === p.id ? "1px solid rgba(245,158,11,0.4)" : "1px solid rgba(255,255,255,0.07)",
-                  }}
-                >
-                  <span className="text-xs">{draft.motmPlayerId === p.id ? "⭐" : "○"}</span>
-                  <span className="text-white/70 text-xs truncate font-medium">{p.name}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {openPlayer && openStats && (
-        <div
-          className="flex-1 flex flex-col min-h-0 overflow-hidden rounded-2xl"
-          style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.09)" }}
-        >
-          <PlayerStatsPanel
-            player={openPlayer}
-            stats={openStats}
-            allParticipants={allParticipants}
-            allUnused={unused}
-            onUpdate={(patch) => updatePlayerStats(openPlayer.id, patch)}
-            onClose={() => setOpenPlayerId(null)}
-            onAddSub={handleAddSub}
-            onRemoveSub={handleRemoveSub}
-          />
-        </div>
-      )}
-    </div>
-  );
-}
-
-function getSubstitutionWarnings(draft: MatchDraft, allPlayers: SquadPlayer[]): string[] {
-  const warnings: string[] = [];
-  for (const id of draft.starterIds) {
-    const ps = draft.playerStats[id];
-    if (!ps?.substituted) continue;
-    const player = allPlayers.find((p) => p.id === id);
-    const name = player?.name.split(" ").at(-1) ?? `#${id}`;
-    if (!ps.substitutedAtMinute) {
-      warnings.push(`${name}: substituição sem minuto registrado`);
-    }
-    if (!ps.substitutedInPlayerId) {
-      warnings.push(`${name}: substituição sem jogador de entrada selecionado`);
-    }
-  }
-  return warnings;
-}
-
-function Step3({
-  draft,
-  clubName,
-  allPlayers,
-  onChange,
-}: {
-  draft: MatchDraft;
-  clubName: string;
-  allPlayers: SquadPlayer[];
-  onChange: (patch: Partial<MatchDraft>) => void;
-}) {
-  const resultLabel = draft.myScore > draft.opponentScore ? "Vitória ✅" : draft.myScore < draft.opponentScore ? "Derrota ❌" : "Empate 🤝";
-  const totalGoals = [...draft.starterIds, ...draft.subIds].reduce(
-    (sum, id) => sum + (draft.playerStats[id]?.goals.length ?? 0),
-    0
-  );
-  const motm = draft.motmPlayerId != null ? allPlayers.find((p) => p.id === draft.motmPlayerId) : null;
-  const subWarnings = getSubstitutionWarnings(draft, allPlayers);
-
-  return (
-    <div className="space-y-5">
-      <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-1.5">
-            <label className="text-white/50 text-xs font-medium uppercase tracking-wider">
-              Finalizações — {clubName}
-            </label>
-            <NumericInput
-              value={draft.myShots}
-              onChange={(v) => onChange({ myShots: v ?? 0 })}
-              placeholder="0"
-              className="w-full text-center text-xl font-black"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-white/50 text-xs font-medium uppercase tracking-wider">
-              Finalizações — {draft.opponent || "Adversário"}
-            </label>
-            <NumericInput
-              value={draft.opponentShots}
-              onChange={(v) => onChange({ opponentShots: v ?? 0 })}
-              placeholder="0"
-              className="w-full text-center text-xl font-black"
-            />
-          </div>
-        </div>
-
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between">
-            <label className="text-white/50 text-xs font-medium uppercase tracking-wider">Posse de Bola</label>
-            <div className="flex items-center gap-3 text-sm font-bold">
-              <span style={{ color: "var(--club-primary)" }}>{draft.possessionPct}%</span>
-              <span className="text-white/20">|</span>
-              <span className="text-white/40">{100 - draft.possessionPct}%</span>
-            </div>
-          </div>
-          <input
-            type="range"
-            min={0}
-            max={100}
-            value={draft.possessionPct}
-            onChange={(e) => onChange({ possessionPct: Number(e.target.value) })}
-            className="w-full h-2 rounded-full cursor-pointer"
-            style={{ accentColor: "var(--club-primary)" }}
-          />
-          <div className="flex justify-between text-white/25 text-xs">
-            <span>{clubName}</span>
-            <span>{draft.opponent || "Adversário"}</span>
-          </div>
-        </div>
-      </div>
-
-      <div
-        className="glass rounded-2xl p-4 space-y-3"
-        style={{ border: "1px solid rgba(255,255,255,0.09)" }}
-      >
-        <p className="text-white/40 text-xs font-bold uppercase tracking-wider">Resumo da Partida</p>
-
-        <div className="flex items-center justify-between">
           <div>
-            <p className="text-white font-black text-lg leading-tight">
-              {clubName} {draft.myScore} × {draft.opponentScore} {draft.opponent || "Adversário"}
-            </p>
-            <p className="text-white/40 text-sm">{resultLabel}</p>
+            <span className="text-white/50 text-xs font-medium uppercase tracking-wider block mb-2">Eventos</span>
+            <div className="space-y-2">
+              <div className="glass rounded-xl p-3 space-y-2">
+                <Toggle checked={stats.ownGoal} onChange={(v) => onUpdate({ ownGoal: v, ownGoalMinute: v ? stats.ownGoalMinute : undefined })} label="Gol contra" />
+                {stats.ownGoal && (
+                  <div className="flex items-center gap-2 pl-11">
+                    <span className="text-white/40 text-xs">Minuto:</span>
+                    <NumericInput value={stats.ownGoalMinute} onChange={(v) => onUpdate({ ownGoalMinute: v })} min={1} max={120} placeholder="Min" className="w-16" />
+                  </div>
+                )}
+              </div>
+              <div className="glass rounded-xl p-3 space-y-2">
+                <Toggle checked={stats.missedPenalty} onChange={(v) => onUpdate({ missedPenalty: v, missedPenaltyMinute: v ? stats.missedPenaltyMinute : undefined })} label="Pênalti perdido" />
+                {stats.missedPenalty && (
+                  <div className="flex items-center gap-2 pl-11">
+                    <span className="text-white/40 text-xs">Minuto:</span>
+                    <NumericInput value={stats.missedPenaltyMinute} onChange={(v) => onUpdate({ missedPenaltyMinute: v })} min={1} max={120} placeholder="Min" className="w-16" />
+                  </div>
+                )}
+              </div>
+              <div className="glass rounded-xl p-3 space-y-2">
+                <Toggle checked={stats.injured} onChange={(v) => onUpdate({ injured: v, injuryMinute: v ? stats.injuryMinute : undefined })} label="Lesionado" />
+                {stats.injured && (
+                  <div className="flex items-center gap-2 pl-11">
+                    <span className="text-white/40 text-xs">Minuto:</span>
+                    <NumericInput value={stats.injuryMinute} onChange={(v) => onUpdate({ injuryMinute: v })} min={1} max={120} placeholder="Min" className="w-16" />
+                  </div>
+                )}
+              </div>
+              {!isSub && (
+                <div className="glass rounded-xl p-3 space-y-2">
+                  <Toggle checked={stats.substituted} onChange={handleSubToggle} label="Substituído" />
+                  {stats.substituted && (
+                    <div className="space-y-2 pl-11">
+                      <div className="flex items-center gap-2">
+                        <span className="text-white/40 text-xs">Minuto:</span>
+                        <NumericInput value={stats.substitutedAtMinute} onChange={(v) => onUpdate({ substitutedAtMinute: v })} min={1} max={120} placeholder="Min" className="w-16" />
+                      </div>
+                      <div>
+                        <span className="text-white/40 text-xs block mb-1">Quem entrou:</span>
+                        <select
+                          value={stats.substitutedInPlayerId ?? ""}
+                          onChange={(e) => onUpdate({ substitutedInPlayerId: e.target.value ? Number(e.target.value) : undefined })}
+                          className="w-full px-2.5 py-1.5 rounded-xl text-white text-sm focus:outline-none glass"
+                          style={{ background: "rgba(255,255,255,0.05)" }}
+                        >
+                          <option value="">Selecionar</option>
+                          {allUnused.map((p) => <option key={p.id} value={p.id}>{p.name} ({p.positionPtBr})</option>)}
+                          {stats.substitutedInPlayerId != null && !allUnused.find((p) => p.id === stats.substitutedInPlayerId) && (
+                            <option value={stats.substitutedInPlayerId}>
+                              {allParticipants.find((p) => p.id === stats.substitutedInPlayerId)?.name ?? `#${stats.substitutedInPlayerId}`}
+                            </option>
+                          )}
+                        </select>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
-          {draft.location && (
-            <span className="text-2xl">{LOCATION_ICONS[draft.location]}</span>
-          )}
-        </div>
-
-        <div className="flex flex-wrap gap-2 text-xs">
-          {draft.tournament && (
-            <span className="px-2 py-0.5 rounded-full glass text-white/60">{draft.tournament}</span>
-          )}
-          {draft.stage && (
-            <span className="px-2 py-0.5 rounded-full glass text-white/60">{draft.stage}</span>
-          )}
-          {draft.date && (
-            <span className="px-2 py-0.5 rounded-full glass text-white/60">
-              {new Date(draft.date + "T12:00:00").toLocaleDateString("pt-BR")}
-            </span>
-          )}
-        </div>
-
-        <div className="grid grid-cols-3 gap-3 pt-1">
-          <div className="text-center glass rounded-xl p-2">
-            <p className="text-white font-black text-lg">{draft.starterIds.length + draft.subIds.length}</p>
-            <p className="text-white/40 text-xs">Jogadores</p>
-          </div>
-          <div className="text-center glass rounded-xl p-2">
-            <p className="text-white font-black text-lg">{totalGoals}</p>
-            <p className="text-white/40 text-xs">Gols registrados</p>
-          </div>
-          <div className="text-center glass rounded-xl p-2">
-            <p className="text-white font-black text-lg">{draft.possessionPct}%</p>
-            <p className="text-white/40 text-xs">Posse</p>
-          </div>
-        </div>
-
-        {motm && (
-          <div className="flex items-center gap-2 pt-1">
-            <span className="text-yellow-400 text-sm">⭐</span>
-            <span className="text-white/60 text-sm">MOTM: <span className="text-white font-semibold">{motm.name}</span></span>
-          </div>
-        )}
-      </div>
-
-      {subWarnings.length > 0 && (
-        <div
-          className="rounded-2xl p-4 space-y-1.5"
-          style={{ background: "rgba(249,115,22,0.08)", border: "1px solid rgba(249,115,22,0.25)" }}
-        >
-          <p className="text-orange-400 text-xs font-bold uppercase tracking-wider">⚠️ Atenção — Substituições incompletas</p>
-          {subWarnings.map((w, i) => (
-            <p key={i} className="text-orange-300/70 text-xs">• {w}</p>
-          ))}
-          <p className="text-orange-300/40 text-xs mt-1">
-            Os minutos de jogadores substituídos sem dados válidos serão computados como 0.
-          </p>
         </div>
       )}
     </div>
   );
 }
-
-const STEPS = ["Resumo", "Escalação", "Estatísticas"];
 
 export function RegistrarPartidaModal({
   careerId,
   season,
   clubName,
+  clubLogoUrl,
   allPlayers,
   onMatchAdded,
   onClose,
 }: Props) {
-  const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
+  const [pickerMode, setPickerMode] = useState<"starter" | "sub" | null>(null);
+
+  const initial = useMemo(() => buildInitialDraft(careerId), [careerId]);
+
   const [draft, setDraft] = useState<MatchDraft>({
     opponent: "",
-    date: todayIso(),
+    opponentLogoUrl: null,
+    date: initial.date,
     location: "casa",
-    tournament: "",
-    stage: "",
+    tournament: initial.tournament,
+    stage: initial.stage,
     myScore: 0,
     opponentScore: 0,
     tablePosition: "",
@@ -1207,13 +782,77 @@ export function RegistrarPartidaModal({
     setDraft((prev) => ({ ...prev, ...patch }));
   }, []);
 
-  const canAdvance = () => {
-    if (step === 0) return draft.opponent.trim().length > 0;
-    if (step === 1) return draft.starterIds.length > 0;
-    return true;
-  };
+  const updatePlayerStats = useCallback((playerId: number, patch: Partial<PlayerMatchStats>) => {
+    setDraft((prev) => ({
+      ...prev,
+      playerStats: {
+        ...prev.playerStats,
+        [playerId]: { ...prev.playerStats[playerId], ...patch },
+      },
+    }));
+  }, []);
 
-  const handleConfirm = () => {
+  const addPlayer = useCallback((player: SquadPlayer, asSub: boolean) => {
+    const isSub = asSub;
+    setDraft((prev) => {
+      if (prev.starterIds.includes(player.id) || prev.subIds.includes(player.id)) return prev;
+      const nextStats = { ...prev.playerStats, [player.id]: mkDefault(isSub) };
+      if (isSub) {
+        return { ...prev, subIds: [...prev.subIds, player.id], playerStats: nextStats };
+      } else {
+        return { ...prev, starterIds: [...prev.starterIds, player.id], playerStats: nextStats };
+      }
+    });
+    setPickerMode(null);
+  }, []);
+
+  const removePlayer = useCallback((playerId: number) => {
+    setDraft((prev) => {
+      const starterIds = prev.starterIds.filter((id) => id !== playerId);
+      const subIds = prev.subIds.filter((id) => id !== playerId);
+      const playerStats = { ...prev.playerStats };
+      delete playerStats[playerId];
+      const motmPlayerId = prev.motmPlayerId === playerId ? null : prev.motmPlayerId;
+      return { ...prev, starterIds, subIds, playerStats, motmPlayerId };
+    });
+  }, []);
+
+  const handleAutoFill = useCallback(() => {
+    const saved = getCustomLineup(careerId);
+    const ids = saved ?? (allPlayers.length > 0 ? pickBestEleven(allPlayers) : []);
+    setDraft((prev) => {
+      const nextStats = { ...prev.playerStats };
+      const newStarters: number[] = [];
+      for (const id of ids) {
+        const exists = allPlayers.find((p) => p.id === id);
+        if (!exists) continue;
+        if (!prev.subIds.includes(id)) {
+          newStarters.push(id);
+          if (!nextStats[id]) nextStats[id] = mkDefault(false);
+        }
+      }
+      return { ...prev, starterIds: newStarters, playerStats: nextStats };
+    });
+  }, [careerId, allPlayers]);
+
+  const allParticipants = useMemo(
+    () => [...draft.starterIds, ...draft.subIds].map((id) => allPlayers.find((p) => p.id === id)).filter((p): p is SquadPlayer => p != null),
+    [draft.starterIds, draft.subIds, allPlayers]
+  );
+
+  const usedIds = useMemo(() => new Set([...draft.starterIds, ...draft.subIds]), [draft.starterIds, draft.subIds]);
+
+  const allUnusedForSub = useCallback((excludeId: number) => {
+    return allPlayers.filter((p) => !usedIds.has(p.id) && p.id !== excludeId);
+  }, [allPlayers, usedIds]);
+
+  const resultLabel = draft.myScore > draft.opponentScore ? "V" : draft.myScore < draft.opponentScore ? "D" : "E";
+  const resultColor = draft.myScore > draft.opponentScore ? "#34d399" : draft.myScore < draft.opponentScore ? "#f87171" : "#94a3b8";
+
+  const canSave = draft.opponent.trim().length > 0;
+
+  const handleConfirm = useCallback(() => {
+    if (!canSave || saving) return;
     setSaving(true);
     const match: MatchRecord = {
       id: generateMatchId(),
@@ -1238,137 +877,398 @@ export function RegistrarPartidaModal({
       tablePositionBefore: draft.tablePosition ? Number(draft.tablePosition) : undefined,
       createdAt: Date.now(),
     };
-    applyMatchToPlayerStats(careerId, draft.starterIds, draft.subIds, draft.playerStats);
     addMatch(careerId, match);
+    applyMatchToPlayerStats(careerId, draft.starterIds, draft.subIds, draft.playerStats);
     onMatchAdded(match);
-    setSaving(false);
     onClose();
-  };
+  }, [canSave, saving, careerId, season, draft, onMatchAdded, onClose]);
 
-  const isStep2 = step === 1;
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [onClose]);
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(8px)" }}
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-    >
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
       <div
-        className={`relative flex flex-col rounded-3xl overflow-hidden w-full transition-all duration-300 ${
-          isStep2 ? "max-w-5xl" : "max-w-2xl"
-        }`}
+        className="absolute inset-0"
+        style={{ background: "rgba(0,0,0,0.65)", backdropFilter: "blur(4px)" }}
+        onClick={onClose}
+      />
+
+      <div
+        className="relative z-10 w-full sm:max-w-2xl flex flex-col rounded-t-3xl sm:rounded-2xl"
         style={{
-          background: "var(--app-bg)",
-          border: "1px solid var(--surface-border)",
+          background: "rgba(12,12,20,0.97)",
+          border: "1px solid rgba(255,255,255,0.1)",
+          boxShadow: "0 24px 64px rgba(0,0,0,0.6)",
           maxHeight: "92vh",
         }}
       >
         <div
-          className="flex items-center justify-between px-6 py-4 flex-shrink-0"
-          style={{ borderBottom: "1px solid var(--surface-border)" }}
+          className="flex items-center justify-between px-5 py-4 flex-shrink-0"
+          style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}
         >
-          <div>
-            <h2 className="text-white font-black text-lg">Registrar Partida</h2>
-            <p className="text-white/40 text-xs mt-0.5">{STEPS[step]}</p>
-          </div>
-
           <div className="flex items-center gap-3">
-            <div className="flex gap-2">
-              {STEPS.map((s, i) => (
-                <div
-                  key={s}
-                  className="flex items-center gap-1.5"
-                >
-                  <div
-                    className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-200"
-                    style={{
-                      background: i <= step ? "rgba(var(--club-primary-rgb),0.2)" : "rgba(255,255,255,0.06)",
-                      color: i <= step ? "var(--club-primary)" : "rgba(255,255,255,0.25)",
-                      border: i === step ? "1px solid rgba(var(--club-primary-rgb),0.5)" : "1px solid transparent",
-                    }}
-                  >
-                    {i < step ? "✓" : i + 1}
-                  </div>
-                  {i < STEPS.length - 1 && (
-                    <div
-                      className="w-6 h-0.5 rounded-full transition-colors duration-200"
-                      style={{ background: i < step ? "rgba(var(--club-primary-rgb),0.4)" : "rgba(255,255,255,0.08)" }}
-                    />
-                  )}
-                </div>
-              ))}
-            </div>
-
-            <button
-              onClick={onClose}
-              className="w-8 h-8 rounded-xl flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-colors"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+            <div
+              className="w-2 h-2 rounded-full"
+              style={{ background: resultColor, boxShadow: `0 0 8px ${resultColor}` }}
+            />
+            <h2 className="text-white font-black text-base">Registrar Partida</h2>
+            {draft.opponent && (
+              <span className="text-white/40 text-sm truncate max-w-32">{draft.opponent}</span>
+            )}
           </div>
-        </div>
-
-        <div
-          className={`flex-1 overflow-y-auto px-6 py-5 ${isStep2 ? "overflow-hidden flex flex-col" : ""}`}
-          style={{ minHeight: 0 }}
-        >
-          {step === 0 && <Step1 draft={draft} clubName={clubName} onChange={onChange} />}
-          {step === 1 && (
-            <div className="flex-1 overflow-hidden h-full" style={{ minHeight: "400px" }}>
-              <Step2 draft={draft} allPlayers={allPlayers} onChange={onChange} />
-            </div>
-          )}
-          {step === 2 && <Step3 draft={draft} clubName={clubName} allPlayers={allPlayers} onChange={onChange} />}
-        </div>
-
-        <div
-          className="flex items-center justify-between px-6 py-4 flex-shrink-0"
-          style={{ borderTop: "1px solid var(--surface-border)" }}
-        >
           <button
-            type="button"
-            onClick={() => step > 0 ? setStep((s) => s - 1) : onClose()}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-white/50 hover:text-white hover:bg-white/08 transition-colors text-sm font-semibold glass glass-hover"
+            onClick={onClose}
+            className="w-8 h-8 rounded-xl flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-colors"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
-            {step === 0 ? "Cancelar" : "Anterior"}
           </button>
+        </div>
 
-          {step < STEPS.length - 1 ? (
-            <button
-              type="button"
-              onClick={() => setStep((s) => s + 1)}
-              disabled={!canAdvance()}
-              className="flex items-center gap-1.5 px-5 py-2 rounded-xl font-bold text-sm transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
-              style={{
-                background: canAdvance() ? "var(--club-primary)" : "rgba(255,255,255,0.08)",
-                color: canAdvance() ? "white" : "rgba(255,255,255,0.25)",
-                opacity: canAdvance() ? 1 : 0.7,
-              }}
+        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
+
+          {/* Adversário */}
+          <div className="space-y-1.5">
+            <label className="text-white/40 text-xs font-medium uppercase tracking-wider">Adversário *</label>
+            <OpponentAutocomplete
+              value={draft.opponent}
+              onChange={(v) => onChange({ opponent: v })}
+              onSelectClub={(logo) => onChange({ opponentLogoUrl: logo })}
+            />
+          </div>
+
+          {/* Placar */}
+          <div
+            className="rounded-2xl p-4"
+            style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
+          >
+            <div className="flex items-center gap-3">
+              <ScoreInput value={draft.myScore} onChange={(v) => onChange({ myScore: v })} label={clubName} />
+              <div className="flex flex-col items-center gap-1 flex-shrink-0 px-1">
+                <div className="flex items-center gap-2">
+                  {clubLogoUrl && <ClubBadge src={clubLogoUrl} name={clubName} size={22} />}
+                  <span className="text-white/20 text-xl font-black">×</span>
+                  {draft.opponentLogoUrl && <ClubBadge src={draft.opponentLogoUrl} name={draft.opponent} size={22} />}
+                </div>
+                <span
+                  className="text-xs font-bold px-2 py-0.5 rounded-full"
+                  style={{
+                    background: draft.myScore > draft.opponentScore ? "rgba(16,185,129,0.15)" : draft.myScore < draft.opponentScore ? "rgba(239,68,68,0.15)" : "rgba(148,163,184,0.1)",
+                    color: resultColor,
+                  }}
+                >
+                  {draft.myScore > draft.opponentScore ? "Vitória" : draft.myScore < draft.opponentScore ? "Derrota" : "Empate"}
+                </span>
+              </div>
+              <ScoreInput value={draft.opponentScore} onChange={(v) => onChange({ opponentScore: v })} label={draft.opponent || "Adversário"} />
+            </div>
+          </div>
+
+          {/* Data + Local */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className="text-white/40 text-xs font-medium uppercase tracking-wider">Data</label>
+              <input
+                type="date"
+                value={draft.date}
+                onChange={(e) => onChange({ date: e.target.value })}
+                className="w-full px-3 py-2.5 rounded-xl text-white text-sm focus:outline-none glass"
+                style={{ border: "1px solid rgba(255,255,255,0.08)", colorScheme: "dark" }}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-white/40 text-xs font-medium uppercase tracking-wider">Local</label>
+              <div className="flex gap-2 h-[42px]">
+                {(["casa", "fora", "neutro"] as MatchLocation[]).map((loc) => (
+                  <button
+                    key={loc}
+                    type="button"
+                    onClick={() => onChange({ location: loc })}
+                    className="flex-1 flex items-center justify-center gap-1 py-2 rounded-xl font-semibold text-xs transition-all duration-200"
+                    style={{
+                      background: draft.location === loc ? "rgba(var(--club-primary-rgb),0.2)" : "rgba(255,255,255,0.04)",
+                      color: draft.location === loc ? "var(--club-primary)" : "rgba(255,255,255,0.35)",
+                      border: draft.location === loc ? "1px solid rgba(var(--club-primary-rgb),0.4)" : "1px solid rgba(255,255,255,0.07)",
+                    }}
+                  >
+                    <span>{LOCATION_ICONS[loc]}</span>
+                    <span>{LOCATION_LABELS[loc]}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Torneio + Rodada */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className="text-white/40 text-xs font-medium uppercase tracking-wider">Torneio</label>
+              <input
+                type="text"
+                value={draft.tournament}
+                onChange={(e) => onChange({ tournament: e.target.value })}
+                placeholder="Ex: Premier League"
+                className="w-full px-3 py-2.5 rounded-xl text-white text-sm focus:outline-none glass"
+                style={{ border: "1px solid rgba(255,255,255,0.08)" }}
+              />
+              <div className="flex flex-wrap gap-1">
+                {TOURNAMENT_CHIPS.map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => onChange({ tournament: t })}
+                    className="px-2 py-0.5 rounded-full text-xs transition-colors"
+                    style={{
+                      background: draft.tournament === t ? "rgba(var(--club-primary-rgb),0.2)" : "rgba(255,255,255,0.05)",
+                      color: draft.tournament === t ? "var(--club-primary)" : "rgba(255,255,255,0.3)",
+                    }}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-white/40 text-xs font-medium uppercase tracking-wider">Estágio / Rodada</label>
+              <input
+                type="text"
+                value={draft.stage}
+                onChange={(e) => onChange({ stage: e.target.value })}
+                placeholder="Ex: Rodada 15"
+                className="w-full px-3 py-2.5 rounded-xl text-white text-sm focus:outline-none glass"
+                style={{ border: "1px solid rgba(255,255,255,0.08)" }}
+              />
+              <div className="space-y-1.5">
+                <label className="text-white/40 text-xs font-medium uppercase tracking-wider">Posição na tabela</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={99}
+                  value={draft.tablePosition}
+                  onChange={(e) => onChange({ tablePosition: e.target.value })}
+                  placeholder="Ex: 3"
+                  className="w-full px-3 py-2.5 rounded-xl text-white text-sm focus:outline-none glass"
+                  style={{ border: "1px solid rgba(255,255,255,0.08)" }}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Escalação */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-white/40 text-xs font-medium uppercase tracking-wider">
+                Titulares ({draft.starterIds.length})
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleAutoFill}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all duration-200"
+                  style={{ background: "rgba(var(--club-primary-rgb),0.12)", color: "var(--club-primary)", border: "1px solid rgba(var(--club-primary-rgb),0.2)" }}
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                  Preencher auto
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPickerMode((m) => m === "starter" ? null : "starter")}
+                  className="w-8 h-8 rounded-xl flex items-center justify-center font-black text-lg transition-all duration-200"
+                  style={{
+                    background: pickerMode === "starter" ? "rgba(var(--club-primary-rgb),0.2)" : "rgba(255,255,255,0.06)",
+                    color: pickerMode === "starter" ? "var(--club-primary)" : "rgba(255,255,255,0.5)",
+                    border: pickerMode === "starter" ? "1px solid rgba(var(--club-primary-rgb),0.4)" : "1px solid rgba(255,255,255,0.08)",
+                  }}
+                  title="Adicionar titular"
+                >
+                  +
+                </button>
+              </div>
+            </div>
+
+            {pickerMode === "starter" && (
+              <PlayerPicker
+                allPlayers={allPlayers}
+                usedIds={usedIds}
+                onSelect={(p) => addPlayer(p, false)}
+                onClose={() => setPickerMode(null)}
+              />
+            )}
+
+            {draft.starterIds.length === 0 && pickerMode !== "starter" && (
+              <div
+                className="flex items-center justify-center py-6 rounded-2xl"
+                style={{ border: "1px dashed rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.01)" }}
+              >
+                <p className="text-white/20 text-sm">Nenhum titular adicionado</p>
+              </div>
+            )}
+
+            <div className="space-y-2">
+              {draft.starterIds.map((id) => {
+                const player = allPlayers.find((p) => p.id === id);
+                const stats = draft.playerStats[id];
+                if (!player || !stats) return null;
+                return (
+                  <PlayerLineupRow
+                    key={id}
+                    player={player}
+                    stats={stats}
+                    isSub={false}
+                    allParticipants={allParticipants}
+                    allUnused={allUnusedForSub(id)}
+                    onUpdate={(patch) => updatePlayerStats(id, patch)}
+                    onRemove={() => removePlayer(id)}
+                  />
+                );
+              })}
+            </div>
+
+            {/* Substitutos */}
+            <div className="flex items-center justify-between pt-1">
+              <p className="text-white/40 text-xs font-medium uppercase tracking-wider">
+                Substitutos ({draft.subIds.length})
+              </p>
+              <button
+                type="button"
+                onClick={() => setPickerMode((m) => m === "sub" ? null : "sub")}
+                className="w-8 h-8 rounded-xl flex items-center justify-center font-black text-lg transition-all duration-200"
+                style={{
+                  background: pickerMode === "sub" ? "rgba(var(--club-primary-rgb),0.2)" : "rgba(255,255,255,0.06)",
+                  color: pickerMode === "sub" ? "var(--club-primary)" : "rgba(255,255,255,0.5)",
+                  border: pickerMode === "sub" ? "1px solid rgba(var(--club-primary-rgb),0.4)" : "1px solid rgba(255,255,255,0.08)",
+                }}
+                title="Adicionar substituto"
+              >
+                +
+              </button>
+            </div>
+
+            {pickerMode === "sub" && (
+              <PlayerPicker
+                allPlayers={allPlayers}
+                usedIds={usedIds}
+                onSelect={(p) => addPlayer(p, true)}
+                onClose={() => setPickerMode(null)}
+              />
+            )}
+
+            <div className="space-y-2">
+              {draft.subIds.map((id) => {
+                const player = allPlayers.find((p) => p.id === id);
+                const stats = draft.playerStats[id];
+                if (!player || !stats) return null;
+                return (
+                  <PlayerLineupRow
+                    key={id}
+                    player={player}
+                    stats={stats}
+                    isSub={true}
+                    allParticipants={allParticipants}
+                    allUnused={allUnusedForSub(id)}
+                    onUpdate={(patch) => updatePlayerStats(id, patch)}
+                    onRemove={() => removePlayer(id)}
+                  />
+                );
+              })}
+            </div>
+
+            {/* MOTM */}
+            {allParticipants.length > 0 && (
+              <div className="space-y-1.5 pt-1">
+                <label className="text-white/40 text-xs font-medium uppercase tracking-wider">⭐ Melhor em Campo (MOTM)</label>
+                <select
+                  value={draft.motmPlayerId ?? ""}
+                  onChange={(e) => onChange({ motmPlayerId: e.target.value ? Number(e.target.value) : null })}
+                  className="w-full px-3 py-2.5 rounded-xl text-white text-sm focus:outline-none glass"
+                  style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
+                >
+                  <option value="">Nenhum</option>
+                  {allParticipants.map((p) => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
+
+          {/* Estatísticas da partida */}
+          <div className="space-y-3">
+            <p className="text-white/40 text-xs font-medium uppercase tracking-wider">Estatísticas da Partida</p>
+            <div
+              className="rounded-2xl p-4 space-y-4"
+              style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}
             >
-              Próximo
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={handleConfirm}
-              disabled={saving}
-              className="flex items-center gap-1.5 px-5 py-2 rounded-xl font-bold text-sm transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
-              style={{ background: "linear-gradient(to right, var(--club-primary), var(--club-secondary))", color: "white" }}
-            >
-              {saving ? "Salvando..." : "Confirmar Partida"}
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-              </svg>
-            </button>
+              <div className="flex items-center gap-4">
+                <div className="flex-1 space-y-1">
+                  <p className="text-white/40 text-xs text-center">Chutes — {clubName}</p>
+                  <div className="flex items-center justify-center">
+                    <NumericInput value={draft.myShots} onChange={(v) => onChange({ myShots: v ?? 0 })} placeholder="0" className="w-16 text-center" />
+                  </div>
+                </div>
+                <span className="text-white/15 text-xs flex-shrink-0">vs</span>
+                <div className="flex-1 space-y-1">
+                  <p className="text-white/40 text-xs text-center">Chutes — {draft.opponent || "Adversário"}</p>
+                  <div className="flex items-center justify-center">
+                    <NumericInput value={draft.opponentShots} onChange={(v) => onChange({ opponentShots: v ?? 0 })} placeholder="0" className="w-16 text-center" />
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-white/40 text-xs">Posse de bola</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-white/60 text-xs font-bold tabular-nums" style={{ color: "var(--club-primary)" }}>{draft.possessionPct}%</span>
+                    <span className="text-white/25 text-xs">— {100 - draft.possessionPct}%</span>
+                  </div>
+                </div>
+                <div className="relative h-4 rounded-full" style={{ background: "rgba(255,255,255,0.07)" }}>
+                  <div
+                    className="absolute inset-y-0 left-0 rounded-full"
+                    style={{ width: `${draft.possessionPct}%`, background: "var(--club-primary)", opacity: 0.8 }}
+                  />
+                  <input
+                    type="range" min={0} max={100} step={1}
+                    value={draft.possessionPct}
+                    onChange={(e) => onChange({ possessionPct: Number(e.target.value) })}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  />
+                </div>
+                <div className="flex justify-between text-xs text-white/20">
+                  <span>{clubName}</span>
+                  <span>{draft.opponent || "Adversário"}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="h-1" />
+        </div>
+
+        {/* Footer */}
+        <div
+          className="flex-shrink-0 px-5 py-4"
+          style={{ borderTop: "1px solid rgba(255,255,255,0.07)" }}
+        >
+          {!canSave && (
+            <p className="text-white/30 text-xs text-center mb-2">Preencha o nome do adversário para salvar</p>
           )}
+          <button
+            type="button"
+            onClick={handleConfirm}
+            disabled={!canSave || saving}
+            className="w-full py-3.5 rounded-2xl font-black text-sm text-white transition-all duration-200 hover:scale-[1.01] active:scale-[0.99] disabled:opacity-40 disabled:cursor-not-allowed disabled:scale-100"
+            style={{ background: canSave ? "var(--club-gradient)" : "rgba(255,255,255,0.08)" }}
+          >
+            {saving ? "Salvando..." : "Salvar Partida"}
+          </button>
         </div>
       </div>
     </div>

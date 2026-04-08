@@ -281,8 +281,8 @@ export default function App() {
           clubCountry: newCareer.clubCountry,
           clubStadium: newCareer.clubStadium,
           clubFounded: newCareer.clubFounded,
-          clubPrimary: currentTheme.primary,
-          clubSecondary: currentTheme.secondary,
+          clubPrimary: newCareer.clubPrimary,
+          clubSecondary: newCareer.clubSecondary,
           updatedAt: Date.now(),
         };
       }

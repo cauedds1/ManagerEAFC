@@ -2,8 +2,13 @@ import { useState, useCallback } from "react";
 import type { SquadResult, SquadPlayer, PositionPtBr } from "@/lib/squadCache";
 import type { PlayerOverride } from "@/types/playerStats";
 import { getAllPlayerOverrides } from "@/lib/playerStatsStorage";
-import { FootballPitch, pickBestElevenIds } from "./FootballPitch";
+import { FootballPitch, pickBestEleven } from "./FootballPitch";
 import { PlayerDetailPanel } from "./PlayerDetailPanel";
+import {
+  getCustomLineup,
+  setCustomLineup,
+  clearCustomLineup,
+} from "@/lib/lineupStorage";
 
 const POS_STYLE: Record<PositionPtBr, { bg: string; color: string }> = {
   GOL: { bg: "rgba(245,158,11,0.18)",  color: "#f59e0b" },
@@ -71,12 +76,24 @@ function PlayerRow({
   player,
   overrides,
   selected,
+  dragging,
+  dragOver,
   onClick,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  onDragEnd,
 }: {
   player: SquadPlayer;
   overrides: Record<number, PlayerOverride>;
   selected?: boolean;
+  dragging?: boolean;
+  dragOver?: boolean;
   onClick: (player: SquadPlayer) => void;
+  onDragStart?: () => void;
+  onDragOver?: (e: React.DragEvent) => void;
+  onDrop?: () => void;
+  onDragEnd?: () => void;
 }) {
   const ov = overrides[player.id];
   const displayName = ov?.nameOverride ?? player.name;
@@ -86,23 +103,32 @@ function PlayerRow({
 
   return (
     <button
+      draggable={!!onDragStart}
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+      onDragEnd={onDragEnd}
       onClick={() => onClick(player)}
       className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl transition-all duration-200 text-left"
       style={{
-        background: selected
+        background: dragOver
+          ? "rgba(var(--club-primary-rgb),0.18)"
+          : selected
           ? "rgba(var(--club-primary-rgb),0.12)"
           : "rgba(255,255,255,0.04)",
-        border: selected
+        border: dragOver
+          ? "1px dashed rgba(var(--club-primary-rgb),0.6)"
+          : selected
           ? "1px solid rgba(var(--club-primary-rgb),0.3)"
           : "1px solid rgba(255,255,255,0.06)",
+        opacity: dragging ? 0.4 : 1,
+        cursor: onDragStart ? "grab" : "pointer",
       }}
     >
       <PlayerPhoto src={player.photo} name={displayName} />
       <div className="flex-1 min-w-0">
         <p className="text-white text-sm font-semibold leading-tight truncate">{displayName}</p>
-        <p className="text-white/30 text-xs mt-0.5">
-          {player.age > 0 ? `${player.age} anos` : ""}
-        </p>
+        <p className="text-white/30 text-xs mt-0.5">{player.age > 0 ? `${player.age} anos` : ""}</p>
       </div>
       <div className="flex items-center gap-2 flex-shrink-0">
         {displayOverall != null && (
@@ -118,6 +144,11 @@ function PlayerRow({
           <span className="text-white/25 text-xs font-mono tabular-nums w-5 text-right">
             #{displayNumber}
           </span>
+        )}
+        {onDragStart && (
+          <svg className="w-3.5 h-3.5 text-white/20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
         )}
       </div>
     </button>
@@ -157,14 +188,92 @@ export function ElencoView({
     () => getAllPlayerOverrides(careerId)
   );
 
+  const [customLineup, setCustomLineupState] = useState<number[] | null>(
+    () => getCustomLineup(careerId)
+  );
+
+  const [dragPlayerId, setDragPlayerId] = useState<number | null>(null);
+  const [dragOverPlayerId, setDragOverPlayerId] = useState<number | null>(null);
+
   const refreshOverrides = useCallback(() => {
     setOverrides(getAllPlayerOverrides(careerId));
     onOverridesUpdated?.();
   }, [careerId, onOverridesUpdated]);
 
-  const starterIds = allPlayers.length > 0 ? pickBestElevenIds(allPlayers) : new Set<number>();
-  const starters = allPlayers.filter((p) => starterIds.has(p.id));
-  const bench = allPlayers.filter((p) => !starterIds.has(p.id));
+  const defaultStarterIds = allPlayers.length > 0 ? pickBestEleven(allPlayers) : [];
+  const starterIds: number[] = customLineup ?? defaultStarterIds;
+  const starterSet = new Set(starterIds);
+  const starters = starterIds
+    .map((id) => allPlayers.find((p) => p.id === id))
+    .filter((p): p is SquadPlayer => p != null);
+  const bench = allPlayers.filter((p) => !starterSet.has(p.id));
+
+  const isCustom = customLineup !== null;
+
+  const handleSwapSlots = useCallback((slotA: number, slotB: number) => {
+    const next = [...starterIds];
+    [next[slotA], next[slotB]] = [next[slotB], next[slotA]];
+    setCustomLineupState(next);
+    setCustomLineup(careerId, next);
+  }, [careerId, starterIds]);
+
+  const handleResetLineup = useCallback(() => {
+    clearCustomLineup(careerId);
+    setCustomLineupState(null);
+  }, [careerId]);
+
+  const handleSwapPlayerWithBench = useCallback((starterId: number, benchId: number) => {
+    const currentIds = [...starterIds];
+    const idx = currentIds.indexOf(starterId);
+    if (idx === -1) {
+      currentIds.push(benchId);
+    } else {
+      currentIds[idx] = benchId;
+    }
+    setCustomLineupState(currentIds);
+    setCustomLineup(careerId, currentIds);
+  }, [careerId, starterIds]);
+
+  const handleDragStart = (playerId: number) => {
+    setDragPlayerId(playerId);
+  };
+  const handleDragOver = (e: React.DragEvent, playerId: number) => {
+    e.preventDefault();
+    setDragOverPlayerId(playerId);
+  };
+  const handleDrop = (targetId: number) => {
+    if (dragPlayerId !== null && dragPlayerId !== targetId) {
+      const srcIsStarter = starterSet.has(dragPlayerId);
+      const dstIsStarter = starterSet.has(targetId);
+
+      if (srcIsStarter && dstIsStarter) {
+        const next = [...starterIds];
+        const si = next.indexOf(dragPlayerId);
+        const di = next.indexOf(targetId);
+        if (si !== -1 && di !== -1) {
+          [next[si], next[di]] = [next[di], next[si]];
+          setCustomLineupState(next);
+          setCustomLineup(careerId, next);
+        }
+      } else if (srcIsStarter && !dstIsStarter) {
+        const next = [...starterIds];
+        const si = next.indexOf(dragPlayerId);
+        if (si !== -1) {
+          next[si] = targetId;
+          setCustomLineupState(next);
+          setCustomLineup(careerId, next);
+        }
+      } else if (!srcIsStarter && dstIsStarter) {
+        handleSwapPlayerWithBench(targetId, dragPlayerId);
+      }
+    }
+    setDragPlayerId(null);
+    setDragOverPlayerId(null);
+  };
+  const handleDragEnd = () => {
+    setDragPlayerId(null);
+    setDragOverPlayerId(null);
+  };
 
   const sourceLabel = squad
     ? squad.source === "api-football"
@@ -200,21 +309,36 @@ export function ElencoView({
         </div>
         <div className="flex items-center gap-3">
           {allPlayers.length > 0 && !squadLoading && (
-            <div className="flex rounded-lg p-0.5" style={{ background: "rgba(255,255,255,0.04)" }}>
-              {(["pitch", "list"] as SquadTab[]).map((t) => (
+            <>
+              {isCustom && (
                 <button
-                  key={t}
-                  onClick={() => setTab(t)}
-                  className="px-3 py-1.5 rounded-md text-xs font-semibold transition-all duration-200"
-                  style={{
-                    background: tab === t ? "rgba(var(--club-primary-rgb),0.15)" : "transparent",
-                    color: tab === t ? "var(--club-primary)" : "rgba(255,255,255,0.35)",
-                  }}
+                  onClick={handleResetLineup}
+                  className="flex items-center gap-1 text-xs font-medium transition-colors duration-200"
+                  style={{ color: "rgba(248,113,113,0.8)" }}
+                  title="Resetar escalação para o padrão"
                 >
-                  {t === "pitch" ? "Campo" : "Lista"}
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  Resetar
                 </button>
-              ))}
-            </div>
+              )}
+              <div className="flex rounded-lg p-0.5" style={{ background: "rgba(255,255,255,0.04)" }}>
+                {(["pitch", "list"] as SquadTab[]).map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => setTab(t)}
+                    className="px-3 py-1.5 rounded-md text-xs font-semibold transition-all duration-200"
+                    style={{
+                      background: tab === t ? "rgba(var(--club-primary-rgb),0.15)" : "transparent",
+                      color: tab === t ? "var(--club-primary)" : "rgba(255,255,255,0.35)",
+                    }}
+                  >
+                    {t === "pitch" ? "Campo" : "Lista"}
+                  </button>
+                ))}
+              </div>
+            </>
           )}
           <button
             onClick={onRefresh}
@@ -285,19 +409,19 @@ export function ElencoView({
               <p className="text-white/25 text-xs font-semibold tracking-widest uppercase">
                 Titulares ({starters.length})
               </p>
-              {selectedPlayer && (
-                <p className="text-xs" style={{ color: "var(--club-primary)" }}>
-                  Clique novamente para fechar
-                </p>
-              )}
+              <p className="text-white/20 text-xs">
+                {isCustom ? "Escalação personalizada · " : ""}Arraste para trocar posições
+              </p>
             </div>
             <FootballPitch
               players={allPlayers}
+              starterIds={starterIds}
               className="w-full"
               onPlayerClick={(p) =>
                 setSelectedPlayer((prev) => (prev?.id === p.id ? null : p))
               }
               highlightedPlayerId={selectedPlayer?.id}
+              onSwapSlots={handleSwapSlots}
             />
           </div>
           <div className="flex flex-col gap-1 overflow-y-auto lg:max-h-[500px]">
@@ -310,9 +434,15 @@ export function ElencoView({
                 player={player}
                 overrides={overrides}
                 selected={selectedPlayer?.id === player.id}
+                dragging={dragPlayerId === player.id}
+                dragOver={dragOverPlayerId === player.id}
                 onClick={(p) =>
                   setSelectedPlayer((prev) => (prev?.id === p.id ? null : p))
                 }
+                onDragStart={() => handleDragStart(player.id)}
+                onDragOver={(e) => handleDragOver(e, player.id)}
+                onDrop={() => handleDrop(player.id)}
+                onDragEnd={handleDragEnd}
               />
             ))}
             {bench.length === 0 && (
@@ -326,7 +456,7 @@ export function ElencoView({
         <div className="flex flex-col gap-2">
           <div className="mb-1">
             <p className="text-white/25 text-xs font-semibold tracking-widest uppercase mb-2">
-              Titulares ({starters.length})
+              Titulares ({starters.length}) · <span className="normal-case font-normal text-white/20">Arraste para trocar</span>
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5">
               {starters.map((player) => (
@@ -335,9 +465,15 @@ export function ElencoView({
                   player={player}
                   overrides={overrides}
                   selected={selectedPlayer?.id === player.id}
+                  dragging={dragPlayerId === player.id}
+                  dragOver={dragOverPlayerId === player.id}
                   onClick={(p) =>
                     setSelectedPlayer((prev) => (prev?.id === p.id ? null : p))
                   }
+                  onDragStart={() => handleDragStart(player.id)}
+                  onDragOver={(e) => handleDragOver(e, player.id)}
+                  onDrop={() => handleDrop(player.id)}
+                  onDragEnd={handleDragEnd}
                 />
               ))}
             </div>
@@ -354,9 +490,15 @@ export function ElencoView({
                     player={player}
                     overrides={overrides}
                     selected={selectedPlayer?.id === player.id}
+                    dragging={dragPlayerId === player.id}
+                    dragOver={dragOverPlayerId === player.id}
                     onClick={(p) =>
                       setSelectedPlayer((prev) => (prev?.id === p.id ? null : p))
                     }
+                    onDragStart={() => handleDragStart(player.id)}
+                    onDragOver={(e) => handleDragOver(e, player.id)}
+                    onDrop={() => handleDrop(player.id)}
+                    onDragEnd={handleDragEnd}
                   />
                 ))}
               </div>

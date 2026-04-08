@@ -364,6 +364,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
             careerId={career.id}
             season={career.season}
             clubName={career.clubName}
+            clubLogoUrl={logoUrl}
             matches={matches}
             allPlayers={allPlayers}
             onMatchAdded={handleMatchAdded}

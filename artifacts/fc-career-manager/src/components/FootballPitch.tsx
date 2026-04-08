@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { SquadPlayer, PositionPtBr, FormationGroup, FORMATION_GROUP } from "@/lib/squadCache";
 
 interface PitchPlayerData {
@@ -23,13 +23,12 @@ const POS_COLOR: Record<PositionPtBr, { fill: string; stroke: string; text: stri
   ATA: { fill: "#b91c1c", stroke: "#ef4444", text: "#ffe4e4" },
 };
 
-const FORMATION_POSITIONS: [number, number][] = [
+export const FORMATION_POSITIONS: [number, number][] = [
   [160, 400],
   [40, 315], [115, 315], [205, 315], [280, 315],
   [65, 225], [160, 225], [255, 225],
   [65, 130], [160, 130], [255, 130],
 ];
-
 
 function getInitials(name: string): string {
   const parts = name.trim().split(" ");
@@ -37,16 +36,7 @@ function getInitials(name: string): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-export function pickBestElevenIds(players: { id: number; positionPtBr: PositionPtBr }[]): Set<number> {
-  const slots = pickBestEleven(players as PitchPlayerData[]);
-  const ids = new Set<number>();
-  for (const s of slots) {
-    if (s) ids.add(s.id);
-  }
-  return ids;
-}
-
-function pickBestEleven(players: PitchPlayerData[]): (PitchPlayerData | null)[] {
+export function pickBestEleven(players: { id: number; positionPtBr: PositionPtBr }[]): number[] {
   const slots: (PitchPlayerData | null)[] = Array(11).fill(null);
   const used = new Set<number>();
 
@@ -55,14 +45,12 @@ function pickBestEleven(players: PitchPlayerData[]): (PitchPlayerData | null)[] 
   };
   for (const p of players) {
     const fg = FORMATION_GROUP[p.positionPtBr] ?? "VOL";
-    byGroup[fg].push(p);
+    byGroup[fg].push(p as PitchPlayerData);
   }
 
-  // GK
   const gks = byGroup["GOL"].filter((p) => !used.has(p.id));
   if (gks[0]) { slots[0] = gks[0]; used.add(gks[0].id); }
 
-  // Defenders: slots 1 (left) and 4 (right) prefer LAT; 2 and 3 prefer ZAG/CB
   const defs = byGroup["ZAG"].filter((p) => !used.has(p.id));
   const lats = defs.filter((p) => p.positionPtBr === "LAT");
   const cbs  = defs.filter((p) => p.positionPtBr !== "LAT");
@@ -77,38 +65,41 @@ function pickBestEleven(players: PitchPlayerData[]): (PitchPlayerData | null)[] 
     if (cb) { slots[si] = cb; used.add(cb.id); }
   }
 
-  // Midfielders: slots 5, 6, 7
   const mids = byGroup["VOL"].filter((p) => !used.has(p.id));
   for (let i = 0; i < 3 && i < mids.length; i++) {
     slots[5 + i] = mids[i]; used.add(mids[i].id);
   }
 
-  // Attackers: slots 8, 9, 10
   const atks = byGroup["ATA"].filter((p) => !used.has(p.id));
   for (let i = 0; i < 3 && i < atks.length; i++) {
     slots[8 + i] = atks[i]; used.add(atks[i].id);
   }
 
-  // Fill any remaining empty slots with unused players
   const overflow = players.filter((p) => !used.has(p.id));
   let oi = 0;
   for (let i = 0; i < 11; i++) {
     if (!slots[i] && oi < overflow.length) {
-      slots[i] = overflow[oi++];
+      slots[i] = overflow[oi++] as PitchPlayerData;
     }
   }
 
-  return slots;
+  return slots.filter((s): s is PitchPlayerData => s !== null).map((s) => s.id);
+}
+
+export function pickBestElevenIds(players: { id: number; positionPtBr: PositionPtBr }[]): Set<number> {
+  return new Set(pickBestEleven(players));
 }
 
 function PlayerCircle({
-  x, y, player, onClick, highlighted,
+  x, y, player, onClick, highlighted, dragging, dropTarget,
 }: {
   x: number;
   y: number;
   player: PitchPlayerData;
   onClick?: (player: PitchPlayerData) => void;
   highlighted?: boolean;
+  dragging?: boolean;
+  dropTarget?: boolean;
 }) {
   const [photoState, setPhotoState] = useState<"idle" | "loaded" | "error">(
     player.photo ? "idle" : "error"
@@ -124,10 +115,12 @@ function PlayerCircle({
     return parts.length > 1 ? parts[parts.length - 1] : player.name;
   })();
 
+  const opacity = dragging ? 0.35 : 1;
+
   return (
     <g
       onClick={onClick ? () => onClick(player) : undefined}
-      style={{ cursor: onClick ? "pointer" : "default" }}
+      style={{ cursor: onClick ? "pointer" : "default", opacity }}
     >
       <defs>
         <clipPath id={clipId}>
@@ -135,12 +128,23 @@ function PlayerCircle({
         </clipPath>
       </defs>
 
-      {highlighted && (
-        <circle cx={x} cy={y} r={radius + 8} fill="none" stroke={colors.stroke} strokeWidth={2} opacity={0.6} strokeDasharray="4 3" />
+      {(highlighted || dropTarget) && (
+        <circle
+          cx={x} cy={y} r={radius + 8}
+          fill="none"
+          stroke={dropTarget ? "#ffffff" : colors.stroke}
+          strokeWidth={dropTarget ? 2.5 : 2}
+          opacity={0.7}
+          strokeDasharray={dropTarget ? "6 3" : "4 3"}
+        />
       )}
 
-      <circle cx={x} cy={y} r={radius + 4} fill={colors.fill} opacity={highlighted ? 0.35 : 0.2} />
-      <circle cx={x} cy={y} r={radius} fill={colors.fill} stroke={highlighted ? "white" : colors.stroke} strokeWidth={highlighted ? 2.5 : 1.5} />
+      {dropTarget && (
+        <circle cx={x} cy={y} r={radius + 14} fill="rgba(255,255,255,0.06)" />
+      )}
+
+      <circle cx={x} cy={y} r={radius + 4} fill={colors.fill} opacity={highlighted || dropTarget ? 0.35 : 0.2} />
+      <circle cx={x} cy={y} r={radius} fill={colors.fill} stroke={highlighted || dropTarget ? "white" : colors.stroke} strokeWidth={highlighted || dropTarget ? 2.5 : 1.5} />
 
       {showPhoto ? (
         <>
@@ -156,7 +160,7 @@ function PlayerCircle({
             onLoad={() => setPhotoState("loaded")}
             onError={() => setPhotoState("error")}
           />
-          <circle cx={x} cy={y} r={radius} fill="none" stroke={highlighted ? "white" : colors.stroke} strokeWidth={highlighted ? 2.5 : 1.5} />
+          <circle cx={x} cy={y} r={radius} fill="none" stroke={highlighted || dropTarget ? "white" : colors.stroke} strokeWidth={highlighted || dropTarget ? 2.5 : 1.5} />
           {photoState === "loaded" && (
             <>
               <rect x={x - 11} y={y + radius - 9} width={22} height={11} rx={4} fill={colors.fill} stroke={colors.stroke} strokeWidth={0.8} opacity={0.95} />
@@ -200,27 +204,89 @@ function PitchSkeleton() {
 
 interface FootballPitchProps {
   players: SquadPlayer[];
+  starterIds?: number[];
   loading?: boolean;
   className?: string;
   onPlayerClick?: (player: SquadPlayer) => void;
   highlightedPlayerId?: number;
+  onSwapSlots?: (slotA: number, slotB: number) => void;
 }
 
-export function FootballPitch({ players, loading, className, onPlayerClick, highlightedPlayerId }: FootballPitchProps) {
-  const pitchData: PitchPlayerData[] = players.map((p) => ({
-    id: p.id,
-    name: p.name,
-    positionPtBr: p.positionPtBr,
-    number: p.number ?? undefined,
-    photo: p.photo || undefined,
-  }));
-  const slots = pickBestEleven(pitchData);
+export function FootballPitch({
+  players,
+  starterIds: externalStarters,
+  loading,
+  className,
+  onPlayerClick,
+  highlightedPlayerId,
+  onSwapSlots,
+}: FootballPitchProps) {
+  const svgRef = useRef<SVGSVGElement>(null);
+  const [dragSrc, setDragSrc] = useState<number | null>(null);
+  const [dropDst, setDropDst] = useState<number | null>(null);
+
+  const orderedIds = externalStarters ?? (players.length > 0 ? pickBestEleven(players) : []);
+
+  const pitchData: (PitchPlayerData | null)[] = FORMATION_POSITIONS.map((_, i) => {
+    const id = orderedIds[i];
+    if (id == null) return null;
+    const p = players.find((pl) => pl.id === id);
+    if (!p) return null;
+    return { id: p.id, name: p.name, positionPtBr: p.positionPtBr, number: p.number ?? undefined, photo: p.photo || undefined };
+  });
 
   const W = 320;
   const H = 440;
 
+  function svgCoords(e: React.PointerEvent): { x: number; y: number } | null {
+    if (!svgRef.current) return null;
+    const rect = svgRef.current.getBoundingClientRect();
+    return {
+      x: ((e.clientX - rect.left) / rect.width) * W,
+      y: ((e.clientY - rect.top) / rect.height) * H,
+    };
+  }
+
+  function nearestSlot(x: number, y: number, exclude: number | null): number | null {
+    let best = null;
+    let bestDist = 45;
+    for (let i = 0; i < FORMATION_POSITIONS.length; i++) {
+      if (i === exclude || pitchData[i] == null) continue;
+      const [px, py] = FORMATION_POSITIONS[i];
+      const d = Math.hypot(x - px, y - py);
+      if (d < bestDist) { bestDist = d; best = i; }
+    }
+    return best;
+  }
+
+  const handlePointerDown = (slotIndex: number) => (e: React.PointerEvent) => {
+    if (!onSwapSlots) return;
+    e.stopPropagation();
+    setDragSrc(slotIndex);
+    setDropDst(slotIndex);
+    (e.currentTarget.closest("svg") as SVGSVGElement | null)?.setPointerCapture(e.pointerId);
+  };
+
+  const handleSvgPointerMove = (e: React.PointerEvent) => {
+    if (dragSrc === null || !onSwapSlots) return;
+    const coords = svgCoords(e);
+    if (!coords) return;
+    const nearest = nearestSlot(coords.x, coords.y, dragSrc);
+    setDropDst(nearest);
+  };
+
+  const handleSvgPointerUp = (e: React.PointerEvent) => {
+    if (dragSrc !== null && dropDst !== null && dragSrc !== dropDst && onSwapSlots) {
+      onSwapSlots(dragSrc, dropDst);
+    }
+    setDragSrc(null);
+    setDropDst(null);
+    try { (e.currentTarget as SVGSVGElement).releasePointerCapture(e.pointerId); } catch {}
+  };
+
   const handlePlayerClick = onPlayerClick
     ? (pitchPlayer: PitchPlayerData) => {
+        if (dragSrc !== null) return;
         const original = players.find((p) => p.id === pitchPlayer.id);
         if (original) onPlayerClick(original);
       }
@@ -233,7 +299,15 @@ export function FootballPitch({ players, loading, className, onPlayerClick, high
           <PitchSkeleton />
         </div>
       ) : (
-        <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: "block", maxHeight: 500 }} xmlns="http://www.w3.org/2000/svg">
+        <svg
+          ref={svgRef}
+          viewBox={`0 0 ${W} ${H}`}
+          width="100%"
+          style={{ display: "block", maxHeight: 500, touchAction: onSwapSlots ? "none" : undefined }}
+          xmlns="http://www.w3.org/2000/svg"
+          onPointerMove={onSwapSlots ? handleSvgPointerMove : undefined}
+          onPointerUp={onSwapSlots ? handleSvgPointerUp : undefined}
+        >
           <defs>
             <linearGradient id="pitchGrad" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="#143520" />
@@ -264,18 +338,31 @@ export function FootballPitch({ players, loading, className, onPlayerClick, high
             <path d="M 298 418 A 10 10 0 0 1 308 428" />
           </g>
 
-          {slots.map((player, i) => {
+          {onSwapSlots && dragSrc !== null && (
+            <text x={W / 2} y={H / 2 + 85} textAnchor="middle" fill="rgba(255,255,255,0.4)" fontSize={9} fontFamily="Inter, sans-serif">
+              Solte sobre outro jogador para trocar
+            </text>
+          )}
+
+          {pitchData.map((player, i) => {
             if (!player) return null;
             const [x, y] = FORMATION_POSITIONS[i];
             return (
-              <PlayerCircle
+              <g
                 key={`${player.id}-${i}`}
-                x={x}
-                y={y}
-                player={player}
-                onClick={handlePlayerClick}
-                highlighted={highlightedPlayerId === player.id}
-              />
+                onPointerDown={onSwapSlots ? handlePointerDown(i) : undefined}
+                style={{ cursor: onSwapSlots ? "grab" : undefined }}
+              >
+                <PlayerCircle
+                  x={x}
+                  y={y}
+                  player={player}
+                  onClick={handlePlayerClick}
+                  highlighted={highlightedPlayerId === player.id}
+                  dragging={dragSrc === i}
+                  dropTarget={dropDst === i && dragSrc !== null && dragSrc !== i}
+                />
+              </g>
             );
           })}
         </svg>
