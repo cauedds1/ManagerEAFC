@@ -372,69 +372,79 @@ function LastMatches({
               key={m.id}
               className="rounded-2xl flex-shrink-0 flex flex-col overflow-hidden"
               style={{
-                width: 136,
+                width: 190,
                 borderTop: `1px solid ${rs.border}`,
                 borderRight: `1px solid ${rs.border}`,
                 borderBottom: `1px solid ${rs.border}`,
                 borderLeft: `3px solid ${rs.color}`,
-                background: `linear-gradient(160deg, ${rs.bg} 0%, rgba(0,0,0,0.15) 100%)`,
+                background: `linear-gradient(160deg, ${rs.bg} 0%, rgba(0,0,0,0.18) 100%)`,
               }}
             >
-              {/* Header: tournament + date */}
+              {/* Header: tournament (full) + date */}
               <div
-                className="flex items-center justify-between px-3 pt-2.5 pb-1.5 gap-1"
-                style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}
+                className="flex items-start justify-between gap-2 px-3.5 pt-3 pb-2.5"
+                style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
               >
                 <span
-                  className="text-xs font-semibold truncate leading-tight"
-                  style={{ color: rs.color, maxWidth: 82 }}
-                  title={m.tournament || "Amistoso"}
+                  className="text-xs font-bold leading-tight"
+                  style={{ color: rs.color, flex: 1, minWidth: 0, wordBreak: "break-word" }}
                 >
                   {m.tournament || "Amistoso"}
                 </span>
                 {dateStr && (
-                  <span className="text-white/30 text-xs flex-shrink-0">{dateStr}</span>
+                  <span className="text-white/35 text-xs flex-shrink-0 font-medium tabular-nums">{dateStr}</span>
                 )}
               </div>
 
-              {/* Middle: crests + score */}
-              <div className="flex flex-col items-center gap-2 px-3 py-3 flex-1">
-                {/* Crests row */}
-                <div className="flex items-center justify-between w-full">
-                  <div className="flex flex-col items-center gap-1" style={{ width: 40 }}>
-                    <MiniCrest logoUrl={clubLogoUrl} name={clubName} size={32} themed />
-                    <span className="text-white/35 text-center leading-tight" style={{ fontSize: 9, maxWidth: 40, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{shortClub}</span>
-                  </div>
+              {/* Middle: crests + score — perfectly symmetric 3 columns */}
+              <div className="flex items-center justify-between px-3 py-4 gap-1">
+                {/* My club */}
+                <div className="flex flex-col items-center gap-1.5" style={{ width: 52 }}>
+                  <MiniCrest logoUrl={clubLogoUrl} name={clubName} size={36} themed />
+                  <span
+                    className="text-white/40 text-center leading-tight w-full"
+                    style={{ fontSize: 10, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                  >
+                    {shortClub}
+                  </span>
+                </div>
 
-                  {/* Score */}
-                  <div className="flex flex-col items-center gap-0.5">
-                    <span className="text-white font-black tabular-nums leading-none" style={{ fontSize: 22 }}>
-                      {m.myScore}<span className="text-white/25 mx-0.5" style={{ fontSize: 14 }}>–</span>{m.opponentScore}
-                    </span>
-                    <span
-                      className="px-2 py-0.5 rounded-full font-black"
-                      style={{ background: "rgba(0,0,0,0.3)", color: rs.color, fontSize: 10 }}
-                    >
-                      {rs.label}
-                    </span>
-                  </div>
+                {/* Score + badge — center column */}
+                <div className="flex flex-col items-center gap-1.5 flex-1">
+                  <span className="text-white font-black tabular-nums leading-none" style={{ fontSize: 24 }}>
+                    {m.myScore}
+                    <span className="text-white/20 font-light" style={{ fontSize: 16, margin: "0 3px" }}>–</span>
+                    {m.opponentScore}
+                  </span>
+                  <span
+                    className="px-2.5 py-0.5 rounded-full font-black"
+                    style={{ background: "rgba(0,0,0,0.3)", color: rs.color, fontSize: 10, letterSpacing: "0.05em" }}
+                  >
+                    {rs.label}
+                  </span>
+                </div>
 
-                  <div className="flex flex-col items-center gap-1" style={{ width: 40 }}>
-                    <MiniCrest logoUrl={oppLogoUrl} name={m.opponent} size={32} />
-                    <span className="text-white/35 text-center leading-tight" style={{ fontSize: 9, maxWidth: 40, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{shortOpp}</span>
-                  </div>
+                {/* Opponent */}
+                <div className="flex flex-col items-center gap-1.5" style={{ width: 52 }}>
+                  <MiniCrest logoUrl={oppLogoUrl} name={m.opponent} size={36} />
+                  <span
+                    className="text-white/40 text-center leading-tight w-full"
+                    style={{ fontSize: 10, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                  >
+                    {shortOpp}
+                  </span>
                 </div>
               </div>
 
-              {/* Footer: stage + location */}
+              {/* Footer: stage (left) + location (right) */}
               <div
-                className="flex items-center justify-between px-3 py-2 gap-1"
-                style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}
+                className="flex items-center justify-between px-3.5 py-2.5 gap-2"
+                style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}
               >
-                <span className="text-white/25 text-xs truncate leading-tight" style={{ maxWidth: 76 }}>
+                <span className="text-white/30 text-xs font-medium truncate">
                   {m.stage || "—"}
                 </span>
-                <span className="text-white/30 flex-shrink-0" style={{ fontSize: 11 }} title={LOCATION_LABEL[m.location]}>
+                <span className="text-white/35 flex-shrink-0" style={{ fontSize: 12 }} title={LOCATION_LABEL[m.location]}>
                   {LOCATION_ICON[m.location]}
                 </span>
               </div>
