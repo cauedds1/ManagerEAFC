@@ -66,17 +66,12 @@ function pickBestEleven(players: PitchPlayerData[]): (PitchPlayerData | null)[] 
   const defs = byGroup["ZAG"].filter((p) => !used.has(p.id));
   const lats = defs.filter((p) => p.positionPtBr === "LAT");
   const cbs  = defs.filter((p) => p.positionPtBr !== "LAT");
-  // Fill lateral slots first with LATs, fallback to CBs
   const latPool = [...lats, ...cbs];
-  // Fill center-back slots first with CBs, fallback to LATs
   const cbPool  = [...cbs, ...lats];
-  // Slot 1 (left lateral)
   const lat1 = latPool.find((p) => !used.has(p.id));
   if (lat1) { slots[1] = lat1; used.add(lat1.id); }
-  // Slot 4 (right lateral)
   const lat4 = latPool.find((p) => !used.has(p.id));
   if (lat4) { slots[4] = lat4; used.add(lat4.id); }
-  // Slots 2 and 3 (centre-backs)
   for (const si of [2, 3]) {
     const cb = cbPool.find((p) => !used.has(p.id));
     if (cb) { slots[si] = cb; used.add(cb.id); }
@@ -106,7 +101,15 @@ function pickBestEleven(players: PitchPlayerData[]): (PitchPlayerData | null)[] 
   return slots;
 }
 
-function PlayerCircle({ x, y, player }: { x: number; y: number; player: PitchPlayerData }) {
+function PlayerCircle({
+  x, y, player, onClick, highlighted,
+}: {
+  x: number;
+  y: number;
+  player: PitchPlayerData;
+  onClick?: (player: PitchPlayerData) => void;
+  highlighted?: boolean;
+}) {
   const [photoState, setPhotoState] = useState<"idle" | "loaded" | "error">(
     player.photo ? "idle" : "error"
   );
@@ -122,15 +125,22 @@ function PlayerCircle({ x, y, player }: { x: number; y: number; player: PitchPla
   })();
 
   return (
-    <g>
+    <g
+      onClick={onClick ? () => onClick(player) : undefined}
+      style={{ cursor: onClick ? "pointer" : "default" }}
+    >
       <defs>
         <clipPath id={clipId}>
           <circle cx={x} cy={y} r={radius - 1} />
         </clipPath>
       </defs>
 
-      <circle cx={x} cy={y} r={radius + 4} fill={colors.fill} opacity={0.2} />
-      <circle cx={x} cy={y} r={radius} fill={colors.fill} stroke={colors.stroke} strokeWidth={1.5} />
+      {highlighted && (
+        <circle cx={x} cy={y} r={radius + 8} fill="none" stroke={colors.stroke} strokeWidth={2} opacity={0.6} strokeDasharray="4 3" />
+      )}
+
+      <circle cx={x} cy={y} r={radius + 4} fill={colors.fill} opacity={highlighted ? 0.35 : 0.2} />
+      <circle cx={x} cy={y} r={radius} fill={colors.fill} stroke={highlighted ? "white" : colors.stroke} strokeWidth={highlighted ? 2.5 : 1.5} />
 
       {showPhoto ? (
         <>
@@ -146,7 +156,7 @@ function PlayerCircle({ x, y, player }: { x: number; y: number; player: PitchPla
             onLoad={() => setPhotoState("loaded")}
             onError={() => setPhotoState("error")}
           />
-          <circle cx={x} cy={y} r={radius} fill="none" stroke={colors.stroke} strokeWidth={1.5} />
+          <circle cx={x} cy={y} r={radius} fill="none" stroke={highlighted ? "white" : colors.stroke} strokeWidth={highlighted ? 2.5 : 1.5} />
           {photoState === "loaded" && (
             <>
               <rect x={x - 11} y={y + radius - 9} width={22} height={11} rx={4} fill={colors.fill} stroke={colors.stroke} strokeWidth={0.8} opacity={0.95} />
@@ -192,9 +202,11 @@ interface FootballPitchProps {
   players: SquadPlayer[];
   loading?: boolean;
   className?: string;
+  onPlayerClick?: (player: SquadPlayer) => void;
+  highlightedPlayerId?: number;
 }
 
-export function FootballPitch({ players, loading, className }: FootballPitchProps) {
+export function FootballPitch({ players, loading, className, onPlayerClick, highlightedPlayerId }: FootballPitchProps) {
   const pitchData: PitchPlayerData[] = players.map((p) => ({
     id: p.id,
     name: p.name,
@@ -206,6 +218,13 @@ export function FootballPitch({ players, loading, className }: FootballPitchProp
 
   const W = 320;
   const H = 440;
+
+  const handlePlayerClick = onPlayerClick
+    ? (pitchPlayer: PitchPlayerData) => {
+        const original = players.find((p) => p.id === pitchPlayer.id);
+        if (original) onPlayerClick(original);
+      }
+    : undefined;
 
   return (
     <div className={`relative rounded-2xl overflow-hidden ${className ?? ""}`} style={{ background: "#0d2218" }}>
@@ -248,7 +267,16 @@ export function FootballPitch({ players, loading, className }: FootballPitchProp
           {slots.map((player, i) => {
             if (!player) return null;
             const [x, y] = FORMATION_POSITIONS[i];
-            return <PlayerCircle key={`${player.id}-${i}`} x={x} y={y} player={player} />;
+            return (
+              <PlayerCircle
+                key={`${player.id}-${i}`}
+                x={x}
+                y={y}
+                player={player}
+                onClick={handlePlayerClick}
+                highlighted={highlightedPlayerId === player.id}
+              />
+            );
           })}
         </svg>
       )}

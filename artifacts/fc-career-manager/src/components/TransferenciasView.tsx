@@ -1,0 +1,446 @@
+import { useState } from "react";
+import type { PositionPtBr } from "@/lib/squadCache";
+import type { TransferRecord } from "@/types/transfer";
+import {
+  ROLE_LABELS,
+  ROLE_COLORS,
+  type TeamRole,
+} from "@/types/playerStats";
+import {
+  generatePlayerId,
+  generateTransferId,
+} from "@/lib/transferStorage";
+
+const ALL_POSITIONS: PositionPtBr[] = [
+  "GOL","ZAG","LAT","VOL","MC","MEI","PE","PD","SA","CA","ATA",
+];
+
+const POS_STYLE: Record<PositionPtBr, { bg: string; color: string }> = {
+  GOL: { bg: "rgba(245,158,11,0.18)",  color: "#f59e0b" },
+  ZAG: { bg: "rgba(59,130,246,0.18)",  color: "#60a5fa" },
+  LAT: { bg: "rgba(14,165,233,0.18)",  color: "#38bdf8" },
+  VOL: { bg: "rgba(16,185,129,0.18)",  color: "#34d399" },
+  MC:  { bg: "rgba(20,184,166,0.18)",  color: "#2dd4bf" },
+  MEI: { bg: "rgba(132,204,22,0.18)",  color: "#a3e635" },
+  PE:  { bg: "rgba(249,115,22,0.18)",  color: "#fb923c" },
+  PD:  { bg: "rgba(245,156,10,0.18)",  color: "#fbbf24" },
+  SA:  { bg: "rgba(244,63,94,0.18)",   color: "#fb7185" },
+  CA:  { bg: "rgba(239,68,68,0.18)",   color: "#f87171" },
+  ATA: { bg: "rgba(185,28,28,0.18)",   color: "#ef4444" },
+};
+
+const ALL_ROLES: TeamRole[] = ["esporadico","rodizio","promessa","importante","crucial"];
+
+function formatDate(ts: number): string {
+  const d = new Date(ts);
+  return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
+}
+
+function formatFee(fee: number): string {
+  if (fee === 0) return "Grátis";
+  if (fee >= 1) return `€${fee}M`;
+  return `€${(fee * 1000).toFixed(0)}k`;
+}
+
+function PlayerPhoto({ src, name }: { src: string; name: string }) {
+  const [err, setErr] = useState(!src);
+  const initials = name
+    .trim()
+    .split(" ")
+    .map((p) => p[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+  return (
+    <div
+      className="w-12 h-12 rounded-xl flex-shrink-0 overflow-hidden flex items-center justify-center"
+      style={{ background: "rgba(var(--club-primary-rgb),0.1)", border: "1px solid rgba(var(--club-primary-rgb),0.15)" }}
+    >
+      {!err && src ? (
+        <img src={src} alt={name} className="w-full h-full object-cover" onError={() => setErr(true)} />
+      ) : (
+        <span className="text-white/50 font-black text-sm">{initials}</span>
+      )}
+    </div>
+  );
+}
+
+function TransferCard({ transfer }: { transfer: TransferRecord }) {
+  const pos = POS_STYLE[transfer.playerPositionPtBr] ?? POS_STYLE.MC;
+  const role = ROLE_COLORS[transfer.role];
+  return (
+    <div
+      className="flex items-center gap-4 p-4 rounded-2xl transition-all duration-200 glass glass-hover"
+    >
+      <PlayerPhoto src={transfer.playerPhoto} name={transfer.playerName} />
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap mb-1">
+          <p className="text-white font-bold text-sm truncate">{transfer.playerName}</p>
+          <span
+            className="text-xs font-bold px-2 py-0.5 rounded-md flex-shrink-0"
+            style={{ background: pos.bg, color: pos.color }}
+          >
+            {transfer.playerPositionPtBr}
+          </span>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <span
+            className="text-xs font-semibold px-2 py-0.5 rounded-md"
+            style={{ background: role.bg, color: role.color }}
+          >
+            {ROLE_LABELS[transfer.role]}
+          </span>
+          <span className="text-white/30 text-xs">{transfer.playerAge} anos</span>
+          <span className="text-white/20 text-xs">·</span>
+          <span className="text-white/30 text-xs">{transfer.season}</span>
+        </div>
+      </div>
+      <div className="text-right flex-shrink-0">
+        <p className="text-white font-black text-base tabular-nums">{formatFee(transfer.fee)}</p>
+        <p className="text-white/35 text-xs tabular-nums">
+          {transfer.salary > 0 ? `€${transfer.salary}k/sem` : ""}
+        </p>
+        <p className="text-white/20 text-xs mt-0.5">{transfer.contractYears}A · {formatDate(transfer.transferredAt)}</p>
+      </div>
+    </div>
+  );
+}
+
+interface FormData {
+  playerName: string;
+  playerPositionPtBr: PositionPtBr;
+  playerAge: string;
+  playerPhoto: string;
+  shirtNumber: string;
+  fee: string;
+  salary: string;
+  contractYears: string;
+  role: TeamRole;
+}
+
+const DEFAULT_FORM: FormData = {
+  playerName: "",
+  playerPositionPtBr: "CA",
+  playerAge: "",
+  playerPhoto: "",
+  shirtNumber: "",
+  fee: "",
+  salary: "",
+  contractYears: "4",
+  role: "importante",
+};
+
+interface TransferenciasViewProps {
+  careerId: string;
+  transfers: TransferRecord[];
+  season: string;
+  onTransferAdded: (transfer: TransferRecord) => void;
+}
+
+export function TransferenciasView({
+  careerId,
+  transfers,
+  season,
+  onTransferAdded,
+}: TransferenciasViewProps) {
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState<FormData>(DEFAULT_FORM);
+  const [submitting, setSubmitting] = useState(false);
+
+  const sortedTransfers = [...transfers].sort((a, b) => b.transferredAt - a.transferredAt);
+
+  const set = (field: keyof FormData, value: string) =>
+    setForm((f) => ({ ...f, [field]: value }));
+
+  const valid =
+    form.playerName.trim().length >= 2 &&
+    form.playerAge.trim() !== "" &&
+    parseInt(form.playerAge, 10) > 0;
+
+  const handleSubmit = () => {
+    if (!valid || submitting) return;
+    setSubmitting(true);
+
+    const transfer: TransferRecord = {
+      id: generateTransferId(),
+      careerId,
+      season,
+      playerId: generatePlayerId(),
+      playerName: form.playerName.trim(),
+      playerPhoto: form.playerPhoto.trim(),
+      playerPositionPtBr: form.playerPositionPtBr,
+      playerAge: parseInt(form.playerAge, 10) || 0,
+      shirtNumber: form.shirtNumber.trim() ? parseInt(form.shirtNumber, 10) : undefined,
+      fee: parseFloat(form.fee) || 0,
+      salary: parseFloat(form.salary) || 0,
+      contractYears: parseInt(form.contractYears, 10) || 1,
+      role: form.role,
+      transferredAt: Date.now(),
+    };
+
+    onTransferAdded(transfer);
+    setForm(DEFAULT_FORM);
+    setShowForm(false);
+    setSubmitting(false);
+  };
+
+  const inputClass =
+    "w-full px-3 py-2.5 rounded-xl text-white text-sm focus:outline-none glass placeholder:text-white/20";
+  const labelClass = "text-white/40 text-xs font-medium mb-1 block";
+
+  return (
+    <div className="animate-fade-up space-y-5">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <h2 className="text-white/35 text-xs font-bold tracking-widest uppercase">Transferências</h2>
+          {sortedTransfers.length > 0 && (
+            <span
+              className="text-xs font-bold px-2.5 py-0.5 rounded-full tabular-nums"
+              style={{ background: "rgba(var(--club-primary-rgb),0.15)", color: "var(--club-primary)" }}
+            >
+              {sortedTransfers.length}
+            </span>
+          )}
+        </div>
+        <button
+          onClick={() => { setForm(DEFAULT_FORM); setShowForm(true); }}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-white transition-all duration-200 hover:opacity-90 active:scale-95"
+          style={{ background: "var(--club-gradient)" }}
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+          </svg>
+          Registrar Contratação
+        </button>
+      </div>
+
+      {sortedTransfers.length === 0 ? (
+        <div
+          className="flex flex-col items-center justify-center py-16 rounded-2xl gap-4 glass text-center"
+        >
+          <div
+            className="w-16 h-16 rounded-2xl flex items-center justify-center"
+            style={{ background: "rgba(var(--club-primary-rgb),0.08)" }}
+          >
+            <svg className="w-8 h-8" style={{ color: "rgba(var(--club-primary-rgb),0.5)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+            </svg>
+          </div>
+          <div>
+            <p className="text-white/50 font-semibold text-base">Nenhuma contratação registrada</p>
+            <p className="text-white/25 text-sm mt-1">
+              Registre as contratações que você fez no EA FC e elas aparecerão no elenco automaticamente.
+            </p>
+          </div>
+          <button
+            onClick={() => { setForm(DEFAULT_FORM); setShowForm(true); }}
+            className="px-6 py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90"
+            style={{ background: "var(--club-gradient)" }}
+          >
+            Registrar primeira contratação
+          </button>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-3">
+          {sortedTransfers.map((t) => (
+            <TransferCard key={t.id} transfer={t} />
+          ))}
+        </div>
+      )}
+
+      {showForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0"
+            style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(8px)" }}
+            onClick={() => setShowForm(false)}
+          />
+          <div
+            className="relative w-full max-w-lg rounded-3xl overflow-hidden flex flex-col"
+            style={{
+              background: "var(--app-bg-lighter)",
+              border: "1px solid var(--surface-border)",
+              boxShadow: "0 40px 80px rgba(0,0,0,0.5)",
+              maxHeight: "90vh",
+            }}
+          >
+            <div
+              className="flex items-center justify-between px-6 py-4 flex-shrink-0"
+              style={{ borderBottom: "1px solid var(--surface-border)" }}
+            >
+              <div>
+                <h3 className="text-white font-black text-lg">Registrar Contratação</h3>
+                <p className="text-white/35 text-xs mt-0.5">Temporada {season}</p>
+              </div>
+              <button
+                onClick={() => setShowForm(false)}
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-white/40 hover:text-white/80 hover:bg-white/8 transition-all"
+              >
+                <svg className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="overflow-y-auto p-6 flex flex-col gap-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="sm:col-span-2">
+                  <label className={labelClass}>Nome do jogador *</label>
+                  <input
+                    className={inputClass}
+                    value={form.playerName}
+                    onChange={(e) => set("playerName", e.target.value)}
+                    placeholder="Ex: Mikel Merino"
+                    autoFocus
+                  />
+                </div>
+                <div>
+                  <label className={labelClass}>Posição *</label>
+                  <select
+                    className={`${inputClass} cursor-pointer`}
+                    style={{ appearance: "none" }}
+                    value={form.playerPositionPtBr}
+                    onChange={(e) => set("playerPositionPtBr", e.target.value as PositionPtBr)}
+                  >
+                    {ALL_POSITIONS.map((p) => (
+                      <option key={p} value={p} style={{ background: "#1a1030" }}>
+                        {p}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className={labelClass}>Idade *</label>
+                  <input
+                    type="number"
+                    className={inputClass}
+                    value={form.playerAge}
+                    onChange={(e) => set("playerAge", e.target.value)}
+                    placeholder="Ex: 26"
+                    min={14}
+                    max={50}
+                  />
+                </div>
+                <div>
+                  <label className={labelClass}>Número da camisa</label>
+                  <input
+                    type="number"
+                    className={inputClass}
+                    value={form.shirtNumber}
+                    onChange={(e) => set("shirtNumber", e.target.value)}
+                    placeholder="Ex: 10"
+                    min={1}
+                    max={99}
+                  />
+                </div>
+                <div>
+                  <label className={labelClass}>Contrato (anos)</label>
+                  <select
+                    className={`${inputClass} cursor-pointer`}
+                    style={{ appearance: "none" }}
+                    value={form.contractYears}
+                    onChange={(e) => set("contractYears", e.target.value)}
+                  >
+                    {[1,2,3,4,5,6,7].map((y) => (
+                      <option key={y} value={y} style={{ background: "#1a1030" }}>
+                        {y} {y === 1 ? "ano" : "anos"}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className={labelClass}>Função no elenco</label>
+                <div className="flex flex-wrap gap-2">
+                  {ALL_ROLES.map((r) => {
+                    const c = ROLE_COLORS[r];
+                    const active = form.role === r;
+                    return (
+                      <button
+                        key={r}
+                        type="button"
+                        onClick={() => set("role", r)}
+                        className="px-3.5 py-2 rounded-xl text-xs font-bold transition-all duration-150"
+                        style={{
+                          background: active ? c.bg : "rgba(255,255,255,0.05)",
+                          color: active ? c.color : "rgba(255,255,255,0.4)",
+                          border: active ? `1px solid ${c.color}40` : "1px solid rgba(255,255,255,0.08)",
+                          transform: active ? "scale(1.04)" : "scale(1)",
+                        }}
+                      >
+                        {ROLE_LABELS[r]}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div
+                className="p-4 rounded-2xl flex flex-col gap-4"
+                style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
+              >
+                <p className="text-white/35 text-xs font-semibold uppercase tracking-wider">Valores financeiros</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className={labelClass}>Taxa de transferência (M€)</label>
+                    <input
+                      type="number"
+                      className={inputClass}
+                      value={form.fee}
+                      onChange={(e) => set("fee", e.target.value)}
+                      placeholder="Ex: 55 (grátis = 0)"
+                      min={0}
+                      step={0.1}
+                    />
+                  </div>
+                  <div>
+                    <label className={labelClass}>Salário (€k / semana)</label>
+                    <input
+                      type="number"
+                      className={inputClass}
+                      value={form.salary}
+                      onChange={(e) => set("salary", e.target.value)}
+                      placeholder="Ex: 120"
+                      min={0}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className={labelClass}>URL da foto (opcional)</label>
+                <input
+                  className={inputClass}
+                  value={form.playerPhoto}
+                  onChange={(e) => set("playerPhoto", e.target.value)}
+                  placeholder="https://..."
+                />
+              </div>
+            </div>
+
+            <div
+              className="flex gap-3 px-6 py-4 flex-shrink-0"
+              style={{ borderTop: "1px solid var(--surface-border)" }}
+            >
+              <button
+                onClick={() => setShowForm(false)}
+                className="flex-1 py-3 rounded-xl text-sm font-semibold text-white/60 glass glass-hover transition-all"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleSubmit}
+                disabled={!valid || submitting}
+                className="flex-2 py-3 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+                style={{ background: "var(--club-gradient)", flex: 2 }}
+              >
+                {submitting ? "Registrando..." : "Confirmar Contratação"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

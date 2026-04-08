@@ -57,6 +57,20 @@ const POSITION_PT_BR: Record<PositionGroup, PositionPtBr> = {
   BroadForward: "ATA", // "Attacker" genérico da API-Football
 };
 
+export const PT_BR_TO_POSITION: Record<PositionPtBr, PositionGroup> = {
+  GOL: "Goalkeeper",
+  ZAG: "CentreBack",
+  LAT: "FullBack",
+  VOL: "DefensiveMid",
+  MC:  "CentralMid",
+  MEI: "AttackingMid",
+  PE:  "LeftWing",
+  PD:  "RightWing",
+  SA:  "SecondStriker",
+  CA:  "Striker",
+  ATA: "BroadForward",
+};
+
 export const FORMATION_GROUP: Record<PositionPtBr, FormationGroup> = {
   GOL: "GOL",
   ZAG: "ZAG",
