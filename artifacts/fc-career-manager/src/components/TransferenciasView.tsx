@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import type { PositionPtBr } from "@/lib/squadCache";
 import type { TransferRecord } from "@/types/transfer";
@@ -12,7 +12,7 @@ import {
   generateTransferId,
 } from "@/lib/transferStorage";
 import { setPlayerStats, defaultStats } from "@/lib/playerStatsStorage";
-import { getCachedClubList } from "@/lib/clubListCache";
+import { getCachedClubList, getApiKey } from "@/lib/clubListCache";
 import { searchStaticClubs } from "@/lib/staticClubList";
 
 const ALL_POSITIONS: PositionPtBr[] = [
@@ -37,13 +37,30 @@ const ALL_ROLES: TeamRole[] = ["esporadico","rodizio","promessa","importante","c
 
 function formatDate(ts: number): string {
   const d = new Date(ts);
-  return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
+  return `${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}/${d.getFullYear()}`;
 }
 
 function formatFee(fee: number): string {
   if (fee === 0) return "Grátis";
+  if (fee >= 1_000_000) {
+    const m = fee / 1_000_000;
+    return `€${m % 1 === 0 ? m : m.toFixed(1)}M`;
+  }
+  if (fee >= 1_000) {
+    const k = fee / 1_000;
+    return `€${k % 1 === 0 ? k : k.toFixed(1)}k`;
+  }
   if (fee >= 1) return `€${fee}M`;
   return `€${(fee * 1000).toFixed(0)}k`;
+}
+
+function mapApiPositionToPtBr(pos: string): PositionPtBr {
+  const p = (pos ?? "").toLowerCase();
+  if (p.includes("goalkeeper")) return "GOL";
+  if (p.includes("defender")) return "ZAG";
+  if (p.includes("midfielder")) return "MC";
+  if (p.includes("attacker") || p.includes("forward")) return "CA";
+  return "MC";
 }
 
 function ClubBadge({ src, name, size = 24 }: { src?: string | null; name: string; size?: number }) {
@@ -59,6 +76,150 @@ function ClubBadge({ src, name, size = 24 }: { src?: string | null; name: string
     );
   }
   return <img src={src} alt={name} style={{ width: size, height: size, objectFit: "contain", flexShrink: 0 }} onError={() => setErr(true)} />;
+}
+
+interface PlayerSuggestion {
+  id: number;
+  name: string;
+  photo: string;
+  age: number;
+  nationality: string;
+  position: string;
+}
+
+function PlayerFace({ src, name, size = 40 }: { src: string; name: string; size?: number }) {
+  const [err, setErr] = useState(!src);
+  const initials = name.trim().split(" ").map((p) => p[0]).slice(0,2).join("").toUpperCase();
+  return (
+    <div
+      className="rounded-xl overflow-hidden flex-shrink-0 flex items-center justify-center"
+      style={{ width: size, height: size, background: "rgba(var(--club-primary-rgb),0.1)", border: "1px solid rgba(var(--club-primary-rgb),0.15)" }}
+    >
+      {!err && src ? (
+        <img src={src} alt={name} style={{ width: size, height: size, objectFit: "cover" }} onError={() => setErr(true)} />
+      ) : (
+        <span className="text-white/50 font-black" style={{ fontSize: size * 0.28 }}>{initials}</span>
+      )}
+    </div>
+  );
+}
+
+function PlayerAutocomplete({
+  value,
+  photo,
+  onChange,
+  onSelect,
+}: {
+  value: string;
+  photo: string;
+  onChange: (name: string) => void;
+  onSelect: (p: PlayerSuggestion) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [results, setResults] = useState<PlayerSuggestion[]>([]);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const apiKey = getApiKey();
+
+  const search = useCallback(async (q: string) => {
+    if (!q.trim() || q.trim().length < 3) { setResults([]); return; }
+    setLoading(true);
+    try {
+      if (apiKey) {
+        const res = await fetch(
+          `https://v3.football.api-sports.io/players?search=${encodeURIComponent(q.trim())}&season=2024`,
+          { headers: { "x-apisports-key": apiKey }, signal: AbortSignal.timeout(6000) }
+        );
+        if (res.ok) {
+          const data = await res.json();
+          const players: PlayerSuggestion[] = (data.response ?? []).slice(0, 8).map((item: Record<string, unknown>) => {
+            const pl = item.player as Record<string, unknown>;
+            const stats = (item.statistics as Record<string, unknown>[])?.[0] ?? {};
+            const games = (stats.games as Record<string, unknown>) ?? {};
+            return {
+              id: pl.id as number,
+              name: pl.name as string,
+              photo: pl.photo as string ?? "",
+              age: pl.age as number ?? 0,
+              nationality: pl.nationality as string ?? "",
+              position: games.position as string ?? "",
+            };
+          });
+          setResults(players);
+          setLoading(false);
+          return;
+        }
+      }
+    } catch { /* fallthrough */ }
+    setLoading(false);
+    setResults([]);
+  }, [apiKey]);
+
+  const handleChange = (v: string) => {
+    onChange(v);
+    setOpen(true);
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => search(v), 300);
+  };
+
+  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
+
+  const inputClass = "w-full pl-12 pr-3 py-2.5 rounded-xl text-white text-sm focus:outline-none glass placeholder:text-white/20";
+
+  return (
+    <div className="relative">
+      <div className="absolute left-2 top-1/2 -translate-y-1/2 pointer-events-none z-10">
+        <PlayerFace src={photo} name={value || "?"} size={28} />
+      </div>
+      <input
+        ref={inputRef}
+        type="text"
+        value={value}
+        onChange={(e) => handleChange(e.target.value)}
+        onFocus={() => { setOpen(true); if (value.trim().length >= 3) search(value); }}
+        onBlur={() => setTimeout(() => setOpen(false), 180)}
+        placeholder="Ex: Mikel Merino"
+        className={inputClass}
+        autoFocus
+      />
+      {loading && (
+        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+          <div className="w-4 h-4 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
+        </div>
+      )}
+      {open && results.length > 0 && (
+        <div
+          className="absolute z-50 left-0 right-0 mt-1 rounded-2xl overflow-hidden shadow-2xl"
+          style={{ background: "rgba(12,12,18,0.98)", border: "1px solid rgba(255,255,255,0.1)", backdropFilter: "blur(24px)" }}
+        >
+          {results.map((pl) => (
+            <button
+              key={pl.id}
+              type="button"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => { onSelect(pl); setOpen(false); setResults([]); }}
+              className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/5 transition-colors text-left"
+            >
+              <PlayerFace src={pl.photo} name={pl.name} size={36} />
+              <div className="flex-1 min-w-0">
+                <p className="text-white text-sm font-bold truncate">{pl.name}</p>
+                <p className="text-white/35 text-xs">{pl.nationality}{pl.position ? ` · ${pl.position}` : ""}{pl.age ? ` · ${pl.age} anos` : ""}</p>
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+      {open && !loading && results.length === 0 && value.trim().length >= 3 && apiKey && (
+        <div
+          className="absolute z-50 left-0 right-0 mt-1 rounded-xl px-4 py-3"
+          style={{ background: "rgba(12,12,18,0.98)", border: "1px solid rgba(255,255,255,0.08)" }}
+        >
+          <p className="text-white/30 text-xs">Nenhum jogador encontrado</p>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function ClubAutocomplete({
@@ -78,15 +239,10 @@ function ClubAutocomplete({
     const cached = getCachedClubList();
     if (cached && cached.length > 0) {
       const q = value.toLowerCase().trim();
-      return cached
-        .filter((c) => c.name.toLowerCase().includes(q) || c.league.toLowerCase().includes(q))
-        .slice(0, 8);
+      return cached.filter((c) => c.name.toLowerCase().includes(q) || c.league.toLowerCase().includes(q)).slice(0, 8);
     }
     return searchStaticClubs(value);
   }, [value, open]);
-
-  const inputClass =
-    "w-full px-3 py-2.5 rounded-xl text-white text-sm focus:outline-none glass placeholder:text-white/20";
 
   return (
     <div className="relative">
@@ -98,23 +254,19 @@ function ClubAutocomplete({
         onFocus={() => setOpen(true)}
         onBlur={() => setTimeout(() => setOpen(false), 180)}
         placeholder="Ex: Manchester City (vazio = Jogador Livre)"
-        className={inputClass}
+        className="w-full px-3 py-2.5 rounded-xl text-white text-sm focus:outline-none glass placeholder:text-white/20"
       />
       {open && suggestions.length > 0 && (
         <div
-          className="absolute z-30 left-0 right-0 mt-1 rounded-2xl overflow-hidden shadow-2xl"
-          style={{ background: "rgba(15,15,20,0.97)", border: "1px solid rgba(255,255,255,0.1)", backdropFilter: "blur(20px)" }}
+          className="absolute z-50 left-0 right-0 mt-1 rounded-2xl overflow-hidden shadow-2xl"
+          style={{ background: "rgba(12,12,18,0.98)", border: "1px solid rgba(255,255,255,0.1)", backdropFilter: "blur(20px)" }}
         >
           {suggestions.map((club) => (
             <button
               key={club.id}
               type="button"
               onMouseDown={(e) => e.preventDefault()}
-              onClick={() => {
-                onChange(club.name);
-                onSelectLogo(club.logo || null);
-                setOpen(false);
-              }}
+              onClick={() => { onChange(club.name); onSelectLogo(club.logo || null); setOpen(false); }}
               className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-white/5 transition-colors text-left"
             >
               <ClubBadge src={club.logo} name={club.name} size={24} />
@@ -130,77 +282,70 @@ function ClubAutocomplete({
   );
 }
 
-function PlayerPhoto({ src, name }: { src: string; name: string }) {
-  const [err, setErr] = useState(!src);
-  const initials = name
-    .trim()
-    .split(" ")
-    .map((p) => p[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-  return (
-    <div
-      className="w-12 h-12 rounded-xl flex-shrink-0 overflow-hidden flex items-center justify-center"
-      style={{ background: "rgba(var(--club-primary-rgb),0.1)", border: "1px solid rgba(var(--club-primary-rgb),0.15)" }}
-    >
-      {!err && src ? (
-        <img src={src} alt={name} className="w-full h-full object-cover" onError={() => setErr(true)} />
-      ) : (
-        <span className="text-white/50 font-black text-sm">{initials}</span>
-      )}
-    </div>
-  );
-}
-
-function TransferCard({ transfer }: { transfer: TransferRecord }) {
+function TransferCard({
+  transfer,
+  clubName,
+  clubLogoUrl,
+}: {
+  transfer: TransferRecord;
+  clubName: string;
+  clubLogoUrl?: string | null;
+}) {
   const pos = POS_STYLE[transfer.playerPositionPtBr] ?? POS_STYLE.MC;
   const role = ROLE_COLORS[transfer.role];
+  const isFree = !transfer.fromClub;
+
   return (
     <div className="flex items-center gap-4 p-4 rounded-2xl transition-all duration-200 glass glass-hover">
-      <PlayerPhoto src={transfer.playerPhoto} name={transfer.playerName} />
+      <PlayerFace src={transfer.playerPhoto} name={transfer.playerName} size={48} />
+
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap mb-1">
           <p className="text-white font-bold text-sm truncate">{transfer.playerName}</p>
-          <span
-            className="text-xs font-bold px-2 py-0.5 rounded-md flex-shrink-0"
-            style={{ background: pos.bg, color: pos.color }}
-          >
+          <span className="text-xs font-bold px-2 py-0.5 rounded-md flex-shrink-0" style={{ background: pos.bg, color: pos.color }}>
             {transfer.playerPositionPtBr}
           </span>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <span
-            className="text-xs font-semibold px-2 py-0.5 rounded-md"
-            style={{ background: role.bg, color: role.color }}
-          >
+          <span className="text-xs font-semibold px-2 py-0.5 rounded-md flex-shrink-0" style={{ background: role.bg, color: role.color }}>
             {ROLE_LABELS[transfer.role]}
           </span>
+        </div>
+
+        <div className="flex items-center gap-2 flex-wrap">
           <span className="text-white/30 text-xs">{transfer.playerAge} anos</span>
-          {transfer.fromClub ? (
+          <span className="text-white/20 text-xs">·</span>
+          <span className="text-white/25 text-xs">{transfer.season}</span>
+          {transfer.contractYears > 0 && (
             <>
               <span className="text-white/20 text-xs">·</span>
-              <div className="flex items-center gap-1">
-                {transfer.fromClubLogo && <ClubBadge src={transfer.fromClubLogo} name={transfer.fromClub} size={14} />}
-                <span className="text-white/35 text-xs truncate max-w-28">{transfer.fromClub}</span>
-              </div>
-            </>
-          ) : (
-            <>
-              <span className="text-white/20 text-xs">·</span>
-              <span className="text-white/25 text-xs">Jogador Livre</span>
+              <span className="text-white/25 text-xs">{transfer.contractYears}A</span>
             </>
           )}
-          <span className="text-white/20 text-xs">·</span>
-          <span className="text-white/30 text-xs">{transfer.season}</span>
+        </div>
+
+        {/* Club flow */}
+        <div className="flex items-center gap-2 mt-2">
+          {isFree ? (
+            <span className="text-white/25 text-xs italic">Jogador Livre</span>
+          ) : (
+            <>
+              <ClubBadge src={transfer.fromClubLogo} name={transfer.fromClub!} size={20} />
+              <span className="text-white/30 text-xs truncate max-w-24">{transfer.fromClub}</span>
+              <svg className="w-3.5 h-3.5 text-white/20 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5-5 5M6 12h12" />
+              </svg>
+              <ClubBadge src={clubLogoUrl} name={clubName} size={20} />
+              <span className="text-white/30 text-xs truncate max-w-24">{clubName}</span>
+            </>
+          )}
         </div>
       </div>
+
       <div className="text-right flex-shrink-0">
         <p className="text-white font-black text-base tabular-nums">{formatFee(transfer.fee)}</p>
-        <p className="text-white/35 text-xs tabular-nums">
-          {transfer.salary > 0 ? `€${transfer.salary}k/sem` : ""}
-        </p>
-        <p className="text-white/20 text-xs mt-0.5">{transfer.contractYears}A · {formatDate(transfer.transferredAt)}</p>
+        {transfer.salary > 0 && (
+          <p className="text-white/35 text-xs tabular-nums">€{transfer.salary}k/sem</p>
+        )}
+        <p className="text-white/20 text-xs mt-0.5">{formatDate(transfer.transferredAt)}</p>
       </div>
     </div>
   );
@@ -238,6 +383,8 @@ interface TransferenciasViewProps {
   careerId: string;
   transfers: TransferRecord[];
   season: string;
+  clubName: string;
+  clubLogoUrl?: string | null;
   onTransferAdded: (transfer: TransferRecord) => void;
 }
 
@@ -245,6 +392,8 @@ export function TransferenciasView({
   careerId,
   transfers,
   season,
+  clubName,
+  clubLogoUrl,
   onTransferAdded,
 }: TransferenciasViewProps) {
   const [showForm, setShowForm] = useState(false);
@@ -293,8 +442,7 @@ export function TransferenciasView({
     setSubmitting(false);
   };
 
-  const inputClass =
-    "w-full px-3 py-2.5 rounded-xl text-white text-sm focus:outline-none glass placeholder:text-white/20";
+  const inputClass = "w-full px-3 py-2.5 rounded-xl text-white text-sm focus:outline-none glass placeholder:text-white/20";
   const labelClass = "text-white/40 text-xs font-medium mb-1 block";
 
   return (
@@ -325,19 +473,14 @@ export function TransferenciasView({
 
       {sortedTransfers.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 rounded-2xl gap-4 glass text-center">
-          <div
-            className="w-16 h-16 rounded-2xl flex items-center justify-center"
-            style={{ background: "rgba(var(--club-primary-rgb),0.08)" }}
-          >
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{ background: "rgba(var(--club-primary-rgb),0.08)" }}>
             <svg className="w-8 h-8" style={{ color: "rgba(var(--club-primary-rgb),0.5)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
             </svg>
           </div>
           <div>
             <p className="text-white/50 font-semibold text-base">Nenhuma contratação registrada</p>
-            <p className="text-white/25 text-sm mt-1">
-              Registre as contratações que você fez no EA FC e elas aparecerão no elenco automaticamente.
-            </p>
+            <p className="text-white/25 text-sm mt-1">Registre as contratações que você fez no EA FC e elas aparecerão no elenco automaticamente.</p>
           </div>
           <button
             onClick={() => { setForm(DEFAULT_FORM); setShowForm(true); }}
@@ -350,7 +493,7 @@ export function TransferenciasView({
       ) : (
         <div className="flex flex-col gap-3">
           {sortedTransfers.map((t) => (
-            <TransferCard key={t.id} transfer={t} />
+            <TransferCard key={t.id} transfer={t} clubName={clubName} clubLogoUrl={clubLogoUrl} />
           ))}
         </div>
       )}
@@ -371,6 +514,7 @@ export function TransferenciasView({
               maxHeight: "90vh",
             }}
           >
+            {/* Header */}
             <div
               className="flex items-center justify-between px-6 py-4 flex-shrink-0"
               style={{ borderBottom: "1px solid var(--surface-border)" }}
@@ -390,17 +534,29 @@ export function TransferenciasView({
             </div>
 
             <div className="overflow-y-auto p-6 flex flex-col gap-5">
+              {/* Player search */}
+              <div>
+                <label className={labelClass}>Nome do jogador *</label>
+                <PlayerAutocomplete
+                  value={form.playerName}
+                  photo={form.playerPhoto}
+                  onChange={(v) => set("playerName", v)}
+                  onSelect={(p) => {
+                    setForm((f) => ({
+                      ...f,
+                      playerName: p.name,
+                      playerPhoto: p.photo,
+                      playerAge: p.age ? String(p.age) : f.playerAge,
+                      playerPositionPtBr: p.position ? mapApiPositionToPtBr(p.position) : f.playerPositionPtBr,
+                    }));
+                  }}
+                />
+                {!getApiKey() && (
+                  <p className="text-white/20 text-xs mt-1">Configure a chave de API nas Configurações para buscar jogadores automaticamente.</p>
+                )}
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="sm:col-span-2">
-                  <label className={labelClass}>Nome do jogador *</label>
-                  <input
-                    className={inputClass}
-                    value={form.playerName}
-                    onChange={(e) => set("playerName", e.target.value)}
-                    placeholder="Ex: Mikel Merino"
-                    autoFocus
-                  />
-                </div>
                 <div>
                   <label className={labelClass}>Posição *</label>
                   <select
@@ -410,9 +566,7 @@ export function TransferenciasView({
                     onChange={(e) => set("playerPositionPtBr", e.target.value as PositionPtBr)}
                   >
                     {ALL_POSITIONS.map((p) => (
-                      <option key={p} value={p} style={{ background: "#1a1030" }}>
-                        {p}
-                      </option>
+                      <option key={p} value={p} style={{ background: "#1a1030" }}>{p}</option>
                     ))}
                   </select>
                 </div>
@@ -449,9 +603,7 @@ export function TransferenciasView({
                     onChange={(e) => set("contractYears", e.target.value)}
                   >
                     {[1,2,3,4,5,6,7].map((y) => (
-                      <option key={y} value={y} style={{ background: "#1a1030" }}>
-                        {y} {y === 1 ? "ano" : "anos"}
-                      </option>
+                      <option key={y} value={y} style={{ background: "#1a1030" }}>{y} {y === 1 ? "ano" : "anos"}</option>
                     ))}
                   </select>
                 </div>
@@ -522,16 +674,6 @@ export function TransferenciasView({
                     />
                   </div>
                 </div>
-              </div>
-
-              <div>
-                <label className={labelClass}>URL da foto (opcional)</label>
-                <input
-                  className={inputClass}
-                  value={form.playerPhoto}
-                  onChange={(e) => set("playerPhoto", e.target.value)}
-                  placeholder="https://..."
-                />
               </div>
             </div>
 
