@@ -385,6 +385,99 @@ function OpponentAutocomplete({
   );
 }
 
+function MotmAutocomplete({
+  value,
+  allPlayers,
+  onChange,
+}: {
+  value: number | null;
+  allPlayers: SquadPlayer[];
+  onChange: (playerId: number | null) => void;
+}) {
+  const selectedPlayer = value != null ? allPlayers.find((p) => p.id === value) ?? null : null;
+  const [query, setQuery] = useState(selectedPlayer?.name ?? "");
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    setQuery(selectedPlayer?.name ?? "");
+  }, [value]);
+
+  const suggestions = useMemo(() => {
+    if (!query.trim() || !open) return [];
+    const q = query.toLowerCase().trim();
+    return allPlayers
+      .filter((p) => p.name.toLowerCase().includes(q) || p.positionPtBr.toLowerCase().includes(q))
+      .slice(0, 8);
+  }, [query, open, allPlayers]);
+
+  const handleSelect = (player: SquadPlayer) => {
+    onChange(player.id);
+    setQuery(player.name);
+    setOpen(false);
+  };
+
+  const handleClear = () => {
+    onChange(null);
+    setQuery("");
+  };
+
+  return (
+    <div className="relative">
+      <div className="relative">
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => { setQuery(e.target.value); setOpen(true); if (!e.target.value) onChange(null); }}
+          onFocus={() => setOpen(true)}
+          onBlur={() => setTimeout(() => setOpen(false), 180)}
+          placeholder="Buscar jogador..."
+          className="w-full px-3 py-2.5 pr-9 rounded-xl text-white text-sm focus:outline-none glass"
+          style={{ border: "1px solid rgba(255,255,255,0.08)" }}
+        />
+        {query && (
+          <button
+            type="button"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={handleClear}
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/70 transition-colors"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        )}
+      </div>
+      {open && suggestions.length > 0 && (
+        <div
+          className="absolute z-30 left-0 right-0 mt-1 rounded-2xl overflow-hidden shadow-2xl"
+          style={{ background: "rgba(15,15,20,0.97)", border: "1px solid rgba(255,255,255,0.1)", backdropFilter: "blur(20px)" }}
+        >
+          {suggestions.map((player) => (
+            <button
+              key={player.id}
+              type="button"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => handleSelect(player)}
+              className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-white/5 transition-colors text-left"
+            >
+              <div
+                className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold"
+                style={{ background: "rgba(var(--club-primary-rgb),0.15)", color: "var(--club-primary)" }}
+              >
+                {player.positionPtBr.slice(0, 3)}
+              </div>
+              <p className="text-white text-sm font-semibold truncate flex-1">{player.name}</p>
+              {player.age && (
+                <span className="text-white/35 text-xs tabular-nums">{player.age} anos</span>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function PlayerPicker({
   allPlayers,
   usedIds,
@@ -1148,22 +1241,14 @@ export function RegistrarPartidaModal({
             </div>
 
             {/* MOTM */}
-            {allParticipants.length > 0 && (
-              <div className="space-y-1.5 pt-1">
-                <label className="text-white/40 text-xs font-medium uppercase tracking-wider">⭐ Melhor em Campo (MOTM)</label>
-                <select
-                  value={draft.motmPlayerId ?? ""}
-                  onChange={(e) => onChange({ motmPlayerId: e.target.value ? Number(e.target.value) : null })}
-                  className="w-full px-3 py-2.5 rounded-xl text-white text-sm focus:outline-none glass"
-                  style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
-                >
-                  <option value="">Nenhum</option>
-                  {allParticipants.map((p) => (
-                    <option key={p.id} value={p.id}>{p.name}</option>
-                  ))}
-                </select>
-              </div>
-            )}
+            <div className="space-y-1.5 pt-1">
+              <label className="text-white/40 text-xs font-medium uppercase tracking-wider">⭐ Melhor em Campo (MOTM)</label>
+              <MotmAutocomplete
+                value={draft.motmPlayerId}
+                allPlayers={allPlayers}
+                onChange={(playerId) => onChange({ motmPlayerId: playerId })}
+              />
+            </div>
           </div>
 
           {/* Estatísticas da partida */}
