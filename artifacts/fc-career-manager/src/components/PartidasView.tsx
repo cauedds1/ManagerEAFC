@@ -2,7 +2,23 @@ import { useState } from "react";
 import type { MatchRecord, MatchResult } from "@/types/match";
 import { getMatchResult, RESULT_STYLE, LOCATION_ICONS, LOCATION_LABELS } from "@/types/match";
 import type { SquadPlayer } from "@/lib/squadCache";
+import { getCachedClubList } from "@/lib/clubListCache";
+import { searchStaticClubs } from "@/lib/staticClubList";
 import { RegistrarPartidaModal } from "./RegistrarPartidaModal";
+
+function resolveOpponentLogo(name: string, stored?: string): string | undefined {
+  if (stored) return stored;
+  const q = name.toLowerCase().trim();
+  const cached = getCachedClubList();
+  if (cached && cached.length > 0) {
+    const exact = cached.find((c) => c.name.toLowerCase() === q);
+    if (exact?.logo) return exact.logo;
+    const partial = cached.find((c) => c.name.toLowerCase().includes(q) || q.includes(c.name.toLowerCase()));
+    if (partial?.logo) return partial.logo;
+  }
+  const statics = searchStaticClubs(name);
+  return statics[0]?.logo ?? undefined;
+}
 
 interface PartidasViewProps {
   careerId: string;
@@ -195,7 +211,7 @@ function MatchCard({
 
         {/* Opponent */}
         <div className="flex flex-col items-center gap-1.5 flex-1 min-w-0">
-          <ClubCrest logoUrl={match.opponentLogoUrl} name={match.opponent} size={48} />
+          <ClubCrest logoUrl={resolveOpponentLogo(match.opponent, match.opponentLogoUrl)} name={match.opponent} size={48} />
           <span className="text-white/40 text-xs font-medium text-center leading-tight truncate w-full text-center">
             {match.opponent}
           </span>
