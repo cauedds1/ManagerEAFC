@@ -37,10 +37,12 @@ function ClubCrest({
   logoUrl,
   name,
   size = 52,
+  themed = false,
 }: {
   logoUrl?: string | null;
   name: string;
   size?: number;
+  themed?: boolean;
 }) {
   const [imgFailed, setImgFailed] = useState(false);
 
@@ -57,14 +59,14 @@ function ClubCrest({
         width: size,
         height: size,
         borderRadius: "50%",
-        background: "rgba(255,255,255,0.08)",
-        border: "1px solid rgba(255,255,255,0.12)",
+        background: themed ? "rgba(var(--club-primary-rgb),0.18)" : "rgba(255,255,255,0.08)",
+        border: themed ? "1px solid rgba(var(--club-primary-rgb),0.35)" : "1px solid rgba(255,255,255,0.12)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         fontSize: size * 0.32,
         fontWeight: 900,
-        color: "rgba(255,255,255,0.55)",
+        color: themed ? "var(--club-primary)" : "rgba(255,255,255,0.55)",
         letterSpacing: "-0.5px",
         flexShrink: 0,
       }}
@@ -170,7 +172,7 @@ function MatchCard({
       <div className="flex items-center gap-2 px-4 pb-3">
         {/* My club */}
         <div className="flex flex-col items-center gap-1.5 flex-1 min-w-0">
-          <ClubCrest logoUrl={clubLogoUrl} name={clubName} size={48} />
+          <ClubCrest logoUrl={clubLogoUrl} name={clubName} size={48} themed />
           <span className="text-white/40 text-xs font-medium text-center leading-tight truncate w-full text-center">
             {clubName}
           </span>
@@ -184,7 +186,7 @@ function MatchCard({
             <span className="text-4xl font-black text-white leading-none">{match.opponentScore}</span>
           </div>
           <span
-            className="w-7 h-7 rounded-lg flex items-center justify-center text-sm font-black"
+            className="px-3 py-0.5 rounded-full text-xs font-black tracking-widest"
             style={{ background: rs.bg, color: rs.color }}
           >
             {rs.label}
