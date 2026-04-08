@@ -62,8 +62,8 @@ export const FORMATION_GROUP: Record<PositionPtBr, FormationGroup> = {
   VOL: "VOL",
   MC:  "VOL",
   MEI: "VOL",
-  PE:  "VOL",
-  PD:  "VOL",
+  PE:  "ATA",
+  PD:  "ATA",
   SA:  "ATA",
   CA:  "ATA",
   ATA: "ATA",
@@ -92,8 +92,8 @@ function normalizePosToGroup(pos: string): PositionGroup {
   // Full backs (lateral)
   if (["LB", "RB", "LWB", "RWB", "WB", "LAT"].includes(p)) return "FullBack";
 
-  // Centre backs
-  if (["CB", "SW", "DEFENDER", "CENTREBACK", "CENTREBACK"].includes(p)) return "CentreBack";
+  // Centre backs (incluindo "Defender" genérico da API-Football)
+  if (["CB", "SW", "DEFENDER", "CENTREBACK"].includes(p)) return "CentreBack";
 
   // Defensive midfielders (volante)
   if (["CDM", "DM", "DMF", "VOL"].includes(p)) return "DefensiveMid";
@@ -123,7 +123,7 @@ function normalizePosToGroup(pos: string): PositionGroup {
   if (["ATTACKER", "FORWARD", "ATA"].includes(p)) return "BroadForward";
 
   // Backward compat: old group names stored in cache
-  if (p === "CENTREBACK" || p === "CENTRECBACK") return "CentreBack";
+  if (p === "CENTREBACK") return "CentreBack";
   if (p === "FULLBACK") return "FullBack";
   if (p === "DEFENSIVEMID") return "DefensiveMid";
   if (p === "CENTRALMID") return "CentralMid";
