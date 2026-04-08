@@ -167,100 +167,84 @@ function MatchCard({
         borderLeft: `3px solid ${rs.color}`,
       }}
     >
-      {/* Header row */}
-      <div className="flex items-center justify-between gap-2 px-4 pt-3 pb-2">
-        <div className="flex items-center gap-2 flex-wrap min-w-0">
-          <span
-            className="text-xs"
-            title={LOCATION_LABELS[match.location]}
-          >
+      {/* Meta row */}
+      <div className="flex items-center justify-between gap-2 px-3 pt-2.5 pb-1 min-w-0">
+        <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
+          <span className="text-xs flex-shrink-0" title={LOCATION_LABELS[match.location]}>
             {LOCATION_ICONS[match.location]}
           </span>
           {match.tournament && (
             <span
-              className="px-2 py-0.5 rounded-full text-xs font-medium text-white/55 flex-shrink-0"
+              className="px-2 py-0.5 rounded-full text-xs font-medium text-white/50 flex-shrink-0"
               style={{ background: "rgba(255,255,255,0.07)" }}
             >
               {match.tournament}
             </span>
           )}
           {match.stage && (
-            <span className="text-white/30 text-xs truncate">{match.stage}</span>
+            <span className="text-white/25 text-xs truncate">{match.stage}</span>
           )}
           {match.tablePositionBefore != null && (
-            <span className="text-white/20 text-xs">· #{match.tablePositionBefore}</span>
+            <span className="text-white/20 text-xs flex-shrink-0">· #{match.tablePositionBefore}</span>
           )}
         </div>
-        <span className="text-white/30 text-xs flex-shrink-0">{dateStr}</span>
+        <span className="text-white/25 text-xs flex-shrink-0">{dateStr}</span>
       </div>
 
-      {/* Score body — 3 columns */}
-      <div className="flex items-center gap-2 px-4 pb-3">
-        {/* Left club */}
-        <div className="flex flex-col items-center gap-1.5 flex-1 min-w-0">
-          <ClubCrest logoUrl={leftLogo} name={leftName} size={48} themed={leftThemed} />
-          <span className="text-white/40 text-xs font-medium text-center leading-tight truncate w-full">
-            {leftName}
-          </span>
+      {/* Score row — single horizontal line */}
+      <div className="flex items-center gap-2 px-3 pb-2.5">
+        {/* Left team */}
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <ClubCrest logoUrl={leftLogo} name={leftName} size={32} themed={leftThemed} />
+          <span className="text-white/55 text-sm font-semibold truncate leading-tight">{leftName}</span>
         </div>
 
-        {/* Score + result */}
-        <div className="flex flex-col items-center gap-1.5 flex-shrink-0 px-2">
-          <div className="flex items-center gap-3 tabular-nums">
-            <span className="text-4xl font-black text-white leading-none">{leftScore}</span>
-            <span className="text-white/20 text-2xl font-light leading-none">–</span>
-            <span className="text-4xl font-black text-white leading-none">{rightScore}</span>
+        {/* Score + pill */}
+        <div className="flex flex-col items-center gap-0.5 flex-shrink-0 px-1">
+          <div className="flex items-center gap-2 tabular-nums">
+            <span className="text-2xl font-black text-white leading-none">{leftScore}</span>
+            <span className="text-white/20 text-lg font-light leading-none">–</span>
+            <span className="text-2xl font-black text-white leading-none">{rightScore}</span>
           </div>
           <span
-            className="px-3 py-0.5 rounded-full text-xs font-black tracking-widest"
+            className="px-2.5 py-0 rounded-full text-xs font-black tracking-widest leading-5"
             style={{ background: rs.bg, color: rs.color }}
           >
             {rs.label}
           </span>
         </div>
 
-        {/* Right club */}
-        <div className="flex flex-col items-center gap-1.5 flex-1 min-w-0">
-          <ClubCrest logoUrl={rightLogo} name={rightName} size={48} themed={rightThemed} />
-          <span className="text-white/40 text-xs font-medium text-center leading-tight truncate w-full">
-            {rightName}
-          </span>
+        {/* Right team */}
+        <div className="flex items-center gap-2 flex-1 min-w-0 justify-end">
+          <span className="text-white/55 text-sm font-semibold truncate text-right leading-tight">{rightName}</span>
+          <ClubCrest logoUrl={rightLogo} name={rightName} size={32} themed={rightThemed} />
         </div>
       </div>
 
-      {/* Footer */}
+      {/* Footer chips */}
       {hasFooter && (
         <div
-          className="flex items-center justify-between gap-2 flex-wrap px-4 py-2"
+          className="flex items-center justify-between gap-2 flex-wrap px-3 py-1.5"
           style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}
         >
-          <div className="flex items-center gap-1.5 text-xs text-white/40 flex-wrap min-w-0">
+          <div className="flex items-center gap-1.5 text-xs text-white/35 min-w-0">
             {goalScorers.length > 0 && (
               <span>⚽ {goalScorers.map((g) => `${g.name} ${g.minute}'`).join(" · ")}</span>
             )}
           </div>
-          <div className="flex items-center gap-2 text-xs text-white/30 flex-wrap flex-shrink-0">
+          <div className="flex items-center gap-1.5 text-xs text-white/30 flex-wrap flex-shrink-0">
             {match.matchStats.possessionPct > 0 && (
-              <span
-                className="px-2 py-0.5 rounded-full"
-                style={{ background: "rgba(255,255,255,0.05)" }}
-              >
+              <span className="px-2 py-0.5 rounded-full" style={{ background: "rgba(255,255,255,0.05)" }}>
                 {match.matchStats.possessionPct}% posse
               </span>
             )}
             {(match.matchStats.myShots > 0 || match.matchStats.opponentShots > 0) && (
-              <span
-                className="px-2 py-0.5 rounded-full"
-                style={{ background: "rgba(255,255,255,0.05)" }}
-              >
+              <span className="px-2 py-0.5 rounded-full" style={{ background: "rgba(255,255,255,0.05)" }}>
                 🎯 {match.matchStats.myShots}–{match.matchStats.opponentShots}
               </span>
             )}
             {motm && (
-              <span
-                className="px-2 py-0.5 rounded-full"
-                style={{ background: "rgba(234,179,8,0.08)", color: "#fbbf24" }}
-              >
+              <span className="px-2 py-0.5 rounded-full" style={{ background: "rgba(234,179,8,0.08)", color: "#fbbf24" }}>
                 ⭐ {motm.name.split(" ").at(-1)}
               </span>
             )}
