@@ -76,7 +76,7 @@ interface PlayerSuggestion {
   photo: string;
   age: number;
   nationality: string;
-  position: string;
+  position: PositionPtBr | "";
 }
 
 function PlayerFace({ src, name, size = 40 }: { src: string; name: string; size?: number }) {
@@ -506,7 +506,7 @@ export function TransferenciasView({
                       playerName: p.name,
                       playerPhoto: p.photo,
                       playerAge: p.age ? String(p.age) : f.playerAge,
-                      playerPositionPtBr: (p.position as PositionPtBr) || f.playerPositionPtBr,
+                      playerPositionPtBr: p.position || f.playerPositionPtBr,
                     }));
                   }}
                 />
