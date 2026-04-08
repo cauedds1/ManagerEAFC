@@ -17,7 +17,7 @@ import {
 import { getCustomLineup } from "@/lib/lineupStorage";
 import { getCachedClubList } from "@/lib/clubListCache";
 import { pickBestEleven } from "@/components/FootballPitch";
-import type { ClubEntry } from "@/types/club";
+import { searchStaticClubs } from "@/lib/staticClubList";
 
 interface Props {
   careerId: string;
@@ -103,70 +103,6 @@ function buildInitialDraft(careerId: string): Pick<MatchDraft, "date" | "tournam
   return { date, tournament, stage };
 }
 
-const FALLBACK_CLUBS: Pick<ClubEntry, "id" | "name" | "logo" | "league">[] = [
-  { id: 541, name: "Real Madrid", logo: "https://media.api-sports.io/football/teams/541.png", league: "La Liga" },
-  { id: 529, name: "Barcelona", logo: "https://media.api-sports.io/football/teams/529.png", league: "La Liga" },
-  { id: 530, name: "Atlético de Madrid", logo: "https://media.api-sports.io/football/teams/530.png", league: "La Liga" },
-  { id: 533, name: "Villarreal", logo: "https://media.api-sports.io/football/teams/533.png", league: "La Liga" },
-  { id: 532, name: "Valencia", logo: "https://media.api-sports.io/football/teams/532.png", league: "La Liga" },
-  { id: 728, name: "Real Sociedad", logo: "https://media.api-sports.io/football/teams/728.png", league: "La Liga" },
-  { id: 543, name: "Real Betis", logo: "https://media.api-sports.io/football/teams/543.png", league: "La Liga" },
-  { id: 157, name: "Bayern Munich", logo: "https://media.api-sports.io/football/teams/157.png", league: "Bundesliga" },
-  { id: 165, name: "Borussia Dortmund", logo: "https://media.api-sports.io/football/teams/165.png", league: "Bundesliga" },
-  { id: 168, name: "Bayer Leverkusen", logo: "https://media.api-sports.io/football/teams/168.png", league: "Bundesliga" },
-  { id: 173, name: "RB Leipzig", logo: "https://media.api-sports.io/football/teams/173.png", league: "Bundesliga" },
-  { id: 169, name: "Eintracht Frankfurt", logo: "https://media.api-sports.io/football/teams/169.png", league: "Bundesliga" },
-  { id: 40, name: "Liverpool", logo: "https://media.api-sports.io/football/teams/40.png", league: "Premier League" },
-  { id: 50, name: "Manchester City", logo: "https://media.api-sports.io/football/teams/50.png", league: "Premier League" },
-  { id: 33, name: "Manchester United", logo: "https://media.api-sports.io/football/teams/33.png", league: "Premier League" },
-  { id: 42, name: "Arsenal", logo: "https://media.api-sports.io/football/teams/42.png", league: "Premier League" },
-  { id: 49, name: "Chelsea", logo: "https://media.api-sports.io/football/teams/49.png", league: "Premier League" },
-  { id: 47, name: "Tottenham", logo: "https://media.api-sports.io/football/teams/47.png", league: "Premier League" },
-  { id: 48, name: "West Ham", logo: "https://media.api-sports.io/football/teams/48.png", league: "Premier League" },
-  { id: 51, name: "Brighton", logo: "https://media.api-sports.io/football/teams/51.png", league: "Premier League" },
-  { id: 45, name: "Everton", logo: "https://media.api-sports.io/football/teams/45.png", league: "Premier League" },
-  { id: 66, name: "Aston Villa", logo: "https://media.api-sports.io/football/teams/66.png", league: "Premier League" },
-  { id: 55, name: "Brentford", logo: "https://media.api-sports.io/football/teams/55.png", league: "Premier League" },
-  { id: 505, name: "Nottingham Forest", logo: "https://media.api-sports.io/football/teams/505.png", league: "Premier League" },
-  { id: 496, name: "Newcastle", logo: "https://media.api-sports.io/football/teams/496.png", league: "Premier League" },
-  { id: 489, name: "AC Milan", logo: "https://media.api-sports.io/football/teams/489.png", league: "Serie A" },
-  { id: 505, name: "Inter", logo: "https://media.api-sports.io/football/teams/505.png", league: "Serie A" },
-  { id: 492, name: "Napoli", logo: "https://media.api-sports.io/football/teams/492.png", league: "Serie A" },
-  { id: 496, name: "Juventus", logo: "https://media.api-sports.io/football/teams/496.png", league: "Serie A" },
-  { id: 487, name: "Roma", logo: "https://media.api-sports.io/football/teams/487.png", league: "Serie A" },
-  { id: 488, name: "Lazio", logo: "https://media.api-sports.io/football/teams/488.png", league: "Serie A" },
-  { id: 500, name: "Atalanta", logo: "https://media.api-sports.io/football/teams/500.png", league: "Serie A" },
-  { id: 91, name: "Paris Saint-Germain", logo: "https://media.api-sports.io/football/teams/91.png", league: "Ligue 1" },
-  { id: 80, name: "Lyon", logo: "https://media.api-sports.io/football/teams/80.png", league: "Ligue 1" },
-  { id: 81, name: "Marseille", logo: "https://media.api-sports.io/football/teams/81.png", league: "Ligue 1" },
-  { id: 93, name: "Monaco", logo: "https://media.api-sports.io/football/teams/93.png", league: "Ligue 1" },
-  { id: 212, name: "Porto", logo: "https://media.api-sports.io/football/teams/212.png", league: "Liga Portugal" },
-  { id: 211, name: "Benfica", logo: "https://media.api-sports.io/football/teams/211.png", league: "Liga Portugal" },
-  { id: 228, name: "Sporting CP", logo: "https://media.api-sports.io/football/teams/228.png", league: "Liga Portugal" },
-  { id: 194, name: "Ajax", logo: "https://media.api-sports.io/football/teams/194.png", league: "Eredivisie" },
-  { id: 197, name: "PSV Eindhoven", logo: "https://media.api-sports.io/football/teams/197.png", league: "Eredivisie" },
-  { id: 193, name: "Feyenoord", logo: "https://media.api-sports.io/football/teams/193.png", league: "Eredivisie" },
-  { id: 131, name: "Celtic", logo: "https://media.api-sports.io/football/teams/131.png", league: "Scottish Premiership" },
-  { id: 132, name: "Rangers", logo: "https://media.api-sports.io/football/teams/132.png", league: "Scottish Premiership" },
-  { id: 568, name: "Flamengo", logo: "https://media.api-sports.io/football/teams/568.png", league: "Brasileirão" },
-  { id: 119, name: "Palmeiras", logo: "https://media.api-sports.io/football/teams/119.png", league: "Brasileirão" },
-  { id: 118, name: "São Paulo", logo: "https://media.api-sports.io/football/teams/118.png", league: "Brasileirão" },
-  { id: 121, name: "Santos", logo: "https://media.api-sports.io/football/teams/121.png", league: "Brasileirão" },
-  { id: 116, name: "Corinthians", logo: "https://media.api-sports.io/football/teams/116.png", league: "Brasileirão" },
-  { id: 130, name: "Grêmio", logo: "https://media.api-sports.io/football/teams/130.png", league: "Brasileirão" },
-  { id: 115, name: "Internacional", logo: "https://media.api-sports.io/football/teams/115.png", league: "Brasileirão" },
-  { id: 124, name: "Athletico Paranaense", logo: "https://media.api-sports.io/football/teams/124.png", league: "Brasileirão" },
-  { id: 126, name: "Cruzeiro", logo: "https://media.api-sports.io/football/teams/126.png", league: "Brasileirão" },
-  { id: 127, name: "Atlético Mineiro", logo: "https://media.api-sports.io/football/teams/127.png", league: "Brasileirão" },
-  { id: 120, name: "Fluminense", logo: "https://media.api-sports.io/football/teams/120.png", league: "Brasileirão" },
-  { id: 7323, name: "Botafogo", logo: "https://media.api-sports.io/football/teams/7323.png", league: "Brasileirão" },
-  { id: 435, name: "Boca Juniors", logo: "https://media.api-sports.io/football/teams/435.png", league: "Argentina" },
-  { id: 436, name: "River Plate", logo: "https://media.api-sports.io/football/teams/436.png", league: "Argentina" },
-  { id: 246, name: "Celtic FC", logo: "https://media.api-sports.io/football/teams/246.png", league: "Escócia" },
-  { id: 569, name: "Club América", logo: "https://media.api-sports.io/football/teams/569.png", league: "Liga MX" },
-  { id: 570, name: "Cruz Azul", logo: "https://media.api-sports.io/football/teams/570.png", league: "Liga MX" },
-  { id: 571, name: "Chivas Guadalajara", logo: "https://media.api-sports.io/football/teams/571.png", league: "Liga MX" },
-];
 
 const TOURNAMENT_CHIPS = ["Campeonato Nacional", "Copa Nacional", "Champions League", "Europa League", "Liga Europa", "Liga dos Campeões", "Copa do Mundo de Clubes"];
 
@@ -381,18 +317,17 @@ function OpponentAutocomplete({
   const [open, setOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const clubs = useMemo<Pick<ClubEntry, "id" | "name" | "logo" | "league">[]>(() => {
-    const cached = getCachedClubList();
-    return cached && cached.length > 0 ? cached : FALLBACK_CLUBS;
-  }, []);
-
   const suggestions = useMemo(() => {
     if (!value.trim() || !open) return [];
-    const q = value.toLowerCase().trim();
-    return clubs
-      .filter((c) => c.name.toLowerCase().includes(q) || c.league.toLowerCase().includes(q))
-      .slice(0, 8);
-  }, [value, open, clubs]);
+    const cached = getCachedClubList();
+    if (cached && cached.length > 0) {
+      const q = value.toLowerCase().trim();
+      return cached
+        .filter((c) => c.name.toLowerCase().includes(q) || c.league.toLowerCase().includes(q))
+        .slice(0, 8);
+    }
+    return searchStaticClubs(value);
+  }, [value, open]);
 
   return (
     <div className="relative">
@@ -524,6 +459,7 @@ function PlayerLineupRow({
   allUnused,
   onUpdate,
   onRemove,
+  onSubPlayerAdded,
 }: {
   player: SquadPlayer;
   stats: PlayerMatchStats;
@@ -532,6 +468,7 @@ function PlayerLineupRow({
   allUnused: SquadPlayer[];
   onUpdate: (patch: Partial<PlayerMatchStats>) => void;
   onRemove: () => void;
+  onSubPlayerAdded?: (playerId: number) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const isGK = player.positionPtBr === "GOL";
@@ -720,7 +657,11 @@ function PlayerLineupRow({
                         <span className="text-white/40 text-xs block mb-1">Quem entrou:</span>
                         <select
                           value={stats.substitutedInPlayerId ?? ""}
-                          onChange={(e) => onUpdate({ substitutedInPlayerId: e.target.value ? Number(e.target.value) : undefined })}
+                          onChange={(e) => {
+                            const newId = e.target.value ? Number(e.target.value) : undefined;
+                            onUpdate({ substitutedInPlayerId: newId });
+                            if (newId) onSubPlayerAdded?.(newId);
+                          }}
                           className="w-full px-2.5 py-1.5 rounded-xl text-white text-sm focus:outline-none glass"
                           style={{ background: "rgba(255,255,255,0.05)" }}
                         >
@@ -816,6 +757,19 @@ export function RegistrarPartidaModal({
       return { ...prev, starterIds, subIds, playerStats, motmPlayerId };
     });
   }, []);
+
+  const handleSubPlayerAdded = useCallback((playerId: number) => {
+    setDraft((prev) => {
+      if (prev.starterIds.includes(playerId) || prev.subIds.includes(playerId)) return prev;
+      const player = allPlayers.find((p) => p.id === playerId);
+      if (!player) return prev;
+      return {
+        ...prev,
+        subIds: [...prev.subIds, playerId],
+        playerStats: { ...prev.playerStats, [playerId]: mkDefault(true) },
+      };
+    });
+  }, [allPlayers]);
 
   const handleAutoFill = useCallback(() => {
     const saved = getCustomLineup(careerId);
@@ -1126,6 +1080,7 @@ export function RegistrarPartidaModal({
                     allUnused={allUnusedForSub(id)}
                     onUpdate={(patch) => updatePlayerStats(id, patch)}
                     onRemove={() => removePlayer(id)}
+                    onSubPlayerAdded={handleSubPlayerAdded}
                   />
                 );
               })}
