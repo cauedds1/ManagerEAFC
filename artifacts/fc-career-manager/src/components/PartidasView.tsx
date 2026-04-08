@@ -42,6 +42,8 @@ function ClubCrest({
   name: string;
   size?: number;
 }) {
+  const [imgFailed, setImgFailed] = useState(false);
+
   const initials = name
     .split(/\s+/)
     .filter(Boolean)
@@ -49,25 +51,7 @@ function ClubCrest({
     .map((w) => w[0].toUpperCase())
     .join("");
 
-  if (logoUrl) {
-    return (
-      <img
-        src={logoUrl}
-        alt={name}
-        width={size}
-        height={size}
-        className="object-contain drop-shadow-md"
-        style={{ width: size, height: size }}
-        onError={(e) => {
-          (e.currentTarget as HTMLImageElement).style.display = "none";
-          const fallback = e.currentTarget.nextElementSibling as HTMLElement | null;
-          if (fallback) fallback.style.display = "flex";
-        }}
-      />
-    );
-  }
-
-  return (
+  const fallback = (
     <div
       style={{
         width: size,
@@ -87,6 +71,22 @@ function ClubCrest({
     >
       {initials}
     </div>
+  );
+
+  if (!logoUrl || imgFailed) {
+    return fallback;
+  }
+
+  return (
+    <img
+      src={logoUrl}
+      alt={name}
+      width={size}
+      height={size}
+      className="object-contain drop-shadow-md"
+      style={{ width: size, height: size, flexShrink: 0 }}
+      onError={() => setImgFailed(true)}
+    />
   );
 }
 
@@ -184,10 +184,10 @@ function MatchCard({
             <span className="text-4xl font-black text-white leading-none">{match.opponentScore}</span>
           </div>
           <span
-            className="px-3 py-0.5 rounded-full text-xs font-black tracking-wider"
+            className="w-7 h-7 rounded-lg flex items-center justify-center text-sm font-black"
             style={{ background: rs.bg, color: rs.color }}
           >
-            {rs.label === "V" ? "Vitória" : rs.label === "E" ? "Empate" : "Derrota"}
+            {rs.label}
           </span>
         </div>
 
