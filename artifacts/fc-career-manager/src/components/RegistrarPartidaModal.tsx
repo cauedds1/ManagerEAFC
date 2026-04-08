@@ -154,11 +154,9 @@ function NumericInput({
 function ScoreInput({
   value,
   onChange,
-  label,
 }: {
   value: number;
   onChange: (v: number) => void;
-  label: string;
 }) {
   const [raw, setRaw] = useState(value === 0 ? "0" : String(value));
 
@@ -170,30 +168,25 @@ function ScoreInput({
   }, [value]);
 
   return (
-    <div className="flex flex-col items-center gap-1 flex-1">
-      <p className="text-white/30 text-xs truncate max-w-full text-center">{label}</p>
-      <input
-        type="text"
-        inputMode="numeric"
-        value={raw}
-        onChange={(e) => {
-          const s = e.target.value.replace(/[^\d]/g, "").slice(0, 2);
-          const num = s === "" ? 0 : Math.min(99, parseInt(s, 10));
-          setRaw(s === "" ? "0" : String(num));
-          onChange(num);
-        }}
-        onFocus={(e) => {
-          if (raw === "0") {
-            e.target.select();
-          }
-        }}
-        onBlur={() => {
-          if (raw === "") setRaw("0");
-        }}
-        className="w-full px-3 py-3 rounded-xl text-white text-3xl font-black text-center focus:outline-none glass tabular-nums"
-        style={{ border: "1px solid rgba(255,255,255,0.08)", caretColor: "var(--club-primary)", minWidth: 0 }}
-      />
-    </div>
+    <input
+      type="text"
+      inputMode="numeric"
+      value={raw}
+      onChange={(e) => {
+        const s = e.target.value.replace(/[^\d]/g, "").slice(0, 2);
+        const num = s === "" ? 0 : Math.min(99, parseInt(s, 10));
+        setRaw(s === "" ? "0" : String(num));
+        onChange(num);
+      }}
+      onFocus={(e) => { if (raw === "0") e.target.select(); }}
+      onBlur={() => { if (raw === "") setRaw("0"); }}
+      className="rounded-xl text-white font-black text-center focus:outline-none glass tabular-nums"
+      style={{
+        width: 72, height: 72, fontSize: 36,
+        border: "1px solid rgba(255,255,255,0.1)",
+        caretColor: "var(--club-primary)",
+      }}
+    />
   );
 }
 
@@ -1004,28 +997,43 @@ export function RegistrarPartidaModal({
 
           {/* Placar */}
           <div
-            className="rounded-2xl p-4"
+            className="rounded-2xl p-5"
             style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
           >
-            <div className="flex items-center gap-3">
-              <ScoreInput value={draft.myScore} onChange={(v) => onChange({ myScore: v })} label={clubName} />
-              <div className="flex flex-col items-center gap-1 flex-shrink-0 px-1">
-                <div className="flex items-center gap-2">
-                  {clubLogoUrl && <ClubBadge src={clubLogoUrl} name={clubName} size={22} />}
-                  <span className="text-white/20 text-xl font-black">×</span>
-                  {draft.opponentLogoUrl && <ClubBadge src={draft.opponentLogoUrl} name={draft.opponent} size={22} />}
-                </div>
-                <span
-                  className="text-xs font-bold px-2 py-0.5 rounded-full"
-                  style={{
-                    background: draft.myScore > draft.opponentScore ? "rgba(16,185,129,0.15)" : draft.myScore < draft.opponentScore ? "rgba(239,68,68,0.15)" : "rgba(148,163,184,0.1)",
-                    color: resultColor,
-                  }}
-                >
-                  {draft.myScore > draft.opponentScore ? "Vitória" : draft.myScore < draft.opponentScore ? "Derrota" : "Empate"}
-                </span>
+            {/* Crests row */}
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex flex-col items-center gap-1.5" style={{ width: 72 }}>
+                <ClubBadge src={clubLogoUrl ?? null} name={clubName} size={44} />
+                <span className="text-white/40 text-xs text-center font-medium leading-tight w-full truncate">{clubName}</span>
               </div>
-              <ScoreInput value={draft.opponentScore} onChange={(v) => onChange({ opponentScore: v })} label={draft.opponent || "Adversário"} />
+              <div className="flex flex-col items-center gap-1 flex-1 pt-1">
+                <span className="text-white/15 text-xs font-medium uppercase tracking-widest">Placar</span>
+              </div>
+              <div className="flex flex-col items-center gap-1.5" style={{ width: 72 }}>
+                <ClubBadge src={draft.opponentLogoUrl ?? null} name={draft.opponent || "?"} size={44} />
+                <span className="text-white/40 text-xs text-center font-medium leading-tight w-full truncate">{draft.opponent || "Adversário"}</span>
+              </div>
+            </div>
+
+            {/* Score inputs row */}
+            <div className="flex items-center justify-center gap-4">
+              <ScoreInput value={draft.myScore} onChange={(v) => onChange({ myScore: v })} />
+              <span className="text-white/20 font-light" style={{ fontSize: 28 }}>–</span>
+              <ScoreInput value={draft.opponentScore} onChange={(v) => onChange({ opponentScore: v })} />
+            </div>
+
+            {/* Result pill */}
+            <div className="flex justify-center mt-3">
+              <span
+                className="text-xs font-bold px-4 py-1 rounded-full"
+                style={{
+                  background: draft.myScore > draft.opponentScore ? "rgba(16,185,129,0.15)" : draft.myScore < draft.opponentScore ? "rgba(239,68,68,0.15)" : "rgba(148,163,184,0.1)",
+                  color: resultColor,
+                  letterSpacing: "0.05em",
+                }}
+              >
+                {draft.myScore > draft.opponentScore ? "Vitória" : draft.myScore < draft.opponentScore ? "Derrota" : "Empate"}
+              </span>
             </div>
           </div>
 
