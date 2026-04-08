@@ -133,7 +133,11 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     setRefetchKey((k) => k + 1);
   }, [teamId, career.clubName]);
 
-  const overrides = getAllPlayerOverrides(career.id);
+  const [overrides, setOverrides] = useState(() => getAllPlayerOverrides(career.id));
+
+  const refreshOverrides = useCallback(() => {
+    setOverrides(getAllPlayerOverrides(career.id));
+  }, [career.id]);
 
   const transferredPlayers: SquadPlayer[] = transfers.map((t) => ({
     id: t.playerId,
@@ -337,14 +341,13 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
         {activeTab === "elenco" && (
           <ElencoView
             careerId={career.id}
-            clubName={career.clubName}
-            teamId={teamId}
             squad={squad}
             squadLoading={squadLoading}
             squadError={squadError}
             allPlayers={allPlayers}
             onRefresh={handleRefreshSquad}
             onOpenSettings={() => setSettingsOpen(true)}
+            onOverridesUpdated={refreshOverrides}
             hasApiKey={Boolean(getApiKey())}
           />
         )}

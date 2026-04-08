@@ -136,6 +136,7 @@ interface ElencoViewProps {
   allPlayers: SquadPlayer[];
   onRefresh: () => void;
   onOpenSettings: () => void;
+  onOverridesUpdated?: () => void;
   hasApiKey: boolean;
 }
 
@@ -147,6 +148,7 @@ export function ElencoView({
   allPlayers,
   onRefresh,
   onOpenSettings,
+  onOverridesUpdated,
   hasApiKey,
 }: ElencoViewProps) {
   const [tab, setTab] = useState<SquadTab>("pitch");
@@ -157,7 +159,8 @@ export function ElencoView({
 
   const refreshOverrides = useCallback(() => {
     setOverrides(getAllPlayerOverrides(careerId));
-  }, [careerId]);
+    onOverridesUpdated?.();
+  }, [careerId, onOverridesUpdated]);
 
   const starterIds = allPlayers.length > 0 ? pickBestElevenIds(allPlayers) : new Set<number>();
   const starters = allPlayers.filter((p) => starterIds.has(p.id));

@@ -10,6 +10,7 @@ import {
   generatePlayerId,
   generateTransferId,
 } from "@/lib/transferStorage";
+import { setPlayerStats, defaultStats } from "@/lib/playerStatsStorage";
 
 const ALL_POSITIONS: PositionPtBr[] = [
   "GOL","ZAG","LAT","VOL","MC","MEI","PE","PD","SA","CA","ATA",
@@ -161,11 +162,14 @@ export function TransferenciasView({
     if (!valid || submitting) return;
     setSubmitting(true);
 
+    const playerId = generatePlayerId();
+    setPlayerStats(careerId, playerId, defaultStats(playerId));
+
     const transfer: TransferRecord = {
       id: generateTransferId(),
       careerId,
       season,
-      playerId: generatePlayerId(),
+      playerId,
       playerName: form.playerName.trim(),
       playerPhoto: form.playerPhoto.trim(),
       playerPositionPtBr: form.playerPositionPtBr,
