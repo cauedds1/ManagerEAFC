@@ -122,17 +122,28 @@ function NumericInput({
   placeholder?: string;
   className?: string;
 }) {
+  const [text, setText] = useState(value != null ? String(value) : "");
+
+  useEffect(() => {
+    const n = text === "" ? undefined : parseInt(text, 10);
+    if (value !== n) {
+      setText(value != null ? String(value) : "");
+    }
+  }, [value]);
+
   return (
     <input
-      type="number"
-      min={min}
-      max={max}
-      value={value ?? ""}
+      type="text"
+      inputMode="numeric"
+      pattern="[0-9]*"
+      value={text}
       placeholder={placeholder}
       onChange={(e) => {
-        const raw = e.target.value;
-        if (raw === "") { onChange(undefined); return; }
-        const n = Math.max(min, Math.min(max, Number(raw)));
+        const raw = e.target.value.replace(/[^0-9]/g, "");
+        const stripped = raw === "" ? "" : String(parseInt(raw, 10));
+        setText(stripped);
+        if (stripped === "") { onChange(undefined); return; }
+        const n = Math.max(min, Math.min(max, parseInt(stripped, 10)));
         onChange(isNaN(n) ? undefined : n);
       }}
       className={`px-2.5 py-1.5 rounded-xl text-white text-sm font-semibold focus:outline-none glass tabular-nums ${className}`}
