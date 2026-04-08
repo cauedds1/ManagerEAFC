@@ -134,34 +134,29 @@ function PlayerAutocomplete({
       .map((p) => ({ id: p.id, name: p.name, photo: p.photo, age: p.age, nationality: "", position: p.positionPtBr }));
   }, [value, allPlayers]);
 
-  // External API search — debounced
+  // Backend search (DB-cached + optional API-Football fallback)
   const fetchApi = useCallback(async (q: string) => {
-    if (!apiKey || q.trim().length < 3) { setApiResults([]); return; }
+    if (q.trim().length < 2) { setApiResults([]); return; }
     setLoading(true);
     try {
-      const res = await fetch(
-        `https://v3.football.api-sports.io/players?search=${encodeURIComponent(q.trim())}&season=2024`,
-        { headers: { "x-apisports-key": apiKey }, signal: AbortSignal.timeout(6000) }
-      );
+      const params = new URLSearchParams({ q: q.trim() });
+      if (apiKey) params.set("apiKey", apiKey);
+      const res = await fetch(`/api/players/search?${params}`, {
+        signal: AbortSignal.timeout(8000),
+      });
       if (res.ok) {
-        const data = await res.json();
+        const data = await res.json() as { players: Array<{ id: number; name: string; photo: string; age: number; position: string }> };
         const localNames = new Set(allPlayers.map((p) => p.name.toLowerCase()));
-        const players: PlayerSuggestion[] = (data.response ?? [])
-          .slice(0, 10)
-          .map((item: Record<string, unknown>) => {
-            const pl = item.player as Record<string, unknown>;
-            const stats = (item.statistics as Record<string, unknown>[])?.[0] ?? {};
-            const games = (stats.games as Record<string, unknown>) ?? {};
-            return {
-              id: pl.id as number,
-              name: pl.name as string,
-              photo: (pl.photo as string) ?? "",
-              age: (pl.age as number) ?? 0,
-              nationality: (pl.nationality as string) ?? "",
-              position: mapApiPosToPtBr((games.position as string) ?? ""),
-            };
-          })
-          .filter((p: PlayerSuggestion) => !localNames.has(p.name.toLowerCase())); // dedup
+        const players: PlayerSuggestion[] = (data.players ?? [])
+          .filter((p) => !localNames.has(p.name.toLowerCase()))
+          .map((p) => ({
+            id: p.id,
+            name: p.name,
+            photo: p.photo,
+            age: p.age,
+            nationality: "",
+            position: (p.position as PositionPtBr) || "MC",
+          }));
         setApiResults(players.slice(0, 8));
       }
     } catch { /* ignore */ }
@@ -249,9 +244,7 @@ function PlayerAutocomplete({
           className="absolute z-50 left-0 right-0 mt-1 rounded-xl px-4 py-3"
           style={{ background: "rgba(12,12,18,0.98)", border: "1px solid rgba(255,255,255,0.08)" }}
         >
-          <p className="text-white/30 text-xs">
-            {apiKey ? "Nenhum jogador encontrado" : "Configure a chave de API nas Configurações para buscar qualquer jogador"}
-          </p>
+          <p className="text-white/30 text-xs">Nenhum jogador encontrado</p>
         </div>
       )}
     </div>
