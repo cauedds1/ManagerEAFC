@@ -17,10 +17,10 @@ const POS_COLOR: Record<PositionPtBr, { fill: string; stroke: string; text: stri
   MC:  { fill: "#14b8a6", stroke: "#2dd4bf", text: "#002920" },
   MEI: { fill: "#84cc16", stroke: "#a3e635", text: "#1a2600" },
   PE:  { fill: "#f97316", stroke: "#fb923c", text: "#2a0e00" },
-  PD:  { fill: "#f97316", stroke: "#fb923c", text: "#2a0e00" },
+  PD:  { fill: "#f59c0a", stroke: "#fbbf24", text: "#2a1a00" },
   SA:  { fill: "#f43f5e", stroke: "#fb7185", text: "#2d0010" },
   CA:  { fill: "#ef4444", stroke: "#f87171", text: "#ffe0e0" },
-  ATA: { fill: "#dc2626", stroke: "#f87171", text: "#ffe0e0" },
+  ATA: { fill: "#b91c1c", stroke: "#ef4444", text: "#ffe4e4" },
 };
 
 const FORMATION_POSITIONS: [number, number][] = [

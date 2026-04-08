@@ -28,10 +28,10 @@ const POS_STYLE: Record<PositionPtBr, { bg: string; color: string }> = {
   MC:  { bg: "rgba(20,184,166,0.18)",  color: "#2dd4bf" },
   MEI: { bg: "rgba(132,204,22,0.18)",  color: "#a3e635" },
   PE:  { bg: "rgba(249,115,22,0.18)",  color: "#fb923c" },
-  PD:  { bg: "rgba(249,115,22,0.18)",  color: "#fb923c" },
+  PD:  { bg: "rgba(245,156,10,0.18)",  color: "#fbbf24" },
   SA:  { bg: "rgba(244,63,94,0.18)",   color: "#fb7185" },
   CA:  { bg: "rgba(239,68,68,0.18)",   color: "#f87171" },
-  ATA: { bg: "rgba(220,38,38,0.18)",   color: "#f87171" },
+  ATA: { bg: "rgba(185,28,28,0.18)",   color: "#ef4444" },
 };
 
 function formatDate(ts: number): string {
