@@ -182,7 +182,7 @@ function ScoreInput({
       onBlur={() => { if (raw === "") setRaw("0"); }}
       className="rounded-xl text-white font-black text-center focus:outline-none glass tabular-nums"
       style={{
-        width: 72, height: 72, fontSize: 36,
+        width: 60, height: 56, fontSize: 28,
         border: "1px solid rgba(255,255,255,0.1)",
         caretColor: "var(--club-primary)",
       }}
@@ -997,43 +997,39 @@ export function RegistrarPartidaModal({
 
           {/* Placar */}
           <div
-            className="rounded-2xl p-5"
+            className="rounded-2xl px-4 py-3"
             style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
           >
-            {/* Crests row */}
-            <div className="flex items-start justify-between mb-4">
-              <div className="flex flex-col items-center gap-1.5" style={{ width: 72 }}>
-                <ClubBadge src={clubLogoUrl ?? null} name={clubName} size={44} />
-                <span className="text-white/40 text-xs text-center font-medium leading-tight w-full truncate">{clubName}</span>
+            <div className="flex items-center gap-3">
+              {/* My club */}
+              <div className="flex flex-col items-center gap-1 flex-shrink-0" style={{ width: 52 }}>
+                <ClubBadge src={clubLogoUrl ?? null} name={clubName} size={36} />
+                <span className="text-white/35 text-center font-medium leading-tight w-full truncate" style={{ fontSize: 10 }}>{clubName}</span>
               </div>
-              <div className="flex flex-col items-center gap-1 flex-1 pt-1">
-                <span className="text-white/15 text-xs font-medium uppercase tracking-widest">Placar</span>
-              </div>
-              <div className="flex flex-col items-center gap-1.5" style={{ width: 72 }}>
-                <ClubBadge src={draft.opponentLogoUrl ?? null} name={draft.opponent || "?"} size={44} />
-                <span className="text-white/40 text-xs text-center font-medium leading-tight w-full truncate">{draft.opponent || "Adversário"}</span>
-              </div>
-            </div>
 
-            {/* Score inputs row */}
-            <div className="flex items-center justify-center gap-4">
-              <ScoreInput value={draft.myScore} onChange={(v) => onChange({ myScore: v })} />
-              <span className="text-white/20 font-light" style={{ fontSize: 28 }}>–</span>
-              <ScoreInput value={draft.opponentScore} onChange={(v) => onChange({ opponentScore: v })} />
-            </div>
+              {/* Score inputs + result */}
+              <div className="flex flex-col items-center gap-1.5 flex-1">
+                <div className="flex items-center gap-2">
+                  <ScoreInput value={draft.myScore} onChange={(v) => onChange({ myScore: v })} />
+                  <span className="text-white/20 font-light" style={{ fontSize: 22 }}>–</span>
+                  <ScoreInput value={draft.opponentScore} onChange={(v) => onChange({ opponentScore: v })} />
+                </div>
+                <span
+                  className="text-xs font-bold px-3 py-0.5 rounded-full"
+                  style={{
+                    background: draft.myScore > draft.opponentScore ? "rgba(16,185,129,0.15)" : draft.myScore < draft.opponentScore ? "rgba(239,68,68,0.15)" : "rgba(148,163,184,0.1)",
+                    color: resultColor,
+                  }}
+                >
+                  {draft.myScore > draft.opponentScore ? "Vitória" : draft.myScore < draft.opponentScore ? "Derrota" : "Empate"}
+                </span>
+              </div>
 
-            {/* Result pill */}
-            <div className="flex justify-center mt-3">
-              <span
-                className="text-xs font-bold px-4 py-1 rounded-full"
-                style={{
-                  background: draft.myScore > draft.opponentScore ? "rgba(16,185,129,0.15)" : draft.myScore < draft.opponentScore ? "rgba(239,68,68,0.15)" : "rgba(148,163,184,0.1)",
-                  color: resultColor,
-                  letterSpacing: "0.05em",
-                }}
-              >
-                {draft.myScore > draft.opponentScore ? "Vitória" : draft.myScore < draft.opponentScore ? "Derrota" : "Empate"}
-              </span>
+              {/* Opponent */}
+              <div className="flex flex-col items-center gap-1 flex-shrink-0" style={{ width: 52 }}>
+                <ClubBadge src={draft.opponentLogoUrl ?? null} name={draft.opponent || "?"} size={36} />
+                <span className="text-white/35 text-center font-medium leading-tight w-full truncate" style={{ fontSize: 10 }}>{draft.opponent || "Adversário"}</span>
+              </div>
             </div>
           </div>
 
