@@ -1011,6 +1011,23 @@ function Step2({
   );
 }
 
+function getSubstitutionWarnings(draft: MatchDraft, allPlayers: SquadPlayer[]): string[] {
+  const warnings: string[] = [];
+  for (const id of draft.starterIds) {
+    const ps = draft.playerStats[id];
+    if (!ps?.substituted) continue;
+    const player = allPlayers.find((p) => p.id === id);
+    const name = player?.name.split(" ").at(-1) ?? `#${id}`;
+    if (!ps.substitutedAtMinute) {
+      warnings.push(`${name}: substituição sem minuto registrado`);
+    }
+    if (!ps.substitutedInPlayerId) {
+      warnings.push(`${name}: substituição sem jogador de entrada selecionado`);
+    }
+  }
+  return warnings;
+}
+
 function Step3({
   draft,
   clubName,
@@ -1028,6 +1045,7 @@ function Step3({
     0
   );
   const motm = draft.motmPlayerId != null ? allPlayers.find((p) => p.id === draft.motmPlayerId) : null;
+  const subWarnings = getSubstitutionWarnings(draft, allPlayers);
 
   return (
     <div className="space-y-5">
@@ -1136,6 +1154,21 @@ function Step3({
           </div>
         )}
       </div>
+
+      {subWarnings.length > 0 && (
+        <div
+          className="rounded-2xl p-4 space-y-1.5"
+          style={{ background: "rgba(249,115,22,0.08)", border: "1px solid rgba(249,115,22,0.25)" }}
+        >
+          <p className="text-orange-400 text-xs font-bold uppercase tracking-wider">⚠️ Atenção — Substituições incompletas</p>
+          {subWarnings.map((w, i) => (
+            <p key={i} className="text-orange-300/70 text-xs">• {w}</p>
+          ))}
+          <p className="text-orange-300/40 text-xs mt-1">
+            Os minutos de jogadores substituídos sem dados válidos serão computados como 0.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

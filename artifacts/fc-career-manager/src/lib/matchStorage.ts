@@ -47,18 +47,23 @@ export function applyMatchToPlayerStats(
 
     const isStarter = starterIds.includes(playerId);
 
-    let minutes = 90;
+    let minutes: number;
     if (isStarter) {
+      minutes = 90;
       if (pStats.substituted && pStats.substitutedAtMinute != null) {
-        minutes = pStats.substitutedAtMinute;
+        minutes = Math.min(90, Math.max(0, pStats.substitutedAtMinute));
       } else if (pStats.injured && pStats.injuryMinute != null) {
-        minutes = pStats.injuryMinute;
+        minutes = Math.min(90, Math.max(0, pStats.injuryMinute));
       }
     } else {
+      minutes = 0;
       for (const starterId of starterIds) {
         const sStats = playerStats[starterId];
-        if (sStats?.substitutedInPlayerId === playerId && sStats.substitutedAtMinute != null) {
-          minutes = 90 - sStats.substitutedAtMinute;
+        if (
+          sStats?.substitutedInPlayerId === playerId &&
+          sStats.substitutedAtMinute != null
+        ) {
+          minutes = Math.min(90, Math.max(0, 90 - sStats.substitutedAtMinute));
           break;
         }
       }
