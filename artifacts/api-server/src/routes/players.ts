@@ -47,9 +47,34 @@ interface ApiPlayerItem {
   }>;
 }
 
-interface DbRow { playerId: number; name: string; photo: string; age: number; positionPtBr: string; teamId: number; }
+interface DbRow { playerId: number; name: string; photo: string; age: number; positionPtBr: string; teamId: number; source: string; }
+
+// Source priority: api-football sync/squad > api-football search > msmc squad > msmc search
+function sourcePriority(source: string): number {
+  const s = source ?? "";
+  if (s.startsWith("api-football@sync") || s.startsWith("api-football@v")) return 0;
+  if (s.startsWith("api-football")) return 1;
+  if (s.startsWith("fc26") || s.startsWith("msmc") && !s.includes("search")) return 2;
+  return 3;
+}
+
+function deduplicateByName(rows: DbRow[]): DbRow[] {
+  // Sort: best source first, then by name length (shorter = more exact match)
+  const sorted = [...rows].sort((a, b) => {
+    const sp = sourcePriority(a.source) - sourcePriority(b.source);
+    if (sp !== 0) return sp;
+    return a.name.length - b.name.length;
+  });
+  const seen = new Map<string, DbRow>();
+  for (const r of sorted) {
+    const key = r.name.toLowerCase().trim();
+    if (!seen.has(key)) seen.set(key, r);
+  }
+  return Array.from(seen.values());
+}
+
 function formatResponse(rows: DbRow[]) {
-  return rows.slice(0, 12).map((r) => ({
+  return deduplicateByName(rows).slice(0, 12).map((r) => ({
     id: r.playerId,
     name: r.name,
     photo: r.photo,
@@ -72,10 +97,13 @@ router.get("/players/search", async (req, res) => {
       .from(squadPlayersTable)
       .where(ilike(squadPlayersTable.name, `%${q}%`))
       .orderBy(sql`length(name)`)
-      .limit(15);
+      .limit(60); // fetch more so deduplication can pick the best-sourced entry
 
-    if (dbRows.length >= 5) {
-      return res.json({ players: formatResponse(dbRows) });
+    const dedupedRows = deduplicateByName(dbRows);
+    if (dedupedRows.length >= 5) {
+      return res.json({ players: dedupedRows.slice(0, 12).map((r) => ({
+        id: r.playerId, name: r.name, photo: r.photo, age: r.age, position: r.positionPtBr, teamId: r.teamId,
+      })) });
     }
 
     const cachedAt = Date.now();
@@ -163,7 +191,7 @@ router.get("/players/search", async (req, res) => {
       .from(squadPlayersTable)
       .where(ilike(squadPlayersTable.name, `%${q}%`))
       .orderBy(sql`length(name)`)
-      .limit(15);
+      .limit(60);
 
     return res.json({ players: formatResponse(merged) });
   } catch (err) {
