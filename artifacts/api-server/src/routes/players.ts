@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { db, squadPlayersTable } from "@workspace/db";
-import { ilike, sql } from "drizzle-orm";
+import { db, squadPlayersTable, clubsTable } from "@workspace/db";
+import { ilike, sql, gt } from "drizzle-orm";
 
 const router = Router();
 
@@ -168,6 +168,137 @@ router.get("/players/search", async (req, res) => {
     return res.json({ players: formatResponse(merged) });
   } catch (err) {
     console.error("GET /players/search error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ── POST /players/sync ───────────────────────────────────────────────────────
+// Bulk-fetches squads from API-Football for all clubs in the DB and caches
+// players with real face photos. Only processes clubs not yet synced from API.
+router.post("/players/sync", async (req, res) => {
+  const { apiKey } = req.body as { apiKey?: string };
+  if (!apiKey?.trim()) {
+    return res.status(400).json({ error: "apiKey required" });
+  }
+
+  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+  try {
+    const MAX_PER_RUN = 90; // stay under 100 req/day free tier
+
+    // 1. Get all clubs with valid API-Football IDs
+    const allClubs = await db
+      .select({ id: clubsTable.id, name: clubsTable.name })
+      .from(clubsTable)
+      .where(gt(clubsTable.id, 0));
+
+    if (allClubs.length === 0) {
+      return res.json({ teams: 0, players: 0, message: "Nenhum clube encontrado no banco. Atualize a lista de clubes primeiro." });
+    }
+
+    // 2. Find which clubs already have API-Football sourced squads (skip them)
+    const syncedTeamRows = await db
+      .selectDistinct({ teamId: squadPlayersTable.teamId })
+      .from(squadPlayersTable)
+      .where(ilike(squadPlayersTable.source, "api-football%"));
+
+    const syncedIds = new Set(syncedTeamRows.map((r) => r.teamId));
+    const pending = allClubs.filter((c) => !syncedIds.has(c.id));
+    const toProcess = pending.slice(0, MAX_PER_RUN);
+    const remaining = Math.max(0, pending.length - toProcess.length);
+
+    if (toProcess.length === 0) {
+      return res.json({
+        teams: 0,
+        players: 0,
+        message: `Todos os ${allClubs.length} times já estão sincronizados com fotos reais.`,
+      });
+    }
+
+    const clubs = toProcess;
+
+    let teamsProcessed = 0;
+    let playersInserted = 0;
+    const cachedAt = Date.now();
+
+    for (const club of clubs) {
+      try {
+        const afRes = await fetch(
+          `${API_FOOTBALL_BASE}/players/squads?team=${club.id}`,
+          { headers: { "x-apisports-key": apiKey.trim() }, signal: AbortSignal.timeout(10000) }
+        );
+
+        if (afRes.status === 429) {
+          // Rate limit hit — stop and report
+          return res.json({
+            teams: teamsProcessed,
+            players: playersInserted,
+            message: `Limite de API atingido após ${teamsProcessed} times. Tente novamente amanhã.`,
+          });
+        }
+
+        if (!afRes.ok) {
+          await sleep(300);
+          continue;
+        }
+
+        const data = await afRes.json() as { response?: Array<{ players?: ApiPlayerItem["player"][] }> };
+        const playersRaw = data.response?.[0]?.players ?? [];
+
+        if (playersRaw.length > 0) {
+          const values = playersRaw
+            .filter((p: ApiPlayerItem["player"]) => p?.id && p?.name)
+            .map((p: ApiPlayerItem["player"]) => {
+              const pos = String((p as unknown as Record<string, unknown>).position ?? "");
+              return {
+                teamId: club.id,
+                playerId: p.id,
+                name: p.name,
+                age: p.age ?? 0,
+                position: pos,
+                positionPtBr: mapPosition(pos),
+                photo: p.photo ?? "",
+                playerNumber: null as number | null,
+                source: "api-football@sync",
+                cachedAt,
+              };
+            });
+
+          if (values.length > 0) {
+            await db
+              .insert(squadPlayersTable)
+              .values(values)
+              .onConflictDoUpdate({
+                target: [squadPlayersTable.teamId, squadPlayersTable.playerId],
+                set: {
+                  photo: sql`excluded.photo`,
+                  age: sql`excluded.age`,
+                  source: sql`excluded.source`,
+                  cachedAt: sql`excluded.cached_at`,
+                },
+              });
+            playersInserted += values.length;
+          }
+        }
+
+        teamsProcessed++;
+        await sleep(300); // respect API rate limits (300ms = ~3 req/s well under 100/day limit)
+      } catch {
+        await sleep(300);
+        continue;
+      }
+    }
+
+    const doneMsg = `${teamsProcessed} times sincronizados, ${playersInserted} jogadores com fotos reais.`;
+    const remainMsg = remaining > 0 ? ` Clique novamente para sincronizar mais ${remaining} times.` : " Tudo sincronizado!";
+    return res.json({
+      teams: teamsProcessed,
+      players: playersInserted,
+      remaining,
+      message: doneMsg + remainMsg,
+    });
+  } catch (err) {
+    console.error("POST /players/sync error:", err);
     return res.status(500).json({ error: "Internal server error" });
   }
 });

@@ -8,15 +8,22 @@ interface SettingsProps {
   onReloadClubs: () => void;
 }
 
+type SyncState = "idle" | "running" | "done" | "error";
+
 export function Settings({ isOpen, onClose, onReloadClubs }: SettingsProps) {
   const [apiKey, setApiKeyState] = useState("");
   const [showKey, setShowKey] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [syncState, setSyncState] = useState<SyncState>("idle");
+  const [syncMsg, setSyncMsg] = useState("");
+  const [syncRemaining, setSyncRemaining] = useState(0);
 
   useEffect(() => {
     if (isOpen) {
       setApiKeyState(getApiKey() ?? "");
       setSaved(false);
+      setSyncState("idle");
+      setSyncMsg("");
     }
   }, [isOpen]);
 
@@ -38,6 +45,41 @@ export function Settings({ isOpen, onClose, onReloadClubs }: SettingsProps) {
     onReloadClubs();
   };
 
+  const handleSyncPlayers = async () => {
+    const key = apiKey.trim() || (getApiKey() ?? "");
+    if (!key) {
+      setSyncMsg("Configure e salve a chave de API primeiro.");
+      setSyncState("error");
+      return;
+    }
+    setSyncState("running");
+    setSyncMsg("Buscando jogadores na API...");
+    try {
+      const res = await fetch("/api/players/sync", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ apiKey: key }),
+      });
+      const data = await res.json() as { message?: string; remaining?: number; error?: string };
+      if (!res.ok) {
+        setSyncMsg(data.error ?? "Erro ao sincronizar.");
+        setSyncState("error");
+      } else {
+        setSyncMsg(data.message ?? "Concluído.");
+        setSyncRemaining(data.remaining ?? 0);
+        setSyncState("done");
+      }
+    } catch {
+      setSyncMsg("Erro de conexão. Tente novamente.");
+      setSyncState("error");
+    }
+  };
+
+  const syncColor =
+    syncState === "done" ? "rgba(16,185,129,0.9)" :
+    syncState === "error" ? "rgba(239,68,68,0.85)" :
+    "rgba(255,255,255,0.08)";
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -56,7 +98,7 @@ export function Settings({ isOpen, onClose, onReloadClubs }: SettingsProps) {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
             </div>
-            <h2 className="text-white font-bold text-base">Configuracoes</h2>
+            <h2 className="text-white font-bold text-base">Configurações</h2>
           </div>
           <button onClick={onClose}
             className="w-8 h-8 rounded-lg flex items-center justify-center text-white/40 hover:text-white hover:bg-white/[0.08] transition-all duration-150">
@@ -66,7 +108,8 @@ export function Settings({ isOpen, onClose, onReloadClubs }: SettingsProps) {
           </button>
         </div>
 
-        <div className="p-6 space-y-6">
+        <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
+          {/* API Key */}
           <div>
             <label className="block text-white/50 text-xs font-semibold tracking-widest uppercase mb-3">
               Chave de API — API-Football
@@ -96,7 +139,7 @@ export function Settings({ isOpen, onClose, onReloadClubs }: SettingsProps) {
             <button onClick={handleSaveKey}
               className="w-full py-2.5 rounded-xl font-semibold text-sm transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
               style={{ background: saved ? "rgba(16,185,129,0.8)" : "var(--club-gradient)", color: "#fff", boxShadow: saved ? "none" : "0 4px 16px rgba(var(--club-primary-rgb),0.2)" }}>
-              {saved ? "Salvo" : "Salvar chave"}
+              {saved ? "Salvo ✓" : "Salvar chave"}
             </button>
             <p className="mt-2 text-white/25 text-xs flex items-center gap-1.5">
               <svg className="w-3 h-3 flex-shrink-0" style={{ color: "var(--club-primary)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -108,6 +151,49 @@ export function Settings({ isOpen, onClose, onReloadClubs }: SettingsProps) {
 
           <div style={{ height: "1px", background: "var(--surface-border)" }} />
 
+          {/* Atualizar dados de jogadores */}
+          <div>
+            <p className="text-white/50 text-xs font-semibold tracking-widest uppercase mb-1">Dados de Jogadores</p>
+            <p className="text-white/30 text-xs leading-relaxed mb-3">
+              Busca fotos reais e dados de todos os jogadores dos times cadastrados via API-Football e salva no banco. Processa até 90 times por vez (plano gratuito: 100 req/dia).
+            </p>
+            <button
+              onClick={handleSyncPlayers}
+              disabled={syncState === "running"}
+              className="w-full py-2.5 rounded-xl font-semibold text-sm transition-all duration-200 glass glass-hover disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <span className="flex items-center justify-center gap-2">
+                {syncState === "running" ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
+                    <span className="text-white/70">Sincronizando...</span>
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4 text-white/60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    </svg>
+                    <span className="text-white/70">
+                      {syncState === "done" && syncRemaining > 0 ? `Continuar (${syncRemaining} times restantes)` : "Atualizar dados de jogadores"}
+                    </span>
+                  </>
+                )}
+              </span>
+            </button>
+
+            {syncMsg && (
+              <div
+                className="mt-2 rounded-xl px-3 py-2.5 text-xs leading-relaxed"
+                style={{ background: syncColor, color: "#fff" }}
+              >
+                {syncMsg}
+              </div>
+            )}
+          </div>
+
+          <div style={{ height: "1px", background: "var(--surface-border)" }} />
+
+          {/* Lista de Clubes */}
           <div>
             <p className="text-white/50 text-xs font-semibold tracking-widest uppercase mb-1">Lista de Clubes</p>
             <p className="text-white/30 text-xs leading-relaxed mb-3">
