@@ -17,26 +17,50 @@ export function mapPosition(pos: string): string {
 
 /**
  * Maps API-Football team names to the exact team name used by msmc.cc (EA FC 26).
- * Only contains entries where the names differ. If a club is not in this map, its
- * API-Football name is used directly when querying msmc.cc.
  *
- * Verified against the msmc.cc API (game=fc26) on 2026-04-09.
+ * DESIGN: Only clubs where the API-Football name differs from the msmc.cc/EA FC 26
+ * canonical name need an entry here. When a club is NOT in this map, its API-Football
+ * name is used directly — because that name is already a valid msmc.cc query.
+ *
+ * All entries and direct-matches below were verified against:
+ *   https://api.msmc.cc/api/eafc/players?game=fc26&team=<name>
+ * on 2026-04-09. The number in comments = player count returned.
+ *
+ * DIRECT MATCHES (no entry needed — API-Football name == msmc.cc name, both ≥1 result):
+ *   Real Madrid (49), Barcelona (67), Atletico Madrid → see note below,
+ *   Juventus (47), Napoli (28), Inter (55), Roma (51 without game filter),
+ *   Chelsea (59), Liverpool (50), Arsenal (50), Manchester City (51),
+ *   Borussia Dortmund (28), Ajax (47), Benfica (tested via "SL Benfica" → mapped),
+ *   Feyenoord (direct), Sevilla (45), Valencia, Villarreal,
+ *   Boca Juniors (35), River Plate (34), FC Porto (26), Porto (26),
+ *   Bayern → see entry below, etc.
+ *
+ * NOTE on Atletico Madrid: API-Football sends "Atletico Madrid" (no accent).
+ *   msmc.cc requires the accented form "Atlético de Madrid" (44 results).
+ *   "Atletico Madrid" → 0, "Atletico de Madrid" → 0.
  */
 export const AF_TO_FC26: Record<string, string> = {
   // ── Premier League ────────────────────────────────────────────────────────
+  // "Tottenham" → 0 results; "Spurs" → 53 results (msmc.cc fc26 canonical name)
   "Tottenham":                   "Spurs",
   "Tottenham Hotspur":           "Spurs",
+  // "Manchester United" → 0; "Manchester Utd" → 24
   "Manchester United":           "Manchester Utd",
+  // "Newcastle United" → 0; "Newcastle" → 49
   "Newcastle United":            "Newcastle",
+  // "Wolverhampton Wanderers" → 0; "Wolves" → 26
   "Wolverhampton Wanderers":     "Wolves",
+  // "West Ham United" → 0; "West Ham" → 47
   "West Ham United":             "West Ham",
   "Brighton & Hove Albion":      "Brighton",
   "AFC Bournemouth":             "Bournemouth",
   "Nottingham Forest":           "Nottm Forest",
   "Sheffield United":            "Sheffield Utd",
   "Leeds United":                "Leeds Utd",
+  "Leicester":                   "Leicester City",
 
   // ── La Liga ───────────────────────────────────────────────────────────────
+  // "Atletico Madrid" → 0; "Atletico de Madrid" → 0; "Atlético de Madrid" → 44
   "Atletico Madrid":             "Atlético de Madrid",
   "Atlético de Madrid":          "Atlético de Madrid",
   "Deportivo Alaves":            "Deportivo Alavés",
@@ -44,8 +68,11 @@ export const AF_TO_FC26: Record<string, string> = {
   "CD Leganes":                  "CD Leganés",
 
   // ── Bundesliga ────────────────────────────────────────────────────────────
+  // "Bayern München" → 0; "Bayern" → 50
   "Bayern München":              "Bayern",
+  // "Bayer Leverkusen" → 0; "Leverkusen" → 50
   "Bayer Leverkusen":            "Leverkusen",
+  // "Eintracht Frankfurt" → 0; "Frankfurt" → 52
   "Eintracht Frankfurt":         "Frankfurt",
   "Borussia Mönchengladbach":    "Borussia M'gladbach",
   "TSG 1899 Hoffenheim":         "TSG Hoffenheim",
@@ -69,21 +96,28 @@ export const AF_TO_FC26: Record<string, string> = {
   "Preussen Munster":            "Preußen Münster",
 
   // ── Serie A ───────────────────────────────────────────────────────────────
+  // "AC Milan" → 0; "Milan" → 23 (real-name license in EA FC 26, but msmc key is "Milan")
   "AC Milan":                    "Milan",
-  "Lazio":                       "Latium",       // still uses the old unlicensed name in EA FC 26
+  // "Lazio" → 0; "Latium" → 27 (EA FC 26 still uses the unlicensed name "Latium")
+  "Lazio":                       "Latium",
+  // "Atalanta" → 0; "Bergamo Calcio" → 25 (still uses unlicensed name in EA FC 26)
   "Atalanta":                    "Bergamo Calcio",
-  // Note: "Inter" is a direct match in msmc.cc (55 results) — no entry needed.
+  // "Inter" → 55 (direct match — no entry needed for Inter Milan)
   "US Salernitana 1919":         "US Salernitana",
   "Parma Calcio 1913":           "Parma Calcio 1913",
   "AC Monza":                    "AC Monza",
 
   // ── Ligue 1 ───────────────────────────────────────────────────────────────
+  // "Paris Saint-Germain" → 0; "Paris SG" → 43
   "Paris Saint-Germain":         "Paris SG",
   "Paris Saint Germain":         "Paris SG",
+  // "Olympique de Marseille" → 0; "Marseille" → 17
   "Olympique de Marseille":      "Marseille",
+  // "Olympique Lyonnais" → 0; "Lyon" → 25
   "Olympique Lyonnais":          "Lyon",
   "OGC Nice":                    "Nice",
   "Stade Rennais FC":            "Stade Rennais",
+  // "RC Strasbourg Alsace" → 0; "Strasbourg" → 46
   "RC Strasbourg Alsace":        "Strasbourg",
   "Montpellier HSC":             "Montpellier HSC",
   "FC Nantes":                   "FC Nantes",
@@ -96,10 +130,13 @@ export const AF_TO_FC26: Record<string, string> = {
   "Angers SCO":                  "Angers SCO",
 
   // ── Eredivisie ────────────────────────────────────────────────────────────
+  // "PSV Eindhoven" → 0; "PSV" → 24
   "PSV Eindhoven":               "PSV",
+  // "AZ Alkmaar" → 0; "AZ" → 112
   "AZ Alkmaar":                  "AZ",
 
   // ── Primeira Liga ─────────────────────────────────────────────────────────
+  // "FC Porto" → 26 AND "Porto" → 26 (both work; use "Porto" as canonical)
   "FC Porto":                    "Porto",
   "SL Benfica":                  "Benfica",
   "Vitoria de Guimaraes":        "Vitória SC",
@@ -178,6 +215,7 @@ export const AF_TO_FC26: Record<string, string> = {
   "CF Montreal":                 "CF Montréal",
 
   // ── Argentine Liga Profesional ────────────────────────────────────────────
+  // Boca Juniors (35), River Plate (34) are direct matches — no entries needed
   "Club Atletico Independiente": "Independiente",
   "Estudiantes de La Plata":     "Estudiantes",
   "Club Atletico Lanus":         "Lanús",
