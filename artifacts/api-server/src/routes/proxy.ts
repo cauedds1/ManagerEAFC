@@ -11,7 +11,7 @@ router.get("/proxy/image", async (req: Request, res: Response) => {
 
   try {
     const parsed = new URL(url);
-    const allowed = ["media.api-sports.io", "v3.football.api-sports.io", "cdn.sofifa.net"];
+    const allowed = ["media.api-sports.io", "v3.football.api-sports.io", "cdn.sofifa.net", "ratings-images-prod.pulse.ea.com"];
     if (!allowed.some((h) => parsed.hostname === h || parsed.hostname.endsWith("." + h))) {
       res.status(403).json({ error: "Domain not allowed" });
       return;
