@@ -42,16 +42,26 @@ function formatDate(ts: number): string {
 
 function formatFee(fee: number): string {
   if (fee === 0) return "Grátis";
-  if (fee >= 1_000_000) {
-    const m = fee / 1_000_000;
-    return `€${m % 1 === 0 ? m : m.toFixed(1)}M`;
+  return `€${fee.toLocaleString("pt-BR")}`;
+}
+
+function parseFeeInput(raw: string): number {
+  const trimmed = raw.trim().replace(/\s/g, "");
+  if (!trimmed) return 0;
+  const mMatch = trimmed.match(/^([\d.,]+)\s*[Mm]$/);
+  if (mMatch) {
+    const base = parseFloat(mMatch[1].replace(/\./g, "").replace(",", "."));
+    return isNaN(base) ? 0 : Math.round(base * 1_000_000);
   }
-  if (fee >= 1_000) {
-    const k = fee / 1_000;
-    return `€${k % 1 === 0 ? k : k.toFixed(1)}k`;
-  }
-  if (fee >= 1) return `€${fee}M`;
-  return `€${(fee * 1000).toFixed(0)}k`;
+  const cleaned = trimmed.replace(/\./g, "").replace(",", ".");
+  const num = parseFloat(cleaned);
+  return isNaN(num) ? 0 : Math.round(num);
+}
+
+function formatFeeInput(raw: string): string {
+  const parsed = parseFeeInput(raw);
+  if (parsed === 0 && raw !== "0") return raw;
+  return parsed.toLocaleString("pt-BR");
 }
 
 
@@ -458,7 +468,7 @@ export function TransferenciasView({
       playerPositionPtBr: form.playerPositionPtBr,
       playerAge: parseInt(form.playerAge, 10) || 0,
       shirtNumber: form.shirtNumber.trim() ? parseInt(form.shirtNumber, 10) : undefined,
-      fee: parseFloat(form.fee) || 0,
+      fee: parseFeeInput(form.fee),
       salary: parseFloat(form.salary) || 0,
       contractYears: parseInt(form.contractYears, 10) || 1,
       role: form.role,
@@ -680,15 +690,27 @@ export function TransferenciasView({
                 <p className="text-white/35 text-xs font-semibold uppercase tracking-wider">Valores financeiros</p>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className={labelClass}>Taxa de transferência (M€)</label>
+                    <label className={labelClass}>Taxa de transferência (€)</label>
                     <input
-                      type="number"
+                      type="text"
+                      inputMode="numeric"
                       className={inputClass}
                       value={form.fee}
-                      onChange={(e) => set("fee", e.target.value)}
-                      placeholder="Ex: 55 (grátis = 0)"
-                      min={0}
-                      step={0.1}
+                      onChange={(e) => {
+                        const raw = e.target.value;
+                        const hasMSuffix = /[Mm]$/.test(raw.trim());
+                        if (hasMSuffix || raw === "" || raw === "0") {
+                          set("fee", raw);
+                        } else {
+                          const digits = raw.replace(/[^\d]/g, "");
+                          set("fee", digits ? Number(digits).toLocaleString("pt-BR") : "");
+                        }
+                      }}
+                      onBlur={(e) => {
+                        const formatted = formatFeeInput(e.target.value);
+                        set("fee", formatted === "0" ? "" : formatted);
+                      }}
+                      placeholder="Ex: 15.000.000"
                     />
                   </div>
                   <div>
