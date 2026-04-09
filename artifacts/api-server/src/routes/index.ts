@@ -4,6 +4,7 @@ import clubsRouter from "./clubs";
 import squadRouter from "./squad";
 import proxyRouter from "./proxy";
 import playersRouter from "./players";
+import adminRouter from "./admin";
 
 const router: IRouter = Router();
 
@@ -12,5 +13,6 @@ router.use(clubsRouter);
 router.use(squadRouter);
 router.use(proxyRouter);
 router.use(playersRouter);
+router.use(adminRouter);
 
 export default router;
