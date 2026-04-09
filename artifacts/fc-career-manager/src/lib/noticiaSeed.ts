@@ -675,5 +675,5 @@ export function seedPosts(career: Career): NewsPost[] {
     ? posts
     : posts.filter((p) => p.source === "fanpage");
 
-  return filtered.sort((a, b) => b.createdAt - a.createdAt);
+  return filtered.sort((a, b) => b.createdAt - a.createdAt).slice(0, 8);
 }
