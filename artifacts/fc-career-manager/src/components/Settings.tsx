@@ -34,6 +34,7 @@ export function Settings({ isOpen, onClose, onReloadClubs }: SettingsProps) {
   const [setupProgress, setSetupProgress] = useState<SeedProgress | null>(null);
   const [setupMsg, setSetupMsg] = useState("");
   const esRef = useRef<EventSource | null>(null);
+  const setupFinishedRef = useRef(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -91,6 +92,7 @@ export function Settings({ isOpen, onClose, onReloadClubs }: SettingsProps) {
     setSetupState("running");
     setSetupMsg("Conectando...");
     setSetupProgress(null);
+    setupFinishedRef.current = false;
 
     esRef.current?.close();
     const es = new EventSource(`/api/admin/seed?apiKey=${encodeURIComponent(key)}`);
@@ -117,15 +119,18 @@ export function Settings({ isOpen, onClose, onReloadClubs }: SettingsProps) {
             phase: 2,
           });
         } else if (type === "rate_limit") {
+          setupFinishedRef.current = true;
           setSetupMsg(String(ev.message ?? "Limite de req. atingido."));
           setSetupState("error");
           es.close();
         } else if (type === "done") {
+          setupFinishedRef.current = true;
           setSetupMsg(String(ev.message ?? "Concluído!"));
           setSetupState("done");
           setSetupProgress(null);
           es.close();
         } else if (type === "error") {
+          setupFinishedRef.current = true;
           setSetupMsg(String(ev.message ?? "Erro."));
           setSetupState("error");
           es.close();
@@ -134,7 +139,7 @@ export function Settings({ isOpen, onClose, onReloadClubs }: SettingsProps) {
     };
 
     es.onerror = () => {
-      if (setupState !== "done") {
+      if (!setupFinishedRef.current) {
         setSetupMsg("Conexão perdida. Verifique a chave de API e tente novamente.");
         setSetupState("error");
       }

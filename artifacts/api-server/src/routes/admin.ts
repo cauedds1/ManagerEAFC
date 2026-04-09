@@ -137,6 +137,9 @@ router.get("/admin/seed", async (req, res) => {
             set: {
               name: sql`excluded.name`,
               logoUrl: sql`excluded.logo_url`,
+              league: sql`excluded.league`,
+              leagueId: sql`excluded.league_id`,
+              country: sql`excluded.country`,
               cachedAt: sql`excluded.cached_at`,
             },
           });
