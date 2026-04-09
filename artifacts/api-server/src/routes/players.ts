@@ -1,28 +1,12 @@
 import { Router } from "express";
 import { db, squadPlayersTable, clubsTable } from "@workspace/db";
 import { ilike, sql, gt } from "drizzle-orm";
+import { mapPosition } from "../lib/positions";
 
 const router = Router();
 
 const API_FOOTBALL_BASE = "https://v3.football.api-sports.io";
 const MSMC_BASE = "https://api.msmc.cc/api/eafc";
-
-// Maps English position codes (API-Football / msmc.cc) to pt-BR abbreviations
-function mapPosition(pos: string): string {
-  const p = (pos ?? "").toUpperCase().trim();
-  if (["GK", "GOALKEEPER", "GOL"].includes(p)) return "GOL";
-  if (["LB", "RB", "LWB", "RWB", "WB", "LAT"].includes(p)) return "LAT";
-  if (["CB", "SW", "CENTRE-BACK", "CENTREBACK", "DEFENDER", "ZAG"].includes(p)) return "ZAG";
-  if (["CDM", "DM", "DMF", "VOL"].includes(p)) return "VOL";
-  if (["LW", "LM", "PE"].includes(p)) return "PE";
-  if (["RW", "RM", "PD"].includes(p)) return "PD";
-  if (["CAM", "AM", "AMF", "MEI"].includes(p)) return "MEI";
-  if (["CM", "MC", "MIDFIELDER"].includes(p)) return "MC";
-  if (["CF", "SS", "SA"].includes(p)) return "SA";
-  if (["ST", "FW", "WF", "CA"].includes(p)) return "CA";
-  if (["ATTACKER", "FORWARD", "ATA"].includes(p)) return "ATA";
-  return "MC";
-}
 
 interface MsmcPlayer {
   id?: string;

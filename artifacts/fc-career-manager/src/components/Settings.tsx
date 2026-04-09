@@ -19,6 +19,15 @@ interface SeedProgress {
   phase?: number;
 }
 
+interface ReenrichProgress {
+  processed: number;
+  total: number;
+  teamsEnriched: number;
+  playersUpdated: number;
+  clubName: string;
+  message: string;
+}
+
 export function Settings({ isOpen, onClose, onReloadClubs }: SettingsProps) {
   const [apiKey, setApiKeyState] = useState("");
   const [showKey, setShowKey] = useState(false);
@@ -29,12 +38,19 @@ export function Settings({ isOpen, onClose, onReloadClubs }: SettingsProps) {
   const [syncMsg, setSyncMsg] = useState("");
   const [syncRemaining, setSyncRemaining] = useState(0);
 
-  // Full initial setup (new SSE button)
+  // Full initial setup (SSE button)
   const [setupState, setSetupState] = useState<SyncState>("idle");
   const [setupProgress, setSetupProgress] = useState<SeedProgress | null>(null);
   const [setupMsg, setSetupMsg] = useState("");
   const esRef = useRef<EventSource | null>(null);
   const setupFinishedRef = useRef(false);
+
+  // Re-enrich positions (SSE button)
+  const [reenrichState, setReenrichState] = useState<SyncState>("idle");
+  const [reenrichProgress, setReenrichProgress] = useState<ReenrichProgress | null>(null);
+  const [reenrichMsg, setReenrichMsg] = useState("");
+  const reenrichEsRef = useRef<EventSource | null>(null);
+  const reenrichFinishedRef = useRef(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -51,7 +67,10 @@ export function Settings({ isOpen, onClose, onReloadClubs }: SettingsProps) {
   }, [isOpen]);
 
   // Cleanup SSE on unmount
-  useEffect(() => () => { esRef.current?.close(); }, []);
+  useEffect(() => () => {
+    esRef.current?.close();
+    reenrichEsRef.current?.close();
+  }, []);
 
   if (!isOpen) return null;
 
@@ -142,6 +161,56 @@ export function Settings({ isOpen, onClose, onReloadClubs }: SettingsProps) {
       if (!setupFinishedRef.current) {
         setSetupMsg("Conexão perdida. Verifique a chave de API e tente novamente.");
         setSetupState("error");
+      }
+      es.close();
+    };
+  };
+
+  const handleReenrich = () => {
+    setReenrichState("running");
+    setReenrichMsg("Conectando...");
+    setReenrichProgress(null);
+    reenrichFinishedRef.current = false;
+
+    reenrichEsRef.current?.close();
+    const es = new EventSource("/api/admin/reenrich-positions");
+    reenrichEsRef.current = es;
+
+    es.onmessage = (e) => {
+      try {
+        const ev = JSON.parse(e.data) as Record<string, unknown>;
+        const type = ev.type as string;
+
+        if (type === "start") {
+          setReenrichMsg(String(ev.message ?? ""));
+        } else if (type === "progress") {
+          setReenrichProgress({
+            processed: Number(ev.processed ?? 0),
+            total: Number(ev.total ?? 0),
+            teamsEnriched: Number(ev.teamsEnriched ?? 0),
+            playersUpdated: Number(ev.playersUpdated ?? 0),
+            clubName: String(ev.clubName ?? ""),
+            message: String(ev.message ?? ""),
+          });
+        } else if (type === "done") {
+          reenrichFinishedRef.current = true;
+          setReenrichMsg(String(ev.message ?? "Concluído!"));
+          setReenrichState("done");
+          setReenrichProgress(null);
+          es.close();
+        } else if (type === "error") {
+          reenrichFinishedRef.current = true;
+          setReenrichMsg(String(ev.message ?? "Erro."));
+          setReenrichState("error");
+          es.close();
+        }
+      } catch { /* ignore parse errors */ }
+    };
+
+    es.onerror = () => {
+      if (!reenrichFinishedRef.current) {
+        setReenrichMsg("Conexão perdida. Tente novamente.");
+        setReenrichState("error");
       }
       es.close();
     };
@@ -270,6 +339,69 @@ export function Settings({ isOpen, onClose, onReloadClubs }: SettingsProps) {
             {(setupState === "done" || setupState === "error") && setupMsg && (
               <div className="mt-2 rounded-xl px-3 py-2.5 text-xs leading-relaxed" style={{ background: syncColor(setupState), color: "#fff" }}>
                 {setupMsg}
+              </div>
+            )}
+          </div>
+
+          <div style={{ height: "1px", background: "var(--surface-border)" }} />
+
+          {/* ── Corrigir posições (msmc.cc) ── */}
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <p className="text-white/50 text-xs font-semibold tracking-widest uppercase">Corrigir posições dos jogadores</p>
+              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold" style={{ background: "rgba(var(--club-primary-rgb),0.15)", color: "var(--club-primary)" }}>ADMIN</span>
+            </div>
+            <p className="text-white/30 text-xs leading-relaxed mb-3">
+              Atualiza as posições de todos os jogadores usando dados do EA FC 26 (msmc.cc). Corrige mapeamentos incorretos de times como Milan, Inter, Newcastle etc.
+            </p>
+
+            <button
+              onClick={handleReenrich}
+              disabled={reenrichState === "running"}
+              className="w-full py-2.5 rounded-xl font-semibold text-sm transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ background: reenrichState === "done" ? "rgba(16,185,129,0.15)" : "rgba(var(--club-primary-rgb),0.12)", border: `1px solid ${reenrichState === "done" ? "rgba(16,185,129,0.3)" : "rgba(var(--club-primary-rgb),0.2)"}`, color: reenrichState === "done" ? "rgba(16,185,129,1)" : "var(--club-primary)" }}
+            >
+              <span className="flex items-center justify-center gap-2">
+                {reenrichState === "running" ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-current/20 border-t-current rounded-full animate-spin" />
+                    <span>Corrigindo posições...</span>
+                  </>
+                ) : reenrichState === "done" ? (
+                  <>
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                    <span>Posições atualizadas</span>
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                    <span>Corrigir posições agora</span>
+                  </>
+                )}
+              </span>
+            </button>
+
+            {reenrichState === "running" && (
+              <div className="mt-3 rounded-xl p-3 space-y-2" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                <p className="text-white/60 text-xs">{reenrichMsg}</p>
+                {reenrichProgress && (
+                  <>
+                    <div className="w-full rounded-full overflow-hidden" style={{ height: 4, background: "rgba(255,255,255,0.08)" }}>
+                      <div
+                        className="h-full rounded-full transition-all duration-300"
+                        style={{ width: `${reenrichProgress.total > 0 ? Math.round((reenrichProgress.processed / reenrichProgress.total) * 100) : 0}%`, background: "var(--club-primary)" }}
+                      />
+                    </div>
+                    <p className="text-white/40 text-xs">{reenrichProgress.processed}/{reenrichProgress.total} times · {reenrichProgress.playersUpdated.toLocaleString("pt-BR")} posições corrigidas</p>
+                    {reenrichProgress.clubName && <p className="text-white/25 text-xs truncate">↳ {reenrichProgress.clubName}</p>}
+                  </>
+                )}
+              </div>
+            )}
+
+            {(reenrichState === "done" || reenrichState === "error") && reenrichMsg && (
+              <div className="mt-2 rounded-xl px-3 py-2.5 text-xs leading-relaxed" style={{ background: syncColor(reenrichState), color: "#fff" }}>
+                {reenrichMsg}
               </div>
             )}
           </div>

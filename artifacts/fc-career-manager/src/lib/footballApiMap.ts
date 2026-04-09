@@ -67,38 +67,52 @@ export const LEAGUE_BY_ID: Map<number, LeagueInfo> = new Map(
 );
 
 export const APIFOOTBALL_TO_FC26_NAME: Record<string, string> = {
-  "Lazio":                       "Latium",
+  // ── Serie A ───────────────────────────────────────────────────────────────
+  "Lazio":                       "Latium",          // ainda usa nome genérico no EA FC 26
   "Atalanta":                    "Bergamo Calcio",
-  "AC Milan":                    "Milano FC",
-  "Inter":                       "Lombardia FC",
+  "AC Milan":                    "Milan",            // licença real no EA FC 26
+  // "Inter" é match direto em msmc.cc (sem mapeamento necessário)
+  // ── Ligue 1 ───────────────────────────────────────────────────────────────
   "Paris Saint Germain":         "Paris SG",
+  "Paris Saint-Germain":         "Paris SG",
+  "Olympique de Marseille":      "Marseille",
+  "Olympique Lyonnais":          "Lyon",
+  "OGC Nice":                    "Nice",
+  "Stade Rennais FC":            "Stade Rennais",
+  "RC Strasbourg Alsace":        "Strasbourg",
+  "AS Saint-Étienne":            "AS Saint-Etienne",
+  // ── Premier League ────────────────────────────────────────────────────────
   "Tottenham":                   "Spurs",
   "Tottenham Hotspur":           "Spurs",
-  "Manchester United":           "Man Utd",
-  "Newcastle United":            "Newcastle Utd",
-  "West Ham United":             "West Ham Utd",
-  "Olympique de Marseille":      "OM",
-  "Borussia Mönchengladbach":    "Borussia M'gladbach",
-  "Bayer Leverkusen":            "Leverkusen",
-  "Los Angeles FC":              "LAFC",
-  "Atletico Madrid":             "Atlético de Madrid",
-  "Atlético de Madrid":          "Atlético de Madrid",
-  "SL Benfica":                  "Benfica",
+  "Manchester United":           "Manchester Utd",
+  "Newcastle United":            "Newcastle",
+  "West Ham United":             "West Ham",
+  "West Ham":                    "West Ham",
+  "Wolverhampton Wanderers":     "Wolves",
   "Wolves":                      "Wolves",
+  "AFC Bournemouth":             "Bournemouth",
+  "Brighton & Hove Albion":      "Brighton",
   "Nottingham Forest":           "Nottm Forest",
   "Sheffield United":            "Sheffield Utd",
   "Leeds United":                "Leeds Utd",
-  "West Ham":                    "West Ham Utd",
-  "AFC Bournemouth":             "Bournemouth",
-  "Brighton & Hove Albion":      "Brighton",
   "Leicester":                   "Leicester City",
-  "AS Saint-Étienne":            "AS Saint-Etienne",
-  "OGC Nice":                    "Nice",
-  "Stade Rennais FC":            "Stade Rennais",
-  "RC Strasbourg Alsace":        "RC Strasbourg",
-  "SC Freiburg":                 "SC Freiburg",
+  // ── Bundesliga ────────────────────────────────────────────────────────────
+  "Bayern München":              "Bayern",
+  "Bayer Leverkusen":            "Leverkusen",
+  "Eintracht Frankfurt":         "Frankfurt",
+  "Borussia Mönchengladbach":    "Borussia M'gladbach",
   "Union Berlin":                "1. FC Union Berlin",
+  "SC Freiburg":                 "SC Freiburg",
   "FC Augsburg":                 "FC Augsburg",
+  // ── La Liga ───────────────────────────────────────────────────────────────
+  "Atletico Madrid":             "Atlético de Madrid",
+  "Atlético de Madrid":          "Atlético de Madrid",
+  // ── Eredivisie ────────────────────────────────────────────────────────────
+  "PSV Eindhoven":               "PSV",
+  "AZ Alkmaar":                  "AZ",
+  // ── Primeira Liga ─────────────────────────────────────────────────────────
+  "SL Benfica":                  "Benfica",
+  "Los Angeles FC":              "LAFC",
   "Vasco DA Gama":               "Vasco",
   "Botafogo FR":                 "Botafogo",
   "Cruzeiro":                    "Cruzeiro",
@@ -202,7 +216,6 @@ export const APIFOOTBALL_TO_FC26_NAME: Record<string, string> = {
   "CD Leganes":                  "CD Leganés",
 
   // Eredivisie
-  "AZ Alkmaar":                  "AZ Alkmaar",
   "FC Twente":                   "FC Twente",
   "FC Utrecht":                  "FC Utrecht",
   "SC Heerenveen":               "SC Heerenveen",
