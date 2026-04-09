@@ -186,6 +186,113 @@ export function seedPosts(career: Career): NewsPost[] {
     {
       id: generatePostId(),
       careerId: career.id,
+      source: "fanpage",
+      sourceHandle: fanHandle,
+      sourceName: fanName,
+      category: "geral",
+      content:
+        `📣 CONVOCAÇÃO!\n\n` +
+        `O ${club} acaba de divulgar a lista de relacionados para o próximo compromisso. ` +
+        `O técnico optou por convocar 23 jogadores, mantendo a base do time titular e ` +
+        `incluindo dois nomes das categorias de base.\n\n` +
+        `Boa sorte a todos! Vamos juntos! 🏟️⚽\n\n` +
+        `#Convocação #${shortClub.replace(/\s/g, "")}`,
+      likes: 6_789,
+      commentsCount: 412,
+      sharesCount: 876,
+      comments: [
+        cmt(
+          "@vitinhobr_10",
+          "Vitor Mendes",
+          "Convocou bem! Gostei das escolhas do técnico 👏👏",
+          678,
+          "otimista",
+        ),
+        cmt(
+          "@peixoto.reclamao",
+          "Josivaldo Peixoto",
+          "Convocação fraquíssima. Deixou de fora justamente quem mais tem jogado bem",
+          345,
+          "chato",
+          [
+            cmt("@humoristafut", "Caio Drummond", "Meu amigo você reclama se convoca e reclama se não convoca 😂 dá um descanso", 1_234, "zoeiro"),
+          ],
+        ),
+        cmt(
+          "@novageracao_fc",
+          "Lucas Vinicius",
+          "Os guris da base sendo chamados é o que eu queria ver!! Futuro promissor 🌟",
+          567,
+          "otimista",
+          [
+            cmt("@saudosistafutbol", "Edmundo Carvalho", "No meu tempo a base já tinha jogadores melhores... hoje em dia...", 89, "saudosista"),
+          ],
+        ),
+        cmt(
+          "@guilherme_fanfc",
+          "Guilherme Ramos",
+          "Formação equilibrada. O técnico sabe o que está fazendo 🎯",
+          456,
+          "neutro",
+        ),
+      ],
+      createdAt: now - 30 * H,
+    },
+
+    {
+      id: generatePostId(),
+      careerId: career.id,
+      source: "fanpage",
+      sourceHandle: fanHandle,
+      sourceName: fanName,
+      category: "geral",
+      content:
+        `📊 NÚMEROS DA TEMPORADA\n\n` +
+        `O ${club} tem acumulado estatísticas impressionantes nesta temporada. ` +
+        `Veja os destaques:\n\n` +
+        `⚽ Gols marcados: Aumentando a cada rodada\n` +
+        `🧱 Defesas: Linha sólida e organizada\n` +
+        `🏃 Quilometragem média: Alta intensidade em campo\n\n` +
+        `O trabalho do técnico está deixando cada vez mais sua marca nesse elenco. ` +
+        `Muito orgulho da nossa equipe! 💪🏆`,
+      likes: 8_234,
+      commentsCount: 296,
+      sharesCount: 1_456,
+      comments: [
+        cmt(
+          "@deivid_analista",
+          "Deivid Moraes",
+          "Os números são bons mas ainda precisamos melhorar nas bolas aéreas defensivas",
+          234,
+          "corneteiro",
+          [
+            cmt("@defensor_oficial", "Thiago Lima", "Sempre tem um pra achar defeito mesmo em números positivos kkk", 456, "zoeiro"),
+          ],
+        ),
+        cmt(
+          "@analuiza.fut",
+          "Ana Luíza Ribeiro",
+          "QUE TIME LINDO 💪❤️ esses números mostram o quanto evoluímos!",
+          1_234,
+          "otimista",
+        ),
+        cmt(
+          "@saudosistafutbol",
+          "Edmundo Carvalho",
+          "Bonito ver esses números mas o time de 2012 tinha estatísticas ainda melhores...",
+          123,
+          "saudosista",
+          [
+            cmt("@millenialtorcedor", "Caio Ferreira", "Tio a gente tá em 2025 não em 2012 😂 curte o presente", 789, "zoeiro"),
+          ],
+        ),
+      ],
+      createdAt: now - 110 * H,
+    },
+
+    {
+      id: generatePostId(),
+      careerId: career.id,
       source: "tnt",
       sourceHandle: "@tntsports",
       sourceName: "TNT Sports",
