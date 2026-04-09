@@ -58,19 +58,37 @@ function sourcePriority(source: string): number {
   return 3;
 }
 
+// Returns a dedup key: "lastname|firstinitial" to catch "J. Doku" vs "Jérémy Doku"
+function nameKey(name: string): string {
+  const parts = name.trim().toLowerCase().replace(/\./g, "").split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return name.toLowerCase();
+  const last = parts[parts.length - 1];
+  const firstInitial = parts[0]?.[0] ?? "";
+  return `${last}|${firstInitial}`;
+}
+
 function deduplicateByName(rows: DbRow[]): DbRow[] {
-  // Sort: best source first, then by name length (shorter = more exact match)
+  // Sort: best source first, then longer (more complete) name wins within same source
   const sorted = [...rows].sort((a, b) => {
     const sp = sourcePriority(a.source) - sourcePriority(b.source);
     if (sp !== 0) return sp;
-    return a.name.length - b.name.length;
+    return b.name.length - a.name.length; // prefer full name over abbreviated
   });
-  const seen = new Map<string, DbRow>();
+
+  const byExact = new Map<string, DbRow>();
+  const byKey = new Map<string, DbRow>();
+
   for (const r of sorted) {
-    const key = r.name.toLowerCase().trim();
-    if (!seen.has(key)) seen.set(key, r);
+    const exact = r.name.toLowerCase().trim();
+    const key = nameKey(r.name);
+    // Only add if neither exact nor abbreviated version seen yet
+    if (!byExact.has(exact) && !byKey.has(key)) {
+      byExact.set(exact, r);
+      byKey.set(key, r);
+    }
   }
-  return Array.from(seen.values());
+
+  return Array.from(byExact.values());
 }
 
 function formatResponse(rows: DbRow[]) {
