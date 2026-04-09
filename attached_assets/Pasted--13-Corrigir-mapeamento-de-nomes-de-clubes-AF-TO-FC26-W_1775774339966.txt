@@ -1,0 +1,27 @@
+#13 - Corrigir mapeamento de nomes de clubes (AF_TO_FC26)
+What & Why
+O arquivo positions.ts contém um dicionário AF_TO_FC26 que converte nomes de times da API-Football para os nomes usados no EA FC 26, para que o msmc.cc seja consultado com o nome correto. Esse mapeamento está desatualizado em dois sentidos:
+
+Entradas incorretas: clubes que tinham nomes genéricos em edições antigas (Lazio → "Latium", AC Milan → "Milano FC", Inter → "Lombardia FC", PSG → "Paris SG", Tottenham → "Spurs") mas que hoje possuem licença real no EA FC 26 e aparecem com seus nomes reais no msmc.cc. O mapeamento atual faz a busca retornar vazio.
+
+Entradas ausentes: grandes clubes completamente fora do dicionário — Real Madrid, Juventus, Napoli, Sevilla, Ajax, Boca Juniors, River Plate, FC Porto, Eintracht Frankfurt, PSV Eindhoven e vários outros — fazem a busca no msmc.cc falhar com o nome bruto da API-Football.
+
+Resultado verificado no banco: Real Madrid (35 genéricos), Lazio (27), Juventus (26), Napoli (26), AC Milan (25) têm 100% das posições genéricas.
+
+Done looks like
+Ao rodar "Corrigir posições (msmc.cc)" nas Configurações, os times afetados passam a ter posições específicas (LAT, MEI, PE, VOL, etc.) no banco
+Jogadores como João Cancelo (Barcelona) aparecem como LAT ao invés de ZAG
+O total de posições corrigidas na segunda rodada é significativamente maior que as 2.722 da primeira
+Out of scope
+Melhorar o algoritmo de matching por nome de jogador (problema separado, menor impacto)
+Times de ligas menores que não existem no EA FC 26 (não há dados no msmc.cc para eles de qualquer forma)
+Modificar a lógica do endpoint — apenas o dicionário de nomes muda
+Tasks
+Pesquisar e montar mapeamentos corretos — Para cada clube com alto percentual de posições genéricas (priorizando as ligas principais: PL, La Liga, Bundesliga, Serie A, Ligue 1, Eredivisie, Primeira Liga, Serie A Argentina, MLS), consultar o msmc.cc diretamente para descobrir qual nome o time usa no EA FC 26 (ex: testar "Juventus", "Juventus FC", "Juve"). Fazer isso programaticamente via script que testa variações do nome e verifica se o retorno tem jogadores.
+
+Atualizar AF_TO_FC26 em positions.ts — Aplicar todas as correções: remover ou corrigir entradas com nomes genéricos desatualizados (Latium, Milano FC, Lombardia FC, Paris SG, Spurs) para os nomes reais atuais, e adicionar as entradas ausentes descobertas no passo 1.
+
+Validar e orientar re-execução — Após o ajuste, o executor deve rodar o endpoint /admin/reenrich-positions programaticamente (ou orientar o usuário a clicar em "Corrigir posições" novamente) e confirmar que os times anteriormente zerados passaram a ter jogadores com posições específicas.
+
+Relevant files
+artifacts/api-server/src/lib/positions.ts
