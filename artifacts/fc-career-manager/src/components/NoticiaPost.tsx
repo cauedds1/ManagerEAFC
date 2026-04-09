@@ -222,6 +222,9 @@ export function NoticiaPost({ post }: NoticiaPostProps) {
 
       {/* Content */}
       <div className="px-4 pb-4">
+        {post.title && (
+          <p className="text-white font-black text-base leading-snug mb-2">{post.title}</p>
+        )}
         <div className="text-white/80 text-sm leading-relaxed whitespace-pre-line">
           {lines.map((line, i) => {
             const isBold = /^[A-ZÁÉÍÓÚÃÕÇ\s!🔥🚑📺🏆⚽📊💰📋🎥📸🧠]+$/.test(line.trim()) && line.trim().length > 0 && line.trim().length < 80;

@@ -36,6 +36,7 @@ function AddPostModal({
 }) {
   const [source, setSource] = useState<NewsSource>("fanpage");
   const [category, setCategory] = useState<NewsCategory>("geral");
+  const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -68,6 +69,7 @@ function AddPostModal({
       source,
       sourceHandle,
       sourceName,
+      ...(title.trim() ? { title: title.trim() } : {}),
       content: content.trim(),
       likes: Math.floor(Math.random() * 5000) + 500,
       commentsCount: Math.floor(Math.random() * 300) + 20,
@@ -167,10 +169,28 @@ function AddPostModal({
             </div>
           </div>
 
+          {/* Title (optional) */}
+          <div>
+            <label className="text-white/40 text-xs font-semibold uppercase tracking-wider block mb-2">
+              Título <span className="text-white/25 normal-case font-normal">(opcional)</span>
+            </label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder={`Ex: LESIONADO 🚑`}
+              className="w-full px-4 py-2.5 rounded-xl text-white text-sm focus:outline-none placeholder:text-white/20"
+              style={{
+                background: "rgba(255,255,255,0.05)",
+                border: "1px solid rgba(255,255,255,0.08)",
+              }}
+            />
+          </div>
+
           {/* Content */}
           <div>
             <label className="text-white/40 text-xs font-semibold uppercase tracking-wider block mb-2">
-              Conteúdo
+              Legenda
             </label>
             <textarea
               ref={textareaRef}

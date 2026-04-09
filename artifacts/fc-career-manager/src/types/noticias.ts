@@ -35,6 +35,7 @@ export interface NewsPost {
   source: NewsSource;
   sourceHandle: string;
   sourceName: string;
+  title?: string;
   content: string;
   likes: number;
   commentsCount: number;

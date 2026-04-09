@@ -2,6 +2,18 @@ import type { NewsPost, NewsComment } from "@/types/noticias";
 import type { Career } from "@/types/career";
 import { generatePostId, generateCommentId } from "@/lib/noticiaStorage";
 
+const MAJOR_LEAGUE_KEYWORDS = [
+  "premier league", "la liga", "serie a", "bundesliga", "ligue 1",
+  "série a", "brasileirao", "brasileirão", "campeonato brasileiro",
+  "eredivisie", "primeira liga", "liga profesional", "primera division",
+  "champions league", "europa league",
+];
+
+export function isMediumOrLargeClub(career: Career): boolean {
+  const league = (career.clubLeague ?? "").toLowerCase();
+  return MAJOR_LEAGUE_KEYWORDS.some((kw) => league.includes(kw));
+}
+
 const now = Date.now();
 const H = 3600_000;
 
@@ -551,5 +563,10 @@ export function seedPosts(career: Career): NewsPost[] {
     },
   ];
 
-  return posts.sort((a, b) => b.createdAt - a.createdAt);
+  const isLarge = isMediumOrLargeClub(career);
+  const filtered = isLarge
+    ? posts
+    : posts.filter((p) => p.source === "fanpage");
+
+  return filtered.sort((a, b) => b.createdAt - a.createdAt);
 }
