@@ -1,10 +1,12 @@
 import { Router } from "express";
 import { db, clubsTable, squadPlayersTable } from "@workspace/db";
 import { sql, eq } from "drizzle-orm";
+import { mapPosition, AF_TO_FC26 } from "../lib/positions";
 
 const router = Router();
 
 const API_BASE = "https://v3.football.api-sports.io";
+const MSMC_BASE = "https://api.msmc.cc/api/eafc";
 const DELAY_MS = 150;
 
 const ALL_LEAGUE_IDS = [
@@ -36,23 +38,24 @@ const ALL_LEAGUE_IDS = [
   2, 3, 848, 13,
 ];
 
-function mapPosition(pos: string): string {
-  const p = (pos ?? "").toUpperCase().trim();
-  if (["GK", "GOALKEEPER"].includes(p)) return "GOL";
-  if (["LB", "RB", "LWB", "RWB", "WB"].includes(p)) return "LAT";
-  if (["CB", "SW", "DEFENDER"].includes(p)) return "ZAG";
-  if (["CDM", "DM", "DMF"].includes(p)) return "VOL";
-  if (["LW", "LM"].includes(p)) return "PE";
-  if (["RW", "RM"].includes(p)) return "PD";
-  if (["CAM", "AM", "AMF"].includes(p)) return "MEI";
-  if (["CM", "MIDFIELDER"].includes(p)) return "MC";
-  if (["CF", "SS"].includes(p)) return "SA";
-  if (["ST", "FW", "WF"].includes(p)) return "CA";
-  if (["ATTACKER", "FORWARD"].includes(p)) return "ATA";
-  return "MC";
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+// Returns "lastname|firstinitial" — matches "J. Doku" to "Jérémy Doku"
+function nameKey(name: string): string {
+  const parts = name.trim().toLowerCase().replace(/\./g, "").split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return name.toLowerCase();
+  const last = parts[parts.length - 1];
+  const firstInitial = parts[0]?.[0] ?? "";
+  return `${last}|${firstInitial}`;
 }
 
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+interface MsmcPlayerRaw {
+  id?: string;
+  name?: string;
+  position?: string;
+  age?: string | number;
+  card?: string;
+}
 
 // GET /admin/seed?apiKey=... — SSE stream that imports all clubs + squads
 router.get("/admin/seed", async (req, res) => {
@@ -263,6 +266,149 @@ router.get("/admin/seed", async (req, res) => {
     res.end();
   } catch (err) {
     console.error("GET /admin/seed error:", err);
+    emit({ type: "error", message: "Erro interno no servidor." });
+    res.end();
+  }
+});
+
+// GET /admin/reenrich-positions — SSE stream that updates positionPtBr for all players
+// using msmc.cc (EA FC 26) data. Uses AF_TO_FC26 to convert API-Football team names.
+router.get("/admin/reenrich-positions", async (req, res) => {
+  // SSE headers
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no");
+  res.flushHeaders();
+
+  const emit = (data: object) => {
+    res.write(`data: ${JSON.stringify(data)}\n\n`);
+    if (typeof (res as unknown as { flush?: () => void }).flush === "function") {
+      (res as unknown as { flush: () => void }).flush();
+    }
+  };
+
+  try {
+    // 1. Load all clubs from DB
+    const clubs = await db
+      .select({ id: clubsTable.id, name: clubsTable.name })
+      .from(clubsTable);
+
+    if (clubs.length === 0) {
+      emit({ type: "error", message: "Nenhum clube encontrado no banco. Execute 'Importar tudo' primeiro." });
+      res.end();
+      return;
+    }
+
+    const total = clubs.length;
+    emit({ type: "start", total, message: `Enriquecendo posições de ${total} times via msmc.cc...` });
+
+    let processed = 0;
+    let teamsEnriched = 0;
+    let playersUpdated = 0;
+
+    for (const club of clubs) {
+      const fc26Name = AF_TO_FC26[club.name] ?? club.name;
+
+      try {
+        // 2. Fetch squad from msmc.cc
+        const msmcRes = await fetch(
+          `${MSMC_BASE}/players?game=fc26&team=${encodeURIComponent(fc26Name)}`,
+          { signal: AbortSignal.timeout(10000) }
+        );
+
+        if (msmcRes.ok) {
+          const raw = await msmcRes.json() as MsmcPlayerRaw[];
+          const msmcPlayers: MsmcPlayerRaw[] = Array.isArray(raw) ? raw : [];
+
+          if (msmcPlayers.length > 0) {
+            // 3. Build name → position map from msmc.cc data (two keys: exact + nameKey)
+            const exactMap = new Map<string, string>(); // lowercase name → positionPtBr
+            const keyMap = new Map<string, string>();   // nameKey → positionPtBr
+
+            for (const p of msmcPlayers) {
+              if (!p.name || !p.position) continue;
+              const ptBr = mapPosition(p.position);
+              if (ptBr === "MC") continue; // skip generic fallback positions
+              exactMap.set(p.name.toLowerCase().trim(), ptBr);
+              keyMap.set(nameKey(p.name), ptBr);
+            }
+
+            if (exactMap.size === 0) {
+              processed++;
+              continue;
+            }
+
+            // 4. Load all DB players for this club
+            const dbPlayers = await db
+              .select({
+                teamId: squadPlayersTable.teamId,
+                playerId: squadPlayersTable.playerId,
+                name: squadPlayersTable.name,
+                positionPtBr: squadPlayersTable.positionPtBr,
+              })
+              .from(squadPlayersTable)
+              .where(eq(squadPlayersTable.teamId, club.id));
+
+            // 5. Find matches and build updates
+            const updates: Array<{ teamId: number; playerId: number; positionPtBr: string }> = [];
+
+            for (const dbPlayer of dbPlayers) {
+              const exactMatch = exactMap.get(dbPlayer.name.toLowerCase().trim());
+              const keyMatch = exactMatch === undefined ? keyMap.get(nameKey(dbPlayer.name)) : undefined;
+              const newPos = exactMatch ?? keyMatch;
+
+              if (newPos && newPos !== dbPlayer.positionPtBr) {
+                updates.push({ teamId: dbPlayer.teamId, playerId: dbPlayer.playerId, positionPtBr: newPos });
+              }
+            }
+
+            // 6. Apply updates in DB
+            for (const upd of updates) {
+              await db
+                .update(squadPlayersTable)
+                .set({ positionPtBr: upd.positionPtBr })
+                .where(
+                  sql`team_id = ${upd.teamId} AND player_id = ${upd.playerId}`
+                );
+            }
+
+            if (updates.length > 0) {
+              teamsEnriched++;
+              playersUpdated += updates.length;
+            }
+          }
+        }
+      } catch { /* skip club on error */ }
+
+      processed++;
+
+      if (processed % 20 === 0 || processed === total) {
+        emit({
+          type: "progress",
+          processed,
+          total,
+          teamsEnriched,
+          playersUpdated,
+          clubName: club.name,
+          message: `${processed}/${total} times · ${playersUpdated} posições corrigidas`,
+        });
+      }
+
+      await sleep(DELAY_MS);
+    }
+
+    emit({
+      type: "done",
+      processed: total,
+      teamsEnriched,
+      playersUpdated,
+      message: `Concluído! ${teamsEnriched} times enriquecidos, ${playersUpdated} posições atualizadas.`,
+    });
+
+    res.end();
+  } catch (err) {
+    console.error("GET /admin/reenrich-positions error:", err);
     emit({ type: "error", message: "Erro interno no servidor." });
     res.end();
   }
