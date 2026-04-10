@@ -96,13 +96,15 @@ export function PlayerDetailPanel({
   const displayName = override?.nameOverride ?? player.name;
   const displayNumber = override?.shirtNumber ?? player.number;
   const displayOverall = override?.overall;
+  const displayPosition = (override?.positionOverride ?? player.positionPtBr) as PositionPtBr;
 
   const [editName, setEditName] = useState(displayName);
   const [editNumber, setEditNumber] = useState(String(displayNumber ?? ""));
   const [editOverall, setEditOverall] = useState(String(displayOverall ?? ""));
   const [editSalary, setEditSalary] = useState(String(override?.salary ?? ""));
+  const [editPosition, setEditPosition] = useState<PositionPtBr>(displayPosition);
 
-  const pos = POS_STYLE[player.positionPtBr] ?? POS_STYLE.MC;
+  const pos = POS_STYLE[displayPosition] ?? POS_STYLE.MC;
   const moodStyle = MOOD_COLORS[stats.mood];
   const fanStyle = FAN_MORAL_COLORS[stats.fanMoral];
 
@@ -115,6 +117,7 @@ export function PlayerDetailPanel({
       shirtNumber: !isNaN(numberVal) && editNumber.trim() ? numberVal : undefined,
       overall: !isNaN(overallVal) && editOverall.trim() ? Math.max(1, Math.min(99, overallVal)) : undefined,
       salary: !isNaN(salaryVal) && editSalary.trim() ? Math.max(0, salaryVal) : undefined,
+      positionOverride: editPosition !== player.positionPtBr ? editPosition : undefined,
     });
     setEditing(false);
     onUpdated();
@@ -167,7 +170,7 @@ export function PlayerDetailPanel({
               </p>
               <div className="flex items-center gap-1.5 mt-2 flex-wrap">
                 <span className="text-xs font-bold px-2 py-0.5 rounded-md" style={{ background: pos.bg, color: pos.color }}>
-                  {player.positionPtBr}
+                  {displayPosition}
                 </span>
                 {displayOverall != null && (
                   <span className="text-xs font-black px-2 py-0.5 rounded-md" style={overallColor(displayOverall)}>
@@ -269,6 +272,7 @@ export function PlayerDetailPanel({
                 setEditNumber(String(displayNumber ?? ""));
                 setEditOverall(String(displayOverall ?? ""));
                 setEditSalary(String(override?.salary ?? ""));
+                setEditPosition(displayPosition);
                 setEditing(!editing);
               }}
               className="w-full flex items-center justify-between px-4 py-3 text-left transition-colors hover:bg-white/4"
@@ -329,6 +333,19 @@ export function PlayerDetailPanel({
                       className="w-full px-3 py-2 rounded-lg text-white text-sm font-semibold focus:outline-none glass tabular-nums"
                     />
                   </div>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-white/35 text-xs">Posição</label>
+                  <select
+                    value={editPosition}
+                    onChange={(e) => setEditPosition(e.target.value as PositionPtBr)}
+                    className="w-full px-3 py-2 rounded-lg text-white text-sm font-semibold focus:outline-none glass"
+                    style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}
+                  >
+                    {(["GOL","ZAG","LAT","VOL","MC","MEI","PE","PD","SA","CA","ATA"] as PositionPtBr[]).map((p) => (
+                      <option key={p} value={p} style={{ background: "#1a1a2e" }}>{p}</option>
+                    ))}
+                  </select>
                 </div>
                 <div className="flex gap-2 mt-1">
                   <button

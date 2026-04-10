@@ -74,7 +74,7 @@ export function ClubeView({
         })}
       </div>
 
-      <div className="flex-1 min-h-0 overflow-y-auto w-full">
+      <div className={`flex-1 min-h-0 w-full ${sub === "elenco" ? "flex flex-col overflow-hidden" : "overflow-y-auto"}`}>
         {sub === "elenco" && (
           <ElencoView
             careerId={careerId}

@@ -87,7 +87,8 @@ function PlayerRow({
   const displayName = ov?.nameOverride ?? player.name;
   const displayNumber = ov?.shirtNumber ?? player.number;
   const displayOverall = ov?.overall;
-  const pos = POS_STYLE[player.positionPtBr] ?? POS_STYLE.MC;
+  const displayPos = (ov?.positionOverride as PositionPtBr | undefined) ?? player.positionPtBr;
+  const pos = POS_STYLE[displayPos] ?? POS_STYLE.MC;
 
   return (
     <button
@@ -116,7 +117,7 @@ function PlayerRow({
           className="text-xs font-bold px-2 py-0.5 rounded-md"
           style={{ background: pos.bg, color: pos.color }}
         >
-          {player.positionPtBr}
+          {displayPos}
         </span>
         {displayNumber != null && (
           <span className="text-white/25 text-xs font-mono tabular-nums w-5 text-right">
@@ -226,8 +227,8 @@ export function ElencoView({
     : "";
 
   return (
-    <div className="animate-fade-up p-4 sm:p-6">
-      <div className="flex items-center justify-between mb-5">
+    <div className="animate-fade-up flex-1 min-h-0 flex flex-col overflow-hidden">
+      <div className="flex items-center justify-between px-4 sm:px-6 pt-4 pb-3 flex-shrink-0">
         <div className="flex items-center gap-3">
           <h2 className="text-white/35 text-xs font-bold tracking-widest uppercase">Elenco</h2>
           {squad && !squadLoading && (
@@ -304,51 +305,57 @@ export function ElencoView({
       </div>
 
       {squadLoading ? (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div className="rounded-2xl overflow-hidden" style={{ background: "#0d2218", minHeight: 300 }}>
-            <div className="flex items-center justify-center h-72">
-              <div className="w-8 h-8 rounded-full border-2 animate-spin" style={{ borderColor: "rgba(255,255,255,0.2)", borderTopColor: "transparent" }} />
+        <div className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 pb-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="rounded-2xl overflow-hidden" style={{ background: "#0d2218", minHeight: 300 }}>
+              <div className="flex items-center justify-center h-72">
+                <div className="w-8 h-8 rounded-full border-2 animate-spin" style={{ borderColor: "rgba(255,255,255,0.2)", borderTopColor: "transparent" }} />
+              </div>
             </div>
+            <SquadSkeleton />
           </div>
-          <SquadSkeleton />
         </div>
       ) : squadError ? (
-        <div className="flex flex-col items-center justify-center py-12 rounded-2xl gap-3 glass">
-          <svg className="w-8 h-8 text-white/15" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-          </svg>
-          <p className="text-white/30 text-sm">Erro ao carregar o elenco</p>
-          <button
-            onClick={onRefresh}
-            className="px-4 py-2 rounded-xl text-xs font-semibold text-white hover:opacity-80 transition-opacity"
-            style={{ background: "var(--club-gradient)" }}
-          >
-            Tentar novamente
-          </button>
-        </div>
-      ) : allPlayers.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-12 rounded-2xl gap-3 glass">
-          <svg className="w-8 h-8 text-white/15" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
-          <p className="text-white/30 text-sm text-center leading-relaxed">
-            {hasApiKey
-              ? "Nenhum jogador encontrado para este clube"
-              : "Configure sua chave de API para carregar o elenco real"}
-          </p>
-          {!hasApiKey && (
+        <div className="flex-1 px-4 sm:px-6 pb-4 flex flex-col items-center justify-center">
+          <div className="flex flex-col items-center justify-center py-12 rounded-2xl gap-3 glass w-full">
+            <svg className="w-8 h-8 text-white/15" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <p className="text-white/30 text-sm">Erro ao carregar o elenco</p>
             <button
-              onClick={onOpenSettings}
+              onClick={onRefresh}
               className="px-4 py-2 rounded-xl text-xs font-semibold text-white hover:opacity-80 transition-opacity"
               style={{ background: "var(--club-gradient)" }}
             >
-              Configurar API key
+              Tentar novamente
             </button>
-          )}
+          </div>
+        </div>
+      ) : allPlayers.length === 0 ? (
+        <div className="flex-1 px-4 sm:px-6 pb-4 flex flex-col items-center justify-center">
+          <div className="flex flex-col items-center justify-center py-12 rounded-2xl gap-3 glass w-full">
+            <svg className="w-8 h-8 text-white/15" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            <p className="text-white/30 text-sm text-center leading-relaxed">
+              {hasApiKey
+                ? "Nenhum jogador encontrado para este clube"
+                : "Configure sua chave de API para carregar o elenco real"}
+            </p>
+            {!hasApiKey && (
+              <button
+                onClick={onOpenSettings}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-white hover:opacity-80 transition-opacity"
+                style={{ background: "var(--club-gradient)" }}
+              >
+                Configurar API key
+              </button>
+            )}
+          </div>
         </div>
       ) : tab === "pitch" ? (
-        <div className="flex flex-col lg:flex-row items-start gap-4">
-          <div className="w-full lg:w-[440px] flex-shrink-0">
+        <div className="flex-1 min-h-0 flex flex-col lg:flex-row gap-4 overflow-hidden px-4 sm:px-6 pb-4">
+          <div className="w-full lg:w-[440px] flex-shrink-0 overflow-y-auto">
             <div className="mb-2 flex items-center justify-between gap-2">
               <p className="text-white/25 text-xs font-semibold tracking-widest uppercase">
                 Titulares ({starters.length})
@@ -383,7 +390,7 @@ export function ElencoView({
               highlightedPlayerId={pendingSwap?.id}
             />
           </div>
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-h-0 overflow-y-auto">
             {bench.length === 0 ? (
               <p className="text-white/20 text-xs text-center py-4">
                 Todos os jogadores estão no time titular
@@ -427,6 +434,7 @@ export function ElencoView({
           </div>
         </div>
       ) : (
+        <div className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 pb-4">
         <div className="flex flex-col gap-2">
           <div className="mb-1">
             <p className="text-white/25 text-xs font-semibold tracking-widest uppercase mb-2">
@@ -463,10 +471,11 @@ export function ElencoView({
             </div>
           )}
         </div>
+        </div>
       )}
 
       {!hasApiKey && squad?.source === "fc26" && allPlayers.length > 0 && (
-        <div className="mt-4 flex items-center gap-2 px-4 py-3 rounded-xl glass">
+        <div className="flex-shrink-0 mx-4 sm:mx-6 mb-3 flex items-center gap-2 px-4 py-3 rounded-xl glass">
           <svg className="w-4 h-4 flex-shrink-0" style={{ color: "var(--club-primary)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
