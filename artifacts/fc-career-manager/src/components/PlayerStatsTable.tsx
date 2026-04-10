@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { getAllPlayerStats, getAllPlayerOverrides } from "@/lib/playerStatsStorage";
+import { getMatches } from "@/lib/matchStorage";
 import type { SquadPlayer } from "@/lib/squadCache";
 import type { PlayerSeasonStats } from "@/types/playerStats";
 
@@ -17,16 +18,45 @@ const POS_STYLE: Record<string, { bg: string; color: string }> = {
   ATA: { bg: "rgba(185,28,28,0.18)",   color: "#ef4444" },
 };
 
-type SortCol =
-  | "name" | "number" | "pos" | "total" | "starter" | "sub"
-  | "minutes" | "goals" | "assists" | "yellow" | "red" | "overall";
+interface DerivedStats {
+  avgRating: number | null;
+  hatTricks: number;
+  totalPasses: number;
+  passAccuracy: number | null;
+  totalKeyPasses: number;
+  totalDribblesCompleted: number;
+  totalBallRecoveries: number;
+  totalBallLosses: number;
+  totalSaves: number;
+  totalPenaltiesSaved: number;
+  totalGoalsAgainst: number;
+}
 
 interface Row {
   player: SquadPlayer;
   stats: PlayerSeasonStats;
+  derived: DerivedStats;
   shirtNumber: number | undefined;
   overall: number | undefined;
+  displayPos: string;
 }
+
+type FilterTab = "ataque" | "intermediario" | "defesa" | "goleiro";
+
+type SortCol =
+  | "name" | "number" | "pos" | "total" | "starter" | "rating"
+  | "goals" | "assists" | "ga" | "hat" | "penMissed"
+  | "passes" | "passAcc" | "keyPasses" | "dribbles"
+  | "recoveries" | "losses" | "yellow" | "red"
+  | "saves" | "goalsAgainst" | "penSaved"
+  | "overall";
+
+const FILTER_TABS: { id: FilterTab; label: string; icon: string }[] = [
+  { id: "ataque",       label: "Ataque",      icon: "⚽" },
+  { id: "intermediario", label: "Intermediário", icon: "🔄" },
+  { id: "defesa",       label: "Defesa",      icon: "🛡️" },
+  { id: "goleiro",      label: "Goleiro",     icon: "🧤" },
+];
 
 function PlayerPhoto({ src, name }: { src: string; name: string }) {
   const [err, setErr] = useState(!src);
@@ -36,12 +66,7 @@ function PlayerPhoto({ src, name }: { src: string; name: string }) {
       style={{ background: "rgba(var(--club-primary-rgb),0.08)" }}
     >
       {!err ? (
-        <img
-          src={src}
-          alt={name}
-          className="w-8 h-8 object-cover"
-          onError={() => setErr(true)}
-        />
+        <img src={src} alt={name} className="w-8 h-8 object-cover" onError={() => setErr(true)} />
       ) : (
         <svg viewBox="0 0 40 40" className="w-5 h-5 text-white/15" fill="currentColor">
           <circle cx="20" cy="14" r="7" />
@@ -60,14 +85,15 @@ interface ThProps {
   onSort: (c: SortCol) => void;
   title?: string;
   left?: boolean;
+  accent?: string;
 }
 
-function Th({ label, col, sortCol, asc, onSort, title, left }: ThProps) {
+function Th({ label, col, sortCol, asc, onSort, title, left, accent }: ThProps) {
   const active = sortCol === col;
   return (
     <th
       className={`px-2 py-2 ${left ? "text-left" : "text-center"} cursor-pointer select-none whitespace-nowrap`}
-      style={{ color: active ? "rgb(var(--club-primary-rgb))" : "rgba(255,255,255,0.35)" }}
+      style={{ color: active ? (accent ?? "rgb(var(--club-primary-rgb))") : "rgba(255,255,255,0.35)" }}
       onClick={() => onSort(col)}
       title={title}
     >
@@ -79,73 +105,190 @@ function Th({ label, col, sortCol, asc, onSort, title, left }: ThProps) {
   );
 }
 
+function Dash() {
+  return <span className="text-white/20">—</span>;
+}
+
+function NumCell({ value, accent, min = 1 }: { value: number; accent?: string; min?: number }) {
+  if (value === 0) return <Dash />;
+  return (
+    <span
+      className="font-semibold tabular-nums text-xs"
+      style={{ color: value >= min ? (accent ?? "rgba(255,255,255,0.7)") : "rgba(255,255,255,0.35)" }}
+    >
+      {value}
+    </span>
+  );
+}
+
+function RatingCell({ value }: { value: number | null }) {
+  if (value === null) return <Dash />;
+  const color = value >= 8 ? "#34d399" : value >= 7 ? "#a3e635" : value >= 6 ? "#fbbf24" : "#f87171";
+  return <span className="font-bold tabular-nums text-xs" style={{ color }}>{value.toFixed(1)}</span>;
+}
+
+function PctCell({ value }: { value: number | null }) {
+  if (value === null) return <Dash />;
+  const color = value >= 85 ? "#34d399" : value >= 75 ? "#fbbf24" : "#f87171";
+  return <span className="tabular-nums text-xs font-semibold" style={{ color }}>{value.toFixed(0)}%</span>;
+}
+
 interface Props {
   careerId: string;
   allPlayers: SquadPlayer[];
 }
 
 export function PlayerStatsTable({ careerId, allPlayers }: Props) {
+  const [filter, setFilter] = useState<FilterTab>("ataque");
   const [sortCol, setSortCol] = useState<SortCol>("goals");
   const [asc, setAsc] = useState(false);
 
   const rawStats = useMemo(() => getAllPlayerStats(careerId), [careerId]);
   const overrides = useMemo(() => getAllPlayerOverrides(careerId), [careerId]);
+  const matches = useMemo(() => getMatches(careerId), [careerId]);
+
+  const derivedMap = useMemo<Record<number, DerivedStats>>(() => {
+    const map: Record<number, DerivedStats> = {};
+
+    for (const p of allPlayers) {
+      let ratingSum = 0; let ratingCount = 0;
+      let hatTricks = 0;
+      let totalPasses = 0;
+      let passAccSum = 0; let passAccCount = 0;
+      let totalKeyPasses = 0;
+      let totalDrib = 0;
+      let totalRecov = 0;
+      let totalLosses = 0;
+      let totalSaves = 0;
+      let totalPenSaved = 0;
+      let totalGoalsAgainst = 0;
+
+      for (const m of matches) {
+        const ps = m.playerStats[p.id];
+        const isInMatch = m.starterIds.includes(p.id) || m.subIds.includes(p.id);
+        if (!isInMatch) continue;
+
+        if (ps) {
+          if (ps.rating > 0) { ratingSum += ps.rating; ratingCount++; }
+          if (ps.goals.length >= 3) hatTricks++;
+          if (ps.passes != null)           totalPasses     += ps.passes;
+          if (ps.passAccuracy != null)     { passAccSum += ps.passAccuracy; passAccCount++; }
+          if (ps.keyPasses != null)        totalKeyPasses  += ps.keyPasses;
+          if (ps.dribblesCompleted != null) totalDrib      += ps.dribblesCompleted;
+          if (ps.ballRecoveries != null)   totalRecov      += ps.ballRecoveries;
+          if (ps.ballLosses != null)       totalLosses     += ps.ballLosses;
+          if (ps.saves != null)            totalSaves      += ps.saves;
+          if (ps.penaltiesSaved != null)   totalPenSaved   += ps.penaltiesSaved;
+        }
+
+        const ov = overrides[p.id];
+        const effectivePos = (ov?.positionOverride ?? p.positionPtBr);
+        if (effectivePos === "GOL" && m.starterIds.includes(p.id)) {
+          totalGoalsAgainst += m.opponentScore;
+        }
+      }
+
+      map[p.id] = {
+        avgRating: ratingCount > 0 ? ratingSum / ratingCount : null,
+        hatTricks,
+        totalPasses,
+        passAccuracy: passAccCount > 0 ? passAccSum / passAccCount : null,
+        totalKeyPasses,
+        totalDribblesCompleted: totalDrib,
+        totalBallRecoveries: totalRecov,
+        totalBallLosses: totalLosses,
+        totalSaves,
+        totalPenaltiesSaved: totalPenSaved,
+        totalGoalsAgainst,
+      };
+    }
+
+    return map;
+  }, [allPlayers, matches, overrides]);
 
   const rows: Row[] = useMemo(() => {
     return allPlayers
       .filter((p) => {
         const s = rawStats[p.id];
         if (!s) return false;
-        return (
-          s.goals > 0 ||
-          s.assists > 0 ||
-          s.matchesAsStarter > 0 ||
-          s.matchesAsSubstitute > 0
-        );
+        return s.goals > 0 || s.assists > 0 || s.matchesAsStarter > 0 || s.matchesAsSubstitute > 0;
       })
       .map((p) => {
         const ov = overrides[p.id];
         return {
           player: p,
           stats: rawStats[p.id],
+          derived: derivedMap[p.id] ?? {
+            avgRating: null, hatTricks: 0, totalPasses: 0, passAccuracy: null,
+            totalKeyPasses: 0, totalDribblesCompleted: 0, totalBallRecoveries: 0,
+            totalBallLosses: 0, totalSaves: 0, totalPenaltiesSaved: 0, totalGoalsAgainst: 0,
+          },
           shirtNumber: ov?.shirtNumber ?? p.number,
           overall: ov?.overall,
+          displayPos: ov?.positionOverride ?? p.positionPtBr,
         };
       });
-  }, [allPlayers, rawStats, overrides]);
+  }, [allPlayers, rawStats, overrides, derivedMap]);
 
-  const hasData = rows.length > 0;
+  const visibleRows = useMemo(() => {
+    if (filter === "goleiro") return rows.filter((r) => r.displayPos === "GOL");
+    return rows;
+  }, [rows, filter]);
+
+  const defaultSortByFilter: Record<FilterTab, SortCol> = {
+    ataque: "goals",
+    intermediario: "passes",
+    defesa: "recoveries",
+    goleiro: "saves",
+  };
+
+  function handleFilterChange(f: FilterTab) {
+    setFilter(f);
+    setSortCol(defaultSortByFilter[f]);
+    setAsc(false);
+  }
 
   const sorted = useMemo(() => {
     const factor = asc ? 1 : -1;
-    return [...rows].sort((a, b) => {
+    return [...visibleRows].sort((a, b) => {
       let diff = 0;
+      const tA = a.stats.matchesAsStarter + a.stats.matchesAsSubstitute;
+      const tB = b.stats.matchesAsStarter + b.stats.matchesAsSubstitute;
       switch (sortCol) {
-        case "name":    diff = a.player.name.localeCompare(b.player.name); break;
-        case "number":  diff = (a.shirtNumber ?? 99) - (b.shirtNumber ?? 99); break;
-        case "pos":     diff = a.player.positionPtBr.localeCompare(b.player.positionPtBr); break;
-        case "total":   diff = (a.stats.matchesAsStarter + a.stats.matchesAsSubstitute) - (b.stats.matchesAsStarter + b.stats.matchesAsSubstitute); break;
-        case "starter": diff = a.stats.matchesAsStarter - b.stats.matchesAsStarter; break;
-        case "sub":     diff = a.stats.matchesAsSubstitute - b.stats.matchesAsSubstitute; break;
-        case "minutes": diff = a.stats.totalMinutes - b.stats.totalMinutes; break;
-        case "goals":   diff = a.stats.goals - b.stats.goals; break;
-        case "assists": diff = a.stats.assists - b.stats.assists; break;
-        case "yellow":  diff = a.stats.yellowCards - b.stats.yellowCards; break;
-        case "red":     diff = a.stats.redCards - b.stats.redCards; break;
-        case "overall": diff = (a.overall ?? 0) - (b.overall ?? 0); break;
+        case "name":        diff = a.player.name.localeCompare(b.player.name); break;
+        case "number":      diff = (a.shirtNumber ?? 99) - (b.shirtNumber ?? 99); break;
+        case "pos":         diff = a.displayPos.localeCompare(b.displayPos); break;
+        case "total":       diff = tA - tB; break;
+        case "starter":     diff = a.stats.matchesAsStarter - b.stats.matchesAsStarter; break;
+        case "rating":      diff = (a.derived.avgRating ?? 0) - (b.derived.avgRating ?? 0); break;
+        case "goals":       diff = a.stats.goals - b.stats.goals; break;
+        case "assists":     diff = a.stats.assists - b.stats.assists; break;
+        case "ga":          diff = (a.stats.goals + a.stats.assists) - (b.stats.goals + b.stats.assists); break;
+        case "hat":         diff = a.derived.hatTricks - b.derived.hatTricks; break;
+        case "penMissed":   diff = a.stats.totalMissedPenalties - b.stats.totalMissedPenalties; break;
+        case "passes":      diff = a.derived.totalPasses - b.derived.totalPasses; break;
+        case "passAcc":     diff = (a.derived.passAccuracy ?? 0) - (b.derived.passAccuracy ?? 0); break;
+        case "keyPasses":   diff = a.derived.totalKeyPasses - b.derived.totalKeyPasses; break;
+        case "dribbles":    diff = a.derived.totalDribblesCompleted - b.derived.totalDribblesCompleted; break;
+        case "recoveries":  diff = a.derived.totalBallRecoveries - b.derived.totalBallRecoveries; break;
+        case "losses":      diff = a.derived.totalBallLosses - b.derived.totalBallLosses; break;
+        case "yellow":      diff = a.stats.yellowCards - b.stats.yellowCards; break;
+        case "red":         diff = a.stats.redCards - b.stats.redCards; break;
+        case "saves":       diff = a.derived.totalSaves - b.derived.totalSaves; break;
+        case "goalsAgainst":diff = a.derived.totalGoalsAgainst - b.derived.totalGoalsAgainst; break;
+        case "penSaved":    diff = a.derived.totalPenaltiesSaved - b.derived.totalPenaltiesSaved; break;
+        case "overall":     diff = (a.overall ?? 0) - (b.overall ?? 0); break;
       }
       return diff * factor;
     });
-  }, [rows, sortCol, asc]);
+  }, [visibleRows, sortCol, asc]);
 
   function handleSort(col: SortCol) {
     if (sortCol === col) setAsc((v) => !v);
     else { setSortCol(col); setAsc(false); }
   }
 
-  const topGoals   = Math.max(...rows.map((r) => r.stats.goals), 0);
-  const topAssists = Math.max(...rows.map((r) => r.stats.assists), 0);
-  const topMin     = Math.max(...rows.map((r) => r.stats.totalMinutes), 0);
+  const hasData = rows.length > 0;
 
   if (!hasData) {
     return (
@@ -156,99 +299,218 @@ export function PlayerStatsTable({ careerId, allPlayers }: Props) {
     );
   }
 
-  const thProps = { sortCol, asc, onSort: handleSort };
+  const th = { sortCol, asc, onSort: handleSort };
+  const THEAD_BG = { background: "rgba(12,12,18,0.98)", borderBottom: "1px solid rgba(255,255,255,0.07)" };
+
+  const ALWAYS_HEADER = (
+    <>
+      <Th label="#"      col="number"  {...th} title="Nº camisa" />
+      <Th label="Jogador" col="name"   {...th} left />
+      <Th label="Pos"    col="pos"     {...th} />
+      <Th label="J"      col="total"   {...th} title="Jogos totais" />
+      <Th label="S11"    col="starter" {...th} title="Jogos como titular (Started 11)" />
+      <Th label="Nota"   col="rating"  {...th} title="Nota média" />
+    </>
+  );
 
   return (
     <div className="w-full pb-6 pt-1">
-      <table className="w-full border-collapse text-sm min-w-[720px]">
-        <thead className="sticky top-0 z-10">
-          <tr style={{ background: "rgba(15,15,20,0.97)", borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
-            <Th label="#"    col="number"  {...thProps} title="Nº camisa" />
-            <Th label="Jogador" col="name" {...thProps} left />
-            <Th label="Pos"  col="pos"     {...thProps} />
-            <Th label="J"    col="total"   {...thProps} title="Jogos totais" />
-            <Th label="JT"   col="starter" {...thProps} title="Jogos como titular" />
-            <Th label="JB"   col="sub"     {...thProps} title="Jogos como reserva" />
-            <Th label="Min"  col="minutes" {...thProps} title="Minutos jogados" />
-            <Th label="G"    col="goals"   {...thProps} title="Gols" />
-            <Th label="A"    col="assists" {...thProps} title="Assistências" />
-            <Th label="CA"   col="yellow"  {...thProps} title="Cartões amarelos" />
-            <Th label="CV"   col="red"     {...thProps} title="Cartões vermelhos" />
-            <Th label="OVR"  col="overall" {...thProps} title="Overall" />
-          </tr>
-        </thead>
-        <tbody>
-          {sorted.map(({ player, stats, shirtNumber, overall }, i) => {
-            const isTopGoals   = stats.goals > 0   && stats.goals   === topGoals;
-            const isTopAssists = stats.assists > 0 && stats.assists === topAssists;
-            const isTopMin     = stats.totalMinutes > 0 && stats.totalMinutes === topMin;
-            const posStyle = POS_STYLE[player.positionPtBr] ?? { bg: "rgba(148,163,184,0.12)", color: "#94a3b8" };
-            const totalGames = stats.matchesAsStarter + stats.matchesAsSubstitute;
+      {/* Filter tabs */}
+      <div className="flex items-center gap-1.5 pb-3 flex-wrap">
+        {FILTER_TABS.map((f) => {
+          const active = filter === f.id;
+          return (
+            <button
+              key={f.id}
+              onClick={() => handleFilterChange(f.id)}
+              className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-[11px] font-semibold transition-all duration-200"
+              style={{
+                background: active ? "rgba(var(--club-primary-rgb),0.15)" : "rgba(255,255,255,0.05)",
+                color: active ? "var(--club-primary)" : "rgba(255,255,255,0.4)",
+                border: active
+                  ? "1px solid rgba(var(--club-primary-rgb),0.25)"
+                  : "1px solid rgba(255,255,255,0.07)",
+              }}
+            >
+              <span>{f.icon}</span>
+              <span>{f.label}</span>
+            </button>
+          );
+        })}
+        {filter === "goleiro" && visibleRows.length === 0 && (
+          <span className="text-white/25 text-xs ml-2">Nenhum goleiro com dados</span>
+        )}
+      </div>
 
-            return (
-              <tr
-                key={player.id}
-                style={{
-                  borderBottom: "1px solid rgba(255,255,255,0.04)",
-                  background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.015)",
-                }}
-              >
-                <td className="px-3 py-2.5 text-center">
-                  <span className="text-white/40 text-xs tabular-nums font-medium">
-                    {shirtNumber ?? "—"}
-                  </span>
-                </td>
-                <td className="px-2 py-2.5">
-                  <div className="flex items-center gap-2.5">
-                    <PlayerPhoto src={player.photo} name={player.name} />
-                    <span className="text-white/80 font-medium text-xs truncate max-w-[130px]">{player.name}</span>
-                    {isTopGoals   && <span className="text-[10px]" title="Artilheiro">⚽</span>}
-                    {isTopAssists && <span className="text-[10px]" title="Garçom">🎯</span>}
-                    {isTopMin     && <span className="text-[10px]" title="Mais minutos">⏱️</span>}
-                  </div>
-                </td>
-                <td className="px-2 py-2.5 text-center">
-                  <span
-                    className="text-[10px] font-bold px-1.5 py-0.5 rounded"
-                    style={{ background: posStyle.bg, color: posStyle.color }}
-                  >
-                    {player.positionPtBr}
-                  </span>
-                </td>
-                <td className="px-2 py-2.5 text-center text-white/70 text-xs tabular-nums">{totalGames}</td>
-                <td className="px-2 py-2.5 text-center text-white/50 text-xs tabular-nums">{stats.matchesAsStarter}</td>
-                <td className="px-2 py-2.5 text-center text-white/50 text-xs tabular-nums">{stats.matchesAsSubstitute}</td>
-                <td className="px-2 py-2.5 text-center text-white/50 text-xs tabular-nums">{stats.totalMinutes}&apos;</td>
-                <td className="px-2 py-2.5 text-center text-xs tabular-nums font-semibold" style={{ color: stats.goals > 0 ? "#34d399" : "rgba(255,255,255,0.3)" }}>{stats.goals}</td>
-                <td className="px-2 py-2.5 text-center text-xs tabular-nums font-semibold" style={{ color: stats.assists > 0 ? "#60a5fa" : "rgba(255,255,255,0.3)" }}>{stats.assists}</td>
-                <td className="px-2 py-2.5 text-center text-xs tabular-nums">
-                  {stats.yellowCards > 0 ? (
-                    <span className="inline-flex items-center gap-1 justify-center" style={{ color: "#fbbf24" }}>
-                      <span className="inline-block w-2.5 h-3.5 rounded-sm" style={{ background: "#fbbf24" }} />
-                      {stats.yellowCards}
-                    </span>
-                  ) : <span className="text-white/25">—</span>}
-                </td>
-                <td className="px-2 py-2.5 text-center text-xs tabular-nums">
-                  {stats.redCards > 0 ? (
-                    <span className="inline-flex items-center gap-1 justify-center" style={{ color: "#f87171" }}>
-                      <span className="inline-block w-2.5 h-3.5 rounded-sm" style={{ background: "#f87171" }} />
-                      {stats.redCards}
-                    </span>
-                  ) : <span className="text-white/25">—</span>}
-                </td>
-                <td className="px-2 py-2.5 text-center text-xs tabular-nums">
-                  {overall != null ? (
-                    <span className="font-bold" style={{ color: overall >= 80 ? "#34d399" : overall >= 70 ? "#fbbf24" : "#94a3b8" }}>
-                      {overall}
-                    </span>
-                  ) : <span className="text-white/20">—</span>}
-                </td>
+      {visibleRows.length === 0 && filter === "goleiro" ? null : (
+        <table className="w-full border-collapse text-sm min-w-[700px]">
+          <thead className="sticky top-0 z-10">
+            {filter === "ataque" && (
+              <tr style={THEAD_BG}>
+                {ALWAYS_HEADER}
+                <Th label="G"      col="goals"    {...th} title="Gols" accent="#34d399" />
+                <Th label="A"      col="assists"  {...th} title="Assistências" accent="#60a5fa" />
+                <Th label="G+A"    col="ga"       {...th} title="Gols + Assistências" accent="#a78bfa" />
+                <Th label="Hat"    col="hat"      {...th} title="Hat-tricks (3+ gols em 1 jogo)" accent="#fbbf24" />
+                <Th label="Pên✗"   col="penMissed" {...th} title="Pênaltis perdidos" accent="#f87171" />
+                <Th label="OVR"    col="overall"  {...th} title="Overall" />
               </tr>
-            );
-          })}
-        </tbody>
-      </table>
+            )}
+            {filter === "intermediario" && (
+              <tr style={THEAD_BG}>
+                {ALWAYS_HEADER}
+                <Th label="A"      col="assists"  {...th} title="Assistências" accent="#60a5fa" />
+                <Th label="Passes" col="passes"   {...th} title="Passes totais" />
+                <Th label="Prec%"  col="passAcc"  {...th} title="Precisão de passes (%)" />
+                <Th label="PC"     col="keyPasses" {...th} title="Passes chave" accent="#a3e635" />
+                <Th label="Drib"   col="dribbles" {...th} title="Dribles completados" accent="#fbbf24" />
+                <Th label="OVR"    col="overall"  {...th} title="Overall" />
+              </tr>
+            )}
+            {filter === "defesa" && (
+              <tr style={THEAD_BG}>
+                {ALWAYS_HEADER}
+                <Th label="Rec"  col="recoveries" {...th} title="Recuperações de bola" accent="#34d399" />
+                <Th label="Per"  col="losses"     {...th} title="Perdas de posse" accent="#f87171" />
+                <Th label="CA"   col="yellow"     {...th} title="Cartões amarelos" accent="#fbbf24" />
+                <Th label="CV"   col="red"        {...th} title="Cartões vermelhos" accent="#f87171" />
+                <Th label="OVR"  col="overall"    {...th} title="Overall" />
+              </tr>
+            )}
+            {filter === "goleiro" && (
+              <tr style={THEAD_BG}>
+                {ALWAYS_HEADER}
+                <Th label="Def"  col="saves"        {...th} title="Defesas" accent="#34d399" />
+                <Th label="GS"   col="goalsAgainst" {...th} title="Gols sofridos" accent="#f87171" />
+                <Th label="Pên✓" col="penSaved"     {...th} title="Pênaltis defendidos" accent="#60a5fa" />
+                <Th label="OVR"  col="overall"      {...th} title="Overall" />
+              </tr>
+            )}
+          </thead>
+          <tbody>
+            {sorted.map(({ player, stats, derived, shirtNumber, overall, displayPos }, i) => {
+              const posStyle = POS_STYLE[displayPos] ?? { bg: "rgba(148,163,184,0.12)", color: "#94a3b8" };
+              const totalGames = stats.matchesAsStarter + stats.matchesAsSubstitute;
+              const ga = stats.goals + stats.assists;
+
+              const rowBg = i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.015)";
+
+              const AlwaysCells = (
+                <>
+                  <td className="px-3 py-2.5 text-center">
+                    <span className="text-white/40 text-xs tabular-nums font-medium">{shirtNumber ?? "—"}</span>
+                  </td>
+                  <td className="px-2 py-2.5">
+                    <div className="flex items-center gap-2.5">
+                      <PlayerPhoto src={player.photo} name={player.name} />
+                      <span className="text-white/80 font-medium text-xs truncate max-w-[130px]">{player.name}</span>
+                    </div>
+                  </td>
+                  <td className="px-2 py-2.5 text-center">
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: posStyle.bg, color: posStyle.color }}>
+                      {displayPos}
+                    </span>
+                  </td>
+                  <td className="px-2 py-2.5 text-center text-white/70 text-xs tabular-nums">{totalGames}</td>
+                  <td className="px-2 py-2.5 text-center text-white/50 text-xs tabular-nums">{stats.matchesAsStarter}</td>
+                  <td className="px-2 py-2.5 text-center"><RatingCell value={derived.avgRating} /></td>
+                </>
+              );
+
+              return (
+                <tr
+                  key={player.id}
+                  style={{ borderBottom: "1px solid rgba(255,255,255,0.04)", background: rowBg }}
+                >
+                  {filter === "ataque" && (
+                    <>
+                      {AlwaysCells}
+                      <td className="px-2 py-2.5 text-center"><NumCell value={stats.goals} accent="#34d399" /></td>
+                      <td className="px-2 py-2.5 text-center"><NumCell value={stats.assists} accent="#60a5fa" /></td>
+                      <td className="px-2 py-2.5 text-center">
+                        {ga > 0
+                          ? <span className="font-bold tabular-nums text-xs" style={{ color: "#a78bfa" }}>{ga}</span>
+                          : <Dash />}
+                      </td>
+                      <td className="px-2 py-2.5 text-center">
+                        {derived.hatTricks > 0
+                          ? <span className="font-bold tabular-nums text-xs" style={{ color: "#fbbf24" }}>🎩 {derived.hatTricks}</span>
+                          : <Dash />}
+                      </td>
+                      <td className="px-2 py-2.5 text-center">
+                        {stats.totalMissedPenalties > 0
+                          ? <span className="font-semibold tabular-nums text-xs" style={{ color: "#f87171" }}>{stats.totalMissedPenalties}</span>
+                          : <Dash />}
+                      </td>
+                      <td className="px-2 py-2.5 text-center text-xs tabular-nums">
+                        {overall != null
+                          ? <span className="font-bold" style={{ color: overall >= 80 ? "#34d399" : overall >= 70 ? "#fbbf24" : "#94a3b8" }}>{overall}</span>
+                          : <Dash />}
+                      </td>
+                    </>
+                  )}
+                  {filter === "intermediario" && (
+                    <>
+                      {AlwaysCells}
+                      <td className="px-2 py-2.5 text-center"><NumCell value={stats.assists} accent="#60a5fa" /></td>
+                      <td className="px-2 py-2.5 text-center"><NumCell value={derived.totalPasses} /></td>
+                      <td className="px-2 py-2.5 text-center"><PctCell value={derived.passAccuracy} /></td>
+                      <td className="px-2 py-2.5 text-center"><NumCell value={derived.totalKeyPasses} accent="#a3e635" /></td>
+                      <td className="px-2 py-2.5 text-center"><NumCell value={derived.totalDribblesCompleted} accent="#fbbf24" /></td>
+                      <td className="px-2 py-2.5 text-center text-xs tabular-nums">
+                        {overall != null
+                          ? <span className="font-bold" style={{ color: overall >= 80 ? "#34d399" : overall >= 70 ? "#fbbf24" : "#94a3b8" }}>{overall}</span>
+                          : <Dash />}
+                      </td>
+                    </>
+                  )}
+                  {filter === "defesa" && (
+                    <>
+                      {AlwaysCells}
+                      <td className="px-2 py-2.5 text-center"><NumCell value={derived.totalBallRecoveries} accent="#34d399" /></td>
+                      <td className="px-2 py-2.5 text-center"><NumCell value={derived.totalBallLosses} accent="#f87171" /></td>
+                      <td className="px-2 py-2.5 text-center text-xs tabular-nums">
+                        {stats.yellowCards > 0 ? (
+                          <span className="inline-flex items-center gap-1 justify-center" style={{ color: "#fbbf24" }}>
+                            <span className="inline-block w-2.5 h-3.5 rounded-sm" style={{ background: "#fbbf24" }} />
+                            {stats.yellowCards}
+                          </span>
+                        ) : <Dash />}
+                      </td>
+                      <td className="px-2 py-2.5 text-center text-xs tabular-nums">
+                        {stats.redCards > 0 ? (
+                          <span className="inline-flex items-center gap-1 justify-center" style={{ color: "#f87171" }}>
+                            <span className="inline-block w-2.5 h-3.5 rounded-sm" style={{ background: "#f87171" }} />
+                            {stats.redCards}
+                          </span>
+                        ) : <Dash />}
+                      </td>
+                      <td className="px-2 py-2.5 text-center text-xs tabular-nums">
+                        {overall != null
+                          ? <span className="font-bold" style={{ color: overall >= 80 ? "#34d399" : overall >= 70 ? "#fbbf24" : "#94a3b8" }}>{overall}</span>
+                          : <Dash />}
+                      </td>
+                    </>
+                  )}
+                  {filter === "goleiro" && (
+                    <>
+                      {AlwaysCells}
+                      <td className="px-2 py-2.5 text-center"><NumCell value={derived.totalSaves} accent="#34d399" /></td>
+                      <td className="px-2 py-2.5 text-center"><NumCell value={derived.totalGoalsAgainst} accent="#f87171" /></td>
+                      <td className="px-2 py-2.5 text-center"><NumCell value={derived.totalPenaltiesSaved} accent="#60a5fa" /></td>
+                      <td className="px-2 py-2.5 text-center text-xs tabular-nums">
+                        {overall != null
+                          ? <span className="font-bold" style={{ color: overall >= 80 ? "#34d399" : overall >= 70 ? "#fbbf24" : "#94a3b8" }}>{overall}</span>
+                          : <Dash />}
+                      </td>
+                    </>
+                  )}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      )}
     </div>
   );
 }
