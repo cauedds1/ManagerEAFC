@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import type { Career } from "@/types/career";
 import type { NewsPost, NewsSource, NewsCategory } from "@/types/noticias";
 import { getPosts, savePosts, addPost, generatePostId, generateCommentId } from "@/lib/noticiaStorage";
+import { getOpenAIKey } from "@/lib/openaiKeyStorage";
 import { seedPosts } from "@/lib/noticiaSeed";
 import { NoticiaPost } from "./NoticiaPost";
 import { getPortalPhotos, PORTAL_PHOTOS_EVENT, type PortalPhotos } from "@/lib/portalPhotosStorage";
@@ -138,9 +139,13 @@ function AddPostModal({
     setAiError(null);
     setAiPreview(null);
     try {
+      const userKey = getOpenAIKey();
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (userKey) headers["x-openai-key"] = userKey;
+
       const res = await fetch("/api/noticias/generate", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({
           description: aiDesc.trim(),
           clubName: career.clubName,

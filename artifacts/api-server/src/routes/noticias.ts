@@ -1,5 +1,6 @@
 import { Router } from "express";
-import { openai } from "@workspace/integrations-openai-ai-server";
+import OpenAI from "openai";
+import { openai as defaultOpenai } from "@workspace/integrations-openai-ai-server";
 
 const router = Router();
 
@@ -11,6 +12,13 @@ interface GenerateNoticiaBody {
   category?: string;
 }
 
+function getClient(userKey?: string): { client: OpenAI; usingUserKey: boolean } {
+  if (userKey && userKey.trim().startsWith("sk-")) {
+    return { client: new OpenAI({ apiKey: userKey.trim() }), usingUserKey: true };
+  }
+  return { client: defaultOpenai as unknown as OpenAI, usingUserKey: false };
+}
+
 router.post("/noticias/generate", async (req, res) => {
   const { description, clubName, season, source, category } =
     req.body as GenerateNoticiaBody;
@@ -19,6 +27,9 @@ router.post("/noticias/generate", async (req, res) => {
     res.status(400).json({ error: "description é obrigatório" });
     return;
   }
+
+  const userKey = (req.headers["x-openai-key"] as string | undefined) ?? "";
+  const { client, usingUserKey } = getClient(userKey);
 
   const slug = clubName.toLowerCase().replace(/\s+/g, "").replace(/[^a-z0-9]/g, "");
   const shortClub = clubName.split(" ").slice(0, 2).join(" ");
@@ -35,50 +46,69 @@ router.post("/noticias/generate", async (req, res) => {
   const categories = ["resultado", "lesao", "transferencia", "renovacao", "treino", "conquista", "geral"];
   const chosenCategory = category && categories.includes(category) ? category : null;
 
-  const systemPrompt = `Você é um gerador de posts de notícias de futebol no estilo Instagram/redes sociais brasileiras. 
-Gere um post realista no estilo de um portal esportivo brasileiro publicando no Instagram.
-Use linguagem informal, emojis, hashtags e o estilo typical dos perfis esportivos brasileiros.
-Seja autêntico e específico sobre o clube mencionado.
-O time do usuário é ${clubName}${season ? ` na temporada ${season}` : ""}.
-O portal que publica é ${sourceInfo.name} (${sourceInfo.handle}).`;
+  const uniqueSeed = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+  const systemPrompt = `Você é um especialista em criar posts de futebol para redes sociais brasileiras no estilo Instagram.
+Cada post que você cria deve ser ÚNICO e DIFERENTE dos anteriores — varie o estilo, tom, escolha de emojis, estrutura da legenda e perfil dos comentaristas.
+Use linguagem informal, autêntica, com gírias brasileiras do futebol. Seja criativo e específico.
+O time é ${clubName}${season ? ` (temporada ${season})` : ""}.
+O portal que publica é ${sourceInfo.name} (${sourceInfo.handle}).
+Semente de unicidade: ${uniqueSeed} — use ela para garantir que este post seja diferente de qualquer outro.`;
 
   const userPrompt = `Crie um post de notícia com base nessa descrição: "${description.trim()}"
 
-${chosenCategory ? `Categoria da notícia: ${chosenCategory}` : "Escolha a categoria mais adequada entre: resultado, lesao, transferencia, renovacao, treino, conquista, geral"}
+${chosenCategory ? `Categoria: ${chosenCategory}` : "Escolha a categoria mais adequada: resultado, lesao, transferencia, renovacao, treino, conquista, geral"}
 
-Responda APENAS com um JSON válido no seguinte formato (sem markdown, sem code block, apenas JSON puro):
+REGRAS DE CRIATIVIDADE:
+- Varie o formato da legenda: pode ser longa com storytelling, curta e impactante, com listas, ou com muitas quebras de linha
+- Os comentários devem ter personalidades DISTINTAS e realistas: torcedor apaixonado, crítico, irônico, estrangeiro, saudosista, criança de 14 anos
+- Nomes de usuário devem ser criativos e variados (não use @torcedor, @fanático genéricos)
+- Emojis e hashtags devem ser contextuais, não aleatórios
+
+Responda APENAS com JSON puro (sem markdown, sem code block):
 {
   "source": "${chosenSource}",
-  "category": "${chosenCategory ?? "<categoria_escolhida>"}",
-  "title": "<título opcional em maiúsculas, máx 8 palavras, pode ser vazio string se não fizer sentido>",
-  "content": "<legenda completa no estilo Instagram, com emojis, hashtags, várias linhas>",
-  "likes": <número entre 500 e 50000>,
-  "commentsCount": <número entre 20 e 500>,
-  "sharesCount": <número entre 50 e 2000>,
+  "category": "${chosenCategory ?? "<categoria>"}",
+  "title": "<título em maiúsculas, máx 6 palavras, ou string vazia>",
+  "content": "<legenda completa no estilo Instagram>",
+  "likes": <500 a 80000>,
+  "commentsCount": <20 a 800>,
+  "sharesCount": <30 a 3000>,
   "comments": [
     {
-      "username": "@<usuario_sem_espaço>",
-      "displayName": "<nome do usuário>",
-      "content": "<comentário>",
-      "likes": <número entre 1 e 2000>,
+      "username": "@<usuario_criativo_sem_espaço>",
+      "displayName": "<nome realista>",
+      "content": "<comentário único e com personalidade>",
+      "likes": <1 a 3000>,
       "personality": "<otimista|chato|corneteiro|zoeiro|saudosista|neutro|internacional>",
-      "replies": []
+      "replies": [
+        {
+          "username": "@<usuario>",
+          "displayName": "<nome>",
+          "content": "<reply curto>",
+          "likes": <1 a 500>,
+          "personality": "<personalidade>",
+          "replies": []
+        }
+      ]
     }
   ]
 }
 
-Gere entre 5 e 8 comentários com personalidades variadas de torcedores brasileiros. Alguns podem ter respostas (replies) dentro deles — máximo 2 replies por comentário.
-Cada reply deve ter o mesmo formato de comentário mas com replies sendo um array vazio.`;
+Gere 6 a 9 comentários. Pelo menos 2 deles devem ter 1 reply cada.`;
 
   try {
-    const completion = await openai.chat.completions.create({
-      model: "gpt-5.2",
-      max_completion_tokens: 8192,
+    const completionParams = usingUserKey
+      ? { model: "gpt-4o", max_tokens: 4096 }
+      : { model: "gpt-5.2", max_completion_tokens: 4096 };
+
+    const completion = await client.chat.completions.create({
+      ...completionParams,
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
       ],
-    });
+    } as Parameters<typeof client.chat.completions.create>[0]);
 
     const raw = completion.choices[0]?.message?.content ?? "";
 
