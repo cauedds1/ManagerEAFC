@@ -9,34 +9,35 @@ const API_BASE = "https://v3.football.api-sports.io";
 const MSMC_BASE = "https://api.msmc.cc/api/eafc";
 const DELAY_MS = 150;
 
-const ALL_LEAGUE_IDS = [
-  // Domestic
-  39, 40, 41, 42,       // England
-  78, 79,               // Germany
-  61,                   // France
-  135,                  // Italy
-  140, 141,             // Spain
-  88,                   // Netherlands
-  94,                   // Portugal
-  128,                  // Argentina
-  144,                  // Belgium
-  169,                  // China
-  179,                  // Scotland
-  188,                  // Australia
-  207,                  // Switzerland
-  218,                  // Austria
-  253,                  // USA (MLS)
-  283,                  // Romania
-  292,                  // South Korea
-  307,                  // Saudi Arabia
-  357,                  // Ireland
-  106,                  // Poland
-  113,                  // Sweden
-  103,                  // Norway
-  119,                  // Denmark
-  // International
-  2, 3, 848, 13,
-];
+const LEAGUE_MAP: Record<number, string> = {
+  39: "Premier League", 40: "Championship", 41: "League One", 42: "League Two",
+  78: "Bundesliga", 79: "2. Bundesliga",
+  61: "Ligue 1",
+  135: "Serie A",
+  140: "LaLiga", 141: "LaLiga 2",
+  88: "Eredivisie",
+  94: "Liga Portugal",
+  128: "Liga Profesional",
+  144: "Pro League",
+  169: "Super League",
+  179: "Premiership",
+  188: "A-League",
+  207: "Super League",
+  218: "Bundesliga",
+  253: "MLS",
+  283: "Liga 1",
+  292: "K League 1",
+  307: "Saudi Pro League",
+  357: "League of Ireland",
+  106: "Ekstraklasa",
+  113: "Allsvenskan",
+  103: "Eliteserien",
+  119: "Superliga",
+  2: "UEFA Champions League", 3: "UEFA Europa League",
+  848: "UEFA Conference League", 13: "CONMEBOL Libertadores",
+};
+
+const ALL_LEAGUE_IDS = Object.keys(LEAGUE_MAP).map(Number);
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -122,7 +123,7 @@ router.get("/admin/seed", async (req, res) => {
                 id: item.team.id,
                 name: item.team.name,
                 logoUrl: item.team.logo ?? "",
-                league: String(leagueId),
+                league: LEAGUE_MAP[leagueId] ?? String(leagueId),
                 leagueId,
                 country: item.team.country ?? null,
                 cachedAt,
