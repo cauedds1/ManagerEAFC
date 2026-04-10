@@ -1,6 +1,5 @@
 import { useState } from "react";
 import type { SquadResult, SquadPlayer } from "@/lib/squadCache";
-import type { Career } from "@/types/career";
 import { ElencoView } from "./ElencoView";
 import { PlayerStatsTable } from "./PlayerStatsTable";
 import { LesoesView } from "./LesoesView";
@@ -16,7 +15,6 @@ const SUB_TABS: { id: ClubeSubTab; label: string; icon: string }[] = [
 ];
 
 interface ClubeViewProps {
-  career: Career;
   careerId: string;
   squad: SquadResult | null;
   squadLoading: boolean;
@@ -29,7 +27,6 @@ interface ClubeViewProps {
 }
 
 export function ClubeView({
-  career,
   careerId,
   squad,
   squadLoading,

@@ -362,7 +362,6 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
       {activeTab === "clube" ? (
         <div className="w-full flex-1 flex flex-col min-h-0">
           <ClubeView
-            career={career}
             careerId={career.id}
             squad={squad}
             squadLoading={squadLoading}
