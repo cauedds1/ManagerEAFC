@@ -335,7 +335,7 @@ export function FinanceiroView({ careerId, transfers, season }: FinanceiroViewPr
                   className="text-[10px] font-black px-2 py-0.5 rounded-md flex-shrink-0"
                   style={{ background: "rgba(var(--club-primary-rgb),0.15)", color: "var(--club-primary)" }}
                 >
-                  COMPRA
+                  C
                 </span>
                 <div className="flex-1 min-w-0">
                   <p className="text-white text-sm font-semibold truncate">{biggestCompra.playerName}</p>
@@ -350,7 +350,7 @@ export function FinanceiroView({ careerId, transfers, season }: FinanceiroViewPr
                   className="text-[10px] font-black px-2 py-0.5 rounded-md flex-shrink-0"
                   style={{ background: "rgba(52,211,153,0.12)", color: "#34d399" }}
                 >
-                  VENDA
+                  V
                 </span>
                 <div className="flex-1 min-w-0">
                   <p className="text-white text-sm font-semibold truncate">{biggestVenda.playerName}</p>

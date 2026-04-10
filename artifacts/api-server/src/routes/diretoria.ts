@@ -482,41 +482,6 @@ router.post("/diretoria/check-triggers", async (req, res) => {
       });
     }
 
-    if (context.transferBudget && context.remainingTransferBudget !== undefined) {
-      const pct = ((context.transferBudget - context.remainingTransferBudget) / context.transferBudget) * 100;
-      if (pct >= 90 && gestor && !notifications.find((n) => n.memberId === gestor.id)) {
-        notifications.push({
-          memberId: gestor.id,
-          preview: context.remainingTransferBudget < 0
-            ? "Ultrapassamos o orçamento de transferências! Precisamos conversar urgente."
-            : `Já usamos ${Math.round(pct)}% do orçamento. Temos margem mínima para mais reforços.`,
-        });
-      }
-      if (context.remainingTransferBudget < 0 && !meetingTrigger && presidente) {
-        meetingTrigger = {
-          reason: "Orçamento de transferências excedido — situação financeira crítica",
-          severity: "high",
-        };
-      }
-    }
-
-    if (context.salaryBudget && context.currentWageBill !== undefined) {
-      const wagePct = (context.currentWageBill / context.salaryBudget) * 100;
-      if (context.wageRoom !== undefined && context.wageRoom < 0) {
-        if (gestor && !notifications.find((n) => n.memberId === gestor.id)) {
-          notifications.push({
-            memberId: gestor.id,
-            preview: "A folha salarial excedeu o limite do clube. Precisamos agir!",
-          });
-        }
-      } else if (wagePct >= 85 && gestor && !notifications.find((n) => n.memberId === gestor.id)) {
-        notifications.push({
-          memberId: gestor.id,
-          preview: `Folha salarial em ${Math.round(wagePct)}% da capacidade — pouca margem para novos contratos.`,
-        });
-      }
-    }
-
     if (playerPerformance && playerPerformance.length > 0) {
       const worstPlayers = playerPerformance.filter(
         (p) => p.form === "péssima" || p.form === "ruim" || p.incidents.length >= 2,
@@ -596,6 +561,41 @@ router.post("/diretoria/check-triggers", async (req, res) => {
           });
         }
       }
+    }
+  }
+
+  if (context.transferBudget && context.remainingTransferBudget !== undefined) {
+    const pct = ((context.transferBudget - context.remainingTransferBudget) / context.transferBudget) * 100;
+    if (pct >= 90 && gestor && !notifications.find((n) => n.memberId === gestor.id)) {
+      notifications.push({
+        memberId: gestor.id,
+        preview: context.remainingTransferBudget < 0
+          ? "Ultrapassamos o orçamento de transferências! Precisamos conversar urgente."
+          : `Já usamos ${Math.round(pct)}% do orçamento. Temos margem mínima para mais reforços.`,
+      });
+    }
+    if (context.remainingTransferBudget < 0 && !meetingTrigger && presidente) {
+      meetingTrigger = {
+        reason: "Orçamento de transferências excedido — situação financeira crítica",
+        severity: "high",
+      };
+    }
+  }
+
+  if (context.salaryBudget && context.currentWageBill !== undefined) {
+    const wagePct = (context.currentWageBill / context.salaryBudget) * 100;
+    if (context.wageRoom !== undefined && context.wageRoom < 0) {
+      if (gestor && !notifications.find((n) => n.memberId === gestor.id)) {
+        notifications.push({
+          memberId: gestor.id,
+          preview: "A folha salarial excedeu o limite do clube. Precisamos agir!",
+        });
+      }
+    } else if (wagePct >= 85 && gestor && !notifications.find((n) => n.memberId === gestor.id)) {
+      notifications.push({
+        memberId: gestor.id,
+        preview: `Folha salarial em ${Math.round(wagePct)}% da capacidade — pouca margem para novos contratos.`,
+      });
     }
   }
 
