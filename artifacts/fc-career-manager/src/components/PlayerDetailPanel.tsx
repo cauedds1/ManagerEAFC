@@ -170,10 +170,7 @@ export function PlayerDetailPanel({
       style={{ backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", background: "rgba(0,0,0,0.65)" }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div
-        className="flex min-h-full items-start justify-center p-4 py-6"
-        onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-      >
+      <div className="flex min-h-full items-start justify-center p-4 py-6">
       <div
         className="w-full flex flex-col rounded-2xl animate-slide-up overflow-hidden"
         style={{
