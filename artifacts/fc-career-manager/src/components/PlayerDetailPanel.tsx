@@ -166,10 +166,14 @@ export function PlayerDetailPanel({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 overflow-y-auto"
       style={{ backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", background: "rgba(0,0,0,0.65)" }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
+      <div
+        className="flex min-h-full items-start justify-center p-4 py-6"
+        onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      >
       <div
         className="w-full flex flex-col rounded-2xl animate-slide-up overflow-hidden"
         style={{
@@ -177,7 +181,6 @@ export function PlayerDetailPanel({
           background: "var(--app-bg-lighter, #141024)",
           border: "1px solid var(--surface-border)",
           boxShadow: "0 30px 80px rgba(0,0,0,0.7)",
-          maxHeight: "calc(100vh - 2rem)",
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -462,6 +465,7 @@ export function PlayerDetailPanel({
             </button>
           )}
         </div>
+      </div>
       </div>
     </div>
   );
