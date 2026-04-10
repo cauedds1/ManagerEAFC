@@ -195,14 +195,23 @@ export function CreateCareerWizard({
       {/* All other steps: normal scrollable layout */}
       {!isPreviewStep && (
         <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Club picker (step 1) gets full width, no max-w constraint */}
+          {step === 1 ? (
+            <div className="flex-1 overflow-y-auto flex flex-col">
+              <div className="max-w-3xl mx-auto w-full px-4 sm:px-6 pt-5 pb-2 flex-shrink-0">
+                <ProgressBar step={step} />
+              </div>
+              <div key={step} className="flex-1 min-h-0 w-full px-3 pb-4 flex flex-col">
+                <ClubPicker allClubs={allClubs} onSelectClub={handleClubSelect} initialLeague={selectedLeague} />
+              </div>
+            </div>
+          ) : (
           <div className="flex-1 overflow-y-auto">
             <div className="max-w-3xl mx-auto px-4 sm:px-6 py-5">
               <ProgressBar step={step} />
               <div key={step}>
                 {step === 0 && <CoachSetup onNext={handleCoachNext} initial={coach} />}
-                {step === 1 && (
-                  <ClubPicker allClubs={allClubs} onSelectClub={handleClubSelect} initialLeague={selectedLeague} />
-                )}
+                {step === 1 && null /* handled above */}
                 {step === 3 && selectedClub && (
                   <CareerSetupStep
                     club={selectedClub}
@@ -216,6 +225,7 @@ export function CreateCareerWizard({
               </div>
             </div>
           </div>
+          )}
         </div>
       )}
     </div>

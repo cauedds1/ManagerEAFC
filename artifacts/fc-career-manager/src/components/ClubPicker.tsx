@@ -72,23 +72,23 @@ function LeagueCard({
   return (
     <button
       onClick={onClick}
-      className="group flex items-center gap-2 px-2.5 py-2 rounded-lg text-left w-full transition-all duration-150 animate-slide-up glass glass-hover"
+      className="group flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-left w-full transition-all duration-150 animate-slide-up glass glass-hover"
       style={{
         animationDelay: `${Math.min(index * 15, 250)}ms`,
         animationFillMode: "both",
       }}
     >
-      <LeagueLogo logoUrl={league.logo} size={22} />
+      <LeagueLogo logoUrl={league.logo} size={26} />
       <div className="flex-1 min-w-0">
-        <p className="text-white font-semibold text-xs leading-tight truncate">
+        <p className="text-white font-semibold text-sm leading-tight truncate">
           {league.displayName ?? league.name}
         </p>
         {count > 0 && (
-          <p className="text-white/30 text-[10px] tabular-nums mt-0.5">{count} clubes</p>
+          <p className="text-white/30 text-xs tabular-nums mt-0.5">{count} clubes</p>
         )}
       </div>
       <svg
-        className="w-3 h-3 text-white/15 group-hover:text-white/40 transition-colors flex-shrink-0"
+        className="w-3.5 h-3.5 text-white/15 group-hover:text-white/40 transition-colors flex-shrink-0"
         fill="none"
         viewBox="0 0 24 24"
         stroke="currentColor"
@@ -166,7 +166,7 @@ function CompactClubCard({
   return (
     <button
       onClick={handleClick}
-      className="group flex items-center gap-2 px-2.5 py-2 rounded-lg text-left w-full transition-all duration-150 animate-slide-up glass"
+      className="group flex items-center gap-3 px-3 py-2.5 rounded-lg text-left w-full transition-all duration-150 animate-slide-up glass"
       style={{
         animationDelay: `${Math.min(index * 12, 200)}ms`,
         animationFillMode: "both",
@@ -174,13 +174,13 @@ function CompactClubCard({
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      <ClubLogo logo={entry.logo} name={entry.name} size={32} />
+      <ClubLogo logo={entry.logo} name={entry.name} size={44} />
       <div className="flex-1 min-w-0">
-        <p className="text-white font-semibold text-xs leading-tight truncate">{entry.name}</p>
-        <p className="text-white/30 text-[10px] mt-0.5 truncate">{entry.league}</p>
+        <p className="text-white font-semibold text-sm leading-tight truncate">{entry.name}</p>
+        <p className="text-white/30 text-xs mt-0.5 truncate">{entry.league}</p>
       </div>
       <svg
-        className="w-3 h-3 text-white/15 group-hover:text-white/40 transition-colors flex-shrink-0"
+        className="w-3.5 h-3.5 text-white/15 group-hover:text-white/40 transition-colors flex-shrink-0"
         fill="none"
         viewBox="0 0 24 24"
         stroke="currentColor"
@@ -337,7 +337,7 @@ export function ClubPicker({ allClubs, onSelectClub, initialLeague }: ClubPicker
             {globalSearchResults.length === 0 ? (
               <EmptySearchState />
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-1">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1.5">
                 {globalSearchResults.map((entry, i) => (
                   <CompactClubCard
                     key={entry.id}
@@ -352,7 +352,6 @@ export function ClubPicker({ allClubs, onSelectClub, initialLeague }: ClubPicker
         ) : selectedLeague ? (
           /* Clubs inside a league */
           <div>
-            {/* Breadcrumb */}
             <div className="flex items-center gap-2 mb-2">
               <span className="text-white/25 text-[10px]">
                 {selectedLeague.country} · {clubsInLeague.length} clubes
@@ -361,7 +360,7 @@ export function ClubPicker({ allClubs, onSelectClub, initialLeague }: ClubPicker
             {clubsInLeague.length === 0 ? (
               <EmptySearchState />
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-1">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1.5">
                 {clubsInLeague.map((entry, i) => (
                   <CompactClubCard
                     key={entry.id}
@@ -376,11 +375,10 @@ export function ClubPicker({ allClubs, onSelectClub, initialLeague }: ClubPicker
         ) : (
           /* League grid — all leagues, no tabs */
           <div>
-            {/* Domestic */}
             <p className="text-white/25 text-[10px] font-semibold tracking-widest uppercase mb-1.5">
               Ligas Domésticas
             </p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-1 mb-4">
+            <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-1.5 mb-4">
               {domesticLeagues.map(({ league, count }, i) => (
                 <LeagueCard
                   key={league.id}
@@ -392,7 +390,6 @@ export function ClubPicker({ allClubs, onSelectClub, initialLeague }: ClubPicker
               ))}
             </div>
 
-            {/* International */}
             <div
               className="flex items-center gap-2 mb-1.5"
               style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: "12px" }}
@@ -401,7 +398,7 @@ export function ClubPicker({ allClubs, onSelectClub, initialLeague }: ClubPicker
                 Internacionais
               </p>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-1">
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5">
               {internationalLeagues.map(({ league, count }, i) => (
                 <LeagueCard
                   key={league.id}
