@@ -403,8 +403,8 @@ export function ElencoView({
           )}
         </div>
       ) : tab === "pitch" ? (
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-4">
-          <div>
+        <div className="flex flex-col lg:flex-row items-start gap-4">
+          <div className="w-full lg:w-[440px] flex-shrink-0">
             <div className="mb-2 flex items-center justify-between">
               <p className="text-white/25 text-xs font-semibold tracking-widest uppercase">
                 Titulares ({starters.length})
@@ -424,31 +424,55 @@ export function ElencoView({
               onSwapSlots={handleSwapSlots}
             />
           </div>
-          <div className="flex flex-col gap-1 overflow-y-auto lg:max-h-[500px]">
-            <p className="text-white/25 text-xs font-semibold tracking-widest uppercase mb-1">
-              Reservas ({bench.length})
-            </p>
-            {bench.map((player) => (
-              <PlayerRow
-                key={player.id}
-                player={player}
-                overrides={overrides}
-                selected={selectedPlayer?.id === player.id}
-                dragging={dragPlayerId === player.id}
-                dragOver={dragOverPlayerId === player.id}
-                onClick={(p) =>
-                  setSelectedPlayer((prev) => (prev?.id === p.id ? null : p))
-                }
-                onDragStart={() => handleDragStart(player.id)}
-                onDragOver={(e) => handleDragOver(e, player.id)}
-                onDrop={() => handleDrop(player.id)}
-                onDragEnd={handleDragEnd}
-              />
-            ))}
-            {bench.length === 0 && (
+          <div className="flex-1 min-w-0 lg:max-w-[300px] flex flex-col gap-1 overflow-y-auto lg:max-h-[660px]">
+            {bench.length === 0 ? (
               <p className="text-white/20 text-xs text-center py-4">
                 Todos os jogadores estão no time titular
               </p>
+            ) : (
+              <>
+                <p className="text-white/25 text-xs font-semibold tracking-widest uppercase mb-1">
+                  Relacionados ({Math.min(bench.length, 7)})
+                </p>
+                {bench.slice(0, 7).map((player) => (
+                  <PlayerRow
+                    key={player.id}
+                    player={player}
+                    overrides={overrides}
+                    selected={selectedPlayer?.id === player.id}
+                    dragging={dragPlayerId === player.id}
+                    dragOver={dragOverPlayerId === player.id}
+                    onClick={(p) =>
+                      setSelectedPlayer((prev) => (prev?.id === p.id ? null : p))
+                    }
+                    onDragStart={() => handleDragStart(player.id)}
+                    onDragOver={(e) => handleDragOver(e, player.id)}
+                    onDrop={() => handleDrop(player.id)}
+                    onDragEnd={handleDragEnd}
+                  />
+                ))}
+                {bench.length > 7 && (
+                  <>
+                    <div className="my-2 border-t" style={{ borderColor: "rgba(255,255,255,0.06)" }} />
+                    <p className="text-white/25 text-xs font-semibold tracking-widest uppercase mb-1">
+                      Não relacionados ({bench.length - 7})
+                    </p>
+                    {bench.slice(7).map((player) => (
+                      <PlayerRow
+                        key={player.id}
+                        player={player}
+                        overrides={overrides}
+                        selected={selectedPlayer?.id === player.id}
+                        dragging={false}
+                        dragOver={false}
+                        onClick={(p) =>
+                          setSelectedPlayer((prev) => (prev?.id === p.id ? null : p))
+                        }
+                      />
+                    ))}
+                  </>
+                )}
+              </>
             )}
           </div>
         </div>

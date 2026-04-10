@@ -293,9 +293,9 @@ export function FootballPitch({
     : undefined;
 
   return (
-    <div className={`relative rounded-2xl overflow-hidden ${className ?? ""}`} style={{ background: "#0d2218" }}>
+    <div className={`relative rounded-2xl overflow-hidden ${className ?? ""}`} style={{ background: "#0d2218", aspectRatio: `${W} / ${H}` }}>
       {loading ? (
-        <div className="flex items-center justify-center" style={{ height: 400 }}>
+        <div className="flex items-center justify-center h-full">
           <PitchSkeleton />
         </div>
       ) : (
@@ -303,7 +303,9 @@ export function FootballPitch({
           ref={svgRef}
           viewBox={`0 0 ${W} ${H}`}
           width="100%"
-          style={{ display: "block", maxHeight: 500, touchAction: onSwapSlots ? "none" : undefined }}
+          height="100%"
+          preserveAspectRatio="none"
+          style={{ display: "block", touchAction: onSwapSlots ? "none" : undefined }}
           xmlns="http://www.w3.org/2000/svg"
           onPointerMove={onSwapSlots ? handleSvgPointerMove : undefined}
           onPointerUp={onSwapSlots ? handleSvgPointerUp : undefined}
