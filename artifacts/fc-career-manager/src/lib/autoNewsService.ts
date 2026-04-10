@@ -2,10 +2,12 @@ import type { MatchRecord } from "@/types/match";
 import type { NewsPost } from "@/types/noticias";
 import type { SquadPlayer } from "@/lib/squadCache";
 import type { LeaguePosition } from "@/lib/leagueStorage";
+import type { CustomPortal } from "@/lib/customPortalStorage";
 import { detectMatchEvents } from "@/lib/autoNewsEngine";
 import { wasEventHandled, markEventHandled } from "@/lib/autoNewsStorage";
 import { getAllPlayerStats } from "@/lib/playerStatsStorage";
-import { getPosts, addPost, generatePostId } from "@/lib/noticiaStorage";
+import { getCustomPortals } from "@/lib/customPortalStorage";
+import { getPosts, addPost, generatePostId, generateCommentId } from "@/lib/noticiaStorage";
 import { buildPlayerPerformanceContext, buildPlayerContextString } from "@/lib/playerContext";
 import { getOpenAIKey } from "@/lib/openaiKeyStorage";
 
@@ -41,6 +43,18 @@ export interface AutoNewsContext {
 
 const MAX_POSTS_PER_MATCH = 3;
 
+function pickPortalForEvent(
+  portals: CustomPortal[],
+  eventIndex: number,
+  totalEvents: number,
+): CustomPortal | null {
+  if (portals.length === 0) return null;
+  if (totalEvents === 0) return null;
+  const useCustom = eventIndex === Math.floor(totalEvents / 2);
+  if (!useCustom) return null;
+  return portals[Math.floor(Math.random() * portals.length)];
+}
+
 export async function runAutoNews(
   newMatch: MatchRecord,
   ctx: AutoNewsContext,
@@ -49,6 +63,7 @@ export async function runAutoNews(
     const { careerId, seasonId, season, clubName, allMatches, allPlayers, leaguePosition } = ctx;
 
     const seasonPlayerStats = getAllPlayerStats(seasonId);
+    const customPortals = getCustomPortals(careerId);
 
     const allEvents = detectMatchEvents({
       newMatch,
@@ -70,25 +85,44 @@ export async function runAutoNews(
       buildPlayerPerformanceContext(seasonId, allPlayers),
     );
 
-    const recentPosts = getPosts(seasonId).slice(0, 6).map((p) => ({
-      title: p.title,
-      category: p.category,
-      headline: p.content.split("\n").find((l) => l.trim().length > 10)?.trim().slice(0, 120) ?? p.content.slice(0, 120),
-    }));
+    const recentPosts = getPosts(seasonId)
+      .slice(0, 6)
+      .map((p) => ({
+        title: p.title,
+        category: p.category,
+        headline:
+          p.content
+            .split("\n")
+            .find((l) => l.trim().length > 10)
+            ?.trim()
+            .slice(0, 120) ?? p.content.slice(0, 120),
+      }));
 
     const openaiKey = getOpenAIKey();
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (openaiKey) headers["x-openai-key"] = openaiKey;
 
-    for (const event of top) {
+    for (let i = 0; i < top.length; i++) {
+      const event = top[i];
       try {
+        const selectedPortal = pickPortalForEvent(customPortals, i, top.length);
+        const isCustom = selectedPortal != null;
+
         const body: Record<string, unknown> = {
           description: event.aiDescription,
           clubName,
-          source: event.source !== "custom" ? event.source : undefined,
+          source: !isCustom ? event.source : undefined,
           category: event.category,
           playersContext: playerContextStr || undefined,
           recentPostsContext: recentPosts.length > 0 ? recentPosts : undefined,
+          customPortal: isCustom
+            ? {
+                id: selectedPortal.id,
+                name: selectedPortal.name,
+                description: selectedPortal.description,
+                tone: selectedPortal.tone,
+              }
+            : undefined,
         };
 
         const res = await fetch("/api/noticias/generate", {
@@ -98,7 +132,6 @@ export async function runAutoNews(
         });
 
         if (!res.ok) {
-          markEventHandled(seasonId, event.key);
           continue;
         }
 
@@ -116,7 +149,7 @@ export async function runAutoNews(
           commentsCount: data.commentsCount ?? 0,
           sharesCount: data.sharesCount ?? 0,
           comments: (data.comments ?? []).map((c) => ({
-            id: `cmt-auto-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`,
+            id: generateCommentId(),
             username: c.username,
             displayName: c.displayName,
             content: c.content,
@@ -128,14 +161,14 @@ export async function runAutoNews(
           matchId: newMatch.id,
           category: (data.category as NewsPost["category"]) ?? event.category,
           createdAt: Date.now(),
+          ...(isCustom ? { customPortalId: selectedPortal.id } : {}),
         };
 
         addPost(seasonId, post);
         markEventHandled(seasonId, event.key);
 
-        await new Promise((r) => setTimeout(r, 400));
+        await new Promise((r) => setTimeout(r, 500));
       } catch {
-        markEventHandled(seasonId, event.key);
       }
     }
   } catch {
