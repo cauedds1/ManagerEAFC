@@ -174,8 +174,8 @@ export function TeamPreview({ club, season, onNext, onBack, onClubInfoLoaded }: 
   })).filter((g) => g.players.length > 0);
 
   return (
-    /* Fill the full height passed by the wizard — flex column, no overflow at this level */
-    <div className="h-full flex flex-col gap-2 animate-fade-up">
+    /* Fill the flex parent — flex-1 so it stretches to fill the container */
+    <div className="flex-1 min-h-0 flex flex-col gap-2 overflow-hidden animate-fade-up">
 
       {/* Header - flex-shrink-0 */}
       <div className="text-center flex-shrink-0">

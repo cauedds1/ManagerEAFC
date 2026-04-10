@@ -176,11 +176,11 @@ export function CreateCareerWizard({
 
       {/* Step 2 (Preview): full-height flex-fill — no page scroll */}
       {isPreviewStep && selectedClub && (
-        <div className="flex-1 min-h-0 flex flex-col">
+        <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
           <div className="flex-shrink-0 max-w-3xl w-full mx-auto px-4 sm:px-6 pt-4">
             <ProgressBar step={step} />
           </div>
-          <div className="flex-1 min-h-0 max-w-3xl w-full mx-auto px-4 sm:px-6 pb-4">
+          <div className="flex-1 min-h-0 max-w-3xl w-full mx-auto px-4 sm:px-6 pb-4 flex flex-col overflow-hidden">
             <TeamPreview
               club={selectedClub}
               season={season}
