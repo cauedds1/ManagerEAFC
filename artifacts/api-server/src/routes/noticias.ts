@@ -17,6 +17,11 @@ interface CustomPortalPayload {
   tone: string;
 }
 
+interface ClubTitle {
+  name: string;
+  count: number;
+}
+
 interface GenerateNoticiaBody {
   description: string;
   clubName: string;
@@ -27,6 +32,67 @@ interface GenerateNoticiaBody {
   historicalContext?: string;
   recentPostsContext?: RecentPostSummary[];
   customPortal?: CustomPortalPayload;
+  clubLeague?: string;
+  clubTitles?: ClubTitle[];
+  clubDescription?: string;
+  projeto?: string;
+}
+
+function leagueTierLabel(league: string): string {
+  const l = league.toLowerCase();
+  if (l.includes("série b") || l.includes("serie b") || l.includes("segunda")) return "segunda divisão";
+  if (l.includes("série c") || l.includes("serie c") || l.includes("terceira")) return "terceira divisão";
+  if (l.includes("série d") || l.includes("serie d") || l.includes("quarta")) return "quarta divisão";
+  return "primeira divisão";
+}
+
+function buildClubPrestigeSection(
+  clubName: string,
+  clubLeague?: string,
+  clubTitles?: ClubTitle[],
+  clubDescription?: string,
+  projeto?: string,
+): string {
+  if (!clubLeague && !clubTitles?.length && !projeto && !clubDescription) return "";
+
+  const league = clubLeague ?? "";
+  const tier = league ? leagueTierLabel(league) : "";
+
+  const totalTitles = (clubTitles ?? []).reduce((s, t) => s + t.count, 0);
+  const hasSignificantTitles = (clubTitles ?? []).some((t) => t.count >= 3);
+  const hasManyTitles = totalTitles >= 10;
+
+  const titlesStr =
+    clubTitles && clubTitles.length > 0
+      ? clubTitles.map((t) => `${t.name} (${t.count}x)`).join(", ")
+      : "(sem títulos expressivos registrados)";
+
+  let expectation: string;
+  if (hasManyTitles) {
+    expectation =
+      "Para este clube, ganhar títulos é OBRIGAÇÃO. Resultados medianos são tratados como fracasso — a torcida exige excelência e a imprensa cobra duramente. Qualquer posição abaixo do topo é motivo de crise.";
+  } else if (hasSignificantTitles) {
+    expectation =
+      "Este clube tem história e tradição. Bons resultados são celebrados, mas a exigência é alta — terminar longe dos títulos gera frustração real nos torcedores.";
+  } else {
+    expectation =
+      "Este é um clube de menor porte histórico. Cada conquista acima do esperado é motivo de GRANDE celebração — entrar no top 5, conquistar um título ou ir longe em copas são feitos históricos para a torcida.";
+  }
+
+  let section = `\n\nCONTEXTO DE PRESTÍGIO DO CLUBE — use para calibrar o tom da notícia. O peso de um resultado é completamente diferente dependendo do tamanho do clube:`;
+  section += `\nClube: ${clubName}`;
+  if (league) section += ` | Liga: ${league}${tier ? ` (${tier})` : ""}`;
+  section += `\nTítulos históricos: ${titlesStr}`;
+  if (clubDescription?.trim()) {
+    section += `\nIdentidade: ${clubDescription.trim().slice(0, 200)}`;
+  }
+  if (projeto?.trim()) {
+    section += `\nProjeto desta temporada: "${projeto.trim()}"`;
+  }
+  section += `\nExpectativa: ${expectation}`;
+  section += `\nREGRA: Ao escrever legenda e comentários, ajuste o tom conforme o porte do clube. Watford no top 5 = conquista histórica. Barcelona no top 5 = vergonha. Calibre celebrações, cobranças e reações da torcida de acordo.`;
+
+  return section;
 }
 
 const TONE_PROMPTS: Record<string, string> = {
@@ -49,6 +115,7 @@ router.post("/noticias/generate", async (req, res) => {
   const {
     description, clubName, season, source, category,
     playersContext, historicalContext, recentPostsContext, customPortal,
+    clubLeague, clubTitles, clubDescription, projeto,
   } = req.body as GenerateNoticiaBody;
 
   if (!description || !description.trim()) {
@@ -96,12 +163,14 @@ router.post("/noticias/generate", async (req, res) => {
     ? `\n\nPERFIL DO PORTAL:\nNome: ${customPortal.name}\nDescrição/identidade: ${customPortal.description}\n${TONE_PROMPTS[customPortal.tone] ?? TONE_PROMPTS.serio}\nAdapte TODO o conteúdo (título, legenda e comentários) ao tom e identidade deste portal. Seja fiel à personalidade descrita.`
     : "";
 
+  const prestigeSection = buildClubPrestigeSection(clubName, clubLeague, clubTitles, clubDescription, projeto);
+
   const systemPrompt = `Você é um especialista em criar posts de futebol para redes sociais brasileiras no estilo Instagram.
 Cada post que você cria deve ser ÚNICO e DIFERENTE dos anteriores — varie o estilo, tom, escolha de emojis, estrutura da legenda e perfil dos comentaristas.
 Use linguagem informal, autêntica, com gírias brasileiras do futebol. Seja criativo e específico.
 O time é ${clubName}${season ? ` (temporada ${season})` : ""}.
 O portal que publica é ${portalName} (${portalHandle}).
-Semente de unicidade: ${uniqueSeed} — use ela para garantir que este post seja diferente de qualquer outro.${playersSection}${historicalSection}${recentPostsSection}${customPortalSection}`;
+Semente de unicidade: ${uniqueSeed} — use ela para garantir que este post seja diferente de qualquer outro.${prestigeSection}${playersSection}${historicalSection}${recentPostsSection}${customPortalSection}`;
 
   const userPrompt = `Crie um post de notícia com base nessa descrição: "${description.trim()}"
 

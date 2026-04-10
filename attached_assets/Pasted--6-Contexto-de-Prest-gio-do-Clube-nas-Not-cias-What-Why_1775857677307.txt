@@ -1,0 +1,31 @@
+#6 - Contexto de Prestígio do Clube nas Notícias
+What & Why
+O gerador de notícias da IA atualmente só sabe o nome do clube e a temporada. Isso faz com que ela trate um Málaga e um Barcelona exatamente da mesma forma, mesmo que o peso narrativo de cada resultado seja completamente diferente: ficar em 5º com um Málaga é um feito histórico; com o Barcelona é um desastre.
+
+A IA precisa receber contexto sobre o tamanho, prestígio e expectativa do clube para calibrar o tom de cada notícia — celebrações, cobranças, indignação da torcida — de acordo com a realidade daquele clube.
+
+Done looks like
+Notícias geradas automaticamente (após partidas) e manualmente (AddPostModal) usam o contexto do clube para ajustar a narrativa
+Para um clube pequeno, um top 5 é tratado como conquista; para um gigante, é motivo de cobrança
+O título histórico (Ex: Barcelona com 26 títulos de Liga) influencia o tom dos comentaristas da notícia
+O projeto da temporada (definido pelo usuário no início da carreira) também entra no contexto da IA
+Out of scope
+Calcular média de overall do elenco (não há dado confiável disponível sem input manual)
+Criar uma tela de configuração de prestígio do clube — os dados já existem na Career
+Alterar o algoritmo de detecção de eventos (autoNewsEngine)
+Tasks
+Expandir endpoint /api/noticias/generate — Aceitar os novos campos de prestígio do clube no body (clubLeague, clubTitles, clubDescription, projeto). Construir uma seção de "CONTEXTO DE EXPECTATIVA DO CLUBE" no system prompt usando esses dados, a lógica de clubTierFromLeague (já existe em diretoria.ts — replicar ou extrair para util), e uma síntese textual do nível de exigência esperado. O sistema deve gerar um texto como "Para este clube, ser campeão é obrigação — qualquer 5º lugar é tratado como fracasso" vs "Para este clube, entrar no top 5 seria uma conquista histórica".
+
+Atualizar AutoNewsContext e autoNewsService.ts — Adicionar os campos de prestígio (clubLeague, clubTitles, clubDescription, projeto) ao tipo AutoNewsContext. Passar esses campos para o fetch de /api/noticias/generate dentro de runAutoNews.
+
+Atualizar NoticiasView.tsx (modal manual) — No handleGenerate do AddPostModal, passar os mesmos campos de prestígio do clube a partir da prop career (que já está disponível no componente).
+
+Atualizar Dashboard.tsx — Ao montar o AutoNewsContext dentro de handleMatchAdded, incluir os campos clubLeague, clubTitles, clubDescription, projeto a partir do career.
+
+Relevant files
+artifacts/api-server/src/routes/noticias.ts:1-120
+artifacts/api-server/src/routes/diretoria.ts:80-100
+artifacts/fc-career-manager/src/lib/autoNewsService.ts:34-110
+artifacts/fc-career-manager/src/components/NoticiasView.tsx
+artifacts/fc-career-manager/src/components/Dashboard.tsx
+artifacts/fc-career-manager/src/types/career.ts

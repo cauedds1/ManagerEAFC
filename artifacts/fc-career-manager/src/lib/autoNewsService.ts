@@ -36,6 +36,10 @@ export interface AutoNewsContext {
   seasonId: string;
   season: string;
   clubName: string;
+  clubLeague?: string;
+  clubTitles?: { name: string; count: number }[];
+  clubDescription?: string;
+  projeto?: string;
   allMatches: MatchRecord[];
   allPlayers: SquadPlayer[];
   leaguePosition: LeaguePosition | null;
@@ -60,7 +64,7 @@ export async function runAutoNews(
   ctx: AutoNewsContext,
 ): Promise<void> {
   try {
-    const { careerId, seasonId, season, clubName, allMatches, allPlayers, leaguePosition } = ctx;
+    const { careerId, seasonId, season, clubName, clubLeague, clubTitles, clubDescription, projeto, allMatches, allPlayers, leaguePosition } = ctx;
 
     const seasonPlayerStats = getAllPlayerStats(seasonId);
     const customPortals = getCustomPortals(careerId);
@@ -111,8 +115,13 @@ export async function runAutoNews(
         const body: Record<string, unknown> = {
           description: event.aiDescription,
           clubName,
+          season,
           source: !isCustom ? event.source : undefined,
           category: event.category,
+          clubLeague: clubLeague || undefined,
+          clubTitles: clubTitles?.length ? clubTitles : undefined,
+          clubDescription: clubDescription || undefined,
+          projeto: projeto || undefined,
           playersContext: playerContextStr || undefined,
           recentPostsContext: recentPosts.length > 0 ? recentPosts : undefined,
           customPortal: isCustom

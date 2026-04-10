@@ -300,11 +300,15 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
       seasonId: activeSeasonId,
       season: seasonLabel,
       clubName: career.clubName,
+      clubLeague: career.clubLeague,
+      clubTitles: career.clubTitles,
+      clubDescription: career.clubDescription,
+      projeto: career.projeto,
       allMatches: updatedMatches,
       allPlayers,
       leaguePosition: leaguePos,
     });
-  }, [activeSeasonId, matches, allPlayers, seasons, activeSeasonLabel, career.id, career.clubName]);
+  }, [activeSeasonId, matches, allPlayers, seasons, activeSeasonLabel, career.id, career.clubName, career.clubLeague, career.clubTitles, career.clubDescription, career.projeto]);
 
   const handleNewSeasonConfirm = useCallback(async (label: string, competitions: string[]) => {
     setCreatingNewSeason(true);

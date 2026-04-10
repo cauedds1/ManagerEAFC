@@ -266,8 +266,13 @@ function AddPostModal({
         body: JSON.stringify({
           description: aiDesc.trim(),
           clubName: career.clubName,
+          season: career.season,
           source: !isCustom && aiSource !== "auto" ? aiSource : undefined,
           category: aiCategory !== "auto" ? aiCategory : undefined,
+          clubLeague: career.clubLeague || undefined,
+          clubTitles: career.clubTitles?.length ? career.clubTitles : undefined,
+          clubDescription: career.clubDescription || undefined,
+          projeto: career.projeto || undefined,
           playersContext: playerContextStr || undefined,
           historicalContext: historicalContext || undefined,
           recentPostsContext: recentPostsContext || undefined,
