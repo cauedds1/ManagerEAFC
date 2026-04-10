@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, squadPlayersTable, clubsTable } from "@workspace/db";
-import { eq, ilike, sql, gt } from "drizzle-orm";
+import { eq, ilike, inArray, sql, gt } from "drizzle-orm";
 import { mapPosition } from "../lib/positions";
 
 const router = Router();
@@ -120,6 +120,7 @@ router.get("/players/search", async (req, res) => {
     const toInsert: typeof squadPlayersTable.$inferInsert[] = [];
 
     // ── 2. msmc.cc — free, EA FC 26 data, no API key ──────────────────────────
+    const msmcTeamNames = new Set<string>();
     try {
       const msmcRes = await fetch(
         `${MSMC_BASE}/players?name=${encodeURIComponent(q)}`,
@@ -144,48 +145,94 @@ router.get("/players/search", async (req, res) => {
             source: "msmc@search",
             cachedAt,
           });
+          if (p.team) msmcTeamNames.add(p.team);
         }
       }
     } catch (e) {
       console.warn("msmc player search failed:", e);
     }
 
-    // ── 3. API-Football (optional, provides face photos) ──────────────────────
-    if (apiKey) {
-      try {
-        const afRes = await fetch(
-          `${API_FOOTBALL_BASE}/players?search=${encodeURIComponent(q)}&season=2024`,
-          { headers: { "x-apisports-key": apiKey }, signal: AbortSignal.timeout(8000) }
-        );
-        if (afRes.ok) {
-          const data = await afRes.json() as { response?: ApiPlayerItem[] };
-          for (const item of (data.response ?? []).slice(0, 20)) {
-            const pl = item.player;
-            if (!pl?.id || !pl?.name) continue;
-            const stats = item.statistics?.[0] ?? {};
-            const teamId = stats.team?.id ?? 0;
-            const pos = stats.games?.position ?? "";
+    // ── 3. API-Football — fetch squads by team ID (free tier compatible) ───────
+    // The /players?search= endpoint requires league+team on free tier (returns 0 results).
+    // Instead, use the team names from msmc to look up club IDs and fetch full squads.
+    const allDiscoveredTeamIds: number[] = [];
+    if (apiKey && msmcTeamNames.size > 0) {
+      // Strip common club prefixes to improve DB matching (e.g. "CA Osasuna" → "Osasuna")
+      const STRIP_PREFIXES = /^(ca|cf|rc|rcd|ud|sd|ss|as|ac|afc|fc|sc|sk|fk|bk|vfl|vfb|rb|tsv|sv|hsv|if|is|il|ik|gd|sl|sp|nk|hk|sfc|rsc|rsca)\s+/i;
+
+      const stripTeamName = (raw: string) => raw.replace(STRIP_PREFIXES, "").trim();
+
+      // Find which clubs in our DB match these team names
+      const afTeamIds: number[] = [];
+      for (const rawName of msmcTeamNames) {
+        const stripped = stripTeamName(rawName);
+        const words = stripped.split(/\s+/).filter((w) => w.length > 3);
+        const lastWord = words[words.length - 1] ?? stripped;
+        // Try progressively simpler variants: full → stripped → last significant word
+        const candidates = [...new Set([rawName, stripped, lastWord])].filter(Boolean);
+        let found = false;
+        for (const candidate of candidates) {
+          const rows = await db
+            .select({ id: clubsTable.id })
+            .from(clubsTable)
+            .where(ilike(clubsTable.name, `%${candidate}%`))
+            .limit(1);
+          if (rows.length > 0) {
+            afTeamIds.push(rows[0].id);
+            found = true;
+            break;
+          }
+        }
+        if (!found) console.warn(`[players/search] no club match for team: "${rawName}"`);
+      }
+
+      // Only fetch squads for teams not already synced as api-football@v2
+      const unsyncedIds: number[] = [];
+      for (const teamId of afTeamIds) {
+        if (teamId <= 0) continue;
+        const existing = await db
+          .select({ teamId: squadPlayersTable.teamId })
+          .from(squadPlayersTable)
+          .where(eq(squadPlayersTable.teamId, teamId))
+          .limit(1);
+        if (existing.length === 0) unsyncedIds.push(teamId);
+      }
+      // Track all discovered team IDs (synced or unsynced) for the supplemental query
+      allDiscoveredTeamIds.push(...afTeamIds.filter((id) => id > 0));
+
+      // Fetch squad for each unsynced team (max 3 per search to stay under rate limits)
+      for (const teamId of unsyncedIds.slice(0, 3)) {
+        try {
+          const squadRes = await fetch(
+            `${API_FOOTBALL_BASE}/players/squads?team=${teamId}`,
+            { headers: { "x-apisports-key": apiKey }, signal: AbortSignal.timeout(10000) }
+          );
+          if (!squadRes.ok) continue;
+
+          const data = await squadRes.json() as { response?: Array<{ players?: ApiPlayerItem["player"][] }> };
+          const playersRaw = data.response?.[0]?.players ?? [];
+          for (const p of playersRaw.filter((pl: ApiPlayerItem["player"]) => pl?.id && pl?.name)) {
+            const pos = String((p as unknown as Record<string, unknown>).position ?? "");
             toInsert.push({
               teamId,
-              playerId: pl.id,
-              name: pl.name,
-              age: pl.age ?? 0,
+              playerId: p.id,
+              name: p.name,
+              age: p.age ?? 0,
               position: pos,
               positionPtBr: mapPosition(pos),
-              photo: pl.photo ?? "",
-              playerNumber: stats.games?.number ?? null,
-              source: "api-football@search",
+              photo: p.photo ?? "",
+              playerNumber: null,
+              source: "api-football@v2",
               cachedAt,
             });
           }
+        } catch (e) {
+          console.warn(`Squad fetch failed for team ${teamId}:`, e);
         }
-      } catch (e) {
-        console.warn("API-Football player search failed:", e);
       }
     }
 
     // ── 4. Upsert to DB (cache everything for future searches) ────────────────
-    // msmc rows first — do not overwrite existing data
     const msmcRows = toInsert.filter((r) => (r.source as string).startsWith("msmc"));
     const afRows   = toInsert.filter((r) => (r.source as string).startsWith("api-football"));
 
@@ -225,6 +272,29 @@ router.get("/players/search", async (req, res) => {
       .where(ilike(squadPlayersTable.name, `%${q}%`))
       .orderBy(sql`length(name)`)
       .limit(60);
+
+    // ── 6. Supplement: api-football@v2 records from discovered teams ───────────
+    // API-Football stores abbreviated names (e.g. "A. Budimir") that don't match
+    // a query like "ante b", so the ILIKE re-query misses them. We fix this by
+    // fetching all players from the discovered teams and merging via nameKey dedup,
+    // which picks the api-football@v2 record (real photo) over the msmc one.
+    if (allDiscoveredTeamIds.length > 0) {
+      const msmcNameKeys = new Set(
+        toInsert
+          .filter((r) => (r.source as string).startsWith("msmc"))
+          .map((r) => nameKey(r.name as string))
+      );
+      if (msmcNameKeys.size > 0) {
+        const afTeamPlayers = await db
+          .select()
+          .from(squadPlayersTable)
+          .where(inArray(squadPlayersTable.teamId, allDiscoveredTeamIds))
+          .limit(200);
+        // Only include those whose nameKey matches an msmc result we actually found
+        const relevant = afTeamPlayers.filter((r) => msmcNameKeys.has(nameKey(r.name)));
+        merged.push(...relevant);
+      }
+    }
 
     return res.json({ players: formatResponse(merged) });
   } catch (err) {
