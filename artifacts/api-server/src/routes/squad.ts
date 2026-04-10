@@ -6,7 +6,6 @@ const router = Router();
 
 const SQUAD_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const API_FOOTBALL_BASE = "https://v3.football.api-sports.io";
-const MSMC_BASE = "https://api.msmc.cc/api/eafc";
 
 interface SquadPlayerBody {
   id: number;
@@ -21,52 +20,19 @@ interface SquadPlayerBody {
 function normalizePosToGroup(pos: string): string {
   const p = (pos ?? "").toUpperCase().trim();
   if (["GOALKEEPER", "GK", "GOL"].includes(p)) return "Goalkeeper";
-  if (["LB", "RB", "LWB", "RWB", "WB", "LAT"].includes(p)) return "FullBack";
-  if (["CB", "SW", "DEFENDER", "CENTREBACK"].includes(p)) return "CentreBack";
-  if (["CDM", "DM", "DMF", "VOL"].includes(p)) return "DefensiveMid";
-  if (["LW", "LM", "PE", "ME"].includes(p)) return "LeftWing";
-  if (["RW", "RM", "PD", "MD"].includes(p)) return "RightWing";
-  if (["CAM", "AM", "AMF", "MEI"].includes(p)) return "AttackingMid";
-  if (["CM", "MC"].includes(p)) return "CentralMid";
-  if (p === "MIDFIELDER") return "DefensiveMid";
-  if (["CF", "SS", "SA"].includes(p)) return "SecondStriker";
-  if (["ST", "FW", "WF", "CA"].includes(p)) return "Striker";
-  if (["ATTACKER", "FORWARD", "ATA"].includes(p)) return "BroadForward";
-  if (p === "CENTREBACK") return "CentreBack";
-  if (p === "FULLBACK") return "FullBack";
-  if (p === "DEFENSIVEMID") return "DefensiveMid";
-  if (p === "CENTRALMID") return "CentralMid";
-  if (p === "ATTACKINGMID") return "AttackingMid";
-  if (p === "LEFTWING") return "LeftWing";
-  if (p === "RIGHTWING") return "RightWing";
-  if (p === "SECONDSTRIKER") return "SecondStriker";
-  if (p === "STRIKER") return "Striker";
-  if (p === "GOALKEEPER") return "Goalkeeper";
-  if (p === "BROADFORWARD") return "BroadForward";
-  return "CentralMid";
+  if (["DEFENDER", "CB", "SW", "LB", "RB", "LWB", "RWB", "WB", "CENTREBACK", "FULLBACK", "ZAG", "LAT"].includes(p)) return "Defender";
+  if (["MIDFIELDER", "CDM", "DM", "DMF", "CM", "LW", "LM", "RW", "RM", "CAM", "AM", "AMF", "CF", "SS",
+       "VOL", "MC", "MEI", "PE", "PD", "SA", "DEFENSIVEMID", "CENTRALMID", "ATTACKINGMID", "LEFTWING", "RIGHTWING", "SECONDSTRIKER"].includes(p)) return "Midfielder";
+  if (["ATTACKER", "FORWARD", "ST", "FW", "WF", "CA", "ATA", "STRIKER", "BROADFORWARD"].includes(p)) return "Attacker";
+  return "Midfielder";
 }
 
 const POSITION_PT_BR: Record<string, string> = {
   Goalkeeper: "GOL",
-  CentreBack: "ZAG",
-  FullBack: "LAT",
-  DefensiveMid: "VOL",
-  CentralMid: "MC",
-  AttackingMid: "MEI",
-  LeftWing: "PE",
-  RightWing: "PD",
-  SecondStriker: "SA",
-  Striker: "CA",
-  BroadForward: "ATA",
+  Defender:   "DEF",
+  Midfielder: "MID",
+  Attacker:   "ATA",
 };
-
-function normalizeName(name: string): string {
-  return name
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]/g, "");
-}
 
 interface ApiFootballPlayer {
   id: number;
@@ -98,52 +64,19 @@ async function fetchApiFootballSquad(teamId: number, apiKey: string): Promise<Sq
       name: p.name,
       age: p.age ?? 0,
       position: pos,
-      positionPtBr: POSITION_PT_BR[pos] ?? "MC",
+      positionPtBr: POSITION_PT_BR[pos] ?? "MID",
       photo: p.photo ?? "",
       number: p.number ?? undefined,
     };
   });
 }
 
-async function fetchMsmcPositions(fc26Name: string): Promise<Map<string, string>> {
-  const map = new Map<string, string>();
-  try {
-    const res = await fetch(`${MSMC_BASE}/players?game=fc26&team=${encodeURIComponent(fc26Name)}`);
-    if (!res.ok) return map;
-    const raw = await res.json();
-    const arr: Array<{ name?: string; playerName?: string; position?: string }> =
-      Array.isArray(raw) ? raw : (raw?.data ?? raw?.players ?? []);
-    for (const p of arr) {
-      const pName = p.playerName ?? p.name;
-      if (pName && p.position) {
-        map.set(normalizeName(pName), p.position);
-      }
-    }
-  } catch {}
-  return map;
-}
-
-async function buildAndSaveSquad(teamId: number, fc26Name?: string): Promise<SquadPlayerBody[] | null> {
+async function buildAndSaveSquad(teamId: number): Promise<SquadPlayerBody[] | null> {
   const apiKey = process.env.API_FOOTBALL_KEY;
   if (!apiKey) return null;
 
   const players = await fetchApiFootballSquad(teamId, apiKey);
   if (!players || players.length === 0) return null;
-
-  if (fc26Name) {
-    const posMap = await fetchMsmcPositions(fc26Name);
-    if (posMap.size > 0) {
-      for (const p of players) {
-        const key = normalizeName(p.name);
-        const msmcPos = posMap.get(key);
-        if (msmcPos) {
-          const normalized = normalizePosToGroup(msmcPos);
-          p.position = normalized;
-          p.positionPtBr = POSITION_PT_BR[normalized] ?? "MC";
-        }
-      }
-    }
-  }
 
   const cachedAt = Date.now();
   const values = players.map((p) => ({
@@ -208,8 +141,7 @@ router.get("/squad/:teamId", async (req, res) => {
 
     if (!process.env.API_FOOTBALL_KEY) return res.status(204).end();
 
-    const fc26Name = typeof req.query.fc26Name === "string" ? req.query.fc26Name : undefined;
-    const players = await buildAndSaveSquad(teamId, fc26Name);
+    const players = await buildAndSaveSquad(teamId);
     if (!players || players.length === 0) {
       if (rows.length > 0) return res.json(rowsToResponse(rows));
       return res.status(204).end();
@@ -239,9 +171,7 @@ router.post("/squad/:teamId/fetch", async (req, res) => {
       return res.status(503).json({ error: "API_FOOTBALL_KEY not configured on server" });
     }
 
-    const { fc26Name } = req.body as { fc26Name?: string };
-
-    const players = await buildAndSaveSquad(teamId, fc26Name);
+    const players = await buildAndSaveSquad(teamId);
     if (!players) {
       return res.status(502).json({ error: "Failed to fetch squad from API-Football" });
     }

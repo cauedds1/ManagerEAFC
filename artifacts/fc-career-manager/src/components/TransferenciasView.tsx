@@ -15,22 +15,13 @@ import { setPlayerStats, defaultStats } from "@/lib/playerStatsStorage";
 import { getCachedClubList } from "@/lib/clubListCache";
 import { searchStaticClubs } from "@/lib/staticClubList";
 
-const ALL_POSITIONS: PositionPtBr[] = [
-  "GOL","ZAG","LAT","VOL","MC","MEI","PE","PD","SA","CA","ATA",
-];
+const ALL_POSITIONS: PositionPtBr[] = ["GOL","DEF","MID","ATA"];
 
 const POS_STYLE: Record<PositionPtBr, { bg: string; color: string }> = {
   GOL: { bg: "rgba(245,158,11,0.18)",  color: "#f59e0b" },
-  ZAG: { bg: "rgba(59,130,246,0.18)",  color: "#60a5fa" },
-  LAT: { bg: "rgba(14,165,233,0.18)",  color: "#38bdf8" },
-  VOL: { bg: "rgba(16,185,129,0.18)",  color: "#34d399" },
-  MC:  { bg: "rgba(20,184,166,0.18)",  color: "#2dd4bf" },
-  MEI: { bg: "rgba(132,204,22,0.18)",  color: "#a3e635" },
-  PE:  { bg: "rgba(249,115,22,0.18)",  color: "#fb923c" },
-  PD:  { bg: "rgba(245,156,10,0.18)",  color: "#fbbf24" },
-  SA:  { bg: "rgba(244,63,94,0.18)",   color: "#fb7185" },
-  CA:  { bg: "rgba(239,68,68,0.18)",   color: "#f87171" },
-  ATA: { bg: "rgba(185,28,28,0.18)",   color: "#ef4444" },
+  DEF: { bg: "rgba(59,130,246,0.18)",  color: "#60a5fa" },
+  MID: { bg: "rgba(16,185,129,0.18)",  color: "#34d399" },
+  ATA: { bg: "rgba(239,68,68,0.18)",   color: "#f87171" },
 };
 
 const ALL_ROLES: TeamRole[] = ["esporadico","rodizio","promessa","importante","crucial"];
@@ -109,10 +100,10 @@ function PlayerFace({ src, name, size = 40 }: { src: string; name: string; size?
 function mapApiPosToPtBr(pos: string): PositionPtBr {
   const p = (pos ?? "").toLowerCase();
   if (p.includes("goalkeeper")) return "GOL";
-  if (p.includes("defender")) return "ZAG";
-  if (p.includes("midfielder")) return "MC";
-  if (p.includes("attacker") || p.includes("forward")) return "CA";
-  return "MC";
+  if (p.includes("defender")) return "DEF";
+  if (p.includes("midfielder")) return "MID";
+  if (p.includes("attacker") || p.includes("forward")) return "ATA";
+  return "MID";
 }
 
 function PlayerAutocomplete({
@@ -160,7 +151,7 @@ function PlayerAutocomplete({
             photo: p.photo,
             age: p.age,
             nationality: "",
-            position: (p.position as PositionPtBr) || "MC",
+            position: (p.position as PositionPtBr) || "MID",
           }));
         setApiResults(players.slice(0, 8));
       }
@@ -429,7 +420,7 @@ interface FormData {
 const DEFAULT_FORM: FormData = {
   transferType: "compra",
   playerName: "",
-  playerPositionPtBr: "CA",
+  playerPositionPtBr: "ATA",
   playerAge: "",
   playerPhoto: "",
   shirtNumber: "",

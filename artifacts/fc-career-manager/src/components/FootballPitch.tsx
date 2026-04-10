@@ -12,16 +12,9 @@ interface PitchPlayerData {
 
 const POS_COLOR: Record<PositionPtBr, { fill: string; stroke: string; text: string }> = {
   GOL: { fill: "#f59e0b", stroke: "#fbbf24", text: "#1c1000" },
-  ZAG: { fill: "#3b82f6", stroke: "#60a5fa", text: "#e0eeff" },
-  LAT: { fill: "#0ea5e9", stroke: "#38bdf8", text: "#001e2e" },
-  VOL: { fill: "#10b981", stroke: "#34d399", text: "#003322" },
-  MC:  { fill: "#14b8a6", stroke: "#2dd4bf", text: "#002920" },
-  MEI: { fill: "#84cc16", stroke: "#a3e635", text: "#1a2600" },
-  PE:  { fill: "#f97316", stroke: "#fb923c", text: "#2a0e00" },
-  PD:  { fill: "#f59c0a", stroke: "#fbbf24", text: "#2a1a00" },
-  SA:  { fill: "#f43f5e", stroke: "#fb7185", text: "#2d0010" },
-  CA:  { fill: "#ef4444", stroke: "#f87171", text: "#ffe0e0" },
-  ATA: { fill: "#b91c1c", stroke: "#ef4444", text: "#ffe4e4" },
+  DEF: { fill: "#3b82f6", stroke: "#60a5fa", text: "#e0eeff" },
+  MID: { fill: "#10b981", stroke: "#34d399", text: "#003322" },
+  ATA: { fill: "#ef4444", stroke: "#f87171", text: "#ffe0e0" },
 };
 
 export { DEFAULT_FORMATION };
@@ -39,31 +32,23 @@ export function pickBestEleven(players: { id: number; positionPtBr: PositionPtBr
   const used = new Set<number>();
 
   const byGroup: Record<FormationGroup, PitchPlayerData[]> = {
-    GOL: [], ZAG: [], VOL: [], ATA: [],
+    GOL: [], DEF: [], MID: [], ATA: [],
   };
   for (const p of players) {
-    const fg = FORMATION_GROUP[p.positionPtBr] ?? "VOL";
+    const fg = FORMATION_GROUP[p.positionPtBr] ?? "MID";
     byGroup[fg].push(p as PitchPlayerData);
   }
 
   const gks = byGroup["GOL"].filter((p) => !used.has(p.id));
   if (gks[0]) { slots[0] = gks[0]; used.add(gks[0].id); }
 
-  const defs = byGroup["ZAG"].filter((p) => !used.has(p.id));
-  const lats = defs.filter((p) => p.positionPtBr === "LAT");
-  const cbs  = defs.filter((p) => p.positionPtBr !== "LAT");
-  const latPool = [...lats, ...cbs];
-  const cbPool  = [...cbs, ...lats];
-  const lat1 = latPool.find((p) => !used.has(p.id));
-  if (lat1) { slots[1] = lat1; used.add(lat1.id); }
-  const lat4 = latPool.find((p) => !used.has(p.id));
-  if (lat4) { slots[4] = lat4; used.add(lat4.id); }
-  for (const si of [2, 3]) {
-    const cb = cbPool.find((p) => !used.has(p.id));
-    if (cb) { slots[si] = cb; used.add(cb.id); }
+  const defs = byGroup["DEF"].filter((p) => !used.has(p.id));
+  for (const si of [1, 2, 3, 4]) {
+    const def = defs.find((p) => !used.has(p.id));
+    if (def) { slots[si] = def; used.add(def.id); }
   }
 
-  const mids = byGroup["VOL"].filter((p) => !used.has(p.id));
+  const mids = byGroup["MID"].filter((p) => !used.has(p.id));
   for (let i = 0; i < 3 && i < mids.length; i++) {
     slots[5 + i] = mids[i]; used.add(mids[i].id);
   }

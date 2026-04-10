@@ -1,7 +1,7 @@
 import app from "./app";
 import { logger } from "./lib/logger";
 import { db, squadPlayersTable } from "@workspace/db";
-import { ne } from "drizzle-orm";
+import { ne, inArray, sql } from "drizzle-orm";
 
 const rawPort = process.env["PORT"];
 
@@ -29,13 +29,52 @@ async function purgeInvalidSquadRows() {
   }
 }
 
-purgeInvalidSquadRows().then(() => {
-  app.listen(port, (err) => {
-    if (err) {
-      logger.error({ err }, "Error listening on port");
-      process.exit(1);
-    }
+async function migratePositionGroups() {
+  try {
+    const OLD_DEFENDER = ["CentreBack", "FullBack"];
+    const OLD_MIDFIELDER = ["DefensiveMid", "CentralMid", "AttackingMid", "LeftWing", "RightWing", "SecondStriker"];
+    const OLD_ATTACKER = ["Striker", "BroadForward"];
 
-    logger.info({ port }, "Server listening");
+    let updated = 0;
+
+    const defRes = await db
+      .update(squadPlayersTable)
+      .set({ position: "Defender", positionPtBr: "DEF" })
+      .where(inArray(squadPlayersTable.position, OLD_DEFENDER))
+      .returning({ id: sql<number>`1` });
+    updated += defRes.length;
+
+    const midRes = await db
+      .update(squadPlayersTable)
+      .set({ position: "Midfielder", positionPtBr: "MID" })
+      .where(inArray(squadPlayersTable.position, OLD_MIDFIELDER))
+      .returning({ id: sql<number>`1` });
+    updated += midRes.length;
+
+    const atkRes = await db
+      .update(squadPlayersTable)
+      .set({ position: "Attacker", positionPtBr: "ATA" })
+      .where(inArray(squadPlayersTable.position, OLD_ATTACKER))
+      .returning({ id: sql<number>`1` });
+    updated += atkRes.length;
+
+    if (updated > 0) {
+      logger.info({ rows: updated }, "Migrated squad positions to 4-category system");
+    }
+  } catch (err) {
+    logger.warn({ err }, "Failed to migrate position groups (non-fatal)");
+  }
+}
+
+purgeInvalidSquadRows()
+  .then(migratePositionGroups)
+  .then(() => {
+    app.listen(port, (err) => {
+      if (err) {
+        logger.error({ err }, "Error listening on port");
+        process.exit(1);
+      }
+
+      logger.info({ port }, "Server listening");
+    });
   });
-});

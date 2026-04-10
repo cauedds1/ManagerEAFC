@@ -261,9 +261,8 @@ export default function App() {
       }
 
       if (careerToEnter.clubId > 0) {
-        const fc26Name = APIFOOTBALL_TO_FC26_NAME[careerToEnter.clubName];
         setView("squad-loading");
-        await fetchSquadFromBackend(careerToEnter.clubId, fc26Name).catch(() => {});
+        await fetchSquadFromBackend(careerToEnter.clubId).catch(() => {});
       }
 
       saveCareer(careerToEnter);

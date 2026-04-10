@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { SquadPlayer, PositionPtBr } from "@/lib/squadCache";
+import { migratePositionOverride } from "@/lib/squadCache";
 import type { PlayerOverride } from "@/types/playerStats";
 import {
   MOOD_LABELS,
@@ -15,16 +16,9 @@ import {
 
 const POS_STYLE: Record<PositionPtBr, { bg: string; color: string }> = {
   GOL: { bg: "rgba(245,158,11,0.18)",  color: "#f59e0b" },
-  ZAG: { bg: "rgba(59,130,246,0.18)",  color: "#60a5fa" },
-  LAT: { bg: "rgba(14,165,233,0.18)",  color: "#38bdf8" },
-  VOL: { bg: "rgba(16,185,129,0.18)",  color: "#34d399" },
-  MC:  { bg: "rgba(20,184,166,0.18)",  color: "#2dd4bf" },
-  MEI: { bg: "rgba(132,204,22,0.18)",  color: "#a3e635" },
-  PE:  { bg: "rgba(249,115,22,0.18)",  color: "#fb923c" },
-  PD:  { bg: "rgba(245,156,10,0.18)",  color: "#fbbf24" },
-  SA:  { bg: "rgba(244,63,94,0.18)",   color: "#fb7185" },
-  CA:  { bg: "rgba(239,68,68,0.18)",   color: "#f87171" },
-  ATA: { bg: "rgba(185,28,28,0.18)",   color: "#ef4444" },
+  DEF: { bg: "rgba(59,130,246,0.18)",  color: "#60a5fa" },
+  MID: { bg: "rgba(16,185,129,0.18)",  color: "#34d399" },
+  ATA: { bg: "rgba(239,68,68,0.18)",   color: "#f87171" },
 };
 
 function overallColor(ov: number): { bg: string; color: string } {
@@ -96,7 +90,7 @@ export function PlayerDetailPanel({
   const displayName = override?.nameOverride ?? player.name;
   const displayNumber = override?.shirtNumber ?? player.number;
   const displayOverall = override?.overall;
-  const displayPosition = (override?.positionOverride ?? player.positionPtBr) as PositionPtBr;
+  const displayPosition = (migratePositionOverride(override?.positionOverride) ?? player.positionPtBr) as PositionPtBr;
 
   const [editName, setEditName] = useState(displayName);
   const [editNumber, setEditNumber] = useState(String(displayNumber ?? ""));
@@ -104,7 +98,7 @@ export function PlayerDetailPanel({
   const [editSalary, setEditSalary] = useState(String(override?.salary ?? ""));
   const [editPosition, setEditPosition] = useState<PositionPtBr>(displayPosition);
 
-  const pos = POS_STYLE[displayPosition] ?? POS_STYLE.MC;
+  const pos = POS_STYLE[displayPosition] ?? POS_STYLE.MID;
   const moodStyle = MOOD_COLORS[stats.mood];
   const fanStyle = FAN_MORAL_COLORS[stats.fanMoral];
 
@@ -356,7 +350,7 @@ export function PlayerDetailPanel({
                       className="w-full px-3 py-2.5 rounded-xl text-white text-sm font-semibold focus:outline-none"
                       style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}
                     >
-                      {(["GOL","ZAG","LAT","VOL","MC","MEI","PE","PD","SA","CA","ATA"] as PositionPtBr[]).map((p) => (
+                      {(["GOL","DEF","MID","ATA"] as PositionPtBr[]).map((p) => (
                         <option key={p} value={p} style={{ background: "#141024" }}>{p}</option>
                       ))}
                     </select>

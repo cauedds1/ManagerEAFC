@@ -7,8 +7,8 @@ import {
   type SquadResult,
   type SquadPlayer,
   PT_BR_TO_POSITION,
+  migratePositionOverride,
 } from "@/lib/squadCache";
-import { APIFOOTBALL_TO_FC26_NAME } from "@/lib/footballApiMap";
 import { getAllPlayerOverrides } from "@/lib/playerStatsStorage";
 import { getTransfers, addTransfer } from "@/lib/transferStorage";
 import type { TransferRecord } from "@/types/transfer";
@@ -173,7 +173,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     let cancelled = false;
     setSquadLoading(true);
     setSquadError(false);
-    getSquad(teamId, career.clubName, APIFOOTBALL_TO_FC26_NAME[career.clubName])
+    getSquad(teamId, career.clubName)
       .then((result) => {
         if (!cancelled) { setSquad(result); setSquadLoading(false); }
       })
@@ -234,15 +234,18 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     setOverrides(getAllPlayerOverrides(career.id));
   }, [career.id]);
 
-  const transferredPlayers: SquadPlayer[] = transfers.map((t) => ({
-    id: t.playerId,
-    name: overrides[t.playerId]?.nameOverride ?? t.playerName,
-    age: t.playerAge,
-    position: PT_BR_TO_POSITION[t.playerPositionPtBr],
-    positionPtBr: t.playerPositionPtBr,
-    photo: t.playerPhoto ?? "",
-    number: overrides[t.playerId]?.shirtNumber ?? t.shirtNumber,
-  }));
+  const transferredPlayers: SquadPlayer[] = transfers.map((t) => {
+    const pos = migratePositionOverride(t.playerPositionPtBr) ?? "MID";
+    return {
+      id: t.playerId,
+      name: overrides[t.playerId]?.nameOverride ?? t.playerName,
+      age: t.playerAge,
+      position: PT_BR_TO_POSITION[pos] ?? "Midfielder",
+      positionPtBr: pos,
+      photo: t.playerPhoto ?? "",
+      number: overrides[t.playerId]?.shirtNumber ?? t.shirtNumber,
+    };
+  });
 
   const squadPlayers: SquadPlayer[] = (squad?.players ?? []).map((p) => ({
     ...p,

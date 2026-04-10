@@ -1,24 +1,13 @@
-const CACHE_VERSION = "v2";
+const CACHE_VERSION = "v3";
 const BASE_CACHE_PREFIX = "fc-career-manager-squad-";
 const CACHE_PREFIX = `${BASE_CACHE_PREFIX}${CACHE_VERSION}-`;
 const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
-export type PositionGroup =
-  | "Goalkeeper"
-  | "CentreBack"
-  | "FullBack"
-  | "DefensiveMid"
-  | "CentralMid"
-  | "AttackingMid"
-  | "LeftWing"
-  | "RightWing"
-  | "SecondStriker"
-  | "Striker"
-  | "BroadForward";
+export type PositionGroup = "Goalkeeper" | "Defender" | "Midfielder" | "Attacker";
 
-export type PositionPtBr = "GOL" | "ZAG" | "LAT" | "VOL" | "MC" | "MEI" | "PE" | "PD" | "SA" | "CA" | "ATA";
+export type PositionPtBr = "GOL" | "DEF" | "MID" | "ATA";
 
-export type FormationGroup = "GOL" | "ZAG" | "VOL" | "ATA";
+export type FormationGroup = "GOL" | "DEF" | "MID" | "ATA";
 
 export type SquadSource = "api-football" | "fc26";
 
@@ -39,87 +28,50 @@ export interface SquadResult {
 }
 
 const POSITION_PT_BR: Record<PositionGroup, PositionPtBr> = {
-  Goalkeeper:   "GOL",
-  CentreBack:   "ZAG",
-  FullBack:     "LAT",
-  DefensiveMid: "VOL",
-  CentralMid:   "MC",
-  AttackingMid: "MEI",
-  LeftWing:     "PE",
-  RightWing:    "PD",
-  SecondStriker:"SA",
-  Striker:      "CA",
-  BroadForward: "ATA",
+  Goalkeeper: "GOL",
+  Defender:   "DEF",
+  Midfielder: "MID",
+  Attacker:   "ATA",
 };
 
 export const PT_BR_TO_POSITION: Record<PositionPtBr, PositionGroup> = {
   GOL: "Goalkeeper",
-  ZAG: "CentreBack",
-  LAT: "FullBack",
-  VOL: "DefensiveMid",
-  MC:  "CentralMid",
-  MEI: "AttackingMid",
-  PE:  "LeftWing",
-  PD:  "RightWing",
-  SA:  "SecondStriker",
-  CA:  "Striker",
-  ATA: "BroadForward",
+  DEF: "Defender",
+  MID: "Midfielder",
+  ATA: "Attacker",
 };
 
 export const FORMATION_GROUP: Record<PositionPtBr, FormationGroup> = {
   GOL: "GOL",
-  ZAG: "ZAG",
-  LAT: "ZAG",
-  VOL: "VOL",
-  MC:  "VOL",
-  MEI: "VOL",
-  PE:  "ATA",
-  PD:  "ATA",
-  SA:  "ATA",
-  CA:  "ATA",
+  DEF: "DEF",
+  MID: "MID",
   ATA: "ATA",
 };
 
 const POSITION_SORT: Record<PositionGroup, number> = {
-  Goalkeeper:   0,
-  CentreBack:   1,
-  FullBack:     2,
-  DefensiveMid: 3,
-  CentralMid:   4,
-  AttackingMid: 5,
-  LeftWing:     6,
-  RightWing:    7,
-  SecondStriker:8,
-  Striker:      9,
-  BroadForward: 9,
+  Goalkeeper: 0,
+  Defender:   1,
+  Midfielder: 2,
+  Attacker:   3,
 };
+
+/** Migrate a position override from old 11-code system to new 4-category system. */
+export function migratePositionOverride(pos: string | undefined): PositionPtBr | undefined {
+  if (!pos) return undefined;
+  const VALID: PositionPtBr[] = ["GOL", "DEF", "MID", "ATA"];
+  if ((VALID as string[]).includes(pos)) return pos as PositionPtBr;
+  if (["ZAG", "LAT"].includes(pos)) return "DEF";
+  if (["VOL", "MC", "MEI", "PE", "PD", "SA", "CA"].includes(pos)) return "MID";
+  return undefined;
+}
 
 function normalizePosToGroup(pos: string): PositionGroup {
   const p = (pos ?? "").toUpperCase().trim();
   if (["GOALKEEPER", "GK", "GOL"].includes(p)) return "Goalkeeper";
-  if (["LB", "RB", "LWB", "RWB", "WB", "LAT"].includes(p)) return "FullBack";
-  if (["CB", "SW", "DEFENDER", "CENTREBACK"].includes(p)) return "CentreBack";
-  if (["CDM", "DM", "DMF", "VOL"].includes(p)) return "DefensiveMid";
-  if (["LW", "LM", "PE", "ME"].includes(p)) return "LeftWing";
-  if (["RW", "RM", "PD", "MD"].includes(p)) return "RightWing";
-  if (["CAM", "AM", "AMF", "MEI"].includes(p)) return "AttackingMid";
-  if (["CM", "MC"].includes(p)) return "CentralMid";
-  if (p === "MIDFIELDER") return "DefensiveMid";
-  if (["CF", "SS", "SA"].includes(p)) return "SecondStriker";
-  if (["ST", "FW", "WF", "CA"].includes(p)) return "Striker";
-  if (["ATTACKER", "FORWARD", "ATA"].includes(p)) return "BroadForward";
-  if (p === "CENTREBACK") return "CentreBack";
-  if (p === "FULLBACK") return "FullBack";
-  if (p === "DEFENSIVEMID") return "DefensiveMid";
-  if (p === "CENTRALMID") return "CentralMid";
-  if (p === "ATTACKINGMID") return "AttackingMid";
-  if (p === "LEFTWING") return "LeftWing";
-  if (p === "RIGHTWING") return "RightWing";
-  if (p === "SECONDSTRIKER") return "SecondStriker";
-  if (p === "STRIKER") return "Striker";
-  if (p === "GOALKEEPER") return "Goalkeeper";
-  if (p === "BROADFORWARD") return "BroadForward";
-  return "CentralMid";
+  if (["DEFENDER", "CB", "SW", "LB", "RB", "LWB", "RWB", "WB", "ZAG", "LAT",
+       "CENTREBACK", "FULLBACK"].includes(p)) return "Defender";
+  if (["ATTACKER", "FORWARD", "ST", "FW", "WF", "CA", "ATA", "STRIKER", "BROADFORWARD"].includes(p)) return "Attacker";
+  return "Midfielder";
 }
 
 function sortSquad(players: SquadPlayer[]): SquadPlayer[] {
@@ -161,11 +113,10 @@ function writeLocalCache(teamId: number, clubName: string, result: SquadResult):
   } catch {}
 }
 
-async function readDbSquad(teamId: number, fc26Name?: string): Promise<SquadResult | null> {
+async function readDbSquad(teamId: number): Promise<SquadResult | null> {
   if (teamId <= 0) return null;
   try {
-    const params = fc26Name ? `?fc26Name=${encodeURIComponent(fc26Name)}` : "";
-    const res = await fetch(`/api/squad/${teamId}${params}`);
+    const res = await fetch(`/api/squad/${teamId}`);
     if (res.status === 204 || !res.ok) return null;
     const data = await res.json() as {
       players: SquadPlayer[];
@@ -174,7 +125,6 @@ async function readDbSquad(teamId: number, fc26Name?: string): Promise<SquadResu
       schemaVersion?: string;
     };
     if (!Array.isArray(data.players) || data.players.length === 0) return null;
-    if (data.schemaVersion !== CACHE_VERSION) return null;
     return {
       players: reNormalizePlayers(data.players as SquadPlayer[]),
       source: data.source as SquadSource,
@@ -198,20 +148,19 @@ export function clearAllSquadCaches(): void {
   for (const k of keys) localStorage.removeItem(k);
 }
 
-export async function fetchSquadFromBackend(teamId: number, fc26Name?: string): Promise<SquadResult | null> {
+export async function fetchSquadFromBackend(teamId: number): Promise<SquadResult | null> {
   if (teamId <= 0) return null;
   try {
     const res = await fetch(`/api/squad/${teamId}/fetch`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ fc26Name: fc26Name ?? null }),
+      body: JSON.stringify({}),
     });
     if (!res.ok) return null;
     const data = await res.json() as {
       players: SquadPlayer[];
       source: string;
       cachedAt: number;
-      schemaVersion?: string;
     };
     if (!Array.isArray(data.players) || data.players.length === 0) return null;
     return {
@@ -224,11 +173,11 @@ export async function fetchSquadFromBackend(teamId: number, fc26Name?: string): 
   }
 }
 
-export async function getSquad(teamId: number, clubName: string, fc26Name?: string): Promise<SquadResult> {
+export async function getSquad(teamId: number, clubName: string): Promise<SquadResult> {
   const localCached = readLocalCache(teamId, clubName);
   if (localCached) return localCached;
 
-  const dbResult = await readDbSquad(teamId, fc26Name);
+  const dbResult = await readDbSquad(teamId);
   if (dbResult) {
     writeLocalCache(teamId, clubName, dbResult);
     return dbResult;
