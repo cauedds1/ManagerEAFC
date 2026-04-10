@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { NewsPost, NewsComment, NewsSource } from "@/types/noticias";
 import type { PortalPhotos } from "@/lib/portalPhotosStorage";
+import type { CustomPortal } from "@/lib/customPortalStorage";
 import { getCommentAvatarUrl } from "@/lib/commentAvatar";
 
 const SOURCE_CONFIG: Record<NewsSource, { color: string; bgColor: string; verified: boolean; emoji: string }> = {
@@ -21,6 +22,12 @@ const SOURCE_CONFIG: Record<NewsSource, { color: string; bgColor: string; verifi
     bgColor: "rgba(var(--club-primary-rgb), 0.15)",
     verified: false,
     emoji: "⚽",
+  },
+  custom: {
+    color: "#a78bfa",
+    bgColor: "rgba(167, 139, 250, 0.15)",
+    verified: false,
+    emoji: "✍️",
   },
 };
 
@@ -203,16 +210,27 @@ const CATEGORY_COLOR: Record<string, { bg: string; color: string }> = {
 interface NoticiaPostProps {
   post: NewsPost;
   portalPhotos?: PortalPhotos;
+  customPortals?: CustomPortal[];
 }
 
-export function NoticiaPost({ post, portalPhotos }: NoticiaPostProps) {
+export function NoticiaPost({ post, portalPhotos, customPortals }: NoticiaPostProps) {
   const [liked, setLiked] = useState(false);
   const [showComments, setShowComments] = useState(false);
-  const cfg = SOURCE_CONFIG[post.source];
+
+  const customPortal = post.source === "custom" && post.customPortalId
+    ? customPortals?.find((p) => p.id === post.customPortalId)
+    : undefined;
+
+  const baseCfg = SOURCE_CONFIG[post.source] ?? SOURCE_CONFIG.custom;
+  const cfg = baseCfg;
   const catStyle = CATEGORY_COLOR[post.category] ?? CATEGORY_COLOR.geral;
   const totalLikes = post.likes + (liked ? 1 : 0);
 
   const lines = post.content.split("\n");
+
+  const postPhotoUrl = post.source === "custom"
+    ? customPortal?.photo
+    : portalPhotos?.[post.source as keyof PortalPhotos];
 
   return (
     <article
@@ -224,7 +242,7 @@ export function NoticiaPost({ post, portalPhotos }: NoticiaPostProps) {
     >
       {/* Header */}
       <div className="flex items-center gap-3 px-4 pt-4 pb-3">
-        <SourceAvatar source={post.source} sourceName={post.sourceName} size={42} photoUrl={portalPhotos?.[post.source]} />
+        <SourceAvatar source={post.source} sourceName={post.sourceName} size={42} photoUrl={postPhotoUrl} />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 flex-wrap">
             <span className="text-white text-sm font-bold leading-tight">{post.sourceName}</span>

@@ -6,6 +6,11 @@ import { getOpenAIKey } from "@/lib/openaiKeyStorage";
 import { seedPosts } from "@/lib/noticiaSeed";
 import { NoticiaPost } from "./NoticiaPost";
 import { getPortalPhotos, PORTAL_PHOTOS_EVENT, type PortalPhotos } from "@/lib/portalPhotosStorage";
+import {
+  getCustomPortals,
+  CUSTOM_PORTALS_EVENT,
+  type CustomPortal,
+} from "@/lib/customPortalStorage";
 import { useImageUpload } from "@/hooks/useImageUpload";
 import { ImageCropModal } from "./ImageCropModal";
 import type { SquadPlayer } from "@/lib/squadCache";
@@ -90,6 +95,7 @@ const SOURCE_LABELS: Record<NewsSource, string> = {
   tnt: "TNT Sports",
   espn: "ESPN",
   fanpage: "FanPage",
+  custom: "Portal Customizado",
 };
 
 const CATEGORY_LABELS: Record<NewsCategory, string> = {
@@ -177,6 +183,7 @@ function AddPostModal({
   playerContextStr,
   historicalContext,
   recentPosts,
+  customPortals,
   onClose,
   onSave,
 }: {
@@ -184,13 +191,14 @@ function AddPostModal({
   playerContextStr?: string;
   historicalContext?: string;
   recentPosts?: NewsPost[];
+  customPortals?: CustomPortal[];
   onClose: () => void;
   onSave: (post: NewsPost) => void;
 }) {
   const [mode, setMode] = useState<AddMode>("auto");
 
   const [aiDesc, setAiDesc] = useState("");
-  const [aiSource, setAiSource] = useState<NewsSource | "auto">("auto");
+  const [aiSource, setAiSource] = useState<string>("auto");
   const [aiCategory, setAiCategory] = useState<NewsCategory | "auto">("auto");
   const [isGenerating, setIsGenerating] = useState(false);
   const [aiPreview, setAiPreview] = useState<AiPreview | null>(null);
@@ -228,6 +236,10 @@ function AddPostModal({
   const manSourceName =
     manSource === "tnt" ? "TNT Sports" : manSource === "espn" ? "ESPN Brasil" : `${shortClub} Oficial`;
 
+  const selectedCustomPortal = aiSource !== "auto" && aiSource !== "tnt" && aiSource !== "espn" && aiSource !== "fanpage"
+    ? customPortals?.find((p) => p.id === aiSource)
+    : undefined;
+
   const handleGenerate = async () => {
     if (!aiDesc.trim()) return;
     setIsGenerating(true);
@@ -246,17 +258,25 @@ function AddPostModal({
           }))
         : undefined;
 
+      const isCustom = !!selectedCustomPortal;
+
       const res = await fetch("/api/noticias/generate", {
         method: "POST",
         headers,
         body: JSON.stringify({
           description: aiDesc.trim(),
           clubName: career.clubName,
-          source: aiSource !== "auto" ? aiSource : undefined,
+          source: !isCustom && aiSource !== "auto" ? aiSource : undefined,
           category: aiCategory !== "auto" ? aiCategory : undefined,
           playersContext: playerContextStr || undefined,
           historicalContext: historicalContext || undefined,
           recentPostsContext: recentPostsContext || undefined,
+          customPortal: isCustom ? {
+            id: selectedCustomPortal.id,
+            name: selectedCustomPortal.name,
+            description: selectedCustomPortal.description,
+            tone: selectedCustomPortal.tone,
+          } : undefined,
         }),
       });
       if (!res.ok) {
@@ -284,6 +304,7 @@ function AddPostModal({
       ...(aiPreview.title?.trim() ? { title: aiPreview.title.trim() } : {}),
       content: aiPreview.content,
       ...(imageObjectPath ? { imageUrl: imageObjectPath } : {}),
+      ...(selectedCustomPortal ? { customPortalId: selectedCustomPortal.id } : {}),
       likes: aiPreview.likes,
       commentsCount: aiPreview.commentsCount,
       sharesCount: aiPreview.sharesCount,
@@ -442,7 +463,7 @@ function AddPostModal({
                 <div className="flex gap-2 flex-wrap">
                   <button
                     onClick={() => setAiSource("auto")}
-                    className="flex-1 py-2 px-3 rounded-xl text-xs font-semibold transition-all duration-150 flex items-center justify-center gap-1.5"
+                    className="py-2 px-3 rounded-xl text-xs font-semibold transition-all duration-150 flex items-center justify-center gap-1.5"
                     style={{
                       background: aiSource === "auto" ? "rgba(var(--club-primary-rgb),0.2)" : "rgba(255,255,255,0.05)",
                       color: aiSource === "auto" ? "var(--club-primary)" : "rgba(255,255,255,0.4)",
@@ -460,6 +481,14 @@ function AddPostModal({
                       label={SOURCE_LABELS[s]}
                       active={aiSource === s}
                       onClick={() => setAiSource(s)}
+                    />
+                  ))}
+                  {(customPortals ?? []).map((cp) => (
+                    <SourceButton
+                      key={cp.id}
+                      label={cp.name}
+                      active={aiSource === cp.id}
+                      onClick={() => setAiSource(cp.id)}
                     />
                   ))}
                 </div>
@@ -813,26 +842,35 @@ function AddPostModal({
   );
 }
 
-const SOURCE_SIDEBAR_COLOR: Record<NewsSource, { color: string; bg: string }> = {
-  tnt:     { color: "#E8002D", bg: "rgba(232,0,45,0.15)" },
-  espn:    { color: "#E67E22", bg: "rgba(230,126,34,0.15)" },
+const SOURCE_SIDEBAR_COLOR: Record<string, { color: string; bg: string }> = {
+  tnt:     { color: "#E8002D",            bg: "rgba(232,0,45,0.15)" },
+  espn:    { color: "#E67E22",            bg: "rgba(230,126,34,0.15)" },
   fanpage: { color: "var(--club-primary)", bg: "rgba(var(--club-primary-rgb),0.15)" },
+  custom:  { color: "#a78bfa",            bg: "rgba(167,139,250,0.15)" },
 };
+const CUSTOM_SIDEBAR_COLOR = { color: "#a78bfa", bg: "rgba(167,139,250,0.15)" };
 
 
 export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matches = [], pastSeasons = [], isReadOnly }: NoticiasViewProps) {
   const [posts, setPosts] = useState<NewsPost[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [filterSource, setFilterSource] = useState<NewsSource | "all">("all");
+  const [filterSource, setFilterSource] = useState<string>("all");
   const [filterCategory, setFilterCategory] = useState<NewsCategory | "all">("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [portalPhotos, setPortalPhotos] = useState<PortalPhotos>(() => getPortalPhotos());
+  const [customPortals, setCustomPortals] = useState<CustomPortal[]>(() => getCustomPortals(career.id));
 
   useEffect(() => {
     const refresh = () => setPortalPhotos(getPortalPhotos());
     window.addEventListener(PORTAL_PHOTOS_EVENT, refresh);
     return () => window.removeEventListener(PORTAL_PHOTOS_EVENT, refresh);
   }, []);
+
+  useEffect(() => {
+    const refresh = () => setCustomPortals(getCustomPortals(career.id));
+    window.addEventListener(CUSTOM_PORTALS_EVENT, refresh);
+    return () => window.removeEventListener(CUSTOM_PORTALS_EVENT, refresh);
+  }, [career.id]);
 
   useEffect(() => {
     let stored = getPosts(seasonId);
@@ -938,7 +976,14 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
 
   const normalizedQuery = searchQuery.trim().toLowerCase();
   const filtered = posts.filter((p) => {
-    if (filterSource !== "all" && p.source !== filterSource) return false;
+    if (filterSource !== "all") {
+      const isCustomFilter = filterSource.startsWith("custom-");
+      if (isCustomFilter) {
+        if (p.customPortalId !== filterSource) return false;
+      } else {
+        if (p.source !== filterSource) return false;
+      }
+    }
     if (filterCategory !== "all" && p.category !== filterCategory) return false;
     if (normalizedQuery) {
       const haystack = [p.title ?? "", p.content].join(" ").toLowerCase();
@@ -948,17 +993,26 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
     return true;
   });
 
-  const sourceFilters: { id: NewsSource | "all"; label: string }[] = [
-    { id: "all", label: "Todos" },
+  const sourceFilters: { id: string; label: string }[] = [
+    { id: "all",     label: "Todos" },
     { id: "fanpage", label: "FanPage" },
-    { id: "tnt", label: "TNT Sports" },
-    { id: "espn", label: "ESPN" },
+    { id: "tnt",     label: "TNT Sports" },
+    { id: "espn",    label: "ESPN" },
+    ...customPortals.map((cp) => ({ id: cp.id, label: cp.name })),
   ];
 
-  const sourceCounts = (["fanpage", "tnt", "espn"] as NewsSource[]).map((s) => ({
-    id: s,
-    count: posts.filter((p) => p.source === s).length,
-  }));
+  const sourceCounts = [
+    ...( ["fanpage", "tnt", "espn"] as NewsSource[]).map((s) => ({
+      id: s,
+      label: SOURCE_LABELS[s],
+      count: posts.filter((p) => p.source === s).length,
+    })),
+    ...customPortals.map((cp) => ({
+      id: cp.id,
+      label: cp.name,
+      count: posts.filter((p) => p.customPortalId === cp.id).length,
+    })),
+  ];
   const maxSourceCount = Math.max(1, ...sourceCounts.map((s) => s.count));
 
   const categoryCounts = (Object.keys(CATEGORY_LABELS) as NewsCategory[])
@@ -966,7 +1020,9 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
     .filter((c) => c.count > 0)
     .sort((a, b) => b.count - a.count);
 
-  const srcLabel = filterSource !== "all" ? SOURCE_LABELS[filterSource] : "";
+  const srcLabel = filterSource !== "all"
+    ? (SOURCE_LABELS[filterSource as NewsSource] ?? customPortals.find((p) => p.id === filterSource)?.name ?? filterSource)
+    : "";
   const catLabel = filterCategory !== "all" ? CATEGORY_LABELS[filterCategory] : "";
   const emptyLabel = (() => {
     if (normalizedQuery)
@@ -1134,7 +1190,7 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
           ) : (
             <div className="flex flex-col gap-4 lg:max-w-[560px]">
               {filtered.map((post) => (
-                <NoticiaPost key={post.id} post={post} portalPhotos={portalPhotos} />
+                <NoticiaPost key={post.id} post={post} portalPhotos={portalPhotos} customPortals={customPortals} />
               ))}
             </div>
           )}
@@ -1151,8 +1207,8 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
             >
               <p className="text-white/35 text-xs font-bold uppercase tracking-wider">Por fonte</p>
               <div className="flex flex-col gap-2.5">
-                {sourceCounts.map(({ id, count }) => {
-                  const cfg = SOURCE_SIDEBAR_COLOR[id];
+                {sourceCounts.map(({ id, label, count }) => {
+                  const cfg = SOURCE_SIDEBAR_COLOR[id] ?? CUSTOM_SIDEBAR_COLOR;
                   const active = filterSource === id;
                   return (
                     <button
@@ -1169,7 +1225,7 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
                           className="text-xs font-semibold"
                           style={{ color: active ? cfg.color : "rgba(255,255,255,0.5)" }}
                         >
-                          {SOURCE_LABELS[id]}
+                          {label}
                         </span>
                         <span
                           className="text-xs font-bold tabular-nums"
@@ -1252,6 +1308,7 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
         playerContextStr={playerContextStr || undefined}
         historicalContext={historicalContext}
         recentPosts={posts.slice(0, 6)}
+        customPortals={customPortals}
         onClose={() => setShowAddModal(false)}
         onSave={handleSavePost}
       />

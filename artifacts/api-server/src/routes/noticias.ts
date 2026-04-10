@@ -10,6 +10,13 @@ interface RecentPostSummary {
   headline: string;
 }
 
+interface CustomPortalPayload {
+  id: string;
+  name: string;
+  description: string;
+  tone: string;
+}
+
 interface GenerateNoticiaBody {
   description: string;
   clubName: string;
@@ -19,7 +26,17 @@ interface GenerateNoticiaBody {
   playersContext?: string;
   historicalContext?: string;
   recentPostsContext?: RecentPostSummary[];
+  customPortal?: CustomPortalPayload;
 }
+
+const TONE_PROMPTS: Record<string, string> = {
+  humoristico:  "Tom HUMORÍSTICO — use humor, memes, piadas, trocadilhos e emojis engraçados. Os comentários devem ser engraçados e bem-humorados, com zoações e memes. Pode xingar jogador com bom humor.",
+  apaixonado:   "Tom APAIXONADO — escrita emocional, dramática, cheia de amor pelo clube. Defende os jogadores, mas cobra quando necessário. Comentários com muita paixão e sentimento.",
+  critico:      "Tom CRÍTICO/CORNETEIRO — questiona decisões, cobra resultados, aponta falhas. Não poupa ninguém, nem a comissão técnica. Comentários exigentes e impacientes. Pode xingar jogador.",
+  ironico:      "Tom IRÔNICO/SARCÁSTICO — usa sarcasmo e ironia na escrita. Faz insinuações inteligentes, sorri debochado de situações. Comentários afiados e espirituosos.",
+  jornalistico: "Tom JORNALÍSTICO — reportagem elaborada com contexto histórico, números e análise. Escrita profissional mas acessível. Comentários mais analíticos e debatedores.",
+  serio:        "Tom SÉRIO/OBJETIVO — cobertura factual e direta ao ponto. Sem exageros, sem drama. Comentários racionais e equilibrados.",
+};
 
 function getClient(userKey?: string): { client: OpenAI; usingUserKey: boolean } {
   if (userKey && userKey.trim().startsWith("sk-")) {
@@ -29,8 +46,10 @@ function getClient(userKey?: string): { client: OpenAI; usingUserKey: boolean } 
 }
 
 router.post("/noticias/generate", async (req, res) => {
-  const { description, clubName, season, source, category, playersContext, historicalContext, recentPostsContext } =
-    req.body as GenerateNoticiaBody;
+  const {
+    description, clubName, season, source, category,
+    playersContext, historicalContext, recentPostsContext, customPortal,
+  } = req.body as GenerateNoticiaBody;
 
   if (!description || !description.trim()) {
     res.status(400).json({ error: "description é obrigatório" });
@@ -43,19 +62,23 @@ router.post("/noticias/generate", async (req, res) => {
   const slug = clubName.toLowerCase().replace(/\s+/g, "").replace(/[^a-z0-9]/g, "");
   const shortClub = clubName.split(" ").slice(0, 2).join(" ");
 
-  const sourceOptions = {
-    tnt: { name: "TNT Sports", handle: "@tntsports" },
-    espn: { name: "ESPN Brasil", handle: "@espnbrasil" },
+  const standardSourceOptions = {
+    tnt:     { name: "TNT Sports",        handle: "@tntsports" },
+    espn:    { name: "ESPN Brasil",       handle: "@espnbrasil" },
     fanpage: { name: `${shortClub} Oficial`, handle: `@${slug}oficial` },
   } as const;
 
-  const chosenSource = (source as keyof typeof sourceOptions) ?? "fanpage";
-  const sourceInfo = sourceOptions[chosenSource] ?? sourceOptions.fanpage;
+  const isCustomPortal = !!customPortal;
 
-  const categories = ["resultado", "lesao", "transferencia", "renovacao", "treino", "conquista", "geral"];
+  const portalName   = isCustomPortal ? customPortal.name : (standardSourceOptions[(source as keyof typeof standardSourceOptions)] ?? standardSourceOptions.fanpage).name;
+  const portalHandle = isCustomPortal
+    ? `@${customPortal.name.toLowerCase().replace(/\s+/g, "").replace(/[^a-z0-9]/g, "")}`
+    : (standardSourceOptions[(source as keyof typeof standardSourceOptions)] ?? standardSourceOptions.fanpage).handle;
+
+  const chosenSource   = isCustomPortal ? "custom" : ((source as keyof typeof standardSourceOptions) ?? "fanpage");
+  const categories     = ["resultado", "lesao", "transferencia", "renovacao", "treino", "conquista", "geral"];
   const chosenCategory = category && categories.includes(category) ? category : null;
-
-  const uniqueSeed = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const uniqueSeed     = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
   const playersSection = playersContext?.trim()
     ? `\n\nELENCO — CONTEXTO DE DESEMPENHO (use com moderação para enriquecer comentários — nem todo comentário precisa mencionar jogadores; prefira os mais marcantes como ídolos, artilheiros ou jogadores com incidentes recentes):\n${playersContext.trim()}`
@@ -66,15 +89,19 @@ router.post("/noticias/generate", async (req, res) => {
     : "";
 
   const recentPostsSection = recentPostsContext && recentPostsContext.length > 0
-    ? `\n\nPOSTS RECENTES DO FEED (últimas notícias publicadas, do mais novo ao mais antigo):\n${recentPostsContext.map((p, i) => `${i + 1}. [${p.category}] ${p.title ? p.title + " — " : ""}${p.headline}`).join("\n")}\n\nUSO DOS POSTS RECENTES — REGRA IMPORTANTE: Em aproximadamente 1 a cada 4 gerações, crie conexões narrativas com eventos recentes acima — por exemplo: torcedores comparando dois jogadores anunciados, reações em cascata de notícias relacionadas, alguém que viu o post anterior, piadas internas sobre acontecimentos recentes. Mas NÃO faça isso na maioria das vezes — a maior parte dos posts deve ser independente e autossuficiente. Deixe a conexão surgir de forma orgânica e natural, nunca forçada.`
+    ? `\n\nPOSTS RECENTES DO FEED (últimas notícias publicadas, do mais novo ao mais antigo):\n${recentPostsContext.map((p, i) => `${i + 1}. [${p.category}] ${p.title ? p.title + " — " : ""}${p.headline}`).join("\n")}\n\nUSO DOS POSTS RECENTES — REGRA IMPORTANTE: Em aproximadamente 1 a cada 4 gerações, crie conexões narrativas com eventos recentes acima. Mas NÃO faça isso na maioria das vezes — a maior parte dos posts deve ser independente e autossuficiente.`
+    : "";
+
+  const customPortalSection = isCustomPortal
+    ? `\n\nPERFIL DO PORTAL:\nNome: ${customPortal.name}\nDescrição/identidade: ${customPortal.description}\n${TONE_PROMPTS[customPortal.tone] ?? TONE_PROMPTS.serio}\nAdapte TODO o conteúdo (título, legenda e comentários) ao tom e identidade deste portal. Seja fiel à personalidade descrita.`
     : "";
 
   const systemPrompt = `Você é um especialista em criar posts de futebol para redes sociais brasileiras no estilo Instagram.
 Cada post que você cria deve ser ÚNICO e DIFERENTE dos anteriores — varie o estilo, tom, escolha de emojis, estrutura da legenda e perfil dos comentaristas.
 Use linguagem informal, autêntica, com gírias brasileiras do futebol. Seja criativo e específico.
 O time é ${clubName}${season ? ` (temporada ${season})` : ""}.
-O portal que publica é ${sourceInfo.name} (${sourceInfo.handle}).
-Semente de unicidade: ${uniqueSeed} — use ela para garantir que este post seja diferente de qualquer outro.${playersSection}${historicalSection}${recentPostsSection}`;
+O portal que publica é ${portalName} (${portalHandle}).
+Semente de unicidade: ${uniqueSeed} — use ela para garantir que este post seja diferente de qualquer outro.${playersSection}${historicalSection}${recentPostsSection}${customPortalSection}`;
 
   const userPrompt = `Crie um post de notícia com base nessa descrição: "${description.trim()}"
 
@@ -88,11 +115,13 @@ REGRAS DE CRIATIVIDADE:
 REGRAS OBRIGATÓRIAS PARA COMENTARISTAS:
 - displayName DEVE ser um nome de pessoa brasileira real e comum (ex: "Lucas Ferreira", "Ana Souza", "Pedro Mendes", "Carla Lima", "João Carlos", "Thiago Rocha")
 - username DEVE ser derivado do nome da pessoa, curto e simples, como uma pessoa real usaria (ex: @lucasferreira, @anasouza22, @pedromendes_fc, @carlamlima, @joaocarlos17)
-- NUNCA use nomes de fanpage, coletivos ou conceitos abstratos — ERRADO: @nossosbonsmomentos, @bolaplenitude, @amantesdacorneta2023, @londresloversonly, @critica_pura, @defensordofutebol
+- NUNCA use nomes de fanpage, coletivos ou conceitos abstratos — ERRADO: @nossosbonsmomentos, @bolaplenitude, @amantesdacorneta2023
 
 Responda APENAS com JSON puro (sem markdown, sem code block):
 {
   "source": "${chosenSource}",
+  "sourceHandle": "${portalHandle}",
+  "sourceName": "${portalName}",
   "category": "${chosenCategory ?? "<categoria>"}",
   "title": "<título em maiúsculas, máx 6 palavras, ou string vazia>",
   "content": "<legenda completa no estilo Instagram>",
@@ -147,20 +176,18 @@ Gere 6 a 9 comentários. Pelo menos 2 deles devem ter 1 reply cada.`;
       return;
     }
 
-    const finalSource = (parsed.source as string) ?? chosenSource;
-    const finalSourceInfo = sourceOptions[(finalSource as keyof typeof sourceOptions)] ?? sourceInfo;
-
     const post = {
-      source: finalSource,
-      sourceHandle: finalSourceInfo.handle,
-      sourceName: finalSourceInfo.name,
-      category: parsed.category ?? "geral",
-      title: (parsed.title as string) || undefined,
-      content: parsed.content as string,
-      likes: Number(parsed.likes) || 1200,
+      source:        (parsed.source as string) ?? chosenSource,
+      sourceHandle:  (parsed.sourceHandle as string) ?? portalHandle,
+      sourceName:    (parsed.sourceName as string) ?? portalName,
+      category:      parsed.category ?? "geral",
+      title:         (parsed.title as string) || undefined,
+      content:       parsed.content as string,
+      likes:         Number(parsed.likes) || 1200,
       commentsCount: Number(parsed.commentsCount) || 50,
-      sharesCount: Number(parsed.sharesCount) || 200,
-      comments: (parsed.comments as unknown[]) ?? [],
+      sharesCount:   Number(parsed.sharesCount) || 200,
+      comments:      (parsed.comments as unknown[]) ?? [],
+      ...(isCustomPortal ? { customPortalId: customPortal.id } : {}),
     };
 
     res.json(post);

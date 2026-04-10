@@ -7,7 +7,7 @@ export type CommentPersonality =
   | "neutro"
   | "internacional";
 
-export type NewsSource = "tnt" | "espn" | "fanpage";
+export type NewsSource = "tnt" | "espn" | "fanpage" | "custom";
 
 export type NewsCategory =
   | "resultado"
@@ -45,4 +45,5 @@ export interface NewsPost {
   createdAt: number;
   matchId?: string;
   category: NewsCategory;
+  customPortalId?: string;
 }

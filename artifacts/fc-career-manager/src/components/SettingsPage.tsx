@@ -8,10 +8,21 @@ import {
   type PortalPhotos,
   type PortalSource,
 } from "@/lib/portalPhotosStorage";
+import {
+  getCustomPortals,
+  addCustomPortal,
+  updateCustomPortal,
+  deleteCustomPortal,
+  PORTAL_TONES,
+  CUSTOM_PORTALS_EVENT,
+  type CustomPortal,
+  type PortalTone,
+} from "@/lib/customPortalStorage";
 import { getOpenAIKey, setOpenAIKey, clearOpenAIKey } from "@/lib/openaiKeyStorage";
 
 interface SettingsPageProps {
   onReloadClubs: () => void;
+  careerId?: string;
 }
 
 type SyncState = "idle" | "running" | "done" | "error";
@@ -97,7 +108,127 @@ function StatusMsg({ state, msg }: { state: SyncState; msg: string }) {
   );
 }
 
-export function SettingsPage({ onReloadClubs }: SettingsPageProps) {
+function CustomPortalModal({
+  initial,
+  onSave,
+  onClose,
+}: {
+  initial: CustomPortal | null;
+  onSave: (data: { name: string; description: string; tone: PortalTone }) => void;
+  onClose: () => void;
+}) {
+  const [name, setName] = useState(initial?.name ?? "");
+  const [description, setDescription] = useState(initial?.description ?? "");
+  const [tone, setTone] = useState<PortalTone>(initial?.tone ?? "jornalistico");
+  const valid = name.trim().length > 0 && description.trim().length > 0;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)" }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div
+        className="relative w-full max-w-md rounded-3xl overflow-hidden flex flex-col"
+        style={{ background: "var(--color-surface, #1a1a2e)", border: "1px solid rgba(255,255,255,0.1)", maxHeight: "90vh" }}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 pt-6 pb-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
+          <div>
+            <h2 className="text-white font-bold text-base">{initial ? "Editar Portal" : "Novo Portal"}</h2>
+            <p className="text-white/40 text-xs mt-0.5">A IA usará o tom escolhido ao escrever as notícias.</p>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 rounded-xl flex items-center justify-center hover:bg-white/[0.07] transition-colors" style={{ color: "rgba(255,255,255,0.4)" }}>
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-5">
+          {/* Name */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold text-white/60 uppercase tracking-wider">Nome do Portal</label>
+            <input
+              autoFocus
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              maxLength={40}
+              placeholder="Ex: Baldasso Internacional"
+              className="w-full px-4 py-3 rounded-xl text-white text-sm focus:outline-none placeholder:text-white/20"
+              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}
+            />
+          </div>
+
+          {/* Description */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold text-white/60 uppercase tracking-wider">Descrição / Quem é?</label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              maxLength={200}
+              rows={3}
+              placeholder="Ex: Jornalista apaixonado pelo Grêmio, especialista em futebol gaúcho, escreve com emoção e fidelidade ao clube."
+              className="w-full px-4 py-3 rounded-xl text-white text-sm focus:outline-none placeholder:text-white/20 resize-none"
+              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}
+            />
+            <p className="text-right text-white/25 text-xs">{description.length}/200</p>
+          </div>
+
+          {/* Tone */}
+          <div className="flex flex-col gap-2">
+            <label className="text-xs font-semibold text-white/60 uppercase tracking-wider">Tom do Portal</label>
+            <div className="grid grid-cols-2 gap-2">
+              {PORTAL_TONES.map((t) => {
+                const active = tone === t.id;
+                return (
+                  <button
+                    key={t.id}
+                    onClick={() => setTone(t.id)}
+                    className="flex flex-col gap-1 px-3 py-2.5 rounded-xl text-left transition-all duration-150"
+                    style={{
+                      background: active ? "rgba(167,139,250,0.15)" : "rgba(255,255,255,0.03)",
+                      border: active ? "1px solid rgba(167,139,250,0.4)" : "1px solid rgba(255,255,255,0.07)",
+                    }}
+                  >
+                    <span className="text-base leading-none">{t.emoji}</span>
+                    <span className="text-xs font-bold" style={{ color: active ? "#a78bfa" : "rgba(255,255,255,0.7)" }}>{t.label}</span>
+                    <span className="text-xs leading-tight" style={{ color: active ? "rgba(167,139,250,0.7)" : "rgba(255,255,255,0.3)" }}>{t.description}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 py-4 flex gap-3" style={{ borderTop: "1px solid rgba(255,255,255,0.07)" }}>
+          <button
+            onClick={onClose}
+            className="flex-1 py-3 rounded-2xl text-sm font-semibold transition-all duration-150 hover:opacity-80"
+            style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.08)" }}
+          >
+            Cancelar
+          </button>
+          <button
+            disabled={!valid}
+            onClick={() => valid && onSave({ name: name.trim(), description: description.trim(), tone })}
+            className="flex-1 py-3 rounded-2xl text-sm font-bold transition-all duration-150 hover:opacity-90 active:scale-[0.98]"
+            style={{
+              background: valid ? "linear-gradient(135deg, #a78bfa, #8b5cf6)" : "rgba(255,255,255,0.05)",
+              color: valid ? "white" : "rgba(255,255,255,0.2)",
+              border: valid ? "none" : "1px solid rgba(255,255,255,0.08)",
+              cursor: valid ? "pointer" : "not-allowed",
+            }}
+          >
+            {initial ? "Salvar alterações" : "Criar portal"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function SettingsPage({ onReloadClubs, careerId }: SettingsPageProps) {
   const [section, setSection] = useState<Section>("api");
 
   /* ── Player sync ── */
@@ -123,6 +254,15 @@ export function SettingsPage({ onReloadClubs }: SettingsPageProps) {
   const [portalPhotos, setPortalPhotosState] = useState<PortalPhotos>(() => getPortalPhotos());
   const photoInputRef                         = useRef<HTMLInputElement>(null);
   const pendingSourceRef                      = useRef<PortalSource | null>(null);
+
+  /* ── Custom portals ── */
+  const [customPortals, setCustomPortals] = useState<CustomPortal[]>(() =>
+    careerId ? getCustomPortals(careerId) : []
+  );
+  const [showPortalModal, setShowPortalModal] = useState(false);
+  const [editingPortal, setEditingPortal] = useState<CustomPortal | null>(null);
+  const customPhotoInputRef = useRef<HTMLInputElement>(null);
+  const pendingCustomPortalIdRef = useRef<string | null>(null);
 
   /* ── OpenAI key ── */
   const [openaiKey, setOpenaiKeyState]     = useState(() => getOpenAIKey());
@@ -220,6 +360,53 @@ export function SettingsPage({ onReloadClubs }: SettingsPageProps) {
     clearPortalPhoto(src);
     setPortalPhotosState(getPortalPhotos());
     window.dispatchEvent(new CustomEvent(PORTAL_PHOTOS_EVENT));
+  };
+
+  /* ─── Custom portal handlers ─── */
+
+  const refreshCustomPortals = () => {
+    if (!careerId) return;
+    const updated = getCustomPortals(careerId);
+    setCustomPortals(updated);
+    window.dispatchEvent(new CustomEvent(CUSTOM_PORTALS_EVENT));
+  };
+
+  const handleSavePortal = (data: { name: string; description: string; tone: PortalTone }) => {
+    if (!careerId) return;
+    if (editingPortal) {
+      updateCustomPortal(careerId, editingPortal.id, data);
+    } else {
+      addCustomPortal(careerId, data);
+    }
+    refreshCustomPortals();
+    setShowPortalModal(false);
+    setEditingPortal(null);
+  };
+
+  const handleDeletePortal = (id: string) => {
+    if (!careerId) return;
+    deleteCustomPortal(careerId, id);
+    refreshCustomPortals();
+  };
+
+  const handleCustomPortalPhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    const portalId = pendingCustomPortalIdRef.current;
+    e.target.value = ""; pendingCustomPortalIdRef.current = null;
+    if (!file || !portalId || !careerId) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const dataUrl = ev.target?.result as string;
+      updateCustomPortal(careerId, portalId, { photo: dataUrl });
+      refreshCustomPortals();
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleClearCustomPortalPhoto = (portalId: string) => {
+    if (!careerId) return;
+    updateCustomPortal(careerId, portalId, { photo: undefined });
+    refreshCustomPortals();
   };
 
   /* ─── Render helpers ─── */
@@ -372,6 +559,119 @@ export function SettingsPage({ onReloadClubs }: SettingsPageProps) {
   const sectionPortais = (
     <div className="space-y-5">
       <input ref={photoInputRef} type="file" accept="image/*" className="hidden" onChange={handlePortalFileChange} />
+      <input ref={customPhotoInputRef} type="file" accept="image/*" className="hidden" onChange={handleCustomPortalPhotoChange} />
+
+      {/* Portais Personalizados */}
+      {careerId && (
+        <SectionCard
+          title="Portais Personalizados"
+          subtitle="Crie perfis únicos — jornalistas, torcedores, criadores de conteúdo — que a IA vai imitar ao gerar notícias. Máximo 3 portais por carreira."
+        >
+          <div className="flex flex-col gap-3">
+            {customPortals.map((portal) => {
+              const toneInfo = PORTAL_TONES.find((t) => t.id === portal.tone);
+              return (
+                <div
+                  key={portal.id}
+                  className="flex items-center gap-3 rounded-2xl px-4 py-3"
+                  style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}
+                >
+                  {/* Avatar */}
+                  <div
+                    className="flex-shrink-0 rounded-full overflow-hidden flex items-center justify-center font-black cursor-pointer"
+                    style={{
+                      width: 48, height: 48,
+                      background: portal.photo ? "transparent" : "rgba(167,139,250,0.18)",
+                      border: "2.5px solid #a78bfa",
+                      color: "#a78bfa",
+                      fontSize: 18,
+                    }}
+                    onClick={() => { pendingCustomPortalIdRef.current = portal.id; customPhotoInputRef.current?.click(); }}
+                    title="Clique para alterar a foto"
+                  >
+                    {portal.photo
+                      ? <img src={portal.photo} alt={portal.name} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                      : portal.name.charAt(0).toUpperCase()
+                    }
+                  </div>
+
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white font-semibold text-sm truncate">{portal.name}</p>
+                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                      {toneInfo && (
+                        <span className="text-xs px-1.5 py-0.5 rounded-md font-semibold" style={{ background: "rgba(167,139,250,0.15)", color: "#a78bfa" }}>
+                          {toneInfo.emoji} {toneInfo.label}
+                        </span>
+                      )}
+                      <span className="text-white/30 text-xs truncate">{portal.description.slice(0, 50)}{portal.description.length > 50 ? "…" : ""}</span>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    {portal.photo && (
+                      <button
+                        onClick={() => handleClearCustomPortalPhoto(portal.id)}
+                        className="w-8 h-8 rounded-xl flex items-center justify-center transition-colors hover:bg-white/[0.08]"
+                        style={{ color: "rgba(255,255,255,0.3)", border: "1px solid rgba(255,255,255,0.08)" }}
+                        title="Remover foto"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909" />
+                        </svg>
+                      </button>
+                    )}
+                    <button
+                      onClick={() => { setEditingPortal(portal); setShowPortalModal(true); }}
+                      className="w-8 h-8 rounded-xl flex items-center justify-center transition-colors hover:bg-white/[0.08]"
+                      style={{ color: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.08)" }}
+                      title="Editar portal"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => handleDeletePortal(portal.id)}
+                      className="w-8 h-8 rounded-xl flex items-center justify-center transition-colors hover:bg-red-500/10"
+                      style={{ color: "rgba(248,113,113,0.6)", border: "1px solid rgba(248,113,113,0.15)" }}
+                      title="Deletar portal"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+
+            {customPortals.length < 3 && (
+              <button
+                onClick={() => { setEditingPortal(null); setShowPortalModal(true); }}
+                className="flex items-center justify-center gap-2 w-full py-3 rounded-2xl text-sm font-semibold transition-all duration-150 hover:opacity-90 active:scale-[0.99]"
+                style={{
+                  background: "rgba(167,139,250,0.08)",
+                  border: "1px dashed rgba(167,139,250,0.3)",
+                  color: "#a78bfa",
+                }}
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                </svg>
+                Adicionar portal ({customPortals.length}/3)
+              </button>
+            )}
+
+            {customPortals.length === 0 && (
+              <p className="text-white/25 text-xs text-center -mt-1">
+                Ex: "Baldasso Internacional", "Farid Grêmio", seu jornalista favorito…
+              </p>
+            )}
+          </div>
+        </SectionCard>
+      )}
 
       <SectionCard
         title="Fotos dos Portais"
@@ -534,6 +834,7 @@ export function SettingsPage({ onReloadClubs }: SettingsPageProps) {
 
   /* ─── Main render ─── */
   return (
+    <>
     <div className="animate-fade-up">
       {/* Page heading */}
       <div className="mb-6">
@@ -576,5 +877,14 @@ export function SettingsPage({ onReloadClubs }: SettingsPageProps) {
 
       </div>
     </div>
+
+    {showPortalModal && careerId && (
+      <CustomPortalModal
+        initial={editingPortal}
+        onSave={handleSavePortal}
+        onClose={() => { setShowPortalModal(false); setEditingPortal(null); }}
+      />
+    )}
+    </>
   );
 }

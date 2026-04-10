@@ -608,7 +608,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
               />
             )}
             {activeTab === "configuracoes" && (
-              <SettingsPage onReloadClubs={onReloadClubs} />
+              <SettingsPage onReloadClubs={onReloadClubs} careerId={career.id} />
             )}
           </div>
         )}
