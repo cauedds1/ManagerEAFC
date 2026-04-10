@@ -1,6 +1,14 @@
 import { useState, useEffect, useRef } from "react";
 import { getApiKey, setApiKey, clearClubCache } from "@/lib/clubListCache";
 import { clearAllSquadCaches } from "@/lib/squadCache";
+import {
+  getPortalPhotos,
+  setPortalPhoto,
+  clearPortalPhoto,
+  PORTAL_PHOTOS_EVENT,
+  type PortalPhotos,
+  type PortalSource,
+} from "@/lib/portalPhotosStorage";
 
 interface SettingsProps {
   isOpen: boolean;
@@ -28,6 +36,12 @@ interface ReenrichProgress {
   message: string;
 }
 
+const PORTAL_META: { source: PortalSource; label: string; color: string; bgColor: string }[] = [
+  { source: "tnt",     label: "TNT Sports",       color: "#E8002D",                       bgColor: "rgba(232,0,45,0.15)" },
+  { source: "espn",    label: "ESPN",              color: "#E67E22",                       bgColor: "rgba(230,126,34,0.15)" },
+  { source: "fanpage", label: "FanPage do Clube",  color: "var(--club-primary)",           bgColor: "rgba(var(--club-primary-rgb),0.15)" },
+];
+
 export function Settings({ isOpen, onClose, onReloadClubs }: SettingsProps) {
   const [apiKey, setApiKeyState] = useState("");
   const [showKey, setShowKey] = useState(false);
@@ -52,12 +66,18 @@ export function Settings({ isOpen, onClose, onReloadClubs }: SettingsProps) {
   const reenrichEsRef = useRef<EventSource | null>(null);
   const reenrichFinishedRef = useRef(false);
 
+  // Portal photos
+  const [portalPhotos, setPortalPhotosState] = useState<PortalPhotos>(() => getPortalPhotos());
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const pendingSourceRef = useRef<PortalSource | null>(null);
+
   useEffect(() => {
     if (isOpen) {
       setApiKeyState(getApiKey() ?? "");
       setSaved(false);
       setSyncState("idle");
       setSyncMsg("");
+      setPortalPhotosState(getPortalPhotos());
       if (setupState !== "running") {
         setSetupState("idle");
         setSetupMsg("");
@@ -65,6 +85,28 @@ export function Settings({ isOpen, onClose, onReloadClubs }: SettingsProps) {
       }
     }
   }, [isOpen]);
+
+  const handlePortalFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    const src = pendingSourceRef.current;
+    e.target.value = "";
+    pendingSourceRef.current = null;
+    if (!file || !src) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const dataUrl = ev.target?.result as string;
+      setPortalPhoto(src, dataUrl);
+      setPortalPhotosState(getPortalPhotos());
+      window.dispatchEvent(new CustomEvent(PORTAL_PHOTOS_EVENT));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleClearPortalPhoto = (src: PortalSource) => {
+    clearPortalPhoto(src);
+    setPortalPhotosState(getPortalPhotos());
+    window.dispatchEvent(new CustomEvent(PORTAL_PHOTOS_EVENT));
+  };
 
   // Cleanup SSE on unmount
   useEffect(() => () => {
@@ -447,6 +489,75 @@ export function Settings({ isOpen, onClose, onReloadClubs }: SettingsProps) {
                 Atualizar lista de clubes
               </span>
             </button>
+          </div>
+
+          <div style={{ height: "1px", background: "var(--surface-border)" }} />
+
+          {/* ── Fotos dos Portais ── */}
+          <div>
+            <p className="text-white/50 text-xs font-semibold tracking-widest uppercase mb-1">Fotos dos Portais de Notícias</p>
+            <p className="text-white/30 text-xs leading-relaxed mb-4">
+              Personalize a foto de perfil de cada portal. A imagem aparece no feed de Notícias.
+            </p>
+
+            <input
+              ref={photoInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handlePortalFileChange}
+            />
+
+            <div className="space-y-3">
+              {PORTAL_META.map(({ source, label, color, bgColor }) => {
+                const photo = portalPhotos[source];
+                const initial = label.charAt(0).toUpperCase();
+                return (
+                  <div key={source} className="flex items-center gap-3 rounded-xl px-3 py-2.5" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                    {/* Avatar preview */}
+                    <div
+                      className="flex-shrink-0 rounded-full overflow-hidden flex items-center justify-center font-black"
+                      style={{ width: 44, height: 44, background: photo ? "transparent" : bgColor, border: `2px solid ${color}`, color, fontSize: 17 }}
+                    >
+                      {photo ? (
+                        <img src={photo} alt={label} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                      ) : (
+                        initial
+                      )}
+                    </div>
+
+                    {/* Label */}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white/80 text-sm font-semibold truncate">{label}</p>
+                      <p className="text-white/30 text-xs">{photo ? "Foto personalizada" : "Usando inicial"}</p>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <button
+                        onClick={() => { pendingSourceRef.current = source; photoInputRef.current?.click(); }}
+                        className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150 hover:opacity-90 active:scale-95"
+                        style={{ background: `color-mix(in srgb, ${color} 15%, transparent)`, border: `1px solid color-mix(in srgb, ${color} 30%, transparent)`, color }}
+                      >
+                        {photo ? "Trocar" : "Adicionar"}
+                      </button>
+                      {photo && (
+                        <button
+                          onClick={() => handleClearPortalPhoto(source)}
+                          className="w-7 h-7 rounded-lg flex items-center justify-center transition-all duration-150 hover:bg-white/[0.08] active:scale-95"
+                          style={{ color: "rgba(255,255,255,0.35)" }}
+                          title="Remover foto"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
 

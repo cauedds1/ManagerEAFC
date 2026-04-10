@@ -4,6 +4,7 @@ import type { NewsPost, NewsSource, NewsCategory } from "@/types/noticias";
 import { getPosts, savePosts, addPost, generatePostId, generateCommentId } from "@/lib/noticiaStorage";
 import { seedPosts } from "@/lib/noticiaSeed";
 import { NoticiaPost } from "./NoticiaPost";
+import { getPortalPhotos, PORTAL_PHOTOS_EVENT, type PortalPhotos } from "@/lib/portalPhotosStorage";
 
 interface NoticiasViewProps {
   career: Career;
@@ -235,6 +236,13 @@ export function NoticiasView({ career }: NoticiasViewProps) {
   const [showAddModal, setShowAddModal] = useState(false);
   const [filterSource, setFilterSource] = useState<NewsSource | "all">("all");
   const [filterCategory, setFilterCategory] = useState<NewsCategory | "all">("all");
+  const [portalPhotos, setPortalPhotos] = useState<PortalPhotos>(() => getPortalPhotos());
+
+  useEffect(() => {
+    const refresh = () => setPortalPhotos(getPortalPhotos());
+    window.addEventListener(PORTAL_PHOTOS_EVENT, refresh);
+    return () => window.removeEventListener(PORTAL_PHOTOS_EVENT, refresh);
+  }, []);
 
   useEffect(() => {
     let stored = getPosts(career.id);
@@ -388,7 +396,7 @@ export function NoticiasView({ career }: NoticiasViewProps) {
           ) : (
             <div className="flex flex-col gap-4 lg:max-w-[560px]">
               {filtered.map((post) => (
-                <NoticiaPost key={post.id} post={post} />
+                <NoticiaPost key={post.id} post={post} portalPhotos={portalPhotos} />
               ))}
             </div>
           )}
