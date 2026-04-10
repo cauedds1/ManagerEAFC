@@ -154,7 +154,7 @@ export function CreateCareerWizard({
   const isPreviewStep = step === 2;
 
   return (
-    <div className="relative h-screen flex flex-col">
+    <div className="relative h-full flex flex-col overflow-hidden">
       <div
         className="flex items-center justify-between px-4 sm:px-6 py-3 flex-shrink-0"
         style={{ borderBottom: "1px solid var(--surface-border)" }}

@@ -80,12 +80,23 @@
 
   html {
     color-scheme: dark;
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
   }
 
   body {
     @apply text-foreground antialiased;
     font-family: var(--app-font-sans);
     background: var(--app-bg, #0B0714);
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+
+  #root {
+    height: 100%;
+    overflow: hidden;
   }
 
   ::-webkit-scrollbar {
