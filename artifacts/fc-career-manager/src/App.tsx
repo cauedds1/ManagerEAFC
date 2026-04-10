@@ -80,7 +80,7 @@ async function resolveTheme(club: {
 function ClubListLoader({ progress }: { progress: LoadingProgress }) {
   const pct = progress.total > 0 ? Math.round((progress.loaded / progress.total) * 100) : 0;
   return (
-    <div className="relative min-h-screen flex flex-col items-center justify-center p-8">
+    <div className="relative h-full flex flex-col items-center justify-center p-8">
       <div className="w-full max-w-sm text-center">
         <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-8 animate-float"
           style={{ background: "rgba(var(--club-primary-rgb),0.1)", border: "1px solid rgba(var(--club-primary-rgb),0.2)" }}>
@@ -107,7 +107,7 @@ function ClubListLoader({ progress }: { progress: LoadingProgress }) {
 
 function FetchErrorScreen({ onRetry, onChangeKey }: { onRetry: () => void; onChangeKey: () => void }) {
   return (
-    <div className="relative min-h-screen flex flex-col items-center justify-center p-8">
+    <div className="relative h-full flex flex-col items-center justify-center p-8">
       <div className="w-full max-w-sm text-center">
         <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-8"
           style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)" }}>
@@ -344,7 +344,7 @@ export default function App() {
   const renderView = () => {
     if (view === "init") {
       return (
-        <div className="min-h-screen flex items-center justify-center">
+        <div className="h-full flex items-center justify-center">
           <div className="w-8 h-8 rounded-full border-2 animate-spin" style={{ borderColor: "var(--club-primary)", borderTopColor: "transparent" }} />
         </div>
       );

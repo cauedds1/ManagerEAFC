@@ -234,7 +234,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
   };
 
   return (
-    <div className="relative min-h-screen flex flex-col">
+    <div className="relative h-full flex flex-col">
       <header
         className="relative w-full overflow-hidden glass"
         style={{ borderBottom: "1px solid var(--surface-border)" }}
@@ -411,7 +411,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
           />
         </div>
       ) : (
-        <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 flex-1">
+        <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 flex-1 overflow-y-auto">
           {activeTab === "painel" && (
             <PainelView
               careerId={career.id}

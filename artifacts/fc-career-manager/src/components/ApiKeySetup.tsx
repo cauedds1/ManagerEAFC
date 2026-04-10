@@ -21,7 +21,7 @@ export function ApiKeySetup({ onKeySet }: ApiKeySetupProps) {
   };
 
   return (
-    <div className="relative min-h-screen flex flex-col items-center justify-center p-6">
+    <div className="relative h-full flex flex-col items-center justify-center p-6 overflow-y-auto">
       <div className="w-full max-w-md animate-fade-up">
         <div className="text-center mb-10">
           <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl mb-6 animate-float"

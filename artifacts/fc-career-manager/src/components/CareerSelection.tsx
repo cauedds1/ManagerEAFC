@@ -232,8 +232,8 @@ export function CareerSelection({ careers, onSelectCareer, onCreateNew, onCareer
   };
 
   return (
-    <div className="relative min-h-screen flex flex-col">
-      <div className="relative pt-14 pb-10 px-5 text-center">
+    <div className="relative h-full flex flex-col">
+      <div className="relative pt-14 pb-10 px-5 text-center flex-shrink-0">
         <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-6 animate-float"
           style={{ background: "rgba(var(--club-primary-rgb),0.1)", border: "1px solid rgba(var(--club-primary-rgb),0.15)", boxShadow: "0 0 40px rgba(var(--club-primary-rgb),0.1)" }}>
           <svg className="w-8 h-8" style={{ color: "var(--club-primary)" }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
@@ -253,7 +253,7 @@ export function CareerSelection({ careers, onSelectCareer, onCreateNew, onCareer
         </p>
       </div>
 
-      <div className="flex-1 px-5 pb-10">
+      <div className="flex-1 overflow-y-auto px-5 pb-10">
         <div className="max-w-xl mx-auto">
           {localCareers.length === 0 ? (
             <EmptyState onCreate={onCreateNew} />

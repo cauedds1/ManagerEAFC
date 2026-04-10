@@ -112,7 +112,7 @@ export function ClubSelection({ allClubs, onSelectClub, selecting }: ClubSelecti
   }));
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "var(--app-bg, #0a0a0a)" }}>
+    <div className="h-full flex flex-col" style={{ background: "var(--app-bg, #0a0a0a)" }}>
       {/* Hero */}
       <div
         className="w-full py-14 px-4 text-center relative overflow-hidden"
@@ -196,7 +196,7 @@ export function ClubSelection({ allClubs, onSelectClub, selecting }: ClubSelecti
         </div>
       </div>
 
-      <div className="flex-1 px-4 py-8">
+      <div className="flex-1 overflow-y-auto px-4 py-8">
         <div className="max-w-7xl mx-auto">
           {/* Global search results */}
           {!selectedLeague && search.trim() ? (
