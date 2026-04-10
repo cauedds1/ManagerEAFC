@@ -124,10 +124,7 @@ export function ClubeView({
             </div>
 
             {statsMini === "jogadores" && (
-              <div
-                className="rounded-xl overflow-auto"
-                style={{ maxHeight: "calc(100vh - 260px)" }}
-              >
+              <div className="overflow-x-auto">
                 <PlayerStatsTable careerId={careerId} allPlayers={allPlayers} />
               </div>
             )}

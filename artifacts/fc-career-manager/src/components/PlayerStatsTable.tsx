@@ -344,7 +344,7 @@ export function PlayerStatsTable({ careerId, allPlayers }: Props) {
 
       {visibleRows.length === 0 && filter === "goleiro" ? null : (
         <table className="w-full border-collapse text-sm min-w-[700px]">
-          <thead className="sticky top-0 z-10">
+          <thead>
             {filter === "ataque" && (
               <tr style={THEAD_BG}>
                 {ALWAYS_HEADER}
