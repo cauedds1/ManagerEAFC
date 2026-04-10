@@ -15,7 +15,9 @@ export interface TransferRecord {
   salary: number;
   contractYears: number;
   role: TeamRole;
+  type?: "compra" | "venda";
   fromClub?: string;
   fromClubLogo?: string;
+  toClub?: string;
   transferredAt: number;
 }

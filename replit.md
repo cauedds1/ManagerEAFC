@@ -69,3 +69,12 @@ Brazilian Portuguese companion app for EA FC 26 career mode.
 - **Club colors**: `clubColors.ts` maps ~760 club entries (with aliases) to hex primary/secondary, covering Premier League, Championship, League One/Two, Bundesliga, 2. Bundesliga, Ligue 1, Serie A/B, LaLiga 1/2, Eredivisie, Liga Portugal, Belgian Pro League, Scottish Premiership, Turkish Süper Lig, Saudi Pro League, Argentine Liga Profesional, MLS, Swiss/Austrian/Polish/Scandinavian leagues, K League, A-League, Chinese Super League, Liga MX, Brasileirão, Romanian Liga 1, and League of Ireland. `footballApiMap.ts` maps API-Football names to FC26/internal names. `Career.clubPrimary`/`clubSecondary` persist resolved colors. `CreateCareerWizard` stores resolved colors in state to avoid race conditions on confirm.
 - **Image proxy**: `GET /api/proxy/image?url=...` proxies images from `media.api-sports.io` and `cdn.sofifa.net` to bypass CORS. Used by `extractColorsFromImage()` in `themeManager.ts` as fallback for clubs not in the color map.
 - **Settings.tsx**: Uses glass/theme CSS vars consistently with rest of app.
+
+### Financeiro (Task #13)
+- `TransferRecord` extended: `type?: "compra" | "venda"`, `toClub?: string` — backward-compatible (no type = compra).
+- `financeiroStorage.ts`: `FinanceiroSettings` (transferBudget, salaryBudget) persisted in localStorage. `computeFinancialSnapshot()` computes spent/earned/netSpend/remainingBudget/wageBill/wageRoom from transfers.
+- `FinanceiroView.tsx`: Budget editors, 4 summary KPI cards, progress bars for budget & wage usage, top earners list, record deals list.
+- `ClubeView.tsx`: Added "Financeiro 💰" sub-tab. Now accepts `career` and `transfers` props.
+- `TransferenciasView.tsx`: Added venda/compra toggle in form. "Registrar Venda" button. VENDA badge on sale cards. `toClub` field for sales. Updated club flow arrows accordingly.
+- `DiretoriaView.buildClubContext()`: Injects financial snapshot (transferBudget, remainingTransferBudget, currentWageBill, salaryBudget, wageRoom, netSpend) into context sent to all Diretoria API routes.
+- Backend `ClubContext` extended with financial fields. `buildClubContext()` string now shows budget lines. `check-triggers` fires gestor notification at 90%+ budget use; meeting trigger if budget exceeded; gestor notification if wage bill exceeded. `suggest-transfer` uses remainingTransferBudget as budget hint.

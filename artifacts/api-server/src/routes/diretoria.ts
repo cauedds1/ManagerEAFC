@@ -38,6 +38,12 @@ interface ClubContext {
   transfersCount: number;
   recentMatches: MatchCtx[];
   leaguePosition: LeagueCtx | null;
+  transferBudget?: number;
+  remainingTransferBudget?: number;
+  currentWageBill?: number;
+  salaryBudget?: number;
+  wageRoom?: number;
+  netSpend?: number;
 }
 
 interface MemberProfile {
@@ -114,9 +120,31 @@ function buildClubContext(ctx: ClubContext): string {
     else if (ws >= 4) streakAlert = `\n✅ DESTAQUE: ${ws} vitórias consecutivas — grande fase!`;
   }
 
+  const fmt = (n: number) => {
+    if (Math.abs(n) >= 1_000_000) return `€${(n / 1_000_000).toFixed(1)}M`;
+    if (Math.abs(n) >= 1_000) return `€${(n / 1_000).toFixed(0)}k`;
+    return `€${n}`;
+  };
+
+  let finStr = "";
+  if (ctx.transferBudget) {
+    const remaining = ctx.remainingTransferBudget ?? ctx.transferBudget;
+    const used = ctx.netSpend ?? 0;
+    const pct = Math.round((used / ctx.transferBudget) * 100);
+    finStr += `\nORÇAMENTO TRANSFERÊNCIAS: ${fmt(ctx.transferBudget)} total | Gasto líquido: ${fmt(used)} (${pct}%) | Restante: ${fmt(remaining)}`;
+    if (remaining < 0) finStr += " ⚠️ LIMITE EXCEDIDO";
+    else if (pct >= 80) finStr += " ⚠️ orçamento quase esgotado";
+  }
+  if (ctx.salaryBudget && ctx.currentWageBill !== undefined) {
+    const room = ctx.wageRoom ?? (ctx.salaryBudget - ctx.currentWageBill);
+    const wagePct = Math.round((ctx.currentWageBill / ctx.salaryBudget) * 100);
+    finStr += `\nFOLHA SALARIAL: ${fmt(ctx.currentWageBill * 1000)}/sem (${wagePct}% da folha) | Espaço: ${fmt(room * 1000)}/sem`;
+    if (room < 0) finStr += " ⚠️ FOLHA EXCEDIDA";
+  }
+
   return `CLUBE: ${ctx.clubName} | LIGA: ${ctx.clubLeague} (${tier}) | TEMP: ${ctx.season}
 TÉCNICO: ${ctx.coachName} | ELENCO: ${ctx.squadSize} jogadores | CONTRATAÇÕES: ${ctx.transfersCount}
-TABELA: ${leagueStr}${streakAlert}
+TABELA: ${leagueStr}${streakAlert}${finStr}
 ÚLTIMAS PARTIDAS:
 ${matchStr}`;
 }
@@ -447,11 +475,38 @@ router.post("/diretoria/check-triggers", async (req, res) => {
       }
     }
 
-    if (context.transfersCount >= 5 && gestor) {
+    if (context.transfersCount >= 5 && gestor && !notifications.find((n) => n.memberId === gestor.id)) {
       notifications.push({
         memberId: gestor.id,
         preview: "Preciso revisar o orçamento com você — as contratações estão pesando.",
       });
+    }
+
+    if (context.transferBudget && context.remainingTransferBudget !== undefined) {
+      const pct = ((context.transferBudget - context.remainingTransferBudget) / context.transferBudget) * 100;
+      if (pct >= 90 && gestor && !notifications.find((n) => n.memberId === gestor.id)) {
+        notifications.push({
+          memberId: gestor.id,
+          preview: context.remainingTransferBudget < 0
+            ? "Ultrapassamos o orçamento de transferências! Precisamos conversar urgente."
+            : `Já usamos ${Math.round(pct)}% do orçamento. Temos margem mínima para mais reforços.`,
+        });
+      }
+      if (context.remainingTransferBudget < 0 && !meetingTrigger && presidente) {
+        meetingTrigger = {
+          reason: "Orçamento de transferências excedido — situação financeira crítica",
+          severity: "high",
+        };
+      }
+    }
+
+    if (context.salaryBudget && context.wageRoom !== undefined && context.wageRoom < 0) {
+      if (gestor && !notifications.find((n) => n.memberId === gestor.id)) {
+        notifications.push({
+          memberId: gestor.id,
+          preview: "A folha salarial excedeu o limite do clube. Precisamos agir!",
+        });
+      }
     }
 
     if (playerPerformance && playerPerformance.length > 0) {
@@ -564,9 +619,19 @@ router.post("/diretoria/suggest-transfer", async (req, res) => {
 
   const systemPrompt = `Você é um diretor de futebol experiente especializado em mercado da bola. Você conhece profundamente o futebol mundial e brasileiro, e faz indicações realistas de reforços baseadas no perfil financeiro e competitivo do clube.`;
 
+  const fmtBudget = (n: number) => {
+    if (n >= 1_000_000) return `€${(n / 1_000_000).toFixed(1)}M`;
+    if (n >= 1_000) return `€${(n / 1_000).toFixed(0)}k`;
+    return `€${n}`;
+  };
+  const budgetFromContext = context.remainingTransferBudget != null && context.remainingTransferBudget > 0
+    ? fmtBudget(context.remainingTransferBudget)
+    : null;
   const budgetLine = estimatedBudget?.trim()
     ? `Orçamento disponível para a contratação: ${estimatedBudget}`
-    : `Orçamento: não informado — calibre ao nível ${tier} (sem grandes estrelas globais)`;
+    : budgetFromContext
+      ? `Orçamento restante do clube para transferências: ${budgetFromContext} — respeite esse limite`
+      : `Orçamento: não informado — calibre ao nível ${tier} (sem grandes estrelas globais)`;
 
   const userPrompt = `Clube: ${context.clubName} — ${context.clubLeague} (${tier})
 Posição que precisa de reforço: ${position}

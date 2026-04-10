@@ -32,6 +32,7 @@ import { getLeaguePosition } from "@/lib/leagueStorage";
 import { getOpenAIKey } from "@/lib/openaiKeyStorage";
 import type { SquadPlayer } from "@/lib/squadCache";
 import { buildPlayerPerformanceContext } from "@/lib/playerContext";
+import { getFinanceiroSettings, computeFinancialSnapshot } from "@/lib/financeiroStorage";
 
 interface DiretoriaViewProps {
   career: Career;
@@ -475,6 +476,8 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
       tournament: m.tournament,
       date: m.date,
     }));
+    const finSettings = getFinanceiroSettings(career.id);
+    const finSnapshot = computeFinancialSnapshot(finSettings, transfers);
     return {
       clubName: career.clubName,
       clubLeague: career.clubLeague,
@@ -484,6 +487,12 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
       transfersCount: transfers.length,
       recentMatches,
       leaguePosition: leaguePos,
+      transferBudget: finSettings.transferBudget > 0 ? finSettings.transferBudget : undefined,
+      remainingTransferBudget: finSettings.transferBudget > 0 ? finSnapshot.remainingTransferBudget : undefined,
+      currentWageBill: finSnapshot.currentWageBill > 0 ? finSnapshot.currentWageBill : undefined,
+      salaryBudget: finSettings.salaryBudget > 0 ? finSettings.salaryBudget : undefined,
+      wageRoom: finSettings.salaryBudget > 0 ? finSnapshot.wageRoom : undefined,
+      netSpend: finSnapshot.netSpend > 0 ? finSnapshot.netSpend : undefined,
     };
   }, [career, matches, transfers, squadSize]);
 

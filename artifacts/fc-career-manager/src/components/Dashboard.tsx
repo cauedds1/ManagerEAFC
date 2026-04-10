@@ -384,10 +384,12 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
         <div className="w-full flex-1 flex flex-col min-h-0">
           <ClubeView
             careerId={career.id}
+            career={career}
             squad={squad}
             squadLoading={squadLoading}
             squadError={squadError}
             allPlayers={allPlayers}
+            transfers={transfers}
             onRefresh={handleRefreshSquad}
             onOpenSettings={() => setActiveTab("configuracoes")}
             onOverridesUpdated={refreshOverrides}

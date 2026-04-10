@@ -1,25 +1,31 @@
 import { useState } from "react";
 import type { SquadResult, SquadPlayer } from "@/lib/squadCache";
+import type { TransferRecord } from "@/types/transfer";
+import type { Career } from "@/types/career";
 import { ElencoView } from "./ElencoView";
 import { PlayerStatsTable } from "./PlayerStatsTable";
 import { LesoesView } from "./LesoesView";
 import { SequenciasView } from "./SequenciasView";
+import { FinanceiroView } from "./FinanceiroView";
 
-type ClubeSubTab = "elenco" | "estatisticas" | "lesoes" | "sequencias";
+type ClubeSubTab = "elenco" | "estatisticas" | "lesoes" | "sequencias" | "financeiro";
 
 const SUB_TABS: { id: ClubeSubTab; label: string; icon: string }[] = [
   { id: "elenco",       label: "Elenco",       icon: "👥" },
   { id: "estatisticas", label: "Estatísticas",  icon: "📊" },
   { id: "lesoes",       label: "Lesões",        icon: "🤕" },
   { id: "sequencias",   label: "Sequências",    icon: "🔥" },
+  { id: "financeiro",   label: "Financeiro",    icon: "💰" },
 ];
 
 interface ClubeViewProps {
   careerId: string;
+  career: Career;
   squad: SquadResult | null;
   squadLoading: boolean;
   squadError: boolean;
   allPlayers: SquadPlayer[];
+  transfers: TransferRecord[];
   onRefresh: () => void;
   onOpenSettings: () => void;
   onOverridesUpdated?: () => void;
@@ -28,10 +34,12 @@ interface ClubeViewProps {
 
 export function ClubeView({
   careerId,
+  career,
   squad,
   squadLoading,
   squadError,
   allPlayers,
+  transfers,
   onRefresh,
   onOpenSettings,
   onOverridesUpdated,
@@ -88,6 +96,15 @@ export function ClubeView({
         )}
         {sub === "sequencias" && (
           <SequenciasView careerId={careerId} />
+        )}
+        {sub === "financeiro" && (
+          <div className="p-4 sm:p-6">
+            <FinanceiroView
+              careerId={careerId}
+              transfers={transfers}
+              season={career.season}
+            />
+          </div>
         )}
       </div>
     </div>

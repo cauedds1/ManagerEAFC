@@ -134,7 +134,6 @@ function PlayerAutocomplete({
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const apiKey = getApiKey();
 
-  // Local squad matches — instant
   const localResults = useMemo<PlayerSuggestion[]>(() => {
     const q = value.trim().toLowerCase();
     if (!q || q.length < 2) return [];
@@ -144,7 +143,6 @@ function PlayerAutocomplete({
       .map((p) => ({ id: p.id, name: p.name, photo: p.photo, age: p.age, nationality: "", position: p.positionPtBr }));
   }, [value, allPlayers]);
 
-  // Backend search (DB-cached + optional API-Football fallback)
   const fetchApi = useCallback(async (q: string) => {
     if (q.trim().length < 2) { setApiResults([]); return; }
     setLoading(true);
@@ -169,7 +167,7 @@ function PlayerAutocomplete({
           }));
         setApiResults(players.slice(0, 8));
       }
-    } catch { /* ignore */ }
+    } catch { }
     setLoading(false);
   }, [apiKey, allPlayers]);
 
@@ -265,10 +263,12 @@ function ClubAutocomplete({
   value,
   onChange,
   onSelectLogo,
+  placeholder,
 }: {
   value: string;
   onChange: (v: string) => void;
   onSelectLogo: (logo: string | null) => void;
+  placeholder?: string;
 }) {
   const [open, setOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -292,7 +292,7 @@ function ClubAutocomplete({
         onChange={(e) => { onChange(e.target.value); setOpen(true); }}
         onFocus={() => setOpen(true)}
         onBlur={() => setTimeout(() => setOpen(false), 180)}
-        placeholder="Ex: Manchester City (vazio = Jogador Livre)"
+        placeholder={placeholder ?? "Ex: Manchester City (vazio = Jogador Livre)"}
         className="w-full px-3 py-2.5 rounded-xl text-white text-sm focus:outline-none glass placeholder:text-white/20"
       />
       {open && suggestions.length > 0 && (
@@ -332,7 +332,8 @@ function TransferCard({
 }) {
   const pos = POS_STYLE[transfer.playerPositionPtBr] ?? POS_STYLE.MC;
   const role = ROLE_COLORS[transfer.role];
-  const isFree = !transfer.fromClub;
+  const isVenda = transfer.type === "venda";
+  const isFree = !transfer.fromClub && !transfer.toClub;
 
   return (
     <div className="flex items-center gap-4 p-4 rounded-2xl transition-all duration-200 glass glass-hover">
@@ -347,13 +348,21 @@ function TransferCard({
           <span className="text-xs font-semibold px-2 py-0.5 rounded-md flex-shrink-0" style={{ background: role.bg, color: role.color }}>
             {ROLE_LABELS[transfer.role]}
           </span>
+          {isVenda && (
+            <span
+              className="text-[10px] font-black px-2 py-0.5 rounded-md flex-shrink-0 tracking-wider"
+              style={{ background: "rgba(251,191,36,0.15)", color: "#fbbf24", border: "1px solid rgba(251,191,36,0.25)" }}
+            >
+              VENDA
+            </span>
+          )}
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-white/30 text-xs">{transfer.playerAge} anos</span>
           <span className="text-white/20 text-xs">·</span>
           <span className="text-white/25 text-xs">{transfer.season}</span>
-          {transfer.contractYears > 0 && (
+          {transfer.contractYears > 0 && !isVenda && (
             <>
               <span className="text-white/20 text-xs">·</span>
               <span className="text-white/25 text-xs">{transfer.contractYears}A</span>
@@ -361,9 +370,22 @@ function TransferCard({
           )}
         </div>
 
-        {/* Club flow */}
         <div className="flex items-center gap-2 mt-2">
-          {isFree ? (
+          {isVenda ? (
+            transfer.toClub ? (
+              <>
+                <ClubBadge src={clubLogoUrl} name={clubName} size={20} />
+                <span className="text-white/30 text-xs truncate max-w-24">{clubName}</span>
+                <svg className="w-3.5 h-3.5 text-yellow-400/40 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5-5 5M6 12h12" />
+                </svg>
+                <ClubBadge src={null} name={transfer.toClub} size={20} />
+                <span className="text-white/30 text-xs truncate max-w-24">{transfer.toClub}</span>
+              </>
+            ) : (
+              <span className="text-white/25 text-xs italic">Saída do clube</span>
+            )
+          ) : isFree ? (
             <span className="text-white/25 text-xs italic">Jogador Livre</span>
           ) : (
             <>
@@ -381,7 +403,7 @@ function TransferCard({
 
       <div className="text-right flex-shrink-0">
         <p className="text-white font-black text-base tabular-nums">{formatFee(transfer.fee)}</p>
-        {transfer.salary > 0 && (
+        {transfer.salary > 0 && !isVenda && (
           <p className="text-white/35 text-xs tabular-nums">€{transfer.salary}k/sem</p>
         )}
         <p className="text-white/20 text-xs mt-0.5">{formatDate(transfer.transferredAt)}</p>
@@ -391,6 +413,7 @@ function TransferCard({
 }
 
 interface FormData {
+  transferType: "compra" | "venda";
   playerName: string;
   playerPositionPtBr: PositionPtBr;
   playerAge: string;
@@ -402,9 +425,11 @@ interface FormData {
   role: TeamRole;
   fromClub: string;
   fromClubLogo: string;
+  toClub: string;
 }
 
 const DEFAULT_FORM: FormData = {
+  transferType: "compra",
   playerName: "",
   playerPositionPtBr: "CA",
   playerAge: "",
@@ -416,6 +441,7 @@ const DEFAULT_FORM: FormData = {
   role: "importante",
   fromClub: "",
   fromClubLogo: "",
+  toClub: "",
 };
 
 interface TransferenciasViewProps {
@@ -442,6 +468,8 @@ export function TransferenciasView({
   const [submitting, setSubmitting] = useState(false);
 
   const sortedTransfers = [...transfers].sort((a, b) => b.transferredAt - a.transferredAt);
+  const comprasCount = transfers.filter((t) => !t.type || t.type === "compra").length;
+  const vendasCount = transfers.filter((t) => t.type === "venda").length;
 
   const set = (field: keyof FormData, value: string) =>
     setForm((f) => ({ ...f, [field]: value }));
@@ -455,8 +483,11 @@ export function TransferenciasView({
     if (!valid || submitting) return;
     setSubmitting(true);
 
+    const isVenda = form.transferType === "venda";
     const playerId = generatePlayerId();
-    setPlayerStats(careerId, playerId, defaultStats(playerId));
+    if (!isVenda) {
+      setPlayerStats(careerId, playerId, defaultStats(playerId));
+    }
 
     const transfer: TransferRecord = {
       id: generateTransferId(),
@@ -469,11 +500,13 @@ export function TransferenciasView({
       playerAge: parseInt(form.playerAge, 10) || 0,
       shirtNumber: form.shirtNumber.trim() ? parseInt(form.shirtNumber, 10) : undefined,
       fee: parseFeeInput(form.fee),
-      salary: parseFloat(form.salary) || 0,
-      contractYears: parseInt(form.contractYears, 10) || 1,
+      salary: isVenda ? 0 : (parseFloat(form.salary) || 0),
+      contractYears: isVenda ? 0 : (parseInt(form.contractYears, 10) || 1),
       role: form.role,
-      fromClub: form.fromClub.trim() || undefined,
-      fromClubLogo: form.fromClubLogo.trim() || undefined,
+      type: form.transferType,
+      fromClub: !isVenda ? (form.fromClub.trim() || undefined) : undefined,
+      fromClubLogo: !isVenda ? (form.fromClubLogo.trim() || undefined) : undefined,
+      toClub: isVenda ? (form.toClub.trim() || undefined) : undefined,
       transferredAt: Date.now(),
     };
 
@@ -483,33 +516,59 @@ export function TransferenciasView({
     setSubmitting(false);
   };
 
+  const openForm = (type: "compra" | "venda") => {
+    setForm({ ...DEFAULT_FORM, transferType: type });
+    setShowForm(true);
+  };
+
   const inputClass = "w-full px-3 py-2.5 rounded-xl text-white text-sm focus:outline-none glass placeholder:text-white/20";
   const labelClass = "text-white/40 text-xs font-medium mb-1 block";
 
+  const isVendaForm = form.transferType === "venda";
+
   return (
     <div className="animate-fade-up space-y-5">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
           <h2 className="text-white/35 text-xs font-bold tracking-widest uppercase">Transferências</h2>
-          {sortedTransfers.length > 0 && (
+          {comprasCount > 0 && (
             <span
               className="text-xs font-bold px-2.5 py-0.5 rounded-full tabular-nums"
               style={{ background: "rgba(var(--club-primary-rgb),0.15)", color: "var(--club-primary)" }}
             >
-              {sortedTransfers.length}
+              {comprasCount} entrada{comprasCount !== 1 ? "s" : ""}
+            </span>
+          )}
+          {vendasCount > 0 && (
+            <span
+              className="text-xs font-bold px-2.5 py-0.5 rounded-full tabular-nums"
+              style={{ background: "rgba(251,191,36,0.12)", color: "#fbbf24" }}
+            >
+              {vendasCount} saída{vendasCount !== 1 ? "s" : ""}
             </span>
           )}
         </div>
-        <button
-          onClick={() => { setForm(DEFAULT_FORM); setShowForm(true); }}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-white transition-all duration-200 hover:opacity-90 active:scale-95"
-          style={{ background: "var(--club-gradient)" }}
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-          </svg>
-          Registrar Contratação
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => openForm("venda")}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-white/80 transition-all duration-200 hover:opacity-90 active:scale-95 glass glass-hover"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7" />
+            </svg>
+            Registrar Venda
+          </button>
+          <button
+            onClick={() => openForm("compra")}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-white transition-all duration-200 hover:opacity-90 active:scale-95"
+            style={{ background: "var(--club-gradient)" }}
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+            Registrar Contratação
+          </button>
+        </div>
       </div>
 
       {sortedTransfers.length === 0 ? (
@@ -520,11 +579,11 @@ export function TransferenciasView({
             </svg>
           </div>
           <div>
-            <p className="text-white/50 font-semibold text-base">Nenhuma contratação registrada</p>
-            <p className="text-white/25 text-sm mt-1">Registre as contratações que você fez no EA FC e elas aparecerão no elenco automaticamente.</p>
+            <p className="text-white/50 font-semibold text-base">Nenhuma movimentação registrada</p>
+            <p className="text-white/25 text-sm mt-1">Registre contratações e vendas do EA FC para acompanhar o mercado do seu clube.</p>
           </div>
           <button
-            onClick={() => { setForm(DEFAULT_FORM); setShowForm(true); }}
+            onClick={() => openForm("compra")}
             className="px-6 py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90"
             style={{ background: "var(--club-gradient)" }}
           >
@@ -555,13 +614,14 @@ export function TransferenciasView({
               maxHeight: "90vh",
             }}
           >
-            {/* Header */}
             <div
               className="flex items-center justify-between px-6 py-4 flex-shrink-0"
               style={{ borderBottom: "1px solid var(--surface-border)" }}
             >
               <div>
-                <h3 className="text-white font-black text-lg">Registrar Contratação</h3>
+                <h3 className="text-white font-black text-lg">
+                  {isVendaForm ? "Registrar Venda" : "Registrar Contratação"}
+                </h3>
                 <p className="text-white/35 text-xs mt-0.5">Temporada {season}</p>
               </div>
               <button
@@ -574,8 +634,31 @@ export function TransferenciasView({
               </button>
             </div>
 
+            <div className="flex gap-2 px-6 pt-4 flex-shrink-0">
+              {(["compra", "venda"] as const).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => set("transferType", t)}
+                  className="flex-1 py-2 rounded-xl text-sm font-semibold transition-all"
+                  style={{
+                    background: form.transferType === t
+                      ? t === "compra" ? "rgba(var(--club-primary-rgb),0.2)" : "rgba(251,191,36,0.15)"
+                      : "rgba(255,255,255,0.05)",
+                    color: form.transferType === t
+                      ? t === "compra" ? "var(--club-primary)" : "#fbbf24"
+                      : "rgba(255,255,255,0.4)",
+                    border: `1px solid ${form.transferType === t
+                      ? t === "compra" ? "rgba(var(--club-primary-rgb),0.4)" : "rgba(251,191,36,0.35)"
+                      : "rgba(255,255,255,0.08)"}`,
+                  }}
+                >
+                  {t === "compra" ? "Contratação" : "Venda"}
+                </button>
+              ))}
+            </div>
+
             <div className="overflow-y-auto p-6 flex flex-col gap-5">
-              {/* Player search */}
               <div>
                 <label className={labelClass}>Nome do jogador *</label>
                 <PlayerAutocomplete
@@ -621,74 +704,97 @@ export function TransferenciasView({
                     max={50}
                   />
                 </div>
-                <div>
-                  <label className={labelClass}>Número da camisa</label>
-                  <input
-                    type="number"
-                    className={inputClass}
-                    value={form.shirtNumber}
-                    onChange={(e) => set("shirtNumber", e.target.value)}
-                    placeholder="Ex: 10"
-                    min={1}
-                    max={99}
-                  />
-                </div>
-                <div>
-                  <label className={labelClass}>Contrato (anos)</label>
-                  <select
-                    className={`${inputClass} cursor-pointer`}
-                    style={{ appearance: "none" }}
-                    value={form.contractYears}
-                    onChange={(e) => set("contractYears", e.target.value)}
-                  >
-                    {[1,2,3,4,5,6,7].map((y) => (
-                      <option key={y} value={y} style={{ background: "#1a1030" }}>{y} {y === 1 ? "ano" : "anos"}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="sm:col-span-2">
-                  <label className={labelClass}>Clube de origem</label>
-                  <ClubAutocomplete
-                    value={form.fromClub}
-                    onChange={(v) => set("fromClub", v)}
-                    onSelectLogo={(logo) => set("fromClubLogo", logo ?? "")}
-                  />
-                  <p className="text-white/20 text-xs mt-1">Deixe vazio se for Jogador Livre</p>
-                </div>
+
+                {!isVendaForm && (
+                  <>
+                    <div>
+                      <label className={labelClass}>Número da camisa</label>
+                      <input
+                        type="number"
+                        className={inputClass}
+                        value={form.shirtNumber}
+                        onChange={(e) => set("shirtNumber", e.target.value)}
+                        placeholder="Ex: 10"
+                        min={1}
+                        max={99}
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClass}>Contrato (anos)</label>
+                      <select
+                        className={`${inputClass} cursor-pointer`}
+                        style={{ appearance: "none" }}
+                        value={form.contractYears}
+                        onChange={(e) => set("contractYears", e.target.value)}
+                      >
+                        {[1,2,3,4,5,6,7].map((y) => (
+                          <option key={y} value={y} style={{ background: "#1a1030" }}>{y} {y === 1 ? "ano" : "anos"}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className={labelClass}>Clube de origem</label>
+                      <ClubAutocomplete
+                        value={form.fromClub}
+                        onChange={(v) => set("fromClub", v)}
+                        onSelectLogo={(logo) => set("fromClubLogo", logo ?? "")}
+                        placeholder="Ex: Manchester City (vazio = Jogador Livre)"
+                      />
+                      <p className="text-white/20 text-xs mt-1">Deixe vazio se for Jogador Livre</p>
+                    </div>
+                  </>
+                )}
+
+                {isVendaForm && (
+                  <div className="sm:col-span-2">
+                    <label className={labelClass}>Clube de destino</label>
+                    <ClubAutocomplete
+                      value={form.toClub}
+                      onChange={(v) => set("toClub", v)}
+                      onSelectLogo={() => {}}
+                      placeholder="Ex: Real Madrid (vazio = destino desconhecido)"
+                    />
+                    <p className="text-white/20 text-xs mt-1">Deixe vazio se o destino não for definido</p>
+                  </div>
+                )}
               </div>
 
-              <div>
-                <label className={labelClass}>Função no elenco</label>
-                <div className="flex flex-wrap gap-2">
-                  {ALL_ROLES.map((r) => {
-                    const c = ROLE_COLORS[r];
-                    const active = form.role === r;
-                    return (
-                      <button
-                        key={r}
-                        type="button"
-                        onClick={() => set("role", r)}
-                        className="px-3.5 py-2 rounded-xl text-xs font-bold transition-all duration-150"
-                        style={{
-                          background: active ? c.bg : "rgba(255,255,255,0.05)",
-                          color: active ? c.color : "rgba(255,255,255,0.4)",
-                          border: active ? `1px solid ${c.color}40` : "1px solid rgba(255,255,255,0.08)",
-                          transform: active ? "scale(1.04)" : "scale(1)",
-                        }}
-                      >
-                        {ROLE_LABELS[r]}
-                      </button>
-                    );
-                  })}
+              {!isVendaForm && (
+                <div>
+                  <label className={labelClass}>Função no elenco</label>
+                  <div className="flex flex-wrap gap-2">
+                    {ALL_ROLES.map((r) => {
+                      const c = ROLE_COLORS[r];
+                      const active = form.role === r;
+                      return (
+                        <button
+                          key={r}
+                          type="button"
+                          onClick={() => set("role", r)}
+                          className="px-3.5 py-2 rounded-xl text-xs font-bold transition-all duration-150"
+                          style={{
+                            background: active ? c.bg : "rgba(255,255,255,0.05)",
+                            color: active ? c.color : "rgba(255,255,255,0.4)",
+                            border: active ? `1px solid ${c.color}40` : "1px solid rgba(255,255,255,0.08)",
+                            transform: active ? "scale(1.04)" : "scale(1)",
+                          }}
+                        >
+                          {ROLE_LABELS[r]}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div
                 className="p-4 rounded-2xl flex flex-col gap-4"
                 style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
               >
-                <p className="text-white/35 text-xs font-semibold uppercase tracking-wider">Valores financeiros</p>
-                <div className="grid grid-cols-2 gap-4">
+                <p className="text-white/35 text-xs font-semibold uppercase tracking-wider">
+                  {isVendaForm ? "Valor da venda" : "Valores financeiros"}
+                </p>
+                <div className={`grid gap-4 ${isVendaForm ? "grid-cols-1" : "grid-cols-2"}`}>
                   <div>
                     <label className={labelClass}>Taxa de transferência (€)</label>
                     <input
@@ -713,17 +819,19 @@ export function TransferenciasView({
                       placeholder="Ex: 15.000.000"
                     />
                   </div>
-                  <div>
-                    <label className={labelClass}>Salário (€k / semana)</label>
-                    <input
-                      type="number"
-                      className={inputClass}
-                      value={form.salary}
-                      onChange={(e) => set("salary", e.target.value)}
-                      placeholder="Ex: 120"
-                      min={0}
-                    />
-                  </div>
+                  {!isVendaForm && (
+                    <div>
+                      <label className={labelClass}>Salário (€k / semana)</label>
+                      <input
+                        type="number"
+                        className={inputClass}
+                        value={form.salary}
+                        onChange={(e) => set("salary", e.target.value)}
+                        placeholder="Ex: 120"
+                        min={0}
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -742,9 +850,16 @@ export function TransferenciasView({
                 onClick={handleSubmit}
                 disabled={!valid || submitting}
                 className="flex-2 py-3 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
-                style={{ background: "var(--club-gradient)", flex: 2 }}
+                style={{
+                  background: isVendaForm ? "rgba(251,191,36,0.2)" : "var(--club-gradient)",
+                  border: isVendaForm ? "1px solid rgba(251,191,36,0.35)" : "none",
+                  color: isVendaForm ? "#fbbf24" : "white",
+                  flex: 2,
+                }}
               >
-                {submitting ? "Registrando..." : "Confirmar Contratação"}
+                {submitting
+                  ? "Registrando..."
+                  : isVendaForm ? "Confirmar Venda" : "Confirmar Contratação"}
               </button>
             </div>
           </div>
