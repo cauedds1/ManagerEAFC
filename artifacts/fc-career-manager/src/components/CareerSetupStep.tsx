@@ -192,7 +192,7 @@ export function CareerSetupStep({
           <div className="flex-1">
             <h3 className="text-white font-bold text-sm">Projeto de Carreira</h3>
             <p className="text-white/35 text-xs mt-0.5 leading-relaxed">
-              Seu objetivo interno com o clube. A diretoria vai cobrar e reagir com base neste projeto — os torcedores não sabem.
+              O projeto que o clube apresenta ao técnico. A diretoria vai cobrar e reagir com base neste projeto — os torcedores não sabem.
             </p>
           </div>
         </div>
@@ -200,7 +200,7 @@ export function CareerSetupStep({
         <textarea
           value={projeto}
           onChange={(e) => setProjeto(e.target.value)}
-          placeholder="Descreva seu objetivo nesta carreira...&#10;Ex: Meu objetivo é reconstruir o elenco com jovens talentos e conquistar a Premier League em 4 temporadas."
+          placeholder="Descreva o projeto do clube...&#10;Ex: Nosso objetivo é reconstruir o elenco com jovens talentos e conquistar a Premier League em 4 temporadas."
           rows={3}
           className="w-full rounded-xl px-3 py-2.5 text-sm text-white resize-none transition-all outline-none placeholder-white/20"
           style={{

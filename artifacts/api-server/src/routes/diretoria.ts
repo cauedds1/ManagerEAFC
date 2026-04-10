@@ -834,7 +834,9 @@ REGRAS OBRIGATÓRIAS baseadas no prestígio:
 - Clube pequeno ou em divisão inferior: objetivos de subir de divisão, consolidar, desenvolver jovens.
 - Se o clube está em uma divisão abaixo do esperado para seu histórico: foco em promoção imediata + reerguer o clube.
 
-Escreva 1 a 2 frases em português brasileiro, primeira pessoa, concisas e específicas para o ${clubName}.
+Escreva 1 a 2 frases em português brasileiro, primeira pessoa do plural (perspectiva do CLUBE — use "nosso", "queremos", "planejamos", "buscamos"), concisas e específicas para o ${clubName}.
+O texto deve soar como se fosse a diretoria/clube apresentando o projeto ao técnico, não o técnico falando de si mesmo.
+Exemplos de início: "Nosso objetivo é...", "Queremos...", "A missão do ${clubName} é...".
 Responda APENAS com o texto do projeto, sem JSON, sem aspas.`;
 
   try {
