@@ -28,6 +28,7 @@ interface PartidasViewProps {
   matches: MatchRecord[];
   allPlayers: SquadPlayer[];
   onMatchAdded: (match: MatchRecord) => void;
+  competitions?: string[];
 }
 
 type Filter = "todos" | MatchResult;
@@ -282,7 +283,7 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
   );
 }
 
-export function PartidasView({ careerId, season, clubName, clubLogoUrl, matches, allPlayers, onMatchAdded }: PartidasViewProps) {
+export function PartidasView({ careerId, season, clubName, clubLogoUrl, matches, allPlayers, onMatchAdded, competitions }: PartidasViewProps) {
   const [filter, setFilter] = useState<Filter>("todos");
   const [modalOpen, setModalOpen] = useState(false);
 
@@ -378,6 +379,7 @@ export function PartidasView({ careerId, season, clubName, clubLogoUrl, matches,
           allPlayers={allPlayers}
           onMatchAdded={onMatchAdded}
           onClose={() => setModalOpen(false)}
+          competitions={competitions}
         />
       )}
     </div>

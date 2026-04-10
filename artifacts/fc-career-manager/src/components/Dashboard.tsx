@@ -432,6 +432,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
               matches={matches}
               allPlayers={allPlayers}
               onMatchAdded={handleMatchAdded}
+              competitions={career.competitions}
             />
           )}
           {activeTab === "transferencias" && (

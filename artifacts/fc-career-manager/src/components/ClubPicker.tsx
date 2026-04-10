@@ -215,7 +215,7 @@ export function ClubPicker({ allClubs, onSelectClub, initialLeague }: ClubPicker
     <div className="flex flex-col h-full animate-fade-up">
       <div className="text-center mb-4">
         <p className="text-xs font-bold tracking-widest uppercase mb-1.5" style={{ color: "var(--club-primary)" }}>
-          Etapa 2 de 3
+          Etapa 2 de 4
         </p>
         <h2 className="text-2xl sm:text-3xl font-black text-white mb-1">
           {selectedLeague

@@ -28,6 +28,7 @@ interface Props {
   allPlayers: SquadPlayer[];
   onMatchAdded: (match: MatchRecord) => void;
   onClose: () => void;
+  competitions?: string[];
 }
 
 interface MatchDraft {
@@ -800,6 +801,7 @@ export function RegistrarPartidaModal({
   allPlayers,
   onMatchAdded,
   onClose,
+  competitions,
 }: Props) {
   const [saving, setSaving] = useState(false);
   const [pickerMode, setPickerMode] = useState<"starter" | "sub" | null>(null);
@@ -1108,7 +1110,7 @@ export function RegistrarPartidaModal({
                 style={{ border: "1px solid rgba(255,255,255,0.08)" }}
               />
               <div className="flex flex-wrap gap-1">
-                {TOURNAMENT_CHIPS.map((t) => (
+                {(competitions && competitions.length > 0 ? competitions : TOURNAMENT_CHIPS).map((t) => (
                   <button
                     key={t}
                     type="button"

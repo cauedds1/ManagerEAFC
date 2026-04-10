@@ -493,6 +493,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
       salaryBudget: finSettings.salaryBudget > 0 ? finSettings.salaryBudget : undefined,
       wageRoom: finSettings.salaryBudget > 0 ? finSnapshot.wageRoom : undefined,
       netSpend: finSettings.transferBudget > 0 ? finSnapshot.netSpend : undefined,
+      projeto: career.projeto,
     };
   }, [career, matches, transfers, squadSize]);
 

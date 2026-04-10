@@ -50,7 +50,7 @@ export function CoachSetup({ onNext, initial }: CoachSetupProps) {
     <div className="flex flex-col h-full animate-fade-up">
       <div className="text-center mb-6">
         <p className="text-xs font-bold tracking-widest uppercase mb-2" style={{ color: "var(--club-primary)" }}>
-          Etapa 1 de 3
+          Etapa 1 de 4
         </p>
         <h2 className="text-2xl sm:text-3xl font-black text-white mb-1">Seu Técnico</h2>
         <p className="text-white/40 text-sm">Crie o perfil do treinador que vai comandar o clube</p>

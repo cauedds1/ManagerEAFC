@@ -44,6 +44,7 @@ interface ClubContext {
   salaryBudget?: number;
   wageRoom?: number;
   netSpend?: number;
+  projeto?: string;
 }
 
 interface MemberProfile {
@@ -143,9 +144,13 @@ function buildClubContext(ctx: ClubContext): string {
     if (room < 0) finStr += " ⚠️ FOLHA EXCEDIDA";
   }
 
+  const projetoLine = ctx.projeto?.trim()
+    ? `\nPROJETO DO TÉCNICO: "${ctx.projeto}" — use esse contexto para avaliar o desempenho e cobranças internas.`
+    : "";
+
   return `CLUBE: ${ctx.clubName} | LIGA: ${ctx.clubLeague} (${tier}) | TEMP: ${ctx.season}
 TÉCNICO: ${ctx.coachName} | ELENCO: ${ctx.squadSize} jogadores | CONTRATAÇÕES: ${ctx.transfersCount}
-TABELA: ${leagueStr}${streakAlert}${finStr}
+TABELA: ${leagueStr}${streakAlert}${finStr}${projetoLine}
 ÚLTIMAS PARTIDAS:
 ${matchStr}`;
 }
@@ -774,6 +779,76 @@ Responda APENAS com JSON puro (sem markdown):
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     res.status(500).json({ error: "Erro ao sugerir reforços", details: msg });
+  }
+});
+
+router.post("/club-info", async (req, res) => {
+  const { clubName, clubLeague, clubCountry } = req.body as {
+    clubName: string;
+    clubLeague?: string;
+    clubCountry?: string;
+  };
+
+  if (!clubName?.trim()) {
+    res.status(400).json({ error: "clubName é obrigatório" });
+    return;
+  }
+
+  const userKey = (req.headers["x-openai-key"] as string | undefined) ?? "";
+  const { client, usingUserKey } = getClient(userKey);
+
+  const userPrompt = `Forneça informações sobre o clube: ${clubName}${clubLeague ? ` (${clubLeague})` : ""}${clubCountry ? `, ${clubCountry}` : ""}.
+
+Responda APENAS com JSON válido (sem markdown) no formato:
+{
+  "description": "Breve resumo factual do clube em 2-3 frases em português brasileiro. Mencione cidade de origem, fundação e identidade.",
+  "titles": [
+    { "name": "Nome da Competição", "count": 0 }
+  ]
+}
+
+REGRAS:
+- Em titles, inclua APENAS competições com count >= 1 (títulos efetivamente conquistados)
+- Use nomes em português quando possível (ex: "Liga dos Campeões", "Copa da FA")
+- Seja factual e preciso — se não souber com certeza, omita
+- description: 2-3 frases curtas e informativas em pt-BR`;
+
+  try {
+    const params = usingUserKey
+      ? { model: "gpt-4o-mini" as const, max_tokens: 400 as const }
+      : { model: "gpt-5.2" as const, max_completion_tokens: 400 as const };
+
+    const completion = await client.chat.completions.create({
+      ...params,
+      stream: false,
+      messages: [
+        {
+          role: "system",
+          content: "Você é especialista em futebol mundial. Responda SOMENTE com JSON válido, sem markdown.",
+        },
+        { role: "user", content: userPrompt },
+      ],
+    });
+
+    const raw = completion.choices[0]?.message?.content ?? "{}";
+    const jsonStr = raw
+      .replace(/^```json\s*/i, "")
+      .replace(/^```\s*/i, "")
+      .replace(/```\s*$/i, "")
+      .trim();
+
+    const data = JSON.parse(jsonStr) as {
+      description?: string;
+      titles?: Array<{ name: string; count: number }>;
+    };
+
+    res.json({
+      description: data.description ?? "",
+      titles: Array.isArray(data.titles) ? data.titles.filter((t) => t.count >= 1) : [],
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: "Erro ao gerar info do clube", details: msg });
   }
 });
 

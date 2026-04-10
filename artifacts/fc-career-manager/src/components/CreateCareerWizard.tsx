@@ -1,15 +1,17 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { CoachProfile } from "@/types/career";
 import { Career } from "@/types/career";
 import { ClubEntry } from "@/types/club";
 import { CoachSetup } from "./CoachSetup";
 import { ClubPicker } from "./ClubPicker";
 import { TeamPreview } from "./TeamPreview";
+import { CareerSetupStep } from "./CareerSetupStep";
 import { createCareer } from "@/lib/careerStorage";
 import { getCurrentSeason } from "@/lib/api";
 import { applyTheme, resetTheme, extractColorsFromImage, getCurrentColors } from "@/lib/themeManager";
 import { getClubColors } from "@/lib/clubColors";
 import { APIFOOTBALL_TO_FC26_NAME, LeagueInfo } from "@/lib/footballApiMap";
+import type { ClubTitle } from "@/types/career";
 
 interface CreateCareerWizardProps {
   allClubs: ClubEntry[];
@@ -19,17 +21,17 @@ interface CreateCareerWizardProps {
   initialCoach?: CoachProfile | null;
 }
 
-const STEPS = ["Tecnico", "Clube", "Preview"];
+const STEPS = ["Técnico", "Clube", "Preview", "Configurar"];
 
 function ProgressBar({ step }: { step: number }) {
   return (
-    <div className="flex items-center gap-2 mb-6">
+    <div className="flex items-center gap-1.5 mb-6">
       {STEPS.map((label, i) => {
         const active = i === step;
         const done = i < step;
         return (
-          <div key={label} className="flex items-center gap-2 flex-1">
-            <div className="flex items-center gap-2 flex-shrink-0">
+          <div key={label} className="flex items-center gap-1.5 flex-1">
+            <div className="flex items-center gap-1.5 flex-shrink-0">
               <div
                 className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300"
                 style={{
@@ -82,12 +84,13 @@ export function CreateCareerWizard({
   initialStep = 0,
   initialCoach,
 }: CreateCareerWizardProps) {
-  const [step, setStep] = useState<0 | 1 | 2>(initialStep);
+  const [step, setStep] = useState<0 | 1 | 2 | 3>(initialStep as 0 | 1 | 2 | 3);
   const [coach, setCoach] = useState<CoachProfile | null>(initialCoach ?? null);
   const [selectedClub, setSelectedClub] = useState<ClubEntry | null>(null);
   const [selectedLeague, setSelectedLeague] = useState<LeagueInfo | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [resolvedColors, setResolvedColors] = useState<{ primary: string; secondary: string } | null>(null);
+  const clubInfoRef = useRef<{ description?: string; titles?: ClubTitle[] }>({});
 
   const handleCoachNext = (coachData: CoachProfile) => {
     setCoach(coachData);
@@ -117,12 +120,21 @@ export function CreateCareerWizard({
     }
   };
 
-  const handleConfirm = async () => {
+  const handlePreviewNext = () => {
+    setStep(3);
+  };
+
+  const handleSetupConfirm = async (projeto: string, competitions: string[]) => {
     if (!coach || !selectedClub) return;
     setConfirming(true);
     const colors = resolvedColors || getCurrentColors();
     const career = {
-      ...createCareer(coach, selectedClub),
+      ...createCareer(coach, selectedClub, {
+        projeto: projeto || undefined,
+        competitions: competitions.length > 0 ? competitions : undefined,
+        clubDescription: clubInfoRef.current.description || undefined,
+        clubTitles: clubInfoRef.current.titles?.length ? clubInfoRef.current.titles : undefined,
+      }),
       clubPrimary: colors.primary,
       clubSecondary: colors.secondary,
     };
@@ -134,18 +146,18 @@ export function CreateCareerWizard({
   };
 
   const handleBack = () => {
-    if (step === 2) {
-      resetTheme();
-    }
-    if (step > 0) setStep((s) => (s - 1) as 0 | 1 | 2);
+    if (step === 2) resetTheme();
+    if (step > 0) setStep((s) => (s - 1) as 0 | 1 | 2 | 3);
   };
 
   const season = getCurrentSeason();
 
   return (
     <div className="relative h-screen flex flex-col">
-      <div className="flex items-center justify-between px-4 sm:px-6 py-3 flex-shrink-0"
-        style={{ borderBottom: "1px solid var(--surface-border)" }}>
+      <div
+        className="flex items-center justify-between px-4 sm:px-6 py-3 flex-shrink-0"
+        style={{ borderBottom: "1px solid var(--surface-border)" }}
+      >
         <button
           onClick={onCancel}
           className="flex items-center gap-2 text-white/40 hover:text-white transition-colors duration-200 text-sm font-medium"
@@ -167,12 +179,23 @@ export function CreateCareerWizard({
             <ProgressBar step={step} />
             <div key={step}>
               {step === 0 && <CoachSetup onNext={handleCoachNext} initial={coach} />}
-              {step === 1 && <ClubPicker allClubs={allClubs} onSelectClub={handleClubSelect} initialLeague={selectedLeague} />}
+              {step === 1 && (
+                <ClubPicker allClubs={allClubs} onSelectClub={handleClubSelect} initialLeague={selectedLeague} />
+              )}
               {step === 2 && selectedClub && (
                 <TeamPreview
                   club={selectedClub}
                   season={season}
-                  onConfirm={handleConfirm}
+                  onNext={handlePreviewNext}
+                  onBack={handleBack}
+                  onClubInfoLoaded={(info) => { clubInfoRef.current = info; }}
+                />
+              )}
+              {step === 3 && selectedClub && (
+                <CareerSetupStep
+                  club={selectedClub}
+                  season={season}
+                  onConfirm={handleSetupConfirm}
                   onBack={handleBack}
                   confirming={confirming}
                 />

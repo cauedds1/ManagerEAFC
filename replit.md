@@ -78,3 +78,15 @@ Brazilian Portuguese companion app for EA FC 26 career mode.
 - `TransferenciasView.tsx`: Added venda/compra toggle in form. "Registrar Venda" button. VENDA badge on sale cards. `toClub` field for sales. Updated club flow arrows accordingly.
 - `DiretoriaView.buildClubContext()`: Injects financial snapshot (transferBudget, remainingTransferBudget, currentWageBill, salaryBudget, wageRoom, netSpend) into context sent to all Diretoria API routes.
 - Backend `ClubContext` extended with financial fields. `buildClubContext()` string now shows budget lines. `check-triggers` fires gestor notification at 90%+ budget use; meeting trigger if budget exceeded; gestor notification if wage bill exceeded. `suggest-transfer` uses remainingTransferBudget as budget hint.
+
+### Career Start Flow (Task #14)
+- `Career` type extended: `projeto?: string`, `competitions?: string[]`, `clubDescription?: string`, `clubTitles?: ClubTitle[]`.
+- `careerStorage.createCareer()` accepts optional `CareerExtras` for projeto/competitions/clubInfo.
+- `CreateCareerWizard` is now 4-step: Técnico → Clube → Preview → Configurar.
+- **Step 3 (TeamPreview) redesigned**: Hero card with logo/name/league/country/stadium/founded; AI-powered club info card (description + trophy badges loaded from `/api/club-info`); compact squad grid grouped by position (Goleiros/Defensores/Meio-Campistas/Atacantes) with internal scroll — no bench cut-off; "Configurar Carreira" next button.
+- **Step 4 (CareerSetupStep)**: Projeto textarea (career objective affecting Diretoria/internal only, not fans); Competições chips (add/remove, league-based suggestions). Both are optional.
+- `POST /api/club-info` endpoint: given clubName + clubLeague + clubCountry, returns `{description, titles[]}` via AI.
+- `ClubContext` backend extended with `projeto?`; `buildClubContext()` injects projeto as "PROJETO DO TÉCNICO" line for board member AI.
+- `DiretoriaView.buildClubContext()` passes `career.projeto` to the API context.
+- `RegistrarPartidaModal` accepts `competitions?: string[]` prop; uses them as tournament chips (falls back to hardcoded TOURNAMENT_CHIPS if empty).
+- `PartidasView` passes `career.competitions` down to the modal via Dashboard.

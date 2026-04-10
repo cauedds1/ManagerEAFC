@@ -6,6 +6,11 @@ export interface CoachProfile {
   photo?: string;
 }
 
+export interface ClubTitle {
+  name: string;
+  count: number;
+}
+
 export interface Career {
   id: string;
   coach: CoachProfile;
@@ -18,7 +23,11 @@ export interface Career {
   clubFounded?: number;
   clubPrimary?: string;
   clubSecondary?: string;
+  clubDescription?: string;
+  clubTitles?: ClubTitle[];
   season: string;
+  projeto?: string;
+  competitions?: string[];
   createdAt: number;
   updatedAt: number;
 }

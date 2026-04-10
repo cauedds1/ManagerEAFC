@@ -41,7 +41,14 @@ export function deleteCareer(id: string): void {
   } catch {}
 }
 
-export function createCareer(coach: CoachProfile, club: ClubEntry): Career {
+export interface CareerExtras {
+  projeto?: string;
+  competitions?: string[];
+  clubDescription?: string;
+  clubTitles?: import("@/types/career").ClubTitle[];
+}
+
+export function createCareer(coach: CoachProfile, club: ClubEntry, extras?: CareerExtras): Career {
   return {
     id: generateId(),
     coach,
@@ -53,6 +60,10 @@ export function createCareer(coach: CoachProfile, club: ClubEntry): Career {
     ...(club.stadium ? { clubStadium: club.stadium } : {}),
     ...(club.founded ? { clubFounded: club.founded } : {}),
     season: getCurrentSeason(),
+    ...(extras?.projeto ? { projeto: extras.projeto } : {}),
+    ...(extras?.competitions?.length ? { competitions: extras.competitions } : {}),
+    ...(extras?.clubDescription ? { clubDescription: extras.clubDescription } : {}),
+    ...(extras?.clubTitles?.length ? { clubTitles: extras.clubTitles } : {}),
     createdAt: Date.now(),
     updatedAt: Date.now(),
   };
