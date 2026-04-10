@@ -78,15 +78,15 @@ function computeNewFanMoral(stats: PlayerSeasonStats): FanMoral {
   return stepFanMoral(current, delta);
 }
 
-export function runPerformanceEngine(careerId: string): void {
-  const allStats = getAllPlayerStats(careerId);
+export function runPerformanceEngine(seasonId: string): void {
+  const allStats = getAllPlayerStats(seasonId);
   for (const [, stats] of Object.entries(allStats)) {
     const totalApps = (stats.matchesAsStarter ?? 0) + (stats.matchesAsSubstitute ?? 0);
     if (totalApps === 0) continue;
     const newMood = computeNewMood(stats);
     const newFanMoral = computeNewFanMoral(stats);
     if (newMood !== stats.mood || newFanMoral !== stats.fanMoral) {
-      setPlayerStats(careerId, stats.playerId, {
+      setPlayerStats(seasonId, stats.playerId, {
         ...stats,
         mood: newMood,
         fanMoral: newFanMoral,
@@ -95,21 +95,21 @@ export function runPerformanceEngine(careerId: string): void {
   }
 }
 
-export function stepPlayerMood(careerId: string, playerId: number, delta: number): void {
-  const all = getAllPlayerStats(careerId);
+export function stepPlayerMood(seasonId: string, playerId: number, delta: number): void {
+  const all = getAllPlayerStats(seasonId);
   const stats = all[playerId];
   if (!stats) return;
-  setPlayerStats(careerId, playerId, {
+  setPlayerStats(seasonId, playerId, {
     ...stats,
     mood: stepMood(stats.mood ?? "neutro", delta),
   });
 }
 
-export function stepPlayerFanMoral(careerId: string, playerId: number, delta: number): void {
-  const all = getAllPlayerStats(careerId);
+export function stepPlayerFanMoral(seasonId: string, playerId: number, delta: number): void {
+  const all = getAllPlayerStats(seasonId);
   const stats = all[playerId];
   if (!stats) return;
-  setPlayerStats(careerId, playerId, {
+  setPlayerStats(seasonId, playerId, {
     ...stats,
     fanMoral: stepFanMoral(stats.fanMoral ?? "neutro", delta),
   });

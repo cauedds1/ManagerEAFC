@@ -1,7 +1,7 @@
 import type { PlayerSeasonStats, PlayerOverride } from "@/types/playerStats";
 
-function statsKey(careerId: string): string {
-  return `fc-career-manager-stats-${careerId}`;
+function statsKey(seasonId: string): string {
+  return `fc-career-manager-stats-${seasonId}`;
 }
 
 function overridesKey(careerId: string): string {
@@ -26,9 +26,9 @@ export function defaultStats(playerId: number): PlayerSeasonStats {
   };
 }
 
-export function getAllPlayerStats(careerId: string): Record<number, PlayerSeasonStats> {
+export function getAllPlayerStats(seasonId: string): Record<number, PlayerSeasonStats> {
   try {
-    const raw = localStorage.getItem(statsKey(careerId));
+    const raw = localStorage.getItem(statsKey(seasonId));
     if (!raw) return {};
     return JSON.parse(raw) as Record<number, PlayerSeasonStats>;
   } catch {
@@ -36,19 +36,35 @@ export function getAllPlayerStats(careerId: string): Record<number, PlayerSeason
   }
 }
 
-export function getPlayerStats(careerId: string, playerId: number): PlayerSeasonStats {
-  return getAllPlayerStats(careerId)[playerId] ?? defaultStats(playerId);
+export function getPlayerStats(seasonId: string, playerId: number): PlayerSeasonStats {
+  return getAllPlayerStats(seasonId)[playerId] ?? defaultStats(playerId);
 }
 
 export function setPlayerStats(
-  careerId: string,
+  seasonId: string,
   playerId: number,
   stats: PlayerSeasonStats,
 ): void {
-  const all = getAllPlayerStats(careerId);
+  const all = getAllPlayerStats(seasonId);
   all[playerId] = stats;
   try {
-    localStorage.setItem(statsKey(careerId), JSON.stringify(all));
+    localStorage.setItem(statsKey(seasonId), JSON.stringify(all));
+  } catch {}
+}
+
+export function copyPlayerMoodsToNewSeason(fromSeasonId: string, toSeasonId: string): void {
+  const fromStats = getAllPlayerStats(fromSeasonId);
+  const toStats = getAllPlayerStats(toSeasonId);
+  for (const [pid, stats] of Object.entries(fromStats)) {
+    const playerId = Number(pid);
+    toStats[playerId] = {
+      ...defaultStats(playerId),
+      mood: stats.mood,
+      fanMoral: stats.fanMoral,
+    };
+  }
+  try {
+    localStorage.setItem(statsKey(toSeasonId), JSON.stringify(toStats));
   } catch {}
 }
 

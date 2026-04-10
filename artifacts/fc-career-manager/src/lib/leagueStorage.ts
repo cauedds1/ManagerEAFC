@@ -7,13 +7,13 @@ export interface LeaguePosition {
   points: number;
 }
 
-function leagueKey(careerId: string): string {
-  return `fc-career-manager-league-${careerId}`;
+function leagueKey(seasonId: string): string {
+  return `fc-career-manager-league-${seasonId}`;
 }
 
-export function getLeaguePosition(careerId: string): LeaguePosition | null {
+export function getLeaguePosition(seasonId: string): LeaguePosition | null {
   try {
-    const raw = localStorage.getItem(leagueKey(careerId));
+    const raw = localStorage.getItem(leagueKey(seasonId));
     if (!raw) return null;
     return JSON.parse(raw) as LeaguePosition;
   } catch {
@@ -21,8 +21,8 @@ export function getLeaguePosition(careerId: string): LeaguePosition | null {
   }
 }
 
-export function setLeaguePosition(careerId: string, pos: LeaguePosition): void {
+export function setLeaguePosition(seasonId: string, pos: LeaguePosition): void {
   try {
-    localStorage.setItem(leagueKey(careerId), JSON.stringify(pos));
+    localStorage.setItem(leagueKey(seasonId), JSON.stringify(pos));
   } catch {}
 }

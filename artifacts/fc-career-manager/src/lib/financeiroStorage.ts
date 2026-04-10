@@ -6,16 +6,16 @@ export interface FinanceiroSettings {
   updatedAt: number;
 }
 
-const key = (careerId: string) => `fc-financeiro-settings-${careerId}`;
+const key = (seasonId: string) => `fc-financeiro-settings-${seasonId}`;
 
 const DEFAULT_SETTINGS: Omit<FinanceiroSettings, "updatedAt"> = {
   transferBudget: 0,
   salaryBudget: 0,
 };
 
-export function getFinanceiroSettings(careerId: string): FinanceiroSettings {
+export function getFinanceiroSettings(seasonId: string): FinanceiroSettings {
   try {
-    const raw = localStorage.getItem(key(careerId));
+    const raw = localStorage.getItem(key(seasonId));
     if (!raw) return { ...DEFAULT_SETTINGS, updatedAt: 0 };
     return JSON.parse(raw) as FinanceiroSettings;
   } catch {
@@ -23,9 +23,9 @@ export function getFinanceiroSettings(careerId: string): FinanceiroSettings {
   }
 }
 
-export function saveFinanceiroSettings(careerId: string, settings: FinanceiroSettings): void {
+export function saveFinanceiroSettings(seasonId: string, settings: FinanceiroSettings): void {
   try {
-    localStorage.setItem(key(careerId), JSON.stringify({ ...settings, updatedAt: Date.now() }));
+    localStorage.setItem(key(seasonId), JSON.stringify({ ...settings, updatedAt: Date.now() }));
   } catch {}
 }
 

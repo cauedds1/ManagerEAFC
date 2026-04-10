@@ -1,4 +1,4 @@
-import { pgTable, integer, text, bigint, primaryKey } from "drizzle-orm/pg-core";
+import { pgTable, integer, text, bigint, boolean, primaryKey } from "drizzle-orm/pg-core";
 
 export const clubsTable = pgTable("clubs", {
   id: integer("id").primaryKey(),
@@ -26,3 +26,34 @@ export const squadPlayersTable = pgTable(
   },
   (table) => [primaryKey({ columns: [table.teamId, table.playerId] })],
 );
+
+export const careersTable = pgTable("careers", {
+  id: text("id").primaryKey(),
+  coachJson: text("coach_json").notNull(),
+  clubId: integer("club_id").notNull().default(0),
+  clubName: text("club_name").notNull(),
+  clubLogo: text("club_logo").notNull().default(""),
+  clubLeague: text("club_league").notNull().default(""),
+  clubCountry: text("club_country"),
+  clubStadium: text("club_stadium"),
+  clubFounded: integer("club_founded"),
+  clubPrimary: text("club_primary"),
+  clubSecondary: text("club_secondary"),
+  clubDescription: text("club_description"),
+  clubTitlesJson: text("club_titles_json"),
+  season: text("season").notNull().default(""),
+  projeto: text("projeto"),
+  competitionsJson: text("competitions_json"),
+  currentSeasonId: text("current_season_id"),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+  updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
+});
+
+export const seasonsTable = pgTable("seasons", {
+  id: text("id").primaryKey(),
+  careerId: text("career_id").notNull(),
+  label: text("label").notNull(),
+  competitionsJson: text("competitions_json"),
+  isActive: boolean("is_active").notNull().default(false),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+});

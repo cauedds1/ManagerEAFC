@@ -2,13 +2,13 @@ import type { MatchRecord, PlayerMatchStats } from "@/types/match";
 import { getPlayerStats, setPlayerStats } from "@/lib/playerStatsStorage";
 import type { PlayerSeasonStats } from "@/types/playerStats";
 
-function matchesKey(careerId: string): string {
-  return `fc-career-manager-matches-${careerId}`;
+function matchesKey(seasonId: string): string {
+  return `fc-career-manager-matches-${seasonId}`;
 }
 
-export function getMatches(careerId: string): MatchRecord[] {
+export function getMatches(seasonId: string): MatchRecord[] {
   try {
-    const raw = localStorage.getItem(matchesKey(careerId));
+    const raw = localStorage.getItem(matchesKey(seasonId));
     if (!raw) return [];
     return JSON.parse(raw) as MatchRecord[];
   } catch {
@@ -16,11 +16,11 @@ export function getMatches(careerId: string): MatchRecord[] {
   }
 }
 
-export function addMatch(careerId: string, match: MatchRecord): void {
-  const list = getMatches(careerId);
+export function addMatch(seasonId: string, match: MatchRecord): void {
+  const list = getMatches(seasonId);
   list.push(match);
   try {
-    localStorage.setItem(matchesKey(careerId), JSON.stringify(list));
+    localStorage.setItem(matchesKey(seasonId), JSON.stringify(list));
   } catch {}
 }
 
@@ -35,7 +35,7 @@ export function generateGoalId(): string {
 const MAX_RECENT_RATINGS = 10;
 
 export function applyMatchToPlayerStats(
-  careerId: string,
+  seasonId: string,
   starterIds: number[],
   subIds: number[],
   playerStats: Record<number, PlayerMatchStats>,
@@ -43,7 +43,7 @@ export function applyMatchToPlayerStats(
   const allPlayerIds = [...starterIds, ...subIds];
 
   for (const playerId of allPlayerIds) {
-    const current = getPlayerStats(careerId, playerId);
+    const current = getPlayerStats(seasonId, playerId);
     const pStats = playerStats[playerId];
     if (!pStats) continue;
 
@@ -102,6 +102,6 @@ export function applyMatchToPlayerStats(
       recentRatings: newRatings,
     };
 
-    setPlayerStats(careerId, playerId, updated);
+    setPlayerStats(seasonId, playerId, updated);
   }
 }

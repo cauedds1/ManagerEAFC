@@ -1,12 +1,12 @@
 import type { TransferRecord } from "@/types/transfer";
 
-function transfersKey(careerId: string): string {
-  return `fc-career-manager-transfers-${careerId}`;
+function transfersKey(seasonId: string): string {
+  return `fc-career-manager-transfers-${seasonId}`;
 }
 
-export function getTransfers(careerId: string): TransferRecord[] {
+export function getTransfers(seasonId: string): TransferRecord[] {
   try {
-    const raw = localStorage.getItem(transfersKey(careerId));
+    const raw = localStorage.getItem(transfersKey(seasonId));
     if (!raw) return [];
     return JSON.parse(raw) as TransferRecord[];
   } catch {
@@ -14,11 +14,11 @@ export function getTransfers(careerId: string): TransferRecord[] {
   }
 }
 
-export function addTransfer(careerId: string, transfer: TransferRecord): void {
-  const list = getTransfers(careerId);
+export function addTransfer(seasonId: string, transfer: TransferRecord): void {
+  const list = getTransfers(seasonId);
   list.push(transfer);
   try {
-    localStorage.setItem(transfersKey(careerId), JSON.stringify(list));
+    localStorage.setItem(transfersKey(seasonId), JSON.stringify(list));
   } catch {}
 }
 

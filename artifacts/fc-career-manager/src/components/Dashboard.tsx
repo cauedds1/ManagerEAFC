@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import type { Career } from "@/types/career";
+import type { Career, Season } from "@/types/career";
 import { SettingsPage } from "./SettingsPage";
 import {
   getSquad,
@@ -15,12 +15,17 @@ import type { TransferRecord } from "@/types/transfer";
 import { getMatches } from "@/lib/matchStorage";
 import type { MatchRecord } from "@/types/match";
 import { runPerformanceEngine } from "@/lib/playerPerformanceEngine";
+import { copyPlayerMoodsToNewSeason } from "@/lib/playerStatsStorage";
 import { PainelView } from "./PainelView";
 import { ClubeView } from "./ClubeView";
 import { TransferenciasView } from "./TransferenciasView";
 import { PartidasView } from "./PartidasView";
 import { NoticiasView } from "./NoticiasView";
 import { DiretoriaView } from "./DiretoriaView";
+import { SeasonSelectModal } from "./SeasonSelectModal";
+import { NewSeasonWizard } from "./NewSeasonWizard";
+import { getSeasons, createSeason, activateSeason, generateSeasonId } from "@/lib/seasonStorage";
+import { ensureCareerAndSeason1 } from "@/lib/careerStorage";
 
 interface DashboardProps {
   career: Career;
@@ -137,9 +142,15 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
       else setImgError(true);
     }
   }, []);
-  const [editingSeason, setEditingSeason] = useState(false);
-  const [seasonDraft, setSeasonDraft] = useState(career.season);
   const [activeTab, setActiveTab] = useState<CareerTab>("painel");
+
+  const [seasons, setSeasons] = useState<Season[]>([]);
+  const [activeSeasonId, setActiveSeasonId] = useState<string>(career.currentSeasonId ?? career.id);
+  const [activeSeasonLabel, setActiveSeasonLabel] = useState<string>(career.season);
+  const [showSeasonModal, setShowSeasonModal] = useState(false);
+  const [showNewSeasonWizard, setShowNewSeasonWizard] = useState(false);
+  const [creatingNewSeason, setCreatingNewSeason] = useState(false);
+  const isReadOnly = seasons.length > 0 && seasons.find((s) => s.id === activeSeasonId)?.isActive === false;
 
   const [squad, setSquad] = useState<SquadResult | null>(null);
   const [squadLoading, setSquadLoading] = useState(true);
@@ -147,14 +158,13 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
   const [refetchKey, setRefetchKey] = useState(0);
 
   const [transfers, setTransfers] = useState<TransferRecord[]>(
-    () => getTransfers(career.id)
+    () => getTransfers(activeSeasonId)
   );
 
   const [matches, setMatches] = useState<MatchRecord[]>(
-    () => getMatches(career.id)
+    () => getMatches(activeSeasonId)
   );
 
-  useEffect(() => { setSeasonDraft(career.season); }, [career.season]);
   useEffect(() => { setImgLoaded(false); setImgError(false); }, [logoUrl]);
 
   useEffect(() => {
@@ -170,6 +180,34 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
       });
     return () => { cancelled = true; };
   }, [teamId, career.clubName, refetchKey]);
+
+  useEffect(() => {
+    ensureCareerAndSeason1(career).then((initialSeasonId) => {
+      setActiveSeasonId((prev) => {
+        if (prev === career.id) return initialSeasonId;
+        return prev;
+      });
+      loadSeasons();
+    });
+  }, [career.id]);
+
+  const loadSeasons = useCallback(async () => {
+    const loaded = await getSeasons(career.id);
+    setSeasons(loaded);
+    if (loaded.length > 0) {
+      const active = loaded.find((s) => s.isActive) ?? loaded[loaded.length - 1];
+      setActiveSeasonId(active.id);
+      setActiveSeasonLabel(active.label);
+    }
+  }, [career.id]);
+
+  const switchToSeason = useCallback((season: Season) => {
+    setActiveSeasonId(season.id);
+    setActiveSeasonLabel(season.label);
+    setTransfers(getTransfers(season.id));
+    setMatches(getMatches(season.id));
+    setShowSeasonModal(false);
+  }, []);
 
   const handleRefreshSquad = useCallback(() => {
     clearSquadCache(teamId, career.clubName);
@@ -218,23 +256,60 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
   ];
 
   const handleTransferAdded = useCallback((transfer: TransferRecord) => {
-    addTransfer(career.id, transfer);
+    addTransfer(activeSeasonId, transfer);
     setTransfers((prev) => [...prev, transfer]);
-  }, [career.id]);
+  }, [activeSeasonId]);
 
   const handleMatchAdded = useCallback((match: MatchRecord) => {
     setMatches((prev) => [...prev, match]);
-    setTimeout(() => runPerformanceEngine(career.id), 50);
-  }, [career.id]);
+    setTimeout(() => runPerformanceEngine(activeSeasonId), 50);
+  }, [activeSeasonId]);
 
-  const commitSeason = () => {
-    const trimmed = seasonDraft.trim();
-    if (trimmed) onSeasonChange(trimmed);
-    setEditingSeason(false);
-  };
+  const handleNewSeasonConfirm = useCallback(async (label: string, competitions: string[]) => {
+    setCreatingNewSeason(true);
+    try {
+      const newId = generateSeasonId();
+      copyPlayerMoodsToNewSeason(activeSeasonId, newId);
+      const newSeason = await createSeason(career.id, label, competitions, true, newId);
+      if (newSeason) {
+        await activateSeason(newSeason.id);
+        onSeasonChange(label);
+        await loadSeasons();
+        setActiveSeasonId(newSeason.id);
+        setActiveSeasonLabel(label);
+        setTransfers([]);
+        setMatches([]);
+        setShowNewSeasonWizard(false);
+        setShowSeasonModal(false);
+      }
+    } finally {
+      setCreatingNewSeason(false);
+    }
+  }, [activeSeasonId, career.id, loadSeasons, onSeasonChange]);
+
+  const activeSeason = seasons.find((s) => s.id === activeSeasonId);
+  const displayLabel = activeSeason?.label ?? activeSeasonLabel;
 
   return (
     <div className="relative h-full flex flex-col">
+      {showSeasonModal && (
+        <SeasonSelectModal
+          seasons={seasons}
+          activeSeasonId={activeSeasonId}
+          onSelect={switchToSeason}
+          onNewSeason={() => { setShowSeasonModal(false); setShowNewSeasonWizard(true); }}
+          onClose={() => setShowSeasonModal(false)}
+        />
+      )}
+      {showNewSeasonWizard && (
+        <NewSeasonWizard
+          existingSeasons={seasons}
+          currentCompetitions={activeSeason?.competitions ?? career.competitions}
+          onConfirm={handleNewSeasonConfirm}
+          onCancel={() => setShowNewSeasonWizard(false)}
+          isLoading={creatingNewSeason}
+        />
+      )}
       <div className="flex-1 min-h-0 overflow-y-auto">
         <header
           className="relative w-full overflow-hidden glass"
@@ -298,32 +373,22 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
               </div>
 
               <div className="flex items-center gap-2 flex-shrink-0">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
                   <span className="text-white/40 text-xs">Temp:</span>
-                  {editingSeason ? (
-                    <input
-                      autoFocus
-                      value={seasonDraft}
-                      onChange={(e) => setSeasonDraft(e.target.value)}
-                      onBlur={commitSeason}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") commitSeason();
-                        if (e.key === "Escape") { setSeasonDraft(career.season); setEditingSeason(false); }
-                      }}
-                      className="px-2.5 py-1 rounded-lg text-white font-bold text-sm focus:outline-none glass"
-                      style={{ minWidth: "70px", boxShadow: "0 0 12px rgba(var(--club-primary-rgb),0.2)" }}
-                    />
-                  ) : (
-                    <button
-                      onClick={() => setEditingSeason(true)}
-                      className="flex items-center gap-1 px-2.5 py-1 rounded-lg font-bold text-sm text-white hover:bg-white/10 transition-colors duration-200 group glass"
-                    >
-                      {career.season}
-                      <svg className="w-3 h-3 text-white/30 group-hover:text-white/60 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                      </svg>
-                    </button>
-                  )}
+                  <button
+                    onClick={() => setShowSeasonModal(true)}
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-bold text-sm text-white hover:bg-white/10 transition-colors duration-200 group glass"
+                  >
+                    {displayLabel}
+                    {isReadOnly && (
+                      <span className="text-xs font-normal text-white/40 px-1.5 py-0.5 rounded" style={{ background: "rgba(255,255,255,0.06)" }}>
+                        leitura
+                      </span>
+                    )}
+                    <svg className="w-3 h-3 text-white/30 group-hover:text-white/60 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
                 </div>
                 <button
                   onClick={() => setActiveTab("configuracoes")}
@@ -395,9 +460,34 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
           </div>
         </div>
 
+        {isReadOnly && (
+          <div
+            className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4"
+          >
+            <div
+              className="rounded-xl px-4 py-3 flex items-center gap-3 text-sm"
+              style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)" }}
+            >
+              <svg className="w-4 h-4 text-yellow-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <span className="text-yellow-400/80">
+                Você está visualizando a temporada <strong>{displayLabel}</strong> em modo somente leitura.
+              </span>
+              <button
+                onClick={() => setShowSeasonModal(true)}
+                className="ml-auto text-yellow-400/70 hover:text-yellow-400 text-xs font-semibold underline whitespace-nowrap"
+              >
+                Voltar à atual
+              </button>
+            </div>
+          </div>
+        )}
+
         {activeTab === "clube" && (
           <ClubeView
             careerId={career.id}
+            seasonId={activeSeasonId}
             career={career}
             squad={squad}
             squadLoading={squadLoading}
@@ -415,10 +505,11 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
             {activeTab === "painel" && (
               <PainelView
                 careerId={career.id}
+                seasonId={activeSeasonId}
                 clubName={career.clubName}
                 clubLogoUrl={logoUrl}
                 allPlayers={allPlayers}
-                season={career.season}
+                season={displayLabel}
                 matches={matches}
                 transferCount={transfers.length}
               />
@@ -426,28 +517,39 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
             {activeTab === "partidas" && (
               <PartidasView
                 careerId={career.id}
-                season={career.season}
+                seasonId={activeSeasonId}
+                season={displayLabel}
                 clubName={career.clubName}
                 clubLogoUrl={logoUrl}
                 matches={matches}
                 allPlayers={allPlayers}
                 onMatchAdded={handleMatchAdded}
-                competitions={career.competitions}
+                competitions={activeSeason?.competitions ?? career.competitions}
+                isReadOnly={isReadOnly}
               />
             )}
             {activeTab === "transferencias" && (
               <TransferenciasView
                 careerId={career.id}
+                seasonId={activeSeasonId}
                 transfers={transfers}
-                season={career.season}
+                season={displayLabel}
                 clubName={career.clubName}
                 clubLogoUrl={logoUrl}
                 allPlayers={allPlayers}
                 onTransferAdded={handleTransferAdded}
+                isReadOnly={isReadOnly}
               />
             )}
             {activeTab === "noticias" && (
-              <NoticiasView career={career} allPlayers={allPlayers} matches={matches} />
+              <NoticiasView
+                career={career}
+                seasonId={activeSeasonId}
+                allPlayers={allPlayers}
+                matches={matches}
+                pastSeasons={seasons.filter((s) => !s.isActive)}
+                isReadOnly={isReadOnly}
+              />
             )}
             {activeTab === "diretoria" && (
               <DiretoriaView

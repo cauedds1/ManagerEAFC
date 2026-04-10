@@ -102,12 +102,13 @@ function BudgetEditor({ label, value, onSave }: BudgetEditorProps) {
 
 interface FinanceiroViewProps {
   careerId: string;
+  seasonId: string;
   transfers: TransferRecord[];
   season: string;
 }
 
-export function FinanceiroView({ careerId, transfers, season }: FinanceiroViewProps) {
-  const [settings, setSettings] = useState<FinanceiroSettings>(() => getFinanceiroSettings(careerId));
+export function FinanceiroView({ careerId, seasonId, transfers, season }: FinanceiroViewProps) {
+  const [settings, setSettings] = useState<FinanceiroSettings>(() => getFinanceiroSettings(seasonId));
 
   const snapshot = useMemo(
     () => computeFinancialSnapshot(settings, transfers),
@@ -117,7 +118,7 @@ export function FinanceiroView({ careerId, transfers, season }: FinanceiroViewPr
   const updateSettings = (partial: Partial<FinanceiroSettings>) => {
     const next = { ...settings, ...partial, updatedAt: Date.now() };
     setSettings(next);
-    saveFinanceiroSettings(careerId, next);
+    saveFinanceiroSettings(seasonId, next);
   };
 
   const seasonTransfers = transfers.filter((t) => t.season === season);

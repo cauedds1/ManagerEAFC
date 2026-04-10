@@ -34,6 +34,20 @@ Brazilian Portuguese companion app for EA FC 26 career mode.
 ### Database Schema (`lib/db/src/schema/index.ts`)
 - `clubs` — Club list cache (id PK = API-Football team ID, name, logo_url, league, league_id, country, cached_at)
 - `squad_players` — One row per player per team; composite PK `(team_id, player_id)`. Columns: team_id, player_id, name, age, position, position_pt_br, photo, player_number, source, cached_at. All rows for the same team share the same source + cached_at from the last fetch.
+- `careers` — Career metadata (id, coach_json, club_id, club_name, club_logo, club_league, season, projeto, competitions_json, timestamps)
+- `seasons` — Season metadata per career (id, career_id FK, label, competitions_json, is_active, created_at). Season 1's `id = careerId` for backward compatibility.
+
+### Multi-Season Architecture (Task #1)
+- **Hybrid storage**: Career + Season METADATA in PostgreSQL; all game data (matches, stats, transfers, finances, news) in localStorage keyed by `seasonId`.
+- **Season 1 key design**: `Season1.id = careerId` — existing localStorage data works as Season 1 automatically, zero migration.
+- **`ensureCareerAndSeason1(career)`** in `careerStorage.ts`: syncs career to DB, creates Season 1 on first Dashboard load.
+- **`activeSeasonId` state** in `Dashboard.tsx`: defaults to `career.currentSeasonId ?? career.id`. All child components receive `seasonId` instead of `careerId` for storage keys.
+- **`isReadOnly`** flag: true when viewing an inactive (past) season — hides add buttons in Partidas, Transferencias, Noticias.
+- **`SeasonSelectModal.tsx`**: sidebar modal with season list (W/D/L stats per season), switch button.
+- **`NewSeasonWizard.tsx`**: 2-step wizard (label + competitions) to create a new season; copies player moods from previous season.
+- **All storage libs** (`matchStorage`, `playerStatsStorage`, `leagueStorage`, `transferStorage`, `noticiaStorage`, `financeiroStorage`, `playerPerformanceEngine`, `playerContext`) now accept `seasonId` as first key parameter.
+- **Overrides + lineups** remain keyed by `careerId` (career-wide settings).
+- **Historical context** in AI news: `pastSeasons` W/D/L stats passed to `/api/noticias/generate` as `historicalContext`, included in OpenAI system prompt.
 
 ### API Routes (`artifacts/api-server/src/routes/`)
 - `GET /api/clubs` → 200 `{clubs, cachedAt}` if fresh (<30 days), 204 if empty/stale
@@ -42,7 +56,14 @@ Brazilian Portuguese companion app for EA FC 26 career mode.
 - `GET /api/squad/:teamId` → 200 `{players, source, cachedAt}` if fresh (<7 days), 204 if empty/stale. Reconstructs SquadResult from individual player rows.
 - `PUT /api/squad/:teamId` → replaces squad atomically (transaction: DELETE WHERE team_id + INSERT up to 100 rows per chunk)
 - `GET /api/proxy/image?url=...` → proxies images from allowed domains (media.api-sports.io, cdn.sofifa.net) with CORS headers. Cached 24h.
-- `POST /api/noticias/generate` → AI-generated news post. Body: `{description, clubName, source?, category?}`. Uses OpenAI gpt-5.2 via Replit AI Integrations (env vars: `AI_INTEGRATIONS_OPENAI_BASE_URL`, `AI_INTEGRATIONS_OPENAI_API_KEY`). Returns: `{source, sourceHandle, sourceName, category, title?, content, likes, commentsCount, sharesCount, comments[]}`.
+- `POST /api/noticias/generate` → AI-generated news post. Body: `{description, clubName, source?, category?, playersContext?, historicalContext?}`. Uses OpenAI gpt-5.2 via Replit AI Integrations (env vars: `AI_INTEGRATIONS_OPENAI_BASE_URL`, `AI_INTEGRATIONS_OPENAI_API_KEY`). Returns: `{source, sourceHandle, sourceName, category, title?, content, likes, commentsCount, sharesCount, comments[]}`.
+- `GET /api/careers` → list all careers
+- `POST /api/careers` → create career
+- `PUT /api/careers/:id` → update career
+- `DELETE /api/careers/:id` → delete career and its seasons
+- `GET /api/careers/:id/seasons` → list seasons for career
+- `POST /api/careers/:id/seasons` → create season (accepts optional `id` for Season 1)
+- `PUT /api/seasons/:id/activate` → activate a season (deactivates all others for that career)
 
 ### AI Integration
 - Provider: OpenAI via Replit AI Integrations proxy (`@workspace/integrations-openai-ai-server`)

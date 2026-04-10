@@ -135,17 +135,18 @@ function PctCell({ value }: { value: number | null }) {
 
 interface Props {
   careerId: string;
+  seasonId: string;
   allPlayers: SquadPlayer[];
 }
 
-export function PlayerStatsTable({ careerId, allPlayers }: Props) {
+export function PlayerStatsTable({ careerId, seasonId, allPlayers }: Props) {
   const [filter, setFilter] = useState<FilterTab>("ataque");
   const [sortCol, setSortCol] = useState<SortCol>("goals");
   const [asc, setAsc] = useState(false);
 
-  const rawStats = useMemo(() => getAllPlayerStats(careerId), [careerId]);
+  const rawStats = useMemo(() => getAllPlayerStats(seasonId), [seasonId]);
   const overrides = useMemo(() => getAllPlayerOverrides(careerId), [careerId]);
-  const matches = useMemo(() => getMatches(careerId), [careerId]);
+  const matches = useMemo(() => getMatches(seasonId), [seasonId]);
 
   const derivedMap = useMemo<Record<number, DerivedStats>>(() => {
     const map: Record<number, DerivedStats> = {};

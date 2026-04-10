@@ -11,6 +11,7 @@ interface GenerateNoticiaBody {
   source?: string;
   category?: string;
   playersContext?: string;
+  historicalContext?: string;
 }
 
 function getClient(userKey?: string): { client: OpenAI; usingUserKey: boolean } {
@@ -21,7 +22,7 @@ function getClient(userKey?: string): { client: OpenAI; usingUserKey: boolean } 
 }
 
 router.post("/noticias/generate", async (req, res) => {
-  const { description, clubName, season, source, category, playersContext } =
+  const { description, clubName, season, source, category, playersContext, historicalContext } =
     req.body as GenerateNoticiaBody;
 
   if (!description || !description.trim()) {
@@ -53,12 +54,16 @@ router.post("/noticias/generate", async (req, res) => {
     ? `\n\nELENCO — CONTEXTO DE DESEMPENHO (use com moderação para enriquecer comentários — nem todo comentário precisa mencionar jogadores; prefira os mais marcantes como ídolos, artilheiros ou jogadores com incidentes recentes):\n${playersContext.trim()}`
     : "";
 
+  const historicalSection = historicalContext?.trim()
+    ? `\n\nHISTÓRICO DO CLUBE (use para dar profundidade narrativa quando relevante — ex: comemorações de recorde, comparações com temporadas anteriores, saudosismo de torcedores):\n${historicalContext.trim()}`
+    : "";
+
   const systemPrompt = `Você é um especialista em criar posts de futebol para redes sociais brasileiras no estilo Instagram.
 Cada post que você cria deve ser ÚNICO e DIFERENTE dos anteriores — varie o estilo, tom, escolha de emojis, estrutura da legenda e perfil dos comentaristas.
 Use linguagem informal, autêntica, com gírias brasileiras do futebol. Seja criativo e específico.
 O time é ${clubName}${season ? ` (temporada ${season})` : ""}.
 O portal que publica é ${sourceInfo.name} (${sourceInfo.handle}).
-Semente de unicidade: ${uniqueSeed} — use ela para garantir que este post seja diferente de qualquer outro.${playersSection}`;
+Semente de unicidade: ${uniqueSeed} — use ela para garantir que este post seja diferente de qualquer outro.${playersSection}${historicalSection}`;
 
   const userPrompt = `Crie um post de notícia com base nessa descrição: "${description.trim()}"
 

@@ -8,6 +8,7 @@ import adminRouter from "./admin";
 import noticiasRouter from "./noticias";
 import storageRouter from "./storage";
 import diretoriaRouter from "./diretoria";
+import careersRouter from "./careers";
 
 const router: IRouter = Router();
 
@@ -20,5 +21,6 @@ router.use(adminRouter);
 router.use(noticiasRouter);
 router.use(storageRouter);
 router.use(diretoriaRouter);
+router.use(careersRouter);
 
 export default router;

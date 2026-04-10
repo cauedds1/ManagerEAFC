@@ -22,6 +22,7 @@ function resolveOpponentLogo(name: string, stored?: string): string | undefined 
 
 interface PartidasViewProps {
   careerId: string;
+  seasonId: string;
   season: string;
   clubName: string;
   clubLogoUrl?: string | null;
@@ -29,6 +30,7 @@ interface PartidasViewProps {
   allPlayers: SquadPlayer[];
   onMatchAdded: (match: MatchRecord) => void;
   competitions?: string[];
+  isReadOnly?: boolean;
 }
 
 type Filter = "todos" | MatchResult;
@@ -283,7 +285,7 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
   );
 }
 
-export function PartidasView({ careerId, season, clubName, clubLogoUrl, matches, allPlayers, onMatchAdded, competitions }: PartidasViewProps) {
+export function PartidasView({ careerId, seasonId, season, clubName, clubLogoUrl, matches, allPlayers, onMatchAdded, competitions, isReadOnly }: PartidasViewProps) {
   const [filter, setFilter] = useState<Filter>("todos");
   const [modalOpen, setModalOpen] = useState(false);
 
@@ -303,16 +305,18 @@ export function PartidasView({ careerId, season, clubName, clubLogoUrl, matches,
     <div className="space-y-5 animate-fade-up">
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-white/35 text-xs font-bold tracking-widest uppercase">Partidas — {season}</h2>
-        <button
-          onClick={() => setModalOpen(true)}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-xl font-bold text-sm transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
-          style={{ background: "var(--club-primary)", color: "white" }}
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-          </svg>
-          Registrar
-        </button>
+        {!isReadOnly && (
+          <button
+            onClick={() => setModalOpen(true)}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl font-bold text-sm transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+            style={{ background: "var(--club-primary)", color: "white" }}
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+            Registrar
+          </button>
+        )}
       </div>
 
       {matches.length > 0 && (
@@ -370,9 +374,10 @@ export function PartidasView({ careerId, season, clubName, clubLogoUrl, matches,
 
       {matches.length === 0 && <EmptyState onAdd={() => setModalOpen(true)} />}
 
-      {modalOpen && (
+      {!isReadOnly && modalOpen && (
         <RegistrarPartidaModal
           careerId={careerId}
+          seasonId={seasonId}
           season={season}
           clubName={clubName}
           clubLogoUrl={clubLogoUrl}

@@ -1,12 +1,32 @@
 import { Career, CoachProfile } from "@/types/career";
 import { ClubEntry } from "@/types/club";
 import { getCurrentSeason } from "@/lib/api";
+import { createSeason } from "@/lib/seasonStorage";
 
 const CAREERS_KEY = "fc-career-manager-careers";
 const LEGACY_CLUB_KEY = "fc-career-manager-club";
+const SYNCED_KEY = "fc-career-manager-synced-ids";
 
 function generateId(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+}
+
+function getSyncedIds(): Set<string> {
+  try {
+    const raw = localStorage.getItem(SYNCED_KEY);
+    if (!raw) return new Set();
+    return new Set(JSON.parse(raw) as string[]);
+  } catch {
+    return new Set();
+  }
+}
+
+function markSynced(id: string): void {
+  const synced = getSyncedIds();
+  synced.add(id);
+  try {
+    localStorage.setItem(SYNCED_KEY, JSON.stringify([...synced]));
+  } catch {}
 }
 
 export function listCareers(): Career[] {
@@ -32,6 +52,7 @@ export function saveCareer(career: Career): void {
   try {
     localStorage.setItem(CAREERS_KEY, JSON.stringify(careers));
   } catch {}
+  syncCareerToDb(career).catch(() => {});
 }
 
 export function deleteCareer(id: string): void {
@@ -39,6 +60,7 @@ export function deleteCareer(id: string): void {
   try {
     localStorage.setItem(CAREERS_KEY, JSON.stringify(careers));
   } catch {}
+  fetch(`/api/careers/${id}`, { method: "DELETE" }).catch(() => {});
 }
 
 export interface CareerExtras {
@@ -77,6 +99,11 @@ export function updateCareerSeason(id: string, season: string): void {
     try {
       localStorage.setItem(CAREERS_KEY, JSON.stringify(careers));
     } catch {}
+    fetch(`/api/careers/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ season }),
+    }).catch(() => {});
   }
 }
 
@@ -118,4 +145,60 @@ export function migrateFromLegacy(): void {
     saveCareer(career);
     localStorage.removeItem(LEGACY_CLUB_KEY);
   } catch {}
+}
+
+async function syncCareerToDb(career: Career): Promise<void> {
+  try {
+    await fetch("/api/careers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: career.id,
+        coach: career.coach,
+        clubId: career.clubId,
+        clubName: career.clubName,
+        clubLogo: career.clubLogo,
+        clubLeague: career.clubLeague,
+        clubCountry: career.clubCountry,
+        clubStadium: career.clubStadium,
+        clubFounded: career.clubFounded,
+        clubPrimary: career.clubPrimary,
+        clubSecondary: career.clubSecondary,
+        clubDescription: career.clubDescription,
+        clubTitles: career.clubTitles,
+        season: career.season,
+        projeto: career.projeto,
+        competitions: career.competitions,
+        currentSeasonId: career.currentSeasonId,
+        createdAt: career.createdAt,
+        updatedAt: career.updatedAt,
+      }),
+    });
+  } catch {}
+}
+
+export async function ensureCareerAndSeason1(career: Career): Promise<string> {
+  const synced = getSyncedIds();
+  if (synced.has(career.id)) {
+    return career.currentSeasonId ?? career.id;
+  }
+
+  await syncCareerToDb(career);
+
+  const existingSeasons = await fetch(`/api/careers/${career.id}/seasons`)
+    .then((r) => r.json())
+    .catch(() => []) as Array<{ id: string }>;
+
+  if (!existingSeasons.length) {
+    await createSeason(
+      career.id,
+      career.season || getCurrentSeason(),
+      career.competitions,
+      true,
+      career.id,
+    );
+  }
+
+  markSynced(career.id);
+  return career.currentSeasonId ?? career.id;
 }

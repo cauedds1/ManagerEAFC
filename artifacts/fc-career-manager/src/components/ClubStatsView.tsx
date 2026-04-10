@@ -5,6 +5,7 @@ import type { MatchRecord } from "@/types/match";
 
 interface Props {
   careerId: string;
+  seasonId: string;
   season?: string;
 }
 
@@ -200,11 +201,11 @@ const FORM_STYLE: Record<"V" | "E" | "D", { bg: string; color: string }> = {
   D: { bg: "rgba(239,68,68,0.18)",   color: "#f87171" },
 };
 
-export function ClubStatsView({ careerId, season }: Props) {
+export function ClubStatsView({ careerId, seasonId, season }: Props) {
   const matches = useMemo(() => {
-    const all = getMatches(careerId);
+    const all = getMatches(seasonId);
     return season ? all.filter((m) => m.season === season) : all;
-  }, [careerId, season]);
+  }, [seasonId, season]);
 
   const stats = useMemo(() => computeStats(matches), [matches]);
 

@@ -22,6 +22,7 @@ import { searchStaticClubs } from "@/lib/staticClubList";
 
 interface Props {
   careerId: string;
+  seasonId: string;
   season: string;
   clubName: string;
   clubLogoUrl?: string | null;
@@ -83,8 +84,8 @@ function todayIso(): string {
   return new Date().toISOString().split("T")[0];
 }
 
-function buildInitialDraft(careerId: string): Pick<MatchDraft, "date" | "tournament" | "stage"> {
-  const matches = getMatches(careerId);
+function buildInitialDraft(seasonId: string): Pick<MatchDraft, "date" | "tournament" | "stage"> {
+  const matches = getMatches(seasonId);
   if (matches.length === 0) return { date: todayIso(), tournament: "", stage: "" };
   const last = matches[matches.length - 1];
   const date = last.date ?? todayIso();
@@ -795,6 +796,7 @@ function PlayerLineupRow({
 
 export function RegistrarPartidaModal({
   careerId,
+  seasonId,
   season,
   clubName,
   clubLogoUrl,
@@ -806,7 +808,7 @@ export function RegistrarPartidaModal({
   const [saving, setSaving] = useState(false);
   const [pickerMode, setPickerMode] = useState<"starter" | "sub" | null>(null);
 
-  const initial = useMemo(() => buildInitialDraft(careerId), [careerId]);
+  const initial = useMemo(() => buildInitialDraft(seasonId), [seasonId]);
 
   const [draft, setDraft] = useState<MatchDraft>({
     opponent: "",
@@ -940,11 +942,11 @@ export function RegistrarPartidaModal({
       opponentLogoUrl: draft.opponentLogoUrl ?? undefined,
       createdAt: Date.now(),
     };
-    addMatch(careerId, match);
-    applyMatchToPlayerStats(careerId, draft.starterIds, draft.subIds, draft.playerStats);
+    addMatch(seasonId, match);
+    applyMatchToPlayerStats(seasonId, draft.starterIds, draft.subIds, draft.playerStats);
     onMatchAdded(match);
     onClose();
-  }, [canSave, saving, careerId, season, draft, onMatchAdded, onClose]);
+  }, [canSave, saving, seasonId, careerId, season, draft, onMatchAdded, onClose]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };

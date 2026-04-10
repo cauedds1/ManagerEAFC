@@ -16,6 +16,7 @@ interface PlayerInjuryRecord {
 
 interface Props {
   careerId: string;
+  seasonId: string;
   allPlayers: SquadPlayer[];
 }
 
@@ -49,14 +50,14 @@ function fmtDate(dateStr: string): string {
   return `${day}/${month}/${year}`;
 }
 
-export function LesoesView({ careerId, allPlayers }: Props) {
+export function LesoesView({ careerId, seasonId, allPlayers }: Props) {
   const playerMap = useMemo(
     () => new Map(allPlayers.map((p) => [p.id, p])),
     [allPlayers],
   );
 
   const injuryRecords: PlayerInjuryRecord[] = useMemo(() => {
-    const matches = getMatches(careerId);
+    const matches = getMatches(seasonId);
     const byPlayer = new Map<number, InjuryOccurrence[]>();
 
     for (const m of matches) {
@@ -79,7 +80,7 @@ export function LesoesView({ careerId, allPlayers }: Props) {
         injuries: injuries.sort((a, b) => b.matchDate.localeCompare(a.matchDate)),
       }))
       .sort((a, b) => b.injuries.length - a.injuries.length);
-  }, [careerId, playerMap]);
+  }, [seasonId, playerMap]);
 
   if (injuryRecords.length === 0) {
     return (

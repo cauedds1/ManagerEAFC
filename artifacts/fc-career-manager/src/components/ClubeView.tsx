@@ -22,6 +22,7 @@ const SUB_TABS: { id: ClubeSubTab; label: string; icon: string }[] = [
 
 interface ClubeViewProps {
   careerId: string;
+  seasonId: string;
   career: Career;
   squad: SquadResult | null;
   squadLoading: boolean;
@@ -36,6 +37,7 @@ interface ClubeViewProps {
 
 export function ClubeView({
   careerId,
+  seasonId,
   career,
   squad,
   squadLoading,
@@ -125,25 +127,26 @@ export function ClubeView({
 
             {statsMini === "jogadores" && (
               <div className="overflow-x-auto">
-                <PlayerStatsTable careerId={careerId} allPlayers={allPlayers} />
+                <PlayerStatsTable careerId={careerId} seasonId={seasonId} allPlayers={allPlayers} />
               </div>
             )}
             {statsMini === "clube" && (
-              <ClubStatsView careerId={careerId} season={career.season} />
+              <ClubStatsView careerId={careerId} seasonId={seasonId} season={career.season} />
             )}
           </div>
         )}
 
         {sub === "lesoes" && (
-          <LesoesView careerId={careerId} allPlayers={allPlayers} />
+          <LesoesView careerId={careerId} seasonId={seasonId} allPlayers={allPlayers} />
         )}
         {sub === "sequencias" && (
-          <SequenciasView careerId={careerId} />
+          <SequenciasView careerId={careerId} seasonId={seasonId} />
         )}
         {sub === "financeiro" && (
           <div className="px-4 sm:px-6 py-6">
             <FinanceiroView
               careerId={careerId}
+              seasonId={seasonId}
               transfers={transfers}
               season={career.season}
             />

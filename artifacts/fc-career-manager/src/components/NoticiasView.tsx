@@ -10,15 +10,22 @@ import { useImageUpload } from "@/hooks/useImageUpload";
 import { ImageCropModal } from "./ImageCropModal";
 import type { SquadPlayer } from "@/lib/squadCache";
 import type { MatchRecord } from "@/types/match";
+import { getMatchResult } from "@/types/match";
+import { getMatches as getMatchesForStorage } from "@/lib/matchStorage";
 import { buildPlayerPerformanceContext, buildPlayerContextString } from "@/lib/playerContext";
 import { stepPlayerMood } from "@/lib/playerPerformanceEngine";
 import { getMembers, addNotification } from "@/lib/diretoriaStorage";
 import { getAllPlayerStats } from "@/lib/playerStatsStorage";
 
+import type { Season } from "@/types/career";
+
 interface NoticiasViewProps {
   career: Career;
+  seasonId: string;
   allPlayers?: SquadPlayer[];
   matches?: MatchRecord[];
+  pastSeasons?: Season[];
+  isReadOnly?: boolean;
 }
 
 const NEGATIVE_KEYWORDS = [
@@ -166,11 +173,13 @@ function CategoryButton({
 function AddPostModal({
   career,
   playerContextStr,
+  historicalContext,
   onClose,
   onSave,
 }: {
   career: Career;
   playerContextStr?: string;
+  historicalContext?: string;
   onClose: () => void;
   onSave: (post: NewsPost) => void;
 }) {
@@ -234,6 +243,7 @@ function AddPostModal({
           source: aiSource !== "auto" ? aiSource : undefined,
           category: aiCategory !== "auto" ? aiCategory : undefined,
           playersContext: playerContextStr || undefined,
+          historicalContext: historicalContext || undefined,
         }),
       });
       if (!res.ok) {
@@ -797,7 +807,7 @@ const SOURCE_SIDEBAR_COLOR: Record<NewsSource, { color: string; bg: string }> = 
 };
 
 
-export function NoticiasView({ career, allPlayers = [], matches: _matches = [] }: NoticiasViewProps) {
+export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matches = [], pastSeasons = [], isReadOnly }: NoticiasViewProps) {
   const [posts, setPosts] = useState<NewsPost[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [filterSource, setFilterSource] = useState<NewsSource | "all">("all");
@@ -812,26 +822,41 @@ export function NoticiasView({ career, allPlayers = [], matches: _matches = [] }
   }, []);
 
   useEffect(() => {
-    let stored = getPosts(career.id);
+    let stored = getPosts(seasonId);
     if (stored.length === 0) {
       stored = seedPosts(career);
-      savePosts(career.id, stored);
+      savePosts(seasonId, stored);
     }
     setPosts(stored);
-  }, [career.id]);
+  }, [seasonId]);
 
   const playerContextStr = useMemo(() => {
     if (allPlayers.length === 0) return "";
-    const items = buildPlayerPerformanceContext(career.id, allPlayers);
+    const items = buildPlayerPerformanceContext(seasonId, allPlayers);
     return buildPlayerContextString(items);
-  }, [career.id, allPlayers]);
+  }, [seasonId, allPlayers]);
+
+  const historicalContext = useMemo(() => {
+    if (pastSeasons.length === 0) return undefined;
+    const lines = pastSeasons.map((s) => {
+      const ms = getMatchesForStorage(s.id);
+      if (ms.length > 0) {
+        const wins = ms.filter((m) => getMatchResult(m.myScore, m.opponentScore) === "vitoria").length;
+        const draws = ms.filter((m) => getMatchResult(m.myScore, m.opponentScore) === "empate").length;
+        const losses = ms.filter((m) => getMatchResult(m.myScore, m.opponentScore) === "derrota").length;
+        return `${s.label}: ${wins}V ${draws}E ${losses}D (${ms.length} partidas)`;
+      }
+      return s.label;
+    });
+    return `Histórico de temporadas anteriores do clube:\n${lines.join("\n")}`;
+  }, [pastSeasons]);
 
   const handleSavePost = (post: NewsPost) => {
-    addPost(career.id, post);
+    addPost(seasonId, post);
     setPosts((prev) => [post, ...prev]);
     if (allPlayers.length > 0 && (post.content || post.comments?.length)) {
       const criticised = scanPostForCriticism(post.content, post.comments ?? [], allPlayers);
-      const allStats = getAllPlayerStats(career.id);
+      const allStats = getAllPlayerStats(seasonId);
       const members = getMembers(career.id);
       const auxTecnico = members.find(
         (m) =>
@@ -843,7 +868,7 @@ export function NoticiasView({ career, allPlayers = [], matches: _matches = [] }
         m.roleLabel.toLowerCase().includes("presidente"),
       );
       for (const playerId of criticised) {
-        stepPlayerMood(career.id, playerId, -1);
+        stepPlayerMood(seasonId, playerId, -1);
         const stats = allStats[playerId];
         const player = allPlayers.find((p) => p.id === playerId);
         if (!stats || !player) continue;
@@ -926,16 +951,18 @@ export function NoticiasView({ career, allPlayers = [], matches: _matches = [] }
             </span>
           )}
         </div>
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
-          style={{ background: "var(--club-gradient)" }}
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-          </svg>
-          Nova notícia
-        </button>
+        {!isReadOnly && (
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+            style={{ background: "var(--club-gradient)" }}
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+            Nova notícia
+          </button>
+        )}
       </div>
 
       {/* Search bar */}
@@ -1048,7 +1075,7 @@ export function NoticiasView({ career, allPlayers = [], matches: _matches = [] }
                 <p className="text-white/35 font-semibold text-sm">Nenhuma notícia ainda</p>
                 <p className="text-white/20 text-xs mt-1 max-w-xs">{emptyLabel}</p>
               </div>
-              {filterSource === "all" && filterCategory === "all" && (
+              {!isReadOnly && filterSource === "all" && filterCategory === "all" && (
                 <button
                   onClick={() => setShowAddModal(true)}
                   className="mt-2 px-5 py-2 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90"
@@ -1173,10 +1200,11 @@ export function NoticiasView({ career, allPlayers = [], matches: _matches = [] }
 
     </div>
 
-    {showAddModal && (
+    {showAddModal && !isReadOnly && (
       <AddPostModal
         career={career}
         playerContextStr={playerContextStr || undefined}
+        historicalContext={historicalContext}
         onClose={() => setShowAddModal(false)}
         onSave={handleSavePost}
       />

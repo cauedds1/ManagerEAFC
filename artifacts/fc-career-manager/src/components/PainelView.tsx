@@ -59,6 +59,7 @@ const POS_STYLE: Record<PositionPtBr, { bg: string; color: string }> = {
 
 interface PainelViewProps {
   careerId: string;
+  seasonId: string;
   clubName: string;
   clubLogoUrl?: string | null;
   allPlayers: SquadPlayer[];
@@ -520,7 +521,7 @@ function MessagesSection() {
 }
 
 export function PainelView({
-  careerId,
+  seasonId,
   clubName,
   clubLogoUrl,
   allPlayers,
@@ -528,6 +529,7 @@ export function PainelView({
   matches,
   transferCount,
 }: PainelViewProps) {
+  const careerId = seasonId;
   const quickStats = [
     {
       label: "Partidas",

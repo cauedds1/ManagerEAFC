@@ -448,22 +448,26 @@ const DEFAULT_FORM: FormData = {
 
 interface TransferenciasViewProps {
   careerId: string;
+  seasonId: string;
   transfers: TransferRecord[];
   season: string;
   clubName: string;
   clubLogoUrl?: string | null;
   allPlayers: SquadPlayer[];
   onTransferAdded: (transfer: TransferRecord) => void;
+  isReadOnly?: boolean;
 }
 
 export function TransferenciasView({
   careerId,
+  seasonId,
   transfers,
   season,
   clubName,
   clubLogoUrl,
   allPlayers,
   onTransferAdded,
+  isReadOnly,
 }: TransferenciasViewProps) {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<FormData>(DEFAULT_FORM);
@@ -488,7 +492,7 @@ export function TransferenciasView({
     const isVenda = form.transferType === "venda";
     const playerId = (isVenda && form.resolvedPlayerId) ? form.resolvedPlayerId : generatePlayerId();
     if (!isVenda) {
-      setPlayerStats(careerId, playerId, defaultStats(playerId));
+      setPlayerStats(seasonId, playerId, defaultStats(playerId));
     }
 
     const transfer: TransferRecord = {
@@ -550,27 +554,29 @@ export function TransferenciasView({
             </span>
           )}
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => openForm("venda")}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-white/80 transition-all duration-200 hover:opacity-90 active:scale-95 glass glass-hover"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7" />
-            </svg>
-            Registrar Venda
-          </button>
-          <button
-            onClick={() => openForm("compra")}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-white transition-all duration-200 hover:opacity-90 active:scale-95"
-            style={{ background: "var(--club-gradient)" }}
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
-            Registrar Contratação
-          </button>
-        </div>
+        {!isReadOnly && (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => openForm("venda")}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-white/80 transition-all duration-200 hover:opacity-90 active:scale-95 glass glass-hover"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7" />
+              </svg>
+              Registrar Venda
+            </button>
+            <button
+              onClick={() => openForm("compra")}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-white transition-all duration-200 hover:opacity-90 active:scale-95"
+              style={{ background: "var(--club-gradient)" }}
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+              Registrar Contratação
+            </button>
+          </div>
+        )}
       </div>
 
       {sortedTransfers.length === 0 ? (

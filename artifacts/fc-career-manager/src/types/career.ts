@@ -28,6 +28,16 @@ export interface Career {
   season: string;
   projeto?: string;
   competitions?: string[];
+  currentSeasonId?: string;
   createdAt: number;
   updatedAt: number;
+}
+
+export interface Season {
+  id: string;
+  careerId: string;
+  label: string;
+  competitions?: string[];
+  isActive: boolean;
+  createdAt: number;
 }
