@@ -16,6 +16,8 @@ import { getMatches } from "@/lib/matchStorage";
 import type { MatchRecord } from "@/types/match";
 import { runPerformanceEngine } from "@/lib/playerPerformanceEngine";
 import { copyPlayerMoodsToNewSeason } from "@/lib/playerStatsStorage";
+import { getLeaguePosition } from "@/lib/leagueStorage";
+import { runAutoNews } from "@/lib/autoNewsService";
 import { PainelView } from "./PainelView";
 import { ClubeView } from "./ClubeView";
 import { TransferenciasView } from "./TransferenciasView";
@@ -287,9 +289,22 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
   }, [activeSeasonId]);
 
   const handleMatchAdded = useCallback((match: MatchRecord) => {
-    setMatches((prev) => [...prev, match]);
+    const updatedMatches = [...matches, match];
+    setMatches(updatedMatches);
     setTimeout(() => runPerformanceEngine(activeSeasonId), 50);
-  }, [activeSeasonId]);
+
+    const seasonLabel = seasons.find((s) => s.id === activeSeasonId)?.label ?? activeSeasonLabel;
+    const leaguePos = getLeaguePosition(activeSeasonId);
+    void runAutoNews(match, {
+      careerId: career.id,
+      seasonId: activeSeasonId,
+      season: seasonLabel,
+      clubName: career.clubName,
+      allMatches: updatedMatches,
+      allPlayers,
+      leaguePosition: leaguePos,
+    });
+  }, [activeSeasonId, matches, allPlayers, seasons, activeSeasonLabel, career.id, career.clubName]);
 
   const handleNewSeasonConfirm = useCallback(async (label: string, competitions: string[]) => {
     setCreatingNewSeason(true);
