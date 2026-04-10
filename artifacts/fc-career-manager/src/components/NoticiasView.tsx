@@ -11,8 +11,8 @@ interface NoticiasViewProps {
 
 const SOURCE_LABELS: Record<NewsSource, string> = {
   tnt: "TNT Sports",
-  espn: "ESPN Brasil",
-  fanpage: "FanPage do Clube",
+  espn: "ESPN",
+  fanpage: "FanPage",
 };
 
 const CATEGORY_LABELS: Record<NewsCategory, string> = {
@@ -279,13 +279,13 @@ export function NoticiasView({ career }: NoticiasViewProps) {
     .filter((c) => c.count > 0)
     .sort((a, b) => b.count - a.count);
 
+  const srcLabel = filterSource !== "all" ? SOURCE_LABELS[filterSource] : "";
+  const catLabel = filterCategory !== "all" ? CATEGORY_LABELS[filterCategory] : "";
   const emptyLabel = (() => {
     if (filterSource !== "all" && filterCategory !== "all")
-      return `Nenhuma publicação de ${SOURCE_LABELS[filterSource as NewsSource]} na categoria ${CATEGORY_LABELS[filterCategory as NewsCategory]}`;
-    if (filterSource !== "all")
-      return `Nenhuma publicação de ${SOURCE_LABELS[filterSource as NewsSource]} ainda`;
-    if (filterCategory !== "all")
-      return `Nenhuma publicação na categoria ${CATEGORY_LABELS[filterCategory as NewsCategory]}`;
+      return `Nenhuma publicação de ${srcLabel} na categoria ${catLabel}`;
+    if (filterSource !== "all") return `Nenhuma publicação de ${srcLabel} ainda`;
+    if (filterCategory !== "all") return `Nenhuma publicação na categoria ${catLabel}`;
     return "Clique em \"Nova notícia\" para publicar a primeira";
   })();
 
