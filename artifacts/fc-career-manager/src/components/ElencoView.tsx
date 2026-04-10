@@ -226,7 +226,7 @@ export function ElencoView({
     : "";
 
   return (
-    <div className="animate-fade-up">
+    <div className="animate-fade-up p-4 sm:p-6">
       <div className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-3">
           <h2 className="text-white/35 text-xs font-bold tracking-widest uppercase">Elenco</h2>
@@ -383,7 +383,7 @@ export function ElencoView({
               highlightedPlayerId={pendingSwap?.id}
             />
           </div>
-          <div className="flex-1 min-w-0 overflow-y-auto lg:max-h-[660px]">
+          <div className="flex-1 min-w-0">
             {bench.length === 0 ? (
               <p className="text-white/20 text-xs text-center py-4">
                 Todos os jogadores estão no time titular
