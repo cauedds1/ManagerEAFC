@@ -56,12 +56,22 @@ Brazilian Portuguese companion app for EA FC 26 career mode.
 - **Historical context** in AI news: `pastSeasons` W/D/L stats passed to `/api/noticias/generate` as `historicalContext`, included in OpenAI system prompt.
 - **Feed memory**: Last 6 posts sent as `recentPostsContext` to AI — sporadically creates narrative connections between related news events.
 
+### API Key Architecture (Task #2)
+- `API_FOOTBALL_KEY` stored as Replit Secret — never exposed to browser.
+- All API-Football calls happen **server-side only**.
+- MSMC used **only** for position enrichment (never persists photo, id, club from MSMC).
+- `ApiKeySetup.tsx` component still exists but is no longer in the mandatory app flow.
+- `hasApiKey` prop removed from `ElencoView`, `ClubeView`, `Dashboard`.
+- `AppView` type no longer includes `"key-missing"`.
+
 ### API Routes (`artifacts/api-server/src/routes/`)
 - `GET /api/clubs` → 200 `{clubs, cachedAt}` if fresh (<30 days), 204 if empty/stale
 - `PUT /api/clubs` → replaces club list atomically (transaction: DELETE all + INSERT in 200-row chunks)
+- `POST /api/clubs/fetch` → backend fetches all leagues (passed as `{leagues}` in body) from API-Football using `API_FOOTBALL_KEY`, saves to DB. Returns `{ok, count}`.
 - `DELETE /api/clubs` → clears club list cache
-- `GET /api/squad/:teamId` → 200 `{players, source, cachedAt}` if fresh (<7 days), 204 if empty/stale. Reconstructs SquadResult from individual player rows.
+- `GET /api/squad/:teamId` → 200 `{players, source, cachedAt, schemaVersion}` if fresh (<7 days), 204 if empty/stale. Source format stored as `"api-football@v2"`, split on `@` for response.
 - `PUT /api/squad/:teamId` → replaces squad atomically (transaction: DELETE WHERE team_id + INSERT up to 100 rows per chunk)
+- `POST /api/squad/:teamId/fetch` → fetches squad from API-Football using `API_FOOTBALL_KEY`, enriches positions via MSMC (only `position` field updated), saves to DB, returns `{players, source, cachedAt, schemaVersion}`. Body: `{fc26Name?}` (optional — used for MSMC lookup).
 - `GET /api/proxy/image?url=...` → proxies images from allowed domains (media.api-sports.io, cdn.sofifa.net) with CORS headers. Cached 24h.
 - `POST /api/noticias/generate` → AI-generated news post. Body: `{description, clubName, source?, category?, playersContext?, historicalContext?}`. Uses OpenAI gpt-5.2 via Replit AI Integrations (env vars: `AI_INTEGRATIONS_OPENAI_BASE_URL`, `AI_INTEGRATIONS_OPENAI_API_KEY`). Returns: `{source, sourceHandle, sourceName, category, title?, content, likes, commentsCount, sharesCount, comments[]}`.
 - `GET /api/careers` → list all careers
