@@ -109,40 +109,66 @@ export function detectMatchEvents(input: EngineInput): DetectedEvent[] {
     });
   }
 
-  /* ── Virada dramática (time marcou o gol que tomou a frente no 2º tempo) ── */
-  if (isWin && newMatch.opponentScore > 0 && teamMins.length > newMatch.opponentScore) {
-    const goAheadIdx = newMatch.opponentScore;
-    const goAheadMinute = teamMins[goAheadIdx];
-    const equalizerMinute = newMatch.opponentScore > 0 ? teamMins[newMatch.opponentScore - 1] : null;
-    if (goAheadMinute >= 45) {
-      events.push({
-        key: `virada-${newMatch.id}`,
-        type: "virada",
-        title: `Virada dramática! ${clubName} ${newMatch.myScore}x${newMatch.opponentScore} ${newMatch.opponent}`,
-        aiDescription: `O ${clubName} virou a partida e venceu por ${newMatch.myScore}x${newMatch.opponentScore}! O gol que colocou o time na frente saiu aos ${goAheadMinute}'${equalizerMinute != null && equalizerMinute !== goAheadMinute ? ` (empate aos ${equalizerMinute}')` : ""}. ${summary} Descreva a euforia da torcida com o gol da virada, a garra do time que não desistiu e os momentos de tensão que antecederam a jogada decisiva.`,
-        source: "tnt",
-        category: "resultado",
-        priority: 1,
-      });
-    }
+  /* ── Virada dramática (provada: 0 gols do time no 1º tempo + vitória) ── */
+  const firstHalfTeamGoals = teamMins.filter((m) => m < 45);
+  const secondHalfTeamGoals = teamMins.filter((m) => m >= 45);
+  const teamScoredOnlyInSecondHalf = firstHalfTeamGoals.length === 0 && secondHalfTeamGoals.length > 0;
+  if (isWin && newMatch.opponentScore > 0 && teamScoredOnlyInSecondHalf) {
+    const comebackStartMinute = secondHalfTeamGoals[0];
+    const equalizerMinute = newMatch.opponentScore <= secondHalfTeamGoals.length
+      ? secondHalfTeamGoals[newMatch.opponentScore - 1]
+      : null;
+    const goAheadMinute = newMatch.opponentScore < secondHalfTeamGoals.length
+      ? secondHalfTeamGoals[newMatch.opponentScore]
+      : null;
+    const minuteCtx = goAheadMinute != null
+      ? `O ${clubName} começou a reagir aos ${comebackStartMinute}'${equalizerMinute != null && equalizerMinute !== comebackStartMinute ? `, empatou aos ${equalizerMinute}'` : ""} e tomou a frente aos ${goAheadMinute}'.`
+      : `O ${clubName} virou no segundo tempo, iniciando a reação aos ${comebackStartMinute}'.`;
+    events.push({
+      key: `virada-${newMatch.id}`,
+      type: "virada",
+      title: `Virada dramática! ${clubName} ${newMatch.myScore}x${newMatch.opponentScore} ${newMatch.opponent}`,
+      aiDescription: `O ${clubName} chegou ao intervalo perdendo e virou a partida! ${minuteCtx} ${summary} Descreva a euforia da torcida, a garra do time que não desistiu mesmo estando abaixo no placar no intervalo e os momentos-chave da reação histórica.`,
+      source: "tnt",
+      category: "resultado",
+      priority: 1,
+    });
   }
 
-  /* ── Vitória sofrida (ganhou mas adversário marcou — para casos que não se qualificam como virada) ── */
-  if (isWin && newMatch.opponentScore > 0 && goalDiff <= 2) {
-    const goAheadIdx = newMatch.opponentScore;
-    const goAheadMinute = teamMins.length > goAheadIdx ? teamMins[goAheadIdx] : null;
-    const isVirada = goAheadMinute != null && goAheadMinute >= 45;
-    if (!isVirada) {
-      events.push({
-        key: `vitoria-sofrida-${newMatch.id}`,
-        type: "vitoria_sofrida",
-        title: `${clubName} vence partida disputada: ${newMatch.myScore}x${newMatch.opponentScore}`,
-        aiDescription: `O ${clubName} venceu o ${newMatch.opponent} em uma partida onde ambos os times marcaram (${newMatch.myScore}x${newMatch.opponentScore}). ${summary} Descreva a tensão do jogo, como as defesas e os ataques se alternaram ao longo dos 90 minutos, e celebre a vitória conquistada em um confronto equilibrado.`,
-        source: "tnt",
-        category: "resultado",
-        priority: 2,
-      });
-    }
+  /* ── Vitória sofrida (ganhou mas adversário marcou — sem afirmar quem abriu o placar) ── */
+  if (isWin && newMatch.opponentScore > 0 && goalDiff <= 2 && !teamScoredOnlyInSecondHalf) {
+    events.push({
+      key: `vitoria-sofrida-${newMatch.id}`,
+      type: "vitoria_sofrida",
+      title: `${clubName} vence partida disputada: ${newMatch.myScore}x${newMatch.opponentScore}`,
+      aiDescription: `O ${clubName} venceu o ${newMatch.opponent} em uma partida em que ambos os times marcaram (${newMatch.myScore}x${newMatch.opponentScore}). ${summary} Descreva a tensão do jogo, os melhores momentos do confronto equilibrado e celebre a vitória conquistada com garra.`,
+      source: "tnt",
+      category: "resultado",
+      priority: 2,
+    });
+  }
+
+  /* ── Empate disputado (≥2 a ≥2) ou empate em branco (0x0) ── */
+  if (isDraw && newMatch.myScore >= 2) {
+    events.push({
+      key: `empate-disputado-${newMatch.id}`,
+      type: "empate_disputado",
+      title: `Empate emocionante: ${clubName} ${newMatch.myScore}x${newMatch.opponentScore} ${newMatch.opponent}`,
+      aiDescription: `Partida cheia de gols que terminou empatada! ${newMatch.myScore}x${newMatch.opponentScore}. ${summary} Analise se o empate tem gosto de ponto conquistado ou vitória perdida, destaque os gols e descreva como a torcida viveu este jogo nervoso.`,
+      source: "espn",
+      category: "resultado",
+      priority: 2,
+    });
+  } else if (isDraw && newMatch.myScore === 0) {
+    events.push({
+      key: `empate-branco-${newMatch.id}`,
+      type: "empate_branco",
+      title: `Empate sem gols: ${clubName} 0x0 ${newMatch.opponent}`,
+      aiDescription: `Um 0 a 0 que pode ter sabor diferente dependendo do contexto. ${summary} Destaque as melhores defesas do goleiro, os ataques que não converteram e analise o que esse resultado significa na tabela do ${newMatch.tournament}.`,
+      source: "fanpage",
+      category: "resultado",
+      priority: 3,
+    });
   }
 
   /* ── Vitória suada (margem mínima com placar aberto ≥70' — gol nos acréscimos não se aplica) ── */
