@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { getApiKey, setApiKey, clearClubCache } from "@/lib/clubListCache";
-import { clearAllSquadCaches } from "@/lib/squadCache";
+import { clearClubCache } from "@/lib/clubListCache";
 import {
   getPortalPhotos,
   setPortalPhoto,
@@ -43,10 +42,6 @@ const PORTAL_META: { source: PortalSource; label: string; color: string; bgColor
 ];
 
 export function Settings({ isOpen, onClose, onReloadClubs }: SettingsProps) {
-  const [apiKey, setApiKeyState] = useState("");
-  const [showKey, setShowKey] = useState(false);
-  const [saved, setSaved] = useState(false);
-
   // Player sync (existing button)
   const [syncState, setSyncState] = useState<SyncState>("idle");
   const [syncMsg, setSyncMsg] = useState("");
@@ -73,8 +68,6 @@ export function Settings({ isOpen, onClose, onReloadClubs }: SettingsProps) {
 
   useEffect(() => {
     if (isOpen) {
-      setApiKeyState(getApiKey() ?? "");
-      setSaved(false);
       setSyncState("idle");
       setSyncMsg("");
       setPortalPhotosState(getPortalPhotos());
@@ -84,7 +77,7 @@ export function Settings({ isOpen, onClose, onReloadClubs }: SettingsProps) {
         setSetupProgress(null);
       }
     }
-  }, [isOpen]);
+  }, [isOpen, setupState]);
 
   const handlePortalFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -116,13 +109,6 @@ export function Settings({ isOpen, onClose, onReloadClubs }: SettingsProps) {
 
   if (!isOpen) return null;
 
-  const handleSaveKey = () => {
-    const trimmed = apiKey.trim();
-    if (trimmed) { setApiKey(trimmed); clearAllSquadCaches(); }
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
-  };
-
   const handleReloadClubs = () => {
     clearClubCache();
     onClose();
@@ -130,15 +116,13 @@ export function Settings({ isOpen, onClose, onReloadClubs }: SettingsProps) {
   };
 
   const handleSyncPlayers = async () => {
-    const key = apiKey.trim() || (getApiKey() ?? "");
-    if (!key) { setSyncMsg("Configure e salve a chave de API primeiro."); setSyncState("error"); return; }
     setSyncState("running");
     setSyncMsg("Buscando jogadores na API...");
     try {
       const res = await fetch("/api/players/sync", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ apiKey: key }),
+        body: JSON.stringify({}),
       });
       const data = await res.json() as { message?: string; remaining?: number; error?: string };
       if (!res.ok) { setSyncMsg(data.error ?? "Erro ao sincronizar."); setSyncState("error"); }
@@ -147,16 +131,13 @@ export function Settings({ isOpen, onClose, onReloadClubs }: SettingsProps) {
   };
 
   const handleFullSetup = () => {
-    const key = apiKey.trim() || (getApiKey() ?? "");
-    if (!key) { setSetupMsg("Configure e salve a chave de API primeiro."); setSetupState("error"); return; }
-
     setSetupState("running");
     setSetupMsg("Conectando...");
     setSetupProgress(null);
     setupFinishedRef.current = false;
 
     esRef.current?.close();
-    const es = new EventSource(`/api/admin/seed?apiKey=${encodeURIComponent(key)}`);
+    const es = new EventSource("/api/admin/seed");
     esRef.current = es;
 
     es.onmessage = (e) => {
@@ -287,40 +268,6 @@ export function Settings({ isOpen, onClose, onReloadClubs }: SettingsProps) {
         </div>
 
         <div className="p-6 space-y-6 max-h-[72vh] overflow-y-auto">
-
-          {/* ── API Key ── */}
-          <div>
-            <label className="block text-white/50 text-xs font-semibold tracking-widest uppercase mb-3">Chave de API — API-Football</label>
-            <div className="relative mb-3">
-              <input
-                type={showKey ? "text" : "password"}
-                value={apiKey}
-                onChange={(e) => { setApiKeyState(e.target.value); setSaved(false); }}
-                onKeyDown={(e) => e.key === "Enter" && handleSaveKey()}
-                placeholder="Cole sua chave aqui..."
-                autoComplete="off"
-                className="w-full pr-10 pl-4 py-2.5 rounded-xl text-white text-sm placeholder-white/20 focus:outline-none transition-all duration-200 glass"
-                style={{ fontFamily: showKey ? "inherit" : "monospace" }}
-              />
-              <button type="button" onClick={() => setShowKey((s) => !s)} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors">
-                {showKey
-                  ? <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
-                  : <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                }
-              </button>
-            </div>
-            <button onClick={handleSaveKey}
-              className="w-full py-2.5 rounded-xl font-semibold text-sm transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
-              style={{ background: saved ? "rgba(16,185,129,0.8)" : "var(--club-gradient)", color: "#fff", boxShadow: saved ? "none" : "0 4px 16px rgba(var(--club-primary-rgb),0.2)" }}>
-              {saved ? "Salvo ✓" : "Salvar chave"}
-            </button>
-            <p className="mt-2 text-white/25 text-xs flex items-center gap-1.5">
-              <svg className="w-3 h-3 flex-shrink-0" style={{ color: "var(--club-primary)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-              Armazenada apenas no seu navegador
-            </p>
-          </div>
-
-          <div style={{ height: "1px", background: "var(--surface-border)" }} />
 
           {/* ── Setup inicial ── */}
           <div>

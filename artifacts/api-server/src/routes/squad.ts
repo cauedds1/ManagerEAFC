@@ -201,7 +201,7 @@ router.get("/squad/:teamId", async (req, res) => {
       .where(eq(squadPlayersTable.teamId, teamId));
 
     const cachedAt = rows.length > 0 ? Number(rows[0].cachedAt) : 0;
-    const wrongSource = rows.length > 0 && !rows[0].source.startsWith("api-football");
+    const wrongSource = rows.length > 0 && rows[0].source !== "api-football@v2";
     const stale = rows.length === 0 || wrongSource || Date.now() - cachedAt > SQUAD_TTL_MS;
 
     if (!stale) return res.json(rowsToResponse(rows));

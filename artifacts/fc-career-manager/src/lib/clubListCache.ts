@@ -1,5 +1,5 @@
 import { ClubEntry } from "@/types/club";
-import { DOMESTIC_LEAGUES, INTERNATIONAL_LEAGUES, LeagueInfo } from "./footballApiMap";
+import { DOMESTIC_LEAGUES, INTERNATIONAL_LEAGUES } from "./footballApiMap";
 
 // International league IDs (API-Football):
 //   2 = UEFA Champions League  (82 teams in 2025 — 82 is team count, NOT the ID)
@@ -8,33 +8,13 @@ import { DOMESTIC_LEAGUES, INTERNATIONAL_LEAGUES, LeagueInfo } from "./footballA
 //   13 = CONMEBOL Libertadores (47 teams)
 // ID 14 (CONMEBOL Sudamericana) is SKIPPED — returns European U19 teams (bad data).
 
-const API_BASE = "https://v3.football.api-sports.io";
-const API_KEY_STORAGE = "fc-career-manager-api-key";
 export const CACHE_KEY = "fc-career-manager-clubs";
 const CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
-const REQUEST_DELAY_MS = 500;
-
-interface ApiTeamItem {
-  team: {
-    id: number;
-    name: string;
-    logo: string;
-    country: string;
-    founded?: number;
-  };
-  venue?: {
-    name?: string;
-    city?: string;
-    capacity?: number;
-  };
-}
 
 interface CacheData {
   clubs: ClubEntry[];
   cachedAt: number;
 }
-
-export type ProgressCallback = (loaded: number, total: number, leagueName: string) => void;
 
 export class ApiAuthError extends Error {
   constructor(message = "Chave de API inválida ou sem permissão") {
@@ -48,62 +28,6 @@ export class ApiRateLimitError extends Error {
     super(message);
     this.name = "ApiRateLimitError";
   }
-}
-
-export function getApiKey(): string | null {
-  return localStorage.getItem(API_KEY_STORAGE);
-}
-
-export function setApiKey(key: string): void {
-  localStorage.setItem(API_KEY_STORAGE, key.trim());
-}
-
-export function removeApiKey(): void {
-  localStorage.removeItem(API_KEY_STORAGE);
-}
-
-async function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-async function fetchLeagueTeams(league: LeagueInfo, apiKey: string): Promise<ClubEntry[]> {
-  const res = await fetch(`${API_BASE}/teams?league=${league.id}&season=2025`, {
-    headers: { "x-apisports-key": apiKey },
-  });
-
-  if (res.status === 401 || res.status === 403) {
-    throw new ApiAuthError();
-  }
-
-  if (res.status === 429) {
-    throw new ApiRateLimitError();
-  }
-
-  if (!res.ok) {
-    // Other server errors: skip this league gracefully
-    return [];
-  }
-
-  let json: { response?: unknown };
-  try {
-    json = await res.json();
-  } catch {
-    return [];
-  }
-
-  if (!Array.isArray(json.response)) return [];
-
-  return (json.response as ApiTeamItem[]).map((item) => ({
-    id: item.team.id,
-    name: item.team.name,
-    logo: item.team.logo,
-    league: league.displayName ?? league.name,
-    leagueId: league.id,
-    country: item.team.country,
-    ...(item.team.founded ? { founded: item.team.founded } : {}),
-    ...(item.venue?.name ? { stadium: item.venue.name } : {}),
-    ...(item.venue?.capacity ? { stadiumCapacity: item.venue.capacity } : {}),
-  }));
 }
 
 // ---------------------------------------------------------------------------
@@ -132,57 +56,6 @@ function writeDbClubs(clubs: ClubEntry[], cachedAt: number): void {
 
 function deleteDbClubs(): void {
   fetch("/api/clubs", { method: "DELETE" }).catch(() => {});
-}
-
-// ---------------------------------------------------------------------------
-// Public API
-// ---------------------------------------------------------------------------
-
-export async function fetchAndCacheClubList(onProgress?: ProgressCallback): Promise<ClubEntry[]> {
-  const apiKey = getApiKey();
-  if (!apiKey) throw new ApiAuthError("Nenhuma chave de API configurada");
-
-  const teamsMap = new Map<number, ClubEntry>();
-  const total = DOMESTIC_LEAGUES.length + INTERNATIONAL_LEAGUES.length;
-  let loaded = 0;
-
-  for (const league of DOMESTIC_LEAGUES) {
-    // Auth and rate-limit errors propagate to caller; other errors handled inside fetchLeagueTeams
-    const teams = await fetchLeagueTeams(league, apiKey);
-    for (const team of teams) {
-      if (!teamsMap.has(team.id)) teamsMap.set(team.id, team);
-    }
-    loaded++;
-    onProgress?.(loaded, total, league.displayName ?? league.name);
-    if (loaded < total) await sleep(REQUEST_DELAY_MS);
-  }
-
-  for (const league of INTERNATIONAL_LEAGUES) {
-    const teams = await fetchLeagueTeams(league, apiKey);
-    for (const team of teams) {
-      if (!teamsMap.has(team.id)) teamsMap.set(team.id, team);
-    }
-    loaded++;
-    onProgress?.(loaded, total, league.name);
-    if (loaded < total) await sleep(REQUEST_DELAY_MS);
-  }
-
-  const clubs = Array.from(teamsMap.values());
-
-  if (clubs.length > 0) {
-    const cachedAt = Date.now();
-    // Layer 1: localStorage
-    try {
-      const data: CacheData = { clubs, cachedAt };
-      localStorage.setItem(CACHE_KEY, JSON.stringify(data));
-    } catch {
-      // quota exceeded — data still in memory
-    }
-    // Layer 2: DB (fire-and-forget)
-    writeDbClubs(clubs, cachedAt);
-  }
-
-  return clubs;
 }
 
 export function getCachedClubList(): ClubEntry[] | null {

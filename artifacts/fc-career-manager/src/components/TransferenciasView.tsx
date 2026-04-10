@@ -12,7 +12,7 @@ import {
   generateTransferId,
 } from "@/lib/transferStorage";
 import { setPlayerStats, defaultStats } from "@/lib/playerStatsStorage";
-import { getCachedClubList, getApiKey } from "@/lib/clubListCache";
+import { getCachedClubList } from "@/lib/clubListCache";
 import { searchStaticClubs } from "@/lib/staticClubList";
 
 const ALL_POSITIONS: PositionPtBr[] = [
@@ -132,8 +132,6 @@ function PlayerAutocomplete({
   const [loading, setLoading] = useState(false);
   const [apiResults, setApiResults] = useState<PlayerSuggestion[]>([]);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const apiKey = getApiKey();
-
   const localResults = useMemo<PlayerSuggestion[]>(() => {
     const q = value.trim().toLowerCase();
     if (!q || q.length < 2) return [];
@@ -148,7 +146,6 @@ function PlayerAutocomplete({
     setLoading(true);
     try {
       const params = new URLSearchParams({ q: q.trim() });
-      if (apiKey) params.set("apiKey", apiKey);
       const res = await fetch(`/api/players/search?${params}`, {
         signal: AbortSignal.timeout(8000),
       });

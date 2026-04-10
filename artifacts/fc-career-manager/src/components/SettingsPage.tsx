@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { getApiKey, setApiKey, clearClubCache } from "@/lib/clubListCache";
-import { clearAllSquadCaches } from "@/lib/squadCache";
+import { clearClubCache } from "@/lib/clubListCache";
 import {
   getPortalPhotos,
   setPortalPhoto,
@@ -101,11 +100,6 @@ function StatusMsg({ state, msg }: { state: SyncState; msg: string }) {
 export function SettingsPage({ onReloadClubs }: SettingsPageProps) {
   const [section, setSection] = useState<Section>("api");
 
-  /* ── API key ── */
-  const [apiKey, setApiKeyState]  = useState(() => getApiKey() ?? "");
-  const [showKey, setShowKey]     = useState(false);
-  const [saved, setSaved]         = useState(false);
-
   /* ── Player sync ── */
   const [syncState, setSyncState]     = useState<SyncState>("idle");
   const [syncMsg, setSyncMsg]         = useState("");
@@ -142,13 +136,6 @@ export function SettingsPage({ onReloadClubs }: SettingsPageProps) {
 
   /* ─── Handlers ─── */
 
-  const handleSaveKey = () => {
-    const trimmed = apiKey.trim();
-    if (trimmed) { setApiKey(trimmed); clearAllSquadCaches(); }
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
-  };
-
   const handleSaveOpenaiKey = () => {
     setOpenAIKey(openaiKey);
     setOpenaiSaved(true);
@@ -167,11 +154,9 @@ export function SettingsPage({ onReloadClubs }: SettingsPageProps) {
   };
 
   const handleSyncPlayers = async () => {
-    const key = apiKey.trim() || (getApiKey() ?? "");
-    if (!key) { setSyncMsg("Configure e salve a chave de API primeiro."); setSyncState("error"); return; }
     setSyncState("running"); setSyncMsg("Buscando jogadores na API...");
     try {
-      const res  = await fetch("/api/players/sync", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ apiKey: key }) });
+      const res  = await fetch("/api/players/sync", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({}) });
       const data = await res.json() as { message?: string; remaining?: number; error?: string };
       if (!res.ok) { setSyncMsg(data.error ?? "Erro ao sincronizar."); setSyncState("error"); }
       else         { setSyncMsg(data.message ?? "Concluído."); setSyncRemaining(data.remaining ?? 0); setSyncState("done"); }
@@ -179,11 +164,9 @@ export function SettingsPage({ onReloadClubs }: SettingsPageProps) {
   };
 
   const handleFullSetup = () => {
-    const key = apiKey.trim() || (getApiKey() ?? "");
-    if (!key) { setSetupMsg("Configure e salve a chave de API primeiro."); setSetupState("error"); return; }
     setSetupState("running"); setSetupMsg("Conectando..."); setSetupProgress(null); setupFinishedRef.current = false;
     esRef.current?.close();
-    const es = new EventSource(`/api/admin/seed?apiKey=${encodeURIComponent(key)}`);
+    const es = new EventSource("/api/admin/seed");
     esRef.current = es;
     es.onmessage = (e) => {
       try {
@@ -264,38 +247,6 @@ export function SettingsPage({ onReloadClubs }: SettingsPageProps) {
   /* ─── Section: API & Dados ─── */
   const sectionApi = (
     <div className="space-y-5">
-
-      {/* API Key */}
-      <SectionCard title="Chave de API — API-Football" subtitle="Necessária para buscar elencos e dados de jogadores. Armazenada apenas no seu navegador.">
-        <div className="flex gap-3">
-          <div className="relative flex-1">
-            <input
-              type={showKey ? "text" : "password"}
-              value={apiKey}
-              onChange={(e) => { setApiKeyState(e.target.value); setSaved(false); }}
-              onKeyDown={(e) => e.key === "Enter" && handleSaveKey()}
-              placeholder="Cole sua chave aqui..."
-              autoComplete="off"
-              className="w-full pr-10 pl-4 py-2.5 rounded-xl text-white text-sm placeholder-white/20 focus:outline-none transition-all duration-200 glass"
-              style={{ fontFamily: showKey ? "inherit" : "monospace" }}
-            />
-            <button type="button" onClick={() => setShowKey((s) => !s)} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors">
-              {showKey
-                ? <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
-                : <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-              }
-            </button>
-          </div>
-          {actionBtn(
-            saved ? (
-              <><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg> Salvo</>
-            ) : "Salvar",
-            handleSaveKey,
-            false,
-            "primary",
-          )}
-        </div>
-      </SectionCard>
 
       {/* Importação completa */}
       <SectionCard

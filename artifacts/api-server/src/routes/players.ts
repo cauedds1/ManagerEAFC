@@ -88,7 +88,7 @@ function formatResponse(rows: DbRow[]) {
 
 router.get("/players/search", async (req, res) => {
   const q = String(req.query.q ?? "").trim();
-  const apiKey = String(req.query.apiKey ?? "").trim();
+  const apiKey = process.env.API_FOOTBALL_KEY ?? "";
 
   if (!q || q.length < 2) return res.json({ players: [] });
 
@@ -206,9 +206,9 @@ router.get("/players/search", async (req, res) => {
 // Bulk-fetches squads from API-Football for all clubs in the DB and caches
 // players with real face photos. Only processes clubs not yet synced from API.
 router.post("/players/sync", async (req, res) => {
-  const { apiKey } = req.body as { apiKey?: string };
-  if (!apiKey?.trim()) {
-    return res.status(400).json({ error: "apiKey required" });
+  const apiKey = process.env.API_FOOTBALL_KEY ?? "";
+  if (!apiKey) {
+    return res.status(503).json({ error: "API_FOOTBALL_KEY not configured on server" });
   }
 
   const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));

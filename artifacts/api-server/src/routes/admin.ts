@@ -57,11 +57,11 @@ interface MsmcPlayerRaw {
   card?: string;
 }
 
-// GET /admin/seed?apiKey=... — SSE stream that imports all clubs + squads
+// GET /admin/seed — SSE stream that imports all clubs + squads
 router.get("/admin/seed", async (req, res) => {
-  const apiKey = String(req.query.apiKey ?? "").trim();
+  const apiKey = process.env.API_FOOTBALL_KEY ?? "";
   if (!apiKey) {
-    res.status(400).json({ error: "apiKey query param required" });
+    res.status(503).json({ error: "API_FOOTBALL_KEY not configured on server" });
     return;
   }
 
