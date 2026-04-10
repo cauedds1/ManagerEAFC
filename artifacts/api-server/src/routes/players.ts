@@ -42,9 +42,17 @@ function sourcePriority(source: string): number {
   return 3;
 }
 
-// Returns a dedup key: "lastname|firstinitial" to catch "J. Doku" vs "Jérémy Doku"
+// Returns a dedup key: "lastname|firstinitial" to catch "J. Doku" vs "Jérémy Doku",
+// "Vini Jr." vs "Vinícius Júnior", accented vs unaccented variants, etc.
 function nameKey(name: string): string {
-  const parts = name.trim().toLowerCase().replace(/\./g, "").split(/\s+/).filter(Boolean);
+  const normalized = name
+    .trim()
+    .toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // strip accents: júnior → junior
+    .replace(/\./g, "")                                // remove dots: Jr. → Jr
+    .replace(/\bjunior\b/g, "jr")                     // junior → jr
+    .replace(/\bsenior\b/g, "sr");                    // senior → sr
+  const parts = normalized.split(/\s+/).filter(Boolean);
   if (parts.length === 0) return name.toLowerCase();
   const last = parts[parts.length - 1];
   const firstInitial = parts[0]?.[0] ?? "";
