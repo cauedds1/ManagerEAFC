@@ -489,10 +489,10 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
       leaguePosition: leaguePos,
       transferBudget: finSettings.transferBudget > 0 ? finSettings.transferBudget : undefined,
       remainingTransferBudget: finSettings.transferBudget > 0 ? finSnapshot.remainingTransferBudget : undefined,
-      currentWageBill: finSnapshot.currentWageBill > 0 ? finSnapshot.currentWageBill : undefined,
+      currentWageBill: finSettings.salaryBudget > 0 ? finSnapshot.currentWageBill : undefined,
       salaryBudget: finSettings.salaryBudget > 0 ? finSettings.salaryBudget : undefined,
       wageRoom: finSettings.salaryBudget > 0 ? finSnapshot.wageRoom : undefined,
-      netSpend: finSnapshot.netSpend > 0 ? finSnapshot.netSpend : undefined,
+      netSpend: finSettings.transferBudget > 0 ? finSnapshot.netSpend : undefined,
     };
   }, [career, matches, transfers, squadSize]);
 

@@ -172,8 +172,17 @@ export function FinanceiroView({ careerId, transfers, season }: FinanceiroViewPr
         )}
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         {[
+          {
+            label: "Verba restante",
+            value: settings.transferBudget > 0 ? formatMoney(snapshot.remainingTransferBudget) : "—",
+            sub: settings.transferBudget > 0
+              ? `de ${formatMoney(snapshot.transferBudget)} total`
+              : "orçamento não definido",
+            color: snapshot.remainingTransferBudget < 0 ? "#f87171" : "#34d399",
+            icon: "🏦",
+          },
           {
             label: "Gasto em contratações",
             value: formatMoney(snapshot.totalSpent),
@@ -183,7 +192,7 @@ export function FinanceiroView({ careerId, transfers, season }: FinanceiroViewPr
           },
           {
             label: "Arrecadado em vendas",
-            value: formatMoney(snapshot.totalEarned),
+            value: snapshot.totalEarned > 0 ? formatMoney(snapshot.totalEarned) : "—",
             sub: `${snapshot.salesCount} venda${snapshot.salesCount !== 1 ? "s" : ""}`,
             color: "#34d399",
             icon: "📤",
@@ -192,17 +201,28 @@ export function FinanceiroView({ careerId, transfers, season }: FinanceiroViewPr
             label: "Saldo líquido",
             value: formatMoney(Math.abs(snapshot.netSpend)),
             sub: snapshot.netSpend > 0 ? "gasto líquido" : snapshot.netSpend < 0 ? "superávit" : "equilíbrio",
-            color: snapshot.netSpend > 0 ? "#fbbf24" : "#34d399",
-            icon: snapshot.netSpend > 0 ? "📊" : "💰",
+            color: snapshot.netSpend > 0 ? "#fbbf24" : snapshot.netSpend < 0 ? "#34d399" : "#94a3b8",
+            icon: snapshot.netSpend < 0 ? "💰" : "📊",
           },
           {
-            label: "Folha semanal ativa",
+            label: "Folha semanal",
             value: snapshot.currentWageBill > 0 ? `€${snapshot.currentWageBill.toLocaleString("pt-BR")}k` : "—",
-            sub: snapshot.salaryBudget > 0
-              ? `${snapshot.wageRoom >= 0 ? `€${snapshot.wageRoom.toLocaleString("pt-BR")}k livre` : "limite excedido"}`
+            sub: settings.salaryBudget > 0
+              ? `de €${settings.salaryBudget.toLocaleString("pt-BR")}k máximo`
               : "orçamento não definido",
-            color: "#60a5fa",
+            color: settings.salaryBudget > 0 && snapshot.wageRoom < 0 ? "#f87171" : "#60a5fa",
             icon: "💼",
+          },
+          {
+            label: "Margem salarial",
+            value: settings.salaryBudget > 0
+              ? `€${Math.abs(snapshot.wageRoom).toLocaleString("pt-BR")}k`
+              : "—",
+            sub: settings.salaryBudget > 0
+              ? snapshot.wageRoom >= 0 ? "disponível por semana" : "acima do limite"
+              : "folha não configurada",
+            color: settings.salaryBudget > 0 && snapshot.wageRoom < 0 ? "#f87171" : "#a78bfa",
+            icon: snapshot.wageRoom < 0 ? "⚠️" : "📋",
           },
         ].map((card) => (
           <div
