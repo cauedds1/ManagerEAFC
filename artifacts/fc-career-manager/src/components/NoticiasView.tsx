@@ -721,6 +721,7 @@ export function NoticiasView({ career }: NoticiasViewProps) {
   const [showAddModal, setShowAddModal] = useState(false);
   const [filterSource, setFilterSource] = useState<NewsSource | "all">("all");
   const [filterCategory, setFilterCategory] = useState<NewsCategory | "all">("all");
+  const [searchQuery, setSearchQuery] = useState("");
   const [portalPhotos, setPortalPhotos] = useState<PortalPhotos>(() => getPortalPhotos());
 
   useEffect(() => {
@@ -743,9 +744,15 @@ export function NoticiasView({ career }: NoticiasViewProps) {
     setPosts((prev) => [post, ...prev]);
   };
 
+  const normalizedQuery = searchQuery.trim().toLowerCase();
   const filtered = posts.filter((p) => {
     if (filterSource !== "all" && p.source !== filterSource) return false;
     if (filterCategory !== "all" && p.category !== filterCategory) return false;
+    if (normalizedQuery) {
+      const haystack = [p.title ?? "", p.content].join(" ").toLowerCase();
+      const words = normalizedQuery.split(/\s+/).filter(Boolean);
+      if (!words.every((w) => haystack.includes(w))) return false;
+    }
     return true;
   });
 
@@ -770,6 +777,8 @@ export function NoticiasView({ career }: NoticiasViewProps) {
   const srcLabel = filterSource !== "all" ? SOURCE_LABELS[filterSource] : "";
   const catLabel = filterCategory !== "all" ? CATEGORY_LABELS[filterCategory] : "";
   const emptyLabel = (() => {
+    if (normalizedQuery)
+      return `Nenhuma publicação encontrada para "${searchQuery.trim()}"`;
     if (filterSource !== "all" && filterCategory !== "all")
       return `Nenhuma publicação de ${srcLabel} na categoria ${catLabel}`;
     if (filterSource !== "all") return `Nenhuma publicação de ${srcLabel} ainda`;
@@ -807,6 +816,55 @@ export function NoticiasView({ career }: NoticiasViewProps) {
           Nova notícia
         </button>
       </div>
+
+      {/* Search bar */}
+      {posts.length > 0 && (
+        <div className="relative mb-4">
+          <svg
+            className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5"
+            style={{ color: "rgba(255,255,255,0.25)" }}
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2.5}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+          </svg>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Buscar por título ou descrição..."
+            className="w-full pl-9 pr-9 py-2.5 rounded-xl text-sm outline-none transition-all duration-150"
+            style={{
+              background: "rgba(255,255,255,0.04)",
+              border: "1px solid rgba(255,255,255,0.08)",
+              color: "rgba(255,255,255,0.85)",
+              caretColor: "var(--club-primary)",
+            }}
+            onFocus={(e) => {
+              e.currentTarget.style.borderColor = "rgba(var(--club-primary-rgb),0.4)";
+              e.currentTarget.style.background = "rgba(255,255,255,0.06)";
+            }}
+            onBlur={(e) => {
+              e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)";
+              e.currentTarget.style.background = "rgba(255,255,255,0.04)";
+            }}
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 rounded-md transition-opacity hover:opacity-80"
+              style={{ color: "rgba(255,255,255,0.35)" }}
+              aria-label="Limpar busca"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Source filter tabs */}
       <div className="flex gap-2 mb-6 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
