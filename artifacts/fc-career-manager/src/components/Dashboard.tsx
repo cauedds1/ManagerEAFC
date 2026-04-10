@@ -119,6 +119,13 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
   const logoUrl = useClubLogo(career);
   const [imgLoaded, setImgLoaded] = useState(false);
   const [imgError, setImgError] = useState(false);
+  const logoImgRef = useCallback((el: HTMLImageElement | null) => {
+    if (!el) return;
+    if (el.complete) {
+      if (el.naturalWidth > 0) setImgLoaded(true);
+      else setImgError(true);
+    }
+  }, []);
   const [editingSeason, setEditingSeason] = useState(false);
   const [seasonDraft, setSeasonDraft] = useState(career.season);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -238,6 +245,8 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
               >
                 {logoUrl && !imgError ? (
                   <img
+                    key={logoUrl}
+                    ref={logoImgRef}
                     src={logoUrl}
                     alt={career.clubName}
                     className={`w-12 h-12 object-contain transition-opacity duration-300 ${imgLoaded ? "opacity-100" : "opacity-0"}`}
