@@ -1,5 +1,5 @@
 import type { SquadPlayer } from "@/lib/squadCache";
-import { getAllPlayerStats } from "@/lib/playerStatsStorage";
+import { getAllPlayerStats, getAllPlayerOverrides } from "@/lib/playerStatsStorage";
 import type { FanMoral, Mood } from "@/types/playerStats";
 
 function avgRatings(ratings: number[]): number {
@@ -51,6 +51,7 @@ export interface PlayerContextItem {
   incidents: string[];
   isBench: boolean;
   benchRatio: number;
+  overall?: number;
 }
 
 export function buildPlayerPerformanceContext(
@@ -58,6 +59,7 @@ export function buildPlayerPerformanceContext(
   allPlayers: SquadPlayer[],
 ): PlayerContextItem[] {
   const allStats = getAllPlayerStats(careerId);
+  const allOverrides = getAllPlayerOverrides(careerId);
   const items: PlayerContextItem[] = [];
 
   for (const player of allPlayers) {
@@ -78,6 +80,20 @@ export function buildPlayerPerformanceContext(
     if (stats.fanMoral === "vaiado") incidents.push("vaiado pela torcida");
     else if (stats.fanMoral === "idolo") incidents.push("ídolo da torcida");
     if (stats.mood === "irritado") incidents.push("humor irritado");
+
+    const override = allOverrides[player.id];
+    const overall = override?.overall;
+
+    if (overall && overall >= 80 && totalApps >= 3) {
+      const starters_ = stats.matchesAsStarter ?? 0;
+      const subs_ = stats.matchesAsSubstitute ?? 0;
+      const isBench_ = subs_ > starters_;
+      if (isBench_ && (form === "ruim" || form === "regular" || form === "poucos jogos")) {
+        incidents.push(`overall ${overall} mas pouco utilizado`);
+      } else if (!isBench_ && (form === "ruim" || form === "péssima")) {
+        incidents.push(`overall ${overall} mas em baixa forma`);
+      }
+    }
 
     const onlyNeutral = form === "regular" && incidents.length === 0 &&
       stats.fanMoral === "neutro" && stats.mood === "neutro" &&
@@ -102,6 +118,7 @@ export function buildPlayerPerformanceContext(
       incidents,
       isBench,
       benchRatio: Math.round(benchRatio * 100) / 100,
+      overall,
     });
   }
 
@@ -117,8 +134,9 @@ export function buildPlayerPerformanceContext(
 export function buildPlayerContextString(items: PlayerContextItem[]): string {
   if (items.length === 0) return "";
   const lines = items.map((p) => {
+    const ovrStr = p.overall != null ? ` | OVR ${p.overall}` : "";
     const incStr = p.incidents.length > 0 ? ` | ${p.incidents.join(", ")}` : "";
-    return `- ${p.name} (${p.position}): forma ${p.form} (avg ${p.avgRating}) | moral: ${p.fanMoral} | humor: ${p.mood} | ${p.goals}G ${p.assists}A${incStr}`;
+    return `- ${p.name} (${p.position}): forma ${p.form} (avg ${p.avgRating})${ovrStr} | moral: ${p.fanMoral} | humor: ${p.mood} | ${p.goals}G ${p.assists}A${incStr}`;
   });
   return lines.join("\n");
 }

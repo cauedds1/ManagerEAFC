@@ -68,6 +68,7 @@ interface PlayerPerfItem {
   incidents: string[];
   isBench?: boolean;
   benchRatio?: number;
+  overall?: number;
 }
 
 interface ChatHistoryItem {
@@ -562,6 +563,32 @@ router.post("/diretoria/check-triggers", async (req, res) => {
           notifications.push({
             memberId: member.id,
             preview: `${gem.name.split(" ")[0]} tem média ${gem.avgRating} mas fica quase sempre no banco — ele merece mais chances.`,
+          });
+        }
+      }
+
+      const highOverallBench = playerPerformance.filter(
+        (p) => p.isBench && (p.overall ?? 0) >= 80 && p.appearances >= 3,
+      );
+      for (const star of highOverallBench.slice(0, 1)) {
+        const member = presidente ?? auxTecnico;
+        if (member && !notifications.find((n) => n.memberId === member.id)) {
+          notifications.push({
+            memberId: member.id,
+            preview: `A torcida está questionando: por que ${star.name.split(" ")[0]} (${star.overall} OVR) passa tanto tempo no banco?`,
+          });
+        }
+      }
+
+      const highOverallPoorForm = playerPerformance.filter(
+        (p) => !p.isBench && (p.overall ?? 0) >= 80 && (p.form === "ruim" || p.form === "péssima") && p.appearances >= 4,
+      );
+      for (const star of highOverallPoorForm.slice(0, 1)) {
+        const member = presidente ?? auxTecnico;
+        if (member && !notifications.find((n) => n.memberId === member.id)) {
+          notifications.push({
+            memberId: member.id,
+            preview: `${star.name.split(" ")[0]} (${star.overall} OVR) está muito abaixo do esperado — a torcida não vai aceitar por muito tempo.`,
           });
         }
       }

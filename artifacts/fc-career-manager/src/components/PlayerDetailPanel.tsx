@@ -6,8 +6,6 @@ import {
   MOOD_COLORS,
   FAN_MORAL_LABELS,
   FAN_MORAL_COLORS,
-  type Mood,
-  type FanMoral,
 } from "@/types/playerStats";
 import {
   getPlayerStats,
@@ -49,33 +47,14 @@ function PlayerPhoto({ src, name }: { src: string; name: string }) {
 
   return (
     <div
-      className="w-20 h-20 rounded-2xl flex-shrink-0 overflow-hidden flex items-center justify-center"
+      className="w-16 h-16 rounded-2xl flex-shrink-0 overflow-hidden flex items-center justify-center"
       style={{ background: "rgba(var(--club-primary-rgb),0.1)", border: "1.5px solid rgba(var(--club-primary-rgb),0.2)" }}
     >
       {!err ? (
         <img src={src} alt={name} className="w-full h-full object-cover" onError={() => setErr(true)} />
       ) : (
-        <span className="text-white/50 text-2xl font-black">{initials}</span>
+        <span className="text-white/50 text-xl font-black">{initials}</span>
       )}
-    </div>
-  );
-}
-
-interface StatBoxProps {
-  label: string;
-  value: string | number;
-  icon: React.ReactNode;
-}
-
-function StatBox({ label, value, icon }: StatBoxProps) {
-  return (
-    <div
-      className="flex flex-col items-center gap-1.5 p-3 rounded-xl"
-      style={{ background: "rgba(255,255,255,0.04)" }}
-    >
-      <div className="text-white/40 w-4 h-4">{icon}</div>
-      <span className="text-white text-xl font-black tabular-nums">{value}</span>
-      <span className="text-white/35 text-xs text-center leading-tight">{label}</span>
     </div>
   );
 }
@@ -105,31 +84,24 @@ export function PlayerDetailPanel({
   const [editName, setEditName] = useState(displayName);
   const [editNumber, setEditNumber] = useState(String(displayNumber ?? ""));
   const [editOverall, setEditOverall] = useState(String(displayOverall ?? ""));
+  const [editSalary, setEditSalary] = useState(String(override?.salary ?? ""));
 
   const pos = POS_STYLE[player.positionPtBr] ?? POS_STYLE.MC;
+  const moodStyle = MOOD_COLORS[stats.mood];
+  const fanStyle = FAN_MORAL_COLORS[stats.fanMoral];
 
   const saveEdit = () => {
     const numberVal = parseInt(editNumber, 10);
     const overallVal = parseInt(editOverall, 10);
+    const salaryVal = parseInt(editSalary, 10);
     setPlayerOverride(careerId, player.id, {
       nameOverride: editName.trim() || undefined,
       shirtNumber: !isNaN(numberVal) && editNumber.trim() ? numberVal : undefined,
       overall: !isNaN(overallVal) && editOverall.trim() ? Math.max(1, Math.min(99, overallVal)) : undefined,
+      salary: !isNaN(salaryVal) && editSalary.trim() ? Math.max(0, salaryVal) : undefined,
     });
     setEditing(false);
     onUpdated();
-  };
-
-  const updateMood = (mood: Mood) => {
-    const updated = { ...stats, mood };
-    setPlayerStats(careerId, player.id, updated);
-    setStatsState(updated);
-  };
-
-  const updateFanMoral = (fanMoral: FanMoral) => {
-    const updated = { ...stats, fanMoral };
-    setPlayerStats(careerId, player.id, updated);
-    setStatsState(updated);
   };
 
   const updateStat = (field: "goals" | "assists" | "matchesAsStarter" | "totalMinutes", val: number) => {
@@ -145,7 +117,7 @@ export function PlayerDetailPanel({
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div
-        className="w-full max-w-md max-h-[88vh] overflow-y-auto flex flex-col rounded-2xl animate-slide-up"
+        className="w-full max-w-md flex flex-col rounded-2xl animate-slide-up"
         style={{
           background: "var(--app-bg-lighter)",
           border: "1px solid var(--surface-border)",
@@ -153,11 +125,10 @@ export function PlayerDetailPanel({
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="sticky top-0 z-10 flex items-center justify-between px-5 py-4 rounded-t-2xl"
-          style={{ background: "var(--app-bg-lighter)", borderBottom: "1px solid var(--surface-border)" }}>
-          <span className="text-white/60 text-xs font-semibold uppercase tracking-widest">
-            Jogador
-          </span>
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-3 rounded-t-2xl"
+          style={{ borderBottom: "1px solid var(--surface-border)" }}>
+          <span className="text-white/50 text-xs font-semibold uppercase tracking-widest">Jogador</span>
           <button
             onClick={onClose}
             className="w-7 h-7 rounded-lg flex items-center justify-center text-white/40 hover:text-white/80 hover:bg-white/8 transition-all"
@@ -168,150 +139,85 @@ export function PlayerDetailPanel({
           </button>
         </div>
 
-        <div className="flex-1 p-5 flex flex-col gap-5">
-          <div className="flex items-start gap-4">
+        <div className="p-5 flex flex-col gap-4">
+          {/* Player identity */}
+          <div className="flex items-center gap-4">
             <PlayerPhoto src={player.photo} name={displayName} />
-            <div className="flex-1 min-w-0 pt-1">
-              <h2 className="text-white text-lg font-black leading-tight">{displayName}</h2>
-              <p className="text-white/40 text-sm mt-0.5">
+            <div className="flex-1 min-w-0">
+              <h2 className="text-white text-base font-black leading-tight">{displayName}</h2>
+              <p className="text-white/40 text-xs mt-0.5">
                 {player.age > 0 ? `${player.age} anos` : ""}
                 {displayNumber != null ? ` · #${displayNumber}` : ""}
               </p>
-              <div className="flex items-center gap-2 mt-2 flex-wrap">
-                <span
-                  className="text-xs font-bold px-2.5 py-1 rounded-md"
-                  style={{ background: pos.bg, color: pos.color }}
-                >
+              <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                <span className="text-xs font-bold px-2 py-0.5 rounded-md" style={{ background: pos.bg, color: pos.color }}>
                   {player.positionPtBr}
                 </span>
                 {displayOverall != null && (
-                  <span
-                    className="text-xs font-black px-2.5 py-1 rounded-md"
-                    style={overallColor(displayOverall)}
-                  >
+                  <span className="text-xs font-black px-2 py-0.5 rounded-md" style={overallColor(displayOverall)}>
                     {displayOverall} OVR
+                  </span>
+                )}
+                {override?.salary != null && override.salary > 0 && (
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded-md" style={{ background: "rgba(96,165,250,0.12)", color: "#60a5fa" }}>
+                    €{override.salary.toLocaleString("pt-BR")}k/sem
                   </span>
                 )}
               </div>
             </div>
           </div>
 
+          {/* Read-only status row */}
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 flex-1 min-w-0 px-3 py-2 rounded-xl" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+              <span className="text-white/30 text-[10px] font-semibold uppercase tracking-wide">Humor</span>
+              <span className="text-xs font-bold px-2 py-0.5 rounded-md ml-auto" style={{ background: moodStyle.bg, color: moodStyle.color }}>
+                {MOOD_LABELS[stats.mood]}
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5 flex-1 min-w-0 px-3 py-2 rounded-xl" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+              <span className="text-white/30 text-[10px] font-semibold uppercase tracking-wide">Torcida</span>
+              <span className="text-xs font-bold px-2 py-0.5 rounded-md ml-auto" style={{ background: fanStyle.bg, color: fanStyle.color }}>
+                {FAN_MORAL_LABELS[stats.fanMoral]}
+              </span>
+            </div>
+          </div>
+
+          {/* Stats */}
           <div className="grid grid-cols-4 gap-2">
-            <StatBox
-              label="Gols"
-              value={stats.goals}
-              icon={<svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} className="w-4 h-4"><circle cx="12" cy="12" r="10" /><path strokeLinecap="round" strokeLinejoin="round" d="M12 2a10 10 0 0110 10" /></svg>}
-            />
-            <StatBox
-              label="Assist."
-              value={stats.assists}
-              icon={<svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" /></svg>}
-            />
-            <StatBox
-              label="Titular"
-              value={stats.matchesAsStarter}
-              icon={<svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>}
-            />
-            <StatBox
-              label="Minutos"
-              value={stats.totalMinutes}
-              icon={<svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
-            />
+            {[
+              { label: "Gols", field: "goals" as const },
+              { label: "Assist.", field: "assists" as const },
+              { label: "Titular", field: "matchesAsStarter" as const },
+              { label: "Minutos", field: "totalMinutes" as const },
+            ].map(({ label, field }) => (
+              <div
+                key={field}
+                className="flex flex-col items-center gap-1 p-2.5 rounded-xl"
+                style={{ background: "rgba(255,255,255,0.04)" }}
+              >
+                <span className="text-white text-lg font-black tabular-nums">{stats[field]}</span>
+                <span className="text-white/35 text-[10px] text-center leading-tight">{label}</span>
+                <input
+                  type="number"
+                  min={0}
+                  value={stats[field]}
+                  onChange={(e) => updateStat(field, parseInt(e.target.value, 10) || 0)}
+                  className="w-full px-1.5 py-1 rounded-lg text-white/60 text-xs font-semibold focus:outline-none focus:text-white text-center tabular-nums"
+                  style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)" }}
+                />
+              </div>
+            ))}
           </div>
 
-          <div
-            className="p-4 rounded-2xl flex flex-col gap-3"
-            style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
-          >
-            <p className="text-white/35 text-xs font-semibold uppercase tracking-wider">Editar estatísticas</p>
-            <div className="grid grid-cols-2 gap-2">
-              {(
-                [
-                  { field: "goals", label: "Gols" },
-                  { field: "assists", label: "Assistências" },
-                  { field: "matchesAsStarter", label: "Titular" },
-                  { field: "totalMinutes", label: "Minutos" },
-                ] as Array<{ field: "goals" | "assists" | "matchesAsStarter" | "totalMinutes"; label: string }>
-              ).map(({ field, label }) => (
-                <div key={field} className="flex flex-col gap-1">
-                  <label className="text-white/35 text-xs">{label}</label>
-                  <input
-                    type="number"
-                    min={0}
-                    value={stats[field]}
-                    onChange={(e) => updateStat(field, parseInt(e.target.value, 10) || 0)}
-                    className="w-full px-2.5 py-1.5 rounded-lg text-white text-sm font-semibold focus:outline-none glass tabular-nums"
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div
-            className="p-4 rounded-2xl flex flex-col gap-3"
-            style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
-          >
-            <p className="text-white/35 text-xs font-semibold uppercase tracking-wider">Humor do Jogador</p>
-            <div className="flex flex-wrap gap-2">
-              {(Object.keys(MOOD_LABELS) as Mood[]).map((m) => {
-                const c = MOOD_COLORS[m];
-                const active = stats.mood === m;
-                return (
-                  <button
-                    key={m}
-                    onClick={() => updateMood(m)}
-                    className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-150"
-                    style={{
-                      background: active ? c.bg : "rgba(255,255,255,0.04)",
-                      color: active ? c.color : "rgba(255,255,255,0.35)",
-                      border: active ? `1px solid ${c.color}44` : "1px solid rgba(255,255,255,0.06)",
-                      transform: active ? "scale(1.04)" : "scale(1)",
-                    }}
-                  >
-                    {MOOD_LABELS[m]}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div
-            className="p-4 rounded-2xl flex flex-col gap-3"
-            style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
-          >
-            <p className="text-white/35 text-xs font-semibold uppercase tracking-wider">Moral com a Torcida</p>
-            <div className="flex flex-wrap gap-2">
-              {(Object.keys(FAN_MORAL_LABELS) as FanMoral[]).map((m) => {
-                const c = FAN_MORAL_COLORS[m];
-                const active = stats.fanMoral === m;
-                return (
-                  <button
-                    key={m}
-                    onClick={() => updateFanMoral(m)}
-                    className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-150"
-                    style={{
-                      background: active ? c.bg : "rgba(255,255,255,0.04)",
-                      color: active ? c.color : "rgba(255,255,255,0.35)",
-                      border: active ? `1px solid ${c.color}44` : "1px solid rgba(255,255,255,0.06)",
-                      transform: active ? "scale(1.04)" : "scale(1)",
-                    }}
-                  >
-                    {FAN_MORAL_LABELS[m]}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div
-            className="rounded-2xl overflow-hidden"
-            style={{ border: "1px solid rgba(255,255,255,0.06)" }}
-          >
+          {/* Edit player accordion */}
+          <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.06)" }}>
             <button
               onClick={() => {
                 setEditName(displayName);
                 setEditNumber(String(displayNumber ?? ""));
                 setEditOverall(String(displayOverall ?? ""));
+                setEditSalary(String(override?.salary ?? ""));
                 setEditing(!editing);
               }}
               className="w-full flex items-center justify-between px-4 py-3 text-left transition-colors hover:bg-white/4"
@@ -336,7 +242,7 @@ export function PlayerDetailPanel({
                     className="w-full px-3 py-2 rounded-lg text-white text-sm focus:outline-none glass"
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-3 gap-2">
                   <div className="flex flex-col gap-1">
                     <label className="text-white/35 text-xs">Número</label>
                     <input
@@ -357,6 +263,17 @@ export function PlayerDetailPanel({
                       max={99}
                       value={editOverall}
                       onChange={(e) => setEditOverall(e.target.value)}
+                      placeholder="—"
+                      className="w-full px-3 py-2 rounded-lg text-white text-sm font-semibold focus:outline-none glass tabular-nums"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-white/35 text-xs">Salário (k/sem)</label>
+                    <input
+                      type="number"
+                      min={0}
+                      value={editSalary}
+                      onChange={(e) => setEditSalary(e.target.value)}
                       placeholder="—"
                       className="w-full px-3 py-2 rounded-lg text-white text-sm font-semibold focus:outline-none glass tabular-nums"
                     />

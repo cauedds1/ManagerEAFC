@@ -71,4 +71,5 @@ export interface PlayerOverride {
   nameOverride?: string;
   shirtNumber?: number;
   overall?: number;
+  salary?: number;
 }
