@@ -109,43 +109,34 @@ export function detectMatchEvents(input: EngineInput): DetectedEvent[] {
     });
   }
 
-  /* ── Vitória com adversário no placar (antiga "virada") ── */
-  if (isWin && newMatch.opponentScore > 0) {
+  /* ── Vitória sofrida (ganhou mas adversário marcou — sem assertiva sobre quem abriu o placar) ── */
+  if (isWin && newMatch.opponentScore > 0 && goalDiff <= 2) {
     events.push({
-      key: `vitoria-adversario-marcou-${newMatch.id}`,
+      key: `vitoria-sofrida-${newMatch.id}`,
       type: "vitoria_sofrida",
-      title: `${clubName} vence mesmo com adversário na frente: ${newMatch.myScore}x${newMatch.opponentScore}`,
-      aiDescription: `O ${clubName} conquistou os três pontos apesar do ${newMatch.opponent} ter marcado. ${summary} O adversário abriu o placar, mas o time reagiu com garra. Descreva a tensão do jogo, a reação da equipe após sofrer o gol e a alegria da virada/conquista da vitória.`,
+      title: `${clubName} vence partida disputada por ${newMatch.myScore}x${newMatch.opponentScore}`,
+      aiDescription: `O ${clubName} venceu o ${newMatch.opponent} em uma partida onde ambos os times marcaram (${newMatch.myScore}x${newMatch.opponentScore}). ${summary} Descreva a tensão do jogo, como a defesa e o ataque se alternaram ao longo dos 90 minutos, e celebre a vitória conquistada em um jogo disputado.`,
       source: "tnt",
       category: "resultado",
       priority: 2,
     });
   }
 
-  /* ── Vitória suada (margem mínima, 1 gol de diferença, sem sofrer gol não conta) ── */
+  /* ── Vitória suada (margem mínima com placar aberto ≥70' — gol nos acréscimos não se aplica) ── */
   if (isWin && goalDiff === 1 && newMatch.opponentScore > 0) {
-    events.push({
-      key: `vitoria-suada-${newMatch.id}`,
-      type: "vitoria_suada",
-      title: `Vitória suada! ${clubName} ${newMatch.myScore}x${newMatch.opponentScore} ${newMatch.opponent}`,
-      aiDescription: `O ${clubName} venceu por apenas um gol de diferença com o ${newMatch.opponent} tendo marcado — jogo tenso até o fim! ${summary} Descreva a dificuldade, os momentos de pressão do adversário e como o time segurou o resultado nos minutos finais.`,
-      source: "espn",
-      category: "resultado",
-      priority: 2,
-    });
-  }
-
-  /* ── Empate com gosto de derrota (empate com o adversário tendo marcado mais ou igual) ── */
-  if (isDraw && newMatch.myScore > 0) {
-    events.push({
-      key: `empate-${newMatch.id}`,
-      type: "empate",
-      title: `Empate: ${clubName} ${newMatch.myScore}x${newMatch.opponentScore} ${newMatch.opponent}`,
-      aiDescription: `O ${clubName} empatou com o ${newMatch.opponent} — resultado misto. ${summary} Analise se o empate é um ponto conquistado ou dois perdidos, como a torcida reagiu e o que isso significa para a campanha na competição.`,
-      source: "fanpage",
-      category: "resultado",
-      priority: 3,
-    });
+    const lastTeamGoal = teamMins.length > 0 ? teamMins[teamMins.length - 1] : 0;
+    const isLateWinner = lastTeamGoal >= 85;
+    if (!isLateWinner) {
+      events.push({
+        key: `vitoria-suada-${newMatch.id}`,
+        type: "vitoria_suada",
+        title: `Vitória suada! ${clubName} ${newMatch.myScore}x${newMatch.opponentScore} ${newMatch.opponent}`,
+        aiDescription: `O ${clubName} venceu por um gol de diferença em uma partida em que ambos os times marcaram. O adversário respondeu com gol e pressionou até o fim. ${summary} Descreva os momentos de pressão do ${newMatch.opponent} e como o time soube administrar a vantagem mínima.`,
+        source: "espn",
+        category: "resultado",
+        priority: 3,
+      });
+    }
   }
 
   /* ── Gol nos acréscimos (apenas em partidas disputadas) ── */
@@ -409,17 +400,38 @@ export function detectMatchEvents(input: EngineInput): DetectedEvent[] {
     });
   }
 
-  /* ── Lesão precoce (antes do minuto 30) ── */
+  /* ── Lesão explícita precoce (flag injured, antes do minuto 30) ── */
+  const earlyInjuryPlayerIds = new Set<number>();
   for (const [playerIdStr, ps] of Object.entries(newMatch.playerStats)) {
     if (!ps.injured || ps.injuryMinute == null || ps.injuryMinute >= 30) continue;
     if (!newMatch.starterIds.includes(Number(playerIdStr))) continue;
     const playerId = Number(playerIdStr);
+    earlyInjuryPlayerIds.add(playerId);
     const pName = playerName(allPlayers, playerId);
     events.push({
       key: `lesao-precoce-${playerId}-${newMatch.id}`,
       type: "lesao",
       title: `${pName} se lesiona logo no início — preocupação no ${clubName}`,
       aiDescription: `${pName} se lesionou aos ${ps.injuryMinute}' do primeiro tempo! ${summary} Relate a preocupação da comissão técnica, o impacto imediato no jogo com o time forçado a reorganizar a tática e as dúvidas sobre quanto tempo o jogador ficará fora.`,
+      source: "fanpage",
+      category: "lesao",
+      priority: 2,
+    });
+  }
+
+  /* ── Lesão implícita (titular substituído antes do minuto 30 sem flag de lesão) ── */
+  for (const [playerIdStr, ps] of Object.entries(newMatch.playerStats)) {
+    if (!ps.substituted || ps.substitutedAtMinute == null || ps.substitutedAtMinute >= 30) continue;
+    if (!newMatch.starterIds.includes(Number(playerIdStr))) continue;
+    const playerId = Number(playerIdStr);
+    if (earlyInjuryPlayerIds.has(playerId)) continue;
+    const pName = playerName(allPlayers, playerId);
+    const inName = ps.substitutedInPlayerId != null ? playerName(allPlayers, ps.substitutedInPlayerId) : null;
+    events.push({
+      key: `lesao-implicita-${playerId}-${newMatch.id}`,
+      type: "lesao_implicita",
+      title: `${pName} sai de campo nos primeiros minutos — possível lesão`,
+      aiDescription: `${pName} precisou deixar o campo aos ${ps.substitutedAtMinute}' do primeiro tempo${inName ? `, dando lugar a ${inName}` : ""}. ${summary} Saída tão precoce de um titular gera preocupação na comissão técnica do ${clubName}. Relate a cena, a reação dos companheiros e a incerteza sobre o estado físico do jogador.`,
       source: "fanpage",
       category: "lesao",
       priority: 2,
