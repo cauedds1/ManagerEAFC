@@ -96,7 +96,7 @@ function SquadStatsBlock({ players, loading }: { players: SquadPlayer[]; loading
 
   return (
     <div className="rounded-2xl px-4 py-3 glass">
-      <p className="text-white/20 text-[10px] font-bold tracking-widest uppercase mb-2.5">Estatísticas</p>
+      <p className="text-white/20 text-[10px] font-bold tracking-widest uppercase mb-2.5">Estatísticas do Elenco</p>
 
       {/* Average age + total */}
       <div className="flex items-baseline gap-2 mb-3">
@@ -208,11 +208,19 @@ function DestaquesBlock({ players, loading }: { players: SquadPlayer[]; loading:
       </div>
     );
   }
+  if (players.length === 0) return null;
   const withAge = players.filter(p => p.age > 0);
-  if (withAge.length === 0) return null;
 
-  const youngest = withAge.reduce((min, p) => p.age < min.age ? p : min, withAge[0]);
-  const oldest   = withAge.reduce((max, p) => p.age > max.age ? p : max, withAge[0]);
+  // Fallback: if no age data, pick first and last player by squad order
+  const youngest = withAge.length > 0
+    ? withAge.reduce((min, p) => p.age < min.age ? p : min, withAge[0])
+    : players[0];
+  const oldest = withAge.length > 0
+    ? withAge.reduce((max, p) => p.age > max.age ? p : max, withAge[0])
+    : players[players.length - 1];
+
+  // If both resolve to the same player, show only one card
+  if (youngest.id === oldest.id) return null;
 
   return (
     <div className="rounded-2xl px-4 py-3 glass">
