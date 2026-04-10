@@ -7,6 +7,7 @@ interface Props {
   careerId: string;
   seasonId: string;
   season?: string;
+  matchesOverride?: MatchRecord[];
 }
 
 interface ClubStats {
@@ -201,11 +202,11 @@ const FORM_STYLE: Record<"V" | "E" | "D", { bg: string; color: string }> = {
   D: { bg: "rgba(239,68,68,0.18)",   color: "#f87171" },
 };
 
-export function ClubStatsView({ careerId, seasonId, season }: Props) {
+export function ClubStatsView({ careerId, seasonId, season, matchesOverride }: Props) {
   const matches = useMemo(() => {
-    const all = getMatches(seasonId);
-    return season ? all.filter((m) => m.season === season) : all;
-  }, [seasonId, season]);
+    const all = matchesOverride ?? getMatches(seasonId);
+    return (!matchesOverride && season) ? all.filter((m) => m.season === season) : all;
+  }, [matchesOverride, seasonId, season]);
 
   const stats = useMemo(() => computeStats(matches), [matches]);
 

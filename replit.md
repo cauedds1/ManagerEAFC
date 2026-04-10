@@ -123,6 +123,16 @@ Brazilian Portuguese companion app for EA FC 26 career mode.
 - `DiretoriaView.buildClubContext()`: Injects financial snapshot (transferBudget, remainingTransferBudget, currentWageBill, salaryBudget, wageRoom, netSpend) into context sent to all Diretoria API routes.
 - Backend `ClubContext` extended with financial fields. `buildClubContext()` string now shows budget lines. `check-triggers` fires gestor notification at 90%+ budget use; meeting trigger if budget exceeded; gestor notification if wage bill exceeded. `suggest-transfer` uses remainingTransferBudget as budget hint.
 
+### "Todas as Temporadas" filter (Task #15)
+- `aggregatePlayerStats(seasonIds)` in `playerStatsStorage.ts`: merges stats from multiple seasons into one `Record<number, PlayerSeasonStats>`.
+- `PlayerStatsTable.tsx`: accepts `statsOverride?` + `matchesOverride?` props; when provided, skips localStorage reads and uses the injected data directly.
+- `ClubStatsView.tsx`: accepts `matchesOverride?: MatchRecord[]`; when provided, uses override instead of `getMatches(seasonId)`; `season` filter only applied when no override is present.
+- `SequenciasView.tsx`: accepts `matchesOverride?: MatchRecord[]`; uses `matchesOverride ?? getMatches(seasonId)` in useMemo.
+- `MomentosView.tsx`: accepts `allSeasonIds?: string[]`; adds scope toggle pill ("Temporada atual" / "Todas as temporadas") when more than 1 season exists; in "todas" mode, aggregates moments from all seasons sorted by `createdAt` desc. Uses `Tagged = Momento & { _sid: string }` internally to track which season a momento belongs to for correct deletion.
+- `ClubeView.tsx`: accepts `seasons: Season[]`; has independent `statsScope` + `seqScope` state; computes `allMatchesForStats`, `allMatchesForSeq`, and `allStatsOverride` via useMemo when scope="todas"; scope toggle (`ScopeToggle` component) appears only when `seasons.length > 1`; passes overrides to `PlayerStatsTable`, `ClubStatsView`, and `SequenciasView`.
+- `Dashboard.tsx`: passes `seasons={seasons}` to `ClubeView` and `allSeasonIds={seasons.map(s => s.id)}` to `MomentosView`.
+- `NoticiasView.tsx`: Fixed pre-existing bug — `getAllPlayerStats()` returns `Record<number, PlayerSeasonStats>` not array; replaced `.length`/spread with `Object.values(...)`.
+
 ### Career Start Flow (Task #14)
 - `Career` type extended: `projeto?: string`, `competitions?: string[]`, `clubDescription?: string`, `clubTitles?: ClubTitle[]`.
 - `careerStorage.createCareer()` accepts optional `CareerExtras` for projeto/competitions/clubInfo.

@@ -130,16 +130,18 @@ interface Props {
   careerId: string;
   seasonId: string;
   allPlayers: SquadPlayer[];
+  statsOverride?: Record<number, PlayerSeasonStats>;
+  matchesOverride?: ReturnType<typeof getMatches>;
 }
 
-export function PlayerStatsTable({ careerId, seasonId, allPlayers }: Props) {
+export function PlayerStatsTable({ careerId, seasonId, allPlayers, statsOverride, matchesOverride }: Props) {
   const [filter, setFilter] = useState<FilterTab>("ataque");
   const [sortCol, setSortCol] = useState<SortCol>("goals");
   const [asc, setAsc] = useState(false);
 
-  const rawStats = useMemo(() => getAllPlayerStats(seasonId), [seasonId]);
+  const rawStats = useMemo(() => statsOverride ?? getAllPlayerStats(seasonId), [statsOverride, seasonId]);
   const overrides = useMemo(() => getAllPlayerOverrides(careerId), [careerId]);
-  const matches = useMemo(() => getMatches(seasonId), [seasonId]);
+  const matches = useMemo(() => matchesOverride ?? getMatches(seasonId), [matchesOverride, seasonId]);
 
   const derivedMap = useMemo<Record<number, DerivedStats>>(() => {
     const map: Record<number, DerivedStats> = {};

@@ -57,6 +57,35 @@ export function setPlayerStats(
   }
 }
 
+export function aggregatePlayerStats(seasonIds: string[]): Record<number, PlayerSeasonStats> {
+  const result: Record<number, PlayerSeasonStats> = {};
+  for (const sid of seasonIds) {
+    const stats = getAllPlayerStats(sid);
+    for (const [pid, s] of Object.entries(stats)) {
+      const id = Number(pid);
+      const ex = result[id];
+      if (!ex) {
+        result[id] = { ...s, recentRatings: [...(s.recentRatings ?? [])] };
+      } else {
+        result[id] = {
+          ...ex,
+          goals:                 ex.goals + s.goals,
+          assists:               ex.assists + s.assists,
+          matchesAsStarter:      ex.matchesAsStarter + s.matchesAsStarter,
+          matchesAsSubstitute:   ex.matchesAsSubstitute + s.matchesAsSubstitute,
+          totalMinutes:          ex.totalMinutes + s.totalMinutes,
+          yellowCards:           ex.yellowCards + s.yellowCards,
+          redCards:              ex.redCards + s.redCards,
+          totalOwnGoals:         ex.totalOwnGoals + s.totalOwnGoals,
+          totalMissedPenalties:  ex.totalMissedPenalties + s.totalMissedPenalties,
+          recentRatings:         [...(ex.recentRatings ?? []), ...(s.recentRatings ?? [])],
+        };
+      }
+    }
+  }
+  return result;
+}
+
 export function syncAllPlayerStats(seasonId: string): Promise<void> {
   const all = getAllPlayerStats(seasonId);
   return putSeasonData(seasonId, "player_stats", all);

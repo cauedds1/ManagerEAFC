@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import {
   getMomentos,
@@ -11,6 +11,7 @@ import {
 
 interface MomentosViewProps {
   seasonId: string;
+  allSeasonIds?: string[];
   isReadOnly?: boolean;
 }
 
@@ -312,18 +313,32 @@ function MomentoCard({ momento, onClick }: { momento: Momento; onClick: () => vo
   );
 }
 
-export function MomentosView({ seasonId, isReadOnly }: MomentosViewProps) {
-  const [momentos, setMomentos] = useState<Momento[]>(() => getMomentos(seasonId));
+type Tagged = Momento & { _sid: string };
+
+export function MomentosView({ seasonId, allSeasonIds, isReadOnly }: MomentosViewProps) {
+  const [currentMomentos, setCurrentMomentos] = useState<Momento[]>(() => getMomentos(seasonId));
+  const [scope, setScope] = useState<"atual" | "todas">("atual");
   const [showAdd, setShowAdd] = useState(false);
-  const [selectedMomento, setSelectedMomento] = useState<Momento | null>(null);
+  const [selectedMomento, setSelectedMomento] = useState<Tagged | null>(null);
+
+  const hasMultipleSeasons = (allSeasonIds?.length ?? 0) > 1;
 
   useEffect(() => {
-    setMomentos(getMomentos(seasonId));
+    setCurrentMomentos(getMomentos(seasonId));
     setShowAdd(false);
     setSelectedMomento(null);
   }, [seasonId]);
 
-  const refresh = () => setMomentos(getMomentos(seasonId));
+  const refresh = () => setCurrentMomentos(getMomentos(seasonId));
+
+  const momentos = useMemo<Tagged[]>(() => {
+    if (scope === "atual" || !allSeasonIds) {
+      return currentMomentos.map((m) => ({ ...m, _sid: seasonId }));
+    }
+    return allSeasonIds
+      .flatMap((sid) => getMomentos(sid).map((m) => ({ ...m, _sid: sid })))
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }, [scope, allSeasonIds, currentMomentos, seasonId]);
 
   const handleSave = (data: Omit<Momento, "id" | "createdAt">) => {
     const m: Momento = { ...data, id: generateMomentoId(), createdAt: new Date().toISOString() };
@@ -332,8 +347,8 @@ export function MomentosView({ seasonId, isReadOnly }: MomentosViewProps) {
     setShowAdd(false);
   };
 
-  const handleDelete = (id: string) => {
-    deleteMomento(seasonId, id);
+  const handleDelete = (tagged: Tagged) => {
+    deleteMomento(tagged._sid, tagged.id);
     refresh();
     setSelectedMomento(null);
   };
@@ -345,18 +360,37 @@ export function MomentosView({ seasonId, isReadOnly }: MomentosViewProps) {
           <h2 className="text-white font-bold text-xl">Momentos</h2>
           <p className="text-white/40 text-sm mt-0.5">Fotos e memórias da sua carreira</p>
         </div>
-        {!isReadOnly && (
-          <button
-            onClick={() => setShowAdd(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm text-white transition-all"
-            style={{ background: "var(--club-primary, #3b82f6)" }}
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
-            Adicionar Momento
-          </button>
-        )}
+        <div className="flex items-center gap-2 flex-wrap">
+          {hasMultipleSeasons && (
+            <div className="flex rounded-xl overflow-hidden border border-white/10">
+              {(["atual", "todas"] as const).map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setScope(s)}
+                  className="px-3 py-1.5 text-xs font-semibold transition-all"
+                  style={{
+                    background: scope === s ? "rgba(var(--club-primary-rgb),0.18)" : "rgba(255,255,255,0.04)",
+                    color: scope === s ? "var(--club-primary)" : "rgba(255,255,255,0.4)",
+                  }}
+                >
+                  {s === "atual" ? "Temporada atual" : "Todas as temporadas"}
+                </button>
+              ))}
+            </div>
+          )}
+          {!isReadOnly && scope === "atual" && (
+            <button
+              onClick={() => setShowAdd(true)}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm text-white transition-all"
+              style={{ background: "var(--club-primary, #3b82f6)" }}
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+              Adicionar Momento
+            </button>
+          )}
+        </div>
       </div>
 
       {momentos.length === 0 ? (
@@ -369,10 +403,14 @@ export function MomentosView({ seasonId, isReadOnly }: MomentosViewProps) {
           <div>
             <p className="text-white/60 font-semibold text-sm">Nenhum momento registrado</p>
             <p className="text-white/30 text-xs mt-1">
-              {isReadOnly ? "Esta temporada não possui momentos." : "Adicione fotos de conquistas, jogos épicos e outros instantes especiais."}
+              {scope === "todas"
+                ? "Nenhuma temporada possui momentos ainda."
+                : isReadOnly
+                ? "Esta temporada não possui momentos."
+                : "Adicione fotos de conquistas, jogos épicos e outros instantes especiais."}
             </p>
           </div>
-          {!isReadOnly && (
+          {!isReadOnly && scope === "atual" && (
             <button
               onClick={() => setShowAdd(true)}
               className="mt-1 px-5 py-2.5 rounded-xl font-semibold text-sm text-white transition-all"
@@ -398,7 +436,7 @@ export function MomentosView({ seasonId, isReadOnly }: MomentosViewProps) {
         <DetailModal
           momento={selectedMomento}
           onClose={() => setSelectedMomento(null)}
-          onDelete={() => handleDelete(selectedMomento.id)}
+          onDelete={() => handleDelete(selectedMomento)}
         />
       )}
     </div>

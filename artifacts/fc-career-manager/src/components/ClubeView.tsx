@@ -1,7 +1,10 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import type { SquadResult, SquadPlayer } from "@/lib/squadCache";
 import type { TransferRecord } from "@/types/transfer";
-import type { Career } from "@/types/career";
+import type { Career, Season } from "@/types/career";
+import type { MatchRecord } from "@/types/match";
+import { getMatches } from "@/lib/matchStorage";
+import { aggregatePlayerStats } from "@/lib/playerStatsStorage";
 import { ElencoView } from "./ElencoView";
 import { PlayerStatsTable } from "./PlayerStatsTable";
 import { LesoesView } from "./LesoesView";
@@ -11,6 +14,7 @@ import { ClubStatsView } from "./ClubStatsView";
 
 type ClubeSubTab = "elenco" | "estatisticas" | "lesoes" | "sequencias" | "financeiro";
 type StatsMiniTab = "jogadores" | "clube";
+type Scope = "atual" | "todas";
 
 const SUB_TABS: { id: ClubeSubTab; label: string; icon: string }[] = [
   { id: "elenco",       label: "Elenco",       icon: "👥" },
@@ -24,6 +28,7 @@ interface ClubeViewProps {
   careerId: string;
   seasonId: string;
   career: Career;
+  seasons: Season[];
   squad: SquadResult | null;
   squadLoading: boolean;
   squadError: boolean;
@@ -35,10 +40,31 @@ interface ClubeViewProps {
   isReadOnly?: boolean;
 }
 
+function ScopeToggle({ scope, setScope }: { scope: Scope; setScope: (s: Scope) => void }) {
+  return (
+    <div className="flex rounded-xl overflow-hidden border border-white/10">
+      {(["atual", "todas"] as Scope[]).map((s) => (
+        <button
+          key={s}
+          onClick={() => setScope(s)}
+          className="px-3 py-1.5 text-xs font-semibold transition-all"
+          style={{
+            background: scope === s ? "rgba(var(--club-primary-rgb),0.18)" : "rgba(255,255,255,0.04)",
+            color: scope === s ? "var(--club-primary)" : "rgba(255,255,255,0.4)",
+          }}
+        >
+          {s === "atual" ? "Temporada atual" : "Todas as temporadas"}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export function ClubeView({
   careerId,
   seasonId,
   career,
+  seasons,
   squad,
   squadLoading,
   squadError,
@@ -51,6 +77,26 @@ export function ClubeView({
 }: ClubeViewProps) {
   const [sub, setSub] = useState<ClubeSubTab>("elenco");
   const [statsMini, setStatsMini] = useState<StatsMiniTab>("jogadores");
+  const [statsScope, setStatsScope] = useState<Scope>("atual");
+  const [seqScope, setSeqScope] = useState<Scope>("atual");
+
+  const hasMultipleSeasons = seasons.length > 1;
+  const allSeasonIds = seasons.map((s) => s.id);
+
+  const allMatchesForStats = useMemo<MatchRecord[] | undefined>(() => {
+    if (statsScope === "atual" || !hasMultipleSeasons) return undefined;
+    return allSeasonIds.flatMap((id) => getMatches(id));
+  }, [statsScope, hasMultipleSeasons, allSeasonIds]);
+
+  const allStatsOverride = useMemo(() => {
+    if (statsScope === "atual" || !hasMultipleSeasons) return undefined;
+    return aggregatePlayerStats(allSeasonIds);
+  }, [statsScope, hasMultipleSeasons, allSeasonIds]);
+
+  const allMatchesForSeq = useMemo<MatchRecord[] | undefined>(() => {
+    if (seqScope === "atual" || !hasMultipleSeasons) return undefined;
+    return allSeasonIds.flatMap((id) => getMatches(id));
+  }, [seqScope, hasMultipleSeasons, allSeasonIds]);
 
   return (
     <div className="w-full">
@@ -101,36 +147,52 @@ export function ClubeView({
 
         {sub === "estatisticas" && (
           <div className="px-4 sm:px-6">
-            {/* Mini-tabs: Jogadores | Clube */}
-            <div className="flex gap-1 pt-4 pb-3">
-              {(["jogadores", "clube"] as StatsMiniTab[]).map((t) => {
-                const active = statsMini === t;
-                return (
-                  <button
-                    key={t}
-                    onClick={() => setStatsMini(t)}
-                    className="px-4 py-1.5 rounded-xl text-xs font-semibold transition-all duration-200"
-                    style={{
-                      background: active ? "rgba(var(--club-primary-rgb),0.15)" : "rgba(255,255,255,0.05)",
-                      color: active ? "var(--club-primary)" : "rgba(255,255,255,0.4)",
-                      border: active
-                        ? "1px solid rgba(var(--club-primary-rgb),0.25)"
-                        : "1px solid rgba(255,255,255,0.07)",
-                    }}
-                  >
-                    {t === "jogadores" ? "👤 Jogadores" : "🏟️ Clube"}
-                  </button>
-                );
-              })}
+            {/* Mini-tabs + scope toggle row */}
+            <div className="flex items-center justify-between gap-3 pt-4 pb-3 flex-wrap">
+              <div className="flex gap-1">
+                {(["jogadores", "clube"] as StatsMiniTab[]).map((t) => {
+                  const active = statsMini === t;
+                  return (
+                    <button
+                      key={t}
+                      onClick={() => setStatsMini(t)}
+                      className="px-4 py-1.5 rounded-xl text-xs font-semibold transition-all duration-200"
+                      style={{
+                        background: active ? "rgba(var(--club-primary-rgb),0.15)" : "rgba(255,255,255,0.05)",
+                        color: active ? "var(--club-primary)" : "rgba(255,255,255,0.4)",
+                        border: active
+                          ? "1px solid rgba(var(--club-primary-rgb),0.25)"
+                          : "1px solid rgba(255,255,255,0.07)",
+                      }}
+                    >
+                      {t === "jogadores" ? "👤 Jogadores" : "🏟️ Clube"}
+                    </button>
+                  );
+                })}
+              </div>
+              {hasMultipleSeasons && (
+                <ScopeToggle scope={statsScope} setScope={setStatsScope} />
+              )}
             </div>
 
             {statsMini === "jogadores" && (
               <div className="overflow-x-auto">
-                <PlayerStatsTable careerId={careerId} seasonId={seasonId} allPlayers={allPlayers} />
+                <PlayerStatsTable
+                  careerId={careerId}
+                  seasonId={seasonId}
+                  allPlayers={allPlayers}
+                  statsOverride={allStatsOverride}
+                  matchesOverride={allMatchesForStats}
+                />
               </div>
             )}
             {statsMini === "clube" && (
-              <ClubStatsView careerId={careerId} seasonId={seasonId} season={career.season} />
+              <ClubStatsView
+                careerId={careerId}
+                seasonId={seasonId}
+                season={statsScope === "atual" ? career.season : undefined}
+                matchesOverride={allMatchesForStats}
+              />
             )}
           </div>
         )}
@@ -139,7 +201,18 @@ export function ClubeView({
           <LesoesView careerId={careerId} seasonId={seasonId} allPlayers={allPlayers} />
         )}
         {sub === "sequencias" && (
-          <SequenciasView careerId={careerId} seasonId={seasonId} />
+          <div>
+            {hasMultipleSeasons && (
+              <div className="flex justify-end px-4 sm:px-6 pt-4">
+                <ScopeToggle scope={seqScope} setScope={setSeqScope} />
+              </div>
+            )}
+            <SequenciasView
+              careerId={careerId}
+              seasonId={seasonId}
+              matchesOverride={allMatchesForSeq}
+            />
+          </div>
         )}
         {sub === "financeiro" && (
           <div className="px-4 sm:px-6 py-6">

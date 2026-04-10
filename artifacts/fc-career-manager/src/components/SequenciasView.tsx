@@ -131,10 +131,14 @@ function dateRange(rec: StreakRecord): string {
 interface Props {
   careerId: string;
   seasonId: string;
+  matchesOverride?: MatchRecord[];
 }
 
-export function SequenciasView({ careerId, seasonId }: Props) {
-  const matches = useMemo(() => getMatches(seasonId), [seasonId]);
+export function SequenciasView({ careerId, seasonId, matchesOverride }: Props) {
+  const matches = useMemo(
+    () => matchesOverride ?? getMatches(seasonId),
+    [matchesOverride, seasonId]
+  );
   const streaks = useMemo(() => computeStreaks(matches), [matches]);
 
   if (matches.length === 0) {

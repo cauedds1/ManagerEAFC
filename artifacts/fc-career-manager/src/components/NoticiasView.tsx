@@ -864,13 +864,13 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
       if (league) {
         parts.push(`${league.position}º/${league.totalTeams} na liga (${league.points} pts)`);
       }
-      const stats = getAllPlayerStats(s.id);
-      if (stats.length > 0) {
-        const topScorer = [...stats].sort((a, b) => (b.goals ?? 0) - (a.goals ?? 0))[0];
+      const statsArr = Object.values(getAllPlayerStats(s.id));
+      if (statsArr.length > 0) {
+        const topScorer = [...statsArr].sort((a, b) => (b.goals ?? 0) - (a.goals ?? 0))[0];
         if (topScorer && (topScorer.goals ?? 0) > 0) {
           parts.push(`Artilheiro: ${topScorer.playerName} (${topScorer.goals} gols)`);
         }
-        const topAssists = [...stats].sort((a, b) => (b.assists ?? 0) - (a.assists ?? 0))[0];
+        const topAssists = [...statsArr].sort((a, b) => (b.assists ?? 0) - (a.assists ?? 0))[0];
         if (topAssists && (topAssists.assists ?? 0) > 0 && topAssists.playerName !== topScorer?.playerName) {
           parts.push(`Maior assistente: ${topAssists.playerName} (${topAssists.assists} ass.)`);
         }

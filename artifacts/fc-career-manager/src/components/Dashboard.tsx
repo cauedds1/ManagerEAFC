@@ -527,6 +527,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
             careerId={career.id}
             seasonId={activeSeasonId}
             career={career}
+            seasons={seasons}
             squad={squad}
             squadLoading={squadLoading}
             squadError={squadError}
@@ -602,6 +603,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
             {activeTab === "momentos" && (
               <MomentosView
                 seasonId={activeSeasonId}
+                allSeasonIds={seasons.map((s) => s.id)}
                 isReadOnly={isReadOnly}
               />
             )}
