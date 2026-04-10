@@ -62,8 +62,12 @@ ${chosenCategory ? `Categoria: ${chosenCategory}` : "Escolha a categoria mais ad
 REGRAS DE CRIATIVIDADE:
 - Varie o formato da legenda: pode ser longa com storytelling, curta e impactante, com listas, ou com muitas quebras de linha
 - Os comentários devem ter personalidades DISTINTAS e realistas: torcedor apaixonado, crítico, irônico, estrangeiro, saudosista, criança de 14 anos
-- Nomes de usuário devem ser criativos e variados (não use @torcedor, @fanático genéricos)
 - Emojis e hashtags devem ser contextuais, não aleatórios
+
+REGRAS OBRIGATÓRIAS PARA COMENTARISTAS:
+- displayName DEVE ser um nome de pessoa brasileira real e comum (ex: "Lucas Ferreira", "Ana Souza", "Pedro Mendes", "Carla Lima", "João Carlos", "Thiago Rocha")
+- username DEVE ser derivado do nome da pessoa, curto e simples, como uma pessoa real usaria (ex: @lucasferreira, @anasouza22, @pedromendes_fc, @carlamlima, @joaocarlos17)
+- NUNCA use nomes de fanpage, coletivos ou conceitos abstratos — ERRADO: @nossosbonsmomentos, @bolaplenitude, @amantesdacorneta2023, @londresloversonly, @critica_pura, @defensordofutebol
 
 Responda APENAS com JSON puro (sem markdown, sem code block):
 {
@@ -76,15 +80,15 @@ Responda APENAS com JSON puro (sem markdown, sem code block):
   "sharesCount": <30 a 3000>,
   "comments": [
     {
-      "username": "@<usuario_criativo_sem_espaço>",
-      "displayName": "<nome realista>",
+      "username": "@<nome_da_pessoa_em_formato_handle>",
+      "displayName": "<Nome Sobrenome de pessoa brasileira real>",
       "content": "<comentário único e com personalidade>",
       "likes": <1 a 3000>,
       "personality": "<otimista|chato|corneteiro|zoeiro|saudosista|neutro|internacional>",
       "replies": [
         {
-          "username": "@<usuario>",
-          "displayName": "<nome>",
+          "username": "@<nome_da_pessoa_em_formato_handle>",
+          "displayName": "<Nome Sobrenome de pessoa brasileira real>",
           "content": "<reply curto>",
           "likes": <1 a 500>,
           "personality": "<personalidade>",
