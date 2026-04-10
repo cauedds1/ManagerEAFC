@@ -10,7 +10,7 @@ import {
 } from "@/lib/momentoStorage";
 
 interface MomentosViewProps {
-  careerId: string;
+  seasonId: string;
   isReadOnly?: boolean;
 }
 
@@ -312,22 +312,28 @@ function MomentoCard({ momento, onClick }: { momento: Momento; onClick: () => vo
   );
 }
 
-export function MomentosView({ careerId, isReadOnly }: MomentosViewProps) {
-  const [momentos, setMomentos] = useState<Momento[]>(() => getMomentos(careerId));
+export function MomentosView({ seasonId, isReadOnly }: MomentosViewProps) {
+  const [momentos, setMomentos] = useState<Momento[]>(() => getMomentos(seasonId));
   const [showAdd, setShowAdd] = useState(false);
   const [selectedMomento, setSelectedMomento] = useState<Momento | null>(null);
 
-  const refresh = () => setMomentos(getMomentos(careerId));
+  useEffect(() => {
+    setMomentos(getMomentos(seasonId));
+    setShowAdd(false);
+    setSelectedMomento(null);
+  }, [seasonId]);
+
+  const refresh = () => setMomentos(getMomentos(seasonId));
 
   const handleSave = (data: Omit<Momento, "id" | "createdAt">) => {
     const m: Momento = { ...data, id: generateMomentoId(), createdAt: new Date().toISOString() };
-    addMomento(careerId, m);
+    addMomento(seasonId, m);
     refresh();
     setShowAdd(false);
   };
 
   const handleDelete = (id: string) => {
-    deleteMomento(careerId, id);
+    deleteMomento(seasonId, id);
     refresh();
     setSelectedMomento(null);
   };

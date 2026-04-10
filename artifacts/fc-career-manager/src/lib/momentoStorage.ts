@@ -1,4 +1,4 @@
-import { putCareerData } from "@/lib/apiStorage";
+import { putSeasonData } from "@/lib/apiStorage";
 
 export interface Momento {
   id: string;
@@ -9,13 +9,13 @@ export interface Momento {
   createdAt: string;
 }
 
-function momentosKey(careerId: string): string {
-  return `fc-career-manager-momentos-${careerId}`;
+function momentosKey(seasonId: string): string {
+  return `fc-career-manager-momentos-${seasonId}`;
 }
 
-export function getMomentos(careerId: string): Momento[] {
+export function getMomentos(seasonId: string): Momento[] {
   try {
-    const raw = localStorage.getItem(momentosKey(careerId));
+    const raw = localStorage.getItem(momentosKey(seasonId));
     if (!raw) return [];
     return JSON.parse(raw) as Momento[];
   } catch {
@@ -23,23 +23,23 @@ export function getMomentos(careerId: string): Momento[] {
   }
 }
 
-export function saveMomentos(careerId: string, list: Momento[]): void {
+export function saveMomentos(seasonId: string, list: Momento[]): void {
   try {
-    localStorage.setItem(momentosKey(careerId), JSON.stringify(list));
+    localStorage.setItem(momentosKey(seasonId), JSON.stringify(list));
   } catch {}
   const withoutPhoto = list.map(({ photoDataUrl: _, ...rest }) => rest);
-  void putCareerData(careerId, "momentos", withoutPhoto);
+  void putSeasonData(seasonId, "momentos", withoutPhoto);
 }
 
-export function addMomento(careerId: string, momento: Momento): void {
-  const list = getMomentos(careerId);
+export function addMomento(seasonId: string, momento: Momento): void {
+  const list = getMomentos(seasonId);
   list.unshift(momento);
-  saveMomentos(careerId, list);
+  saveMomentos(seasonId, list);
 }
 
-export function deleteMomento(careerId: string, id: string): void {
-  const list = getMomentos(careerId).filter((m) => m.id !== id);
-  saveMomentos(careerId, list);
+export function deleteMomento(seasonId: string, id: string): void {
+  const list = getMomentos(seasonId).filter((m) => m.id !== id);
+  saveMomentos(seasonId, list);
 }
 
 export function generateMomentoId(): string {

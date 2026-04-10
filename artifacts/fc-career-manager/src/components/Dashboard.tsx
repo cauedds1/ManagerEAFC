@@ -601,7 +601,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
             )}
             {activeTab === "momentos" && (
               <MomentosView
-                careerId={career.id}
+                seasonId={activeSeasonId}
                 isReadOnly={isReadOnly}
               />
             )}
