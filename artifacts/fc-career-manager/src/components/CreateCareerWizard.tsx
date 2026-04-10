@@ -25,7 +25,7 @@ const STEPS = ["Técnico", "Clube", "Preview", "Configurar"];
 
 function ProgressBar({ step }: { step: number }) {
   return (
-    <div className="flex items-center gap-1.5 mb-6">
+    <div className="flex items-center gap-1.5 mb-5">
       {STEPS.map((label, i) => {
         const active = i === step;
         const done = i < step;
@@ -151,6 +151,7 @@ export function CreateCareerWizard({
   };
 
   const season = getCurrentSeason();
+  const isPreviewStep = step === 2;
 
   return (
     <div className="relative h-screen flex flex-col">
@@ -173,37 +174,50 @@ export function CreateCareerWizard({
         <div style={{ width: 80 }} />
       </div>
 
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <div className="flex-1 overflow-y-auto">
-          <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6">
+      {/* Step 2 (Preview): full-height flex-fill — no page scroll */}
+      {isPreviewStep && selectedClub && (
+        <div className="flex-1 min-h-0 flex flex-col">
+          <div className="flex-shrink-0 max-w-3xl w-full mx-auto px-4 sm:px-6 pt-4">
             <ProgressBar step={step} />
-            <div key={step}>
-              {step === 0 && <CoachSetup onNext={handleCoachNext} initial={coach} />}
-              {step === 1 && (
-                <ClubPicker allClubs={allClubs} onSelectClub={handleClubSelect} initialLeague={selectedLeague} />
-              )}
-              {step === 2 && selectedClub && (
-                <TeamPreview
-                  club={selectedClub}
-                  season={season}
-                  onNext={handlePreviewNext}
-                  onBack={handleBack}
-                  onClubInfoLoaded={(info) => { clubInfoRef.current = info; }}
-                />
-              )}
-              {step === 3 && selectedClub && (
-                <CareerSetupStep
-                  club={selectedClub}
-                  season={season}
-                  onConfirm={handleSetupConfirm}
-                  onBack={handleBack}
-                  confirming={confirming}
-                />
-              )}
+          </div>
+          <div className="flex-1 min-h-0 max-w-3xl w-full mx-auto px-4 sm:px-6 pb-4">
+            <TeamPreview
+              club={selectedClub}
+              season={season}
+              onNext={handlePreviewNext}
+              onBack={handleBack}
+              onClubInfoLoaded={(info) => { clubInfoRef.current = info; }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* All other steps: normal scrollable layout */}
+      {!isPreviewStep && (
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex-1 overflow-y-auto">
+            <div className="max-w-3xl mx-auto px-4 sm:px-6 py-5">
+              <ProgressBar step={step} />
+              <div key={step}>
+                {step === 0 && <CoachSetup onNext={handleCoachNext} initial={coach} />}
+                {step === 1 && (
+                  <ClubPicker allClubs={allClubs} onSelectClub={handleClubSelect} initialLeague={selectedLeague} />
+                )}
+                {step === 3 && selectedClub && (
+                  <CareerSetupStep
+                    club={selectedClub}
+                    season={season}
+                    clubInfo={clubInfoRef.current}
+                    onConfirm={handleSetupConfirm}
+                    onBack={handleBack}
+                    confirming={confirming}
+                  />
+                )}
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

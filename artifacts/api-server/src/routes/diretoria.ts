@@ -782,6 +782,70 @@ Responda APENAS com JSON puro (sem markdown):
   }
 });
 
+router.post("/generate-projeto", async (req, res) => {
+  const { clubName, clubLeague, clubCountry, clubDescription, clubTitles } = req.body as {
+    clubName: string;
+    clubLeague?: string;
+    clubCountry?: string;
+    clubDescription?: string;
+    clubTitles?: Array<{ name: string; count: number }>;
+  };
+
+  if (!clubName?.trim()) {
+    res.status(400).json({ error: "clubName é obrigatório" });
+    return;
+  }
+
+  const userKey = (req.headers["x-openai-key"] as string | undefined) ?? "";
+  const { client, usingUserKey } = getClient(userKey);
+  const tier = clubTierFromLeague(clubLeague ?? "");
+
+  const titlesStr = clubTitles?.length
+    ? clubTitles.map((t) => `${t.name} (×${t.count})`).join(", ")
+    : "nenhum título expressivo";
+
+  const userPrompt = `Você é um especialista em futebol e career mode de videogame.
+
+Crie um projeto de carreira realista para um técnico que vai assumir o ${clubName}${clubLeague ? ` (${clubLeague})` : ""}${clubCountry ? `, ${clubCountry}` : ""}.
+
+Contexto do clube:
+- Nível estimado: ${tier}
+${clubDescription ? `- Sobre o clube: ${clubDescription}` : ""}
+- Títulos históricos: ${titlesStr}
+
+Crie um projeto de 1 a 2 frases em português brasileiro que:
+- Seja realista para o nível do clube (${tier})
+- Para clubes grandes em fase ruim: foque em estabilidade primeiro, depois reconstrução gradual
+- Para clubes pequenos: objetivos modestos como manter divisão, crescer com jovens talentos
+- Mencione um objetivo principal (ex: conquistar liga nacional, subir de divisão, vencer uma Copa)
+- NÃO prometa Champions League nas primeiras temporadas para clubes de nível médio ou em crise
+- Use primeira pessoa ("Meu objetivo é...", "Pretendo...", "Quero...")
+- Seja conciso e direto
+
+Responda APENAS com o texto do projeto, sem JSON, sem aspas, sem formatação extra.`;
+
+  try {
+    const params = usingUserKey
+      ? { model: "gpt-4o-mini" as const, max_tokens: 180 as const }
+      : { model: "gpt-5.2" as const, max_completion_tokens: 180 as const };
+
+    const completion = await client.chat.completions.create({
+      ...params,
+      stream: false,
+      messages: [
+        { role: "system", content: "Você é especialista em futebol. Responda apenas com o texto do projeto, sem formatação." },
+        { role: "user", content: userPrompt },
+      ],
+    });
+
+    const projeto = (completion.choices[0]?.message?.content ?? "").trim();
+    res.json({ projeto });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: "Erro ao gerar projeto", details: msg });
+  }
+});
+
 router.post("/club-info", async (req, res) => {
   const { clubName, clubLeague, clubCountry } = req.body as {
     clubName: string;
