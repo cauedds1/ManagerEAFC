@@ -29,26 +29,56 @@ function overallColor(ov: number): { bg: string; color: string } {
   return { bg: "rgba(239,68,68,0.2)", color: "#f87171" };
 }
 
-function PlayerPhoto({ src, name }: { src: string; name: string }) {
+function PlayerPhoto({ src, name, size = 72 }: { src: string; name: string; size?: number }) {
   const [err, setErr] = useState(!src);
-  const initials = name
-    .trim()
-    .split(" ")
-    .map((p) => p[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-
+  const initials = name.trim().split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase();
   return (
     <div
-      className="w-16 h-16 rounded-2xl flex-shrink-0 overflow-hidden flex items-center justify-center"
-      style={{ background: "rgba(var(--club-primary-rgb),0.1)", border: "1.5px solid rgba(var(--club-primary-rgb),0.2)" }}
+      className="rounded-2xl flex-shrink-0 overflow-hidden flex items-center justify-center"
+      style={{
+        width: size, height: size,
+        background: "rgba(var(--club-primary-rgb),0.1)",
+        border: "2px solid rgba(var(--club-primary-rgb),0.2)",
+      }}
     >
       {!err ? (
         <img src={src} alt={name} className="w-full h-full object-cover" onError={() => setErr(true)} />
       ) : (
-        <span className="text-white/50 text-xl font-black">{initials}</span>
+        <span className="text-white/50 font-black" style={{ fontSize: size * 0.3 }}>{initials}</span>
       )}
+    </div>
+  );
+}
+
+interface LabeledInputProps {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  type?: string;
+  min?: number;
+  max?: number;
+  placeholder?: string;
+}
+
+function LabeledInput({ label, value, onChange, type = "text", min, max, placeholder }: LabeledInputProps) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label className="text-white/40 text-xs font-semibold tracking-wide uppercase">{label}</label>
+      <input
+        type={type}
+        min={min}
+        max={max}
+        value={value}
+        placeholder={placeholder ?? "—"}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full px-3 py-2.5 rounded-xl text-white text-sm font-semibold focus:outline-none transition-colors"
+        style={{
+          background: "rgba(255,255,255,0.05)",
+          border: "1px solid rgba(255,255,255,0.09)",
+        }}
+        onFocus={(e) => { e.currentTarget.style.border = "1px solid rgba(var(--club-primary-rgb),0.5)"; }}
+        onBlur={(e) => { e.currentTarget.style.border = "1px solid rgba(255,255,255,0.09)"; }}
+      />
     </div>
   );
 }
@@ -61,6 +91,8 @@ interface PlayerDetailPanelProps {
   onUpdated: () => void;
 }
 
+type Tab = "stats" | "edit";
+
 export function PlayerDetailPanel({
   player,
   careerId,
@@ -68,8 +100,8 @@ export function PlayerDetailPanel({
   onClose,
   onUpdated,
 }: PlayerDetailPanelProps) {
+  const [tab, setTab] = useState<Tab>("stats");
   const [stats, setStatsState] = useState(() => getPlayerStats(careerId, player.id));
-  const [editing, setEditing] = useState(false);
 
   const totalMatches = (stats.matchesAsStarter ?? 0) + (stats.matchesAsSubstitute ?? 0);
   const avgRating = (() => {
@@ -87,33 +119,33 @@ export function PlayerDetailPanel({
     return "#f87171";
   })();
 
-  const displayName = override?.nameOverride ?? player.name;
-  const displayNumber = override?.shirtNumber ?? player.number;
-  const displayOverall = override?.overall;
+  const displayName     = override?.nameOverride ?? player.name;
+  const displayNumber   = override?.shirtNumber ?? player.number;
+  const displayOverall  = override?.overall;
   const displayPosition = (migratePositionOverride(override?.positionOverride) ?? player.positionPtBr) as PositionPtBr;
 
-  const [editName, setEditName] = useState(displayName);
-  const [editNumber, setEditNumber] = useState(String(displayNumber ?? ""));
-  const [editOverall, setEditOverall] = useState(String(displayOverall ?? ""));
-  const [editSalary, setEditSalary] = useState(String(override?.salary ?? ""));
+  const [editName,     setEditName]     = useState(displayName);
+  const [editNumber,   setEditNumber]   = useState(String(displayNumber ?? ""));
+  const [editOverall,  setEditOverall]  = useState(String(displayOverall ?? ""));
+  const [editSalary,   setEditSalary]   = useState(String(override?.salary ?? ""));
   const [editPosition, setEditPosition] = useState<PositionPtBr>(displayPosition);
 
-  const pos = POS_STYLE[displayPosition] ?? POS_STYLE.MID;
+  const pos      = POS_STYLE[displayPosition] ?? POS_STYLE.MID;
   const moodStyle = MOOD_COLORS[stats.mood];
-  const fanStyle = FAN_MORAL_COLORS[stats.fanMoral];
+  const fanStyle  = FAN_MORAL_COLORS[stats.fanMoral];
 
   const saveEdit = () => {
-    const numberVal = parseInt(editNumber, 10);
+    const numberVal  = parseInt(editNumber, 10);
     const overallVal = parseInt(editOverall, 10);
-    const salaryVal = parseInt(editSalary, 10);
+    const salaryVal  = parseInt(editSalary, 10);
     setPlayerOverride(careerId, player.id, {
-      nameOverride: editName.trim() || undefined,
-      shirtNumber: !isNaN(numberVal) && editNumber.trim() ? numberVal : undefined,
-      overall: !isNaN(overallVal) && editOverall.trim() ? Math.max(1, Math.min(99, overallVal)) : undefined,
-      salary: !isNaN(salaryVal) && editSalary.trim() ? Math.max(0, salaryVal) : undefined,
-      positionOverride: editPosition !== player.positionPtBr ? editPosition : undefined,
+      nameOverride:     editName.trim() || undefined,
+      shirtNumber:      !isNaN(numberVal)  && editNumber.trim()  ? numberVal                              : undefined,
+      overall:          !isNaN(overallVal) && editOverall.trim() ? Math.max(1, Math.min(99, overallVal))  : undefined,
+      salary:           !isNaN(salaryVal)  && editSalary.trim()  ? Math.max(0, salaryVal)                 : undefined,
+      positionOverride: editPosition !== player.positionPtBr     ? editPosition                           : undefined,
     });
-    setEditing(false);
+    setTab("stats");
     onUpdated();
   };
 
@@ -123,7 +155,7 @@ export function PlayerDetailPanel({
     setEditOverall(String(displayOverall ?? ""));
     setEditSalary(String(override?.salary ?? ""));
     setEditPosition(displayPosition);
-    setEditing(false);
+    setTab("stats");
   };
 
   const updateStat = (field: "goals" | "assists" | "matchesAsStarter" | "totalMinutes", val: number) => {
@@ -135,12 +167,13 @@ export function PlayerDetailPanel({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", background: "rgba(0,0,0,0.6)" }}
+      style={{ backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", background: "rgba(0,0,0,0.65)" }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div
-        className="w-full max-w-md flex flex-col rounded-2xl animate-slide-up overflow-hidden"
+        className="w-full flex flex-col rounded-2xl animate-slide-up overflow-hidden"
         style={{
+          maxWidth: 520,
           background: "var(--app-bg-lighter, #141024)",
           border: "1px solid var(--surface-border)",
           boxShadow: "0 30px 80px rgba(0,0,0,0.7)",
@@ -148,30 +181,39 @@ export function PlayerDetailPanel({
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* ── Header (always visible) ── */}
+        {/* ── Header ── */}
         <div
-          className="flex items-start justify-between px-5 pt-5 pb-4 flex-shrink-0"
+          className="flex items-start justify-between px-6 pt-6 pb-5 flex-shrink-0"
           style={{ borderBottom: "1px solid var(--surface-border)" }}
         >
           <div className="flex items-center gap-4 min-w-0">
-            <PlayerPhoto src={player.photo} name={displayName} />
+            <PlayerPhoto src={player.photo} name={displayName} size={72} />
             <div className="flex-1 min-w-0">
-              <h2 className="text-white text-base font-black leading-tight truncate">{displayName}</h2>
-              <p className="text-white/40 text-xs mt-0.5">
+              <h2 className="text-white text-lg font-black leading-tight truncate">{displayName}</h2>
+              <p className="text-white/40 text-sm mt-0.5">
                 {player.age > 0 ? `${player.age} anos` : ""}
                 {displayNumber != null ? ` · #${displayNumber}` : ""}
               </p>
-              <div className="flex items-center gap-1.5 mt-2 flex-wrap">
-                <span className="text-xs font-bold px-2 py-0.5 rounded-md" style={{ background: pos.bg, color: pos.color }}>
+              <div className="flex items-center gap-2 mt-2 flex-wrap">
+                <span
+                  className="text-xs font-bold px-2.5 py-0.5 rounded-lg"
+                  style={{ background: pos.bg, color: pos.color }}
+                >
                   {displayPosition}
                 </span>
                 {displayOverall != null && (
-                  <span className="text-xs font-black px-2 py-0.5 rounded-md" style={overallColor(displayOverall)}>
+                  <span
+                    className="text-xs font-black px-2.5 py-0.5 rounded-lg"
+                    style={overallColor(displayOverall)}
+                  >
                     {displayOverall} OVR
                   </span>
                 )}
                 {override?.salary != null && override.salary > 0 && (
-                  <span className="text-xs font-semibold px-2 py-0.5 rounded-md" style={{ background: "rgba(96,165,250,0.12)", color: "#60a5fa" }}>
+                  <span
+                    className="text-xs font-semibold px-2.5 py-0.5 rounded-lg"
+                    style={{ background: "rgba(96,165,250,0.12)", color: "#60a5fa" }}
+                  >
                     €{override.salary.toLocaleString("pt-BR")}k/sem
                   </span>
                 )}
@@ -180,8 +222,8 @@ export function PlayerDetailPanel({
           </div>
           <button
             onClick={onClose}
-            className="w-7 h-7 rounded-lg flex items-center justify-center text-white/40 hover:text-white/80 transition-all flex-shrink-0 ml-2 mt-0.5"
-            style={{ background: "rgba(255,255,255,0.05)" }}
+            className="w-8 h-8 rounded-xl flex items-center justify-center text-white/40 hover:text-white/80 transition-all flex-shrink-0 ml-3"
+            style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)" }}
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -189,198 +231,225 @@ export function PlayerDetailPanel({
           </button>
         </div>
 
+        {/* ── Tabs ── */}
+        <div className="flex gap-1 px-6 pt-4 pb-0 flex-shrink-0">
+          {([
+            { key: "stats", label: "Estatísticas" },
+            { key: "edit",  label: "Editar Jogador" },
+          ] as { key: Tab; label: string }[]).map(({ key, label }) => (
+            <button
+              key={key}
+              onClick={() => {
+                if (key === "edit") {
+                  setEditName(displayName);
+                  setEditNumber(String(displayNumber ?? ""));
+                  setEditOverall(String(displayOverall ?? ""));
+                  setEditSalary(String(override?.salary ?? ""));
+                  setEditPosition(displayPosition);
+                }
+                setTab(key);
+              }}
+              className="flex-1 py-2 rounded-xl text-sm font-semibold transition-all duration-200"
+              style={tab === key
+                ? { background: "var(--club-gradient)", color: "#fff", boxShadow: "0 2px 12px rgba(var(--club-primary-rgb),0.3)" }
+                : { background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.07)" }
+              }
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
         {/* ── Scrollable body ── */}
-        <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
-          <div className="p-5 flex flex-col gap-4">
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          <div className="px-6 py-5 flex flex-col gap-4">
 
-            {/* Mood / fan row */}
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1.5 flex-1 min-w-0 px-3 py-2.5 rounded-xl" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                <span className="text-white/30 text-[10px] font-semibold uppercase tracking-wide">Humor</span>
-                <span className="text-xs font-bold px-2 py-0.5 rounded-md ml-auto" style={{ background: moodStyle.bg, color: moodStyle.color }}>
-                  {MOOD_LABELS[stats.mood]}
-                </span>
-              </div>
-              <div className="flex items-center gap-1.5 flex-1 min-w-0 px-3 py-2.5 rounded-xl" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                <span className="text-white/30 text-[10px] font-semibold uppercase tracking-wide">Torcida</span>
-                <span className="text-xs font-bold px-2 py-0.5 rounded-md ml-auto" style={{ background: fanStyle.bg, color: fanStyle.color }}>
-                  {FAN_MORAL_LABELS[stats.fanMoral]}
-                </span>
-              </div>
-            </div>
-
-            {/* Computed stats strip */}
-            <div className="grid grid-cols-3 gap-px rounded-xl overflow-hidden" style={{ background: "rgba(255,255,255,0.05)" }}>
-              {[
-                {
-                  label: "Nota Média",
-                  value: avgRating ?? "—",
-                  color: ratingColor,
-                  note: avgRating ? `${stats.recentRatings?.length ?? 0} jogos` : "sem dados",
-                },
-                {
-                  label: "Partidas",
-                  value: totalMatches,
-                  color: "rgba(255,255,255,0.85)",
-                  note: `${stats.matchesAsStarter ?? 0}T · ${stats.matchesAsSubstitute ?? 0}B`,
-                },
-                {
-                  label: "Cartões",
-                  value: (stats.yellowCards ?? 0) + (stats.redCards ?? 0) > 0
-                    ? `${stats.yellowCards ?? 0}🟡 ${stats.redCards ?? 0}🔴`
-                    : "—",
-                  color: (stats.yellowCards ?? 0) >= 3 || (stats.redCards ?? 0) > 0 ? "#fb923c" : "rgba(255,255,255,0.35)",
-                  note: (stats.totalOwnGoals ?? 0) > 0 ? `${stats.totalOwnGoals} gol c.` : "limpo",
-                },
-              ].map((item) => (
-                <div key={item.label} className="flex flex-col items-center gap-0.5 py-3 px-2" style={{ background: "rgba(255,255,255,0.025)" }}>
-                  <span className="text-xs font-black tabular-nums" style={{ color: item.color }}>{item.value}</span>
-                  <span className="text-white/35 text-[10px] font-semibold">{item.label}</span>
-                  <span className="text-white/20 text-[9px]">{item.note}</span>
+            {tab === "stats" && (
+              <>
+                {/* Humor / Torcida */}
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { label: "Humor",   badge: MOOD_LABELS[stats.mood],      style: moodStyle },
+                    { label: "Torcida", badge: FAN_MORAL_LABELS[stats.fanMoral], style: fanStyle },
+                  ].map(({ label, badge, style }) => (
+                    <div
+                      key={label}
+                      className="flex items-center justify-between px-4 py-3 rounded-xl"
+                      style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
+                    >
+                      <span className="text-white/35 text-xs font-semibold uppercase tracking-wider">{label}</span>
+                      <span
+                        className="text-xs font-bold px-2.5 py-0.5 rounded-lg"
+                        style={{ background: style.bg, color: style.color }}
+                      >
+                        {badge}
+                      </span>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
 
-            {/* Editable stats grid */}
-            <div className="grid grid-cols-4 gap-2">
-              {[
-                { label: "Gols", field: "goals" as const },
-                { label: "Assist.", field: "assists" as const },
-                { label: "Titular", field: "matchesAsStarter" as const },
-                { label: "Minutos", field: "totalMinutes" as const },
-              ].map(({ label, field }) => (
+                {/* Computed stats */}
                 <div
-                  key={field}
-                  className="flex flex-col items-center gap-1 p-2.5 rounded-xl"
-                  style={{ background: "rgba(255,255,255,0.04)" }}
+                  className="grid grid-cols-3 rounded-xl overflow-hidden"
+                  style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
                 >
-                  <span className="text-white text-lg font-black tabular-nums">{stats[field]}</span>
-                  <span className="text-white/35 text-[10px] text-center leading-tight">{label}</span>
-                  <input
+                  {[
+                    {
+                      label: "Nota Média",
+                      value: avgRating ?? "—",
+                      color: ratingColor,
+                      note:  avgRating ? `${stats.recentRatings?.length ?? 0} jogos` : "sem dados",
+                    },
+                    {
+                      label: "Partidas",
+                      value: totalMatches,
+                      color: "rgba(255,255,255,0.85)",
+                      note:  `${stats.matchesAsStarter ?? 0}T · ${stats.matchesAsSubstitute ?? 0}B`,
+                    },
+                    {
+                      label: "Cartões",
+                      value: (stats.yellowCards ?? 0) + (stats.redCards ?? 0) > 0
+                        ? `${stats.yellowCards ?? 0}🟡 ${stats.redCards ?? 0}🔴`
+                        : "—",
+                      color: (stats.yellowCards ?? 0) >= 3 || (stats.redCards ?? 0) > 0
+                        ? "#fb923c"
+                        : "rgba(255,255,255,0.35)",
+                      note:  (stats.totalOwnGoals ?? 0) > 0 ? `${stats.totalOwnGoals} gol c.` : "limpo",
+                    },
+                  ].map((item, i) => (
+                    <div
+                      key={item.label}
+                      className="flex flex-col items-center gap-1 py-4 px-2"
+                      style={i < 2 ? { borderRight: "1px solid rgba(255,255,255,0.06)" } : {}}
+                    >
+                      <span className="text-lg font-black tabular-nums leading-none" style={{ color: item.color }}>
+                        {item.value}
+                      </span>
+                      <span className="text-white/40 text-[11px] font-semibold mt-0.5">{item.label}</span>
+                      <span className="text-white/20 text-[10px]">{item.note}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Editable stats */}
+                <div>
+                  <p className="text-white/25 text-xs font-semibold uppercase tracking-wider mb-3">Registrar</p>
+                  <div className="grid grid-cols-4 gap-2.5">
+                    {([
+                      { label: "Gols",    field: "goals"            as const },
+                      { label: "Assist.", field: "assists"          as const },
+                      { label: "Titular", field: "matchesAsStarter" as const },
+                      { label: "Minutos", field: "totalMinutes"     as const },
+                    ]).map(({ label, field }) => (
+                      <div
+                        key={field}
+                        className="flex flex-col items-center gap-2 p-3 rounded-xl"
+                        style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}
+                      >
+                        <span className="text-white text-xl font-black tabular-nums leading-none">
+                          {stats[field]}
+                        </span>
+                        <span className="text-white/35 text-[10px] text-center leading-tight font-semibold">
+                          {label}
+                        </span>
+                        <input
+                          type="number"
+                          min={0}
+                          value={stats[field]}
+                          onChange={(e) => updateStat(field, parseInt(e.target.value, 10) || 0)}
+                          className="w-full px-1.5 py-1.5 rounded-lg text-white/70 text-xs font-semibold focus:outline-none text-center tabular-nums transition-colors"
+                          style={{
+                            background: "rgba(255,255,255,0.07)",
+                            border: "1px solid rgba(255,255,255,0.1)",
+                          }}
+                          onFocus={(e) => { e.currentTarget.style.border = "1px solid rgba(var(--club-primary-rgb),0.5)"; }}
+                          onBlur={(e) => { e.currentTarget.style.border = "1px solid rgba(255,255,255,0.1)"; }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {tab === "edit" && (
+              <div className="flex flex-col gap-4">
+                <LabeledInput
+                  label="Nome exibido"
+                  value={editName}
+                  onChange={setEditName}
+                  placeholder={player.name}
+                />
+
+                <div className="grid grid-cols-3 gap-3">
+                  <LabeledInput
+                    label="Número"
+                    value={editNumber}
+                    onChange={setEditNumber}
+                    type="number"
+                    min={1}
+                    max={99}
+                  />
+                  <LabeledInput
+                    label="Overall"
+                    value={editOverall}
+                    onChange={setEditOverall}
+                    type="number"
+                    min={1}
+                    max={99}
+                  />
+                  <LabeledInput
+                    label="Sal. (k/sem)"
+                    value={editSalary}
+                    onChange={setEditSalary}
                     type="number"
                     min={0}
-                    value={stats[field]}
-                    onChange={(e) => updateStat(field, parseInt(e.target.value, 10) || 0)}
-                    className="w-full px-1.5 py-1 rounded-lg text-white/60 text-xs font-semibold focus:outline-none focus:text-white text-center tabular-nums"
-                    style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)" }}
                   />
                 </div>
-              ))}
-            </div>
 
-            {/* Edit player section */}
-            <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.06)" }}>
-              <button
-                onClick={() => {
-                  if (!editing) {
-                    setEditName(displayName);
-                    setEditNumber(String(displayNumber ?? ""));
-                    setEditOverall(String(displayOverall ?? ""));
-                    setEditSalary(String(override?.salary ?? ""));
-                    setEditPosition(displayPosition);
-                  }
-                  setEditing(!editing);
-                }}
-                className="w-full flex items-center justify-between px-4 py-3.5 text-left transition-colors hover:bg-white/4"
-                style={{ background: "rgba(255,255,255,0.03)" }}
-              >
-                <span className="text-white/60 text-sm font-semibold">Editar jogador</span>
-                <svg
-                  className={`w-4 h-4 text-white/35 transition-transform duration-200 ${editing ? "rotate-180" : ""}`}
-                  fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-
-              {editing && (
-                <div className="px-4 pb-4 pt-3 flex flex-col gap-3" style={{ background: "rgba(255,255,255,0.02)" }}>
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-white/40 text-xs font-medium">Nome exibido</label>
-                    <input
-                      value={editName}
-                      onChange={(e) => setEditName(e.target.value)}
-                      placeholder={player.name}
-                      className="w-full px-3 py-2.5 rounded-xl text-white text-sm focus:outline-none"
-                      style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-2">
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-white/40 text-xs font-medium">Número</label>
-                      <input
-                        type="number" min={1} max={99}
-                        value={editNumber}
-                        onChange={(e) => setEditNumber(e.target.value)}
-                        placeholder="—"
-                        className="w-full px-3 py-2.5 rounded-xl text-white text-sm font-semibold focus:outline-none tabular-nums"
-                        style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-white/40 text-xs font-medium">Overall</label>
-                      <input
-                        type="number" min={1} max={99}
-                        value={editOverall}
-                        onChange={(e) => setEditOverall(e.target.value)}
-                        placeholder="—"
-                        className="w-full px-3 py-2.5 rounded-xl text-white text-sm font-semibold focus:outline-none tabular-nums"
-                        style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-white/40 text-xs font-medium">Sal. (k/sem)</label>
-                      <input
-                        type="number" min={0}
-                        value={editSalary}
-                        onChange={(e) => setEditSalary(e.target.value)}
-                        placeholder="—"
-                        className="w-full px-3 py-2.5 rounded-xl text-white text-sm font-semibold focus:outline-none tabular-nums"
-                        style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-white/40 text-xs font-medium">Posição</label>
-                    <select
-                      value={editPosition}
-                      onChange={(e) => setEditPosition(e.target.value as PositionPtBr)}
-                      className="w-full px-3 py-2.5 rounded-xl text-white text-sm font-semibold focus:outline-none"
-                      style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}
-                    >
-                      {(["GOL","DEF","MID","ATA"] as PositionPtBr[]).map((p) => (
-                        <option key={p} value={p} style={{ background: "#141024" }}>{p}</option>
-                      ))}
-                    </select>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-white/40 text-xs font-semibold tracking-wide uppercase">Posição</label>
+                  <div className="grid grid-cols-4 gap-2">
+                    {(["GOL","DEF","MID","ATA"] as PositionPtBr[]).map((p) => (
+                      <button
+                        key={p}
+                        onClick={() => setEditPosition(p)}
+                        className="py-2.5 rounded-xl text-xs font-bold transition-all duration-150"
+                        style={editPosition === p
+                          ? { background: POS_STYLE[p].bg, color: POS_STYLE[p].color, border: `1px solid ${POS_STYLE[p].color}55` }
+                          : { background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.35)", border: "1px solid rgba(255,255,255,0.07)" }
+                        }
+                      >
+                        {p}
+                      </button>
+                    ))}
                   </div>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* ── Footer (always visible) ── */}
+        {/* ── Footer ── */}
         <div
-          className="flex gap-3 px-5 py-4 flex-shrink-0"
+          className="flex gap-3 px-6 py-5 flex-shrink-0"
           style={{ borderTop: "1px solid var(--surface-border)" }}
         >
-          {editing ? (
+          {tab === "edit" ? (
             <>
               <button
                 onClick={cancelEdit}
-                className="flex-1 py-3 rounded-xl text-sm font-semibold text-white/60 transition-all hover:text-white/80"
-                style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)" }}
+                className="flex-1 py-3 rounded-xl text-sm font-semibold text-white/55 transition-all hover:text-white/80"
+                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
               >
                 Cancelar
               </button>
               <button
                 onClick={saveEdit}
                 className="flex-1 py-3 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90"
-                style={{ background: "var(--club-gradient)" }}
+                style={{ background: "var(--club-gradient)", boxShadow: "0 4px 16px rgba(var(--club-primary-rgb),0.25)" }}
               >
-                Salvar alterações
+                Salvar Alterações
               </button>
             </>
           ) : (
