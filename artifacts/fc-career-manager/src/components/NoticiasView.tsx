@@ -641,6 +641,7 @@ export function NoticiasView({ career }: NoticiasViewProps) {
   })();
 
   return (
+    <>
     <div className="animate-fade-up">
       {/* Top bar */}
       <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
@@ -854,13 +855,15 @@ export function NoticiasView({ career }: NoticiasViewProps) {
         )}
       </div>
 
-      {showAddModal && (
-        <AddPostModal
-          career={career}
-          onClose={() => setShowAddModal(false)}
-          onSave={handleSavePost}
-        />
-      )}
     </div>
+
+    {showAddModal && (
+      <AddPostModal
+        career={career}
+        onClose={() => setShowAddModal(false)}
+        onSave={handleSavePost}
+      />
+    )}
+    </>
   );
 }
