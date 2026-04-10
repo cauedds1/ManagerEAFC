@@ -133,7 +133,7 @@ router.get("/players/search", async (req, res) => {
             positionPtBr: ptBr,
             photo: p.card ?? "",
             playerNumber: null,
-            source: "api-football@v2",
+            source: "msmc@search",
             cachedAt,
           });
         }
@@ -166,7 +166,7 @@ router.get("/players/search", async (req, res) => {
               positionPtBr: mapPosition(pos),
               photo: pl.photo ?? "",
               playerNumber: stats.games?.number ?? null,
-              source: "api-football@v2",
+              source: "api-football@search",
               cachedAt,
             });
           }
