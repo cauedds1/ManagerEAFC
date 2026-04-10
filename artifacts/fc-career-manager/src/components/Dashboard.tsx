@@ -235,7 +235,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
 
   return (
     <div className="relative h-full flex flex-col">
-      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
+      <div className="flex-1 min-h-0 overflow-y-auto">
         <header
           className="relative w-full overflow-hidden glass"
           style={{ borderBottom: "1px solid var(--surface-border)" }}
