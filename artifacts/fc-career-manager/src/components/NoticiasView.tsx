@@ -26,6 +26,76 @@ const CATEGORY_LABELS: Record<NewsCategory, string> = {
   geral: "Geral",
 };
 
+type AddMode = "auto" | "manual";
+
+interface AiPreview {
+  source: string;
+  sourceHandle: string;
+  sourceName: string;
+  category: string;
+  title?: string;
+  content: string;
+  likes: number;
+  commentsCount: number;
+  sharesCount: number;
+  comments: Array<{
+    username: string;
+    displayName: string;
+    content: string;
+    likes: number;
+    personality?: string;
+    replies?: Array<unknown>;
+  }>;
+}
+
+function SourceButton({
+  label,
+  active,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex-1 py-2 px-3 rounded-xl text-xs font-semibold transition-all duration-150"
+      style={{
+        background: active ? "rgba(var(--club-primary-rgb),0.2)" : "rgba(255,255,255,0.05)",
+        color: active ? "var(--club-primary)" : "rgba(255,255,255,0.4)",
+        border: `1px solid ${active ? "rgba(var(--club-primary-rgb),0.4)" : "rgba(255,255,255,0.08)"}`,
+      }}
+    >
+      {label}
+    </button>
+  );
+}
+
+function CategoryButton({
+  label,
+  active,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="py-1.5 px-2.5 rounded-lg text-xs font-semibold transition-all duration-150"
+      style={{
+        background: active ? "rgba(var(--club-primary-rgb),0.2)" : "rgba(255,255,255,0.04)",
+        color: active ? "var(--club-primary)" : "rgba(255,255,255,0.35)",
+        border: `1px solid ${active ? "rgba(var(--club-primary-rgb),0.3)" : "rgba(255,255,255,0.06)"}`,
+      }}
+    >
+      {label}
+    </button>
+  );
+}
+
 function AddPostModal({
   career,
   onClose,
@@ -35,43 +105,116 @@ function AddPostModal({
   onClose: () => void;
   onSave: (post: NewsPost) => void;
 }) {
-  const [source, setSource] = useState<NewsSource>("fanpage");
-  const [category, setCategory] = useState<NewsCategory>("geral");
-  const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
+  const [mode, setMode] = useState<AddMode>("auto");
+
+  const [aiDesc, setAiDesc] = useState("");
+  const [aiSource, setAiSource] = useState<NewsSource | "auto">("auto");
+  const [aiCategory, setAiCategory] = useState<NewsCategory | "auto">("auto");
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [aiPreview, setAiPreview] = useState<AiPreview | null>(null);
+  const [aiError, setAiError] = useState<string | null>(null);
+
+  const [manSource, setManSource] = useState<NewsSource>("fanpage");
+  const [manCategory, setManCategory] = useState<NewsCategory>("geral");
+  const [manTitle, setManTitle] = useState("");
+  const [manContent, setManContent] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    textareaRef.current?.focus();
-  }, []);
+    if (mode === "manual") textareaRef.current?.focus();
+  }, [mode]);
 
-  const shortClub = career.clubName.split(" ").slice(0, 2).join(" ");
   const slug = career.clubName.toLowerCase().replace(/\s+/g, "").replace(/[^a-z0-9]/g, "");
+  const shortClub = career.clubName.split(" ").slice(0, 2).join(" ");
 
-  const sourceHandle =
-    source === "tnt"
-      ? "@tntsports"
-      : source === "espn"
-      ? "@espnbrasil"
-      : `@${slug}oficial`;
+  const manSourceHandle =
+    manSource === "tnt" ? "@tntsports" : manSource === "espn" ? "@espnbrasil" : `@${slug}oficial`;
+  const manSourceName =
+    manSource === "tnt" ? "TNT Sports" : manSource === "espn" ? "ESPN Brasil" : `${shortClub} Oficial`;
 
-  const sourceName =
-    source === "tnt"
-      ? "TNT Sports"
-      : source === "espn"
-      ? "ESPN Brasil"
-      : `${shortClub} Oficial`;
+  const handleGenerate = async () => {
+    if (!aiDesc.trim()) return;
+    setIsGenerating(true);
+    setAiError(null);
+    setAiPreview(null);
+    try {
+      const res = await fetch("/api/noticias/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          description: aiDesc.trim(),
+          clubName: career.clubName,
+          source: aiSource !== "auto" ? aiSource : undefined,
+          category: aiCategory !== "auto" ? aiCategory : undefined,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Erro desconhecido" }));
+        setAiError((err as { error?: string }).error ?? "Erro ao gerar notícia");
+        return;
+      }
+      const data = (await res.json()) as AiPreview;
+      setAiPreview(data);
+    } catch (e) {
+      setAiError("Falha na conexão com o servidor");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
-  const handleSave = () => {
-    if (!content.trim()) return;
+  const handlePublishAi = () => {
+    if (!aiPreview) return;
     const post: NewsPost = {
       id: generatePostId(),
       careerId: career.id,
-      source,
-      sourceHandle,
-      sourceName,
-      ...(title.trim() ? { title: title.trim() } : {}),
-      content: content.trim(),
+      source: (aiPreview.source as NewsSource) ?? "fanpage",
+      sourceHandle: aiPreview.sourceHandle,
+      sourceName: aiPreview.sourceName,
+      ...(aiPreview.title?.trim() ? { title: aiPreview.title.trim() } : {}),
+      content: aiPreview.content,
+      likes: aiPreview.likes,
+      commentsCount: aiPreview.commentsCount,
+      sharesCount: aiPreview.sharesCount,
+      comments: aiPreview.comments.map((c) => ({
+        id: generateCommentId(),
+        username: c.username,
+        displayName: c.displayName,
+        content: c.content,
+        likes: c.likes,
+        personality: (c.personality as NewsPost["comments"][0]["personality"]) ?? "neutro",
+        replies: Array.isArray(c.replies)
+          ? c.replies.map((r: unknown) => {
+              const rc = r as typeof c;
+              return {
+                id: generateCommentId(),
+                username: rc.username,
+                displayName: rc.displayName,
+                content: rc.content,
+                likes: rc.likes,
+                personality: (rc.personality as NewsPost["comments"][0]["personality"]) ?? "neutro",
+                createdAt: Date.now() - Math.floor(Math.random() * 3_600_000),
+              };
+            })
+          : [],
+        createdAt: Date.now() - Math.floor(Math.random() * 3_600_000),
+      })),
+      createdAt: Date.now(),
+      category: (aiPreview.category as NewsCategory) ?? "geral",
+    };
+    onSave(post);
+    onClose();
+  };
+
+  const handlePublishManual = () => {
+    if (!manContent.trim()) return;
+    const post: NewsPost = {
+      id: generatePostId(),
+      careerId: career.id,
+      source: manSource,
+      sourceHandle: manSourceHandle,
+      sourceName: manSourceName,
+      ...(manTitle.trim() ? { title: manTitle.trim() } : {}),
+      content: manContent.trim(),
       likes: Math.floor(Math.random() * 5000) + 500,
       commentsCount: Math.floor(Math.random() * 300) + 20,
       sharesCount: Math.floor(Math.random() * 1000) + 100,
@@ -87,7 +230,7 @@ function AddPostModal({
         },
       ],
       createdAt: Date.now(),
-      category,
+      category: manCategory,
     };
     onSave(post);
     onClose();
@@ -100,124 +243,329 @@ function AddPostModal({
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div
-        className="w-full max-w-lg rounded-2xl overflow-hidden"
+        className="w-full max-w-lg rounded-2xl overflow-hidden flex flex-col"
         style={{
           background: "rgba(18, 14, 31, 0.98)",
           border: "1px solid rgba(255,255,255,0.1)",
           boxShadow: "0 24px 80px rgba(0,0,0,0.6)",
+          maxHeight: "92dvh",
         }}
       >
         {/* Header */}
         <div
-          className="flex items-center justify-between px-5 py-4"
+          className="flex items-center justify-between px-5 py-4 flex-shrink-0"
           style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}
         >
           <h3 className="text-white font-bold text-base">Nova Notícia</h3>
-          <button
-            onClick={onClose}
-            className="text-white/40 hover:text-white/70 transition-colors"
-          >
+          <button onClick={onClose} className="text-white/40 hover:text-white/70 transition-colors">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
 
-        <div className="p-5 flex flex-col gap-4">
-          {/* Source picker */}
-          <div>
-            <label className="text-white/40 text-xs font-semibold uppercase tracking-wider block mb-2">
-              Portal
-            </label>
-            <div className="flex gap-2 flex-wrap">
-              {(["fanpage", "tnt", "espn"] as NewsSource[]).map((s) => (
-                <button
-                  key={s}
-                  onClick={() => setSource(s)}
-                  className="flex-1 py-2 px-3 rounded-xl text-xs font-semibold transition-all duration-150"
-                  style={{
-                    background: source === s ? "rgba(var(--club-primary-rgb),0.2)" : "rgba(255,255,255,0.05)",
-                    color: source === s ? "var(--club-primary)" : "rgba(255,255,255,0.4)",
-                    border: `1px solid ${source === s ? "rgba(var(--club-primary-rgb),0.4)" : "rgba(255,255,255,0.08)"}`,
-                  }}
-                >
-                  {SOURCE_LABELS[s]}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Category picker */}
-          <div>
-            <label className="text-white/40 text-xs font-semibold uppercase tracking-wider block mb-2">
-              Categoria
-            </label>
-            <div className="flex gap-2 flex-wrap">
-              {(Object.keys(CATEGORY_LABELS) as NewsCategory[]).map((c) => (
-                <button
-                  key={c}
-                  onClick={() => setCategory(c)}
-                  className="py-1.5 px-2.5 rounded-lg text-xs font-semibold transition-all duration-150"
-                  style={{
-                    background: category === c ? "rgba(var(--club-primary-rgb),0.2)" : "rgba(255,255,255,0.04)",
-                    color: category === c ? "var(--club-primary)" : "rgba(255,255,255,0.35)",
-                    border: `1px solid ${category === c ? "rgba(var(--club-primary-rgb),0.3)" : "rgba(255,255,255,0.06)"}`,
-                  }}
-                >
-                  {CATEGORY_LABELS[c]}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Title (optional) */}
-          <div>
-            <label className="text-white/40 text-xs font-semibold uppercase tracking-wider block mb-2">
-              Título <span className="text-white/25 normal-case font-normal">(opcional)</span>
-            </label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder={`Ex: LESIONADO 🚑`}
-              className="w-full px-4 py-2.5 rounded-xl text-white text-sm focus:outline-none placeholder:text-white/20"
-              style={{
-                background: "rgba(255,255,255,0.05)",
-                border: "1px solid rgba(255,255,255,0.08)",
-              }}
-            />
-          </div>
-
-          {/* Content */}
-          <div>
-            <label className="text-white/40 text-xs font-semibold uppercase tracking-wider block mb-2">
-              Legenda
-            </label>
-            <textarea
-              ref={textareaRef}
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              placeholder={`Escreva a notícia no estilo Instagram...\n\nEx: "LESIONADO 🚑\n\n${career.clubName} confirma lesão muscular..."`}
-              className="w-full px-4 py-3 rounded-xl text-white text-sm focus:outline-none resize-none placeholder:text-white/20 leading-relaxed"
-              style={{
-                background: "rgba(255,255,255,0.05)",
-                border: "1px solid rgba(255,255,255,0.08)",
-                minHeight: 160,
-              }}
-            />
-            <p className="text-white/20 text-xs mt-1.5">
-              Fonte: <span style={{ color: "rgba(var(--club-primary-rgb),0.6)" }}>{sourceHandle}</span>
-            </p>
-          </div>
-
+        {/* Mode tabs */}
+        <div
+          className="flex gap-1 px-5 py-3 flex-shrink-0"
+          style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
+        >
           <button
-            onClick={handleSave}
-            disabled={!content.trim()}
-            className="w-full py-3 rounded-xl text-sm font-bold text-white transition-all duration-200 hover:opacity-90 active:scale-[0.98] disabled:opacity-30 disabled:cursor-not-allowed"
-            style={{ background: "var(--club-gradient)" }}
+            onClick={() => setMode("auto")}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150"
+            style={{
+              background: mode === "auto" ? "rgba(var(--club-primary-rgb),0.18)" : "transparent",
+              color: mode === "auto" ? "var(--club-primary)" : "rgba(255,255,255,0.35)",
+              border: `1px solid ${mode === "auto" ? "rgba(var(--club-primary-rgb),0.35)" : "transparent"}`,
+            }}
           >
-            Publicar notícia
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+            </svg>
+            Automático (IA)
           </button>
+          <button
+            onClick={() => setMode("manual")}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150"
+            style={{
+              background: mode === "manual" ? "rgba(255,255,255,0.08)" : "transparent",
+              color: mode === "manual" ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.35)",
+              border: `1px solid ${mode === "manual" ? "rgba(255,255,255,0.12)" : "transparent"}`,
+            }}
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125" />
+            </svg>
+            Manual
+          </button>
+        </div>
+
+        {/* Scrollable body */}
+        <div className="overflow-y-auto flex-1" style={{ scrollbarWidth: "thin" }}>
+          {mode === "auto" ? (
+            <div className="p-5 flex flex-col gap-4">
+              {/* Description */}
+              <div>
+                <label className="text-white/40 text-xs font-semibold uppercase tracking-wider block mb-2">
+                  Descreva a notícia
+                </label>
+                <textarea
+                  value={aiDesc}
+                  onChange={(e) => { setAiDesc(e.target.value); setAiPreview(null); setAiError(null); }}
+                  placeholder={`Ex: Jogador estrela se lesionou no treino e vai ficar 3 semanas fora. Detalhe que foi uma lesão muscular na coxa esquerda durante o treino de hoje de manhã.`}
+                  className="w-full px-4 py-3 rounded-xl text-white text-sm focus:outline-none resize-none placeholder:text-white/20 leading-relaxed"
+                  style={{
+                    background: "rgba(255,255,255,0.05)",
+                    border: "1px solid rgba(255,255,255,0.08)",
+                    minHeight: 100,
+                  }}
+                />
+              </div>
+
+              {/* Source */}
+              <div>
+                <label className="text-white/40 text-xs font-semibold uppercase tracking-wider block mb-2">
+                  Portal
+                </label>
+                <div className="flex gap-2 flex-wrap">
+                  <button
+                    onClick={() => setAiSource("auto")}
+                    className="flex-1 py-2 px-3 rounded-xl text-xs font-semibold transition-all duration-150 flex items-center justify-center gap-1.5"
+                    style={{
+                      background: aiSource === "auto" ? "rgba(var(--club-primary-rgb),0.2)" : "rgba(255,255,255,0.05)",
+                      color: aiSource === "auto" ? "var(--club-primary)" : "rgba(255,255,255,0.4)",
+                      border: `1px solid ${aiSource === "auto" ? "rgba(var(--club-primary-rgb),0.4)" : "rgba(255,255,255,0.08)"}`,
+                    }}
+                  >
+                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                    </svg>
+                    Automático
+                  </button>
+                  {(["fanpage", "tnt", "espn"] as NewsSource[]).map((s) => (
+                    <SourceButton
+                      key={s}
+                      label={SOURCE_LABELS[s]}
+                      active={aiSource === s}
+                      onClick={() => setAiSource(s)}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Category */}
+              <div>
+                <label className="text-white/40 text-xs font-semibold uppercase tracking-wider block mb-2">
+                  Categoria <span className="text-white/25 normal-case font-normal">(opcional)</span>
+                </label>
+                <div className="flex gap-2 flex-wrap">
+                  <button
+                    onClick={() => setAiCategory("auto")}
+                    className="py-1.5 px-2.5 rounded-lg text-xs font-semibold transition-all duration-150 flex items-center gap-1"
+                    style={{
+                      background: aiCategory === "auto" ? "rgba(var(--club-primary-rgb),0.2)" : "rgba(255,255,255,0.04)",
+                      color: aiCategory === "auto" ? "var(--club-primary)" : "rgba(255,255,255,0.35)",
+                      border: `1px solid ${aiCategory === "auto" ? "rgba(var(--club-primary-rgb),0.3)" : "rgba(255,255,255,0.06)"}`,
+                    }}
+                  >
+                    IA escolhe
+                  </button>
+                  {(Object.keys(CATEGORY_LABELS) as NewsCategory[]).map((c) => (
+                    <CategoryButton
+                      key={c}
+                      label={CATEGORY_LABELS[c]}
+                      active={aiCategory === c}
+                      onClick={() => setAiCategory(c)}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Generate button */}
+              {!aiPreview && (
+                <button
+                  onClick={handleGenerate}
+                  disabled={!aiDesc.trim() || isGenerating}
+                  className="w-full py-3 rounded-xl text-sm font-bold text-white transition-all duration-200 hover:opacity-90 active:scale-[0.98] disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  style={{ background: "var(--club-gradient)" }}
+                >
+                  {isGenerating ? (
+                    <>
+                      <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                      Gerando com IA...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                      </svg>
+                      Gerar com IA
+                    </>
+                  )}
+                </button>
+              )}
+
+              {/* Error */}
+              {aiError && (
+                <div
+                  className="rounded-xl px-4 py-3 text-xs"
+                  style={{ background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.25)", color: "rgba(252,165,165,0.9)" }}
+                >
+                  {aiError}
+                </div>
+              )}
+
+              {/* Preview */}
+              {aiPreview && (
+                <div
+                  className="rounded-xl p-4 flex flex-col gap-3"
+                  style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)" }}
+                >
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="text-xs font-bold px-2 py-0.5 rounded-md"
+                      style={{ background: "rgba(var(--club-primary-rgb),0.15)", color: "var(--club-primary)" }}
+                    >
+                      {aiPreview.sourceName}
+                    </span>
+                    <span
+                      className="text-xs px-2 py-0.5 rounded-md"
+                      style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.5)" }}
+                    >
+                      {CATEGORY_LABELS[(aiPreview.category as NewsCategory)] ?? aiPreview.category}
+                    </span>
+                    <span className="ml-auto text-white/25 text-xs">{aiPreview.comments.length} comentários gerados</span>
+                  </div>
+                  {aiPreview.title && (
+                    <p className="text-white font-bold text-sm leading-snug">{aiPreview.title}</p>
+                  )}
+                  <p
+                    className="text-white/70 text-xs leading-relaxed"
+                    style={{
+                      display: "-webkit-box",
+                      WebkitLineClamp: 5,
+                      WebkitBoxOrient: "vertical",
+                      overflow: "hidden",
+                    } as React.CSSProperties}
+                  >
+                    {aiPreview.content}
+                  </p>
+                  <div className="flex gap-3 text-white/30 text-xs">
+                    <span>❤️ {aiPreview.likes.toLocaleString("pt-BR")}</span>
+                    <span>💬 {aiPreview.commentsCount}</span>
+                    <span>↗️ {aiPreview.sharesCount}</span>
+                  </div>
+                  <div className="flex gap-2 mt-1">
+                    <button
+                      onClick={handlePublishAi}
+                      className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white transition-all duration-200 hover:opacity-90 active:scale-[0.98]"
+                      style={{ background: "var(--club-gradient)" }}
+                    >
+                      Publicar notícia
+                    </button>
+                    <button
+                      onClick={() => { setAiPreview(null); handleGenerate(); }}
+                      className="px-4 py-2.5 rounded-xl text-xs font-semibold transition-all duration-150"
+                      style={{
+                        background: "rgba(255,255,255,0.06)",
+                        color: "rgba(255,255,255,0.5)",
+                        border: "1px solid rgba(255,255,255,0.08)",
+                      }}
+                    >
+                      Regenerar
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="p-5 flex flex-col gap-4">
+              {/* Source picker */}
+              <div>
+                <label className="text-white/40 text-xs font-semibold uppercase tracking-wider block mb-2">
+                  Portal
+                </label>
+                <div className="flex gap-2 flex-wrap">
+                  {(["fanpage", "tnt", "espn"] as NewsSource[]).map((s) => (
+                    <SourceButton
+                      key={s}
+                      label={SOURCE_LABELS[s]}
+                      active={manSource === s}
+                      onClick={() => setManSource(s)}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Category picker */}
+              <div>
+                <label className="text-white/40 text-xs font-semibold uppercase tracking-wider block mb-2">
+                  Categoria
+                </label>
+                <div className="flex gap-2 flex-wrap">
+                  {(Object.keys(CATEGORY_LABELS) as NewsCategory[]).map((c) => (
+                    <CategoryButton
+                      key={c}
+                      label={CATEGORY_LABELS[c]}
+                      active={manCategory === c}
+                      onClick={() => setManCategory(c)}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Title (optional) */}
+              <div>
+                <label className="text-white/40 text-xs font-semibold uppercase tracking-wider block mb-2">
+                  Título <span className="text-white/25 normal-case font-normal">(opcional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={manTitle}
+                  onChange={(e) => setManTitle(e.target.value)}
+                  placeholder="Ex: LESIONADO 🚑"
+                  className="w-full px-4 py-2.5 rounded-xl text-white text-sm focus:outline-none placeholder:text-white/20"
+                  style={{
+                    background: "rgba(255,255,255,0.05)",
+                    border: "1px solid rgba(255,255,255,0.08)",
+                  }}
+                />
+              </div>
+
+              {/* Content */}
+              <div>
+                <label className="text-white/40 text-xs font-semibold uppercase tracking-wider block mb-2">
+                  Legenda
+                </label>
+                <textarea
+                  ref={textareaRef}
+                  value={manContent}
+                  onChange={(e) => setManContent(e.target.value)}
+                  placeholder={`Escreva a notícia no estilo Instagram...\n\nEx: "LESIONADO 🚑\n\n${career.clubName} confirma lesão muscular..."`}
+                  className="w-full px-4 py-3 rounded-xl text-white text-sm focus:outline-none resize-none placeholder:text-white/20 leading-relaxed"
+                  style={{
+                    background: "rgba(255,255,255,0.05)",
+                    border: "1px solid rgba(255,255,255,0.08)",
+                    minHeight: 160,
+                  }}
+                />
+                <p className="text-white/20 text-xs mt-1.5">
+                  Fonte: <span style={{ color: "rgba(var(--club-primary-rgb),0.6)" }}>{manSourceHandle}</span>
+                </p>
+              </div>
+
+              <button
+                onClick={handlePublishManual}
+                disabled={!manContent.trim()}
+                className="w-full py-3 rounded-xl text-sm font-bold text-white transition-all duration-200 hover:opacity-90 active:scale-[0.98] disabled:opacity-30 disabled:cursor-not-allowed"
+                style={{ background: "var(--club-gradient)" }}
+              >
+                Publicar notícia
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

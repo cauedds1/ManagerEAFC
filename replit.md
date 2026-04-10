@@ -42,6 +42,12 @@ Brazilian Portuguese companion app for EA FC 26 career mode.
 - `GET /api/squad/:teamId` → 200 `{players, source, cachedAt}` if fresh (<7 days), 204 if empty/stale. Reconstructs SquadResult from individual player rows.
 - `PUT /api/squad/:teamId` → replaces squad atomically (transaction: DELETE WHERE team_id + INSERT up to 100 rows per chunk)
 - `GET /api/proxy/image?url=...` → proxies images from allowed domains (media.api-sports.io, cdn.sofifa.net) with CORS headers. Cached 24h.
+- `POST /api/noticias/generate` → AI-generated news post. Body: `{description, clubName, source?, category?}`. Uses OpenAI gpt-5.2 via Replit AI Integrations (env vars: `AI_INTEGRATIONS_OPENAI_BASE_URL`, `AI_INTEGRATIONS_OPENAI_API_KEY`). Returns: `{source, sourceHandle, sourceName, category, title?, content, likes, commentsCount, sharesCount, comments[]}`.
+
+### AI Integration
+- Provider: OpenAI via Replit AI Integrations proxy (`@workspace/integrations-openai-ai-server`)
+- Model: `gpt-5.2` for news generation
+- Env vars auto-provisioned — no API key required from user
 
 ### Two-Layer Cache Strategy
 1. **Layer 1 localStorage** — instant sync read/write, key `fc-career-manager-clubs` and `fc-career-manager-squad-{teamId}`
