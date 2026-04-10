@@ -8,7 +8,7 @@ import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { applyTheme, resetTheme, extractColorsFromImage } from "@/lib/themeManager";
 import { getClubColors } from "@/lib/clubColors";
 import { APIFOOTBALL_TO_FC26_NAME } from "@/lib/footballApiMap";
-import { getSquad } from "@/lib/squadCache";
+import { fetchSquadFromBackend } from "@/lib/squadCache";
 import {
   fetchBackendClubList,
   getCachedClubList,
@@ -23,6 +23,7 @@ type AppView =
   | "init"
   | "loading-clubs"
   | "fetch-error"
+  | "squad-loading"
   | "career-selection"
   | "create-wizard"
   | "dashboard";
@@ -152,20 +153,34 @@ export default function App() {
       setView("loading-clubs");
       setProgress({ loaded: 0, total: 0, leagueName: "" });
 
-      fetchBackendClubList()
-        .then((clubs) => {
-          setAllClubs(clubs);
-          afterFetch(clubs);
-        })
-        .catch((err: unknown) => {
-          if (err instanceof ApiRateLimitError) { setView("fetch-error"); return; }
-          const cached = getCachedClubList();
-          if (cached && cached.length > 0) {
-            setAllClubs(cached);
-            afterFetch(cached);
-          } else {
-            setView("fetch-error");
+      getDbClubs()
+        .then((dbClubs) => {
+          if (dbClubs && dbClubs.length > 0) {
+            setAllClubs(dbClubs);
+            try { localStorage.setItem(CACHE_KEY, JSON.stringify({ clubs: dbClubs, cachedAt: Date.now() })); } catch {}
+            afterFetch(dbClubs);
+            return;
           }
+          return fetchBackendClubList()
+            .then((clubs) => {
+              setAllClubs(clubs);
+              afterFetch(clubs);
+            })
+            .catch((err: unknown) => {
+              if (err instanceof ApiRateLimitError) { setView("fetch-error"); return; }
+              const cached = getCachedClubList();
+              if (cached && cached.length > 0) {
+                setAllClubs(cached);
+                afterFetch(cached);
+              } else {
+                setView("fetch-error");
+              }
+            });
+        })
+        .catch(() => {
+          fetchBackendClubList()
+            .then((clubs) => { setAllClubs(clubs); afterFetch(clubs); })
+            .catch(() => { setView("fetch-error"); });
         });
     },
     []
@@ -196,11 +211,6 @@ export default function App() {
             localStorage.setItem(CACHE_KEY, JSON.stringify({ clubs: dbClubs, cachedAt: Date.now() }));
           } catch {}
           resolveViewAfterClubs(hasCareers);
-          if (hasCareers) {
-            fetchBackendClubList()
-              .then((clubs) => { if (clubs.length > 0) setAllClubs(clubs); })
-              .catch(() => {});
-          }
           return;
         }
 
@@ -252,7 +262,8 @@ export default function App() {
 
       if (careerToEnter.clubId > 0) {
         const fc26Name = APIFOOTBALL_TO_FC26_NAME[careerToEnter.clubName];
-        await getSquad(careerToEnter.clubId, careerToEnter.clubName, fc26Name).catch(() => {});
+        setView("squad-loading");
+        await fetchSquadFromBackend(careerToEnter.clubId, fc26Name).catch(() => {});
       }
 
       saveCareer(careerToEnter);
@@ -320,6 +331,15 @@ export default function App() {
 
     if (view === "loading-clubs") {
       return <ClubListLoader progress={progress} />;
+    }
+
+    if (view === "squad-loading") {
+      return (
+        <div className="h-full flex flex-col items-center justify-center gap-4">
+          <div className="w-8 h-8 rounded-full border-2 animate-spin" style={{ borderColor: "var(--club-primary)", borderTopColor: "transparent" }} />
+          <p className="text-white/40 text-sm">Carregando elenco...</p>
+        </div>
+      );
     }
 
     if (view === "fetch-error") {
