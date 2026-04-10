@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { NewsPost, NewsComment, NewsSource } from "@/types/noticias";
 import type { PortalPhotos } from "@/lib/portalPhotosStorage";
+import { getCommentAvatarUrl } from "@/lib/commentAvatar";
 
 const SOURCE_CONFIG: Record<NewsSource, { color: string; bgColor: string; verified: boolean; emoji: string }> = {
   tnt: {
@@ -80,16 +81,35 @@ function SourceAvatar({
   );
 }
 
+function CommentAvatar({ username, size }: { username: string; size: number }) {
+  const [err, setErr] = useState(false);
+  const initial = username.replace(/^@/, "").charAt(0).toUpperCase();
+  if (err) {
+    return (
+      <div
+        className="rounded-full flex-shrink-0 flex items-center justify-center text-white/60 font-bold"
+        style={{ width: size, height: size, background: "rgba(255,255,255,0.07)", fontSize: size * 0.38 }}
+      >
+        {initial}
+      </div>
+    );
+  }
+  return (
+    <img
+      src={getCommentAvatarUrl(username)}
+      alt={username}
+      onError={() => setErr(true)}
+      className="rounded-full flex-shrink-0 object-cover"
+      style={{ width: size, height: size }}
+    />
+  );
+}
+
 function ReplyComment({ comment }: { comment: NewsComment }) {
   const [liked, setLiked] = useState(false);
   return (
     <div className="flex gap-2.5 mt-2.5 ml-8">
-      <div
-        className="w-6 h-6 rounded-full flex-shrink-0 flex items-center justify-center text-white/60 font-bold"
-        style={{ background: "rgba(255,255,255,0.06)", fontSize: 9 }}
-      >
-        {comment.displayName.charAt(0).toUpperCase()}
-      </div>
+      <CommentAvatar username={comment.username} size={24} />
       <div className="flex-1 min-w-0">
         <div className="flex items-baseline gap-2 flex-wrap">
           <span className="text-white/80 text-xs font-bold">{comment.username}</span>
@@ -120,12 +140,7 @@ function CommentItem({ comment }: { comment: NewsComment }) {
 
   return (
     <div className="flex gap-2.5">
-      <div
-        className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-white/60 font-bold"
-        style={{ background: "rgba(255,255,255,0.07)", fontSize: 11 }}
-      >
-        {comment.displayName.charAt(0).toUpperCase()}
-      </div>
+      <CommentAvatar username={comment.username} size={28} />
       <div className="flex-1 min-w-0">
         <div className="flex items-baseline gap-2 flex-wrap">
           <span className="text-white text-xs font-bold">{comment.username}</span>
