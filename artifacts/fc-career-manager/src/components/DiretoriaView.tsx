@@ -47,6 +47,11 @@ const MOOD_CONFIG: Record<MoodLevel, { label: string; color: string; bg: string;
   furioso:   { label: "Furioso",   color: "#f87171", bg: "rgba(248,113,113,0.12)", emoji: "🤬" },
 };
 
+const VALID_MOODS: MoodLevel[] = ["excelente", "bom", "neutro", "tenso", "irritado", "furioso"];
+function validateMood(m: string): MoodLevel {
+  return VALID_MOODS.includes(m as MoodLevel) ? (m as MoodLevel) : "neutro";
+}
+
 const AVATAR_PALETTE = [
   "#8B5CF6","#EC4899","#F59E0B","#10B981","#3B82F6",
   "#EF4444","#6366F1","#14B8A6","#F97316","#06B6D4",
@@ -508,6 +513,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize }: Diretor
           context: buildClubContext(),
         }),
       });
+      if (!res.ok) throw new Error(`Erro ${res.status}`);
       const data = await res.json() as { reply: string; newMood: string };
       const charMsg: DiretoriaMessage = {
         id: generateMessageId(),
@@ -519,7 +525,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize }: Diretor
       const finalConvs = { ...updatedConvs, [selectedMemberId]: finalConv };
       setConversations(finalConvs);
       saveConversation(career.id, selectedMemberId, finalConv);
-      const newMood = data.newMood as MoodLevel;
+      const newMood = validateMood(data.newMood);
       updateMember(career.id, selectedMemberId, { mood: newMood });
       setMembers((prev) => prev.map((m) => m.id === selectedMemberId ? { ...m, mood: newMood } : m));
     } catch {
@@ -603,6 +609,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize }: Diretor
             triggerMessage: currentMeeting.reason,
           }),
         });
+        if (!res.ok) throw new Error(`Erro ${res.status}`);
         const data = await res.json() as { reply: string; newMood: string; suggestClose: boolean; speakerMemberId: string };
 
         const charMsg: MeetingMessage = {
@@ -614,7 +621,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize }: Diretor
           content: data.reply,
           timestamp: Date.now(),
         };
-        const newMood = data.newMood as MoodLevel;
+        const newMood = validateMood(data.newMood);
         currentMeeting = {
           ...currentMeeting,
           messages: [...currentMeeting.messages, charMsg],
@@ -825,7 +832,12 @@ export function DiretoriaView({ career, matches, transfers, squadSize }: Diretor
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-1">
                       <span className="text-white text-xs font-bold truncate">{member.name}</span>
-                      <span className="text-base flex-shrink-0">{mood.emoji}</span>
+                      <span
+                        className="flex-shrink-0 flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
+                        style={{ background: `${mood.color}18`, color: mood.color, border: `1px solid ${mood.color}22` }}
+                      >
+                        {mood.emoji} {mood.label}
+                      </span>
                     </div>
                     <span className="text-white/35 text-[10px] truncate block">{member.roleLabel}</span>
                     {notif && (
