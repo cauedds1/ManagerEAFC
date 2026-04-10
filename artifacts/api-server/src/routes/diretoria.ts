@@ -500,11 +500,19 @@ router.post("/diretoria/check-triggers", async (req, res) => {
       }
     }
 
-    if (context.salaryBudget && context.wageRoom !== undefined && context.wageRoom < 0) {
-      if (gestor && !notifications.find((n) => n.memberId === gestor.id)) {
+    if (context.salaryBudget && context.currentWageBill !== undefined) {
+      const wagePct = (context.currentWageBill / context.salaryBudget) * 100;
+      if (context.wageRoom !== undefined && context.wageRoom < 0) {
+        if (gestor && !notifications.find((n) => n.memberId === gestor.id)) {
+          notifications.push({
+            memberId: gestor.id,
+            preview: "A folha salarial excedeu o limite do clube. Precisamos agir!",
+          });
+        }
+      } else if (wagePct >= 85 && gestor && !notifications.find((n) => n.memberId === gestor.id)) {
         notifications.push({
           memberId: gestor.id,
-          preview: "A folha salarial excedeu o limite do clube. Precisamos agir!",
+          preview: `Folha salarial em ${Math.round(wagePct)}% da capacidade — pouca margem para novos contratos.`,
         });
       }
     }

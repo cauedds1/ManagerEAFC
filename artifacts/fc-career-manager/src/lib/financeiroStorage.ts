@@ -55,7 +55,18 @@ export function computeFinancialSnapshot(
   const remainingTransferBudget = settings.transferBudget - netSpend;
 
   const soldPlayerIds = new Set(vendas.map((v) => v.playerId));
-  const activeCompras = compras.filter((c) => !soldPlayerIds.has(c.playerId));
+  const soldPlayerNames = new Set(
+    vendas
+      .filter((v) => !compras.find((c) => c.playerId === v.playerId))
+      .map((v) => v.playerName.toLowerCase().trim()),
+  );
+
+  const activeCompras = compras.filter(
+    (c) =>
+      !soldPlayerIds.has(c.playerId) &&
+      !soldPlayerNames.has(c.playerName.toLowerCase().trim()),
+  );
+
   const currentWageBill = activeCompras.reduce((acc, t) => acc + (t.salary ?? 0), 0);
   const wageRoom = settings.salaryBudget - currentWageBill;
 
@@ -71,4 +82,18 @@ export function computeFinancialSnapshot(
     signingsCount: compras.length,
     salesCount: vendas.length,
   };
+}
+
+export function getActiveCompras(transfers: TransferRecord[]): TransferRecord[] {
+  const compras = transfers.filter((t) => !t.type || t.type === "compra");
+  const vendas = transfers.filter((t) => t.type === "venda");
+  const soldIds = new Set(vendas.map((v) => v.playerId));
+  const soldNames = new Set(
+    vendas
+      .filter((v) => !compras.find((c) => c.playerId === v.playerId))
+      .map((v) => v.playerName.toLowerCase().trim()),
+  );
+  return compras.filter(
+    (c) => !soldIds.has(c.playerId) && !soldNames.has(c.playerName.toLowerCase().trim()),
+  );
 }

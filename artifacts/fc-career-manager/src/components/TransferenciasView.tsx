@@ -426,6 +426,7 @@ interface FormData {
   fromClub: string;
   fromClubLogo: string;
   toClub: string;
+  resolvedPlayerId: number | null;
 }
 
 const DEFAULT_FORM: FormData = {
@@ -442,6 +443,7 @@ const DEFAULT_FORM: FormData = {
   fromClub: "",
   fromClubLogo: "",
   toClub: "",
+  resolvedPlayerId: null,
 };
 
 interface TransferenciasViewProps {
@@ -484,7 +486,7 @@ export function TransferenciasView({
     setSubmitting(true);
 
     const isVenda = form.transferType === "venda";
-    const playerId = generatePlayerId();
+    const playerId = (isVenda && form.resolvedPlayerId) ? form.resolvedPlayerId : generatePlayerId();
     if (!isVenda) {
       setPlayerStats(careerId, playerId, defaultStats(playerId));
     }
@@ -673,6 +675,7 @@ export function TransferenciasView({
                       playerPhoto: p.photo,
                       playerAge: p.age ? String(p.age) : f.playerAge,
                       playerPositionPtBr: p.position,
+                      resolvedPlayerId: p.id,
                     }));
                   }}
                 />

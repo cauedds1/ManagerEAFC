@@ -4,6 +4,7 @@ import {
   getFinanceiroSettings,
   saveFinanceiroSettings,
   computeFinancialSnapshot,
+  getActiveCompras,
   type FinanceiroSettings,
 } from "@/lib/financeiroStorage";
 
@@ -122,16 +123,15 @@ export function FinanceiroView({ careerId, transfers, season }: FinanceiroViewPr
   const seasonTransfers = transfers.filter((t) => t.season === season);
   const compras = transfers.filter((t) => !t.type || t.type === "compra");
   const vendas = transfers.filter((t) => t.type === "venda");
+  const activeCompras = useMemo(() => getActiveCompras(transfers), [transfers]);
 
-  const topEarners = [...compras]
+  const topEarners = [...activeCompras]
     .filter((t) => t.salary > 0)
     .sort((a, b) => b.salary - a.salary)
     .slice(0, 5);
 
-  const topFees = [...transfers]
-    .filter((t) => t.fee > 0)
-    .sort((a, b) => b.fee - a.fee)
-    .slice(0, 5);
+  const biggestCompra = [...compras].filter((t) => t.fee > 0).sort((a, b) => b.fee - a.fee)[0] ?? null;
+  const biggestVenda = [...vendas].filter((t) => t.fee > 0).sort((a, b) => b.fee - a.fee)[0] ?? null;
 
   const budgetUsedPct = snapshot.transferBudget > 0
     ? Math.min(100, Math.max(0, (snapshot.netSpend / snapshot.transferBudget) * 100))
@@ -296,7 +296,7 @@ export function FinanceiroView({ careerId, transfers, season }: FinanceiroViewPr
         </div>
       )}
 
-      {topFees.length > 0 && (
+      {(biggestCompra || biggestVenda) && (
         <div
           className="rounded-2xl overflow-hidden"
           style={{ border: "1px solid rgba(255,255,255,0.07)" }}
@@ -309,34 +309,36 @@ export function FinanceiroView({ careerId, transfers, season }: FinanceiroViewPr
             <span className="text-white/40 text-xs font-semibold uppercase tracking-wider">Maiores Negócios</span>
           </div>
           <div className="divide-y" style={{ borderColor: "rgba(255,255,255,0.04)" }}>
-            {topFees.map((t, i) => {
-              const isVenda = t.type === "venda";
-              return (
-                <div key={t.id} className="flex items-center gap-4 px-5 py-3">
-                  <span className="text-white/20 text-xs font-bold w-4 tabular-nums">{i + 1}</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-white text-sm font-semibold truncate">{t.playerName}</p>
-                    <p className="text-white/30 text-xs">{t.playerPositionPtBr} · {t.season}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {isVenda && (
-                      <span
-                        className="text-[10px] font-black px-1.5 py-0.5 rounded-md"
-                        style={{ background: "rgba(251,191,36,0.12)", color: "#fbbf24" }}
-                      >
-                        V
-                      </span>
-                    )}
-                    <p
-                      className="font-bold text-sm tabular-nums"
-                      style={{ color: isVenda ? "#34d399" : "rgba(255,255,255,0.9)" }}
-                    >
-                      {formatMoney(t.fee)}
-                    </p>
-                  </div>
+            {biggestCompra && (
+              <div className="flex items-center gap-4 px-5 py-3">
+                <span
+                  className="text-[10px] font-black px-2 py-0.5 rounded-md flex-shrink-0"
+                  style={{ background: "rgba(var(--club-primary-rgb),0.15)", color: "var(--club-primary)" }}
+                >
+                  COMPRA
+                </span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-white text-sm font-semibold truncate">{biggestCompra.playerName}</p>
+                  <p className="text-white/30 text-xs">{biggestCompra.playerPositionPtBr} · {biggestCompra.season}</p>
                 </div>
-              );
-            })}
+                <p className="text-white font-bold text-sm tabular-nums">{formatMoney(biggestCompra.fee)}</p>
+              </div>
+            )}
+            {biggestVenda && (
+              <div className="flex items-center gap-4 px-5 py-3">
+                <span
+                  className="text-[10px] font-black px-2 py-0.5 rounded-md flex-shrink-0"
+                  style={{ background: "rgba(52,211,153,0.12)", color: "#34d399" }}
+                >
+                  VENDA
+                </span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-white text-sm font-semibold truncate">{biggestVenda.playerName}</p>
+                  <p className="text-white/30 text-xs">{biggestVenda.playerPositionPtBr} · {biggestVenda.season}</p>
+                </div>
+                <p className="font-bold text-sm tabular-nums" style={{ color: "#34d399" }}>{formatMoney(biggestVenda.fee)}</p>
+              </div>
+            )}
           </div>
         </div>
       )}

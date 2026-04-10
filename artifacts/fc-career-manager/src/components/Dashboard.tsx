@@ -199,9 +199,23 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     number: overrides[p.id]?.shirtNumber ?? p.number,
   }));
 
+  const soldPlayerIds = new Set(
+    transfers.filter((t) => t.type === "venda").map((t) => t.playerId),
+  );
+  const soldPlayerNames = new Set(
+    transfers
+      .filter((t) => t.type === "venda" && !transfers.find((c) => (!c.type || c.type === "compra") && c.playerId === t.playerId))
+      .map((t) => t.playerName.toLowerCase().trim()),
+  );
+
   const existingIds = new Set(squadPlayers.map((p) => p.id));
-  const newTransferredPlayers = transferredPlayers.filter((p) => !existingIds.has(p.id));
-  const allPlayers = [...squadPlayers, ...newTransferredPlayers];
+  const newTransferredPlayers = transferredPlayers.filter(
+    (p) => !existingIds.has(p.id) && !soldPlayerIds.has(p.id),
+  );
+  const allPlayers = [
+    ...squadPlayers.filter((p) => !soldPlayerIds.has(p.id) && !soldPlayerNames.has(p.name.toLowerCase().trim())),
+    ...newTransferredPlayers,
+  ];
 
   const handleTransferAdded = useCallback((transfer: TransferRecord) => {
     addTransfer(career.id, transfer);
