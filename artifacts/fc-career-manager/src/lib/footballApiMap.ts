@@ -26,6 +26,7 @@ export const DOMESTIC_LEAGUES: LeagueInfo[] = [
   { id: 61,  name: "Ligue 1",             country: "França",         flag: "🇫🇷", type: "domestic", logo: leaguelogo(61) },
   { id: 135, name: "Serie A",             country: "Itália",         flag: "🇮🇹", type: "domestic", logo: leaguelogo(135) },
   { id: 140, name: "LaLiga",              country: "Espanha",        flag: "🇪🇸", type: "domestic", logo: leaguelogo(140) },
+  { id: 141, name: "LaLiga 2",            country: "Espanha",        flag: "🇪🇸", type: "domestic", logo: leaguelogo(141) },
   { id: 88,  name: "Eredivisie",          country: "Holanda",        flag: "🇳🇱", type: "domestic", logo: leaguelogo(88) },
   { id: 94,  name: "Liga Portugal",       country: "Portugal",       flag: "🇵🇹", type: "domestic", logo: leaguelogo(94) },
   { id: 128, name: "Liga Profesional",    country: "Argentina",      flag: "🇦🇷", type: "domestic", logo: leaguelogo(128) },

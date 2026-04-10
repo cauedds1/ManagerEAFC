@@ -4,6 +4,14 @@ import { db, clubsTable } from "@workspace/db";
 const router = Router();
 
 const CLUBS_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+
+/** Retorna o season correto para ligas europeias (calendário Ago–Jun).
+ *  Ex: abril/2026 → 2025; setembro/2026 → 2026 */
+function currentSeason(): number {
+  const now = new Date();
+  return now.getMonth() >= 7 ? now.getFullYear() : now.getFullYear() - 1;
+}
+
 const API_FOOTBALL_BASE = "https://v3.football.api-sports.io";
 
 interface LeagueInput {
@@ -104,7 +112,7 @@ router.post("/clubs/fetch", async (req, res) => {
 
     for (const league of leagues) {
       try {
-        const r = await fetch(`${API_FOOTBALL_BASE}/teams?league=${league.id}&season=2025`, {
+        const r = await fetch(`${API_FOOTBALL_BASE}/teams?league=${league.id}&season=${currentSeason()}`, {
           headers: { "x-apisports-key": apiKey },
         });
         if (!r.ok) continue;

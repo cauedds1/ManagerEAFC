@@ -24,19 +24,23 @@ const PROJETO_EXAMPLES = [
   "Desenvolver jogadores para vendas lucrativas",
 ];
 
-function getLeagueSuggestions(league: string): string[] {
+function getLeagueSuggestions(league: string, leagueId?: number): string[] {
   const l = league.toLowerCase();
   const base: string[] = [];
 
-  if (l.includes("premier")) base.push("Premier League", "Copa da FA", "Copa da Liga");
-  else if (l.includes("championship")) base.push("Championship", "Copa da FA");
-  else if (l.includes("la liga") || l.includes("española")) base.push("La Liga", "Copa del Rey");
-  else if (l.includes("bundesliga")) base.push("Bundesliga", "DFB-Pokal");
-  else if (l.includes("serie a") && !l.includes("brasileiro")) base.push("Serie A", "Coppa Italia");
-  else if (l.includes("ligue 1")) base.push("Ligue 1", "Coupe de France");
+  const is = (pattern: string, ids: number[]) =>
+    l.includes(pattern) || (leagueId !== undefined && ids.includes(leagueId));
+
+  if (is("premier", [39])) base.push("Premier League", "Copa da FA", "Copa da Liga");
+  else if (is("championship", [40])) base.push("Championship", "Copa da FA");
+  else if (is("laliga 2", [141]) || l.includes("la liga 2") || leagueId === 141) base.push("LaLiga 2", "Copa del Rey");
+  else if (is("laliga", [140]) || l.includes("la liga") || l.includes("española") || leagueId === 140) base.push("LaLiga", "Copa del Rey");
+  else if (is("bundesliga", [78, 79])) base.push("Bundesliga", "DFB-Pokal");
+  else if ((l.includes("serie a") && !l.includes("brasileiro")) || leagueId === 135) base.push("Serie A", "Coppa Italia");
+  else if (is("ligue 1", [61])) base.push("Ligue 1", "Coupe de France");
   else if (l.includes("brasileiro") || l.includes("brazil")) base.push("Campeonato Brasileiro", "Copa do Brasil");
-  else if (l.includes("eredivisie")) base.push("Eredivisie", "Copa KNVB");
-  else if (l.includes("primeira")) base.push("Primeira Liga", "Taça de Portugal");
+  else if (is("eredivisie", [88])) base.push("Eredivisie", "Copa KNVB");
+  else if (l.includes("primeira") || is("liga portugal", [94])) base.push("Primeira Liga", "Taça de Portugal");
   else base.push("Campeonato Nacional", "Copa Nacional");
 
   return [...base, "Liga dos Campeões", "Europa League", "Conference League"];
@@ -106,7 +110,7 @@ export function CareerSetupStep({
   const [generatingProjeto, setGeneratingProjeto] = useState(false);
   const [projetoError, setProjetoError] = useState("");
 
-  const suggestions = getLeagueSuggestions(club.league);
+  const suggestions = getLeagueSuggestions(club.league, club.leagueId);
 
   const addCompetition = useCallback((name: string) => {
     const trimmed = name.trim();

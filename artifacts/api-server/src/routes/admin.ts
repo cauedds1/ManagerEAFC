@@ -15,7 +15,7 @@ const ALL_LEAGUE_IDS = [
   78, 79,               // Germany
   61,                   // France
   135,                  // Italy
-  140,                  // Spain
+  140, 141,             // Spain
   88,                   // Netherlands
   94,                   // Portugal
   128,                  // Argentina
@@ -39,6 +39,13 @@ const ALL_LEAGUE_IDS = [
 ];
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** Retorna o season correto para ligas europeias (calendário Ago–Jun).
+ *  Ex: abril/2026 → 2025; setembro/2026 → 2026 */
+function currentSeason(): number {
+  const now = new Date();
+  return now.getMonth() >= 7 ? now.getFullYear() : now.getFullYear() - 1;
+}
 
 // Returns "lastname|firstinitial" — matches "J. Doku" to "Jérémy Doku"
 function nameKey(name: string): string {
@@ -95,7 +102,7 @@ router.get("/admin/seed", async (req, res) => {
       emit({ type: "league", leagueId, message: `Buscando times da liga ${leagueId}...` });
 
       try {
-        const res2 = await fetch(`${API_BASE}/teams?league=${leagueId}&season=2025`, {
+        const res2 = await fetch(`${API_BASE}/teams?league=${leagueId}&season=${currentSeason()}`, {
           headers,
           signal: AbortSignal.timeout(12000),
         });
