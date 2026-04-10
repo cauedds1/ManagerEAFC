@@ -543,12 +543,12 @@ export function DiretoriaView({ career, matches, transfers, squadSize }: Diretor
     }
   };
 
-  const handleStartMeeting = (reason: string) => {
+  const handleStartMeeting = (reason: string, initiatedBy: "user" | "system" = "user") => {
     const meeting: MeetingRecord = {
       id: generateMeetingId(),
       careerId: career.id,
       reason,
-      initiatedBy: "user",
+      initiatedBy,
       messages: [],
       memberMoods: Object.fromEntries(members.map((m) => [m.id, m.mood])),
       createdAt: Date.now(),
@@ -733,7 +733,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize }: Diretor
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
             <button
-              onClick={() => handleStartMeeting(meetingTrigger.reason)}
+              onClick={() => handleStartMeeting(meetingTrigger.reason, "system")}
               className="px-3 py-1.5 rounded-lg font-bold text-xs transition-all hover:scale-[1.02] active:scale-[0.98]"
               style={{ background: "rgba(248,113,113,0.2)", color: "#f87171", border: "1px solid rgba(248,113,113,0.3)" }}
             >
