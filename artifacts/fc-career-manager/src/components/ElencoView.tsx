@@ -258,8 +258,9 @@ export function ElencoView({
     : "";
 
   return (
-    <div className="animate-fade-up flex-1 min-h-0 flex flex-col overflow-hidden">
-      <div className="flex items-center justify-between px-4 sm:px-6 pt-4 pb-3 flex-shrink-0">
+    <div className="animate-fade-up w-full">
+      {/* Toolbar */}
+      <div className="flex items-center justify-between px-4 sm:px-6 pt-4 pb-3">
         <div className="flex items-center gap-3">
           <h2 className="text-white/35 text-xs font-bold tracking-widest uppercase">Elenco</h2>
           {squad && !squadLoading && (
@@ -335,8 +336,9 @@ export function ElencoView({
         </div>
       </div>
 
+      {/* Content */}
       {squadLoading ? (
-        <div className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 pb-4">
+        <div className="px-4 sm:px-6 pb-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <div className="rounded-2xl overflow-hidden" style={{ background: "#0d2218", minHeight: 300 }}>
               <div className="flex items-center justify-center h-72">
@@ -347,8 +349,8 @@ export function ElencoView({
           </div>
         </div>
       ) : squadError ? (
-        <div className="flex-1 px-4 sm:px-6 pb-4 flex flex-col items-center justify-center">
-          <div className="flex flex-col items-center justify-center py-12 rounded-2xl gap-3 glass w-full">
+        <div className="px-4 sm:px-6 pb-6">
+          <div className="flex flex-col items-center justify-center py-16 rounded-2xl gap-3 glass w-full">
             <svg className="w-8 h-8 text-white/15" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
@@ -363,8 +365,8 @@ export function ElencoView({
           </div>
         </div>
       ) : allPlayers.length === 0 ? (
-        <div className="flex-1 px-4 sm:px-6 pb-4 flex flex-col items-center justify-center">
-          <div className="flex flex-col items-center justify-center py-12 rounded-2xl gap-3 glass w-full">
+        <div className="px-4 sm:px-6 pb-6">
+          <div className="flex flex-col items-center justify-center py-16 rounded-2xl gap-3 glass w-full">
             <svg className="w-8 h-8 text-white/15" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
@@ -385,145 +387,133 @@ export function ElencoView({
           </div>
         </div>
       ) : tab === "pitch" ? (
-        <div className="flex-1 min-h-0 flex flex-col lg:flex-row gap-4 overflow-hidden px-4 sm:px-6 pb-4">
-          <div className="w-full lg:w-[440px] flex-shrink-0 overflow-y-auto overflow-x-hidden">
-            {/* Top bar: titulares + formation picker */}
-            <div className="mb-2 flex items-center justify-between gap-2">
-              <p className="text-white/25 text-xs font-semibold tracking-widest uppercase">
-                Titulares ({starters.length})
-              </p>
-              {pendingSwap ? (
-                <div className="flex items-center gap-2">
-                  <p className="text-xs" style={{ color: "var(--club-primary)" }}>
-                    {(() => { const ov = overrides[pendingSwap.id]; return ov?.nameOverride ?? pendingSwap.name; })()}
-                    {" "}· escolha o destino
-                  </p>
-                  <button
-                    onClick={() => setPendingSwap(null)}
-                    className="text-white/30 hover:text-white/60 transition-colors"
-                    title="Cancelar seleção"
-                  >
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-              ) : (
-                <p className="text-white/20 text-xs">
-                  {isCustom ? "Personalizada · " : ""}1 clique seleciona · 2× edita
+        <div className="px-4 sm:px-6 pb-8">
+          {/* Header row: titulares count + swap hint */}
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <p className="text-white/25 text-xs font-semibold tracking-widest uppercase">
+              Titulares ({starters.length})
+            </p>
+            {pendingSwap ? (
+              <div className="flex items-center gap-2">
+                <p className="text-xs" style={{ color: "var(--club-primary)" }}>
+                  {(() => { const ov = overrides[pendingSwap.id]; return ov?.nameOverride ?? pendingSwap.name; })()}
+                  {" "}· escolha o destino
                 </p>
-              )}
-            </div>
-
-            {/* Formation selector */}
-            <div ref={formationPickerRef} className="relative mb-2">
-              <button
-                onClick={() => setShowFormationPicker((v) => !v)}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 w-full"
-                style={{
-                  background: showFormationPicker ? "rgba(var(--club-primary-rgb),0.18)" : "rgba(255,255,255,0.05)",
-                  color: showFormationPicker ? "var(--club-primary)" : "rgba(255,255,255,0.5)",
-                  border: `1px solid ${showFormationPicker ? "rgba(var(--club-primary-rgb),0.3)" : "rgba(255,255,255,0.07)"}`,
-                }}
-              >
-                <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h7" />
-                </svg>
-                <span className="flex-1 text-left">{getFormationLabel(formation)}</span>
-                <svg
-                  className={`w-3 h-3 flex-shrink-0 transition-transform duration-200 ${showFormationPicker ? "rotate-180" : ""}`}
-                  fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
+                <button
+                  onClick={() => setPendingSwap(null)}
+                  className="text-white/30 hover:text-white/60 transition-colors"
+                  title="Cancelar seleção"
                 >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-
-              {showFormationPicker && (
-                <div
-                  className="absolute left-0 right-0 mt-1 rounded-xl overflow-hidden shadow-2xl z-20"
-                  style={{ background: "#141024", border: "1px solid rgba(255,255,255,0.1)" }}
-                >
-                  <div className="max-h-72 overflow-y-auto overflow-x-hidden">
-                    {FORMATION_GROUPS.map((group) => (
-                      <div key={group.label}>
-                        <div
-                          className="px-3 py-1.5 text-[10px] font-bold tracking-widest uppercase"
-                          style={{ color: "rgba(255,255,255,0.25)", background: "rgba(255,255,255,0.03)" }}
-                        >
-                          {group.label}
-                        </div>
-                        {group.formations.map((f) => {
-                          const isActive = f.key === formation;
-                          return (
-                            <button
-                              key={f.key}
-                              onClick={() => handleFormationChange(f.key)}
-                              className="w-full flex items-center justify-between px-3 py-2 text-xs transition-colors duration-150"
-                              style={{
-                                background: isActive ? "rgba(var(--club-primary-rgb),0.12)" : "transparent",
-                                color: isActive ? "var(--club-primary)" : "rgba(255,255,255,0.6)",
-                              }}
-                              onMouseEnter={(e) => {
-                                if (!isActive) (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.04)";
-                              }}
-                              onMouseLeave={(e) => {
-                                if (!isActive) (e.currentTarget as HTMLButtonElement).style.background = "transparent";
-                              }}
-                            >
-                              <span className="font-medium">{f.label}</span>
-                              {isActive && (
-                                <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                                </svg>
-                              )}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <FootballPitch
-              players={allPlayers}
-              starterIds={starterIds}
-              className="w-full"
-              onPlayerClick={handlePlayerClick}
-              highlightedPlayerId={pendingSwap?.id}
-              formation={formation}
-            />
-          </div>
-          <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
-            {bench.length === 0 ? (
-              <p className="text-white/20 text-xs text-center py-4">
-                Todos os jogadores estão no time titular
-              </p>
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
             ) : (
-              <div className="grid grid-cols-2 gap-x-4 items-start">
-                <div className="flex flex-col gap-1">
-                  <p className="text-white/25 text-xs font-semibold tracking-widest uppercase mb-1">
-                    Relacionados ({Math.min(bench.length, 9)})
-                  </p>
-                  {bench.slice(0, 9).map((player) => (
-                    <PlayerRow
-                      key={player.id}
-                      player={player}
-                      overrides={overrides}
-                      selected={pendingSwap?.id === player.id}
-                      onClick={handlePlayerClick}
-                    />
+              <p className="text-white/20 text-xs">
+                {isCustom ? "Personalizada · " : ""}1 clique seleciona · 2× edita
+              </p>
+            )}
+          </div>
+
+          {/* Formation selector */}
+          <div ref={formationPickerRef} className="relative mb-3">
+            <button
+              onClick={() => setShowFormationPicker((v) => !v)}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 w-full lg:w-auto lg:min-w-[160px]"
+              style={{
+                background: showFormationPicker ? "rgba(var(--club-primary-rgb),0.18)" : "rgba(255,255,255,0.05)",
+                color: showFormationPicker ? "var(--club-primary)" : "rgba(255,255,255,0.5)",
+                border: `1px solid ${showFormationPicker ? "rgba(var(--club-primary-rgb),0.3)" : "rgba(255,255,255,0.07)"}`,
+              }}
+            >
+              <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h7" />
+              </svg>
+              <span className="flex-1 text-left">{getFormationLabel(formation)}</span>
+              <svg
+                className={`w-3 h-3 flex-shrink-0 transition-transform duration-200 ${showFormationPicker ? "rotate-180" : ""}`}
+                fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+
+            {showFormationPicker && (
+              <div
+                className="absolute left-0 mt-1 rounded-xl overflow-hidden shadow-2xl z-20 w-full lg:w-[220px]"
+                style={{ background: "#141024", border: "1px solid rgba(255,255,255,0.1)" }}
+              >
+                <div className="max-h-72 overflow-y-auto overflow-x-hidden">
+                  {FORMATION_GROUPS.map((group) => (
+                    <div key={group.label}>
+                      <div
+                        className="px-3 py-1.5 text-[10px] font-bold tracking-widest uppercase"
+                        style={{ color: "rgba(255,255,255,0.25)", background: "rgba(255,255,255,0.03)" }}
+                      >
+                        {group.label}
+                      </div>
+                      {group.formations.map((f) => {
+                        const isActive = f.key === formation;
+                        return (
+                          <button
+                            key={f.key}
+                            onClick={() => handleFormationChange(f.key)}
+                            className="w-full flex items-center justify-between px-3 py-2 text-xs transition-colors duration-150"
+                            style={{
+                              background: isActive ? "rgba(var(--club-primary-rgb),0.12)" : "transparent",
+                              color: isActive ? "var(--club-primary)" : "rgba(255,255,255,0.6)",
+                            }}
+                            onMouseEnter={(e) => {
+                              if (!isActive) (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.04)";
+                            }}
+                            onMouseLeave={(e) => {
+                              if (!isActive) (e.currentTarget as HTMLButtonElement).style.background = "transparent";
+                            }}
+                          >
+                            <span className="font-medium">{f.label}</span>
+                            {isActive && (
+                              <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                              </svg>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
                   ))}
                 </div>
-                <div className="flex flex-col gap-1">
-                  <p className="text-white/25 text-xs font-semibold tracking-widest uppercase mb-1">
-                    Não relacionados ({Math.max(0, bench.length - 9)})
-                  </p>
-                  {bench.slice(9).length === 0 ? (
-                    <p className="text-white/15 text-xs text-center py-4">—</p>
-                  ) : (
-                    bench.slice(9).map((player) => (
+              </div>
+            )}
+          </div>
+
+          {/* Main layout: pitch + bench side by side on desktop */}
+          <div className="flex flex-col lg:flex-row gap-6 items-start">
+            {/* Left: pitch */}
+            <div className="w-full lg:w-[420px] flex-shrink-0">
+              <FootballPitch
+                players={allPlayers}
+                starterIds={starterIds}
+                className="w-full"
+                onPlayerClick={handlePlayerClick}
+                highlightedPlayerId={pendingSwap?.id}
+                formation={formation}
+              />
+            </div>
+
+            {/* Right: bench */}
+            <div className="flex-1 min-w-0 w-full">
+              {bench.length === 0 ? (
+                <p className="text-white/20 text-xs text-center py-4">
+                  Todos os jogadores estão no time titular
+                </p>
+              ) : (
+                <div className="grid grid-cols-2 gap-x-4 items-start">
+                  <div className="flex flex-col gap-1">
+                    <p className="text-white/25 text-xs font-semibold tracking-widest uppercase mb-1">
+                      Relacionados ({Math.min(bench.length, 9)})
+                    </p>
+                    {bench.slice(0, 9).map((player) => (
                       <PlayerRow
                         key={player.id}
                         player={player}
@@ -531,39 +521,40 @@ export function ElencoView({
                         selected={pendingSwap?.id === player.id}
                         onClick={handlePlayerClick}
                       />
-                    ))
-                  )}
+                    ))}
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <p className="text-white/25 text-xs font-semibold tracking-widest uppercase mb-1">
+                      Não relacionados ({Math.max(0, bench.length - 9)})
+                    </p>
+                    {bench.slice(9).length === 0 ? (
+                      <p className="text-white/15 text-xs text-center py-4">—</p>
+                    ) : (
+                      bench.slice(9).map((player) => (
+                        <PlayerRow
+                          key={player.id}
+                          player={player}
+                          overrides={overrides}
+                          selected={pendingSwap?.id === player.id}
+                          onClick={handlePlayerClick}
+                        />
+                      ))
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
       ) : (
-        <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-4 sm:px-6 pb-4">
-        <div className="flex flex-col gap-2">
-          <div className="mb-1">
-            <p className="text-white/25 text-xs font-semibold tracking-widest uppercase mb-2">
-              Titulares ({starters.length}) · <span className="normal-case font-normal text-white/20">1 clique seleciona · 2× edita</span>
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5">
-              {starters.map((player) => (
-                <PlayerRow
-                  key={player.id}
-                  player={player}
-                  overrides={overrides}
-                  selected={pendingSwap?.id === player.id}
-                  onClick={handlePlayerClick}
-                />
-              ))}
-            </div>
-          </div>
-          {bench.length > 0 && (
-            <div className="mt-2">
+        <div className="px-4 sm:px-6 pb-6">
+          <div className="flex flex-col gap-2">
+            <div className="mb-1">
               <p className="text-white/25 text-xs font-semibold tracking-widest uppercase mb-2">
-                Reservas ({bench.length})
+                Titulares ({starters.length}) · <span className="normal-case font-normal text-white/20">1 clique seleciona · 2× edita</span>
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5">
-                {bench.map((player) => (
+                {starters.map((player) => (
                   <PlayerRow
                     key={player.id}
                     player={player}
@@ -574,13 +565,30 @@ export function ElencoView({
                 ))}
               </div>
             </div>
-          )}
-        </div>
+            {bench.length > 0 && (
+              <div className="mt-2">
+                <p className="text-white/25 text-xs font-semibold tracking-widest uppercase mb-2">
+                  Reservas ({bench.length})
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5">
+                  {bench.map((player) => (
+                    <PlayerRow
+                      key={player.id}
+                      player={player}
+                      overrides={overrides}
+                      selected={pendingSwap?.id === player.id}
+                      onClick={handlePlayerClick}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
       {!hasApiKey && squad?.source === "fc26" && allPlayers.length > 0 && (
-        <div className="flex-shrink-0 mx-4 sm:mx-6 mb-3 flex items-center gap-2 px-4 py-3 rounded-xl glass">
+        <div className="mx-4 sm:mx-6 mb-4 flex items-center gap-2 px-4 py-3 rounded-xl glass">
           <svg className="w-4 h-4 flex-shrink-0" style={{ color: "var(--club-primary)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>

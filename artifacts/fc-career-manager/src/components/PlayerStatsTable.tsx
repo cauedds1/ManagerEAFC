@@ -161,7 +161,7 @@ export function PlayerStatsTable({ careerId, allPlayers }: Props) {
   return (
     <div className="w-full pb-6 pt-1 overflow-x-auto">
       <table className="w-full border-collapse text-sm min-w-[720px]">
-        <thead className="sticky top-0 z-10">
+        <thead className="sticky top-[50px] z-10">
           <tr style={{ background: "rgba(15,15,20,0.97)", borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
             <Th label="#"    col="number"  {...thProps} title="Nº camisa" />
             <Th label="Jogador" col="name" {...thProps} left />

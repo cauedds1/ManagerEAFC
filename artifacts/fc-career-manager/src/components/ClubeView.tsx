@@ -48,7 +48,7 @@ export function ClubeView({
   const [sub, setSub] = useState<ClubeSubTab>("elenco");
 
   return (
-    <div className="flex flex-col w-full min-h-0 flex-1">
+    <div className="w-full">
       <div
         className="flex items-center gap-1 px-4 pt-3 pb-0 overflow-x-auto"
         style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}
@@ -74,7 +74,7 @@ export function ClubeView({
         })}
       </div>
 
-      <div className={`flex-1 min-h-0 w-full ${sub === "elenco" ? "flex flex-col overflow-hidden" : "overflow-y-auto overflow-x-hidden"}`}>
+      <div className="w-full">
         {sub === "elenco" && (
           <ElencoView
             careerId={careerId}
@@ -89,7 +89,9 @@ export function ClubeView({
           />
         )}
         {sub === "estatisticas" && (
-          <PlayerStatsTable careerId={careerId} allPlayers={allPlayers} />
+          <div className="px-4 sm:px-6">
+            <PlayerStatsTable careerId={careerId} allPlayers={allPlayers} />
+          </div>
         )}
         {sub === "lesoes" && (
           <LesoesView careerId={careerId} allPlayers={allPlayers} />
@@ -98,7 +100,7 @@ export function ClubeView({
           <SequenciasView careerId={careerId} />
         )}
         {sub === "financeiro" && (
-          <div className="p-4 sm:p-6">
+          <div className="px-4 sm:px-6 py-6">
             <FinanceiroView
               careerId={careerId}
               transfers={transfers}
