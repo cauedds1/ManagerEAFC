@@ -798,31 +798,44 @@ router.post("/generate-projeto", async (req, res) => {
 
   const userKey = (req.headers["x-openai-key"] as string | undefined) ?? "";
   const { client, usingUserKey } = getClient(userKey);
-  const tier = clubTierFromLeague(clubLeague ?? "");
 
+  const totalTitles = (clubTitles ?? []).reduce((sum, t) => sum + t.count, 0);
+  const hasChampions = (clubTitles ?? []).some(t => /champions|liga dos campe|european cup/i.test(t.name) && t.count > 0);
+  const leagueTitles = (clubTitles ?? []).find(t => /premier|la liga|bundesliga|serie a|ligue 1|brasileiro|primeira liga/i.test(t.name))?.count ?? 0;
   const titlesStr = clubTitles?.length
     ? clubTitles.map((t) => `${t.name} (×${t.count})`).join(", ")
     : "nenhum título expressivo";
 
-  const userPrompt = `Você é um especialista em futebol e career mode de videogame.
+  // Derive prestige from known data
+  const isHistoricElite = totalTitles >= 10 || leagueTitles >= 5 || hasChampions;
+  const isEstablishedMid = totalTitles >= 2 || leagueTitles >= 1;
 
-Crie um projeto de carreira realista para um técnico que vai assumir o ${clubName}${clubLeague ? ` (${clubLeague})` : ""}${clubCountry ? `, ${clubCountry}` : ""}.
+  let prestigeContext: string;
+  if (isHistoricElite) {
+    prestigeContext = `CLUBE DE ELITE HISTÓRICA — tem ${totalTitles} títulos no total${hasChampions ? ", incluindo Liga dos Campeões" : ""}. Espera-se vencer o campeonato nacional e disputar títulos europeus regularmente. NUNCA sugira objetivos de permanência ou reconstrução básica para este clube.`;
+  } else if (isEstablishedMid) {
+    prestigeContext = `CLUBE ESTABELECIDO — tem alguns títulos (${titlesStr}). Objetivos realistas: terminar entre os primeiros, ganhar uma Copa nacional, classificar para Europa.`;
+  } else {
+    prestigeContext = `CLUBE MENOR OU SEM HISTÓRICO DE TÍTULOS — objetivos modestos: manter categoria, crescer com jovens, eventual conquista de copa regional.`;
+  }
 
-Contexto do clube:
-- Nível estimado: ${tier}
-${clubDescription ? `- Sobre o clube: ${clubDescription}` : ""}
-- Títulos históricos: ${titlesStr}
+  const userPrompt = `Você é um especialista em futebol com profundo conhecimento do futebol mundial atual e histórico.
 
-Crie um projeto de 1 a 2 frases em português brasileiro que:
-- Seja realista para o nível do clube (${tier})
-- Para clubes grandes em fase ruim: foque em estabilidade primeiro, depois reconstrução gradual
-- Para clubes pequenos: objetivos modestos como manter divisão, crescer com jovens talentos
-- Mencione um objetivo principal (ex: conquistar liga nacional, subir de divisão, vencer uma Copa)
-- NÃO prometa Champions League nas primeiras temporadas para clubes de nível médio ou em crise
-- Use primeira pessoa ("Meu objetivo é...", "Pretendo...", "Quero...")
-- Seja conciso e direto
+Use seu conhecimento sobre o ${clubName} para criar um projeto de carreira coerente com a GRANDEZA REAL do clube.
 
-Responda APENAS com o texto do projeto, sem JSON, sem aspas, sem formatação extra.`;
+Liga: ${clubLeague ?? "não informada"}${clubCountry ? ` (${clubCountry})` : ""}
+Títulos históricos: ${titlesStr}
+Avaliação de prestígio: ${prestigeContext}
+${clubDescription ? `Contexto atual: ${clubDescription}` : ""}
+
+REGRAS OBRIGATÓRIAS baseadas no prestígio:
+- Clube de elite histórica (Arsenal, Real Madrid, Barcelona, Bayern, Liverpool, etc.): projeto deve exigir título nacional e/ou Champions na primeira janela de 3-4 temporadas. NÃO use "permanência", "estabilidade" ou "reconstrução básica".
+- Clube médio com alguns títulos: objetivos moderados — top 6, vencer uma Copa, classificar para Europa.
+- Clube pequeno ou em divisão inferior: objetivos de subir de divisão, consolidar, desenvolver jovens.
+- Se o clube está em uma divisão abaixo do esperado para seu histórico: foco em promoção imediata + reerguer o clube.
+
+Escreva 1 a 2 frases em português brasileiro, primeira pessoa, concisas e específicas para o ${clubName}.
+Responda APENAS com o texto do projeto, sem JSON, sem aspas.`;
 
   try {
     const params = usingUserKey
@@ -833,7 +846,7 @@ Responda APENAS com o texto do projeto, sem JSON, sem aspas, sem formatação ex
       ...params,
       stream: false,
       messages: [
-        { role: "system", content: "Você é especialista em futebol. Responda apenas com o texto do projeto, sem formatação." },
+        { role: "system", content: "Você é especialista em futebol mundial. Conhece profundamente o nível de cada clube. Para clubes históricos e de elite (Arsenal, Real Madrid, Barcelona, Bayern, Liverpool, Juventus, PSG, etc.), SEMPRE gere objetivos ambiciosos de conquistas de títulos — nunca de permanência ou sobrevivência. Responda apenas com o texto do projeto, sem formatação." },
         { role: "user", content: userPrompt },
       ],
     });
