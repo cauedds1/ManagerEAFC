@@ -115,7 +115,7 @@ Gere 6 a 9 comentários. Pelo menos 2 deles devem ter 1 reply cada.`;
       ],
     } as Parameters<typeof client.chat.completions.create>[0]);
 
-    const raw = (completion as { choices: Array<{ message: { content: string | null } }> }).choices[0]?.message?.content ?? "";
+    const raw = (completion as OpenAI.Chat.Completions.ChatCompletion).choices[0]?.message?.content ?? "";
 
     let parsed: Record<string, unknown>;
     try {

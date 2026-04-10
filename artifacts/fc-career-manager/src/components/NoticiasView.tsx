@@ -6,6 +6,7 @@ import { getOpenAIKey } from "@/lib/openaiKeyStorage";
 import { seedPosts } from "@/lib/noticiaSeed";
 import { NoticiaPost } from "./NoticiaPost";
 import { getPortalPhotos, PORTAL_PHOTOS_EVENT, type PortalPhotos } from "@/lib/portalPhotosStorage";
+import { useImageUpload } from "@/hooks/useImageUpload";
 
 interface NoticiasViewProps {
   career: Career;
@@ -121,54 +122,16 @@ function AddPostModal({
   const [manContent, setManContent] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
-  const [imageObjectPath, setImageObjectPath] = useState<string | null>(null);
-  const [isUploadingImage, setIsUploadingImage] = useState(false);
-  const [imageError, setImageError] = useState<string | null>(null);
-  const imageInputRef = useRef<HTMLInputElement>(null);
-
-  const handleImageSelect = async (file: File) => {
-    if (!file.type.startsWith("image/")) {
-      setImageError("Apenas imagens são permitidas.");
-      return;
-    }
-    if (file.size > 10 * 1024 * 1024) {
-      setImageError("A imagem deve ter no máximo 10 MB.");
-      return;
-    }
-    setImageError(null);
-    setImageObjectPath(null);
-    setImagePreviewUrl(URL.createObjectURL(file));
-    setIsUploadingImage(true);
-    try {
-      const res = await fetch("/api/storage/uploads/request-url", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }),
-      });
-      if (!res.ok) throw new Error("Falha ao obter URL de upload");
-      const { uploadURL, objectPath } = await res.json() as { uploadURL: string; objectPath: string };
-      const putRes = await fetch(uploadURL, {
-        method: "PUT",
-        headers: { "Content-Type": file.type },
-        body: file,
-      });
-      if (!putRes.ok) throw new Error("Falha no upload da imagem");
-      setImageObjectPath(objectPath);
-    } catch {
-      setImageError("Erro no upload da imagem. Tente novamente.");
-      setImagePreviewUrl(null);
-    } finally {
-      setIsUploadingImage(false);
-    }
-  };
-
-  const handleImageRemove = () => {
-    setImagePreviewUrl(null);
-    setImageObjectPath(null);
-    setImageError(null);
-    if (imageInputRef.current) imageInputRef.current.value = "";
-  };
+  const {
+    previewUrl: imagePreviewUrl,
+    objectPath: imageObjectPath,
+    isUploading: isUploadingImage,
+    error: imageError,
+    inputRef: imageInputRef,
+    openPicker: openImagePicker,
+    handleFileSelect: handleImageSelect,
+    reset: handleImageRemove,
+  } = useImageUpload();
 
   useEffect(() => {
     if (mode === "manual") textareaRef.current?.focus();
@@ -479,7 +442,7 @@ function AddPostModal({
                   </div>
                 ) : (
                   <button
-                    onClick={() => imageInputRef.current?.click()}
+                    onClick={openImagePicker}
                     className="w-full py-3 px-4 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-all duration-150 hover:opacity-80"
                     style={{
                       background: "rgba(255,255,255,0.04)",
@@ -711,7 +674,7 @@ function AddPostModal({
                   </div>
                 ) : (
                   <button
-                    onClick={() => imageInputRef.current?.click()}
+                    onClick={openImagePicker}
                     className="w-full py-3 px-4 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-all duration-150 hover:opacity-80"
                     style={{
                       background: "rgba(255,255,255,0.04)",
