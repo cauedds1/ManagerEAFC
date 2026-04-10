@@ -300,7 +300,7 @@ export function PlayerStatsTable({ careerId, allPlayers }: Props) {
   }
 
   const th = { sortCol, asc, onSort: handleSort };
-  const THEAD_BG = { background: "rgba(12,12,18,0.98)", borderBottom: "1px solid rgba(255,255,255,0.07)" };
+  const THEAD_BG = { background: "rgba(var(--club-primary-rgb), 0.08)", borderBottom: "1px solid rgba(255,255,255,0.07)" };
 
   const ALWAYS_HEADER = (
     <>
