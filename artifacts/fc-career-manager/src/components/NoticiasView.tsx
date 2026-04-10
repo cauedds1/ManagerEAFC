@@ -836,6 +836,7 @@ export function NoticiasView({ career, allPlayers = [], matches: _matches = [] }
             addNotification(career.id, {
               memberId: notifMember.id,
               preview: `${player.name.split(" ")[0]} está sendo criticado publicamente — precisamos conversar sobre isso.`,
+              triggeredAt: Date.now(),
             });
           }
         }
