@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import type { SquadResult, SquadPlayer, PositionPtBr } from "@/lib/squadCache";
 import type { PlayerOverride } from "@/types/playerStats";
 import { getAllPlayerOverrides } from "@/lib/playerStatsStorage";
@@ -8,7 +8,15 @@ import {
   getCustomLineup,
   setCustomLineup,
   clearCustomLineup,
+  getFormation,
+  setFormation,
 } from "@/lib/lineupStorage";
+import {
+  type FormationKey,
+  FORMATION_GROUPS,
+  getFormationLabel,
+  DEFAULT_FORMATION,
+} from "@/lib/formations";
 
 const POS_STYLE: Record<PositionPtBr, { bg: string; color: string }> = {
   GOL: { bg: "rgba(245,158,11,0.18)",  color: "#f59e0b" },
@@ -166,6 +174,29 @@ export function ElencoView({
   const [customLineup, setCustomLineupState] = useState<number[] | null>(
     () => getCustomLineup(careerId)
   );
+
+  const [formation, setFormationState] = useState<FormationKey>(
+    () => getFormation(careerId) ?? DEFAULT_FORMATION
+  );
+  const [showFormationPicker, setShowFormationPicker] = useState(false);
+  const formationPickerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showFormationPicker) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (formationPickerRef.current && !formationPickerRef.current.contains(e.target as Node)) {
+        setShowFormationPicker(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showFormationPicker]);
+
+  const handleFormationChange = useCallback((key: FormationKey) => {
+    setFormationState(key);
+    setFormation(careerId, key);
+    setShowFormationPicker(false);
+  }, [careerId]);
 
   const refreshOverrides = useCallback(() => {
     setOverrides(getAllPlayerOverrides(careerId));
@@ -355,7 +386,8 @@ export function ElencoView({
         </div>
       ) : tab === "pitch" ? (
         <div className="flex-1 min-h-0 flex flex-col lg:flex-row gap-4 overflow-hidden px-4 sm:px-6 pb-4">
-          <div className="w-full lg:w-[440px] flex-shrink-0 overflow-y-auto">
+          <div className="w-full lg:w-[440px] flex-shrink-0 overflow-y-auto overflow-x-hidden">
+            {/* Top bar: titulares + formation picker */}
             <div className="mb-2 flex items-center justify-between gap-2">
               <p className="text-white/25 text-xs font-semibold tracking-widest uppercase">
                 Titulares ({starters.length})
@@ -382,15 +414,88 @@ export function ElencoView({
                 </p>
               )}
             </div>
+
+            {/* Formation selector */}
+            <div ref={formationPickerRef} className="relative mb-2">
+              <button
+                onClick={() => setShowFormationPicker((v) => !v)}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 w-full"
+                style={{
+                  background: showFormationPicker ? "rgba(var(--club-primary-rgb),0.18)" : "rgba(255,255,255,0.05)",
+                  color: showFormationPicker ? "var(--club-primary)" : "rgba(255,255,255,0.5)",
+                  border: `1px solid ${showFormationPicker ? "rgba(var(--club-primary-rgb),0.3)" : "rgba(255,255,255,0.07)"}`,
+                }}
+              >
+                <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h7" />
+                </svg>
+                <span className="flex-1 text-left">{getFormationLabel(formation)}</span>
+                <svg
+                  className={`w-3 h-3 flex-shrink-0 transition-transform duration-200 ${showFormationPicker ? "rotate-180" : ""}`}
+                  fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+
+              {showFormationPicker && (
+                <div
+                  className="absolute left-0 right-0 mt-1 rounded-xl overflow-hidden shadow-2xl z-20"
+                  style={{ background: "#141024", border: "1px solid rgba(255,255,255,0.1)" }}
+                >
+                  <div className="max-h-72 overflow-y-auto overflow-x-hidden">
+                    {FORMATION_GROUPS.map((group) => (
+                      <div key={group.label}>
+                        <div
+                          className="px-3 py-1.5 text-[10px] font-bold tracking-widest uppercase"
+                          style={{ color: "rgba(255,255,255,0.25)", background: "rgba(255,255,255,0.03)" }}
+                        >
+                          {group.label}
+                        </div>
+                        {group.formations.map((f) => {
+                          const isActive = f.key === formation;
+                          return (
+                            <button
+                              key={f.key}
+                              onClick={() => handleFormationChange(f.key)}
+                              className="w-full flex items-center justify-between px-3 py-2 text-xs transition-colors duration-150"
+                              style={{
+                                background: isActive ? "rgba(var(--club-primary-rgb),0.12)" : "transparent",
+                                color: isActive ? "var(--club-primary)" : "rgba(255,255,255,0.6)",
+                              }}
+                              onMouseEnter={(e) => {
+                                if (!isActive) (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.04)";
+                              }}
+                              onMouseLeave={(e) => {
+                                if (!isActive) (e.currentTarget as HTMLButtonElement).style.background = "transparent";
+                              }}
+                            >
+                              <span className="font-medium">{f.label}</span>
+                              {isActive && (
+                                <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                </svg>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
             <FootballPitch
               players={allPlayers}
               starterIds={starterIds}
               className="w-full"
               onPlayerClick={handlePlayerClick}
               highlightedPlayerId={pendingSwap?.id}
+              formation={formation}
             />
           </div>
-          <div className="flex-1 min-h-0 overflow-y-auto">
+          <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
             {bench.length === 0 ? (
               <p className="text-white/20 text-xs text-center py-4">
                 Todos os jogadores estão no time titular
@@ -434,7 +539,7 @@ export function ElencoView({
           </div>
         </div>
       ) : (
-        <div className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 pb-4">
+        <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-4 sm:px-6 pb-4">
         <div className="flex flex-col gap-2">
           <div className="mb-1">
             <p className="text-white/25 text-xs font-semibold tracking-widest uppercase mb-2">

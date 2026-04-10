@@ -1,4 +1,7 @@
+import type { FormationKey } from "./formations";
+
 const PREFIX = "fc-career-manager-lineup-";
+const FORMATION_PREFIX = "fc-career-manager-formation-";
 
 export function getCustomLineup(careerId: string): number[] | null {
   try {
@@ -19,5 +22,21 @@ export function setCustomLineup(careerId: string, playerIds: number[]): void {
 export function clearCustomLineup(careerId: string): void {
   try {
     localStorage.removeItem(PREFIX + careerId);
+  } catch {}
+}
+
+export function getFormation(careerId: string): FormationKey | null {
+  try {
+    const raw = localStorage.getItem(FORMATION_PREFIX + careerId);
+    if (!raw) return null;
+    return raw as FormationKey;
+  } catch {
+    return null;
+  }
+}
+
+export function setFormation(careerId: string, formation: FormationKey): void {
+  try {
+    localStorage.setItem(FORMATION_PREFIX + careerId, formation);
   } catch {}
 }

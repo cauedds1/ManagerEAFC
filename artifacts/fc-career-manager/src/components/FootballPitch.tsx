@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { SquadPlayer, PositionPtBr, FormationGroup, FORMATION_GROUP } from "@/lib/squadCache";
+import { FormationKey, getFormationPositions, DEFAULT_FORMATION } from "@/lib/formations";
 
 interface PitchPlayerData {
   id: number;
@@ -23,12 +24,9 @@ const POS_COLOR: Record<PositionPtBr, { fill: string; stroke: string; text: stri
   ATA: { fill: "#b91c1c", stroke: "#ef4444", text: "#ffe4e4" },
 };
 
-export const FORMATION_POSITIONS: [number, number][] = [
-  [160, 400],
-  [40, 315], [115, 315], [205, 315], [280, 315],
-  [65, 225], [160, 225], [255, 225],
-  [65, 130], [160, 130], [255, 130],
-];
+export { DEFAULT_FORMATION };
+
+export const FORMATION_POSITIONS: [number, number][] = getFormationPositions(DEFAULT_FORMATION);
 
 function getInitials(name: string): string {
   const parts = name.trim().split(" ");
@@ -200,6 +198,7 @@ interface FootballPitchProps {
   className?: string;
   onPlayerClick?: (player: SquadPlayer) => void;
   highlightedPlayerId?: number;
+  formation?: FormationKey;
 }
 
 export function FootballPitch({
@@ -209,10 +208,12 @@ export function FootballPitch({
   className,
   onPlayerClick,
   highlightedPlayerId,
+  formation = DEFAULT_FORMATION,
 }: FootballPitchProps) {
+  const positions = getFormationPositions(formation);
   const orderedIds = externalStarters ?? (players.length > 0 ? pickBestEleven(players) : []);
 
-  const pitchData: (PitchPlayerData | null)[] = FORMATION_POSITIONS.map((_, i) => {
+  const pitchData: (PitchPlayerData | null)[] = positions.map((_, i) => {
     const id = orderedIds[i];
     if (id == null) return null;
     const p = players.find((pl) => pl.id === id);
@@ -277,7 +278,7 @@ export function FootballPitch({
 
           {pitchData.map((player, i) => {
             if (!player) return null;
-            const [x, y] = FORMATION_POSITIONS[i];
+            const [x, y] = positions[i];
             return (
               <PlayerCircle
                 key={`${player.id}-${i}`}
