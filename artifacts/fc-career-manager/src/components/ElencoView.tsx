@@ -424,40 +424,43 @@ export function ElencoView({
               onSwapSlots={handleSwapSlots}
             />
           </div>
-          <div className="flex-1 min-w-0 lg:max-w-[300px] flex flex-col gap-1 overflow-y-auto lg:max-h-[660px]">
+          <div className="flex-1 min-w-0 overflow-y-auto lg:max-h-[660px]">
             {bench.length === 0 ? (
               <p className="text-white/20 text-xs text-center py-4">
                 Todos os jogadores estão no time titular
               </p>
             ) : (
-              <>
-                <p className="text-white/25 text-xs font-semibold tracking-widest uppercase mb-1">
-                  Relacionados ({Math.min(bench.length, 7)})
-                </p>
-                {bench.slice(0, 7).map((player) => (
-                  <PlayerRow
-                    key={player.id}
-                    player={player}
-                    overrides={overrides}
-                    selected={selectedPlayer?.id === player.id}
-                    dragging={dragPlayerId === player.id}
-                    dragOver={dragOverPlayerId === player.id}
-                    onClick={(p) =>
-                      setSelectedPlayer((prev) => (prev?.id === p.id ? null : p))
-                    }
-                    onDragStart={() => handleDragStart(player.id)}
-                    onDragOver={(e) => handleDragOver(e, player.id)}
-                    onDrop={() => handleDrop(player.id)}
-                    onDragEnd={handleDragEnd}
-                  />
-                ))}
-                {bench.length > 7 && (
-                  <>
-                    <div className="my-2 border-t" style={{ borderColor: "rgba(255,255,255,0.06)" }} />
-                    <p className="text-white/25 text-xs font-semibold tracking-widest uppercase mb-1">
-                      Não relacionados ({bench.length - 7})
-                    </p>
-                    {bench.slice(7).map((player) => (
+              <div className="grid grid-cols-2 gap-x-4 items-start">
+                <div className="flex flex-col gap-1">
+                  <p className="text-white/25 text-xs font-semibold tracking-widest uppercase mb-1">
+                    Relacionados ({Math.min(bench.length, 9)})
+                  </p>
+                  {bench.slice(0, 9).map((player) => (
+                    <PlayerRow
+                      key={player.id}
+                      player={player}
+                      overrides={overrides}
+                      selected={selectedPlayer?.id === player.id}
+                      dragging={dragPlayerId === player.id}
+                      dragOver={dragOverPlayerId === player.id}
+                      onClick={(p) =>
+                        setSelectedPlayer((prev) => (prev?.id === p.id ? null : p))
+                      }
+                      onDragStart={() => handleDragStart(player.id)}
+                      onDragOver={(e) => handleDragOver(e, player.id)}
+                      onDrop={() => handleDrop(player.id)}
+                      onDragEnd={handleDragEnd}
+                    />
+                  ))}
+                </div>
+                <div className="flex flex-col gap-1">
+                  <p className="text-white/25 text-xs font-semibold tracking-widest uppercase mb-1">
+                    Não relacionados ({Math.max(0, bench.length - 9)})
+                  </p>
+                  {bench.slice(9).length === 0 ? (
+                    <p className="text-white/15 text-xs text-center py-4">—</p>
+                  ) : (
+                    bench.slice(9).map((player) => (
                       <PlayerRow
                         key={player.id}
                         player={player}
@@ -469,10 +472,10 @@ export function ElencoView({
                           setSelectedPlayer((prev) => (prev?.id === p.id ? null : p))
                         }
                       />
-                    ))}
-                  </>
-                )}
-              </>
+                    ))
+                  )}
+                </div>
+              </div>
             )}
           </div>
         </div>
