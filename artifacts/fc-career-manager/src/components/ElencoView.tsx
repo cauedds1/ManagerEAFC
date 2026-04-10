@@ -76,24 +76,12 @@ function PlayerRow({
   player,
   overrides,
   selected,
-  dragging,
-  dragOver,
   onClick,
-  onDragStart,
-  onDragOver,
-  onDrop,
-  onDragEnd,
 }: {
   player: SquadPlayer;
   overrides: Record<number, PlayerOverride>;
   selected?: boolean;
-  dragging?: boolean;
-  dragOver?: boolean;
   onClick: (player: SquadPlayer) => void;
-  onDragStart?: () => void;
-  onDragOver?: (e: React.DragEvent) => void;
-  onDrop?: () => void;
-  onDragEnd?: () => void;
 }) {
   const ov = overrides[player.id];
   const displayName = ov?.nameOverride ?? player.name;
@@ -103,26 +91,16 @@ function PlayerRow({
 
   return (
     <button
-      draggable={!!onDragStart}
-      onDragStart={onDragStart}
-      onDragOver={onDragOver}
-      onDrop={onDrop}
-      onDragEnd={onDragEnd}
       onClick={() => onClick(player)}
-      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl transition-all duration-200 text-left"
+      className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl transition-all duration-200 text-left${selected ? " pulse-swap" : ""}`}
       style={{
-        background: dragOver
-          ? "rgba(var(--club-primary-rgb),0.18)"
-          : selected
-          ? "rgba(var(--club-primary-rgb),0.12)"
+        background: selected
+          ? "rgba(var(--club-primary-rgb),0.14)"
           : "rgba(255,255,255,0.04)",
-        border: dragOver
-          ? "1px dashed rgba(var(--club-primary-rgb),0.6)"
-          : selected
-          ? "1px solid rgba(var(--club-primary-rgb),0.3)"
+        border: selected
+          ? "1px solid rgba(var(--club-primary-rgb),0.35)"
           : "1px solid rgba(255,255,255,0.06)",
-        opacity: dragging ? 0.4 : 1,
-        cursor: onDragStart ? "grab" : "pointer",
+        cursor: "pointer",
       }}
     >
       <PlayerPhoto src={player.photo} name={displayName} />
@@ -144,11 +122,6 @@ function PlayerRow({
           <span className="text-white/25 text-xs font-mono tabular-nums w-5 text-right">
             #{displayNumber}
           </span>
-        )}
-        {onDragStart && (
-          <svg className="w-3.5 h-3.5 text-white/20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-          </svg>
         )}
       </div>
     </button>
@@ -183,7 +156,8 @@ export function ElencoView({
   hasApiKey,
 }: ElencoViewProps) {
   const [tab, setTab] = useState<SquadTab>("pitch");
-  const [selectedPlayer, setSelectedPlayer] = useState<SquadPlayer | null>(null);
+  const [pendingSwap, setPendingSwap] = useState<SquadPlayer | null>(null);
+  const [detailPlayer, setDetailPlayer] = useState<SquadPlayer | null>(null);
   const [overrides, setOverrides] = useState<Record<number, PlayerOverride>>(
     () => getAllPlayerOverrides(careerId)
   );
@@ -191,9 +165,6 @@ export function ElencoView({
   const [customLineup, setCustomLineupState] = useState<number[] | null>(
     () => getCustomLineup(careerId)
   );
-
-  const [dragPlayerId, setDragPlayerId] = useState<number | null>(null);
-  const [dragOverPlayerId, setDragOverPlayerId] = useState<number | null>(null);
 
   const refreshOverrides = useCallback(() => {
     setOverrides(getAllPlayerOverrides(careerId));
@@ -210,70 +181,43 @@ export function ElencoView({
 
   const isCustom = customLineup !== null;
 
-  const handleSwapSlots = useCallback((slotA: number, slotB: number) => {
-    const next = [...starterIds];
-    [next[slotA], next[slotB]] = [next[slotB], next[slotA]];
-    setCustomLineupState(next);
-    setCustomLineup(careerId, next);
-  }, [careerId, starterIds]);
-
   const handleResetLineup = useCallback(() => {
     clearCustomLineup(careerId);
     setCustomLineupState(null);
   }, [careerId]);
 
-  const handleSwapPlayerWithBench = useCallback((starterId: number, benchId: number) => {
-    const currentIds = [...starterIds];
-    const idx = currentIds.indexOf(starterId);
-    if (idx === -1) {
-      currentIds.push(benchId);
+  const swapPlayers = useCallback((idA: number, idB: number) => {
+    const aIsStarter = starterIds.includes(idA);
+    const bIsStarter = starterIds.includes(idB);
+    const next = [...starterIds];
+    if (aIsStarter && bIsStarter) {
+      const si = next.indexOf(idA);
+      const di = next.indexOf(idB);
+      if (si !== -1 && di !== -1) { [next[si], next[di]] = [next[di], next[si]]; }
+    } else if (aIsStarter && !bIsStarter) {
+      const si = next.indexOf(idA);
+      if (si !== -1) { next[si] = idB; }
+    } else if (!aIsStarter && bIsStarter) {
+      const si = next.indexOf(idB);
+      if (si !== -1) { next[si] = idA; }
     } else {
-      currentIds[idx] = benchId;
+      return;
     }
-    setCustomLineupState(currentIds);
-    setCustomLineup(careerId, currentIds);
+    setCustomLineupState(next);
+    setCustomLineup(careerId, next);
   }, [careerId, starterIds]);
 
-  const handleDragStart = (playerId: number) => {
-    setDragPlayerId(playerId);
-  };
-  const handleDragOver = (e: React.DragEvent, playerId: number) => {
-    e.preventDefault();
-    setDragOverPlayerId(playerId);
-  };
-  const handleDrop = (targetId: number) => {
-    if (dragPlayerId !== null && dragPlayerId !== targetId) {
-      const srcIsStarter = starterSet.has(dragPlayerId);
-      const dstIsStarter = starterSet.has(targetId);
-
-      if (srcIsStarter && dstIsStarter) {
-        const next = [...starterIds];
-        const si = next.indexOf(dragPlayerId);
-        const di = next.indexOf(targetId);
-        if (si !== -1 && di !== -1) {
-          [next[si], next[di]] = [next[di], next[si]];
-          setCustomLineupState(next);
-          setCustomLineup(careerId, next);
-        }
-      } else if (srcIsStarter && !dstIsStarter) {
-        const next = [...starterIds];
-        const si = next.indexOf(dragPlayerId);
-        if (si !== -1) {
-          next[si] = targetId;
-          setCustomLineupState(next);
-          setCustomLineup(careerId, next);
-        }
-      } else if (!srcIsStarter && dstIsStarter) {
-        handleSwapPlayerWithBench(targetId, dragPlayerId);
-      }
+  const handlePlayerClick = useCallback((player: SquadPlayer) => {
+    if (pendingSwap === null) {
+      setPendingSwap(player);
+    } else if (pendingSwap.id === player.id) {
+      setDetailPlayer(player);
+      setPendingSwap(null);
+    } else {
+      swapPlayers(pendingSwap.id, player.id);
+      setPendingSwap(null);
     }
-    setDragPlayerId(null);
-    setDragOverPlayerId(null);
-  };
-  const handleDragEnd = () => {
-    setDragPlayerId(null);
-    setDragOverPlayerId(null);
-  };
+  }, [pendingSwap, swapPlayers]);
 
   const sourceLabel = squad
     ? squad.source === "api-football"
@@ -405,23 +349,38 @@ export function ElencoView({
       ) : tab === "pitch" ? (
         <div className="flex flex-col lg:flex-row items-start gap-4">
           <div className="w-full lg:w-[440px] flex-shrink-0">
-            <div className="mb-2 flex items-center justify-between">
+            <div className="mb-2 flex items-center justify-between gap-2">
               <p className="text-white/25 text-xs font-semibold tracking-widest uppercase">
                 Titulares ({starters.length})
               </p>
-              <p className="text-white/20 text-xs">
-                {isCustom ? "Escalação personalizada · " : ""}Arraste para trocar posições
-              </p>
+              {pendingSwap ? (
+                <div className="flex items-center gap-2">
+                  <p className="text-xs" style={{ color: "var(--club-primary)" }}>
+                    {(() => { const ov = overrides[pendingSwap.id]; return ov?.nameOverride ?? pendingSwap.name; })()}
+                    {" "}· escolha o destino
+                  </p>
+                  <button
+                    onClick={() => setPendingSwap(null)}
+                    className="text-white/30 hover:text-white/60 transition-colors"
+                    title="Cancelar seleção"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              ) : (
+                <p className="text-white/20 text-xs">
+                  {isCustom ? "Personalizada · " : ""}1 clique seleciona · 2× edita
+                </p>
+              )}
             </div>
             <FootballPitch
               players={allPlayers}
               starterIds={starterIds}
               className="w-full"
-              onPlayerClick={(p) =>
-                setSelectedPlayer((prev) => (prev?.id === p.id ? null : p))
-              }
-              highlightedPlayerId={selectedPlayer?.id}
-              onSwapSlots={handleSwapSlots}
+              onPlayerClick={handlePlayerClick}
+              highlightedPlayerId={pendingSwap?.id}
             />
           </div>
           <div className="flex-1 min-w-0 overflow-y-auto lg:max-h-[660px]">
@@ -440,16 +399,8 @@ export function ElencoView({
                       key={player.id}
                       player={player}
                       overrides={overrides}
-                      selected={selectedPlayer?.id === player.id}
-                      dragging={dragPlayerId === player.id}
-                      dragOver={dragOverPlayerId === player.id}
-                      onClick={(p) =>
-                        setSelectedPlayer((prev) => (prev?.id === p.id ? null : p))
-                      }
-                      onDragStart={() => handleDragStart(player.id)}
-                      onDragOver={(e) => handleDragOver(e, player.id)}
-                      onDrop={() => handleDrop(player.id)}
-                      onDragEnd={handleDragEnd}
+                      selected={pendingSwap?.id === player.id}
+                      onClick={handlePlayerClick}
                     />
                   ))}
                 </div>
@@ -465,12 +416,8 @@ export function ElencoView({
                         key={player.id}
                         player={player}
                         overrides={overrides}
-                        selected={selectedPlayer?.id === player.id}
-                        dragging={false}
-                        dragOver={false}
-                        onClick={(p) =>
-                          setSelectedPlayer((prev) => (prev?.id === p.id ? null : p))
-                        }
+                        selected={pendingSwap?.id === player.id}
+                        onClick={handlePlayerClick}
                       />
                     ))
                   )}
@@ -483,7 +430,7 @@ export function ElencoView({
         <div className="flex flex-col gap-2">
           <div className="mb-1">
             <p className="text-white/25 text-xs font-semibold tracking-widest uppercase mb-2">
-              Titulares ({starters.length}) · <span className="normal-case font-normal text-white/20">Arraste para trocar</span>
+              Titulares ({starters.length}) · <span className="normal-case font-normal text-white/20">1 clique seleciona · 2× edita</span>
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5">
               {starters.map((player) => (
@@ -491,16 +438,8 @@ export function ElencoView({
                   key={player.id}
                   player={player}
                   overrides={overrides}
-                  selected={selectedPlayer?.id === player.id}
-                  dragging={dragPlayerId === player.id}
-                  dragOver={dragOverPlayerId === player.id}
-                  onClick={(p) =>
-                    setSelectedPlayer((prev) => (prev?.id === p.id ? null : p))
-                  }
-                  onDragStart={() => handleDragStart(player.id)}
-                  onDragOver={(e) => handleDragOver(e, player.id)}
-                  onDrop={() => handleDrop(player.id)}
-                  onDragEnd={handleDragEnd}
+                  selected={pendingSwap?.id === player.id}
+                  onClick={handlePlayerClick}
                 />
               ))}
             </div>
@@ -516,16 +455,8 @@ export function ElencoView({
                     key={player.id}
                     player={player}
                     overrides={overrides}
-                    selected={selectedPlayer?.id === player.id}
-                    dragging={dragPlayerId === player.id}
-                    dragOver={dragOverPlayerId === player.id}
-                    onClick={(p) =>
-                      setSelectedPlayer((prev) => (prev?.id === p.id ? null : p))
-                    }
-                    onDragStart={() => handleDragStart(player.id)}
-                    onDragOver={(e) => handleDragOver(e, player.id)}
-                    onDrop={() => handleDrop(player.id)}
-                    onDragEnd={handleDragEnd}
+                    selected={pendingSwap?.id === player.id}
+                    onClick={handlePlayerClick}
                   />
                 ))}
               </div>
@@ -549,12 +480,12 @@ export function ElencoView({
         </div>
       )}
 
-      {selectedPlayer && (
+      {detailPlayer && (
         <PlayerDetailPanel
-          player={selectedPlayer}
+          player={detailPlayer}
           careerId={careerId}
-          override={overrides[selectedPlayer.id]}
-          onClose={() => setSelectedPlayer(null)}
+          override={overrides[detailPlayer.id]}
+          onClose={() => setDetailPlayer(null)}
           onUpdated={refreshOverrides}
         />
       )}

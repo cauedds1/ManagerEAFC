@@ -160,6 +160,14 @@
   50% { transform: translateY(-10px); }
 }
 
+@keyframes pulse-swap {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(var(--club-primary-rgb), 0.55); }
+  50% { box-shadow: 0 0 0 6px rgba(var(--club-primary-rgb), 0); }
+}
+.pulse-swap {
+  animation: pulse-swap 1.3s ease-in-out infinite;
+}
+
 @keyframes shimmer {
   0% { background-position: -200% 0; }
   100% { background-position: 200% 0; }

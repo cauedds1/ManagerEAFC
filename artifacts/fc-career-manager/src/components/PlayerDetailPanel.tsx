@@ -140,19 +140,20 @@ export function PlayerDetailPanel({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", background: "rgba(0,0,0,0.55)" }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="flex-1" onClick={onClose} />
       <div
-        className="w-80 md:w-96 h-full overflow-y-auto flex flex-col"
+        className="w-full max-w-md max-h-[88vh] overflow-y-auto flex flex-col rounded-2xl animate-slide-up"
         style={{
           background: "var(--app-bg-lighter)",
-          borderLeft: "1px solid var(--surface-border)",
-          boxShadow: "-20px 0 60px rgba(0,0,0,0.4)",
+          border: "1px solid var(--surface-border)",
+          boxShadow: "0 30px 80px rgba(0,0,0,0.6)",
         }}
+        onClick={(e) => e.stopPropagation()}
       >
-        <div className="sticky top-0 z-10 flex items-center justify-between px-5 py-4"
+        <div className="sticky top-0 z-10 flex items-center justify-between px-5 py-4 rounded-t-2xl"
           style={{ background: "var(--app-bg-lighter)", borderBottom: "1px solid var(--surface-border)" }}>
           <span className="text-white/60 text-xs font-semibold uppercase tracking-widest">
             Jogador

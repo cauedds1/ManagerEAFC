@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { SquadPlayer, PositionPtBr, FormationGroup, FORMATION_GROUP } from "@/lib/squadCache";
 
 interface PitchPlayerData {
@@ -91,15 +91,13 @@ export function pickBestElevenIds(players: { id: number; positionPtBr: PositionP
 }
 
 function PlayerCircle({
-  x, y, player, onClick, highlighted, dragging, dropTarget,
+  x, y, player, onClick, highlighted,
 }: {
   x: number;
   y: number;
   player: PitchPlayerData;
   onClick?: (player: PitchPlayerData) => void;
   highlighted?: boolean;
-  dragging?: boolean;
-  dropTarget?: boolean;
 }) {
   const [photoState, setPhotoState] = useState<"idle" | "loaded" | "error">(
     player.photo ? "idle" : "error"
@@ -115,12 +113,10 @@ function PlayerCircle({
     return parts.length > 1 ? parts[parts.length - 1] : player.name;
   })();
 
-  const opacity = dragging ? 0.35 : 1;
-
   return (
     <g
       onClick={onClick ? () => onClick(player) : undefined}
-      style={{ cursor: onClick ? "pointer" : "default", opacity }}
+      style={{ cursor: onClick ? "pointer" : "default" }}
     >
       <defs>
         <clipPath id={clipId}>
@@ -128,23 +124,18 @@ function PlayerCircle({
         </clipPath>
       </defs>
 
-      {(highlighted || dropTarget) && (
-        <circle
-          cx={x} cy={y} r={radius + 8}
-          fill="none"
-          stroke={dropTarget ? "#ffffff" : colors.stroke}
-          strokeWidth={dropTarget ? 2.5 : 2}
-          opacity={0.7}
-          strokeDasharray={dropTarget ? "6 3" : "4 3"}
-        />
+      {highlighted && (
+        <>
+          <circle cx={x} cy={y} r={radius + 8} fill="none" stroke={colors.stroke} strokeWidth={2} strokeDasharray="4 3" opacity={0.85} />
+          <circle cx={x} cy={y} r={radius + 6} fill="none" stroke={colors.stroke} strokeWidth={1.5}>
+            <animate attributeName="r" values={`${radius + 5};${radius + 18};${radius + 5}`} dur="1.4s" repeatCount="indefinite" />
+            <animate attributeName="opacity" values="0.55;0;0.55" dur="1.4s" repeatCount="indefinite" />
+          </circle>
+        </>
       )}
 
-      {dropTarget && (
-        <circle cx={x} cy={y} r={radius + 14} fill="rgba(255,255,255,0.06)" />
-      )}
-
-      <circle cx={x} cy={y} r={radius + 4} fill={colors.fill} opacity={highlighted || dropTarget ? 0.35 : 0.2} />
-      <circle cx={x} cy={y} r={radius} fill={colors.fill} stroke={highlighted || dropTarget ? "white" : colors.stroke} strokeWidth={highlighted || dropTarget ? 2.5 : 1.5} />
+      <circle cx={x} cy={y} r={radius + 4} fill={colors.fill} opacity={highlighted ? 0.35 : 0.2} />
+      <circle cx={x} cy={y} r={radius} fill={colors.fill} stroke={highlighted ? "white" : colors.stroke} strokeWidth={highlighted ? 2.5 : 1.5} />
 
       {showPhoto ? (
         <>
@@ -160,7 +151,7 @@ function PlayerCircle({
             onLoad={() => setPhotoState("loaded")}
             onError={() => setPhotoState("error")}
           />
-          <circle cx={x} cy={y} r={radius} fill="none" stroke={highlighted || dropTarget ? "white" : colors.stroke} strokeWidth={highlighted || dropTarget ? 2.5 : 1.5} />
+          <circle cx={x} cy={y} r={radius} fill="none" stroke={highlighted ? "white" : colors.stroke} strokeWidth={highlighted ? 2.5 : 1.5} />
           {photoState === "loaded" && (
             <>
               <rect x={x - 11} y={y + radius - 9} width={22} height={11} rx={4} fill={colors.fill} stroke={colors.stroke} strokeWidth={0.8} opacity={0.95} />
@@ -209,7 +200,6 @@ interface FootballPitchProps {
   className?: string;
   onPlayerClick?: (player: SquadPlayer) => void;
   highlightedPlayerId?: number;
-  onSwapSlots?: (slotA: number, slotB: number) => void;
 }
 
 export function FootballPitch({
@@ -219,12 +209,7 @@ export function FootballPitch({
   className,
   onPlayerClick,
   highlightedPlayerId,
-  onSwapSlots,
 }: FootballPitchProps) {
-  const svgRef = useRef<SVGSVGElement>(null);
-  const [dragSrc, setDragSrc] = useState<number | null>(null);
-  const [dropDst, setDropDst] = useState<number | null>(null);
-
   const orderedIds = externalStarters ?? (players.length > 0 ? pickBestEleven(players) : []);
 
   const pitchData: (PitchPlayerData | null)[] = FORMATION_POSITIONS.map((_, i) => {
@@ -238,55 +223,8 @@ export function FootballPitch({
   const W = 320;
   const H = 440;
 
-  function svgCoords(e: React.PointerEvent): { x: number; y: number } | null {
-    if (!svgRef.current) return null;
-    const rect = svgRef.current.getBoundingClientRect();
-    return {
-      x: ((e.clientX - rect.left) / rect.width) * W,
-      y: ((e.clientY - rect.top) / rect.height) * H,
-    };
-  }
-
-  function nearestSlot(x: number, y: number, exclude: number | null): number | null {
-    let best = null;
-    let bestDist = 45;
-    for (let i = 0; i < FORMATION_POSITIONS.length; i++) {
-      if (i === exclude || pitchData[i] == null) continue;
-      const [px, py] = FORMATION_POSITIONS[i];
-      const d = Math.hypot(x - px, y - py);
-      if (d < bestDist) { bestDist = d; best = i; }
-    }
-    return best;
-  }
-
-  const handlePointerDown = (slotIndex: number) => (e: React.PointerEvent) => {
-    if (!onSwapSlots) return;
-    e.stopPropagation();
-    setDragSrc(slotIndex);
-    setDropDst(slotIndex);
-    (e.currentTarget.closest("svg") as SVGSVGElement | null)?.setPointerCapture(e.pointerId);
-  };
-
-  const handleSvgPointerMove = (e: React.PointerEvent) => {
-    if (dragSrc === null || !onSwapSlots) return;
-    const coords = svgCoords(e);
-    if (!coords) return;
-    const nearest = nearestSlot(coords.x, coords.y, dragSrc);
-    setDropDst(nearest);
-  };
-
-  const handleSvgPointerUp = (e: React.PointerEvent) => {
-    if (dragSrc !== null && dropDst !== null && dragSrc !== dropDst && onSwapSlots) {
-      onSwapSlots(dragSrc, dropDst);
-    }
-    setDragSrc(null);
-    setDropDst(null);
-    try { (e.currentTarget as SVGSVGElement).releasePointerCapture(e.pointerId); } catch {}
-  };
-
   const handlePlayerClick = onPlayerClick
     ? (pitchPlayer: PitchPlayerData) => {
-        if (dragSrc !== null) return;
         const original = players.find((p) => p.id === pitchPlayer.id);
         if (original) onPlayerClick(original);
       }
@@ -300,15 +238,12 @@ export function FootballPitch({
         </div>
       ) : (
         <svg
-          ref={svgRef}
           viewBox={`0 0 ${W} ${H}`}
           width="100%"
           height="100%"
           preserveAspectRatio="none"
-          style={{ display: "block", touchAction: onSwapSlots ? "none" : undefined }}
+          style={{ display: "block" }}
           xmlns="http://www.w3.org/2000/svg"
-          onPointerMove={onSwapSlots ? handleSvgPointerMove : undefined}
-          onPointerUp={onSwapSlots ? handleSvgPointerUp : undefined}
         >
           <defs>
             <linearGradient id="pitchGrad" x1="0" y1="0" x2="0" y2="1">
@@ -340,31 +275,18 @@ export function FootballPitch({
             <path d="M 298 418 A 10 10 0 0 1 308 428" />
           </g>
 
-          {onSwapSlots && dragSrc !== null && (
-            <text x={W / 2} y={H / 2 + 85} textAnchor="middle" fill="rgba(255,255,255,0.4)" fontSize={9} fontFamily="Inter, sans-serif">
-              Solte sobre outro jogador para trocar
-            </text>
-          )}
-
           {pitchData.map((player, i) => {
             if (!player) return null;
             const [x, y] = FORMATION_POSITIONS[i];
             return (
-              <g
+              <PlayerCircle
                 key={`${player.id}-${i}`}
-                onPointerDown={onSwapSlots ? handlePointerDown(i) : undefined}
-                style={{ cursor: onSwapSlots ? "grab" : undefined }}
-              >
-                <PlayerCircle
-                  x={x}
-                  y={y}
-                  player={player}
-                  onClick={handlePlayerClick}
-                  highlighted={highlightedPlayerId === player.id}
-                  dragging={dragSrc === i}
-                  dropTarget={dropDst === i && dragSrc !== null && dragSrc !== i}
-                />
-              </g>
+                x={x}
+                y={y}
+                player={player}
+                onClick={handlePlayerClick}
+                highlighted={highlightedPlayerId === player.id}
+              />
             );
           })}
         </svg>
