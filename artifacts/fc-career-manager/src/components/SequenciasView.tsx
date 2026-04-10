@@ -43,50 +43,59 @@ function matchQualifies(m: MatchRecord, key: StreakKey): boolean {
 
 const EMPTY_RECORD: StreakRecord = { count: 0, startDate: null, endDate: null };
 
+const HOME_ONLY_KEYS: Set<StreakKey> = new Set([
+  "vitoriasEmCasa",
+  "invictaEmCasa",
+  "semSofrerEmCasa",
+]);
+
+function computeStreakForKey(
+  sorted: MatchRecord[],
+  key: StreakKey,
+): StreakEntry {
+  const stream = HOME_ONLY_KEYS.has(key)
+    ? sorted.filter((m) => m.location === "casa")
+    : sorted;
+
+  let curCount = 0;
+  let curStart: string | null = null;
+  let curEnd: string | null = null;
+  let bestRecord: StreakRecord = { ...EMPTY_RECORD };
+
+  for (const m of stream) {
+    if (matchQualifies(m, key)) {
+      if (curCount === 0) curStart = m.date;
+      curCount++;
+      curEnd = m.date;
+      if (curCount > bestRecord.count) {
+        bestRecord = { count: curCount, startDate: curStart, endDate: curEnd };
+      }
+    } else {
+      curCount = 0;
+      curStart = null;
+      curEnd = null;
+    }
+  }
+
+  return {
+    current: { count: curCount, startDate: curStart, endDate: curEnd },
+    best: bestRecord,
+  };
+}
+
 export function computeStreaks(matches: MatchRecord[]): AllStreaks {
   const sorted = [...matches].sort((a, b) => a.createdAt - b.createdAt);
 
-  const KEYS: StreakKey[] = [
-    "vitorias", "derrotas", "invicta", "semSofrer",
-    "comGols", "vitoriasEmCasa", "invictaEmCasa", "semSofrerEmCasa",
-  ];
-
-  const best: AllStreaks = {
-    vitorias:        { current: { ...EMPTY_RECORD }, best: { ...EMPTY_RECORD } },
-    derrotas:        { current: { ...EMPTY_RECORD }, best: { ...EMPTY_RECORD } },
-    invicta:         { current: { ...EMPTY_RECORD }, best: { ...EMPTY_RECORD } },
-    semSofrer:       { current: { ...EMPTY_RECORD }, best: { ...EMPTY_RECORD } },
-    comGols:         { current: { ...EMPTY_RECORD }, best: { ...EMPTY_RECORD } },
-    vitoriasEmCasa:  { current: { ...EMPTY_RECORD }, best: { ...EMPTY_RECORD } },
-    invictaEmCasa:   { current: { ...EMPTY_RECORD }, best: { ...EMPTY_RECORD } },
-    semSofrerEmCasa: { current: { ...EMPTY_RECORD }, best: { ...EMPTY_RECORD } },
+  return {
+    vitorias:        computeStreakForKey(sorted, "vitorias"),
+    derrotas:        computeStreakForKey(sorted, "derrotas"),
+    invicta:         computeStreakForKey(sorted, "invicta"),
+    semSofrer:       computeStreakForKey(sorted, "semSofrer"),
+    comGols:         computeStreakForKey(sorted, "comGols"),
+    vitoriasEmCasa:  computeStreakForKey(sorted, "vitoriasEmCasa"),
+    invictaEmCasa:   computeStreakForKey(sorted, "invictaEmCasa"),
+    semSofrerEmCasa: computeStreakForKey(sorted, "semSofrerEmCasa"),
   };
-
-  for (const key of KEYS) {
-    let curCount = 0;
-    let curStart: string | null = null;
-    let curEnd: string | null = null;
-
-    for (const m of sorted) {
-      if (matchQualifies(m, key)) {
-        if (curCount === 0) curStart = m.date;
-        curCount++;
-        curEnd = m.date;
-
-        if (curCount > best[key].best.count) {
-          best[key].best = { count: curCount, startDate: curStart, endDate: curEnd };
-        }
-      } else {
-        curCount = 0;
-        curStart = null;
-        curEnd = null;
-      }
-    }
-
-    best[key].current = { count: curCount, startDate: curStart, endDate: curEnd };
-  }
-
-  return best;
 }
 
 const STREAK_META: {

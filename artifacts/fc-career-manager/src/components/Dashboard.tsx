@@ -359,30 +359,8 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 flex-1">
-        {activeTab === "painel" && (
-          <PainelView
-            careerId={career.id}
-            clubName={career.clubName}
-            clubLogoUrl={logoUrl}
-            allPlayers={allPlayers}
-            season={career.season}
-            matches={matches}
-            transferCount={transfers.length}
-          />
-        )}
-        {activeTab === "partidas" && (
-          <PartidasView
-            careerId={career.id}
-            season={career.season}
-            clubName={career.clubName}
-            clubLogoUrl={logoUrl}
-            matches={matches}
-            allPlayers={allPlayers}
-            onMatchAdded={handleMatchAdded}
-          />
-        )}
-        {activeTab === "clube" && (
+      {activeTab === "clube" ? (
+        <div className="w-full flex-1 flex flex-col min-h-0">
           <ClubeView
             career={career}
             careerId={career.id}
@@ -395,22 +373,47 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
             onOverridesUpdated={refreshOverrides}
             hasApiKey={Boolean(getApiKey())}
           />
-        )}
-        {activeTab === "transferencias" && (
-          <TransferenciasView
-            careerId={career.id}
-            transfers={transfers}
-            season={career.season}
-            clubName={career.clubName}
-            clubLogoUrl={logoUrl}
-            allPlayers={allPlayers}
-            onTransferAdded={handleTransferAdded}
-          />
-        )}
-        {activeTab === "noticias" && (
-          <NoticiasView career={career} />
-        )}
-      </div>
+        </div>
+      ) : (
+        <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 flex-1">
+          {activeTab === "painel" && (
+            <PainelView
+              careerId={career.id}
+              clubName={career.clubName}
+              clubLogoUrl={logoUrl}
+              allPlayers={allPlayers}
+              season={career.season}
+              matches={matches}
+              transferCount={transfers.length}
+            />
+          )}
+          {activeTab === "partidas" && (
+            <PartidasView
+              careerId={career.id}
+              season={career.season}
+              clubName={career.clubName}
+              clubLogoUrl={logoUrl}
+              matches={matches}
+              allPlayers={allPlayers}
+              onMatchAdded={handleMatchAdded}
+            />
+          )}
+          {activeTab === "transferencias" && (
+            <TransferenciasView
+              careerId={career.id}
+              transfers={transfers}
+              season={career.season}
+              clubName={career.clubName}
+              clubLogoUrl={logoUrl}
+              allPlayers={allPlayers}
+              onTransferAdded={handleTransferAdded}
+            />
+          )}
+          {activeTab === "noticias" && (
+            <NoticiasView career={career} />
+          )}
+        </div>
+      )}
 
       <Settings isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} onReloadClubs={onReloadClubs} />
     </div>
