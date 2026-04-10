@@ -174,12 +174,14 @@ function AddPostModal({
   career,
   playerContextStr,
   historicalContext,
+  recentPosts,
   onClose,
   onSave,
 }: {
   career: Career;
   playerContextStr?: string;
   historicalContext?: string;
+  recentPosts?: NewsPost[];
   onClose: () => void;
   onSave: (post: NewsPost) => void;
 }) {
@@ -234,6 +236,14 @@ function AddPostModal({
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       if (userKey) headers["x-openai-key"] = userKey;
 
+      const recentPostsContext = recentPosts && recentPosts.length > 0
+        ? recentPosts.slice(0, 6).map((p) => ({
+            title: p.title,
+            category: p.category,
+            headline: p.content.split("\n").find((l) => l.trim().length > 10)?.trim().slice(0, 120) ?? p.content.slice(0, 120),
+          }))
+        : undefined;
+
       const res = await fetch("/api/noticias/generate", {
         method: "POST",
         headers,
@@ -244,6 +254,7 @@ function AddPostModal({
           category: aiCategory !== "auto" ? aiCategory : undefined,
           playersContext: playerContextStr || undefined,
           historicalContext: historicalContext || undefined,
+          recentPostsContext: recentPostsContext || undefined,
         }),
       });
       if (!res.ok) {
@@ -1205,6 +1216,7 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
         career={career}
         playerContextStr={playerContextStr || undefined}
         historicalContext={historicalContext}
+        recentPosts={posts.slice(0, 6)}
         onClose={() => setShowAddModal(false)}
         onSave={handleSavePost}
       />

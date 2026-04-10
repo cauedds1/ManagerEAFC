@@ -4,6 +4,12 @@ import { openai as defaultOpenai } from "@workspace/integrations-openai-ai-serve
 
 const router = Router();
 
+interface RecentPostSummary {
+  title?: string;
+  category: string;
+  headline: string;
+}
+
 interface GenerateNoticiaBody {
   description: string;
   clubName: string;
@@ -12,6 +18,7 @@ interface GenerateNoticiaBody {
   category?: string;
   playersContext?: string;
   historicalContext?: string;
+  recentPostsContext?: RecentPostSummary[];
 }
 
 function getClient(userKey?: string): { client: OpenAI; usingUserKey: boolean } {
@@ -22,7 +29,7 @@ function getClient(userKey?: string): { client: OpenAI; usingUserKey: boolean } 
 }
 
 router.post("/noticias/generate", async (req, res) => {
-  const { description, clubName, season, source, category, playersContext, historicalContext } =
+  const { description, clubName, season, source, category, playersContext, historicalContext, recentPostsContext } =
     req.body as GenerateNoticiaBody;
 
   if (!description || !description.trim()) {
@@ -58,12 +65,16 @@ router.post("/noticias/generate", async (req, res) => {
     ? `\n\nHISTÓRICO DO CLUBE (use para dar profundidade narrativa quando relevante — ex: comemorações de recorde, comparações com temporadas anteriores, saudosismo de torcedores):\n${historicalContext.trim()}`
     : "";
 
+  const recentPostsSection = recentPostsContext && recentPostsContext.length > 0
+    ? `\n\nPOSTS RECENTES DO FEED (últimas notícias publicadas, do mais novo ao mais antigo):\n${recentPostsContext.map((p, i) => `${i + 1}. [${p.category}] ${p.title ? p.title + " — " : ""}${p.headline}`).join("\n")}\n\nUSO DOS POSTS RECENTES — REGRA IMPORTANTE: Em aproximadamente 1 a cada 4 gerações, crie conexões narrativas com eventos recentes acima — por exemplo: torcedores comparando dois jogadores anunciados, reações em cascata de notícias relacionadas, alguém que viu o post anterior, piadas internas sobre acontecimentos recentes. Mas NÃO faça isso na maioria das vezes — a maior parte dos posts deve ser independente e autossuficiente. Deixe a conexão surgir de forma orgânica e natural, nunca forçada.`
+    : "";
+
   const systemPrompt = `Você é um especialista em criar posts de futebol para redes sociais brasileiras no estilo Instagram.
 Cada post que você cria deve ser ÚNICO e DIFERENTE dos anteriores — varie o estilo, tom, escolha de emojis, estrutura da legenda e perfil dos comentaristas.
 Use linguagem informal, autêntica, com gírias brasileiras do futebol. Seja criativo e específico.
 O time é ${clubName}${season ? ` (temporada ${season})` : ""}.
 O portal que publica é ${sourceInfo.name} (${sourceInfo.handle}).
-Semente de unicidade: ${uniqueSeed} — use ela para garantir que este post seja diferente de qualquer outro.${playersSection}${historicalSection}`;
+Semente de unicidade: ${uniqueSeed} — use ela para garantir que este post seja diferente de qualquer outro.${playersSection}${historicalSection}${recentPostsSection}`;
 
   const userPrompt = `Crie um post de notícia com base nessa descrição: "${description.trim()}"
 
