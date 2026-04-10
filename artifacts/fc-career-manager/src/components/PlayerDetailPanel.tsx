@@ -77,6 +77,22 @@ export function PlayerDetailPanel({
   const [stats, setStatsState] = useState(() => getPlayerStats(careerId, player.id));
   const [editing, setEditing] = useState(false);
 
+  const totalMatches = (stats.matchesAsStarter ?? 0) + (stats.matchesAsSubstitute ?? 0);
+  const avgRating = (() => {
+    const r = stats.recentRatings ?? [];
+    if (r.length === 0) return null;
+    return (r.reduce((a, b) => a + b, 0) / r.length).toFixed(1);
+  })();
+  const ratingColor = (() => {
+    if (!avgRating) return "rgba(255,255,255,0.3)";
+    const v = parseFloat(avgRating);
+    if (v >= 7.8) return "#34d399";
+    if (v >= 7.0) return "#a3e635";
+    if (v >= 6.0) return "#fbbf24";
+    if (v >= 5.0) return "#fb923c";
+    return "#f87171";
+  })();
+
   const displayName = override?.nameOverride ?? player.name;
   const displayNumber = override?.shirtNumber ?? player.number;
   const displayOverall = override?.overall;
@@ -181,6 +197,41 @@ export function PlayerDetailPanel({
                 {FAN_MORAL_LABELS[stats.fanMoral]}
               </span>
             </div>
+          </div>
+
+          {/* Computed stats strip */}
+          <div
+            className="grid grid-cols-3 gap-px rounded-xl overflow-hidden"
+            style={{ background: "rgba(255,255,255,0.05)" }}
+          >
+            {[
+              {
+                label: "Nota Média",
+                value: avgRating ?? "—",
+                color: ratingColor,
+                note: avgRating ? `${stats.recentRatings?.length ?? 0} jogos` : "sem dados",
+              },
+              {
+                label: "Partidas",
+                value: totalMatches,
+                color: "rgba(255,255,255,0.85)",
+                note: `${stats.matchesAsStarter ?? 0}T · ${stats.matchesAsSubstitute ?? 0}B`,
+              },
+              {
+                label: "Cartões",
+                value: (stats.yellowCards ?? 0) + (stats.redCards ?? 0) > 0
+                  ? `${stats.yellowCards ?? 0}🟡 ${stats.redCards ?? 0}🔴`
+                  : "—",
+                color: (stats.yellowCards ?? 0) >= 3 || (stats.redCards ?? 0) > 0 ? "#fb923c" : "rgba(255,255,255,0.35)",
+                note: (stats.totalOwnGoals ?? 0) > 0 ? `${stats.totalOwnGoals} gol c.` : "limpo",
+              },
+            ].map((item) => (
+              <div key={item.label} className="flex flex-col items-center gap-0.5 py-3 px-2" style={{ background: "rgba(255,255,255,0.025)" }}>
+                <span className="text-xs font-black tabular-nums" style={{ color: item.color }}>{item.value}</span>
+                <span className="text-white/35 text-[10px] font-semibold">{item.label}</span>
+                <span className="text-white/20 text-[9px]">{item.note}</span>
+              </div>
+            ))}
           </div>
 
           {/* Stats */}
