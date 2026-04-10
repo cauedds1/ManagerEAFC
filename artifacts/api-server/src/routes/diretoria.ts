@@ -266,7 +266,7 @@ Agora é sua vez de falar, ${speaker.name}.`;
       .replace(/SUGERIR_ENCERRAMENTO:\s*(sim|nao)/gi, "")
       .trim();
 
-    res.json({ reply, newMood, suggestClose, speakerId: speaker.id });
+    res.json({ reply, newMood, suggestClose, speakerMemberId: speaker.id });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     res.status(500).json({ error: "Erro ao processar turno da reunião", details: msg });

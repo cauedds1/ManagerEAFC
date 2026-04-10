@@ -603,7 +603,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize }: Diretor
             triggerMessage: currentMeeting.reason,
           }),
         });
-        const data = await res.json() as { reply: string; newMood: string; suggestClose: boolean; speakerId: string };
+        const data = await res.json() as { reply: string; newMood: string; suggestClose: boolean; speakerMemberId: string };
 
         const charMsg: MeetingMessage = {
           id: generateMessageId(),
@@ -692,7 +692,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize }: Diretor
           style={{ background: "rgba(var(--club-primary-rgb),0.2)", color: "var(--club-primary)", border: "1px solid rgba(var(--club-primary-rgb),0.3)" }}
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-          Adicionar Primeiro Membro
+          Criar Diretoria
         </button>
         {showCreateModal && (
           <CreateMemberModal
@@ -773,7 +773,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize }: Diretor
                   title="Convocar reunião"
                 >
                   <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                  Reunião
+                  Convocar Reunião
                 </button>
               )}
               <button

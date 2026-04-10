@@ -51,6 +51,12 @@ export interface MeetingRecord {
   closedAt?: number;
 }
 
+export interface BoardConversation {
+  memberId: string;
+  messages: DiretoriaMessage[];
+  updatedAt: number;
+}
+
 export interface PendingNotification {
   memberId: string;
   preview: string;
