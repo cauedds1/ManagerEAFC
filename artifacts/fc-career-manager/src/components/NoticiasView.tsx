@@ -30,6 +30,18 @@ const NEGATIVE_KEYWORDS = [
   "culpa", "culpado", "culpada", "responsável pelo",
 ];
 
+function allIndicesOf(text: string, term: string): number[] {
+  const indices: number[] = [];
+  let start = 0;
+  while (start < text.length) {
+    const idx = text.indexOf(term, start);
+    if (idx === -1) break;
+    indices.push(idx);
+    start = idx + 1;
+  }
+  return indices;
+}
+
 function scanPostForCriticism(
   content: string,
   comments: NewsPost["comments"],
@@ -41,17 +53,26 @@ function scanPostForCriticism(
     const nameParts = player.name.toLowerCase().split(" ");
     const lastName = nameParts[nameParts.length - 1];
     const firstName = nameParts[0];
-    const nameFound = fullText.includes(lastName) || (firstName.length > 3 && fullText.includes(firstName));
-    if (!nameFound) continue;
+    const nameIndices: number[] = [
+      ...allIndicesOf(fullText, lastName),
+      ...(firstName.length > 3 ? allIndicesOf(fullText, firstName) : []),
+    ];
+    if (nameIndices.length === 0) continue;
+    let found = false;
     for (const kw of NEGATIVE_KEYWORDS) {
-      const idx = fullText.indexOf(kw);
-      if (idx === -1) continue;
-      const nameIdx = fullText.lastIndexOf(lastName, idx + 80);
-      if (nameIdx !== -1 && Math.abs(nameIdx - idx) < 120) {
-        critiqued.push(player.id);
-        break;
+      const kwIndices = allIndicesOf(fullText, kw);
+      for (const kwIdx of kwIndices) {
+        for (const nameIdx of nameIndices) {
+          if (Math.abs(nameIdx - kwIdx) < 150) {
+            found = true;
+            break;
+          }
+        }
+        if (found) break;
       }
+      if (found) break;
     }
+    if (found) critiqued.push(player.id);
   }
   return [...new Set(critiqued)];
 }

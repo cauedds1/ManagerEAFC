@@ -489,6 +489,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
 
   useEffect(() => {
     if (triggerChecked || members.length === 0 || matches.length === 0) return;
+    if (allPlayers.length > 0 && playerPerformance.length === 0) return;
     setTriggerChecked(true);
 
     const lastChecked = Number(localStorage.getItem(`fc-diretoria-trigger-checked-${career.id}`) ?? "0");
@@ -524,7 +525,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
         }
       })
       .catch(() => {});
-  }, [triggerChecked, members, matches, career.id, buildClubContext]);
+  }, [triggerChecked, members, matches, playerPerformance, allPlayers, career.id, buildClubContext]);
 
   const handleOpenChat = (memberId: string) => {
     setSelectedMemberId(memberId);
