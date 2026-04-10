@@ -1,5 +1,7 @@
 import app from "./app";
 import { logger } from "./lib/logger";
+import { db, squadPlayersTable } from "@workspace/db";
+import { ne } from "drizzle-orm";
 
 const rawPort = process.env["PORT"];
 
@@ -15,11 +17,24 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-app.listen(port, (err) => {
-  if (err) {
-    logger.error({ err }, "Error listening on port");
-    process.exit(1);
+async function purgeInvalidSquadRows() {
+  try {
+    const result = await db
+      .delete(squadPlayersTable)
+      .where(ne(squadPlayersTable.source, "api-football@v2"));
+    logger.info({ rows: (result as unknown as { rowCount?: number }).rowCount ?? 0 }, "Purged legacy squad rows on startup");
+  } catch (err) {
+    logger.warn({ err }, "Failed to purge legacy squad rows on startup (non-fatal)");
   }
+}
 
-  logger.info({ port }, "Server listening");
+purgeInvalidSquadRows().then(() => {
+  app.listen(port, (err) => {
+    if (err) {
+      logger.error({ err }, "Error listening on port");
+      process.exit(1);
+    }
+
+    logger.info({ port }, "Server listening");
+  });
 });

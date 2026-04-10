@@ -166,7 +166,7 @@ function PlayerAutocomplete({
       }
     } catch { }
     setLoading(false);
-  }, [apiKey, allPlayers]);
+  }, [allPlayers]);
 
   const handleChange = (v: string) => {
     onChange(v);
