@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, squadPlayersTable, clubsTable } from "@workspace/db";
-import { ilike, sql, gt } from "drizzle-orm";
+import { eq, ilike, sql, gt } from "drizzle-orm";
 import { mapPosition } from "../lib/positions";
 
 const router = Router();
@@ -133,7 +133,7 @@ router.get("/players/search", async (req, res) => {
             positionPtBr: ptBr,
             photo: p.card ?? "",
             playerNumber: null,
-            source: "msmc@search",
+            source: "api-football@v2",
             cachedAt,
           });
         }
@@ -166,7 +166,7 @@ router.get("/players/search", async (req, res) => {
               positionPtBr: mapPosition(pos),
               photo: pl.photo ?? "",
               playerNumber: stats.games?.number ?? null,
-              source: "api-football@search",
+              source: "api-football@v2",
               cachedAt,
             });
           }
@@ -230,7 +230,7 @@ router.post("/players/sync", async (req, res) => {
     const syncedTeamRows = await db
       .selectDistinct({ teamId: squadPlayersTable.teamId })
       .from(squadPlayersTable)
-      .where(ilike(squadPlayersTable.source, "api-football%"));
+      .where(eq(squadPlayersTable.source, "api-football@v2"));
 
     const syncedIds = new Set(syncedTeamRows.map((r) => r.teamId));
     const pending = allClubs.filter((c) => !syncedIds.has(c.id));
@@ -289,7 +289,7 @@ router.post("/players/sync", async (req, res) => {
                 positionPtBr: mapPosition(pos),
                 photo: p.photo ?? "",
                 playerNumber: null as number | null,
-                source: "api-football@sync",
+                source: "api-football@v2",
                 cachedAt,
               };
             });

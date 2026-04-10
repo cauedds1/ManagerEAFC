@@ -163,7 +163,7 @@ router.get("/admin/seed", async (req, res) => {
     const existingSquads = await db
       .selectDistinct({ teamId: squadPlayersTable.teamId })
       .from(squadPlayersTable)
-      .where(sql`source LIKE 'api-football%'`);
+      .where(eq(squadPlayersTable.source, "api-football@v2"));
     const existingIds = new Set(existingSquads.map((r: { teamId: number }) => r.teamId));
 
     const allClubIds = Array.from(clubMap.keys()).filter((id) => !existingIds.has(id));
@@ -215,7 +215,7 @@ router.get("/admin/seed", async (req, res) => {
                 positionPtBr: mapPosition(p.position ?? ""),
                 photo: p.photo ?? "",
                 playerNumber: p.number ?? null,
-                source: "api-football@sync",
+                source: "api-football@v2",
                 cachedAt,
               }));
 

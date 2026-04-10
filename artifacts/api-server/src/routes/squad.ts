@@ -248,7 +248,7 @@ router.post("/squad/:teamId/fetch", async (req, res) => {
 
     return res.json({
       players,
-      source: "api-football",
+      source: "api-football@v2",
       cachedAt: Date.now(),
       schemaVersion: "v2",
     });
