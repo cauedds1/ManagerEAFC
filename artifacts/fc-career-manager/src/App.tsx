@@ -8,6 +8,7 @@ import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { applyTheme, resetTheme, extractColorsFromImage } from "@/lib/themeManager";
 import { getClubColors } from "@/lib/clubColors";
 import { APIFOOTBALL_TO_FC26_NAME } from "@/lib/footballApiMap";
+import { getSquad } from "@/lib/squadCache";
 import {
   fetchBackendClubList,
   getCachedClubList,
@@ -247,6 +248,11 @@ export default function App() {
           clubSecondary: newCareer.clubSecondary,
           updatedAt: Date.now(),
         };
+      }
+
+      if (careerToEnter.clubId > 0) {
+        const fc26Name = APIFOOTBALL_TO_FC26_NAME[careerToEnter.clubName];
+        await getSquad(careerToEnter.clubId, careerToEnter.clubName, fc26Name).catch(() => {});
       }
 
       saveCareer(careerToEnter);

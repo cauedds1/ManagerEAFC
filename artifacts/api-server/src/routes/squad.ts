@@ -111,10 +111,12 @@ async function fetchMsmcPositions(fc26Name: string): Promise<Map<string, string>
     const res = await fetch(`${MSMC_BASE}/players?game=fc26&team=${encodeURIComponent(fc26Name)}`);
     if (!res.ok) return map;
     const raw = await res.json();
-    const arr: Array<{ name?: string; position?: string }> = Array.isArray(raw) ? raw : (raw?.data ?? []);
+    const arr: Array<{ name?: string; playerName?: string; position?: string }> =
+      Array.isArray(raw) ? raw : (raw?.data ?? raw?.players ?? []);
     for (const p of arr) {
-      if (p.name && p.position) {
-        map.set(normalizeName(p.name), p.position);
+      const pName = p.playerName ?? p.name;
+      if (pName && p.position) {
+        map.set(normalizeName(pName), p.position);
       }
     }
   } catch {}
@@ -168,6 +170,24 @@ async function buildAndSaveSquad(teamId: number, fc26Name?: string): Promise<Squ
   return players;
 }
 
+function rowsToResponse(rows: typeof squadPlayersTable.$inferSelect[]) {
+  const [rawSource, schemaVersion = null] = rows[0].source.split("@");
+  return {
+    players: rows.map((r) => ({
+      id: r.playerId,
+      name: r.name,
+      age: r.age,
+      position: r.position,
+      positionPtBr: r.positionPtBr,
+      photo: r.photo,
+      number: r.playerNumber ?? undefined,
+    })),
+    source: rawSource,
+    cachedAt: Number(rows[0].cachedAt),
+    schemaVersion,
+  };
+}
+
 router.get("/squad/:teamId", async (req, res) => {
   try {
     const teamId = parseInt(req.params.teamId ?? "", 10);
@@ -180,27 +200,27 @@ router.get("/squad/:teamId", async (req, res) => {
       .from(squadPlayersTable)
       .where(eq(squadPlayersTable.teamId, teamId));
 
-    if (rows.length === 0) return res.status(204).end();
+    const cachedAt = rows.length > 0 ? Number(rows[0].cachedAt) : 0;
+    const stale = rows.length === 0 || Date.now() - cachedAt > SQUAD_TTL_MS;
 
-    const cachedAt = Number(rows[0].cachedAt);
-    if (Date.now() - cachedAt > SQUAD_TTL_MS) return res.status(204).end();
+    if (!stale) return res.json(rowsToResponse(rows));
 
-    const [rawSource, schemaVersion = null] = rows[0].source.split("@");
+    if (!process.env.API_FOOTBALL_KEY) return res.status(204).end();
 
-    return res.json({
-      players: rows.map((r) => ({
-        id: r.playerId,
-        name: r.name,
-        age: r.age,
-        position: r.position,
-        positionPtBr: r.positionPtBr,
-        photo: r.photo,
-        number: r.playerNumber ?? undefined,
-      })),
-      source: rawSource,
-      cachedAt,
-      schemaVersion,
-    });
+    const fc26Name = typeof req.query.fc26Name === "string" ? req.query.fc26Name : undefined;
+    const players = await buildAndSaveSquad(teamId, fc26Name);
+    if (!players || players.length === 0) {
+      if (rows.length > 0) return res.json(rowsToResponse(rows));
+      return res.status(204).end();
+    }
+
+    const freshRows = await db
+      .select()
+      .from(squadPlayersTable)
+      .where(eq(squadPlayersTable.teamId, teamId));
+
+    if (freshRows.length === 0) return res.status(204).end();
+    return res.json(rowsToResponse(freshRows));
   } catch (err) {
     console.error("GET /squad/:teamId error:", err);
     return res.status(500).json({ error: "Internal server error" });

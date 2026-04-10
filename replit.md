@@ -69,7 +69,7 @@ Brazilian Portuguese companion app for EA FC 26 career mode.
 - `PUT /api/clubs` → replaces club list atomically (transaction: DELETE all + INSERT in 200-row chunks)
 - `POST /api/clubs/fetch` → backend fetches all leagues (passed as `{leagues}` in body) from API-Football using `API_FOOTBALL_KEY`, saves to DB. Returns `{ok, count}`.
 - `DELETE /api/clubs` → clears club list cache
-- `GET /api/squad/:teamId` → 200 `{players, source, cachedAt, schemaVersion}` if fresh (<7 days), 204 if empty/stale. Source format stored as `"api-football@v2"`, split on `@` for response.
+- `GET /api/squad/:teamId` → 200 `{players, source, cachedAt, schemaVersion}` from DB if fresh (<7 days). If empty/stale **and** `API_FOOTBALL_KEY` is set, auto-fetches from API-Football + MSMC enrichment, saves to DB, returns fresh data. Accepts `?fc26Name=...` query param for MSMC lookup. Returns 204 if no data can be obtained.
 - `PUT /api/squad/:teamId` → replaces squad atomically (transaction: DELETE WHERE team_id + INSERT up to 100 rows per chunk)
 - `POST /api/squad/:teamId/fetch` → fetches squad from API-Football using `API_FOOTBALL_KEY`, enriches positions via MSMC (only `position` field updated), saves to DB, returns `{players, source, cachedAt, schemaVersion}`. Body: `{fc26Name?}` (optional — used for MSMC lookup).
 - `GET /api/proxy/image?url=...` → proxies images from allowed domains (media.api-sports.io, cdn.sofifa.net) with CORS headers. Cached 24h.

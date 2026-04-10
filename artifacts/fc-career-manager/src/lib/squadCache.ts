@@ -161,10 +161,11 @@ function writeLocalCache(teamId: number, clubName: string, result: SquadResult):
   } catch {}
 }
 
-async function readDbSquad(teamId: number): Promise<SquadResult | null> {
+async function readDbSquad(teamId: number, fc26Name?: string): Promise<SquadResult | null> {
   if (teamId <= 0) return null;
   try {
-    const res = await fetch(`/api/squad/${teamId}`);
+    const params = fc26Name ? `?fc26Name=${encodeURIComponent(fc26Name)}` : "";
+    const res = await fetch(`/api/squad/${teamId}${params}`);
     if (res.status === 204 || !res.ok) return null;
     const data = await res.json() as {
       players: SquadPlayer[];
@@ -227,16 +228,10 @@ export async function getSquad(teamId: number, clubName: string, fc26Name?: stri
   const localCached = readLocalCache(teamId, clubName);
   if (localCached) return localCached;
 
-  const dbCached = await readDbSquad(teamId);
-  if (dbCached) {
-    writeLocalCache(teamId, clubName, dbCached);
-    return dbCached;
-  }
-
-  const fetched = await fetchSquadFromBackend(teamId, fc26Name);
-  if (fetched) {
-    writeLocalCache(teamId, clubName, fetched);
-    return fetched;
+  const dbResult = await readDbSquad(teamId, fc26Name);
+  if (dbResult) {
+    writeLocalCache(teamId, clubName, dbResult);
+    return dbResult;
   }
 
   return { players: [], source: "api-football", cachedAt: Date.now() };
