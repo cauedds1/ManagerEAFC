@@ -229,11 +229,6 @@ const SOURCE_SIDEBAR_COLOR: Record<NewsSource, { color: string; bg: string }> = 
   fanpage: { color: "var(--club-primary)", bg: "rgba(var(--club-primary-rgb),0.15)" },
 };
 
-const SOURCE_SIDEBAR_LABEL: Record<NewsSource, string> = {
-  tnt:     "TNT Sports",
-  espn:    "ESPN",
-  fanpage: "FanPage",
-};
 
 export function NoticiasView({ career }: NoticiasViewProps) {
   const [posts, setPosts] = useState<NewsPost[]>([]);
@@ -428,7 +423,7 @@ export function NoticiasView({ career }: NoticiasViewProps) {
                           className="text-xs font-semibold"
                           style={{ color: active ? cfg.color : "rgba(255,255,255,0.5)" }}
                         >
-                          {SOURCE_SIDEBAR_LABEL[id]}
+                          {SOURCE_LABELS[id]}
                         </span>
                         <span
                           className="text-xs font-bold tabular-nums"
