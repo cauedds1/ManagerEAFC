@@ -33,6 +33,8 @@ export interface PlayerMatchStats {
   substitutedAtMinute?: number;
   substitutedInPlayerId?: number;
   substitutedForPlayerId?: number;
+  yellowCard?: boolean;
+  redCard?: boolean;
   passes?: number;
   passAccuracy?: number;
   keyPasses?: number;

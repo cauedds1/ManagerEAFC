@@ -59,6 +59,9 @@ export interface PlayerSeasonStats {
   totalMinutes: number;
   yellowCards: number;
   redCards: number;
+  totalOwnGoals: number;
+  totalMissedPenalties: number;
+  recentRatings: number[];
   mood: Mood;
   fanMoral: FanMoral;
 }

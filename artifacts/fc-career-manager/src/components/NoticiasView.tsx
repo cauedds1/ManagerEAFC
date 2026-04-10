@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import type { Career } from "@/types/career";
 import type { NewsPost, NewsSource, NewsCategory } from "@/types/noticias";
 import { getPosts, savePosts, addPost, generatePostId, generateCommentId } from "@/lib/noticiaStorage";
@@ -8,9 +8,50 @@ import { NoticiaPost } from "./NoticiaPost";
 import { getPortalPhotos, PORTAL_PHOTOS_EVENT, type PortalPhotos } from "@/lib/portalPhotosStorage";
 import { useImageUpload } from "@/hooks/useImageUpload";
 import { ImageCropModal } from "./ImageCropModal";
+import type { SquadPlayer } from "@/lib/squadCache";
+import type { MatchRecord } from "@/types/match";
+import { buildPlayerPerformanceContext, buildPlayerContextString } from "@/lib/playerContext";
+import { stepPlayerMood } from "@/lib/playerPerformanceEngine";
 
 interface NoticiasViewProps {
   career: Career;
+  allPlayers?: SquadPlayer[];
+  matches?: MatchRecord[];
+}
+
+const NEGATIVE_KEYWORDS = [
+  "terrível", "horrível", "péssimo", "péssima", "desastroso", "desastrosa",
+  "falhou", "falha", "desperdiçou", "desperdiça", "errou", "perdeu",
+  "gol contra", "pênalti perdido", "pênalti desperdiçado",
+  "decepcionante", "decepciona", "fraco", "fraca", "ruim",
+  "vaiado", "vaiada", "criticado", "criticada", "contestado", "contestada",
+  "culpa", "culpado", "culpada", "responsável pelo",
+];
+
+function scanPostForCriticism(
+  content: string,
+  comments: NewsPost["comments"],
+  players: SquadPlayer[],
+): number[] {
+  const critiqued: number[] = [];
+  const fullText = [content, ...comments.map((c) => c.content)].join(" ").toLowerCase();
+  for (const player of players) {
+    const nameParts = player.name.toLowerCase().split(" ");
+    const lastName = nameParts[nameParts.length - 1];
+    const firstName = nameParts[0];
+    const nameFound = fullText.includes(lastName) || (firstName.length > 3 && fullText.includes(firstName));
+    if (!nameFound) continue;
+    for (const kw of NEGATIVE_KEYWORDS) {
+      const idx = fullText.indexOf(kw);
+      if (idx === -1) continue;
+      const nameIdx = fullText.lastIndexOf(lastName, idx + 80);
+      if (nameIdx !== -1 && Math.abs(nameIdx - idx) < 120) {
+        critiqued.push(player.id);
+        break;
+      }
+    }
+  }
+  return [...new Set(critiqued)];
 }
 
 const SOURCE_LABELS: Record<NewsSource, string> = {
@@ -101,10 +142,12 @@ function CategoryButton({
 
 function AddPostModal({
   career,
+  playerContextStr,
   onClose,
   onSave,
 }: {
   career: Career;
+  playerContextStr?: string;
   onClose: () => void;
   onSave: (post: NewsPost) => void;
 }) {
@@ -167,6 +210,7 @@ function AddPostModal({
           clubName: career.clubName,
           source: aiSource !== "auto" ? aiSource : undefined,
           category: aiCategory !== "auto" ? aiCategory : undefined,
+          playersContext: playerContextStr || undefined,
         }),
       });
       if (!res.ok) {
@@ -730,7 +774,7 @@ const SOURCE_SIDEBAR_COLOR: Record<NewsSource, { color: string; bg: string }> = 
 };
 
 
-export function NoticiasView({ career }: NoticiasViewProps) {
+export function NoticiasView({ career, allPlayers = [], matches: _matches = [] }: NoticiasViewProps) {
   const [posts, setPosts] = useState<NewsPost[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [filterSource, setFilterSource] = useState<NewsSource | "all">("all");
@@ -753,9 +797,21 @@ export function NoticiasView({ career }: NoticiasViewProps) {
     setPosts(stored);
   }, [career.id]);
 
+  const playerContextStr = useMemo(() => {
+    if (allPlayers.length === 0) return "";
+    const items = buildPlayerPerformanceContext(career.id, allPlayers);
+    return buildPlayerContextString(items);
+  }, [career.id, allPlayers]);
+
   const handleSavePost = (post: NewsPost) => {
     addPost(career.id, post);
     setPosts((prev) => [post, ...prev]);
+    if (allPlayers.length > 0 && (post.content || post.comments?.length)) {
+      const criticised = scanPostForCriticism(post.content, post.comments ?? [], allPlayers);
+      for (const playerId of criticised) {
+        stepPlayerMood(career.id, playerId, -1);
+      }
+    }
   };
 
   const normalizedQuery = searchQuery.trim().toLowerCase();
@@ -1069,6 +1125,7 @@ export function NoticiasView({ career }: NoticiasViewProps) {
     {showAddModal && (
       <AddPostModal
         career={career}
+        playerContextStr={playerContextStr || undefined}
         onClose={() => setShowAddModal(false)}
         onSave={handleSavePost}
       />

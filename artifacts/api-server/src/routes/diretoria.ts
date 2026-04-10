@@ -49,6 +49,19 @@ interface MemberProfile {
   patience: number;
 }
 
+interface PlayerPerfItem {
+  name: string;
+  position: string;
+  form: string;
+  avgRating: number;
+  fanMoral: string;
+  mood: string;
+  goals: number;
+  assists: number;
+  appearances: number;
+  incidents: string[];
+}
+
 interface ChatHistoryItem {
   role: "user" | "character";
   content: string;
@@ -344,10 +357,11 @@ Responda APENAS com JSON puro (sem markdown):
 });
 
 router.post("/diretoria/check-triggers", async (req, res) => {
-  const { context, members, lastCheckedAt } = req.body as {
+  const { context, members, lastCheckedAt, playerPerformance } = req.body as {
     context: ClubContext;
     members: MemberProfile[];
     lastCheckedAt: number;
+    playerPerformance?: PlayerPerfItem[];
   };
 
   const recentMatches = context.recentMatches.slice(0, 8);
@@ -437,6 +451,55 @@ router.post("/diretoria/check-triggers", async (req, res) => {
         preview: "Preciso revisar o orçamento com você — as contratações estão pesando.",
       });
     }
+
+    if (playerPerformance && playerPerformance.length > 0) {
+      const worstPlayers = playerPerformance.filter(
+        (p) => p.form === "péssima" || p.form === "ruim" || p.incidents.length >= 2,
+      ).slice(0, 3);
+
+      const vaiados = playerPerformance.filter((p) => p.fanMoral === "Vaiado");
+      const idolos = playerPerformance.filter((p) => p.fanMoral === "Ídolo" && p.goals + p.assists >= 8);
+
+      if (worstPlayers.length >= 2 && auxTecnico && !notifications.find((n) => n.memberId === auxTecnico.id)) {
+        const names = worstPlayers.map((p) => p.name.split(" ")[0]).join(", ");
+        notifications.push({
+          memberId: auxTecnico.id,
+          preview: `Precisamos conversar sobre ${names} — o desempenho preocupa.`,
+        });
+      }
+
+      if (vaiados.length >= 1 && presidente && !notifications.find((n) => n.memberId === presidente.id)) {
+        notifications.push({
+          memberId: presidente.id,
+          preview: `${vaiados[0].name.split(" ")[0]} está sendo vaiado. A torcida está insatisfeita.`,
+        });
+      }
+
+      if (idolos.length >= 1 && !meetingTrigger && winStreak === 0 && lossStreak >= 3 && presidente) {
+        const topScorer = [...playerPerformance].sort((a, b) => (b.goals + b.assists) - (a.goals + a.assists))[0];
+        if (topScorer && !notifications.find((n) => n.memberId === presidente.id)) {
+          notifications.push({
+            memberId: presidente.id,
+            preview: `${topScorer.name.split(" ")[0]} está brilhando mas o time vai mal — precisamos de reforços?`,
+          });
+        }
+      }
+
+      const positionsUnderperforming = [
+        ...new Set(
+          playerPerformance
+            .filter((p) => p.form === "péssima" && p.appearances >= 5)
+            .map((p) => p.position),
+        ),
+      ].slice(0, 2);
+
+      if (positionsUnderperforming.length > 0 && gestor && !notifications.find((n) => n.memberId === gestor.id)) {
+        notifications.push({
+          memberId: gestor.id,
+          preview: `Temos lacunas em ${positionsUnderperforming.join(", ")} — devo pesquisar reforços?`,
+        });
+      }
+    }
   }
 
   const unique = notifications.filter(
@@ -444,6 +507,91 @@ router.post("/diretoria/check-triggers", async (req, res) => {
   );
 
   res.json({ notifications: unique, meetingTrigger });
+});
+
+router.post("/diretoria/suggest-transfer", async (req, res) => {
+  const { context, position, currentSquad } = req.body as {
+    context: ClubContext;
+    position: string;
+    currentSquad: Array<{ name: string; position: string }>;
+  };
+
+  if (!position?.trim()) {
+    res.status(400).json({ error: "position é obrigatório" });
+    return;
+  }
+
+  const userKey = (req.headers["x-openai-key"] as string | undefined) ?? "";
+  const { client, usingUserKey } = getClient(userKey);
+
+  const tier = clubTierFromLeague(context.clubLeague);
+  const squadStr = currentSquad.slice(0, 20).map((p) => `${p.name} (${p.position})`).join(", ");
+
+  const systemPrompt = `Você é um diretor de futebol experiente especializado em mercado da bola. Você conhece profundamente o futebol mundial e brasileiro, e faz indicações realistas de reforços baseadas no perfil financeiro e competitivo do clube.`;
+
+  const userPrompt = `Clube: ${context.clubName} — ${context.clubLeague} (${tier})
+Posição que precisa de reforço: ${position}
+Elenco atual (principais): ${squadStr || "não informado"}
+
+Sugira 4 jogadores REAIS que este clube poderia contratar para a posição de ${position}, levando em conta:
+- O nível e divisão do clube (${tier}) — ajuste os nomes à realidade financeira
+- Jogadores que já passaram por ligas europeias ou brasileiras de alto nível
+- Variedade: 1-2 opções de menor custo (sub-25 promissores ou veteranos), 1-2 opções de perfil médio
+- Inclua jogadores que estejam livres ou com contratos expirando quando possível
+
+Responda APENAS com JSON puro (sem markdown):
+{
+  "suggestions": [
+    {
+      "name": "<Nome Real do Jogador>",
+      "position": "${position}",
+      "age": <idade>,
+      "currentClub": "<clube atual ou 'Livre'>",
+      "nationality": "<nacionalidade>",
+      "estimatedFee": "<valor estimado em € ou 'Livre'>",
+      "reasoning": "<frase curta explicando o encaixe no perfil do clube>"
+    }
+  ]
+}`;
+
+  try {
+    const params = usingUserKey
+      ? { model: "gpt-4o", max_tokens: 1024 }
+      : { model: "gpt-5.2", max_completion_tokens: 1024 };
+
+    const completion = await client.chat.completions.create({
+      ...params,
+      stream: false,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+    } as Parameters<typeof client.chat.completions.create>[0]);
+
+    const raw =
+      (completion as OpenAI.Chat.Completions.ChatCompletion).choices[0]?.message?.content ?? "";
+    const jsonStr = raw
+      .replace(/^```json\s*/i, "")
+      .replace(/^```\s*/i, "")
+      .replace(/```\s*$/i, "")
+      .trim();
+    const parsed = JSON.parse(jsonStr) as {
+      suggestions: Array<{
+        name: string;
+        position: string;
+        age: number;
+        currentClub: string;
+        nationality: string;
+        estimatedFee: string;
+        reasoning: string;
+      }>;
+    };
+
+    res.json({ suggestions: parsed.suggestions ?? [] });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: "Erro ao sugerir reforços", details: msg });
+  }
 });
 
 export default router;

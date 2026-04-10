@@ -613,6 +613,8 @@ function PlayerLineupRow({
               {isSub && <span className="text-xs" style={{ color: "#2dd4bf" }}>sub</span>}
               {stats.goals.length > 0 && <span className="text-xs text-white/60">⚽ {stats.goals.length}</span>}
               {stats.ownGoal && <span className="text-xs" style={{ color: "#f87171" }}>GC</span>}
+              {stats.yellowCard && <span className="text-xs">🟨</span>}
+              {stats.redCard && <span className="text-xs">🟥</span>}
               {stats.substituted && <span className="text-xs text-white/40">🔄</span>}
               {stats.injured && <span className="text-xs text-white/40">🚑</span>}
             </div>
@@ -732,6 +734,12 @@ function PlayerLineupRow({
                     <NumericInput value={stats.missedPenaltyMinute} onChange={(v) => onUpdate({ missedPenaltyMinute: v })} min={1} max={120} placeholder="Min" className="w-16" />
                   </div>
                 )}
+              </div>
+              <div className="glass rounded-xl p-3">
+                <Toggle checked={stats.yellowCard ?? false} onChange={(v) => onUpdate({ yellowCard: v })} label="Cartão amarelo" />
+              </div>
+              <div className="glass rounded-xl p-3">
+                <Toggle checked={stats.redCard ?? false} onChange={(v) => onUpdate({ redCard: v })} label="Cartão vermelho" />
               </div>
               <div className="glass rounded-xl p-3 space-y-2">
                 <Toggle checked={stats.injured} onChange={(v) => onUpdate({ injured: v, injuryMinute: v ? stats.injuryMinute : undefined })} label="Lesionado" />

@@ -14,6 +14,7 @@ import { getTransfers, addTransfer } from "@/lib/transferStorage";
 import type { TransferRecord } from "@/types/transfer";
 import { getMatches } from "@/lib/matchStorage";
 import type { MatchRecord } from "@/types/match";
+import { runPerformanceEngine } from "@/lib/playerPerformanceEngine";
 import { PainelView } from "./PainelView";
 import { ClubeView } from "./ClubeView";
 import { TransferenciasView } from "./TransferenciasView";
@@ -209,7 +210,8 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
 
   const handleMatchAdded = useCallback((match: MatchRecord) => {
     setMatches((prev) => [...prev, match]);
-  }, []);
+    setTimeout(() => runPerformanceEngine(career.id), 50);
+  }, [career.id]);
 
   const commitSeason = () => {
     const trimmed = seasonDraft.trim();
@@ -428,7 +430,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
             />
           )}
           {activeTab === "noticias" && (
-            <NoticiasView career={career} />
+            <NoticiasView career={career} allPlayers={allPlayers} matches={matches} />
           )}
           {activeTab === "diretoria" && (
             <DiretoriaView
@@ -436,6 +438,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
               matches={matches}
               transfers={transfers}
               squadSize={allPlayers.length}
+              allPlayers={allPlayers}
             />
           )}
           {activeTab === "configuracoes" && (

@@ -18,6 +18,9 @@ export function defaultStats(playerId: number): PlayerSeasonStats {
     totalMinutes: 0,
     yellowCards: 0,
     redCards: 0,
+    totalOwnGoals: 0,
+    totalMissedPenalties: 0,
+    recentRatings: [],
     mood: "neutro",
     fanMoral: "neutro",
   };

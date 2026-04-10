@@ -10,6 +10,7 @@ interface GenerateNoticiaBody {
   season?: string;
   source?: string;
   category?: string;
+  playersContext?: string;
 }
 
 function getClient(userKey?: string): { client: OpenAI; usingUserKey: boolean } {
@@ -20,7 +21,7 @@ function getClient(userKey?: string): { client: OpenAI; usingUserKey: boolean } 
 }
 
 router.post("/noticias/generate", async (req, res) => {
-  const { description, clubName, season, source, category } =
+  const { description, clubName, season, source, category, playersContext } =
     req.body as GenerateNoticiaBody;
 
   if (!description || !description.trim()) {
@@ -48,12 +49,16 @@ router.post("/noticias/generate", async (req, res) => {
 
   const uniqueSeed = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
+  const playersSection = playersContext?.trim()
+    ? `\n\nELENCO — CONTEXTO DE DESEMPENHO (use com moderação para enriquecer comentários — nem todo comentário precisa mencionar jogadores; prefira os mais marcantes como ídolos, artilheiros ou jogadores com incidentes recentes):\n${playersContext.trim()}`
+    : "";
+
   const systemPrompt = `Você é um especialista em criar posts de futebol para redes sociais brasileiras no estilo Instagram.
 Cada post que você cria deve ser ÚNICO e DIFERENTE dos anteriores — varie o estilo, tom, escolha de emojis, estrutura da legenda e perfil dos comentaristas.
 Use linguagem informal, autêntica, com gírias brasileiras do futebol. Seja criativo e específico.
 O time é ${clubName}${season ? ` (temporada ${season})` : ""}.
 O portal que publica é ${sourceInfo.name} (${sourceInfo.handle}).
-Semente de unicidade: ${uniqueSeed} — use ela para garantir que este post seja diferente de qualquer outro.`;
+Semente de unicidade: ${uniqueSeed} — use ela para garantir que este post seja diferente de qualquer outro.${playersSection}`;
 
   const userPrompt = `Crie um post de notícia com base nessa descrição: "${description.trim()}"
 

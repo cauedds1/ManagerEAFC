@@ -32,6 +32,8 @@ export function generateGoalId(): string {
   return `g-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`;
 }
 
+const MAX_RECENT_RATINGS = 10;
+
 export function applyMatchToPlayerStats(
   careerId: string,
   starterIds: number[],
@@ -81,6 +83,11 @@ export function applyMatchToPlayerStats(
       }
     }
 
+    const newRatings = [
+      ...(current.recentRatings ?? []),
+      pStats.rating,
+    ].slice(-MAX_RECENT_RATINGS);
+
     const updated: PlayerSeasonStats = {
       ...current,
       matchesAsStarter: current.matchesAsStarter + (isStarter ? 1 : 0),
@@ -88,6 +95,11 @@ export function applyMatchToPlayerStats(
       totalMinutes: current.totalMinutes + Math.max(0, minutes),
       goals: current.goals + goalsScored,
       assists: current.assists + assistsGiven,
+      yellowCards: current.yellowCards + (pStats.yellowCard ? 1 : 0),
+      redCards: current.redCards + (pStats.redCard ? 1 : 0),
+      totalOwnGoals: (current.totalOwnGoals ?? 0) + (pStats.ownGoal ? 1 : 0),
+      totalMissedPenalties: (current.totalMissedPenalties ?? 0) + (pStats.missedPenalty ? 1 : 0),
+      recentRatings: newRatings,
     };
 
     setPlayerStats(careerId, playerId, updated);

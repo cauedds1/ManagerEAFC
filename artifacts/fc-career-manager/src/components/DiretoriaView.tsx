@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import type { Career } from "@/types/career";
 import type { MatchRecord } from "@/types/match";
 import type { TransferRecord } from "@/types/transfer";
@@ -30,12 +30,25 @@ import {
 } from "@/lib/diretoriaStorage";
 import { getLeaguePosition } from "@/lib/leagueStorage";
 import { getOpenAIKey } from "@/lib/openaiKeyStorage";
+import type { SquadPlayer } from "@/lib/squadCache";
+import { buildPlayerPerformanceContext } from "@/lib/playerContext";
 
 interface DiretoriaViewProps {
   career: Career;
   matches: MatchRecord[];
   transfers: TransferRecord[];
   squadSize: number;
+  allPlayers?: SquadPlayer[];
+}
+
+interface TransferSuggestion {
+  name: string;
+  position: string;
+  age: number;
+  currentClub: string;
+  nationality: string;
+  estimatedFee: string;
+  reasoning: string;
 }
 
 const MOOD_CONFIG: Record<MoodLevel, { label: string; color: string; bg: string; emoji: string }> = {
@@ -362,7 +375,7 @@ function CreateMemberModal({ career, membersCount, onClose, onCreated }: CreateM
   );
 }
 
-export function DiretoriaView({ career, matches, transfers, squadSize }: DiretoriaViewProps) {
+export function DiretoriaView({ career, matches, transfers, squadSize, allPlayers = [] }: DiretoriaViewProps) {
   const [members, setMembers] = useState<BoardMember[]>([]);
   const [conversations, setConversations] = useState<Record<string, DiretoriaMessage[]>>({});
   const [notifications, setNotifications] = useState<PendingNotification[]>([]);
@@ -379,6 +392,11 @@ export function DiretoriaView({ career, matches, transfers, squadSize }: Diretor
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const [triggerChecked, setTriggerChecked] = useState(false);
+  const [showTransferModal, setShowTransferModal] = useState(false);
+  const [transferPosition, setTransferPosition] = useState("");
+  const [transferLoading, setTransferLoading] = useState(false);
+  const [transferSuggestions, setTransferSuggestions] = useState<TransferSuggestion[]>([]);
+  const [transferError, setTransferError] = useState("");
 
   const chatEndRef = useRef<HTMLDivElement>(null);
   const meetingEndRef = useRef<HTMLDivElement>(null);
@@ -387,6 +405,42 @@ export function DiretoriaView({ career, matches, transfers, squadSize }: Diretor
 
   const selectedMember = members.find((m) => m.id === selectedMemberId) ?? null;
   const activeConv = selectedMemberId ? (conversations[selectedMemberId] ?? []) : [];
+
+  const playerPerformance = useMemo(() => {
+    if (allPlayers.length === 0) return [];
+    return buildPlayerPerformanceContext(career.id, allPlayers);
+  }, [career.id, allPlayers]);
+
+  const isGestor = (member: BoardMember) =>
+    member.roleLabel.toLowerCase().includes("gestor") ||
+    member.roleLabel.toLowerCase().includes("financeiro") ||
+    member.roleLabel.toLowerCase().includes("transfer");
+
+  const handleSuggestTransfer = async () => {
+    if (!transferPosition.trim()) return;
+    setTransferLoading(true);
+    setTransferError("");
+    setTransferSuggestions([]);
+    try {
+      const squadForContext = allPlayers.slice(0, 25).map((p) => ({ name: p.name, position: p.positionPtBr ?? p.position }));
+      const res = await fetch("/api/diretoria/suggest-transfer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-openai-key": getOpenAIKey() },
+        body: JSON.stringify({
+          context: buildClubContext(),
+          position: transferPosition.trim(),
+          currentSquad: squadForContext,
+        }),
+      });
+      if (!res.ok) throw new Error("Erro ao buscar sugestões");
+      const data = await res.json() as { suggestions: TransferSuggestion[] };
+      setTransferSuggestions(data.suggestions ?? []);
+    } catch {
+      setTransferError("Erro ao buscar sugestões. Verifique sua chave OpenAI.");
+    } finally {
+      setTransferLoading(false);
+    }
+  };
 
   useEffect(() => {
     const ms = getMembers(career.id);
@@ -450,6 +504,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize }: Diretor
           patience: m.patience,
         })),
         lastCheckedAt: lastChecked,
+        playerPerformance: playerPerformance.length > 0 ? playerPerformance : undefined,
       }),
     })
       .then((r) => r.json())
@@ -908,6 +963,19 @@ export function DiretoriaView({ career, matches, transfers, squadSize }: Diretor
               <div ref={chatEndRef} />
             </div>
 
+            {selectedMember && isGestor(selectedMember) && (
+              <div className="px-4 pb-2 flex-shrink-0">
+                <button
+                  onClick={() => { setShowTransferModal(true); setTransferSuggestions([]); setTransferError(""); setTransferPosition(""); }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all hover:scale-[1.01] active:scale-[0.99]"
+                  style={{ background: "rgba(var(--club-primary-rgb),0.1)", color: "var(--club-primary)", border: "1px solid rgba(var(--club-primary-rgb),0.2)" }}
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" /></svg>
+                  Sugerir Reforços com IA
+                </button>
+              </div>
+            )}
+
             <div
               className="flex items-end gap-2 px-4 py-3 flex-shrink-0"
               style={{ borderTop: "1px solid var(--surface-border)" }}
@@ -1113,6 +1181,102 @@ export function DiretoriaView({ career, matches, transfers, squadSize }: Diretor
               >
                 Remover
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showTransferModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(8px)" }}
+          onClick={(e) => { if (e.target === e.currentTarget) setShowTransferModal(false); }}
+        >
+          <div
+            className="w-full max-w-lg rounded-2xl overflow-hidden flex flex-col glass"
+            style={{ border: "1px solid var(--surface-border)", maxHeight: "88dvh" }}
+          >
+            <div className="flex items-center justify-between px-5 py-4 flex-shrink-0" style={{ borderBottom: "1px solid var(--surface-border)" }}>
+              <div>
+                <h3 className="text-white font-bold text-base">Sugerir Reforços</h3>
+                <p className="text-white/35 text-xs mt-0.5">IA sugere jogadores reais para {career.clubName}</p>
+              </div>
+              <button onClick={() => setShowTransferModal(false)} className="text-white/30 hover:text-white/70 transition-colors">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+
+            <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
+              <div>
+                <label className="block text-xs text-white/40 font-semibold uppercase tracking-wider mb-2">Posição que precisa de reforço</label>
+                <input
+                  value={transferPosition}
+                  onChange={(e) => setTransferPosition(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") handleSuggestTransfer(); }}
+                  placeholder="Ex: Atacante, Lateral-Direito, Goleiro..."
+                  className="w-full px-4 py-3 rounded-xl text-white text-sm placeholder-white/20 focus:outline-none glass"
+                  style={{ border: "1px solid var(--surface-border)", background: "rgba(255,255,255,0.05)" }}
+                />
+              </div>
+
+              {!transferLoading && transferSuggestions.length === 0 && !transferError && (
+                <button
+                  onClick={handleSuggestTransfer}
+                  disabled={!transferPosition.trim()}
+                  className="w-full py-3 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  style={{ background: "var(--club-gradient)" }}
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                  </svg>
+                  Gerar Sugestões com IA
+                </button>
+              )}
+
+              {transferLoading && (
+                <div className="flex items-center justify-center gap-3 py-8">
+                  <svg className="w-5 h-5 animate-spin text-white/40" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  <span className="text-white/40 text-sm">Pesquisando mercado...</span>
+                </div>
+              )}
+
+              {transferError && (
+                <div className="rounded-xl px-4 py-3 text-xs" style={{ background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.25)", color: "rgba(252,165,165,0.9)" }}>
+                  {transferError}
+                </div>
+              )}
+
+              {transferSuggestions.length > 0 && (
+                <div className="space-y-3">
+                  {transferSuggestions.map((s, i) => (
+                    <div key={i} className="rounded-xl p-4 flex flex-col gap-1.5" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <p className="text-white font-bold text-sm">{s.name}</p>
+                          <p className="text-white/40 text-xs">{s.nationality} · {s.age} anos · {s.currentClub}</p>
+                        </div>
+                        <span
+                          className="text-xs font-bold px-2 py-0.5 rounded-lg flex-shrink-0"
+                          style={{ background: "rgba(var(--club-primary-rgb),0.15)", color: "var(--club-primary)", border: "1px solid rgba(var(--club-primary-rgb),0.25)" }}
+                        >
+                          {s.estimatedFee}
+                        </span>
+                      </div>
+                      <p className="text-white/55 text-xs leading-relaxed">{s.reasoning}</p>
+                    </div>
+                  ))}
+                  <button
+                    onClick={handleSuggestTransfer}
+                    className="w-full py-2 rounded-xl text-xs font-semibold transition-all hover:opacity-80 mt-1"
+                    style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.07)" }}
+                  >
+                    Gerar novas sugestões
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
