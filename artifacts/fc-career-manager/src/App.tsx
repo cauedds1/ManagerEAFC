@@ -410,7 +410,7 @@ export default function App() {
   return (
     <>
       <AnimatedBackground />
-      <div className="relative">
+      <div className="relative h-screen overflow-hidden">
         {renderView()}
       </div>
     </>
