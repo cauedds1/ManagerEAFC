@@ -60,6 +60,8 @@ interface PlayerPerfItem {
   assists: number;
   appearances: number;
   incidents: string[];
+  isBench?: boolean;
+  benchRatio?: number;
 }
 
 interface ChatHistoryItem {
@@ -499,6 +501,38 @@ router.post("/diretoria/check-triggers", async (req, res) => {
           preview: `Temos lacunas em ${positionsUnderperforming.join(", ")} — devo pesquisar reforços?`,
         });
       }
+
+      const poorStarters = playerPerformance.filter(
+        (p) => !p.isBench && (p.form === "péssima" || p.form === "ruim") && p.appearances >= 4,
+      );
+      for (const poor of poorStarters.slice(0, 2)) {
+        const substitute = playerPerformance.find(
+          (p) =>
+            p.name !== poor.name &&
+            p.position === poor.position &&
+            (p.form === "boa" || p.form === "ótima" || p.form === "regular") &&
+            p.isBench,
+        );
+        if (substitute && auxTecnico && !notifications.find((n) => n.memberId === auxTecnico.id)) {
+          notifications.push({
+            memberId: auxTecnico.id,
+            preview: `${poor.name.split(" ")[0]} está em baixa. Não devíamos dar mais minutos ao ${substitute.name.split(" ")[0]}?`,
+          });
+        }
+      }
+
+      const hiddenGems = playerPerformance.filter(
+        (p) => p.isBench && p.avgRating >= 7.0 && p.appearances >= 5,
+      );
+      for (const gem of hiddenGems.slice(0, 1)) {
+        const member = auxTecnico ?? presidente;
+        if (member && !notifications.find((n) => n.memberId === member.id)) {
+          notifications.push({
+            memberId: member.id,
+            preview: `${gem.name.split(" ")[0]} tem média ${gem.avgRating} mas fica quase sempre no banco — ele merece mais chances.`,
+          });
+        }
+      }
     }
   }
 
@@ -510,10 +544,11 @@ router.post("/diretoria/check-triggers", async (req, res) => {
 });
 
 router.post("/diretoria/suggest-transfer", async (req, res) => {
-  const { context, position, currentSquad } = req.body as {
+  const { context, position, currentSquad, estimatedBudget } = req.body as {
     context: ClubContext;
     position: string;
     currentSquad: Array<{ name: string; position: string }>;
+    estimatedBudget?: string;
   };
 
   if (!position?.trim()) {
@@ -529,12 +564,17 @@ router.post("/diretoria/suggest-transfer", async (req, res) => {
 
   const systemPrompt = `Você é um diretor de futebol experiente especializado em mercado da bola. Você conhece profundamente o futebol mundial e brasileiro, e faz indicações realistas de reforços baseadas no perfil financeiro e competitivo do clube.`;
 
+  const budgetLine = estimatedBudget?.trim()
+    ? `Orçamento disponível para a contratação: ${estimatedBudget}`
+    : `Orçamento: não informado — calibre ao nível ${tier} (sem grandes estrelas globais)`;
+
   const userPrompt = `Clube: ${context.clubName} — ${context.clubLeague} (${tier})
 Posição que precisa de reforço: ${position}
 Elenco atual (principais): ${squadStr || "não informado"}
+${budgetLine}
 
 Sugira 4 jogadores REAIS que este clube poderia contratar para a posição de ${position}, levando em conta:
-- O nível e divisão do clube (${tier}) — ajuste os nomes à realidade financeira
+- O nível e divisão do clube (${tier}) e o orçamento informado — ajuste os nomes à realidade financeira
 - Jogadores que já passaram por ligas europeias ou brasileiras de alto nível
 - Variedade: 1-2 opções de menor custo (sub-25 promissores ou veteranos), 1-2 opções de perfil médio
 - Inclua jogadores que estejam livres ou com contratos expirando quando possível

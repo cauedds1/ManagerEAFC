@@ -12,6 +12,8 @@ import type { SquadPlayer } from "@/lib/squadCache";
 import type { MatchRecord } from "@/types/match";
 import { buildPlayerPerformanceContext, buildPlayerContextString } from "@/lib/playerContext";
 import { stepPlayerMood } from "@/lib/playerPerformanceEngine";
+import { getMembers, addNotification } from "@/lib/diretoriaStorage";
+import { getAllPlayerStats } from "@/lib/playerStatsStorage";
 
 interface NoticiasViewProps {
   career: Career;
@@ -808,8 +810,35 @@ export function NoticiasView({ career, allPlayers = [], matches: _matches = [] }
     setPosts((prev) => [post, ...prev]);
     if (allPlayers.length > 0 && (post.content || post.comments?.length)) {
       const criticised = scanPostForCriticism(post.content, post.comments ?? [], allPlayers);
+      const allStats = getAllPlayerStats(career.id);
+      const members = getMembers(career.id);
+      const auxTecnico = members.find(
+        (m) =>
+          m.roleLabel.toLowerCase().includes("auxiliar") ||
+          m.roleLabel.toLowerCase().includes("técnico") ||
+          m.roleLabel.toLowerCase().includes("tecnico"),
+      );
+      const presidente = members.find((m) =>
+        m.roleLabel.toLowerCase().includes("presidente"),
+      );
       for (const playerId of criticised) {
         stepPlayerMood(career.id, playerId, -1);
+        const stats = allStats[playerId];
+        const player = allPlayers.find((p) => p.id === playerId);
+        if (!stats || !player) continue;
+        const isKeyPlayer =
+          stats.fanMoral === "idolo" ||
+          (stats.goals ?? 0) + (stats.assists ?? 0) >= 10 ||
+          (stats.matchesAsStarter ?? 0) >= 10;
+        if (isKeyPlayer) {
+          const notifMember = auxTecnico ?? presidente;
+          if (notifMember) {
+            addNotification(career.id, {
+              memberId: notifMember.id,
+              preview: `${player.name.split(" ")[0]} está sendo criticado publicamente — precisamos conversar sobre isso.`,
+            });
+          }
+        }
       }
     }
   };

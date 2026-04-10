@@ -394,6 +394,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
   const [triggerChecked, setTriggerChecked] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [transferPosition, setTransferPosition] = useState("");
+  const [transferBudget, setTransferBudget] = useState("");
   const [transferLoading, setTransferLoading] = useState(false);
   const [transferSuggestions, setTransferSuggestions] = useState<TransferSuggestion[]>([]);
   const [transferError, setTransferError] = useState("");
@@ -430,6 +431,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
           context: buildClubContext(),
           position: transferPosition.trim(),
           currentSquad: squadForContext,
+          estimatedBudget: transferBudget.trim() || undefined,
         }),
       });
       if (!res.ok) throw new Error("Erro ao buscar sugestões");
@@ -966,7 +968,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
             {selectedMember && isGestor(selectedMember) && (
               <div className="px-4 pb-2 flex-shrink-0">
                 <button
-                  onClick={() => { setShowTransferModal(true); setTransferSuggestions([]); setTransferError(""); setTransferPosition(""); }}
+                  onClick={() => { setShowTransferModal(true); setTransferSuggestions([]); setTransferError(""); setTransferPosition(""); setTransferBudget(""); }}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all hover:scale-[1.01] active:scale-[0.99]"
                   style={{ background: "rgba(var(--club-primary-rgb),0.1)", color: "var(--club-primary)", border: "1px solid rgba(var(--club-primary-rgb),0.2)" }}
                 >
@@ -1207,16 +1209,28 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
             </div>
 
             <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
-              <div>
-                <label className="block text-xs text-white/40 font-semibold uppercase tracking-wider mb-2">Posição que precisa de reforço</label>
-                <input
-                  value={transferPosition}
-                  onChange={(e) => setTransferPosition(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") handleSuggestTransfer(); }}
-                  placeholder="Ex: Atacante, Lateral-Direito, Goleiro..."
-                  className="w-full px-4 py-3 rounded-xl text-white text-sm placeholder-white/20 focus:outline-none glass"
-                  style={{ border: "1px solid var(--surface-border)", background: "rgba(255,255,255,0.05)" }}
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-white/40 font-semibold uppercase tracking-wider mb-2">Posição</label>
+                  <input
+                    value={transferPosition}
+                    onChange={(e) => setTransferPosition(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") handleSuggestTransfer(); }}
+                    placeholder="Ex: Atacante, Goleiro..."
+                    className="w-full px-3 py-3 rounded-xl text-white text-sm placeholder-white/20 focus:outline-none glass"
+                    style={{ border: "1px solid var(--surface-border)", background: "rgba(255,255,255,0.05)" }}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-white/40 font-semibold uppercase tracking-wider mb-2">Orçamento (opcional)</label>
+                  <input
+                    value={transferBudget}
+                    onChange={(e) => setTransferBudget(e.target.value)}
+                    placeholder="Ex: €5M, €20M..."
+                    className="w-full px-3 py-3 rounded-xl text-white text-sm placeholder-white/20 focus:outline-none glass"
+                    style={{ border: "1px solid var(--surface-border)", background: "rgba(255,255,255,0.05)" }}
+                  />
+                </div>
               </div>
 
               {!transferLoading && transferSuggestions.length === 0 && !transferError && (

@@ -49,6 +49,8 @@ export interface PlayerContextItem {
   assists: number;
   appearances: number;
   incidents: string[];
+  isBench: boolean;
+  benchRatio: number;
 }
 
 export function buildPlayerPerformanceContext(
@@ -82,6 +84,11 @@ export function buildPlayerPerformanceContext(
       (stats.goals ?? 0) + (stats.assists ?? 0) < 3;
     if (onlyNeutral && totalApps < 5) continue;
 
+    const starters = stats.matchesAsStarter ?? 0;
+    const subs = stats.matchesAsSubstitute ?? 0;
+    const benchRatio = totalApps > 0 ? subs / totalApps : 0;
+    const isBench = subs > starters && totalApps >= 3;
+
     items.push({
       name: player.name,
       position: player.positionPtBr ?? player.position,
@@ -93,6 +100,8 @@ export function buildPlayerPerformanceContext(
       assists: stats.assists ?? 0,
       appearances: totalApps,
       incidents,
+      isBench,
+      benchRatio: Math.round(benchRatio * 100) / 100,
     });
   }
 
