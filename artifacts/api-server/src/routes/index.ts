@@ -7,6 +7,7 @@ import playersRouter from "./players";
 import adminRouter from "./admin";
 import noticiasRouter from "./noticias";
 import storageRouter from "./storage";
+import diretoriaRouter from "./diretoria";
 
 const router: IRouter = Router();
 
@@ -18,5 +19,6 @@ router.use(playersRouter);
 router.use(adminRouter);
 router.use(noticiasRouter);
 router.use(storageRouter);
+router.use(diretoriaRouter);
 
 export default router;
