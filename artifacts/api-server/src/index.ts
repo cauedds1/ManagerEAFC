@@ -22,7 +22,8 @@ async function purgeInvalidSquadRows() {
     const result = await db
       .delete(squadPlayersTable)
       .where(ne(squadPlayersTable.source, "api-football@v2"));
-    logger.info({ rows: (result as unknown as { rowCount?: number }).rowCount ?? 0 }, "Purged legacy squad rows on startup");
+    const deleted = Array.isArray(result) ? result.length : 0;
+    logger.info({ rows: deleted }, "Purged legacy squad rows on startup");
   } catch (err) {
     logger.warn({ err }, "Failed to purge legacy squad rows on startup (non-fatal)");
   }
