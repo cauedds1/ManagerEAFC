@@ -9,15 +9,20 @@ interface StreakRecord {
   endDate: string | null;
 }
 
+export interface StreakEntry {
+  current: StreakRecord;
+  best: StreakRecord;
+}
+
 export interface AllStreaks {
-  vitorias: StreakRecord;
-  derrotas: StreakRecord;
-  invicta: StreakRecord;
-  semSofrer: StreakRecord;
-  comGols: StreakRecord;
-  vitoriasEmCasa: StreakRecord;
-  invictaEmCasa: StreakRecord;
-  semSofrerEmCasa: StreakRecord;
+  vitorias: StreakEntry;
+  derrotas: StreakEntry;
+  invicta: StreakEntry;
+  semSofrer: StreakEntry;
+  comGols: StreakEntry;
+  vitoriasEmCasa: StreakEntry;
+  invictaEmCasa: StreakEntry;
+  semSofrerEmCasa: StreakEntry;
 }
 
 type StreakKey = keyof AllStreaks;
@@ -36,6 +41,8 @@ function matchQualifies(m: MatchRecord, key: StreakKey): boolean {
   }
 }
 
+const EMPTY_RECORD: StreakRecord = { count: 0, startDate: null, endDate: null };
+
 export function computeStreaks(matches: MatchRecord[]): AllStreaks {
   const sorted = [...matches].sort((a, b) => a.createdAt - b.createdAt);
 
@@ -45,32 +52,38 @@ export function computeStreaks(matches: MatchRecord[]): AllStreaks {
   ];
 
   const best: AllStreaks = {
-    vitorias:        { count: 0, startDate: null, endDate: null },
-    derrotas:        { count: 0, startDate: null, endDate: null },
-    invicta:         { count: 0, startDate: null, endDate: null },
-    semSofrer:       { count: 0, startDate: null, endDate: null },
-    comGols:         { count: 0, startDate: null, endDate: null },
-    vitoriasEmCasa:  { count: 0, startDate: null, endDate: null },
-    invictaEmCasa:   { count: 0, startDate: null, endDate: null },
-    semSofrerEmCasa: { count: 0, startDate: null, endDate: null },
+    vitorias:        { current: { ...EMPTY_RECORD }, best: { ...EMPTY_RECORD } },
+    derrotas:        { current: { ...EMPTY_RECORD }, best: { ...EMPTY_RECORD } },
+    invicta:         { current: { ...EMPTY_RECORD }, best: { ...EMPTY_RECORD } },
+    semSofrer:       { current: { ...EMPTY_RECORD }, best: { ...EMPTY_RECORD } },
+    comGols:         { current: { ...EMPTY_RECORD }, best: { ...EMPTY_RECORD } },
+    vitoriasEmCasa:  { current: { ...EMPTY_RECORD }, best: { ...EMPTY_RECORD } },
+    invictaEmCasa:   { current: { ...EMPTY_RECORD }, best: { ...EMPTY_RECORD } },
+    semSofrerEmCasa: { current: { ...EMPTY_RECORD }, best: { ...EMPTY_RECORD } },
   };
 
   for (const key of KEYS) {
-    let cur = 0;
+    let curCount = 0;
     let curStart: string | null = null;
+    let curEnd: string | null = null;
 
     for (const m of sorted) {
       if (matchQualifies(m, key)) {
-        if (cur === 0) curStart = m.date;
-        cur++;
-        if (cur > best[key].count) {
-          best[key] = { count: cur, startDate: curStart, endDate: m.date };
+        if (curCount === 0) curStart = m.date;
+        curCount++;
+        curEnd = m.date;
+
+        if (curCount > best[key].best.count) {
+          best[key].best = { count: curCount, startDate: curStart, endDate: curEnd };
         }
       } else {
-        cur = 0;
+        curCount = 0;
         curStart = null;
+        curEnd = null;
       }
     }
+
+    best[key].current = { count: curCount, startDate: curStart, endDate: curEnd };
   }
 
   return best;
@@ -83,14 +96,14 @@ const STREAK_META: {
   color: string;
   border: string;
 }[] = [
-  { key: "vitorias",        icon: "🏆", label: "Maior Série de Vitórias",           color: "#34d399", border: "rgba(16,185,129,0.25)" },
-  { key: "derrotas",        icon: "💔", label: "Maior Série de Derrotas",            color: "#f87171", border: "rgba(239,68,68,0.25)"   },
-  { key: "invicta",         icon: "🛡️", label: "Maior Série Invicta",               color: "#60a5fa", border: "rgba(59,130,246,0.25)"  },
-  { key: "semSofrer",       icon: "🧤", label: "Maior Série sem Sofrer Gols",        color: "#a78bfa", border: "rgba(139,92,246,0.25)"  },
-  { key: "comGols",         icon: "⚽", label: "Maior Série Marcando Gols",          color: "#fbbf24", border: "rgba(245,158,11,0.25)"  },
-  { key: "vitoriasEmCasa",  icon: "🏠", label: "Maior Série de Vitórias em Casa",   color: "#34d399", border: "rgba(16,185,129,0.25)"  },
-  { key: "invictaEmCasa",   icon: "🔒", label: "Maior Série Invicta em Casa",        color: "#60a5fa", border: "rgba(59,130,246,0.25)"  },
-  { key: "semSofrerEmCasa", icon: "🚫", label: "Maior Série sem Sofrer Gol em Casa", color: "#a78bfa", border: "rgba(139,92,246,0.25)"  },
+  { key: "vitorias",        icon: "🏆", label: "Maior Série de Vitórias",            color: "#34d399", border: "rgba(16,185,129,0.25)"  },
+  { key: "derrotas",        icon: "💔", label: "Maior Série de Derrotas",             color: "#f87171", border: "rgba(239,68,68,0.25)"   },
+  { key: "invicta",         icon: "🛡️", label: "Maior Série Invicta",                color: "#60a5fa", border: "rgba(59,130,246,0.25)"  },
+  { key: "semSofrer",       icon: "🧤", label: "Maior Série sem Sofrer Gols",         color: "#a78bfa", border: "rgba(139,92,246,0.25)"  },
+  { key: "comGols",         icon: "⚽", label: "Maior Série Marcando Gols",           color: "#fbbf24", border: "rgba(245,158,11,0.25)"  },
+  { key: "vitoriasEmCasa",  icon: "🏠", label: "Maior Série de Vitórias em Casa",    color: "#34d399", border: "rgba(16,185,129,0.25)"  },
+  { key: "invictaEmCasa",   icon: "🔒", label: "Maior Série Invicta em Casa",         color: "#60a5fa", border: "rgba(59,130,246,0.25)"  },
+  { key: "semSofrerEmCasa", icon: "🚫", label: "Maior Série sem Sofrer Gol em Casa",  color: "#a78bfa", border: "rgba(139,92,246,0.25)"  },
 ];
 
 function fmtDate(dateStr: string | null): string {
@@ -98,6 +111,12 @@ function fmtDate(dateStr: string | null): string {
   const [year, month, day] = dateStr.split("-");
   if (!year || !month || !day) return dateStr;
   return `${day}/${month}/${year}`;
+}
+
+function dateRange(rec: StreakRecord): string {
+  if (!rec.startDate) return "—";
+  if (rec.startDate === rec.endDate || !rec.endDate) return fmtDate(rec.startDate);
+  return `${fmtDate(rec.startDate)} → ${fmtDate(rec.endDate)}`;
 }
 
 interface Props {
@@ -118,46 +137,78 @@ export function SequenciasView({ careerId }: Props) {
   }
 
   return (
-    <div className="w-full px-4 pb-6 pt-2">
+    <div className="w-full px-4 pb-6 pt-3">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {STREAK_META.map(({ key, icon, label, color, border }) => {
-          const rec = streaks[key];
-          const hasData = rec.count > 0;
+          const entry = streaks[key];
+          const hasBest = entry.best.count > 0;
+          const hasCurrent = entry.current.count > 0;
+
           return (
             <div
               key={key}
-              className="rounded-xl p-4 flex flex-col gap-2"
+              className="rounded-xl flex flex-col"
               style={{
                 background: "rgba(255,255,255,0.03)",
-                border: `1px solid ${hasData ? border : "rgba(255,255,255,0.06)"}`,
+                border: `1px solid ${hasBest ? border : "rgba(255,255,255,0.06)"}`,
               }}
             >
-              <div className="flex items-center gap-2">
-                <span className="text-xl leading-none">{icon}</span>
+              <div className="flex items-center gap-2 px-4 pt-3 pb-2">
+                <span className="text-lg leading-none">{icon}</span>
                 <span className="text-xs text-white/50 leading-tight">{label}</span>
               </div>
 
-              {hasData ? (
+              {hasBest ? (
                 <>
-                  <div
-                    className="text-4xl font-black tabular-nums leading-none"
-                    style={{ color }}
-                  >
-                    {rec.count}
+                  <div className="px-4 pb-1">
+                    <div
+                      className="text-4xl font-black tabular-nums leading-none"
+                      style={{ color }}
+                    >
+                      {entry.best.count}
+                    </div>
+                    <div className="text-[10px] font-medium mt-0.5" style={{ color: "rgba(255,255,255,0.3)" }}>
+                      {entry.best.count === 1 ? "jogo" : "jogos"} — recorde histórico
+                    </div>
+                    <div className="text-[10px] text-white/25 mt-1">
+                      {dateRange(entry.best)}
+                    </div>
                   </div>
-                  <div className="text-xs font-medium" style={{ color: "rgba(255,255,255,0.3)" }}>
-                    {rec.count === 1 ? "jogo" : "jogos"}
-                  </div>
-                  {rec.startDate && (
-                    <div className="text-xs text-white/30 border-t border-white/5 pt-2 mt-1">
-                      {rec.startDate === rec.endDate
-                        ? fmtDate(rec.startDate)
-                        : `${fmtDate(rec.startDate)} → ${fmtDate(rec.endDate)}`}
+
+                  {hasCurrent && entry.current.count !== entry.best.count && (
+                    <div
+                      className="mx-3 mb-3 mt-2 rounded-lg px-3 py-2"
+                      style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}
+                    >
+                      <div className="text-[10px] text-white/35 mb-0.5">Sequência atual</div>
+                      <div className="flex items-baseline gap-1.5">
+                        <span className="text-xl font-bold tabular-nums" style={{ color }}>
+                          {entry.current.count}
+                        </span>
+                        <span className="text-[10px] text-white/30">
+                          {entry.current.count === 1 ? "jogo" : "jogos"}
+                        </span>
+                      </div>
                     </div>
                   )}
+
+                  {hasCurrent && entry.current.count === entry.best.count && (
+                    <div className="px-4 pb-3 mt-1">
+                      <span
+                        className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                        style={{ background: `${color}20`, color }}
+                      >
+                        EM ANDAMENTO
+                      </span>
+                    </div>
+                  )}
+
+                  {!hasCurrent && <div className="pb-3" />}
                 </>
               ) : (
-                <div className="text-3xl font-black text-white/15 leading-none">—</div>
+                <div className="px-4 pb-4">
+                  <div className="text-3xl font-black text-white/15 leading-none">—</div>
+                </div>
               )}
             </div>
           );
