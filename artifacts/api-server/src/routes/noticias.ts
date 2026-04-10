@@ -108,13 +108,14 @@ Gere 6 a 9 comentários. Pelo menos 2 deles devem ter 1 reply cada.`;
 
     const completion = await client.chat.completions.create({
       ...completionParams,
+      stream: false,
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
       ],
     } as Parameters<typeof client.chat.completions.create>[0]);
 
-    const raw = completion.choices[0]?.message?.content ?? "";
+    const raw = (completion as { choices: Array<{ message: { content: string | null } }> }).choices[0]?.message?.content ?? "";
 
     let parsed: Record<string, unknown>;
     try {

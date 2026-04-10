@@ -12,5 +12,7 @@ export * from "./healthStatus";
 export * from "./okResponse";
 export * from "./putClubsBody";
 export * from "./putSquadBody";
+export * from "./requestUploadUrlBody";
+export * from "./requestUploadUrlResponse";
 export * from "./squadPlayer";
 export * from "./squadResponse";

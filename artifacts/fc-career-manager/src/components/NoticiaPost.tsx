@@ -250,8 +250,21 @@ export function NoticiaPost({ post, portalPhotos }: NoticiaPostProps) {
         </span>
       </div>
 
+      {/* Post image */}
+      {post.imageUrl && (
+        <div className="overflow-hidden" style={{ maxHeight: 400 }}>
+          <img
+            src={`/api/storage${post.imageUrl}`}
+            alt="Post"
+            className="w-full object-cover"
+            style={{ maxHeight: 400, display: "block" }}
+            loading="lazy"
+          />
+        </div>
+      )}
+
       {/* Content */}
-      <div className="px-4 pb-4">
+      <div className="px-4 pb-4" style={{ paddingTop: post.imageUrl ? 12 : 0 }}>
         {post.title && (
           <p className="text-white font-black text-base leading-snug mb-2">{post.title}</p>
         )}

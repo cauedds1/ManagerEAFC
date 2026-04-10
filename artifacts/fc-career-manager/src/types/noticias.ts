@@ -37,6 +37,7 @@ export interface NewsPost {
   sourceName: string;
   title?: string;
   content: string;
+  imageUrl?: string;
   likes: number;
   commentsCount: number;
   sharesCount: number;

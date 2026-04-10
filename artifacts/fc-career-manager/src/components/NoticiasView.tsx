@@ -121,6 +121,55 @@ function AddPostModal({
   const [manContent, setManContent] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+  const [imageObjectPath, setImageObjectPath] = useState<string | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [imageError, setImageError] = useState<string | null>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImageSelect = async (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      setImageError("Apenas imagens são permitidas.");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setImageError("A imagem deve ter no máximo 10 MB.");
+      return;
+    }
+    setImageError(null);
+    setImageObjectPath(null);
+    setImagePreviewUrl(URL.createObjectURL(file));
+    setIsUploadingImage(true);
+    try {
+      const res = await fetch("/api/storage/uploads/request-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }),
+      });
+      if (!res.ok) throw new Error("Falha ao obter URL de upload");
+      const { uploadURL, objectPath } = await res.json() as { uploadURL: string; objectPath: string };
+      const putRes = await fetch(uploadURL, {
+        method: "PUT",
+        headers: { "Content-Type": file.type },
+        body: file,
+      });
+      if (!putRes.ok) throw new Error("Falha no upload da imagem");
+      setImageObjectPath(objectPath);
+    } catch {
+      setImageError("Erro no upload da imagem. Tente novamente.");
+      setImagePreviewUrl(null);
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
+  const handleImageRemove = () => {
+    setImagePreviewUrl(null);
+    setImageObjectPath(null);
+    setImageError(null);
+    if (imageInputRef.current) imageInputRef.current.value = "";
+  };
+
   useEffect(() => {
     if (mode === "manual") textareaRef.current?.focus();
   }, [mode]);
@@ -177,6 +226,7 @@ function AddPostModal({
       sourceName: aiPreview.sourceName,
       ...(aiPreview.title?.trim() ? { title: aiPreview.title.trim() } : {}),
       content: aiPreview.content,
+      ...(imageObjectPath ? { imageUrl: imageObjectPath } : {}),
       likes: aiPreview.likes,
       commentsCount: aiPreview.commentsCount,
       sharesCount: aiPreview.sharesCount,
@@ -220,6 +270,7 @@ function AddPostModal({
       sourceName: manSourceName,
       ...(manTitle.trim() ? { title: manTitle.trim() } : {}),
       content: manContent.trim(),
+      ...(imageObjectPath ? { imageUrl: imageObjectPath } : {}),
       likes: Math.floor(Math.random() * 5000) + 500,
       commentsCount: Math.floor(Math.random() * 300) + 20,
       sharesCount: Math.floor(Math.random() * 1000) + 100,
@@ -385,6 +436,68 @@ function AddPostModal({
                 </div>
               </div>
 
+              {/* Image picker */}
+              <div>
+                <label className="text-white/40 text-xs font-semibold uppercase tracking-wider block mb-2">
+                  Foto <span className="text-white/25 normal-case font-normal">(opcional)</span>
+                </label>
+                <input
+                  ref={imageInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImageSelect(f); }}
+                />
+                {imagePreviewUrl ? (
+                  <div className="relative rounded-xl overflow-hidden" style={{ maxHeight: 200 }}>
+                    <img src={imagePreviewUrl} alt="Preview" className="w-full object-cover" style={{ maxHeight: 200 }} />
+                    {isUploadingImage && (
+                      <div className="absolute inset-0 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.55)" }}>
+                        <svg className="w-6 h-6 animate-spin text-white" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                        </svg>
+                      </div>
+                    )}
+                    {!isUploadingImage && imageObjectPath && (
+                      <div className="absolute top-2 right-2 flex items-center gap-1 bg-black/60 rounded-full px-2 py-0.5">
+                        <svg className="w-3 h-3 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                        <span className="text-green-400 text-xs font-semibold">Enviada</span>
+                      </div>
+                    )}
+                    <button
+                      onClick={handleImageRemove}
+                      className="absolute top-2 left-2 w-6 h-6 rounded-full flex items-center justify-center transition-opacity hover:opacity-80"
+                      style={{ background: "rgba(0,0,0,0.6)" }}
+                    >
+                      <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => imageInputRef.current?.click()}
+                    className="w-full py-3 px-4 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-all duration-150 hover:opacity-80"
+                    style={{
+                      background: "rgba(255,255,255,0.04)",
+                      border: "1px dashed rgba(255,255,255,0.12)",
+                      color: "rgba(255,255,255,0.35)",
+                    }}
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                    </svg>
+                    Adicionar foto ao post
+                  </button>
+                )}
+                {imageError && (
+                  <p className="text-red-400/80 text-xs mt-1.5">{imageError}</p>
+                )}
+              </div>
+
               {/* Generate button */}
               {!aiPreview && (
                 <button
@@ -465,10 +578,11 @@ function AddPostModal({
                   <div className="flex gap-2 mt-1">
                     <button
                       onClick={handlePublishAi}
-                      className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white transition-all duration-200 hover:opacity-90 active:scale-[0.98]"
+                      disabled={isUploadingImage}
+                      className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white transition-all duration-200 hover:opacity-90 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
                       style={{ background: "var(--club-gradient)" }}
                     >
-                      Publicar notícia
+                      {isUploadingImage ? "Enviando foto..." : "Publicar notícia"}
                     </button>
                     <button
                       onClick={() => { setAiPreview(null); handleGenerate(); }}
@@ -561,13 +675,68 @@ function AddPostModal({
                 </p>
               </div>
 
+              {/* Image picker (manual mode) */}
+              <div>
+                <label className="text-white/40 text-xs font-semibold uppercase tracking-wider block mb-2">
+                  Foto <span className="text-white/25 normal-case font-normal">(opcional)</span>
+                </label>
+                {imagePreviewUrl ? (
+                  <div className="relative rounded-xl overflow-hidden" style={{ maxHeight: 200 }}>
+                    <img src={imagePreviewUrl} alt="Preview" className="w-full object-cover" style={{ maxHeight: 200 }} />
+                    {isUploadingImage && (
+                      <div className="absolute inset-0 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.55)" }}>
+                        <svg className="w-6 h-6 animate-spin text-white" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                        </svg>
+                      </div>
+                    )}
+                    {!isUploadingImage && imageObjectPath && (
+                      <div className="absolute top-2 right-2 flex items-center gap-1 bg-black/60 rounded-full px-2 py-0.5">
+                        <svg className="w-3 h-3 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                        <span className="text-green-400 text-xs font-semibold">Enviada</span>
+                      </div>
+                    )}
+                    <button
+                      onClick={handleImageRemove}
+                      className="absolute top-2 left-2 w-6 h-6 rounded-full flex items-center justify-center transition-opacity hover:opacity-80"
+                      style={{ background: "rgba(0,0,0,0.6)" }}
+                    >
+                      <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => imageInputRef.current?.click()}
+                    className="w-full py-3 px-4 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-all duration-150 hover:opacity-80"
+                    style={{
+                      background: "rgba(255,255,255,0.04)",
+                      border: "1px dashed rgba(255,255,255,0.12)",
+                      color: "rgba(255,255,255,0.35)",
+                    }}
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                    </svg>
+                    Adicionar foto ao post
+                  </button>
+                )}
+                {imageError && (
+                  <p className="text-red-400/80 text-xs mt-1.5">{imageError}</p>
+                )}
+              </div>
+
               <button
                 onClick={handlePublishManual}
-                disabled={!manContent.trim()}
+                disabled={!manContent.trim() || isUploadingImage}
                 className="w-full py-3 rounded-xl text-sm font-bold text-white transition-all duration-200 hover:opacity-90 active:scale-[0.98] disabled:opacity-30 disabled:cursor-not-allowed"
                 style={{ background: "var(--club-gradient)" }}
               >
-                Publicar notícia
+                {isUploadingImage ? "Enviando foto..." : "Publicar notícia"}
               </button>
             </div>
           )}

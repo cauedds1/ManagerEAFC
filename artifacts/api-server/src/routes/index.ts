@@ -6,6 +6,7 @@ import proxyRouter from "./proxy";
 import playersRouter from "./players";
 import adminRouter from "./admin";
 import noticiasRouter from "./noticias";
+import storageRouter from "./storage";
 
 const router: IRouter = Router();
 
@@ -16,5 +17,6 @@ router.use(proxyRouter);
 router.use(playersRouter);
 router.use(adminRouter);
 router.use(noticiasRouter);
+router.use(storageRouter);
 
 export default router;
