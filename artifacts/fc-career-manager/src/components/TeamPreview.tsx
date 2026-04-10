@@ -69,6 +69,172 @@ function TrophyIcon({ color }: { color: string }) {
   );
 }
 
+function SquadStatsBlock({ players, loading }: { players: SquadPlayer[]; loading: boolean }) {
+  if (loading) {
+    return (
+      <div className="rounded-2xl px-4 py-3 glass">
+        <div className="h-2 rounded w-20 mb-3 animate-pulse" style={{ background: "rgba(255,255,255,0.07)" }} />
+        <div className="h-6 rounded-full mb-3 animate-pulse" style={{ background: "rgba(255,255,255,0.05)" }} />
+        <div className="grid grid-cols-4 gap-2">
+          {[0,1,2,3].map(i => (
+            <div key={i} className="h-8 rounded-lg animate-pulse" style={{ background: "rgba(255,255,255,0.05)" }} />
+          ))}
+        </div>
+      </div>
+    );
+  }
+  if (players.length === 0) return null;
+
+  const withAge = players.filter(p => p.age > 0);
+  const avgAge = withAge.length > 0
+    ? Math.round(withAge.reduce((s, p) => s + p.age, 0) / withAge.length)
+    : 0;
+
+  const counts: Record<string, number> = { GOL: 0, DEF: 0, MID: 0, ATA: 0 };
+  for (const p of players) counts[p.positionPtBr] = (counts[p.positionPtBr] ?? 0) + 1;
+  const total = players.length;
+
+  return (
+    <div className="rounded-2xl px-4 py-3 glass">
+      <p className="text-white/20 text-[10px] font-bold tracking-widest uppercase mb-2.5">Estatísticas</p>
+
+      {/* Average age + total */}
+      <div className="flex items-baseline gap-2 mb-3">
+        <span className="text-white font-black text-2xl leading-none">{avgAge}</span>
+        <span className="text-white/30 text-xs">anos em média</span>
+        <span
+          className="ml-auto text-xs font-semibold px-2 py-0.5 rounded-full"
+          style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.3)" }}
+        >
+          {total} jog.
+        </span>
+      </div>
+
+      {/* Proportional position bar */}
+      <div className="flex rounded-full overflow-hidden h-2 mb-2.5 gap-px">
+        {(["GOL","DEF","MID","ATA"] as const).map(pos => {
+          const pct = ((counts[pos] ?? 0) / total) * 100;
+          if (pct === 0) return null;
+          return (
+            <div
+              key={pos}
+              style={{ width: `${pct}%`, background: POS_COLOR[pos].color, opacity: 0.7 }}
+            />
+          );
+        })}
+      </div>
+
+      {/* Position count chips */}
+      <div className="grid grid-cols-4 gap-1.5">
+        {(["GOL","DEF","MID","ATA"] as const).map(pos => (
+          <div
+            key={pos}
+            className="flex flex-col items-center py-1.5 rounded-lg"
+            style={{ background: POS_COLOR[pos].bg }}
+          >
+            <span className="text-sm font-black leading-none" style={{ color: POS_COLOR[pos].color }}>
+              {counts[pos] ?? 0}
+            </span>
+            <span className="text-[9px] mt-0.5 font-bold" style={{ color: POS_COLOR[pos].color, opacity: 0.7 }}>
+              {pos}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function DestaquePlayerCard({
+  player,
+  label,
+  labelColor,
+  labelBg,
+}: {
+  player: SquadPlayer;
+  label: string;
+  labelColor: string;
+  labelBg: string;
+}) {
+  const [imgErr, setImgErr] = useState(false);
+  const pos = POS_COLOR[player.positionPtBr] ?? POS_COLOR.MID;
+  return (
+    <div
+      className="flex flex-col items-center gap-1.5 p-2.5 rounded-xl"
+      style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
+    >
+      {/* Label badge */}
+      <span
+        className="text-[9px] font-black tracking-wider uppercase px-2 py-0.5 rounded-full"
+        style={{ background: labelBg, color: labelColor }}
+      >
+        {label}
+      </span>
+      {/* Photo */}
+      <div
+        className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center flex-shrink-0"
+        style={{ background: "rgba(255,255,255,0.07)" }}
+      >
+        {player.photo && !imgErr ? (
+          <img src={player.photo} alt={player.name} className="w-full h-full object-cover" onError={() => setImgErr(true)} />
+        ) : (
+          <svg viewBox="0 0 40 40" className="w-6 h-6" style={{ color: "rgba(255,255,255,0.2)" }} fill="currentColor">
+            <circle cx="20" cy="14" r="7" />
+            <path d="M6 36c0-7.732 6.268-14 14-14s14 6.268 14 14H6z" />
+          </svg>
+        )}
+      </div>
+      {/* Name */}
+      <p className="text-white text-[11px] font-semibold text-center leading-tight line-clamp-2 w-full">{player.name}</p>
+      {/* Age + position */}
+      <div className="flex items-center gap-1">
+        {player.age > 0 && <span className="text-white/30 text-[10px]">{player.age} anos</span>}
+        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded" style={{ background: pos.bg, color: pos.color }}>
+          {player.positionPtBr}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function DestaquesBlock({ players, loading }: { players: SquadPlayer[]; loading: boolean }) {
+  if (loading) {
+    return (
+      <div className="rounded-2xl px-4 py-3 glass">
+        <div className="h-2 rounded w-20 mb-3 animate-pulse" style={{ background: "rgba(255,255,255,0.07)" }} />
+        <div className="grid grid-cols-2 gap-2">
+          {[0,1].map(i => <div key={i} className="h-28 rounded-xl animate-pulse" style={{ background: "rgba(255,255,255,0.05)" }} />)}
+        </div>
+      </div>
+    );
+  }
+  const withAge = players.filter(p => p.age > 0);
+  if (withAge.length === 0) return null;
+
+  const youngest = withAge.reduce((min, p) => p.age < min.age ? p : min, withAge[0]);
+  const oldest   = withAge.reduce((max, p) => p.age > max.age ? p : max, withAge[0]);
+
+  return (
+    <div className="rounded-2xl px-4 py-3 glass">
+      <p className="text-white/20 text-[10px] font-bold tracking-widest uppercase mb-2.5">Destaques</p>
+      <div className="grid grid-cols-2 gap-2">
+        <DestaquePlayerCard
+          player={youngest}
+          label="Pérola"
+          labelColor="#34d399"
+          labelBg="rgba(16,185,129,0.15)"
+        />
+        <DestaquePlayerCard
+          player={oldest}
+          label="Veterano"
+          labelColor="#f59e0b"
+          labelBg="rgba(245,158,11,0.15)"
+        />
+      </div>
+    </div>
+  );
+}
+
 function PlayerCard({ player }: { player: SquadPlayer }) {
   const [imgErr, setImgErr] = useState(false);
   const pos = POS_COLOR[player.positionPtBr] ?? POS_COLOR.MID;
@@ -276,6 +442,12 @@ export function TeamPreview({ club, season, onNext, onBack, onClubInfoLoaded }: 
               </div>
             </div>
           )}
+
+          {/* Squad stats */}
+          <SquadStatsBlock players={players} loading={loadingSquad} />
+
+          {/* Destaques: Pérola + Veterano */}
+          <DestaquesBlock players={players} loading={loadingSquad} />
         </div>
 
         {/* RIGHT column: full squad — no inner scroll */}
