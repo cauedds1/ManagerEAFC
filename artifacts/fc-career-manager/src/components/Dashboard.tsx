@@ -8,7 +8,7 @@ import {
   type SquadPlayer,
   PT_BR_TO_POSITION,
 } from "@/lib/squadCache";
-import { getApiKey } from "@/lib/clubListCache";
+import { APIFOOTBALL_TO_FC26_NAME } from "@/lib/footballApiMap";
 import { getAllPlayerOverrides } from "@/lib/playerStatsStorage";
 import { getTransfers, addTransfer } from "@/lib/transferStorage";
 import type { TransferRecord } from "@/types/transfer";
@@ -173,7 +173,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     let cancelled = false;
     setSquadLoading(true);
     setSquadError(false);
-    getSquad(teamId, career.clubName)
+    getSquad(teamId, career.clubName, APIFOOTBALL_TO_FC26_NAME[career.clubName])
       .then((result) => {
         if (!cancelled) { setSquad(result); setSquadLoading(false); }
       })
@@ -522,7 +522,6 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
             onRefresh={handleRefreshSquad}
             onOpenSettings={() => setActiveTab("configuracoes")}
             onOverridesUpdated={refreshOverrides}
-            hasApiKey={Boolean(getApiKey())}
             isReadOnly={isReadOnly}
           />
         )}

@@ -220,3 +220,28 @@ export function clearClubCache(): void {
   // Also clear DB cache (fire-and-forget)
   deleteDbClubs();
 }
+
+export async function fetchBackendClubList(): Promise<ClubEntry[]> {
+  const all = [...DOMESTIC_LEAGUES, ...INTERNATIONAL_LEAGUES];
+  const leagues = all.map((l) => ({ id: l.id, name: l.displayName ?? l.name, country: l.country }));
+
+  const res = await fetch("/api/clubs/fetch", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ leagues }),
+  });
+
+  if (res.status === 503) throw new ApiAuthError("API_FOOTBALL_KEY não configurada no servidor");
+  if (res.status === 429) throw new ApiRateLimitError();
+  if (!res.ok) throw new Error(`clubs/fetch failed: ${res.status}`);
+
+  const dbClubs = await getDbClubs();
+  if (dbClubs && dbClubs.length > 0) {
+    const cachedAt = Date.now();
+    try {
+      localStorage.setItem(CACHE_KEY, JSON.stringify({ clubs: dbClubs, cachedAt }));
+    } catch {}
+    return dbClubs;
+  }
+  return [];
+}

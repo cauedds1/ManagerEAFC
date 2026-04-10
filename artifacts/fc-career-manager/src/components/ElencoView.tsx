@@ -150,7 +150,6 @@ interface ElencoViewProps {
   onRefresh: () => void;
   onOpenSettings: () => void;
   onOverridesUpdated?: () => void;
-  hasApiKey: boolean;
 }
 
 export function ElencoView({
@@ -162,7 +161,6 @@ export function ElencoView({
   onRefresh,
   onOpenSettings,
   onOverridesUpdated,
-  hasApiKey,
 }: ElencoViewProps) {
   const [tab, setTab] = useState<SquadTab>("pitch");
   const [pendingSwap, setPendingSwap] = useState<SquadPlayer | null>(null);
@@ -371,19 +369,8 @@ export function ElencoView({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
             <p className="text-white/30 text-sm text-center leading-relaxed">
-              {hasApiKey
-                ? "Nenhum jogador encontrado para este clube"
-                : "Configure sua chave de API para carregar o elenco real"}
+              Nenhum jogador encontrado para este clube
             </p>
-            {!hasApiKey && (
-              <button
-                onClick={onOpenSettings}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-white hover:opacity-80 transition-opacity"
-                style={{ background: "var(--club-gradient)" }}
-              >
-                Configurar API key
-              </button>
-            )}
           </div>
         </div>
       ) : tab === "pitch" ? (
@@ -587,20 +574,6 @@ export function ElencoView({
         </div>
       )}
 
-      {!hasApiKey && squad?.source === "fc26" && allPlayers.length > 0 && (
-        <div className="mx-4 sm:mx-6 mb-4 flex items-center gap-2 px-4 py-3 rounded-xl glass">
-          <svg className="w-4 h-4 flex-shrink-0" style={{ color: "var(--club-primary)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <p className="text-xs text-white/50">
-            Dados do EA FC 26. Configure sua{" "}
-            <button onClick={onOpenSettings} className="underline font-semibold hover:text-white transition-colors">
-              API key
-            </button>{" "}
-            para ver o elenco real com fotos.
-          </p>
-        </div>
-      )}
 
       {detailPlayer && (
         <PlayerDetailPanel

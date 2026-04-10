@@ -1,12 +1,7 @@
-import { APIFOOTBALL_TO_FC26_NAME } from "./footballApiMap";
-import { getApiKey } from "./clubListCache";
-
-const API_BASE = "https://v3.football.api-sports.io";
-const MSMC_BASE = "https://api.msmc.cc/api/eafc";
 const CACHE_VERSION = "v2";
 const BASE_CACHE_PREFIX = "fc-career-manager-squad-";
 const CACHE_PREFIX = `${BASE_CACHE_PREFIX}${CACHE_VERSION}-`;
-const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 export type PositionGroup =
   | "Goalkeeper"
@@ -19,7 +14,7 @@ export type PositionGroup =
   | "RightWing"
   | "SecondStriker"
   | "Striker"
-  | "BroadForward"; // usado para "Attacker" genérico da API-Football
+  | "BroadForward";
 
 export type PositionPtBr = "GOL" | "ZAG" | "LAT" | "VOL" | "MC" | "MEI" | "PE" | "PD" | "SA" | "CA" | "ATA";
 
@@ -54,7 +49,7 @@ const POSITION_PT_BR: Record<PositionGroup, PositionPtBr> = {
   RightWing:    "PD",
   SecondStriker:"SA",
   Striker:      "CA",
-  BroadForward: "ATA", // "Attacker" genérico da API-Football
+  BroadForward: "ATA",
 };
 
 export const PT_BR_TO_POSITION: Record<PositionPtBr, PositionGroup> = {
@@ -101,44 +96,18 @@ const POSITION_SORT: Record<PositionGroup, number> = {
 
 function normalizePosToGroup(pos: string): PositionGroup {
   const p = (pos ?? "").toUpperCase().trim();
-
-  // Goalkeeper
   if (["GOALKEEPER", "GK", "GOL"].includes(p)) return "Goalkeeper";
-
-  // Full backs (lateral)
   if (["LB", "RB", "LWB", "RWB", "WB", "LAT"].includes(p)) return "FullBack";
-
-  // Centre backs (incluindo "Defender" genérico da API-Football)
   if (["CB", "SW", "DEFENDER", "CENTREBACK"].includes(p)) return "CentreBack";
-
-  // Defensive midfielders (volante)
   if (["CDM", "DM", "DMF", "VOL"].includes(p)) return "DefensiveMid";
-
-  // Left wing / left mid (ponta esquerda)
   if (["LW", "LM", "PE", "ME"].includes(p)) return "LeftWing";
-
-  // Right wing / right mid (ponta direita)
   if (["RW", "RM", "PD", "MD"].includes(p)) return "RightWing";
-
-  // Attacking midfielders (meia ofensivo)
   if (["CAM", "AM", "AMF", "MEI"].includes(p)) return "AttackingMid";
-
-  // Central midfielders
   if (["CM", "MC"].includes(p)) return "CentralMid";
-
-  // Broad "Midfielder" from API-Football → volante (broad VOL)
   if (p === "MIDFIELDER") return "DefensiveMid";
-
-  // Second striker / false 9 (segundo atacante)
   if (["CF", "SS", "SA"].includes(p)) return "SecondStriker";
-
-  // Striker / centre forward (centroavante)
   if (["ST", "FW", "WF", "CA"].includes(p)) return "Striker";
-
-  // Broad "Attacker" / "Forward" from API-Football → ATA genérico
   if (["ATTACKER", "FORWARD", "ATA"].includes(p)) return "BroadForward";
-
-  // Backward compat: old group names stored in cache
   if (p === "CENTREBACK") return "CentreBack";
   if (p === "FULLBACK") return "FullBack";
   if (p === "DEFENSIVEMID") return "DefensiveMid";
@@ -150,8 +119,7 @@ function normalizePosToGroup(pos: string): PositionGroup {
   if (p === "STRIKER") return "Striker";
   if (p === "GOALKEEPER") return "Goalkeeper";
   if (p === "BROADFORWARD") return "BroadForward";
-
-  return "CentralMid"; // safe fallback
+  return "CentralMid";
 }
 
 function sortSquad(players: SquadPlayer[]): SquadPlayer[] {
@@ -193,10 +161,6 @@ function writeLocalCache(teamId: number, clubName: string, result: SquadResult):
   } catch {}
 }
 
-// ---------------------------------------------------------------------------
-// DB cache layer
-// ---------------------------------------------------------------------------
-
 async function readDbSquad(teamId: number): Promise<SquadResult | null> {
   if (teamId <= 0) return null;
   try {
@@ -209,7 +173,7 @@ async function readDbSquad(teamId: number): Promise<SquadResult | null> {
       schemaVersion?: string;
     };
     if (!Array.isArray(data.players) || data.players.length === 0) return null;
-    if (data.schemaVersion !== CACHE_VERSION) return null; // schema desatualizado → cache miss
+    if (data.schemaVersion !== CACHE_VERSION) return null;
     return {
       players: reNormalizePlayers(data.players as SquadPlayer[]),
       source: data.source as SquadSource,
@@ -220,24 +184,6 @@ async function readDbSquad(teamId: number): Promise<SquadResult | null> {
   }
 }
 
-function writeDbSquad(teamId: number, result: SquadResult): void {
-  if (teamId <= 0) return;
-  fetch(`/api/squad/${teamId}`, {
-    method: "PUT",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      players: result.players,
-      source: result.source,
-      cachedAt: result.cachedAt,
-      schemaVersion: CACHE_VERSION,
-    }),
-  }).catch(() => {});
-}
-
-// ---------------------------------------------------------------------------
-// Public API
-// ---------------------------------------------------------------------------
-
 export function clearSquadCache(teamId: number, clubName = ""): void {
   localStorage.removeItem(getCacheKey(teamId, clubName));
 }
@@ -246,140 +192,52 @@ export function clearAllSquadCaches(): void {
   const keys: string[] = [];
   for (let i = 0; i < localStorage.length; i++) {
     const k = localStorage.key(i);
-    // Remove todas as versões (prefixo base) para não deixar chaves órfãs de versões antigas
     if (k && k.startsWith(BASE_CACHE_PREFIX)) keys.push(k);
   }
   for (const k of keys) localStorage.removeItem(k);
 }
 
-interface ApiFootballPlayer {
-  id: number;
-  name: string;
-  age: number;
-  number?: number;
-  position: string;
-  photo: string;
-}
-
-async function fetchFromApiFootball(
-  teamId: number,
-  apiKey: string
-): Promise<SquadPlayer[] | null> {
-  const res = await fetch(`${API_BASE}/players/squads?team=${teamId}`, {
-    headers: { "x-apisports-key": apiKey },
-  });
-  if (res.status === 401 || res.status === 403) throw new Error("auth");
-  if (res.status === 429) throw new Error("rate-limit");
-  if (!res.ok) return null;
-
-  let json: { response?: Array<{ players?: ApiFootballPlayer[] }> };
+export async function fetchSquadFromBackend(teamId: number, fc26Name?: string): Promise<SquadResult | null> {
+  if (teamId <= 0) return null;
   try {
-    json = await res.json();
-  } catch {
-    return null;
-  }
-
-  const playersRaw = json.response?.[0]?.players;
-  if (!Array.isArray(playersRaw) || playersRaw.length === 0) return null;
-
-  return playersRaw.map((p) => {
-    const pos = normalizePosToGroup(p.position);
-    return {
-      id: p.id,
-      name: p.name,
-      age: p.age ?? 0,
-      position: pos,
-      positionPtBr: POSITION_PT_BR[pos],
-      photo: p.photo ?? "",
-      number: p.number ?? undefined,
-    };
-  });
-}
-
-interface MsmcPlayer {
-  id?: string;
-  name?: string;
-  age?: string;
-  position?: string;
-  card?: string;
-}
-
-async function fetchFromMsmc(fc26Name: string): Promise<SquadPlayer[] | null> {
-  try {
-    const res = await fetch(
-      `${MSMC_BASE}/players?game=fc26&team=${encodeURIComponent(fc26Name)}`
-    );
-    if (!res.ok) return null;
-    const raw = await res.json();
-    const arr: MsmcPlayer[] = Array.isArray(raw) ? raw : (raw?.data ?? []);
-    if (arr.length === 0) return null;
-
-    return arr.slice(0, 50).map((p, i) => {
-      const pos = normalizePosToGroup(p.position ?? "");
-      return {
-        id: parseInt(p.id ?? String(i), 10) || i,
-        name: p.name ?? "Desconhecido",
-        age: parseInt(p.age ?? "0", 10) || 0,
-        position: pos,
-        positionPtBr: POSITION_PT_BR[pos],
-        photo: p.card ?? "",
-        number: undefined,
-      };
+    const res = await fetch(`/api/squad/${teamId}/fetch`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ fc26Name: fc26Name ?? null }),
     });
+    if (!res.ok) return null;
+    const data = await res.json() as {
+      players: SquadPlayer[];
+      source: string;
+      cachedAt: number;
+      schemaVersion?: string;
+    };
+    if (!Array.isArray(data.players) || data.players.length === 0) return null;
+    return {
+      players: sortSquad(reNormalizePlayers(data.players as SquadPlayer[])),
+      source: "api-football",
+      cachedAt: data.cachedAt ?? Date.now(),
+    };
   } catch {
     return null;
   }
 }
 
-export async function getSquad(teamId: number, clubName: string): Promise<SquadResult> {
-  // Layer 1: localStorage (sync, fast)
+export async function getSquad(teamId: number, clubName: string, fc26Name?: string): Promise<SquadResult> {
   const localCached = readLocalCache(teamId, clubName);
   if (localCached) return localCached;
 
-  // Layer 2: DB cache (async, survives browser cache clears)
   const dbCached = await readDbSquad(teamId);
   if (dbCached) {
-    // Warm localStorage so subsequent calls are instant
     writeLocalCache(teamId, clubName, dbCached);
     return dbCached;
   }
 
-  // Layer 3: External APIs (API-Football → msmc.cc fallback)
-  const apiKey = getApiKey();
-  const fc26Name = APIFOOTBALL_TO_FC26_NAME[clubName] ?? clubName;
-
-  if (apiKey && teamId > 0) {
-    try {
-      const players = await fetchFromApiFootball(teamId, apiKey);
-      if (players && players.length > 0) {
-        const result: SquadResult = {
-          players: sortSquad(players),
-          source: "api-football",
-          cachedAt: Date.now(),
-        };
-        writeLocalCache(teamId, clubName, result);
-        writeDbSquad(teamId, result); // fire-and-forget
-        return result;
-      }
-    } catch (err) {
-      if (err instanceof Error && (err.message === "auth" || err.message === "rate-limit")) {
-        // Auth/rate-limit: fall through to msmc.cc
-      }
-    }
+  const fetched = await fetchSquadFromBackend(teamId, fc26Name);
+  if (fetched) {
+    writeLocalCache(teamId, clubName, fetched);
+    return fetched;
   }
 
-  // Fallback: msmc.cc (works without API key)
-  const msmcPlayers = await fetchFromMsmc(fc26Name);
-  if (msmcPlayers && msmcPlayers.length > 0) {
-    const result: SquadResult = {
-      players: sortSquad(msmcPlayers),
-      source: "fc26",
-      cachedAt: Date.now(),
-    };
-    writeLocalCache(teamId, clubName, result);
-    writeDbSquad(teamId, result); // fire-and-forget
-    return result;
-  }
-
-  return { players: [], source: "fc26", cachedAt: Date.now() };
+  return { players: [], source: "api-football", cachedAt: Date.now() };
 }

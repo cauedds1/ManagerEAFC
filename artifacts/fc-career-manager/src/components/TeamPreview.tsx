@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { ClubEntry } from "@/types/club";
 import { getSquad, SquadPlayer } from "@/lib/squadCache";
+import { APIFOOTBALL_TO_FC26_NAME } from "@/lib/footballApiMap";
 import { getOpenAIKey } from "@/lib/openaiKeyStorage";
 
 interface ClubTitle {
@@ -141,7 +142,7 @@ export function TeamPreview({ club, season, onNext, onBack, onClubInfoLoaded }: 
   useEffect(() => {
     let cancelled = false;
     setLoadingSquad(true);
-    getSquad(club.id, club.name)
+    getSquad(club.id, club.name, APIFOOTBALL_TO_FC26_NAME[club.name])
       .then((r) => { if (!cancelled) { setPlayers(r.players); setLoadingSquad(false); } })
       .catch(() => { if (!cancelled) setLoadingSquad(false); });
     return () => { cancelled = true; };

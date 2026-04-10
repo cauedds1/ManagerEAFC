@@ -32,7 +32,6 @@ interface ClubeViewProps {
   onRefresh: () => void;
   onOpenSettings: () => void;
   onOverridesUpdated?: () => void;
-  hasApiKey: boolean;
   isReadOnly?: boolean;
 }
 
@@ -48,7 +47,6 @@ export function ClubeView({
   onRefresh,
   onOpenSettings,
   onOverridesUpdated,
-  hasApiKey,
   isReadOnly,
 }: ClubeViewProps) {
   const [sub, setSub] = useState<ClubeSubTab>("elenco");
@@ -98,7 +96,6 @@ export function ClubeView({
             onRefresh={onRefresh}
             onOpenSettings={onOpenSettings}
             onOverridesUpdated={onOverridesUpdated}
-            hasApiKey={hasApiKey}
           />
         )}
 
