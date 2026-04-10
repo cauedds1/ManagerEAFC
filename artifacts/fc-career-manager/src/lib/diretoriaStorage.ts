@@ -4,6 +4,7 @@ import type {
   MeetingRecord,
   PendingNotification,
 } from "@/types/diretoria";
+import { putCareerData } from "@/lib/apiStorage";
 
 const membersKey = (careerId: string) => `fc-diretoria-members-${careerId}`;
 const convKey = (careerId: string, memberId: string) =>
@@ -24,6 +25,7 @@ export function saveMembers(careerId: string, members: BoardMember[]): void {
   try {
     localStorage.setItem(membersKey(careerId), JSON.stringify(members));
   } catch {}
+  void putCareerData(careerId, "diretoria_members", members);
 }
 
 export function addMember(careerId: string, member: BoardMember): void {
@@ -51,6 +53,7 @@ export function removeMember(careerId: string, memberId: string): void {
   try {
     localStorage.removeItem(convKey(careerId, memberId));
   } catch {}
+  void putCareerData(careerId, `conv_${memberId}`, null);
 }
 
 export function getConversation(
@@ -73,6 +76,7 @@ export function saveConversation(
   try {
     localStorage.setItem(convKey(careerId, memberId), JSON.stringify(messages));
   } catch {}
+  void putCareerData(careerId, `conv_${memberId}`, messages);
 }
 
 export function getMeetings(careerId: string): MeetingRecord[] {
@@ -95,6 +99,7 @@ export function saveMeeting(careerId: string, meeting: MeetingRecord): void {
   try {
     localStorage.setItem(meetingsKey(careerId), JSON.stringify(meetings));
   } catch {}
+  void putCareerData(careerId, "diretoria_meetings", meetings);
 }
 
 export function getNotifications(careerId: string): PendingNotification[] {
@@ -113,6 +118,7 @@ export function saveNotifications(
   try {
     localStorage.setItem(notifKey(careerId), JSON.stringify(notifs));
   } catch {}
+  void putCareerData(careerId, "diretoria_notifications", notifs);
 }
 
 export function addNotification(

@@ -57,3 +57,25 @@ export const seasonsTable = pgTable("seasons", {
   isActive: boolean("is_active").notNull().default(false),
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
 });
+
+export const seasonDataTable = pgTable(
+  "season_data",
+  {
+    seasonId: text("season_id").notNull(),
+    key: text("key").notNull(),
+    valueJson: text("value_json").notNull(),
+    updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.seasonId, table.key] })],
+);
+
+export const careerDataTable = pgTable(
+  "career_data",
+  {
+    careerId: text("career_id").notNull(),
+    key: text("key").notNull(),
+    valueJson: text("value_json").notNull(),
+    updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.careerId, table.key] })],
+);

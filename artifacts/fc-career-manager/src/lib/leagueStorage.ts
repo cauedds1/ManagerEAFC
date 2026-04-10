@@ -1,3 +1,5 @@
+import { putSeasonData } from "@/lib/apiStorage";
+
 export interface LeaguePosition {
   position: number;
   totalTeams: number;
@@ -25,4 +27,5 @@ export function setLeaguePosition(seasonId: string, pos: LeaguePosition): void {
   try {
     localStorage.setItem(leagueKey(seasonId), JSON.stringify(pos));
   } catch {}
+  void putSeasonData(seasonId, "league_position", pos);
 }

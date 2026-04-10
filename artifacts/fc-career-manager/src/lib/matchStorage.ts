@@ -1,6 +1,7 @@
 import type { MatchRecord, PlayerMatchStats } from "@/types/match";
-import { getPlayerStats, setPlayerStats } from "@/lib/playerStatsStorage";
+import { getPlayerStats, setPlayerStats, syncAllPlayerStats } from "@/lib/playerStatsStorage";
 import type { PlayerSeasonStats } from "@/types/playerStats";
+import { putSeasonData } from "@/lib/apiStorage";
 
 function matchesKey(seasonId: string): string {
   return `fc-career-manager-matches-${seasonId}`;
@@ -22,6 +23,7 @@ export function addMatch(seasonId: string, match: MatchRecord): void {
   try {
     localStorage.setItem(matchesKey(seasonId), JSON.stringify(list));
   } catch {}
+  void putSeasonData(seasonId, "matches", list);
 }
 
 export function generateMatchId(): string {
@@ -102,6 +104,8 @@ export function applyMatchToPlayerStats(
       recentRatings: newRatings,
     };
 
-    setPlayerStats(seasonId, playerId, updated);
+    setPlayerStats(seasonId, playerId, updated, false);
   }
+
+  void syncAllPlayerStats(seasonId);
 }

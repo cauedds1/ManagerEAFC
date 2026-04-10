@@ -9,6 +9,7 @@ import noticiasRouter from "./noticias";
 import storageRouter from "./storage";
 import diretoriaRouter from "./diretoria";
 import careersRouter from "./careers";
+import gamedataRouter from "./gamedata";
 
 const router: IRouter = Router();
 
@@ -22,5 +23,6 @@ router.use(noticiasRouter);
 router.use(storageRouter);
 router.use(diretoriaRouter);
 router.use(careersRouter);
+router.use(gamedataRouter);
 
 export default router;

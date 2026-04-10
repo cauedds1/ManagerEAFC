@@ -1,4 +1,5 @@
 import type { PlayerSeasonStats, PlayerOverride } from "@/types/playerStats";
+import { putSeasonData, putCareerData } from "@/lib/apiStorage";
 
 function statsKey(seasonId: string): string {
   return `fc-career-manager-stats-${seasonId}`;
@@ -44,12 +45,21 @@ export function setPlayerStats(
   seasonId: string,
   playerId: number,
   stats: PlayerSeasonStats,
+  syncDb = true,
 ): void {
   const all = getAllPlayerStats(seasonId);
   all[playerId] = stats;
   try {
     localStorage.setItem(statsKey(seasonId), JSON.stringify(all));
   } catch {}
+  if (syncDb) {
+    void putSeasonData(seasonId, "player_stats", all);
+  }
+}
+
+export function syncAllPlayerStats(seasonId: string): Promise<void> {
+  const all = getAllPlayerStats(seasonId);
+  return putSeasonData(seasonId, "player_stats", all);
 }
 
 export function copyPlayerMoodsToNewSeason(fromSeasonId: string, toSeasonId: string): void {
@@ -66,6 +76,7 @@ export function copyPlayerMoodsToNewSeason(fromSeasonId: string, toSeasonId: str
   try {
     localStorage.setItem(statsKey(toSeasonId), JSON.stringify(toStats));
   } catch {}
+  void putSeasonData(toSeasonId, "player_stats", toStats);
 }
 
 export function getAllPlayerOverrides(careerId: string): Record<number, PlayerOverride> {
@@ -88,4 +99,5 @@ export function setPlayerOverride(
   try {
     localStorage.setItem(overridesKey(careerId), JSON.stringify(all));
   } catch {}
+  void putCareerData(careerId, "overrides", all);
 }

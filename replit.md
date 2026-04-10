@@ -36,18 +36,25 @@ Brazilian Portuguese companion app for EA FC 26 career mode.
 - `squad_players` — One row per player per team; composite PK `(team_id, player_id)`. Columns: team_id, player_id, name, age, position, position_pt_br, photo, player_number, source, cached_at. All rows for the same team share the same source + cached_at from the last fetch.
 - `careers` — Career metadata (id, coach_json, club_id, club_name, club_logo, club_league, season, projeto, competitions_json, timestamps)
 - `seasons` — Season metadata per career (id, career_id FK, label, competitions_json, is_active, created_at). Season 1's `id = careerId` for backward compatibility.
+- `season_data` — JSON blob store for season-scoped game data (season_id, key, value_json, updated_at). Keys: matches, player_stats, transfers, finances, news, league_position.
+- `career_data` — JSON blob store for career-scoped data (career_id, key, value_json, updated_at). Keys: overrides, lineup, formation, diretoria_members, diretoria_meetings, diretoria_notifications, conv_<memberId>.
 
 ### Multi-Season Architecture (Task #1)
-- **Hybrid storage**: Career + Season METADATA in PostgreSQL; all game data (matches, stats, transfers, finances, news) in localStorage keyed by `seasonId`.
-- **Season 1 key design**: `Season1.id = careerId` — existing localStorage data works as Season 1 automatically, zero migration.
+- **Full PostgreSQL persistence**: All game data (matches, player stats, transfers, finances, news, league position, player overrides, lineups, formations, diretoria conversations/meetings/notifications) stored in PostgreSQL via Railway-safe API.
+- **Season 1 key design**: `Season1.id = careerId` — backward compatible with any existing data.
 - **`ensureCareerAndSeason1(career)`** in `careerStorage.ts`: syncs career to DB, creates Season 1 on first Dashboard load.
 - **`activeSeasonId` state** in `Dashboard.tsx`: defaults to `career.currentSeasonId ?? career.id`. All child components receive `seasonId` instead of `careerId` for storage keys.
 - **`isReadOnly`** flag: true when viewing an inactive (past) season — hides add buttons in Partidas, Transferencias, Noticias.
 - **`SeasonSelectModal.tsx`**: sidebar modal with season list (W/D/L stats per season), switch button.
 - **`NewSeasonWizard.tsx`**: 2-step wizard (label + competitions) to create a new season; copies player moods from previous season.
-- **All storage libs** (`matchStorage`, `playerStatsStorage`, `leagueStorage`, `transferStorage`, `noticiaStorage`, `financeiroStorage`, `playerPerformanceEngine`, `playerContext`) now accept `seasonId` as first key parameter.
-- **Overrides + lineups** remain keyed by `careerId` (career-wide settings).
+- **Write-through cache**: localStorage used as sync cache; every write also fires a background API call to PostgreSQL (fire-and-forget, never blocks UI).
+- **DB sync on mount**: Dashboard loads all season + career data from PostgreSQL into localStorage before rendering (`dbSynced` state gate with spinner). Automatic migration if data only exists locally.
+- **Season switch sync**: When switching seasons, fetches that season's data from PostgreSQL into localStorage before rendering.
+- **`dbSync.ts`**: Handles `syncSeasonFromDb` (matches, player_stats, transfers, finances, news, league_position) and `syncCareerFromDb` (overrides, lineup, formation, diretoria_members, meetings, notifications, conv_<memberId>).
+- **`apiStorage.ts`**: Thin async helpers `putSeasonData`, `putCareerData`, `loadSeasonData`, `loadCareerData` calling `/api/data/*`.
+- **Overrides + lineups** are career-wide (survive across seasons).
 - **Historical context** in AI news: `pastSeasons` W/D/L stats passed to `/api/noticias/generate` as `historicalContext`, included in OpenAI system prompt.
+- **Feed memory**: Last 6 posts sent as `recentPostsContext` to AI — sporadically creates narrative connections between related news events.
 
 ### API Routes (`artifacts/api-server/src/routes/`)
 - `GET /api/clubs` → 200 `{clubs, cachedAt}` if fresh (<30 days), 204 if empty/stale
@@ -64,6 +71,12 @@ Brazilian Portuguese companion app for EA FC 26 career mode.
 - `GET /api/careers/:id/seasons` → list seasons for career
 - `POST /api/careers/:id/seasons` → create season (accepts optional `id` for Season 1)
 - `PUT /api/seasons/:id/activate` → activate a season (deactivates all others for that career)
+- `GET /api/data/season/:seasonId` → all season data blobs as `{data: {key: value}}`
+- `PUT /api/data/season/:seasonId/:key` → upsert one season data blob
+- `DELETE /api/data/season/:seasonId` → delete all season data
+- `GET /api/data/career/:careerId` → all career data blobs as `{data: {key: value}}`
+- `PUT /api/data/career/:careerId/:key` → upsert one career data blob
+- `DELETE /api/data/career/:careerId` → delete all career data
 
 ### AI Integration
 - Provider: OpenAI via Replit AI Integrations proxy (`@workspace/integrations-openai-ai-server`)

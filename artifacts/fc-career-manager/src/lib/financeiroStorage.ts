@@ -1,4 +1,5 @@
 import type { TransferRecord } from "@/types/transfer";
+import { putSeasonData } from "@/lib/apiStorage";
 
 export interface FinanceiroSettings {
   transferBudget: number;
@@ -24,9 +25,11 @@ export function getFinanceiroSettings(seasonId: string): FinanceiroSettings {
 }
 
 export function saveFinanceiroSettings(seasonId: string, settings: FinanceiroSettings): void {
+  const withTs = { ...settings, updatedAt: Date.now() };
   try {
-    localStorage.setItem(key(seasonId), JSON.stringify({ ...settings, updatedAt: Date.now() }));
+    localStorage.setItem(key(seasonId), JSON.stringify(withTs));
   } catch {}
+  void putSeasonData(seasonId, "finances", withTs);
 }
 
 export interface FinancialSnapshot {

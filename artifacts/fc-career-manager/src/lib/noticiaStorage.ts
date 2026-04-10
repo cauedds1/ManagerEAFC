@@ -1,5 +1,6 @@
 import type { NewsPost } from "@/types/noticias";
 import type { Career } from "@/types/career";
+import { putSeasonData } from "@/lib/apiStorage";
 
 function postsKey(seasonId: string): string {
   return `fc-career-noticias-${seasonId}`;
@@ -19,6 +20,7 @@ export function savePosts(seasonId: string, posts: NewsPost[]): void {
   try {
     localStorage.setItem(postsKey(seasonId), JSON.stringify(posts));
   } catch {}
+  void putSeasonData(seasonId, "news", posts);
 }
 
 export function addPost(seasonId: string, post: NewsPost): void {
