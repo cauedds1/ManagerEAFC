@@ -131,7 +131,7 @@ router.get("/players/search", async (req, res) => {
             age: parseInt(String(p.age ?? "0"), 10) || 0,
             position: p.position ?? "",
             positionPtBr: ptBr,
-            photo: p.card ?? "",
+            photo: "",
             playerNumber: null,
             source: "msmc@search",
             cachedAt,
@@ -177,13 +177,36 @@ router.get("/players/search", async (req, res) => {
     }
 
     // ── 4. Upsert to DB (cache everything for future searches) ────────────────
-    if (toInsert.length > 0) {
-      const CHUNK = 50;
-      for (let i = 0; i < toInsert.length; i += CHUNK) {
+    // msmc rows first — do not overwrite existing data
+    const msmcRows = toInsert.filter((r) => (r.source as string).startsWith("msmc"));
+    const afRows   = toInsert.filter((r) => (r.source as string).startsWith("api-football"));
+
+    const CHUNK = 50;
+    if (msmcRows.length > 0) {
+      for (let i = 0; i < msmcRows.length; i += CHUNK) {
         await db
           .insert(squadPlayersTable)
-          .values(toInsert.slice(i, i + CHUNK))
+          .values(msmcRows.slice(i, i + CHUNK))
           .onConflictDoNothing();
+      }
+    }
+    // api-football rows — always update photo/age/name so real face photo wins
+    if (afRows.length > 0) {
+      for (let i = 0; i < afRows.length; i += CHUNK) {
+        await db
+          .insert(squadPlayersTable)
+          .values(afRows.slice(i, i + CHUNK))
+          .onConflictDoUpdate({
+            target: [squadPlayersTable.teamId, squadPlayersTable.playerId],
+            set: {
+              photo:       sql`excluded.photo`,
+              age:         sql`excluded.age`,
+              name:        sql`excluded.name`,
+              positionPtBr: sql`excluded.position_pt_br`,
+              source:      sql`excluded.source`,
+              cachedAt:    sql`excluded.cached_at`,
+            },
+          });
       }
     }
 

@@ -1,7 +1,7 @@
 import app from "./app";
 import { logger } from "./lib/logger";
 import { db, squadPlayersTable } from "@workspace/db";
-import { ne, inArray, sql } from "drizzle-orm";
+import { ne, inArray, sql, like } from "drizzle-orm";
 
 const rawPort = process.env["PORT"];
 
@@ -66,8 +66,24 @@ async function migratePositionGroups() {
   }
 }
 
+async function clearCardPhotos() {
+  try {
+    const result = await db
+      .update(squadPlayersTable)
+      .set({ photo: "" })
+      .where(like(squadPlayersTable.photo, "%ratings-images-prod.pulse.ea.com%"))
+      .returning({ playerId: squadPlayersTable.playerId });
+    if (result.length > 0) {
+      logger.info({ rows: result.length }, "Cleared UT card photos from squad players");
+    }
+  } catch (err) {
+    logger.warn({ err }, "Failed to clear card photos (non-fatal)");
+  }
+}
+
 purgeInvalidSquadRows()
   .then(migratePositionGroups)
+  .then(clearCardPhotos)
   .then(() => {
     app.listen(port, (err) => {
       if (err) {
