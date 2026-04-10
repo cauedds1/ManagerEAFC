@@ -1,0 +1,48 @@
+#15 - Sistema de Múltiplas Temporadas
+What & Why
+Permitir que o usuário registre múltiplas temporadas dentro de uma mesma carreira, podendo navegar entre elas sem perder nenhum dado. Cada temporada tem estatísticas, partidas, notícias e finanças próprias zeradas no início. Mood/fan moral dos jogadores e todo o histórico da Diretoria persistem entre temporadas. Toda a informação das temporadas é salva no banco de dados.
+
+Done looks like
+O botão "Temp:" no header abre um modal lateral mostrando todas as temporadas da carreira com dados resumidos (partidas, V/E/D)
+O modal tem um botão "Nova Temporada" que abre um wizard de 2 passos: (1) confirmar o rótulo da temporada (ex: "2026/27", sugerido automaticamente) e (2) escolher as competições da nova temporada
+Ao criar nova temporada, todos os dados de jogo são zerados: partidas, estatísticas de jogadores (gols/assists/notas), posição na liga, finanças e notícias
+Mood e fan moral dos jogadores carregam da temporada anterior (não são zerados)
+Histórico completo da Diretoria (conversas com IA, reuniões, notificações) persiste normalmente
+Clicar numa temporada passada no modal carrega todos os dados daquela época (tudo somente leitura ou visualizável)
+A temporada ativa fica destacada no modal
+Todos os dados de temporada (partidas, stats, transferências, finanças, notícias) são salvos via API no banco de dados PostgreSQL — não dependem mais do localStorage do navegador
+Carreiras e temporadas existentes são migradas automaticamente para o banco ao abrir o app
+Out of scope
+Promoção/rebaixamento automático de liga
+Histórico cruzado de temporadas no Painel (ex: evolução de gols por temporada)
+Comparação entre temporadas lado a lado
+Export/import de dados de temporada
+Tasks
+DB Schema — tabelas de temporadas e dados por temporada — Adicionar ao schema Drizzle as tabelas: careers, seasons, season_matches, season_player_stats, season_transfers, season_finances, season_news, season_league_positions e career_player_mood. Rodar a migration com db push.
+
+API routes — CRUD completo por temporada — Criar rotas REST no api-server para todas as novas tabelas: /api/careers, /api/seasons, /api/seasons/:id/matches, /api/seasons/:id/stats, /api/seasons/:id/transfers, /api/seasons/:id/finances, /api/seasons/:id/news, /api/seasons/:id/league e /api/careers/:id/mood. Incluir endpoint de criação de nova temporada que copia o mood atual dos jogadores para o registro persistente.
+
+Migração dos storage libs do frontend — Substituir todas as chamadas de localStorage nos arquivos de lib (matchStorage, playerStatsStorage, leagueStorage, financeiroStorage, noticiaStorage, transferStorage) por chamadas à API, passando seasonId. Manter diretoriaStorage e mood/fan moral como dados de carreira (não de temporada). Adicionar seasonStorage.ts para CRUD de temporadas via API.
+
+Tipo Season e migração de Career — Criar tipo Season (id, careerId, label, competitions, createdAt). Atualizar o tipo Career adicionando currentSeasonId. Atualizar careerStorage para usar a API. Implementar migração automática: ao abrir o app, se o usuário tem carreiras salvas apenas em localStorage, sincronizá-las com o banco e criar a Season 1 de cada uma preservando todos os dados.
+
+SeasonSelectModal — seletor de temporadas — Criar o componente modal que abre ao clicar no botão "Temp:" no header do Dashboard. Exibir lista de todas as temporadas da carreira com resumo (rótulo, número de partidas, W/D/L). Temporada ativa destacada. Clicar numa temporada muda a activeSeasonId no Dashboard. Botão "Nova Temporada" no rodapé do modal.
+
+NewSeasonWizard — wizard de nova temporada — Criar wizard em 2 passos acessível pelo SeasonSelectModal: Passo 1 confirma o rótulo (sugerido como próxima temporada a partir da atual, ex: "2025/26" → "2026/27") e exibe aviso claro do que será zerado e o que persistirá. Passo 2 seleciona as competições da nova temporada. Ao confirmar, cria o registro via API e muda a temporada ativa.
+
+Dashboard — integração da seasonId ativa — Refatorar o Dashboard para carregar dados da temporada ativa via API ao invés de localStorage. Gerenciar estado de loading e erro para cada seção. O botão "Temp:" abre o SeasonSelectModal. Passar seasonId para todos os subcomponentes (PainelView, PartidaView, ElencoView, etc.) que consomem dados de temporada.
+
+Relevant files
+artifacts/fc-career-manager/src/types/career.ts
+artifacts/fc-career-manager/src/lib/careerStorage.ts
+artifacts/fc-career-manager/src/lib/matchStorage.ts
+artifacts/fc-career-manager/src/lib/playerStatsStorage.ts
+artifacts/fc-career-manager/src/lib/leagueStorage.ts
+artifacts/fc-career-manager/src/lib/financeiroStorage.ts
+artifacts/fc-career-manager/src/lib/noticiaStorage.ts
+artifacts/fc-career-manager/src/lib/transferStorage.ts
+artifacts/fc-career-manager/src/lib/diretoriaStorage.ts
+artifacts/fc-career-manager/src/components/Dashboard.tsx
+artifacts/fc-career-manager/src/components/PainelView.tsx
+lib/db/src/schema/index.ts
+artifacts/api-server/src/routes/index.ts
