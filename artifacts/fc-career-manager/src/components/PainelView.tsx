@@ -222,10 +222,12 @@ function TopPerformers({
   careerId,
   allPlayers,
   type,
+  matchCount,
 }: {
   careerId: string;
   allPlayers: SquadPlayer[];
   type: "goals" | "assists";
+  matchCount: number;
 }) {
   const playerMap = useMemo(
     () => new Map(allPlayers.map((p) => [p.id, p])),
@@ -243,7 +245,7 @@ function TopPerformers({
         player: playerMap.get(s.playerId) ?? null,
       }))
       .filter((r) => r.player !== null);
-  }, [careerId, playerMap, type]);
+  }, [careerId, playerMap, type, matchCount]);
 
   const label = type === "goals" ? "Artilheiros" : "Assistentes";
   const statLabel = type === "goals" ? "gols" : "assist.";
@@ -275,7 +277,7 @@ function TopPerformers({
           </svg>
           <p className="text-white/25 text-xs">{emptyMsg}</p>
           <p className="text-white/15 text-xs">
-            As estatísticas são atualizadas via menu do jogador
+            Registre partidas com autores dos gols para ver aqui
           </p>
         </div>
       ) : (
@@ -599,8 +601,8 @@ export function PainelView({
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <LeagueCard careerId={careerId} />
-        <TopPerformers careerId={careerId} allPlayers={allPlayers} type="goals" />
-        <TopPerformers careerId={careerId} allPlayers={allPlayers} type="assists" />
+        <TopPerformers careerId={careerId} allPlayers={allPlayers} type="goals" matchCount={matches.length} />
+        <TopPerformers careerId={careerId} allPlayers={allPlayers} type="assists" matchCount={matches.length} />
       </div>
 
       <MessagesSection />
