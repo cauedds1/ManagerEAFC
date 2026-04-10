@@ -25,6 +25,7 @@
     "vite": "catalog:"
   },
   "dependencies": {
-    "color-thief-browser": "^2.0.2"
+    "color-thief-browser": "^2.0.2",
+    "react-easy-crop": "^5.5.7"
   }
 }

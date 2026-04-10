@@ -7,6 +7,7 @@ import { seedPosts } from "@/lib/noticiaSeed";
 import { NoticiaPost } from "./NoticiaPost";
 import { getPortalPhotos, PORTAL_PHOTOS_EVENT, type PortalPhotos } from "@/lib/portalPhotosStorage";
 import { useImageUpload } from "@/hooks/useImageUpload";
+import { ImageCropModal } from "./ImageCropModal";
 
 interface NoticiasViewProps {
   career: Career;
@@ -127,9 +128,12 @@ function AddPostModal({
     objectPath: imageObjectPath,
     isUploading: isUploadingImage,
     error: imageError,
+    pendingFile: imagePendingFile,
     inputRef: imageInputRef,
     openPicker: openImagePicker,
     handleFileSelect: handleImageSelect,
+    confirmCrop: confirmImageCrop,
+    cancelCrop: cancelImageCrop,
     reset: handleImageRemove,
   } = useImageUpload();
 
@@ -705,6 +709,16 @@ function AddPostModal({
           )}
         </div>
       </div>
+
+      {/* Image crop modal — rendered on top of the post modal */}
+      {imagePendingFile && (
+        <ImageCropModal
+          imageSrc={imagePendingFile.localUrl}
+          fileName={imagePendingFile.file.name}
+          onConfirm={confirmImageCrop}
+          onCancel={cancelImageCrop}
+        />
+      )}
     </div>
   );
 }
