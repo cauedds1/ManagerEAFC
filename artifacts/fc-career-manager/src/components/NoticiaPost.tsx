@@ -81,9 +81,9 @@ function SourceAvatar({
   );
 }
 
-function CommentAvatar({ username, size }: { username: string; size: number }) {
+function CommentAvatar({ username, displayName, size }: { username: string; displayName: string; size: number }) {
   const [err, setErr] = useState(false);
-  const initial = username.replace(/^@/, "").charAt(0).toUpperCase();
+  const initial = (displayName || username).charAt(0).toUpperCase();
   if (err) {
     return (
       <div
@@ -97,7 +97,7 @@ function CommentAvatar({ username, size }: { username: string; size: number }) {
   return (
     <img
       src={getCommentAvatarUrl(username)}
-      alt={username}
+      alt={displayName || username}
       onError={() => setErr(true)}
       className="rounded-full flex-shrink-0 object-cover"
       style={{ width: size, height: size }}
@@ -109,7 +109,7 @@ function ReplyComment({ comment }: { comment: NewsComment }) {
   const [liked, setLiked] = useState(false);
   return (
     <div className="flex gap-2.5 mt-2.5 ml-8">
-      <CommentAvatar username={comment.username} size={24} />
+      <CommentAvatar username={comment.username} displayName={comment.displayName} size={24} />
       <div className="flex-1 min-w-0">
         <div className="flex items-baseline gap-2 flex-wrap">
           <span className="text-white/80 text-xs font-bold">{comment.username}</span>
@@ -140,7 +140,7 @@ function CommentItem({ comment }: { comment: NewsComment }) {
 
   return (
     <div className="flex gap-2.5">
-      <CommentAvatar username={comment.username} size={28} />
+      <CommentAvatar username={comment.username} displayName={comment.displayName} size={28} />
       <div className="flex-1 min-w-0">
         <div className="flex items-baseline gap-2 flex-wrap">
           <span className="text-white text-xs font-bold">{comment.username}</span>
