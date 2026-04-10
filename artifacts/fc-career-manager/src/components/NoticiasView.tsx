@@ -223,10 +223,23 @@ function AddPostModal({
   );
 }
 
+const SOURCE_SIDEBAR_COLOR: Record<NewsSource, { color: string; bg: string }> = {
+  tnt:     { color: "#E8002D", bg: "rgba(232,0,45,0.15)" },
+  espn:    { color: "#E67E22", bg: "rgba(230,126,34,0.15)" },
+  fanpage: { color: "var(--club-primary)", bg: "rgba(var(--club-primary-rgb),0.15)" },
+};
+
+const SOURCE_SIDEBAR_LABEL: Record<NewsSource, string> = {
+  tnt:     "TNT Sports",
+  espn:    "ESPN",
+  fanpage: "FanPage",
+};
+
 export function NoticiasView({ career }: NoticiasViewProps) {
   const [posts, setPosts] = useState<NewsPost[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [filterSource, setFilterSource] = useState<NewsSource | "all">("all");
+  const [filterCategory, setFilterCategory] = useState<NewsCategory | "all">("all");
 
   useEffect(() => {
     let stored = getPosts(career.id);
@@ -242,10 +255,11 @@ export function NoticiasView({ career }: NoticiasViewProps) {
     setPosts((prev) => [post, ...prev]);
   };
 
-  const filtered =
-    filterSource === "all"
-      ? posts
-      : posts.filter((p) => p.source === filterSource);
+  const filtered = posts.filter((p) => {
+    if (filterSource !== "all" && p.source !== filterSource) return false;
+    if (filterCategory !== "all" && p.category !== filterCategory) return false;
+    return true;
+  });
 
   const sourceFilters: { id: NewsSource | "all"; label: string }[] = [
     { id: "all", label: "Todos" },
@@ -253,6 +267,27 @@ export function NoticiasView({ career }: NoticiasViewProps) {
     { id: "tnt", label: "TNT Sports" },
     { id: "espn", label: "ESPN" },
   ];
+
+  const sourceCounts = (["fanpage", "tnt", "espn"] as NewsSource[]).map((s) => ({
+    id: s,
+    count: posts.filter((p) => p.source === s).length,
+  }));
+  const maxSourceCount = Math.max(1, ...sourceCounts.map((s) => s.count));
+
+  const categoryCounts = (Object.keys(CATEGORY_LABELS) as NewsCategory[])
+    .map((c) => ({ id: c, count: posts.filter((p) => p.category === c).length }))
+    .filter((c) => c.count > 0)
+    .sort((a, b) => b.count - a.count);
+
+  const emptyLabel = (() => {
+    if (filterSource !== "all" && filterCategory !== "all")
+      return `Nenhuma publicação de ${SOURCE_LABELS[filterSource as NewsSource]} na categoria ${CATEGORY_LABELS[filterCategory as NewsCategory]}`;
+    if (filterSource !== "all")
+      return `Nenhuma publicação de ${SOURCE_LABELS[filterSource as NewsSource]} ainda`;
+    if (filterCategory !== "all")
+      return `Nenhuma publicação na categoria ${CATEGORY_LABELS[filterCategory as NewsCategory]}`;
+    return "Clique em \"Nova notícia\" para publicar a primeira";
+  })();
 
   return (
     <div className="animate-fade-up">
@@ -310,45 +345,163 @@ export function NoticiasView({ career }: NoticiasViewProps) {
             {f.label}
           </button>
         ))}
+        {filterCategory !== "all" && (
+          <button
+            onClick={() => setFilterCategory("all")}
+            className="flex-shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold transition-all duration-150"
+            style={{
+              background: "rgba(255,255,255,0.05)",
+              color: "rgba(255,255,255,0.45)",
+              border: "1px solid rgba(255,255,255,0.10)",
+            }}
+          >
+            {CATEGORY_LABELS[filterCategory]}
+            <svg className="w-3 h-3 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        )}
       </div>
 
-      {/* Feed */}
-      {filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-24 gap-4 text-center">
-          <div
-            className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl"
-            style={{ background: "rgba(255,255,255,0.04)", border: "1px dashed rgba(255,255,255,0.08)" }}
-          >
-            📰
-          </div>
-          <div>
-            <p className="text-white/35 font-semibold text-sm">Nenhuma notícia ainda</p>
-            <p className="text-white/20 text-xs mt-1">
-              {filterSource === "all"
-                ? "Clique em \"Nova notícia\" para publicar a primeira"
-                : `Nenhuma publicação de ${SOURCE_LABELS[filterSource as NewsSource]} ainda`}
-            </p>
-          </div>
-          {filterSource === "all" && (
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="mt-2 px-5 py-2 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90"
-              style={{ background: "var(--club-gradient)" }}
-            >
-              + Primeira notícia
-            </button>
+      {/* Feed + Sidebar layout */}
+      <div className="flex flex-col lg:flex-row items-start gap-6">
+
+        {/* Feed column */}
+        <div className="flex-1 min-w-0">
+          {filtered.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-24 gap-4 text-center">
+              <div
+                className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl"
+                style={{ background: "rgba(255,255,255,0.04)", border: "1px dashed rgba(255,255,255,0.08)" }}
+              >
+                📰
+              </div>
+              <div>
+                <p className="text-white/35 font-semibold text-sm">Nenhuma notícia ainda</p>
+                <p className="text-white/20 text-xs mt-1 max-w-xs">{emptyLabel}</p>
+              </div>
+              {filterSource === "all" && filterCategory === "all" && (
+                <button
+                  onClick={() => setShowAddModal(true)}
+                  className="mt-2 px-5 py-2 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90"
+                  style={{ background: "var(--club-gradient)" }}
+                >
+                  + Primeira notícia
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="flex flex-col gap-4 lg:max-w-[560px]">
+              {filtered.map((post) => (
+                <NoticiaPost key={post.id} post={post} />
+              ))}
+            </div>
           )}
         </div>
-      ) : (
-        <div
-          className="mx-auto flex flex-col gap-4"
-          style={{ maxWidth: 560 }}
-        >
-          {filtered.map((post) => (
-            <NoticiaPost key={post.id} post={post} />
-          ))}
-        </div>
-      )}
+
+        {/* Sidebar — only on lg+ when there are posts */}
+        {posts.length > 0 && (
+          <div className="hidden lg:flex flex-col gap-4 w-64 flex-shrink-0">
+
+            {/* Por fonte */}
+            <div
+              className="rounded-2xl p-4 flex flex-col gap-3"
+              style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
+            >
+              <p className="text-white/35 text-xs font-bold uppercase tracking-wider">Por fonte</p>
+              <div className="flex flex-col gap-2.5">
+                {sourceCounts.map(({ id, count }) => {
+                  const cfg = SOURCE_SIDEBAR_COLOR[id];
+                  const active = filterSource === id;
+                  return (
+                    <button
+                      key={id}
+                      onClick={() => setFilterSource(active ? "all" : id)}
+                      className="flex flex-col gap-1.5 text-left transition-all duration-150 rounded-xl p-2.5 -mx-1"
+                      style={{
+                        background: active ? cfg.bg : "transparent",
+                        outline: "none",
+                      }}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span
+                          className="text-xs font-semibold"
+                          style={{ color: active ? cfg.color : "rgba(255,255,255,0.5)" }}
+                        >
+                          {SOURCE_SIDEBAR_LABEL[id]}
+                        </span>
+                        <span
+                          className="text-xs font-bold tabular-nums"
+                          style={{ color: active ? cfg.color : "rgba(255,255,255,0.3)" }}
+                        >
+                          {count}
+                        </span>
+                      </div>
+                      <div className="w-full h-1 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+                        <div
+                          className="h-full rounded-full transition-all duration-300"
+                          style={{
+                            width: `${(count / maxSourceCount) * 100}%`,
+                            background: active ? cfg.color : "rgba(255,255,255,0.15)",
+                          }}
+                        />
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Por categoria */}
+            {categoryCounts.length > 0 && (
+              <div
+                className="rounded-2xl p-4 flex flex-col gap-3"
+                style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
+              >
+                <p className="text-white/35 text-xs font-bold uppercase tracking-wider">Por categoria</p>
+                <div className="flex flex-col gap-1">
+                  {categoryCounts.map(({ id, count }) => {
+                    const active = filterCategory === id;
+                    return (
+                      <button
+                        key={id}
+                        onClick={() => setFilterCategory(active ? "all" : id)}
+                        className="flex items-center justify-between px-2.5 py-2 rounded-xl transition-all duration-150 text-left"
+                        style={{
+                          background: active
+                            ? "rgba(var(--club-primary-rgb),0.14)"
+                            : "transparent",
+                        }}
+                      >
+                        <span
+                          className="text-xs font-semibold"
+                          style={{
+                            color: active ? "var(--club-primary)" : "rgba(255,255,255,0.45)",
+                          }}
+                        >
+                          {CATEGORY_LABELS[id]}
+                        </span>
+                        <span
+                          className="text-xs font-bold tabular-nums px-1.5 py-0.5 rounded-md"
+                          style={{
+                            background: active
+                              ? "rgba(var(--club-primary-rgb),0.2)"
+                              : "rgba(255,255,255,0.07)",
+                            color: active ? "var(--club-primary)" : "rgba(255,255,255,0.3)",
+                          }}
+                        >
+                          {count}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+          </div>
+        )}
+      </div>
 
       {showAddModal && (
         <AddPostModal
