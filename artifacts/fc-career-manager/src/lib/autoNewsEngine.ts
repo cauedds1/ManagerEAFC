@@ -109,17 +109,40 @@ export function detectMatchEvents(input: EngineInput): DetectedEvent[] {
     });
   }
 
-  /* ── Vitória sofrida (ganhou mas adversário marcou — sem assertiva sobre quem abriu o placar) ── */
+  /* ── Virada dramática (time marcou o gol que tomou a frente no 2º tempo) ── */
+  if (isWin && newMatch.opponentScore > 0 && teamMins.length > newMatch.opponentScore) {
+    const goAheadIdx = newMatch.opponentScore;
+    const goAheadMinute = teamMins[goAheadIdx];
+    const equalizerMinute = newMatch.opponentScore > 0 ? teamMins[newMatch.opponentScore - 1] : null;
+    if (goAheadMinute >= 45) {
+      events.push({
+        key: `virada-${newMatch.id}`,
+        type: "virada",
+        title: `Virada dramática! ${clubName} ${newMatch.myScore}x${newMatch.opponentScore} ${newMatch.opponent}`,
+        aiDescription: `O ${clubName} virou a partida e venceu por ${newMatch.myScore}x${newMatch.opponentScore}! O gol que colocou o time na frente saiu aos ${goAheadMinute}'${equalizerMinute != null && equalizerMinute !== goAheadMinute ? ` (empate aos ${equalizerMinute}')` : ""}. ${summary} Descreva a euforia da torcida com o gol da virada, a garra do time que não desistiu e os momentos de tensão que antecederam a jogada decisiva.`,
+        source: "tnt",
+        category: "resultado",
+        priority: 1,
+      });
+    }
+  }
+
+  /* ── Vitória sofrida (ganhou mas adversário marcou — para casos que não se qualificam como virada) ── */
   if (isWin && newMatch.opponentScore > 0 && goalDiff <= 2) {
-    events.push({
-      key: `vitoria-sofrida-${newMatch.id}`,
-      type: "vitoria_sofrida",
-      title: `${clubName} vence partida disputada por ${newMatch.myScore}x${newMatch.opponentScore}`,
-      aiDescription: `O ${clubName} venceu o ${newMatch.opponent} em uma partida onde ambos os times marcaram (${newMatch.myScore}x${newMatch.opponentScore}). ${summary} Descreva a tensão do jogo, como a defesa e o ataque se alternaram ao longo dos 90 minutos, e celebre a vitória conquistada em um jogo disputado.`,
-      source: "tnt",
-      category: "resultado",
-      priority: 2,
-    });
+    const goAheadIdx = newMatch.opponentScore;
+    const goAheadMinute = teamMins.length > goAheadIdx ? teamMins[goAheadIdx] : null;
+    const isVirada = goAheadMinute != null && goAheadMinute >= 45;
+    if (!isVirada) {
+      events.push({
+        key: `vitoria-sofrida-${newMatch.id}`,
+        type: "vitoria_sofrida",
+        title: `${clubName} vence partida disputada: ${newMatch.myScore}x${newMatch.opponentScore}`,
+        aiDescription: `O ${clubName} venceu o ${newMatch.opponent} em uma partida onde ambos os times marcaram (${newMatch.myScore}x${newMatch.opponentScore}). ${summary} Descreva a tensão do jogo, como as defesas e os ataques se alternaram ao longo dos 90 minutos, e celebre a vitória conquistada em um confronto equilibrado.`,
+        source: "tnt",
+        category: "resultado",
+        priority: 2,
+      });
+    }
   }
 
   /* ── Vitória suada (margem mínima com placar aberto ≥70' — gol nos acréscimos não se aplica) ── */
@@ -443,13 +466,16 @@ export function detectMatchEvents(input: EngineInput): DetectedEvent[] {
   if (prevMatch) {
     const prevStarters = new Set(prevMatch.starterIds);
     const newEntrants = newMatch.starterIds.filter((id) => !prevStarters.has(id));
-    if (newEntrants.length >= 2 && newEntrants.length <= 5) {
+    if (newEntrants.length >= 1 && newEntrants.length <= 6) {
       const names = newEntrants.map((id) => playerName(allPlayers, id));
+      const changeDesc = newEntrants.length === 1
+        ? `uma novidade no time titular: ${names[0]}`
+        : `${newEntrants.length} novidades no time titular: ${names.join(", ")}`;
       events.push({
         key: `mudanca-escalacao-${newMatch.id}`,
         type: "mudanca_escalacao",
-        title: `${clubName} muda escalação para enfrentar ${newMatch.opponent}`,
-        aiDescription: `O ${clubName} entrou com ${newEntrants.length} novidades no time titular: ${names.join(", ")}. ${summary} O canal oficial do clube explica as mudanças táticas do treinador, os motivos das alterações (lesões, suspensões, opção tática) e as expectativas para a partida.`,
+        title: `${clubName} altera escalação para enfrentar ${newMatch.opponent}`,
+        aiDescription: `O ${clubName} entrou com ${changeDesc}. ${summary} O canal oficial do clube explica as mudanças táticas do treinador, os motivos das alterações (lesões, suspensões, opção tática) e o que esperar do time nesta formação.`,
         source: "fanpage",
         category: "geral",
         priority: 3,
