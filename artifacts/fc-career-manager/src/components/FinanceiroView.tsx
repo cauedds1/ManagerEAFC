@@ -105,9 +105,10 @@ interface FinanceiroViewProps {
   seasonId: string;
   transfers: TransferRecord[];
   season: string;
+  isReadOnly?: boolean;
 }
 
-export function FinanceiroView({ careerId, seasonId, transfers, season }: FinanceiroViewProps) {
+export function FinanceiroView({ careerId, seasonId, transfers, season, isReadOnly }: FinanceiroViewProps) {
   const [settings, setSettings] = useState<FinanceiroSettings>(() => getFinanceiroSettings(seasonId));
 
   const snapshot = useMemo(
@@ -156,20 +157,39 @@ export function FinanceiroView({ careerId, seasonId, transfers, season }: Financ
         style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)" }}
       >
         <p className="text-white/40 text-xs font-semibold uppercase tracking-wider">Orçamentos</p>
-        <BudgetEditor
-          label="Orçamento de transferências"
-          value={settings.transferBudget}
-          onSave={(v) => updateSettings({ transferBudget: v })}
-        />
-        <BudgetEditor
-          label="Folha salarial máxima (€k/sem)"
-          value={settings.salaryBudget}
-          onSave={(v) => updateSettings({ salaryBudget: v })}
-        />
-        {!hasBudget && (
-          <p className="text-white/20 text-xs mt-1">
-            Clique nos valores acima para definir os orçamentos do clube.
-          </p>
+        {isReadOnly ? (
+          <>
+            <div className="flex items-center gap-2">
+              <span className="text-white/35 text-xs flex-1">Orçamento de transferências</span>
+              <span className="text-white text-sm font-semibold">
+                {settings.transferBudget > 0 ? formatMoney(settings.transferBudget) : "—"}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-white/35 text-xs flex-1">Folha salarial máxima (€k/sem)</span>
+              <span className="text-white text-sm font-semibold">
+                {settings.salaryBudget > 0 ? formatMoney(settings.salaryBudget, "k") : "—"}
+              </span>
+            </div>
+          </>
+        ) : (
+          <>
+            <BudgetEditor
+              label="Orçamento de transferências"
+              value={settings.transferBudget}
+              onSave={(v) => updateSettings({ transferBudget: v })}
+            />
+            <BudgetEditor
+              label="Folha salarial máxima (€k/sem)"
+              value={settings.salaryBudget}
+              onSave={(v) => updateSettings({ salaryBudget: v })}
+            />
+            {!hasBudget && (
+              <p className="text-white/20 text-xs mt-1">
+                Clique nos valores acima para definir os orçamentos do clube.
+              </p>
+            )}
+          </>
         )}
       </div>
 

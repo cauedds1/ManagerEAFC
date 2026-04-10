@@ -16,6 +16,8 @@ import { buildPlayerPerformanceContext, buildPlayerContextString } from "@/lib/p
 import { stepPlayerMood } from "@/lib/playerPerformanceEngine";
 import { getMembers, addNotification } from "@/lib/diretoriaStorage";
 import { getAllPlayerStats } from "@/lib/playerStatsStorage";
+import { getLeaguePosition } from "@/lib/leagueStorage";
+import { getTransfers } from "@/lib/transferStorage";
 
 import type { Season } from "@/types/career";
 
@@ -850,14 +852,47 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
   const historicalContext = useMemo(() => {
     if (pastSeasons.length === 0) return undefined;
     const lines = pastSeasons.map((s) => {
+      const parts: string[] = [`Temporada ${s.label}:`];
       const ms = getMatchesForStorage(s.id);
       if (ms.length > 0) {
         const wins = ms.filter((m) => getMatchResult(m.myScore, m.opponentScore) === "vitoria").length;
         const draws = ms.filter((m) => getMatchResult(m.myScore, m.opponentScore) === "empate").length;
         const losses = ms.filter((m) => getMatchResult(m.myScore, m.opponentScore) === "derrota").length;
-        return `${s.label}: ${wins}V ${draws}E ${losses}D (${ms.length} partidas)`;
+        parts.push(`${wins}V ${draws}E ${losses}D (${ms.length} partidas)`);
       }
-      return s.label;
+      const league = getLeaguePosition(s.id);
+      if (league) {
+        parts.push(`${league.position}º/${league.totalTeams} na liga (${league.points} pts)`);
+      }
+      const stats = getAllPlayerStats(s.id);
+      if (stats.length > 0) {
+        const topScorer = [...stats].sort((a, b) => (b.goals ?? 0) - (a.goals ?? 0))[0];
+        if (topScorer && (topScorer.goals ?? 0) > 0) {
+          parts.push(`Artilheiro: ${topScorer.playerName} (${topScorer.goals} gols)`);
+        }
+        const topAssists = [...stats].sort((a, b) => (b.assists ?? 0) - (a.assists ?? 0))[0];
+        if (topAssists && (topAssists.assists ?? 0) > 0 && topAssists.playerName !== topScorer?.playerName) {
+          parts.push(`Maior assistente: ${topAssists.playerName} (${topAssists.assists} ass.)`);
+        }
+      }
+      const transfers = getTransfers(s.id);
+      const bigBuys = transfers
+        .filter((t) => (!t.type || t.type === "compra") && t.fee > 0)
+        .sort((a, b) => b.fee - a.fee)
+        .slice(0, 2);
+      const bigSales = transfers
+        .filter((t) => t.type === "venda" && t.fee > 0)
+        .sort((a, b) => b.fee - a.fee)
+        .slice(0, 1);
+      if (bigBuys.length > 0) {
+        const names = bigBuys.map((t) => `${t.playerName} (€${(t.fee / 1e6).toFixed(1)}M)`).join(", ");
+        parts.push(`Contratações: ${names}`);
+      }
+      if (bigSales.length > 0) {
+        const names = bigSales.map((t) => `${t.playerName} (€${(t.fee / 1e6).toFixed(1)}M)`).join(", ");
+        parts.push(`Vendas: ${names}`);
+      }
+      return parts.join(" | ");
     });
     return `Histórico de temporadas anteriores do clube:\n${lines.join("\n")}`;
   }, [pastSeasons]);

@@ -33,6 +33,7 @@ interface ClubeViewProps {
   onOpenSettings: () => void;
   onOverridesUpdated?: () => void;
   hasApiKey: boolean;
+  isReadOnly?: boolean;
 }
 
 export function ClubeView({
@@ -48,6 +49,7 @@ export function ClubeView({
   onOpenSettings,
   onOverridesUpdated,
   hasApiKey,
+  isReadOnly,
 }: ClubeViewProps) {
   const [sub, setSub] = useState<ClubeSubTab>("elenco");
   const [statsMini, setStatsMini] = useState<StatsMiniTab>("jogadores");
@@ -149,6 +151,7 @@ export function ClubeView({
               seasonId={seasonId}
               transfers={transfers}
               season={career.season}
+              isReadOnly={isReadOnly}
             />
           </div>
         )}

@@ -523,6 +523,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
             onOpenSettings={() => setActiveTab("configuracoes")}
             onOverridesUpdated={refreshOverrides}
             hasApiKey={Boolean(getApiKey())}
+            isReadOnly={isReadOnly}
           />
         )}
         {activeTab !== "clube" && (
@@ -537,6 +538,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
                 season={displayLabel}
                 matches={matches}
                 transferCount={transfers.length}
+                isReadOnly={isReadOnly}
               />
             )}
             {activeTab === "partidas" && (
