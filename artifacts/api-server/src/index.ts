@@ -19,11 +19,11 @@ if (Number.isNaN(port) || port <= 0) {
 
 async function purgeInvalidSquadRows() {
   try {
-    const result = await db
+    const deleted = await db
       .delete(squadPlayersTable)
-      .where(ne(squadPlayersTable.source, "api-football@v2"));
-    const deleted = Array.isArray(result) ? result.length : 0;
-    logger.info({ rows: deleted }, "Purged legacy squad rows on startup");
+      .where(ne(squadPlayersTable.source, "api-football@v2"))
+      .returning({ teamId: squadPlayersTable.teamId });
+    logger.info({ rows: deleted.length }, "Purged legacy squad rows on startup");
   } catch (err) {
     logger.warn({ err }, "Failed to purge legacy squad rows on startup (non-fatal)");
   }
