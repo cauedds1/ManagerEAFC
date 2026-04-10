@@ -56,8 +56,8 @@ export function ClubeView({
       <div
         className="sticky top-[50px] z-20 flex items-center gap-1 px-4 pt-3 pb-0 overflow-x-auto"
         style={{
-          borderBottom: "1px solid rgba(255,255,255,0.07)",
-          background: "rgba(10,10,18,0.97)",
+          borderBottom: "1px solid var(--surface-border, rgba(255,255,255,0.07))",
+          background: "rgba(var(--club-primary-rgb), 0.04)",
           backdropFilter: "blur(12px)",
           WebkitBackdropFilter: "blur(12px)",
         }}
