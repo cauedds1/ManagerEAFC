@@ -23,23 +23,16 @@ interface TeamPreviewProps {
 
 const POS_COLOR: Record<string, { bg: string; color: string }> = {
   GOL: { bg: "rgba(245,158,11,0.18)", color: "#f59e0b" },
-  ZAG: { bg: "rgba(59,130,246,0.18)", color: "#60a5fa" },
-  LAT: { bg: "rgba(14,165,233,0.18)", color: "#38bdf8" },
-  VOL: { bg: "rgba(16,185,129,0.18)", color: "#34d399" },
-  MC:  { bg: "rgba(20,184,166,0.18)", color: "#2dd4bf" },
-  MEI: { bg: "rgba(132,204,22,0.18)", color: "#a3e635" },
-  PE:  { bg: "rgba(249,115,22,0.18)", color: "#fb923c" },
-  PD:  { bg: "rgba(245,156,10,0.18)", color: "#fbbf24" },
-  SA:  { bg: "rgba(244,63,94,0.18)",  color: "#fb7185" },
-  CA:  { bg: "rgba(239,68,68,0.18)",  color: "#f87171" },
-  ATA: { bg: "rgba(185,28,28,0.18)",  color: "#ef4444" },
+  DEF: { bg: "rgba(59,130,246,0.18)", color: "#60a5fa" },
+  MID: { bg: "rgba(16,185,129,0.18)", color: "#34d399" },
+  ATA: { bg: "rgba(239,68,68,0.18)",  color: "#f87171" },
 };
 
 const POS_GROUP: Record<string, string> = {
-  GOL: "Goleiros", ZAG: "Defensores", LAT: "Defensores",
-  VOL: "Meio-Campistas", MC: "Meio-Campistas", MEI: "Meio-Campistas",
-  PE: "Meio-Campistas", PD: "Meio-Campistas",
-  SA: "Atacantes", CA: "Atacantes", ATA: "Atacantes",
+  GOL: "Goleiros",
+  DEF: "Defensores",
+  MID: "Meio-Campistas",
+  ATA: "Atacantes",
 };
 
 const GROUP_ORDER = ["Goleiros", "Defensores", "Meio-Campistas", "Atacantes"];
@@ -78,7 +71,7 @@ function TrophyIcon({ color }: { color: string }) {
 
 function PlayerCard({ player }: { player: SquadPlayer }) {
   const [imgErr, setImgErr] = useState(false);
-  const pos = POS_COLOR[player.positionPtBr] ?? POS_COLOR.VOL;
+  const pos = POS_COLOR[player.positionPtBr] ?? POS_COLOR.MID;
   return (
     <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg transition-all duration-150 hover:bg-white/5">
       <div

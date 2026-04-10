@@ -85,7 +85,7 @@ function PlayerCircle({
   const [photoState, setPhotoState] = useState<"idle" | "loaded" | "error">(
     player.photo ? "idle" : "error"
   );
-  const colors = POS_COLOR[player.positionPtBr] ?? POS_COLOR.MC;
+  const colors = POS_COLOR[player.positionPtBr] ?? POS_COLOR.MID;
   const radius = 20;
   const clipId = `clip-p-${player.id}`;
   const showPhoto = Boolean(player.photo) && photoState !== "error";

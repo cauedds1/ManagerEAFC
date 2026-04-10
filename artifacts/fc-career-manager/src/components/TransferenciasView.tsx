@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
-import type { PositionPtBr, SquadPlayer } from "@/lib/squadCache";
+import { migratePositionOverride, type PositionPtBr, type SquadPlayer } from "@/lib/squadCache";
 import type { TransferRecord } from "@/types/transfer";
 import {
   ROLE_LABELS,
@@ -318,7 +318,8 @@ function TransferCard({
   clubName: string;
   clubLogoUrl?: string | null;
 }) {
-  const pos = POS_STYLE[transfer.playerPositionPtBr] ?? POS_STYLE.MC;
+  const migratedPosKey = migratePositionOverride(transfer.playerPositionPtBr) ?? "MID";
+  const pos = POS_STYLE[migratedPosKey] ?? POS_STYLE.MID;
   const role = ROLE_COLORS[transfer.role];
   const isVenda = transfer.type === "venda";
   const isFree = !transfer.fromClub && !transfer.toClub;
@@ -331,7 +332,7 @@ function TransferCard({
         <div className="flex items-center gap-2 flex-wrap mb-1">
           <p className="text-white font-bold text-sm truncate">{transfer.playerName}</p>
           <span className="text-xs font-bold px-2 py-0.5 rounded-md flex-shrink-0" style={{ background: pos.bg, color: pos.color }}>
-            {transfer.playerPositionPtBr}
+            {migratedPosKey}
           </span>
           <span className="text-xs font-semibold px-2 py-0.5 rounded-md flex-shrink-0" style={{ background: role.bg, color: role.color }}>
             {ROLE_LABELS[transfer.role]}
