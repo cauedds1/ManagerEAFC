@@ -8,6 +8,18 @@ interface PitchPlayerData {
   positionPtBr: PositionPtBr;
   number?: number;
   photo?: string;
+  rating?: number;
+}
+
+function ratingFill(r: number): string {
+  if (r >= 8.0) return "#34d399";
+  if (r >= 6.5) return "#fbbf24";
+  return "#f87171";
+}
+function ratingText(r: number): string {
+  if (r >= 8.0) return "#002216";
+  if (r >= 6.5) return "#1c1000";
+  return "#1c0000";
 }
 
 const POS_COLOR: Record<PositionPtBr, { fill: string; stroke: string; text: string }> = {
@@ -82,6 +94,7 @@ function PlayerCircle({
   onClick?: (player: PitchPlayerData) => void;
   highlighted?: boolean;
 }) {
+  const rating = player.rating ?? 0;
   const [photoState, setPhotoState] = useState<"idle" | "loaded" | "error">(
     player.photo ? "idle" : "error"
   );
@@ -158,6 +171,15 @@ function PlayerCircle({
       <text x={x} y={y + radius + 11} textAnchor="middle" dominantBaseline="middle" fill="white" opacity={0.85} fontSize={8} fontWeight="500" fontFamily="Inter, sans-serif">
         {displayName.length > 11 ? displayName.slice(0, 10) + "." : displayName}
       </text>
+
+      {rating > 0 && (
+        <>
+          <rect x={x - 11} y={y + radius + 17} width={22} height={12} rx={3} fill={ratingFill(rating)} />
+          <text x={x} y={y + radius + 23} textAnchor="middle" dominantBaseline="middle" fill={ratingText(rating)} fontSize={7.5} fontWeight="900" fontFamily="Inter, sans-serif">
+            {rating.toFixed(1)}
+          </text>
+        </>
+      )}
     </g>
   );
 }
@@ -184,6 +206,7 @@ interface FootballPitchProps {
   onPlayerClick?: (player: SquadPlayer) => void;
   highlightedPlayerId?: number;
   formation?: FormationKey;
+  ratings?: Record<number, number>;
 }
 
 export function FootballPitch({
@@ -194,6 +217,7 @@ export function FootballPitch({
   onPlayerClick,
   highlightedPlayerId,
   formation = DEFAULT_FORMATION,
+  ratings,
 }: FootballPitchProps) {
   const positions = getFormationPositions(formation);
   const orderedIds = externalStarters ?? (players.length > 0 ? pickBestEleven(players) : []);
@@ -203,7 +227,14 @@ export function FootballPitch({
     if (id == null) return null;
     const p = players.find((pl) => pl.id === id);
     if (!p) return null;
-    return { id: p.id, name: p.name, positionPtBr: p.positionPtBr, number: p.number ?? undefined, photo: p.photo || undefined };
+    return {
+      id: p.id,
+      name: p.name,
+      positionPtBr: p.positionPtBr,
+      number: p.number ?? undefined,
+      photo: p.photo || undefined,
+      rating: ratings?.[p.id] ?? undefined,
+    };
   });
 
   const W = 320;

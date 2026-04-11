@@ -483,6 +483,11 @@ export function MatchDetailPage({
 
   const sortedStarterIds = pickBestEleven(starters);
 
+  const playerRatings: Record<number, number> = {};
+  for (const [pidStr, stats] of Object.entries(match.playerStats)) {
+    if (stats.rating > 0) playerRatings[Number(pidStr)] = stats.rating;
+  }
+
   const subs = match.subIds
     .map((id) => allPlayers.find((p) => p.id === id))
     .filter((p): p is SquadPlayer => !!p);
@@ -539,14 +544,41 @@ export function MatchDetailPage({
         Voltar
       </button>
 
-      {/* Match header */}
-      <div
-        className="rounded-2xl overflow-hidden"
-        style={{
-          background: `linear-gradient(${gradientAngle}deg, ${glowColor} 0%, rgba(255,255,255,0.02) 55%)`,
-          border: "1px solid rgba(255,255,255,0.08)",
-        }}
-      >
+      {/* Main 2-col layout: pitch left, info right */}
+      <div className="grid gap-5 items-start" style={{ gridTemplateColumns: "320px 1fr" }}>
+
+        {/* LEFT: Pitch */}
+        <div>
+          <p className="text-white/30 text-[10px] font-bold tracking-widest uppercase mb-2">Titulares</p>
+          {starters.length > 0 ? (
+            <FootballPitch
+              players={allPlayers}
+              starterIds={sortedStarterIds}
+              ratings={playerRatings}
+              onPlayerClick={setSelectedPlayer}
+              className="w-full"
+            />
+          ) : (
+            <div
+              className="rounded-2xl flex items-center justify-center py-16"
+              style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
+            >
+              <span className="text-white/25 text-sm">Nenhum titular registrado</span>
+            </div>
+          )}
+        </div>
+
+        {/* RIGHT: All match info */}
+        <div className="space-y-4">
+
+          {/* Match header */}
+          <div
+            className="rounded-2xl overflow-hidden"
+            style={{
+              background: `linear-gradient(${gradientAngle}deg, ${glowColor} 0%, rgba(255,255,255,0.02) 55%)`,
+              border: "1px solid rgba(255,255,255,0.08)",
+            }}
+          >
         {/* Meta */}
         <div className="flex items-center justify-between px-5 pt-4 pb-1 gap-3">
           <div className="flex items-center gap-2">
@@ -639,37 +671,10 @@ export function MatchDetailPage({
             </div>
           </div>
         )}
-      </div>
+          </div>
 
-      {/* Two-column layout: pitch + side panel */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-4">
-
-        {/* Pitch */}
-        <div>
-          <p className="text-white/30 text-[10px] font-bold tracking-widest uppercase mb-2">Titulares</p>
-          {starters.length > 0 ? (
-            <div className="flex justify-center">
-              <div className="w-full max-w-[420px]">
-                <FootballPitch
-                  players={allPlayers}
-                  starterIds={sortedStarterIds}
-                  onPlayerClick={setSelectedPlayer}
-                  className="w-full"
-                />
-              </div>
-            </div>
-          ) : (
-            <div
-              className="rounded-2xl flex items-center justify-center py-16"
-              style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
-            >
-              <span className="text-white/25 text-sm">Nenhum titular registrado</span>
-            </div>
-          )}
-        </div>
-
-        {/* Side panel: stats + subs */}
-        <div className="flex flex-col gap-4">
+          {/* Stats + subs + bench */}
+          <div className="flex flex-col gap-4">
 
           {/* Match stats */}
           {(myPoss > 0 || match.matchStats.myShots > 0 || match.matchStats.opponentShots > 0) && (
@@ -812,11 +817,10 @@ export function MatchDetailPage({
             </div>
           )}
 
-        </div>
-      </div>
+          </div>
 
-      {/* Ratings table (all players who played) */}
-      {(starters.length > 0 || subs.filter((s) => subEvents.some((ev) => ev.comingOn.id === s.id)).length > 0) && (
+          {/* Ratings table (all players who played) */}
+          {(starters.length > 0 || subs.filter((s) => subEvents.some((ev) => ev.comingOn.id === s.id)).length > 0) && (
         <div
           className="rounded-2xl overflow-hidden"
           style={{ border: "1px solid rgba(255,255,255,0.07)" }}
@@ -874,7 +878,10 @@ export function MatchDetailPage({
               })}
           </div>
         </div>
-      )}
+          )}
+
+        </div>
+      </div>
 
       {/* Player detail panel */}
       {selectedPlayer && (
