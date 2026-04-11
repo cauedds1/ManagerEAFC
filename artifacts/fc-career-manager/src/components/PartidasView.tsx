@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { MatchRecord, MatchResult } from "@/types/match";
 import { getMatchResult, RESULT_STYLE, LOCATION_ICONS, LOCATION_LABELS } from "@/types/match";
 import type { SquadPlayer } from "@/lib/squadCache";
@@ -110,6 +110,24 @@ function ClubCrest({
       onError={() => setImgFailed(true)}
     />
   );
+}
+
+function MiniCrest({ logoUrl, name, size = 32, themed = false }: { logoUrl?: string | null; name: string; size?: number; themed?: boolean }) {
+  const [failed, setFailed] = useState(false);
+  const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join("");
+  if (!logoUrl || failed) {
+    return (
+      <div style={{
+        width: size, height: size, borderRadius: "50%", flexShrink: 0,
+        background: themed ? "rgba(var(--club-primary-rgb),0.18)" : "rgba(255,255,255,0.08)",
+        border: themed ? "1px solid rgba(var(--club-primary-rgb),0.3)" : "1px solid rgba(255,255,255,0.1)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        fontSize: size * 0.36, fontWeight: 900,
+        color: themed ? "var(--club-primary)" : "rgba(255,255,255,0.5)",
+      }}>{initials}</div>
+    );
+  }
+  return <img src={logoUrl} alt={name} width={size} height={size} style={{ width: size, height: size, objectFit: "contain", flexShrink: 0 }} onError={() => setFailed(true)} />;
 }
 
 function MatchCard({
@@ -351,6 +369,117 @@ function MatchCard({
   );
 }
 
+function CompactMatchCard({
+  match,
+  clubName,
+  clubLogoUrl,
+  onClick,
+}: {
+  match: MatchRecord;
+  clubName: string;
+  clubLogoUrl?: string | null;
+  onClick?: () => void;
+}) {
+  const result = getMatchResult(match.myScore, match.opponentScore);
+  const rs = RESULT_STYLE[result];
+  const oppLogoUrl = resolveOpponentLogo(match.opponent, match.opponentLogoUrl);
+
+  const dateStr = match.date
+    ? new Date(match.date + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })
+    : null;
+
+  const isHome = match.location !== "fora";
+  const shortOpp = match.opponent.length > 14 ? match.opponent.split(" ").slice(0, 2).join(" ") : match.opponent;
+  const shortClub = clubName.length > 14 ? clubName.split(" ").slice(0, 2).join(" ") : clubName;
+
+  const leftLogo   = isHome ? clubLogoUrl : oppLogoUrl;
+  const leftName   = isHome ? shortClub : shortOpp;
+  const leftThemed = isHome;
+  const leftScore  = isHome ? match.myScore : match.opponentScore;
+  const rightLogo   = isHome ? oppLogoUrl : clubLogoUrl;
+  const rightName   = isHome ? shortOpp : shortClub;
+  const rightThemed = !isHome;
+  const rightScore  = isHome ? match.opponentScore : match.myScore;
+
+  return (
+    <div
+      className="rounded-2xl flex flex-col overflow-hidden cursor-pointer hover:scale-[1.01] active:scale-[0.99] transition-transform duration-150"
+      style={{
+        borderTop: `1px solid ${rs.border}`,
+        borderRight: `1px solid ${rs.border}`,
+        borderBottom: `1px solid ${rs.border}`,
+        borderLeft: `3px solid ${rs.color}`,
+        background: `linear-gradient(160deg, ${rs.bg} 0%, rgba(0,0,0,0.18) 100%)`,
+      }}
+      onClick={onClick}
+    >
+      {/* Header: tournament + date */}
+      <div
+        className="flex items-start justify-between gap-2 px-3.5 pt-3 pb-2.5"
+        style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
+      >
+        <span
+          className="text-xs font-bold leading-tight truncate"
+          style={{ color: rs.color, flex: 1, minWidth: 0 }}
+        >
+          {match.tournament || "Amistoso"}
+        </span>
+        {dateStr && (
+          <span className="text-white/35 text-xs flex-shrink-0 font-medium tabular-nums">{dateStr}</span>
+        )}
+      </div>
+
+      {/* Middle: crests + score */}
+      <div className="flex items-center justify-between px-3 py-3.5 gap-1">
+        <div className="flex flex-col items-center gap-1.5" style={{ width: 48 }}>
+          <MiniCrest logoUrl={leftLogo} name={leftName} size={34} themed={leftThemed} />
+          <span
+            className="text-white/40 text-center leading-tight w-full"
+            style={{ fontSize: 9, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+          >
+            {leftName}
+          </span>
+        </div>
+
+        <div className="flex flex-col items-center gap-1.5 flex-1">
+          <span className="text-white font-black tabular-nums leading-none" style={{ fontSize: 22 }}>
+            {leftScore}
+            <span className="text-white/20 font-light" style={{ fontSize: 14, margin: "0 2px" }}>–</span>
+            {rightScore}
+          </span>
+          <span
+            className="px-2 py-0.5 rounded-full font-black"
+            style={{ background: "rgba(0,0,0,0.3)", color: rs.color, fontSize: 9, letterSpacing: "0.05em" }}
+          >
+            {rs.label}
+          </span>
+        </div>
+
+        <div className="flex flex-col items-center gap-1.5" style={{ width: 48 }}>
+          <MiniCrest logoUrl={rightLogo} name={rightName} size={34} themed={rightThemed} />
+          <span
+            className="text-white/40 text-center leading-tight w-full"
+            style={{ fontSize: 9, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+          >
+            {rightName}
+          </span>
+        </div>
+      </div>
+
+      {/* Footer: stage + location */}
+      <div
+        className="flex items-center justify-between px-3.5 py-2 gap-2"
+        style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}
+      >
+        <span className="text-white/30 text-xs font-medium truncate">{match.stage || "—"}</span>
+        <span className="text-white/35 flex-shrink-0" style={{ fontSize: 12 }} title={LOCATION_LABELS[match.location]}>
+          {LOCATION_ICONS[match.location]}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 function EmptyState({ onAdd }: { onAdd: () => void }) {
   return (
     <div className="flex flex-col items-center justify-center py-20 gap-4">
@@ -378,10 +507,19 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
   );
 }
 
+const VIEW_MODE_KEY = "fc-partidas-view-mode";
+
 export function PartidasView({ careerId, seasonId, season, clubName, clubLogoUrl, matches, allPlayers, onMatchAdded, competitions, isReadOnly }: PartidasViewProps) {
   const [filter, setFilter] = useState<Filter>("todos");
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedMatch, setSelectedMatch] = useState<MatchRecord | null>(null);
+  const [viewMode, setViewMode] = useState<"lista" | "grade">(() => {
+    try { return (localStorage.getItem(VIEW_MODE_KEY) as "lista" | "grade") ?? "lista"; } catch { return "lista"; }
+  });
+
+  useEffect(() => {
+    try { localStorage.setItem(VIEW_MODE_KEY, viewMode); } catch { /* noop */ }
+  }, [viewMode]);
 
   if (selectedMatch) {
     return (
@@ -417,18 +555,60 @@ export function PartidasView({ careerId, seasonId, season, clubName, clubLogoUrl
     <div className="space-y-5 animate-fade-up">
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-white/35 text-xs font-bold tracking-widest uppercase">Partidas — {season}</h2>
-        {!isReadOnly && (
-          <button
-            onClick={() => setModalOpen(true)}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl font-bold text-sm transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
-            style={{ background: "var(--club-primary)", color: "white" }}
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
-            Registrar
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {/* View mode toggle */}
+          {matches.length > 0 && (
+            <div
+              className="flex rounded-xl overflow-hidden"
+              style={{ border: "1px solid rgba(255,255,255,0.1)" }}
+            >
+              <button
+                onClick={() => setViewMode("lista")}
+                title="Modo lista"
+                className="px-2.5 py-1.5 transition-colors duration-150"
+                style={{
+                  background: viewMode === "lista" ? "rgba(var(--club-primary-rgb),0.2)" : "rgba(255,255,255,0.04)",
+                  color: viewMode === "lista" ? "var(--club-primary)" : "rgba(255,255,255,0.35)",
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
+                  <rect x="0" y="1" width="14" height="2.5" rx="1.25"/>
+                  <rect x="0" y="5.75" width="14" height="2.5" rx="1.25"/>
+                  <rect x="0" y="10.5" width="14" height="2.5" rx="1.25"/>
+                </svg>
+              </button>
+              <button
+                onClick={() => setViewMode("grade")}
+                title="Modo grade"
+                className="px-2.5 py-1.5 transition-colors duration-150"
+                style={{
+                  background: viewMode === "grade" ? "rgba(var(--club-primary-rgb),0.2)" : "rgba(255,255,255,0.04)",
+                  color: viewMode === "grade" ? "var(--club-primary)" : "rgba(255,255,255,0.35)",
+                  borderLeft: "1px solid rgba(255,255,255,0.08)",
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
+                  <rect x="0" y="0" width="6" height="6" rx="1.25"/>
+                  <rect x="8" y="0" width="6" height="6" rx="1.25"/>
+                  <rect x="0" y="8" width="6" height="6" rx="1.25"/>
+                  <rect x="8" y="8" width="6" height="6" rx="1.25"/>
+                </svg>
+              </button>
+            </div>
+          )}
+          {!isReadOnly && (
+            <button
+              onClick={() => setModalOpen(true)}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl font-bold text-sm transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+              style={{ background: "var(--club-primary)", color: "white" }}
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+              Registrar
+            </button>
+          )}
+        </div>
       </div>
 
       {matches.length > 0 && (
@@ -466,22 +646,40 @@ export function PartidasView({ careerId, seasonId, season, clubName, clubLogoUrl
             })}
           </div>
 
-          <div className="space-y-3">
-            {sorted.length === 0 ? (
-              <p className="text-white/25 text-sm text-center py-8">Nenhuma partida com esse filtro.</p>
-            ) : (
-              sorted.map((m) => (
-                <MatchCard
-                  key={m.id}
-                  match={m}
-                  clubName={clubName}
-                  clubLogoUrl={clubLogoUrl}
-                  allPlayers={allPlayers}
-                  onClick={() => setSelectedMatch(m)}
-                />
-              ))
-            )}
-          </div>
+          {viewMode === "lista" ? (
+            <div className="space-y-3">
+              {sorted.length === 0 ? (
+                <p className="text-white/25 text-sm text-center py-8">Nenhuma partida com esse filtro.</p>
+              ) : (
+                sorted.map((m) => (
+                  <MatchCard
+                    key={m.id}
+                    match={m}
+                    clubName={clubName}
+                    clubLogoUrl={clubLogoUrl}
+                    allPlayers={allPlayers}
+                    onClick={() => setSelectedMatch(m)}
+                  />
+                ))
+              )}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {sorted.length === 0 ? (
+                <p className="col-span-full text-white/25 text-sm text-center py-8">Nenhuma partida com esse filtro.</p>
+              ) : (
+                sorted.map((m) => (
+                  <CompactMatchCard
+                    key={m.id}
+                    match={m}
+                    clubName={clubName}
+                    clubLogoUrl={clubLogoUrl}
+                    onClick={() => setSelectedMatch(m)}
+                  />
+                ))
+              )}
+            </div>
+          )}
         </>
       )}
 
