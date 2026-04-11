@@ -77,7 +77,7 @@ function computeStats(matches: MatchRecord[]): ClubStats {
       if (ps.yellowCard) stats.yellowCards++;
       if (ps.redCard) stats.redCards++;
       if (ps.ownGoal) stats.ownGoals++;
-      if (ps.passAccuracy != null && ps.passAccuracy > 0) {
+      if (ps.passAccuracy != null) {
         passAccList.push(ps.passAccuracy);
       }
     }
@@ -483,19 +483,21 @@ export function ClubStatsView({
       </div>
 
       {/* Passe */}
-      {avgPassAccuracy !== null && (
-        <div>
-          <p className="text-white/25 text-[11px] font-bold tracking-widest uppercase mb-3 px-0.5">Passes</p>
-          <div
-            className="flex items-center justify-between px-4 py-4 rounded-2xl"
-            style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}
-          >
-            <div>
-              <p className="text-white/35 text-[11px] font-semibold tracking-wide uppercase mb-1">Precisão média</p>
-              <p className="text-white/25 text-[10px]">
-                Média dos jogadores · {stats.passAccuracyPerMatch.length} partidas com dados
-              </p>
-            </div>
+      <div>
+        <p className="text-white/25 text-[11px] font-bold tracking-widest uppercase mb-3 px-0.5">Passes</p>
+        <div
+          className="flex items-center justify-between px-4 py-4 rounded-2xl"
+          style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}
+        >
+          <div>
+            <p className="text-white/35 text-[11px] font-semibold tracking-wide uppercase mb-1">Precisão média</p>
+            <p className="text-white/25 text-[10px]">
+              {avgPassAccuracy !== null
+                ? `Média dos jogadores · ${stats.passAccuracyPerMatch.length} partidas com dados`
+                : "Registe a precisão dos passes nas partidas para ver esta métrica"}
+            </p>
+          </div>
+          {avgPassAccuracy !== null ? (
             <span
               className="text-3xl font-black tabular-nums"
               style={{
@@ -504,7 +506,13 @@ export function ClubStatsView({
             >
               {Math.round(avgPassAccuracy)}%
             </span>
-          </div>
+          ) : (
+            <span className="text-2xl font-black" style={{ color: "rgba(255,255,255,0.2)" }}>
+              N/D
+            </span>
+          )}
+        </div>
+        {avgPassAccuracy !== null && (
           <div
             className="mt-2 px-4 py-2 rounded-xl"
             style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}
@@ -523,8 +531,8 @@ export function ClubStatsView({
               <span className="text-white/15 text-[10px]">100%</span>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Posse + Finalizações */}
       {(hasPossession || hasShots) && (

@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import type { Season } from "@/types/career";
 import type { MatchRecord } from "@/types/match";
+import { getMatches } from "@/lib/matchStorage";
 import {
   getCompetitionResults,
   addCompetitionResult,
@@ -714,7 +715,7 @@ export function CompetitionResultsView({
   seasonId,
   seasons,
   clubName,
-  allSeasonMatches,
+  allSeasonMatches: _allSeasonMatches,
 }: Props) {
   const [selectedSeasonId, setSelectedSeasonId] = useState(seasonId);
   const [results, setResults] = useState<CompetitionResult[]>(() => getCompetitionResults(careerId));
@@ -729,13 +730,13 @@ export function CompetitionResultsView({
   }, [seasons, seasonId]);
 
   const matchTournaments = useMemo(() => {
-    const seasonMatches = allSeasonMatches.filter((m) => m.careerId === careerId);
+    const seasonMatches = getMatches(selectedSeasonId);
     const set = new Set<string>();
     for (const m of seasonMatches) {
       if (m.tournament) set.add(m.tournament);
     }
     return Array.from(set).sort();
-  }, [allSeasonMatches, careerId]);
+  }, [selectedSeasonId]);
 
   const filteredResults = useMemo(
     () => results.filter((r) => r.seasonId === selectedSeasonId),
