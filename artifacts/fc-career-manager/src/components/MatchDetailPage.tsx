@@ -996,11 +996,12 @@ export function MatchDetailPage({
                       {ev.minute}&apos;
                     </span>
                     <div className="flex flex-col gap-1 flex-1 min-w-0">
+                      {/* Entrou */}
                       <button
                         onClick={() => setSelectedPlayer(ev.comingOn)}
                         className="flex items-center gap-1.5 hover:opacity-80 transition-opacity text-left"
                       >
-                        <span className="text-green-400 text-xs">↑</span>
+                        <span className="text-green-400 text-[9px] font-bold w-10 text-right flex-shrink-0">Entrou</span>
                         <PlayerPhoto photo={ev.comingOn.photo} name={ev.comingOn.name} size={22} borderColor={
                           (match.playerStats[ev.comingOn.id]?.rating ?? 0) > 0
                             ? ratingColor(match.playerStats[ev.comingOn.id].rating)
@@ -1013,11 +1014,12 @@ export function MatchDetailPage({
                           </span>
                         )}
                       </button>
+                      {/* Saiu */}
                       <button
                         onClick={() => setSelectedPlayer(ev.goingOff)}
                         className="flex items-center gap-1.5 hover:opacity-80 transition-opacity text-left"
                       >
-                        <span className="text-red-400 text-xs">↓</span>
+                        <span className="text-red-400 text-[9px] font-bold w-10 text-right flex-shrink-0">Saiu</span>
                         <PlayerPhoto photo={ev.goingOff.photo} name={ev.goingOff.name} size={22} borderColor={
                           (match.playerStats[ev.goingOff.id]?.rating ?? 0) > 0
                             ? ratingColor(match.playerStats[ev.goingOff.id].rating)
