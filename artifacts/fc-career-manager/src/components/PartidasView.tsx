@@ -391,6 +391,12 @@ export function PartidasView({ careerId, seasonId, season, clubName, clubLogoUrl
         clubLogoUrl={clubLogoUrl}
         allPlayers={allPlayers}
         onBack={() => setSelectedMatch(null)}
+        careerId={careerId}
+        seasonId={seasonId}
+        season={season}
+        competitions={competitions}
+        isReadOnly={isReadOnly}
+        onMatchUpdated={(updated) => setSelectedMatch(updated)}
       />
     );
   }

@@ -26,6 +26,17 @@ export function addMatch(seasonId: string, match: MatchRecord): void {
   void putSeasonData(seasonId, "matches", list);
 }
 
+export function updateMatch(seasonId: string, updated: MatchRecord): void {
+  const list = getMatches(seasonId);
+  const idx = list.findIndex((m) => m.id === updated.id);
+  if (idx === -1) return;
+  list[idx] = updated;
+  try {
+    localStorage.setItem(matchesKey(seasonId), JSON.stringify(list));
+  } catch {}
+  void putSeasonData(seasonId, "matches", list);
+}
+
 export function generateMatchId(): string {
   return `match-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
 }

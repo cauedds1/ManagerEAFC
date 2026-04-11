@@ -10,6 +10,7 @@ import type {
 import { LOCATION_LABELS, LOCATION_ICONS } from "@/types/match";
 import {
   addMatch,
+  updateMatch,
   generateMatchId,
   generateGoalId,
   applyMatchToPlayerStats,
@@ -28,8 +29,10 @@ interface Props {
   clubLogoUrl?: string | null;
   allPlayers: SquadPlayer[];
   onMatchAdded: (match: MatchRecord) => void;
+  onMatchUpdated?: (match: MatchRecord) => void;
   onClose: () => void;
   competitions?: string[];
+  editMatch?: MatchRecord;
 }
 
 interface MatchDraft {
@@ -802,31 +805,56 @@ export function RegistrarPartidaModal({
   clubLogoUrl,
   allPlayers,
   onMatchAdded,
+  onMatchUpdated,
   onClose,
   competitions,
+  editMatch,
 }: Props) {
+  const isEditMode = editMatch != null;
   const [saving, setSaving] = useState(false);
   const [pickerMode, setPickerMode] = useState<"starter" | "sub" | null>(null);
 
   const initial = useMemo(() => buildInitialDraft(seasonId), [seasonId]);
 
-  const [draft, setDraft] = useState<MatchDraft>({
-    opponent: "",
-    opponentLogoUrl: null,
-    date: initial.date,
-    location: "casa",
-    tournament: initial.tournament,
-    stage: initial.stage,
-    myScore: 0,
-    opponentScore: 0,
-    tablePosition: "",
-    starterIds: [],
-    subIds: [],
-    playerStats: {},
-    motmPlayerId: null,
-    myShots: 0,
-    opponentShots: 0,
-    possessionPct: 50,
+  const [draft, setDraft] = useState<MatchDraft>(() => {
+    if (editMatch) {
+      return {
+        opponent: editMatch.opponent,
+        opponentLogoUrl: editMatch.opponentLogoUrl ?? null,
+        date: editMatch.date ?? initial.date,
+        location: editMatch.location ?? "casa",
+        tournament: editMatch.tournament ?? initial.tournament,
+        stage: editMatch.stage ?? initial.stage,
+        myScore: editMatch.myScore,
+        opponentScore: editMatch.opponentScore,
+        tablePosition: editMatch.tablePositionBefore != null ? String(editMatch.tablePositionBefore) : "",
+        starterIds: editMatch.starterIds,
+        subIds: editMatch.subIds,
+        playerStats: editMatch.playerStats,
+        motmPlayerId: editMatch.motmPlayerId ?? null,
+        myShots: editMatch.matchStats?.myShots ?? 0,
+        opponentShots: editMatch.matchStats?.opponentShots ?? 0,
+        possessionPct: editMatch.matchStats?.possessionPct ?? 50,
+      };
+    }
+    return {
+      opponent: "",
+      opponentLogoUrl: null,
+      date: initial.date,
+      location: "casa",
+      tournament: initial.tournament,
+      stage: initial.stage,
+      myScore: 0,
+      opponentScore: 0,
+      tablePosition: "",
+      starterIds: [],
+      subIds: [],
+      playerStats: {},
+      motmPlayerId: null,
+      myShots: 0,
+      opponentShots: 0,
+      possessionPct: 50,
+    };
   });
 
   const onChange = useCallback((patch: Partial<MatchDraft>) => {
@@ -918,35 +946,62 @@ export function RegistrarPartidaModal({
   const handleConfirm = useCallback(() => {
     if (!canSave || saving) return;
     setSaving(true);
-    const match: MatchRecord = {
-      id: generateMatchId(),
-      careerId,
-      season,
-      date: draft.date,
-      tournament: draft.tournament,
-      stage: draft.stage,
-      location: draft.location,
-      opponent: draft.opponent.trim(),
-      myScore: draft.myScore,
-      opponentScore: draft.opponentScore,
-      starterIds: draft.starterIds,
-      subIds: draft.subIds,
-      playerStats: draft.playerStats,
-      matchStats: {
-        myShots: draft.myShots,
-        opponentShots: draft.opponentShots,
-        possessionPct: draft.possessionPct,
-      },
-      motmPlayerId: draft.motmPlayerId ?? undefined,
-      tablePositionBefore: draft.tablePosition ? Number(draft.tablePosition) : undefined,
-      opponentLogoUrl: draft.opponentLogoUrl ?? undefined,
-      createdAt: Date.now(),
-    };
-    addMatch(seasonId, match);
-    applyMatchToPlayerStats(seasonId, draft.starterIds, draft.subIds, draft.playerStats);
-    onMatchAdded(match);
-    onClose();
-  }, [canSave, saving, seasonId, careerId, season, draft, onMatchAdded, onClose]);
+    if (isEditMode && editMatch) {
+      const updated: MatchRecord = {
+        ...editMatch,
+        date: draft.date,
+        tournament: draft.tournament,
+        stage: draft.stage,
+        location: draft.location,
+        opponent: draft.opponent.trim(),
+        myScore: draft.myScore,
+        opponentScore: draft.opponentScore,
+        starterIds: draft.starterIds,
+        subIds: draft.subIds,
+        playerStats: draft.playerStats,
+        matchStats: {
+          myShots: draft.myShots,
+          opponentShots: draft.opponentShots,
+          possessionPct: draft.possessionPct,
+        },
+        motmPlayerId: draft.motmPlayerId ?? undefined,
+        tablePositionBefore: draft.tablePosition ? Number(draft.tablePosition) : undefined,
+        opponentLogoUrl: draft.opponentLogoUrl ?? undefined,
+      };
+      updateMatch(seasonId, updated);
+      onMatchUpdated?.(updated);
+      onClose();
+    } else {
+      const match: MatchRecord = {
+        id: generateMatchId(),
+        careerId,
+        season,
+        date: draft.date,
+        tournament: draft.tournament,
+        stage: draft.stage,
+        location: draft.location,
+        opponent: draft.opponent.trim(),
+        myScore: draft.myScore,
+        opponentScore: draft.opponentScore,
+        starterIds: draft.starterIds,
+        subIds: draft.subIds,
+        playerStats: draft.playerStats,
+        matchStats: {
+          myShots: draft.myShots,
+          opponentShots: draft.opponentShots,
+          possessionPct: draft.possessionPct,
+        },
+        motmPlayerId: draft.motmPlayerId ?? undefined,
+        tablePositionBefore: draft.tablePosition ? Number(draft.tablePosition) : undefined,
+        opponentLogoUrl: draft.opponentLogoUrl ?? undefined,
+        createdAt: Date.now(),
+      };
+      addMatch(seasonId, match);
+      applyMatchToPlayerStats(seasonId, draft.starterIds, draft.subIds, draft.playerStats);
+      onMatchAdded(match);
+      onClose();
+    }
+  }, [canSave, saving, isEditMode, editMatch, seasonId, careerId, season, draft, onMatchAdded, onMatchUpdated, onClose]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -980,7 +1035,7 @@ export function RegistrarPartidaModal({
               className="w-2 h-2 rounded-full"
               style={{ background: resultColor, boxShadow: `0 0 8px ${resultColor}` }}
             />
-            <h2 className="text-white font-black text-base">Registrar Partida</h2>
+            <h2 className="text-white font-black text-base">{isEditMode ? "Editar Partida" : "Registrar Partida"}</h2>
             {draft.opponent && (
               <span className="text-white/40 text-sm truncate max-w-32">{draft.opponent}</span>
             )}
@@ -1355,7 +1410,7 @@ export function RegistrarPartidaModal({
             className="w-full py-3.5 rounded-2xl font-black text-sm text-white transition-all duration-200 hover:scale-[1.01] active:scale-[0.99] disabled:opacity-40 disabled:cursor-not-allowed disabled:scale-100"
             style={{ background: canSave ? "var(--club-gradient)" : "rgba(255,255,255,0.08)" }}
           >
-            {saving ? "Salvando..." : "Salvar Partida"}
+            {saving ? (isEditMode ? "Atualizando..." : "Salvando...") : (isEditMode ? "Atualizar Partida" : "Salvar Partida")}
           </button>
         </div>
       </div>

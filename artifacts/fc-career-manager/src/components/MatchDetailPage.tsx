@@ -6,6 +6,7 @@ import type { SquadPlayer } from "@/lib/squadCache";
 import { getCachedClubList } from "@/lib/clubListCache";
 import { searchStaticClubs } from "@/lib/staticClubList";
 import { FootballPitch, pickBestEleven } from "./FootballPitch";
+import { RegistrarPartidaModal } from "./RegistrarPartidaModal";
 
 function resolveOpponentLogo(name: string, stored?: string): string | undefined {
   if (stored) return stored;
@@ -426,19 +427,39 @@ function ClubLogo({
 }
 
 export function MatchDetailPage({
-  match,
+  match: initialMatch,
   clubName,
   clubLogoUrl,
   allPlayers,
   onBack,
+  careerId,
+  seasonId,
+  season,
+  competitions,
+  onMatchUpdated,
+  isReadOnly,
 }: {
   match: MatchRecord;
   clubName: string;
   clubLogoUrl?: string | null;
   allPlayers: SquadPlayer[];
   onBack: () => void;
+  careerId?: string;
+  seasonId?: string;
+  season?: string;
+  competitions?: string[];
+  onMatchUpdated?: (match: MatchRecord) => void;
+  isReadOnly?: boolean;
 }) {
+  const [match, setMatch] = useState<MatchRecord>(initialMatch);
   const [selectedPlayer, setSelectedPlayer] = useState<SquadPlayer | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
+  const handleMatchUpdated = (updated: MatchRecord) => {
+    setMatch(updated);
+    onMatchUpdated?.(updated);
+    setIsEditModalOpen(false);
+  };
 
   const result = getMatchResult(match.myScore, match.opponentScore);
   const rs = RESULT_STYLE[result];
@@ -539,16 +560,47 @@ export function MatchDetailPage({
 
   return (
     <div className="animate-fade-up space-y-5">
-      {/* Back */}
-      <button
-        onClick={onBack}
-        className="flex items-center gap-2 text-white/50 hover:text-white/90 transition-colors text-sm font-semibold"
-      >
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-        </svg>
-        Voltar
-      </button>
+      {/* Back + Edit row */}
+      <div className="flex items-center justify-between">
+        <button
+          onClick={onBack}
+          className="flex items-center gap-2 text-white/50 hover:text-white/90 transition-colors text-sm font-semibold"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+          </svg>
+          Voltar
+        </button>
+        {!isReadOnly && careerId && seasonId && season && (
+          <button
+            onClick={() => setIsEditModalOpen(true)}
+            title="Editar partida"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-white/50 hover:text-white/90 hover:bg-white/08 transition-colors text-sm font-semibold"
+            style={{ border: "1px solid rgba(255,255,255,0.09)" }}
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487a2.1 2.1 0 1 1 2.97 2.97L8.122 19.167 4 20l.833-4.122 12.03-11.391z" />
+            </svg>
+            Editar
+          </button>
+        )}
+      </div>
+
+      {isEditModalOpen && careerId && seasonId && season && (
+        <RegistrarPartidaModal
+          careerId={careerId}
+          seasonId={seasonId}
+          season={season}
+          clubName={clubName}
+          clubLogoUrl={clubLogoUrl}
+          allPlayers={allPlayers}
+          competitions={competitions}
+          editMatch={match}
+          onMatchAdded={() => {}}
+          onMatchUpdated={handleMatchUpdated}
+          onClose={() => setIsEditModalOpen(false)}
+        />
+      )}
 
       {/* Main 2-col layout: pitch left, info right */}
       <div className="grid gap-5 items-start" style={{ gridTemplateColumns: "320px 1fr" }}>
