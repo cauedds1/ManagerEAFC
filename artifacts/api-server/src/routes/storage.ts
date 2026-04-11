@@ -4,7 +4,21 @@ import { RequestUploadUrlBody, RequestUploadUrlResponse } from "@workspace/api-z
 import { isR2Configured, createPresignedUploadUrl, uploadFileToR2 } from "../lib/r2Storage";
 
 const router: IRouter = Router();
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+
+const ALLOWED_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+const ALLOWED_FOLDERS = new Set(["portals", "portal-photos", "uploads", "test"]);
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    if (ALLOWED_MIME_TYPES.has(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error(`Tipo de arquivo não permitido: ${file.mimetype}`));
+    }
+  },
+});
 
 router.post("/storage/uploads/request-url", async (req: Request, res: Response) => {
   const parsed = RequestUploadUrlBody.safeParse(req.body);
@@ -36,27 +50,35 @@ router.post("/storage/uploads/request-url", async (req: Request, res: Response) 
   }
 });
 
-router.post("/storage/uploads/file", upload.single("file"), async (req: Request, res: Response) => {
-  if (!isR2Configured()) {
-    res.status(503).json({ error: "R2 não está configurado." });
-    return;
-  }
+router.post("/storage/uploads/file", (req: Request, res: Response) => {
+  upload.single("file")(req, res, async (err) => {
+    if (err) {
+      res.status(400).json({ error: err.message ?? "Erro no upload." });
+      return;
+    }
 
-  const file = req.file;
-  if (!file) {
-    res.status(400).json({ error: "Nenhum arquivo enviado." });
-    return;
-  }
+    if (!isR2Configured()) {
+      res.status(503).json({ error: "R2 não está configurado." });
+      return;
+    }
 
-  const folder = (req.query.folder as string | undefined) ?? "uploads";
+    const file = req.file;
+    if (!file) {
+      res.status(400).json({ error: "Nenhum arquivo enviado." });
+      return;
+    }
 
-  try {
-    const url = await uploadFileToR2(folder, file.buffer, file.mimetype);
-    res.json({ url });
-  } catch (error) {
-    req.log.error({ err: error }, "Error uploading file to R2");
-    res.status(500).json({ error: "Falha ao fazer upload do arquivo." });
-  }
+    const rawFolder = (req.query.folder as string | undefined) ?? "uploads";
+    const folder = ALLOWED_FOLDERS.has(rawFolder) ? rawFolder : "uploads";
+
+    try {
+      const url = await uploadFileToR2(folder, file.buffer, file.mimetype);
+      res.json({ url });
+    } catch (error) {
+      req.log.error({ err: error }, "Error uploading file to R2");
+      res.status(500).json({ error: "Falha ao fazer upload do arquivo." });
+    }
+  });
 });
 
 export default router;
