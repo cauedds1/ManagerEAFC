@@ -243,24 +243,6 @@ export function ClubSelection({ allClubs, onSelectClub, selecting }: ClubSelecti
                 ))}
               </div>
 
-              <div className="flex items-center gap-3 mb-4">
-                <h2 className="text-white/40 text-xs font-semibold tracking-widest uppercase">
-                  Competições Internacionais
-                </h2>
-                <div className="flex-1 h-px" style={{ background: "rgba(255,255,255,0.06)" }} />
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {internationalCounts.map(({ league, count }, i) => (
-                  <div key={league.id} className="animate-slide-up" style={{ animationDelay: `${Math.min((domesticCounts.length + i) * 20, 400)}ms`, animationFillMode: "both" }}>
-                    <LeagueCard
-                      league={league}
-                      count={count}
-                      onClick={() => setSelectedLeague(league)}
-                      index={domesticCounts.length + i}
-                    />
-                  </div>
-                ))}
-              </div>
             </>
           )}
         </div>

@@ -390,25 +390,6 @@ export function ClubPicker({ allClubs, onSelectClub, initialLeague }: ClubPicker
               ))}
             </div>
 
-            <div
-              className="flex items-center gap-2 mb-1.5"
-              style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: "12px" }}
-            >
-              <p className="text-white/25 text-[10px] font-semibold tracking-widest uppercase">
-                Internacionais
-              </p>
-            </div>
-            <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5">
-              {internationalLeagues.map(({ league, count }, i) => (
-                <LeagueCard
-                  key={league.id}
-                  league={league}
-                  count={count}
-                  onClick={() => setSelectedLeague(league)}
-                  index={domesticLeagues.length + i}
-                />
-              ))}
-            </div>
           </div>
         )}
       </div>
