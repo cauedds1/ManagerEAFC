@@ -5,6 +5,7 @@ import type { SquadPlayer } from "@/lib/squadCache";
 import { getCachedClubList } from "@/lib/clubListCache";
 import { searchStaticClubs } from "@/lib/staticClubList";
 import { RegistrarPartidaModal } from "./RegistrarPartidaModal";
+import { MatchDetailPage } from "./MatchDetailPage";
 
 function resolveOpponentLogo(name: string, stored?: string): string | undefined {
   if (stored) return stored;
@@ -116,11 +117,13 @@ function MatchCard({
   clubName,
   clubLogoUrl,
   allPlayers,
+  onClick,
 }: {
   match: MatchRecord;
   clubName: string;
   clubLogoUrl?: string | null;
   allPlayers: SquadPlayer[];
+  onClick?: () => void;
 }) {
   const result = getMatchResult(match.myScore, match.opponentScore);
   const rs = RESULT_STYLE[result];
@@ -191,7 +194,9 @@ function MatchCard({
       style={{
         background: `linear-gradient(150deg, ${glowColor} 0%, rgba(255,255,255,0.025) 50%)`,
         border: `1px solid ${borderColor}`,
+        cursor: onClick ? "pointer" : "default",
       }}
+      onClick={onClick}
     >
       {/* ── Meta row ── */}
       <div className="flex items-center justify-between gap-2 px-4 pt-3 pb-0 min-w-0">
@@ -376,6 +381,19 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
 export function PartidasView({ careerId, seasonId, season, clubName, clubLogoUrl, matches, allPlayers, onMatchAdded, competitions, isReadOnly }: PartidasViewProps) {
   const [filter, setFilter] = useState<Filter>("todos");
   const [modalOpen, setModalOpen] = useState(false);
+  const [selectedMatch, setSelectedMatch] = useState<MatchRecord | null>(null);
+
+  if (selectedMatch) {
+    return (
+      <MatchDetailPage
+        match={selectedMatch}
+        clubName={clubName}
+        clubLogoUrl={clubLogoUrl}
+        allPlayers={allPlayers}
+        onBack={() => setSelectedMatch(null)}
+      />
+    );
+  }
 
   const wins   = matches.filter((m) => getMatchResult(m.myScore, m.opponentScore) === "vitoria").length;
   const draws  = matches.filter((m) => getMatchResult(m.myScore, m.opponentScore) === "empate").length;
@@ -453,6 +471,7 @@ export function PartidasView({ careerId, seasonId, season, clubName, clubLogoUrl
                   clubName={clubName}
                   clubLogoUrl={clubLogoUrl}
                   allPlayers={allPlayers}
+                  onClick={() => setSelectedMatch(m)}
                 />
               ))
             )}
