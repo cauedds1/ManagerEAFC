@@ -896,8 +896,11 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
     setPosts(stored);
 
     const welcomeKey = `fc-welcome-done-${seasonId}`;
+    const welcomePendingKey = `fc-welcome-pending-${seasonId}`;
     const alreadyDone = !!localStorage.getItem(welcomeKey);
-    if (!alreadyDone) {
+    const alreadyPending = !!localStorage.getItem(welcomePendingKey);
+    if (isFirstSeed && !alreadyDone && !alreadyPending) {
+      localStorage.setItem(welcomePendingKey, "1");
       const userKey = getOpenAIKey();
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       if (userKey) headers["x-openai-key"] = userKey;
@@ -916,7 +919,11 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
       })
         .then((r) => r.ok ? r.json() : null)
         .then((data) => {
+          localStorage.removeItem(welcomePendingKey);
           if (!data || typeof data.content !== "string" || !data.content.trim()) return;
+          const current = getPosts(seasonId);
+          const hasWelcome = current.some((p) => p.source === "espn" && p.category === "geral" && p.createdAt > Date.now() - 60_000);
+          if (hasWelcome) { localStorage.setItem(welcomeKey, "1"); return; }
           const welcomePost: NewsPost = {
             id: generatePostId(),
             careerId: career.id,
@@ -966,7 +973,7 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
           savePosts(seasonId, updated);
           setPosts(updated);
         })
-        .catch(() => {});
+        .catch(() => { localStorage.removeItem(welcomePendingKey); });
     }
   }, [seasonId]);
 
