@@ -1,0 +1,242 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "eJAz348DfSp9X1KLpPuup"
+uri = "file://artifacts/fc-career-manager/public/trophies/champions-league.png"
+type = "image"
+title = "champions league big ears trophy"
+
+[[generated]]
+id = "hNbfDWYny34lGgul0y2us"
+uri = "file://artifacts/fc-career-manager/public/trophies/europa-league.png"
+type = "image"
+title = "europa league trophy"
+
+[[generated]]
+id = "ZAtTRZuLuFiTeWz5uOLm_"
+uri = "file://artifacts/fc-career-manager/public/trophies/conference-league.png"
+type = "image"
+title = "conference league trophy"
+
+[[generated]]
+id = "epGsrgxwM2boJch3hYTJE"
+uri = "file://artifacts/fc-career-manager/public/trophies/premier-league.png"
+type = "image"
+title = "premier league trophy"
+
+[[generated]]
+id = "Uav2wOT-k6F2-eKYCqIY5"
+uri = "file://artifacts/fc-career-manager/public/trophies/fa-cup.png"
+type = "image"
+title = "fa cup trophy"
+
+[[generated]]
+id = "WM3gc7jdRMsvA0oZsy7Lr"
+uri = "file://artifacts/fc-career-manager/public/trophies/carabao-cup.png"
+type = "image"
+title = "carabao cup trophy"
+
+[[generated]]
+id = "WvwXX-vaK4zQYIratW7RI"
+uri = "file://artifacts/fc-career-manager/public/trophies/community-shield.png"
+type = "image"
+title = "community shield trophy"
+
+[[generated]]
+id = "Dp-5sWnbSySHU9lSnxiJD"
+uri = "file://artifacts/fc-career-manager/public/trophies/efl-championship.png"
+type = "image"
+title = "efl championship trophy"
+
+[[generated]]
+id = "Cvf_fa1YOgkW7NLSt2mSN"
+uri = "file://artifacts/fc-career-manager/public/trophies/efl-league-one.png"
+type = "image"
+title = "efl league one trophy"
+
+[[generated]]
+id = "djlsGjD5CS5H1TsJG0Gim"
+uri = "file://artifacts/fc-career-manager/public/trophies/efl-league-two.png"
+type = "image"
+title = "efl league two trophy"
+
+[[generated]]
+id = "L9_kR_bD4N5jfMmJUJzQp"
+uri = "file://artifacts/fc-career-manager/public/trophies/la-liga.png"
+type = "image"
+title = "la liga trophy"
+
+[[generated]]
+id = "KWzh3E873DzLuWEMHwoLV"
+uri = "file://artifacts/fc-career-manager/public/trophies/copa-del-rey.png"
+type = "image"
+title = "copa del rey trophy"
+
+[[generated]]
+id = "Ucpvvg3389gjRHGLDBL2b"
+uri = "file://artifacts/fc-career-manager/public/trophies/supercopa-espana.png"
+type = "image"
+title = "supercopa espana trophy"
+
+[[generated]]
+id = "v-Fsst0LOk8INg_XfZGYD"
+uri = "file://artifacts/fc-career-manager/public/trophies/la-liga-2.png"
+type = "image"
+title = "la liga 2 trophy"
+
+[[generated]]
+id = "P6nYdlHN7vQFIoLKIw9VF"
+uri = "file://artifacts/fc-career-manager/public/trophies/bundesliga.png"
+type = "image"
+title = "bundesliga meisterschale plate"
+
+[[generated]]
+id = "TUWc1p5OcfDHjLBUcNJVj"
+uri = "file://artifacts/fc-career-manager/public/trophies/dfb-pokal.png"
+type = "image"
+title = "dfb pokal trophy"
+
+[[generated]]
+id = "k8S-RBH7uyU7j6qtBaDOK"
+uri = "file://artifacts/fc-career-manager/public/trophies/serie-a.png"
+type = "image"
+title = "serie a trophy"
+
+[[generated]]
+id = "Tx-TKUelZiy1mALVM9cU7"
+uri = "file://artifacts/fc-career-manager/public/trophies/coppa-italia.png"
+type = "image"
+title = "coppa italia trophy"
+
+[[generated]]
+id = "-uyZQS8OYI4E7X3VV633O"
+uri = "file://artifacts/fc-career-manager/public/trophies/supercoppa-italiana.png"
+type = "image"
+title = "supercoppa italiana trophy"
+
+[[generated]]
+id = "75AWUfLCxbwpANjo_wiR7"
+uri = "file://artifacts/fc-career-manager/public/trophies/efl-trophy.png"
+type = "image"
+title = "efl trophy"
+
+[[generated]]
+id = "_mcYQNn3ZKIJZvyx7ApFK"
+uri = "file://artifacts/fc-career-manager/public/trophies/scottish-premiership.png"
+type = "image"
+title = "scottish premiership trophy"
+
+[[generated]]
+id = "rqUf6MJ1ZQSf63Li2vb7m"
+uri = "file://artifacts/fc-career-manager/public/trophies/scottish-cup.png"
+type = "image"
+title = "scottish cup trophy"
+
+[[generated]]
+id = "25yAozSxdXZdyB-mAkB0-"
+uri = "file://artifacts/fc-career-manager/public/trophies/scottish-league-cup.png"
+type = "image"
+title = "scottish league cup trophy"
+
+[[generated]]
+id = "26ysb0CxYxZqB8_CxsEF_"
+uri = "file://artifacts/fc-career-manager/public/trophies/saudi-pro-league.png"
+type = "image"
+title = "saudi pro league trophy"
+
+[[generated]]
+id = "UFx-PyLgOLXCylvfxXFLd"
+uri = "file://artifacts/fc-career-manager/public/trophies/saudi-super-cup.png"
+type = "image"
+title = "saudi super cup trophy"
+
+[[generated]]
+id = "J16gaCpd3yXqqR-hc7N80"
+uri = "file://artifacts/fc-career-manager/public/trophies/liga-argentina.png"
+type = "image"
+title = "liga argentina trophy"
+
+[[generated]]
+id = "uqQuPOCUlAK4MmOJIJu92"
+uri = "file://artifacts/fc-career-manager/public/trophies/copa-argentina.png"
+type = "image"
+title = "copa argentina trophy"
+
+[[generated]]
+id = "zZIYLu36T6DwGD3lKZklJ"
+uri = "file://artifacts/fc-career-manager/public/trophies/liga-mx.png"
+type = "image"
+title = "liga mx trophy"
+
+[[generated]]
+id = "qKKY8ju5yCofADnAtlhAC"
+uri = "file://artifacts/fc-career-manager/public/trophies/mls-cup.png"
+type = "image"
+title = "mls cup trophy"
+
+[[generated]]
+id = "s77SZbRKL2wnM4pC-xHVf"
+uri = "file://artifacts/fc-career-manager/public/trophies/turkish-super-lig.png"
+type = "image"
+title = "turkish super lig trophy"
+
+[[generated]]
+id = "oa7cxnD41JmEiTKybNBJ3"
+uri = "file://artifacts/fc-career-manager/public/trophies/ligue-1.png"
+type = "image"
+title = "ligue 1 trophy"
+
+[[generated]]
+id = "qSwMNiLilvY2Kd7SZ8kvH"
+uri = "file://artifacts/fc-career-manager/public/trophies/coupe-de-france.png"
+type = "image"
+title = "coupe de france trophy"
+
+[[generated]]
+id = "l8Ax5ZZEV-d698ah8KoYm"
+uri = "file://artifacts/fc-career-manager/public/trophies/eredivisie.png"
+type = "image"
+title = "eredivisie trophy"
+
+[[generated]]
+id = "3cHs_ulhFCklbROUXgt2x"
+uri = "file://artifacts/fc-career-manager/public/trophies/liga-portugal.png"
+type = "image"
+title = "liga portugal trophy"
+
+[[generated]]
+id = "LPPhMOSzZLjaUR_s4SKtx"
+uri = "file://artifacts/fc-career-manager/public/trophies/taca-de-portugal.png"
+type = "image"
+title = "taca de portugal trophy"
+
+[[generated]]
+id = "PqkqPCuBSHs5-d4vGyW2I"
+uri = "file://artifacts/fc-career-manager/public/trophies/copa-libertadores.png"
+type = "image"
+title = "copa libertadores el palito trophy"
+
+[[generated]]
+id = "3x6Fo3jgregGfSDbsQZNL"
+uri = "file://artifacts/fc-career-manager/public/trophies/copa-sudamericana.png"
+type = "image"
+title = "copa sudamericana trophy"
+
+[[generated]]
+id = "uiiyQPpWaYqir9muPh9MW"
+uri = "file://artifacts/fc-career-manager/public/trophies/brasileirao.png"
+type = "image"
+title = "brasileirao trophy"
+
+[[generated]]
+id = "AMxCbit7x2u5aFnxvVxv2"
+uri = "file://artifacts/fc-career-manager/public/trophies/copa-do-brasil.png"
+type = "image"
+title = "copa do brasil trophy"
+
+[[generated]]
+id = "m_b56WII7L6F0EfS-rP4F"
+uri = "file://artifacts/fc-career-manager/public/trophies/brasileirao-serie-b.png"
+type = "image"
+title = "brasileirao serie b trophy"
