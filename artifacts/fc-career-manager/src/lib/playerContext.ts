@@ -57,10 +57,6 @@ function relativeOvrLabel(ovr: number, squadAvg: number): string {
   return "abaixo da média do elenco";
 }
 
-function isAttacker(pos: string): boolean {
-  return pos === "ATA" || pos === "Atacante";
-}
-
 function isDefender(pos: string): boolean {
   return pos === "DEF" || pos === "GOL" || pos === "Defensor" || pos === "Goleiro";
 }
@@ -115,42 +111,17 @@ export function buildPlayerPerformanceContext(
     const override = allOverrides[player.id];
     const overall = override?.overall;
     const pos = player.positionPtBr ?? player.position ?? "";
-    const starters_ = stats.matchesAsStarter ?? 0;
-    const subs_ = stats.matchesAsSubstitute ?? 0;
-    const isBench_ = subs_ > starters_;
 
     let ovrRelative: string | undefined;
 
     if (overall != null && squadAvg != null) {
       ovrRelative = relativeOvrLabel(overall, squadAvg);
-      const isStarOrAbove = ovrRelative === "estrela do elenco" || ovrRelative === "acima da média do elenco";
       const isBelowAvg = ovrRelative === "abaixo da média do elenco";
-
-      if (totalApps >= 3) {
-        if (isBench_ && isStarOrAbove && (form === "ruim" || form === "regular" || form === "poucos jogos")) {
-          incidents.push(`${ovrRelative} mas pouco utilizado`);
-        } else if (!isBench_ && isStarOrAbove && (form === "ruim" || form === "péssima")) {
-          incidents.push(`${ovrRelative} mas em baixa forma`);
-        }
-      }
-
-      if (isAttacker(pos) && isStarOrAbove && totalApps >= 5 && (stats.goals ?? 0) === 0) {
-        incidents.push(`atacante de alto nível (OVR ${overall}) sem marcar`);
-      }
 
       if (!isDefender(pos) && isBelowAvg && totalApps >= 5 && (form === "ótima" || form === "boa")) {
         incidents.push("revelação/surpresa da temporada");
       } else if (isDefender(pos) && isBelowAvg && totalApps >= 5 && form === "ótima") {
         incidents.push("revelação da zaga/goleiro");
-      }
-    } else if (overall != null && overall >= 80 && totalApps >= 3) {
-      if (isBench_ && (form === "ruim" || form === "regular" || form === "poucos jogos")) {
-        incidents.push(`overall ${overall} mas pouco utilizado`);
-      } else if (!isBench_ && (form === "ruim" || form === "péssima")) {
-        incidents.push(`overall ${overall} mas em baixa forma`);
-      }
-      if (isAttacker(pos) && totalApps >= 5 && (stats.goals ?? 0) === 0) {
-        incidents.push(`atacante de alto nível (OVR ${overall}) sem marcar`);
       }
     }
 

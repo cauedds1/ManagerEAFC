@@ -18,6 +18,7 @@ import type { MatchRecord } from "@/types/match";
 import { getMatchResult } from "@/types/match";
 import { getMatches as getMatchesForStorage } from "@/lib/matchStorage";
 import { buildPlayerPerformanceContext, buildPlayerContextString, buildSquadOvrContext } from "@/lib/playerContext";
+import { buildTeamFormContext } from "@/lib/autoNewsService";
 import { stepPlayerMood } from "@/lib/playerPerformanceEngine";
 import { getMembers, addNotification } from "@/lib/diretoriaStorage";
 import { getAllPlayerStats, getAllPlayerOverrides } from "@/lib/playerStatsStorage";
@@ -181,6 +182,8 @@ function CategoryButton({
 function AddPostModal({
   career,
   playerContextStr,
+  squadOvrContext,
+  teamFormContext,
   historicalContext,
   recentPosts,
   customPortals,
@@ -189,6 +192,8 @@ function AddPostModal({
 }: {
   career: Career;
   playerContextStr?: string;
+  squadOvrContext?: string;
+  teamFormContext?: string;
   historicalContext?: string;
   recentPosts?: NewsPost[];
   customPortals?: CustomPortal[];
@@ -275,6 +280,7 @@ function AddPostModal({
           projeto: career.projeto || undefined,
           playersContext: playerContextStr || undefined,
           squadOvrContext: squadOvrContext || undefined,
+          teamFormContext: teamFormContext || undefined,
           historicalContext: historicalContext || undefined,
           recentPostsContext: recentPostsContext || undefined,
           customPortal: isCustom ? {
@@ -899,6 +905,11 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
     return buildSquadOvrContext(allPlayers, overrides);
   }, [allPlayers, career.id]);
 
+  const teamFormContext = useMemo(() => {
+    if (_matches.length === 0) return "";
+    return buildTeamFormContext(_matches);
+  }, [_matches]);
+
   const historicalContext = useMemo(() => {
     if (pastSeasons.length === 0) return undefined;
     const lines = pastSeasons.map((s) => {
@@ -1318,6 +1329,8 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
       <AddPostModal
         career={career}
         playerContextStr={playerContextStr || undefined}
+        squadOvrContext={squadOvrContext || undefined}
+        teamFormContext={teamFormContext || undefined}
         historicalContext={historicalContext}
         recentPosts={posts.slice(0, 6)}
         customPortals={customPortals}

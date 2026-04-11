@@ -1,4 +1,5 @@
 import type { MatchRecord } from "@/types/match";
+import { getMatchResult } from "@/types/match";
 import type { NewsPost } from "@/types/noticias";
 import type { SquadPlayer } from "@/lib/squadCache";
 import type { LeaguePosition } from "@/lib/leagueStorage";
@@ -59,6 +60,25 @@ function pickPortalForEvent(
   return portals[Math.floor(Math.random() * portals.length)];
 }
 
+export function buildTeamFormContext(allMatches: MatchRecord[], currentMatch?: MatchRecord): string {
+  const others = allMatches
+    .filter((m) => !currentMatch || m.id !== currentMatch.id)
+    .sort((a, b) => b.createdAt - a.createdAt)
+    .slice(0, currentMatch ? 7 : 8);
+
+  const recent = currentMatch ? [currentMatch, ...others] : others;
+
+  if (recent.length === 0) return "";
+
+  const lines = recent.map((m) => {
+    const r = getMatchResult(m.myScore, m.opponentScore);
+    const label = r === "vitoria" ? "V" : r === "derrota" ? "D" : "E";
+    return `${label} ${m.opponent} (${m.myScore}-${m.opponentScore})`;
+  });
+
+  return `Sequência recente (mais recente primeiro): ${lines.join(" | ")}`;
+}
+
 export async function runAutoNews(
   newMatch: MatchRecord,
   ctx: AutoNewsContext,
@@ -91,6 +111,7 @@ export async function runAutoNews(
     );
 
     const squadOvrContext = buildSquadOvrContext(allPlayers, allOverrides);
+    const teamFormContext = buildTeamFormContext(allMatches, newMatch);
 
     const recentPosts = getPosts(seasonId)
       .slice(0, 6)
@@ -127,6 +148,7 @@ export async function runAutoNews(
           projeto: projeto || undefined,
           playersContext: playerContextStr || undefined,
           squadOvrContext: squadOvrContext || undefined,
+          teamFormContext: teamFormContext || undefined,
           recentPostsContext: recentPosts.length > 0 ? recentPosts : undefined,
           customPortal: isCustom
             ? {

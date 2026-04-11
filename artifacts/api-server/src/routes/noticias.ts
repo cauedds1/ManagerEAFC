@@ -30,6 +30,7 @@ interface GenerateNoticiaBody {
   category?: string;
   playersContext?: string;
   squadOvrContext?: string;
+  teamFormContext?: string;
   historicalContext?: string;
   recentPostsContext?: RecentPostSummary[];
   customPortal?: CustomPortalPayload;
@@ -115,7 +116,7 @@ function getClient(userKey?: string): { client: OpenAI; usingUserKey: boolean } 
 router.post("/noticias/generate", async (req, res) => {
   const {
     description, clubName, season, source, category,
-    playersContext, squadOvrContext, historicalContext, recentPostsContext, customPortal,
+    playersContext, squadOvrContext, teamFormContext, historicalContext, recentPostsContext, customPortal,
     clubLeague, clubTitles, clubDescription, projeto,
   } = req.body as GenerateNoticiaBody;
 
@@ -153,7 +154,11 @@ router.post("/noticias/generate", async (req, res) => {
     : "";
 
   const squadOvrSection = squadOvrContext?.trim()
-    ? `\n\nCONTEXTO DE NÍVEL DO ELENCO — use para calibrar expectativas individuais de cada jogador:\n${squadOvrContext.trim()}\n\nREGRAS DE POSIÇÃO E OVR:\n- Goleiros e zagueiros NÃO são cobrados por falta de gols — isso é absolutamente normal para a posição. Cobrar um zagueiro por não marcar seria ridículo e não deve acontecer nos comentários.\n- Atacantes acima da média ou estrelas do elenco com zero gols em muitas partidas SÃO alvo legítimo de cobrança da mídia.\n- Um jogador com OVR abaixo da média do elenco que esteja em boa forma é uma SURPRESA positiva — a mídia deve tratar como revelação.\n- Um jogador estrela do elenco em baixa forma é decepção natural — mas considere a posição ao formular as cobranças.\n- Calibre sempre: o mesmo OVR tem peso diferente em elencos diferentes.`
+    ? `\n\nCONTEXTO DE NÍVEL DO ELENCO — use para calibrar expectativas individuais:\n${squadOvrContext.trim()}\n\nREGRAS DE POSIÇÃO E OVR:\n- Goleiros e zagueiros NÃO são cobrados por falta de gols — isso é absolutamente normal para a posição.\n- Use a média de OVR do elenco + o nome da liga para avaliar se o time tem qualidade para dominar partidas: elenco de OVR alto numa liga fraca → exigência alta; elenco de OVR médio na Premier League → exigência moderada.\n- Um jogador abaixo da média do elenco em boa forma é uma SURPRESA positiva — trate como revelação.\n- Calibre sempre: o mesmo OVR tem peso diferente em elencos diferentes.`
+    : "";
+
+  const teamFormSection = teamFormContext?.trim()
+    ? `\n\nSEQUÊNCIA RECENTE DO TIME:\n${teamFormContext.trim()}\n\nCOMO USAR A SEQUÊNCIA:\n- Use seu conhecimento de futebol para avaliar a força de cada adversário pelo nome.\n- Se o time acabou de bater ou empatar com adversários considerados mais fortes, isso é contexto positivo — cobranças individuais devem ser moderadas ou ausentes.\n- Se o time enfrenta adversários acessíveis para o seu nível (elenco OVR x liga x adversário) e não está performando bem, aí cobranças individuais fazem sentido.\n- Uma sequência de vitórias sólidas, especialmente contra adversários difíceis, indica saúde coletiva — a narrativa deve refletir isso.\n- Não copie os dados brutos — interprete a sequência com olhar de jornalista esportivo que conhece futebol.`
     : "";
 
   const historicalSection = historicalContext?.trim()
@@ -175,7 +180,7 @@ Cada post que você cria deve ser ÚNICO e DIFERENTE dos anteriores — varie o 
 Use linguagem informal, autêntica, com gírias brasileiras do futebol. Seja criativo e específico.
 O time é ${clubName}${season ? ` (temporada ${season})` : ""}.
 O portal que publica é ${portalName} (${portalHandle}).
-Semente de unicidade: ${uniqueSeed} — use ela para garantir que este post seja diferente de qualquer outro.${prestigeSection}${playersSection}${squadOvrSection}${historicalSection}${recentPostsSection}${customPortalSection}`;
+Semente de unicidade: ${uniqueSeed} — use ela para garantir que este post seja diferente de qualquer outro.${prestigeSection}${playersSection}${squadOvrSection}${teamFormSection}${historicalSection}${recentPostsSection}${customPortalSection}`;
 
   const userPrompt = `Crie um post de notícia com base nessa descrição: "${description.trim()}"
 
