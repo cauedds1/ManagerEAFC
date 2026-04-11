@@ -30,4 +30,3 @@ channel = "stable-25_05"
 [userenv]
 
 [userenv.shared]
-API_FOOTBALL_KEY = "d6b429dab5ab0c026d002734b0899f66"
