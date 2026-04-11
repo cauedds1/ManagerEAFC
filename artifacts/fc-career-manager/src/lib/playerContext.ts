@@ -1,6 +1,6 @@
 import type { SquadPlayer } from "@/lib/squadCache";
 import { getAllPlayerStats, getAllPlayerOverrides } from "@/lib/playerStatsStorage";
-import type { FanMoral, Mood } from "@/types/playerStats";
+import type { FanMoral, Mood, PlayerOverride } from "@/types/playerStats";
 
 function avgRatings(ratings: number[]): number {
   if (ratings.length === 0) return 6.5;
@@ -38,6 +38,33 @@ function fanMoralPtBr(fm: FanMoral): string {
   return map[fm] ?? "Neutro";
 }
 
+function calcSquadAvgOvr(
+  allPlayers: SquadPlayer[],
+  allOverrides: Record<number, PlayerOverride>,
+): number | null {
+  const ovrs = allPlayers
+    .map((p) => allOverrides[p.id]?.overall)
+    .filter((o): o is number => o != null && o > 0);
+  if (ovrs.length === 0) return null;
+  return Math.round(ovrs.reduce((a, b) => a + b, 0) / ovrs.length);
+}
+
+function relativeOvrLabel(ovr: number, squadAvg: number): string {
+  const diff = ovr - squadAvg;
+  if (diff >= 7) return "estrela do elenco";
+  if (diff >= 3) return "acima da média do elenco";
+  if (diff >= -2) return "na média do elenco";
+  return "abaixo da média do elenco";
+}
+
+function isAttacker(pos: string): boolean {
+  return pos === "ATA" || pos === "Atacante";
+}
+
+function isDefender(pos: string): boolean {
+  return pos === "DEF" || pos === "GOL" || pos === "Defensor" || pos === "Goleiro";
+}
+
 export interface PlayerContextItem {
   name: string;
   position: string;
@@ -52,6 +79,7 @@ export interface PlayerContextItem {
   isBench: boolean;
   benchRatio: number;
   overall?: number;
+  ovrRelative?: string;
 }
 
 export function buildPlayerPerformanceContext(
@@ -61,6 +89,8 @@ export function buildPlayerPerformanceContext(
   const allStats = getAllPlayerStats(careerId);
   const allOverrides = getAllPlayerOverrides(careerId);
   const items: PlayerContextItem[] = [];
+
+  const squadAvg = calcSquadAvgOvr(allPlayers, allOverrides);
 
   for (const player of allPlayers) {
     const stats = allStats[player.id];
@@ -83,15 +113,43 @@ export function buildPlayerPerformanceContext(
 
     const override = allOverrides[player.id];
     const overall = override?.overall;
+    const pos = player.positionPtBr ?? player.position ?? "";
+    const starters_ = stats.matchesAsStarter ?? 0;
+    const subs_ = stats.matchesAsSubstitute ?? 0;
+    const isBench_ = subs_ > starters_;
 
-    if (overall && overall >= 80 && totalApps >= 3) {
-      const starters_ = stats.matchesAsStarter ?? 0;
-      const subs_ = stats.matchesAsSubstitute ?? 0;
-      const isBench_ = subs_ > starters_;
+    let ovrRelative: string | undefined;
+
+    if (overall != null && squadAvg != null) {
+      ovrRelative = relativeOvrLabel(overall, squadAvg);
+      const isStarOrAbove = ovrRelative === "estrela do elenco" || ovrRelative === "acima da média do elenco";
+      const isBelowAvg = ovrRelative === "abaixo da média do elenco";
+
+      if (totalApps >= 3) {
+        if (isBench_ && isStarOrAbove && (form === "ruim" || form === "regular" || form === "poucos jogos")) {
+          incidents.push(`${ovrRelative} mas pouco utilizado`);
+        } else if (!isBench_ && isStarOrAbove && (form === "ruim" || form === "péssima")) {
+          incidents.push(`${ovrRelative} mas em baixa forma`);
+        }
+      }
+
+      if (isAttacker(pos) && isStarOrAbove && totalApps >= 5 && (stats.goals ?? 0) === 0) {
+        incidents.push(`atacante de alto nível (OVR ${overall}) sem marcar`);
+      }
+
+      if (!isDefender(pos) && isBelowAvg && totalApps >= 5 && (form === "ótima" || form === "boa")) {
+        incidents.push("revelação/surpresa da temporada");
+      } else if (isDefender(pos) && isBelowAvg && totalApps >= 5 && form === "ótima") {
+        incidents.push("revelação da zaga/goleiro");
+      }
+    } else if (overall != null && overall >= 80 && totalApps >= 3) {
       if (isBench_ && (form === "ruim" || form === "regular" || form === "poucos jogos")) {
         incidents.push(`overall ${overall} mas pouco utilizado`);
       } else if (!isBench_ && (form === "ruim" || form === "péssima")) {
         incidents.push(`overall ${overall} mas em baixa forma`);
+      }
+      if (isAttacker(pos) && totalApps >= 5 && (stats.goals ?? 0) === 0) {
+        incidents.push(`atacante de alto nível (OVR ${overall}) sem marcar`);
       }
     }
 
@@ -107,7 +165,7 @@ export function buildPlayerPerformanceContext(
 
     items.push({
       name: player.name,
-      position: player.positionPtBr ?? player.position,
+      position: pos,
       form,
       avgRating: Math.round(ratingAvg * 10) / 10,
       fanMoral: fanMoralPtBr(stats.fanMoral ?? "neutro"),
@@ -119,6 +177,7 @@ export function buildPlayerPerformanceContext(
       isBench,
       benchRatio: Math.round(benchRatio * 100) / 100,
       overall,
+      ovrRelative,
     });
   }
 
@@ -134,9 +193,41 @@ export function buildPlayerPerformanceContext(
 export function buildPlayerContextString(items: PlayerContextItem[]): string {
   if (items.length === 0) return "";
   const lines = items.map((p) => {
-    const ovrStr = p.overall != null ? ` | OVR ${p.overall}` : "";
+    const ovrStr = p.overall != null
+      ? ` | OVR ${p.overall}${p.ovrRelative ? ` (${p.ovrRelative})` : ""}`
+      : "";
     const incStr = p.incidents.length > 0 ? ` | ${p.incidents.join(", ")}` : "";
     return `- ${p.name} (${p.position}): forma ${p.form} (avg ${p.avgRating})${ovrStr} | moral: ${p.fanMoral} | humor: ${p.mood} | ${p.goals}G ${p.assists}A${incStr}`;
   });
+  return lines.join("\n");
+}
+
+export function buildSquadOvrContext(
+  allPlayers: SquadPlayer[],
+  overrides: Record<number, PlayerOverride>,
+): string {
+  const squadAvg = calcSquadAvgOvr(allPlayers, overrides);
+  if (squadAvg == null) return "";
+
+  const withOvr = allPlayers
+    .map((p) => ({ player: p, ovr: overrides[p.id]?.overall ?? 0 }))
+    .filter((x) => x.ovr > 0)
+    .sort((a, b) => b.ovr - a.ovr);
+
+  if (withOvr.length === 0) return "";
+
+  const top3 = withOvr.slice(0, 3).map(({ player, ovr }) => {
+    const rel = relativeOvrLabel(ovr, squadAvg);
+    const pos = player.positionPtBr ?? player.position;
+    return `  • ${player.name} (${pos}) OVR ${ovr} — ${rel}`;
+  });
+
+  const lines = [
+    `Média de OVR do elenco: ${squadAvg}`,
+    `Total de jogadores com OVR definido: ${withOvr.length}`,
+    `Destaques do elenco por OVR:`,
+    ...top3,
+  ];
+
   return lines.join("\n");
 }

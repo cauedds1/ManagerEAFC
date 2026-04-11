@@ -5,10 +5,10 @@ import type { LeaguePosition } from "@/lib/leagueStorage";
 import type { CustomPortal } from "@/lib/customPortalStorage";
 import { detectMatchEvents } from "@/lib/autoNewsEngine";
 import { wasEventHandled, markEventHandled } from "@/lib/autoNewsStorage";
-import { getAllPlayerStats } from "@/lib/playerStatsStorage";
+import { getAllPlayerStats, getAllPlayerOverrides } from "@/lib/playerStatsStorage";
 import { getCustomPortals } from "@/lib/customPortalStorage";
 import { getPosts, addPost, generatePostId, generateCommentId } from "@/lib/noticiaStorage";
-import { buildPlayerPerformanceContext, buildPlayerContextString } from "@/lib/playerContext";
+import { buildPlayerPerformanceContext, buildPlayerContextString, buildSquadOvrContext } from "@/lib/playerContext";
 import { getOpenAIKey } from "@/lib/openaiKeyStorage";
 
 interface AiResult {
@@ -68,6 +68,7 @@ export async function runAutoNews(
 
     const seasonPlayerStats = getAllPlayerStats(seasonId);
     const customPortals = getCustomPortals(careerId);
+    const allOverrides = getAllPlayerOverrides(careerId);
 
     const allEvents = detectMatchEvents({
       newMatch,
@@ -88,6 +89,8 @@ export async function runAutoNews(
     const playerContextStr = buildPlayerContextString(
       buildPlayerPerformanceContext(seasonId, allPlayers),
     );
+
+    const squadOvrContext = buildSquadOvrContext(allPlayers, allOverrides);
 
     const recentPosts = getPosts(seasonId)
       .slice(0, 6)
@@ -123,6 +126,7 @@ export async function runAutoNews(
           clubDescription: clubDescription || undefined,
           projeto: projeto || undefined,
           playersContext: playerContextStr || undefined,
+          squadOvrContext: squadOvrContext || undefined,
           recentPostsContext: recentPosts.length > 0 ? recentPosts : undefined,
           customPortal: isCustom
             ? {

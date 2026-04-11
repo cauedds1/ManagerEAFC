@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import type { SquadResult, SquadPlayer, PositionPtBr } from "@/lib/squadCache";
 import { migratePositionOverride } from "@/lib/squadCache";
 import type { PlayerOverride } from "@/types/playerStats";
@@ -54,6 +54,32 @@ function PlayerPhoto({ src, name }: { src: string; name: string }) {
         </svg>
       )}
     </div>
+  );
+}
+
+function ovrStyle(ovr: number): { bg: string; color: string; ring?: string } {
+  if (ovr >= 90) return { bg: "rgba(234,179,8,0.20)", color: "#facc15", ring: "rgba(234,179,8,0.40)" };
+  if (ovr >= 85) return { bg: "rgba(99,102,241,0.22)", color: "#a5b4fc", ring: "rgba(99,102,241,0.40)" };
+  if (ovr >= 75) return { bg: "rgba(16,185,129,0.18)", color: "#6ee7b7", ring: "rgba(16,185,129,0.30)" };
+  return { bg: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.45)" };
+}
+
+function OvrBadge({ ovr }: { ovr: number }) {
+  const s = ovrStyle(ovr);
+  return (
+    <span
+      className="text-xs font-bold tabular-nums px-1.5 py-0.5 rounded-md leading-none"
+      style={{
+        background: s.bg,
+        color: s.color,
+        boxShadow: s.ring ? `0 0 0 1px ${s.ring}` : undefined,
+        minWidth: "2rem",
+        textAlign: "center",
+        display: "inline-block",
+      }}
+    >
+      {ovr}
+    </span>
   );
 }
 
@@ -113,7 +139,7 @@ function PlayerRow({
       </div>
       <div className="flex items-center gap-2 flex-shrink-0">
         {displayOverall != null && (
-          <span className="text-white/50 text-xs font-bold tabular-nums">{displayOverall}</span>
+          <OvrBadge ovr={displayOverall} />
         )}
         <span
           className="text-xs font-bold px-2 py-0.5 rounded-md"
@@ -205,6 +231,14 @@ export function ElencoView({
 
   const isCustom = customLineup !== null;
 
+  const squadAvgOvr = useMemo(() => {
+    const ovrs = allPlayers
+      .map((p) => overrides[p.id]?.overall)
+      .filter((o): o is number => o != null && o > 0);
+    if (ovrs.length === 0) return null;
+    return Math.round(ovrs.reduce((a, b) => a + b, 0) / ovrs.length);
+  }, [allPlayers, overrides]);
+
   const handleResetLineup = useCallback(() => {
     clearCustomLineup(careerId);
     setCustomLineupState(null);
@@ -274,6 +308,15 @@ export function ElencoView({
           )}
           {allPlayers.length > 0 && !squadLoading && (
             <span className="text-white/25 text-xs">{allPlayers.length} jogadores</span>
+          )}
+          {squadAvgOvr != null && !squadLoading && (
+            <span
+              className="text-xs font-semibold flex items-center gap-1"
+              style={{ color: "rgba(255,255,255,0.30)" }}
+              title="Média de OVR do elenco"
+            >
+              Média <OvrBadge ovr={squadAvgOvr} />
+            </span>
           )}
         </div>
         <div className="flex items-center gap-3">

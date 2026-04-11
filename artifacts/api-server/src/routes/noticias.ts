@@ -29,6 +29,7 @@ interface GenerateNoticiaBody {
   source?: string;
   category?: string;
   playersContext?: string;
+  squadOvrContext?: string;
   historicalContext?: string;
   recentPostsContext?: RecentPostSummary[];
   customPortal?: CustomPortalPayload;
@@ -114,7 +115,7 @@ function getClient(userKey?: string): { client: OpenAI; usingUserKey: boolean } 
 router.post("/noticias/generate", async (req, res) => {
   const {
     description, clubName, season, source, category,
-    playersContext, historicalContext, recentPostsContext, customPortal,
+    playersContext, squadOvrContext, historicalContext, recentPostsContext, customPortal,
     clubLeague, clubTitles, clubDescription, projeto,
   } = req.body as GenerateNoticiaBody;
 
@@ -151,6 +152,10 @@ router.post("/noticias/generate", async (req, res) => {
     ? `\n\nELENCO — CONTEXTO DE DESEMPENHO (use com moderação para enriquecer comentários — nem todo comentário precisa mencionar jogadores; prefira os mais marcantes como ídolos, artilheiros ou jogadores com incidentes recentes):\n${playersContext.trim()}`
     : "";
 
+  const squadOvrSection = squadOvrContext?.trim()
+    ? `\n\nCONTEXTO DE NÍVEL DO ELENCO — use para calibrar expectativas individuais de cada jogador:\n${squadOvrContext.trim()}\n\nREGRAS DE POSIÇÃO E OVR:\n- Goleiros e zagueiros NÃO são cobrados por falta de gols — isso é absolutamente normal para a posição. Cobrar um zagueiro por não marcar seria ridículo e não deve acontecer nos comentários.\n- Atacantes acima da média ou estrelas do elenco com zero gols em muitas partidas SÃO alvo legítimo de cobrança da mídia.\n- Um jogador com OVR abaixo da média do elenco que esteja em boa forma é uma SURPRESA positiva — a mídia deve tratar como revelação.\n- Um jogador estrela do elenco em baixa forma é decepção natural — mas considere a posição ao formular as cobranças.\n- Calibre sempre: o mesmo OVR tem peso diferente em elencos diferentes.`
+    : "";
+
   const historicalSection = historicalContext?.trim()
     ? `\n\nHISTÓRICO DO CLUBE (use para dar profundidade narrativa quando relevante — ex: comemorações de recorde, comparações com temporadas anteriores, saudosismo de torcedores):\n${historicalContext.trim()}`
     : "";
@@ -170,7 +175,7 @@ Cada post que você cria deve ser ÚNICO e DIFERENTE dos anteriores — varie o 
 Use linguagem informal, autêntica, com gírias brasileiras do futebol. Seja criativo e específico.
 O time é ${clubName}${season ? ` (temporada ${season})` : ""}.
 O portal que publica é ${portalName} (${portalHandle}).
-Semente de unicidade: ${uniqueSeed} — use ela para garantir que este post seja diferente de qualquer outro.${prestigeSection}${playersSection}${historicalSection}${recentPostsSection}${customPortalSection}`;
+Semente de unicidade: ${uniqueSeed} — use ela para garantir que este post seja diferente de qualquer outro.${prestigeSection}${playersSection}${squadOvrSection}${historicalSection}${recentPostsSection}${customPortalSection}`;
 
   const userPrompt = `Crie um post de notícia com base nessa descrição: "${description.trim()}"
 
