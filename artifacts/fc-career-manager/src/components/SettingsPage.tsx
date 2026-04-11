@@ -114,13 +114,26 @@ function CustomPortalModal({
   onClose,
 }: {
   initial: CustomPortal | null;
-  onSave: (data: { name: string; description: string; tone: PortalTone }) => void;
+  onSave: (data: { name: string; description: string; tone: PortalTone; photo?: string }) => void;
   onClose: () => void;
 }) {
   const [name, setName] = useState(initial?.name ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
   const [tone, setTone] = useState<PortalTone>(initial?.tone ?? "jornalistico");
+  const [photo, setPhoto] = useState<string | undefined>(initial?.photo);
+  const photoInputRef = useRef<HTMLInputElement>(null);
   const valid = name.trim().length > 0 && description.trim().length > 0;
+
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => setPhoto(ev.target?.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const initials = name.trim() ? name.trim().charAt(0).toUpperCase() : "?";
 
   return (
     <div
@@ -128,12 +141,13 @@ function CustomPortalModal({
       style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)" }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
+      <input ref={photoInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
       <div
         className="relative w-full max-w-md rounded-3xl overflow-hidden flex flex-col"
-        style={{ background: "var(--color-surface, #1a1a2e)", border: "1px solid rgba(255,255,255,0.1)", maxHeight: "90vh" }}
+        style={{ background: "var(--color-surface, #1a1a2e)", border: "1px solid rgba(var(--club-primary-rgb),0.2)", maxHeight: "90vh" }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 pt-6 pb-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
+        <div className="flex items-center justify-between px-6 pt-6 pb-4" style={{ borderBottom: "1px solid rgba(var(--club-primary-rgb),0.1)" }}>
           <div>
             <h2 className="text-white font-bold text-base">{initial ? "Editar Portal" : "Novo Portal"}</h2>
             <p className="text-white/40 text-xs mt-0.5">A IA usará o tom escolhido ao escrever as notícias.</p>
@@ -145,6 +159,57 @@ function CustomPortalModal({
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-5">
+
+          {/* Photo */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold text-white/60 uppercase tracking-wider">Foto do Portal</label>
+            <div className="flex items-center gap-4">
+              <button
+                type="button"
+                onClick={() => photoInputRef.current?.click()}
+                className="relative flex-shrink-0 rounded-2xl overflow-hidden flex items-center justify-center transition-all hover:scale-105 active:scale-95"
+                style={{
+                  width: 72, height: 72,
+                  background: photo ? "transparent" : "rgba(var(--club-primary-rgb),0.12)",
+                  border: `2px solid rgba(var(--club-primary-rgb),0.4)`,
+                  color: "var(--club-primary)",
+                  fontSize: 26,
+                  fontWeight: 900,
+                }}
+                title="Clique para adicionar foto"
+              >
+                {photo
+                  ? <img src={photo} alt="foto" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                  : <span>{initials}</span>
+                }
+                <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity rounded-2xl" style={{ background: "rgba(0,0,0,0.55)" }}>
+                  <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                </div>
+              </button>
+              <div className="flex flex-col gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => photoInputRef.current?.click()}
+                  className="text-xs font-semibold px-3 py-1.5 rounded-lg transition-all hover:opacity-80"
+                  style={{ background: "rgba(var(--club-primary-rgb),0.12)", color: "var(--club-primary)", border: "1px solid rgba(var(--club-primary-rgb),0.25)" }}
+                >
+                  {photo ? "Alterar foto" : "Adicionar foto"}
+                </button>
+                {photo && (
+                  <button
+                    type="button"
+                    onClick={() => setPhoto(undefined)}
+                    className="text-xs font-semibold px-3 py-1.5 rounded-lg transition-all hover:opacity-80"
+                    style={{ background: "rgba(239,68,68,0.1)", color: "#f87171", border: "1px solid rgba(239,68,68,0.2)" }}
+                  >
+                    Remover
+                  </button>
+                )}
+                <p className="text-white/30 text-xs">Foto opcional do portal</p>
+              </div>
+            </div>
+          </div>
+
           {/* Name */}
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-semibold text-white/60 uppercase tracking-wider">Nome do Portal</label>
@@ -155,7 +220,11 @@ function CustomPortalModal({
               maxLength={40}
               placeholder="Ex: Baldasso Internacional"
               className="w-full px-4 py-3 rounded-xl text-white text-sm focus:outline-none placeholder:text-white/20"
-              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}
+              style={{
+                background: "rgba(255,255,255,0.05)",
+                border: "1px solid rgba(var(--club-primary-rgb),0.2)",
+                outline: "none",
+              }}
             />
           </div>
 
@@ -169,7 +238,7 @@ function CustomPortalModal({
               rows={3}
               placeholder="Ex: Jornalista apaixonado pelo Grêmio, especialista em futebol gaúcho, escreve com emoção e fidelidade ao clube."
               className="w-full px-4 py-3 rounded-xl text-white text-sm focus:outline-none placeholder:text-white/20 resize-none"
-              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}
+              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(var(--club-primary-rgb),0.2)" }}
             />
             <p className="text-right text-white/25 text-xs">{description.length}/200</p>
           </div>
@@ -186,13 +255,13 @@ function CustomPortalModal({
                     onClick={() => setTone(t.id)}
                     className="flex flex-col gap-1 px-3 py-2.5 rounded-xl text-left transition-all duration-150"
                     style={{
-                      background: active ? "rgba(167,139,250,0.15)" : "rgba(255,255,255,0.03)",
-                      border: active ? "1px solid rgba(167,139,250,0.4)" : "1px solid rgba(255,255,255,0.07)",
+                      background: active ? "rgba(var(--club-primary-rgb),0.15)" : "rgba(255,255,255,0.03)",
+                      border: active ? "1px solid rgba(var(--club-primary-rgb),0.45)" : "1px solid rgba(255,255,255,0.07)",
                     }}
                   >
                     <span className="text-base leading-none">{t.emoji}</span>
-                    <span className="text-xs font-bold" style={{ color: active ? "#a78bfa" : "rgba(255,255,255,0.7)" }}>{t.label}</span>
-                    <span className="text-xs leading-tight" style={{ color: active ? "rgba(167,139,250,0.7)" : "rgba(255,255,255,0.3)" }}>{t.description}</span>
+                    <span className="text-xs font-bold" style={{ color: active ? "var(--club-primary)" : "rgba(255,255,255,0.7)" }}>{t.label}</span>
+                    <span className="text-xs leading-tight" style={{ color: active ? "rgba(var(--club-primary-rgb),0.7)" : "rgba(255,255,255,0.3)" }}>{t.description}</span>
                   </button>
                 );
               })}
@@ -201,7 +270,7 @@ function CustomPortalModal({
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 flex gap-3" style={{ borderTop: "1px solid rgba(255,255,255,0.07)" }}>
+        <div className="px-6 py-4 flex gap-3" style={{ borderTop: "1px solid rgba(var(--club-primary-rgb),0.1)" }}>
           <button
             onClick={onClose}
             className="flex-1 py-3 rounded-2xl text-sm font-semibold transition-all duration-150 hover:opacity-80"
@@ -211,13 +280,14 @@ function CustomPortalModal({
           </button>
           <button
             disabled={!valid}
-            onClick={() => valid && onSave({ name: name.trim(), description: description.trim(), tone })}
+            onClick={() => valid && onSave({ name: name.trim(), description: description.trim(), tone, photo })}
             className="flex-1 py-3 rounded-2xl text-sm font-bold transition-all duration-150 hover:opacity-90 active:scale-[0.98]"
             style={{
-              background: valid ? "linear-gradient(135deg, #a78bfa, #8b5cf6)" : "rgba(255,255,255,0.05)",
+              background: valid ? "var(--club-gradient)" : "rgba(255,255,255,0.05)",
               color: valid ? "white" : "rgba(255,255,255,0.2)",
               border: valid ? "none" : "1px solid rgba(255,255,255,0.08)",
               cursor: valid ? "pointer" : "not-allowed",
+              boxShadow: valid ? "0 4px 16px rgba(var(--club-primary-rgb),0.25)" : "none",
             }}
           >
             {initial ? "Salvar alterações" : "Criar portal"}
@@ -371,7 +441,7 @@ export function SettingsPage({ onReloadClubs, careerId }: SettingsPageProps) {
     window.dispatchEvent(new CustomEvent(CUSTOM_PORTALS_EVENT));
   };
 
-  const handleSavePortal = (data: { name: string; description: string; tone: PortalTone }) => {
+  const handleSavePortal = (data: { name: string; description: string; tone: PortalTone; photo?: string }) => {
     if (!careerId) return;
     if (editingPortal) {
       updateCustomPortal(careerId, editingPortal.id, data);
@@ -578,12 +648,12 @@ export function SettingsPage({ onReloadClubs, careerId }: SettingsPageProps) {
                 >
                   {/* Avatar */}
                   <div
-                    className="flex-shrink-0 rounded-full overflow-hidden flex items-center justify-center font-black cursor-pointer"
+                    className="flex-shrink-0 rounded-xl overflow-hidden flex items-center justify-center font-black cursor-pointer relative"
                     style={{
                       width: 48, height: 48,
-                      background: portal.photo ? "transparent" : "rgba(167,139,250,0.18)",
-                      border: "2.5px solid #a78bfa",
-                      color: "#a78bfa",
+                      background: portal.photo ? "transparent" : "rgba(var(--club-primary-rgb),0.15)",
+                      border: "2px solid rgba(var(--club-primary-rgb),0.4)",
+                      color: "var(--club-primary)",
                       fontSize: 18,
                     }}
                     onClick={() => { pendingCustomPortalIdRef.current = portal.id; customPhotoInputRef.current?.click(); }}
@@ -600,7 +670,7 @@ export function SettingsPage({ onReloadClubs, careerId }: SettingsPageProps) {
                     <p className="text-white font-semibold text-sm truncate">{portal.name}</p>
                     <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                       {toneInfo && (
-                        <span className="text-xs px-1.5 py-0.5 rounded-md font-semibold" style={{ background: "rgba(167,139,250,0.15)", color: "#a78bfa" }}>
+                        <span className="text-xs px-1.5 py-0.5 rounded-md font-semibold" style={{ background: "rgba(var(--club-primary-rgb),0.15)", color: "var(--club-primary)" }}>
                           {toneInfo.emoji} {toneInfo.label}
                         </span>
                       )}
@@ -652,9 +722,9 @@ export function SettingsPage({ onReloadClubs, careerId }: SettingsPageProps) {
                 onClick={() => { setEditingPortal(null); setShowPortalModal(true); }}
                 className="flex items-center justify-center gap-2 w-full py-3 rounded-2xl text-sm font-semibold transition-all duration-150 hover:opacity-90 active:scale-[0.99]"
                 style={{
-                  background: "rgba(167,139,250,0.08)",
-                  border: "1px dashed rgba(167,139,250,0.3)",
-                  color: "#a78bfa",
+                  background: "rgba(var(--club-primary-rgb),0.08)",
+                  border: "1px dashed rgba(var(--club-primary-rgb),0.35)",
+                  color: "var(--club-primary)",
                 }}
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
