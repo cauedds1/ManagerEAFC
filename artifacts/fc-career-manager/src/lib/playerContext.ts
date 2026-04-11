@@ -83,11 +83,12 @@ export interface PlayerContextItem {
 }
 
 export function buildPlayerPerformanceContext(
-  careerId: string,
+  seasonId: string,
   allPlayers: SquadPlayer[],
+  careerId?: string,
 ): PlayerContextItem[] {
-  const allStats = getAllPlayerStats(careerId);
-  const allOverrides = getAllPlayerOverrides(careerId);
+  const allStats = getAllPlayerStats(seasonId);
+  const allOverrides = getAllPlayerOverrides(careerId ?? seasonId);
   const items: PlayerContextItem[] = [];
 
   const squadAvg = calcSquadAvgOvr(allPlayers, allOverrides);

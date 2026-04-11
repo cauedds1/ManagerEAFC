@@ -888,9 +888,9 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
 
   const playerContextStr = useMemo(() => {
     if (allPlayers.length === 0) return "";
-    const items = buildPlayerPerformanceContext(seasonId, allPlayers);
+    const items = buildPlayerPerformanceContext(seasonId, allPlayers, career.id);
     return buildPlayerContextString(items);
-  }, [seasonId, allPlayers]);
+  }, [seasonId, allPlayers, career.id]);
 
   const historicalContext = useMemo(() => {
     if (pastSeasons.length === 0) return undefined;

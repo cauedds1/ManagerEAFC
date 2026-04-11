@@ -87,7 +87,7 @@ export async function runAutoNews(
     const top = unhandled.slice(0, MAX_POSTS_PER_MATCH);
 
     const playerContextStr = buildPlayerContextString(
-      buildPlayerPerformanceContext(seasonId, allPlayers),
+      buildPlayerPerformanceContext(seasonId, allPlayers, careerId),
     );
 
     const squadOvrContext = buildSquadOvrContext(allPlayers, allOverrides);
