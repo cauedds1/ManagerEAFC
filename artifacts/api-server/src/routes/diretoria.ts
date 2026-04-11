@@ -558,8 +558,9 @@ router.post("/diretoria/check-triggers", async (req, res) => {
       const relegZone = leaguePos.totalTeams - 3;
       if (leaguePos.position >= relegZone && lossStreak >= 2) {
         const relegOpponents = lossStreakOpponents ? ` vs ${lossStreakOpponents}` : "";
+        const relegOvrPart = ovrNote ? ` | ${ovrNote}` : "";
         meetingTrigger = meetingTrigger ?? {
-          reason: `${leaguePos.position}º lugar — zona de rebaixamento com ${lossStreak} derrotas seguidas${relegOpponents}`,
+          reason: `${leaguePos.position}º lugar — zona de rebaixamento com ${lossStreak} derrotas seguidas${relegOpponents}${relegOvrPart}`,
           severity: "high",
         };
       } else if (leaguePos.position <= 4 && winCount >= 3 && presidente) {
@@ -587,9 +588,10 @@ router.post("/diretoria/check-triggers", async (req, res) => {
 
       if (worstPlayers.length >= 2 && auxTecnico && !notifications.find((n) => n.memberId === auxTecnico.id)) {
         const names = worstPlayers.map((p) => p.name.split(" ")[0]).join(", ");
+        const seqNote = lossStreakOpponents ? ` Precisamos ver isso no contexto da sequência recente.` : "";
         notifications.push({
           memberId: auxTecnico.id,
-          preview: `Precisamos conversar sobre ${names} — o desempenho preocupa.`,
+          preview: `Precisamos conversar sobre ${names} — o desempenho preocupa.${seqNote}`,
         });
       }
 
