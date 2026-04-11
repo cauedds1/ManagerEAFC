@@ -178,17 +178,19 @@ export function findTrophyEntry(competitionName: string): TrophyEntry | null {
 
   for (const entry of TROPHY_ENTRIES) {
     for (const alias of entry.aliases) {
-      if (alias === norm) return entry;
+      if (normalize(alias) === norm) return entry;
     }
   }
 
   for (const entry of TROPHY_ENTRIES) {
-    if (norm.includes(normalize(entry.label)) || normalize(entry.label).includes(norm)) return entry;
+    const normLabel = normalize(entry.label);
+    if (norm.includes(normLabel) || normLabel.includes(norm)) return entry;
   }
 
   for (const entry of TROPHY_ENTRIES) {
     for (const alias of entry.aliases) {
-      if (norm.includes(alias) || alias.includes(norm)) return entry;
+      const normAlias = normalize(alias);
+      if (norm.includes(normAlias) || normAlias.includes(norm)) return entry;
     }
   }
 

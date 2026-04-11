@@ -9,6 +9,10 @@ interface Props {
 function TrophyImage({ url, size = 96 }: { url: string | null; size?: number }) {
   const [error, setError] = useState(false);
 
+  useEffect(() => {
+    setError(false);
+  }, [url]);
+
   if (!url || error) {
     return (
       <span style={{ fontSize: size * 0.6, lineHeight: 1 }} className="select-none">
