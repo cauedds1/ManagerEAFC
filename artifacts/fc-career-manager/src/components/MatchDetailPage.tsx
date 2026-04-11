@@ -267,7 +267,8 @@ function PitchView({
   const mids = starters.filter((p) => p.positionPtBr === "MID");
   const atas = starters.filter((p) => p.positionPtBr === "ATA");
 
-  const rows = [gks, defs, mids, atas];
+  // ATA no topo (ataque), GOL na base (de baixo para cima)
+  const rows = [atas, mids, defs, gks];
 
   return (
     <div
@@ -382,8 +383,19 @@ function PlayerDetailPanel({
   const color = rating > 0 ? ratingColor(rating) : "rgba(255,255,255,0.3)";
   const bg = rating > 0 ? ratingBg(rating) : "rgba(255,255,255,0.06)";
 
-  const assists = stats?.goals?.filter((g) => g.assistPlayerId != null).length ?? 0;
-  const goalsScored = stats?.goals?.filter((g) => !stats.ownGoal).length ?? 0;
+  const goalsScored = stats?.goals?.length ?? 0;
+  const assists = (() => {
+    let count = 0;
+    for (const pid of [...match.starterIds, ...match.subIds]) {
+      const s = match.playerStats[pid];
+      if (s?.goals) {
+        for (const g of s.goals) {
+          if (g.assistPlayerId === player.id) count++;
+        }
+      }
+    }
+    return count;
+  })();
 
   const subEntryMinute = (() => {
     if (!isStarter && stats) {
@@ -785,7 +797,7 @@ export function MatchDetailPage({
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
         </svg>
-        Partidas
+        Voltar
       </button>
 
       {/* Match header */}
