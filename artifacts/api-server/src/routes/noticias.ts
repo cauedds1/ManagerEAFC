@@ -139,6 +139,7 @@ router.post("/noticias/generate", async (req, res) => {
   } as const;
 
   const isCustomPortal = !!customPortal;
+  const isGlobalPortal = !isCustomPortal && (source === "tnt" || source === "espn");
 
   const portalName   = isCustomPortal ? customPortal.name : (standardSourceOptions[(source as keyof typeof standardSourceOptions)] ?? standardSourceOptions.fanpage).name;
   const portalHandle = isCustomPortal
@@ -174,6 +175,16 @@ router.post("/noticias/generate", async (req, res) => {
     ? `\n\nPERFIL DO PORTAL:\nNome: ${customPortal.name}\nDescrição/identidade: ${customPortal.description}\n${TONE_PROMPTS[customPortal.tone] ?? TONE_PROMPTS.serio}\nAdapte TODO o conteúdo (título, legenda e comentários) ao tom e identidade deste portal. Seja fiel à personalidade descrita.`
     : "";
 
+  const globalPortalSection = isGlobalPortal
+    ? `\n\nREGRAS DO PORTAL GLOBAL — ${portalName} é um canal de mídia esportiva global e jornalística, NÃO uma fanpage de clube.
+LEGENDA — TOM JORNALÍSTICO OBRIGATÓRIO:
+- Escreva como repórter esportivo imparcial: relate factos, cite números, ofereça análise contextual
+- PROIBIDO usar "nós", "precisamos", "vamos", "nossa equipe", ou qualquer linguagem que demonstre torcida pelo clube
+- PROIBIDO expressões de apelo emocional de torcedor como "Rumo ao topo!", "Que orgulho!", "Acreditem!" dirigidas ao clube
+- Permitido: elogiar desempenhos com linguagem neutra ("impressionante atuação", "números históricos"), contextualizar a importância da partida, destacar jogadores com dados
+- O texto deve soar como ESPN ou TNT Sports reais: informativo, envolvente, mas sem parcialidade`
+    : "";
+
   const prestigeSection = buildClubPrestigeSection(clubName, clubLeague, clubTitles, clubDescription, projeto);
 
   const systemPrompt = `Você é um especialista em criar posts de futebol para redes sociais brasileiras no estilo Instagram.
@@ -181,7 +192,15 @@ Cada post que você cria deve ser ÚNICO e DIFERENTE dos anteriores — varie o 
 Use linguagem informal, autêntica, com gírias brasileiras do futebol. Seja criativo e específico.
 O time é ${clubName}${season ? ` (temporada ${season})` : ""}.
 O portal que publica é ${portalName} (${portalHandle}).
-Semente de unicidade: ${uniqueSeed} — use ela para garantir que este post seja diferente de qualquer outro.${prestigeSection}${playersSection}${squadOvrSection}${teamFormSection}${historicalSection}${recentPostsSection}${customPortalSection}`;
+Semente de unicidade: ${uniqueSeed} — use ela para garantir que este post seja diferente de qualquer outro.${prestigeSection}${playersSection}${squadOvrSection}${teamFormSection}${historicalSection}${recentPostsSection}${customPortalSection}${globalPortalSection}`;
+
+  const commentPersonalitiesRule = isGlobalPortal
+    ? `AUDIÊNCIA DOS COMENTÁRIOS — portal global com seguidores de TODO o mundo e de VÁRIOS clubes:
+- Inclua obrigatoriamente comentários de DIFERENTES perfis: torcedores do ${clubName} (celebrando ou cobrando), torcedores de clubes RIVAIS (alfinetando, zoando, provocando), fãs neutros/analistas (comentando o aspecto tático ou estatístico), fãs internacionais (revelam no texto que acompanham de outro país, mas escrevem em português).
+- A PROPORÇÃO varia com o contexto da notícia: derrota ou eliminação → mais rivais zombando e menos celebração; vitória expressiva sobre rival histórico → mistura de fãs eufóricos e rivais provocando; conquista de título → mistura épica; lesão de jogador → mais neutros/analistas e menos provocação.
+- Personalidade "rival": torcedor de outro clube a alfinetar, zoar ou provocar de forma realista — como acontece nos comentários da TNT Sports ou ESPN reais. Pode ser debochado, irônico ou simplesmente provocador.
+- Personalidade "internacional": escreve EM PORTUGUÊS, mas deixa claro no conteúdo que é de outro país ("Aqui de Portugal...", "Acompanho da Argentina...", "Sou de Moçambique e...").`
+    : `Os comentários devem ter personalidades DISTINTAS e realistas: torcedor apaixonado, crítico, irônico, saudosista, zoeiro.`;
 
   const userPrompt = `Crie um post de notícia com base nessa descrição: "${description.trim()}"
 
@@ -189,11 +208,12 @@ ${chosenCategory ? `Categoria: ${chosenCategory}` : "Escolha a categoria mais ad
 
 REGRAS DE CRIATIVIDADE:
 - Varie o formato da legenda: pode ser longa com storytelling, curta e impactante, com listas, ou com muitas quebras de linha
-- Os comentários devem ter personalidades DISTINTAS e realistas: torcedor apaixonado, crítico, irônico, estrangeiro, saudosista, criança de 14 anos
+- ${commentPersonalitiesRule}
 - Emojis e hashtags devem ser contextuais, não aleatórios
 
 REGRAS OBRIGATÓRIAS PARA COMENTARISTAS:
-- displayName DEVE ser um nome de pessoa brasileira real e comum (ex: "Lucas Ferreira", "Ana Souza", "Pedro Mendes", "Carla Lima", "João Carlos", "Thiago Rocha")
+- TODOS os comentários e replies DEVEM estar escritos em português (pt-BR), sem excepção — incluindo perfis "internacional" e "rival"
+- displayName DEVE ser um nome de pessoa real e comum (ex: "Lucas Ferreira", "Ana Souza", "Pedro Mendes", "Carla Lima", "João Carlos", "Thiago Rocha")
 - username DEVE ser derivado do nome da pessoa, curto e simples, como uma pessoa real usaria (ex: @lucasferreira, @anasouza22, @pedromendes_fc, @carlamlima, @joaocarlos17)
 - NUNCA use nomes de fanpage, coletivos ou conceitos abstratos — ERRADO: @nossosbonsmomentos, @bolaplenitude, @amantesdacorneta2023
 
@@ -211,15 +231,15 @@ Responda APENAS com JSON puro (sem markdown, sem code block):
   "comments": [
     {
       "username": "@<nome_da_pessoa_em_formato_handle>",
-      "displayName": "<Nome Sobrenome de pessoa brasileira real>",
-      "content": "<comentário único e com personalidade>",
+      "displayName": "<Nome Sobrenome de pessoa real>",
+      "content": "<comentário único e com personalidade, SEMPRE em português>",
       "likes": <1 a 3000>,
-      "personality": "<otimista|chato|corneteiro|zoeiro|saudosista|neutro|internacional>",
+      "personality": "${isGlobalPortal ? "do_clube|rival|neutro|internacional|zoeiro|saudosista" : "otimista|chato|corneteiro|zoeiro|saudosista|neutro|internacional"}",
       "replies": [
         {
           "username": "@<nome_da_pessoa_em_formato_handle>",
-          "displayName": "<Nome Sobrenome de pessoa brasileira real>",
-          "content": "<reply curto>",
+          "displayName": "<Nome Sobrenome de pessoa real>",
+          "content": "<reply curto, SEMPRE em português>",
           "likes": <1 a 500>,
           "personality": "<personalidade>",
           "replies": []
