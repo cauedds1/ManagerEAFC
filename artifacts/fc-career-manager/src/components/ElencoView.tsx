@@ -9,6 +9,9 @@ import {
   getCustomLineup,
   setCustomLineup,
   clearCustomLineup,
+  getBenchOrder,
+  setBenchOrder,
+  clearBenchOrder,
   getFormation,
   setFormation,
 } from "@/lib/lineupStorage";
@@ -193,6 +196,10 @@ export function ElencoView({
     () => getCustomLineup(careerId)
   );
 
+  const [benchOrderState, setBenchOrderState] = useState<number[] | null>(
+    () => getBenchOrder(careerId)
+  );
+
   const [formation, setFormationState] = useState<FormationKey>(
     () => getFormation(careerId) ?? DEFAULT_FORMATION
   );
@@ -227,9 +234,20 @@ export function ElencoView({
   const starters = starterIds
     .map((id) => allPlayers.find((p) => p.id === id))
     .filter((p): p is SquadPlayer => p != null);
-  const bench = allPlayers.filter((p) => !starterSet.has(p.id));
 
-  const isCustom = customLineup !== null;
+  const rawBench = allPlayers.filter((p) => !starterSet.has(p.id));
+  const bench: SquadPlayer[] = useMemo(() => {
+    if (!benchOrderState) return rawBench;
+    const benchMap = new Map(rawBench.map((p) => [p.id, p]));
+    const ordered = benchOrderState
+      .filter((id) => benchMap.has(id))
+      .map((id) => benchMap.get(id)!);
+    const known = new Set(benchOrderState);
+    const extras = rawBench.filter((p) => !known.has(p.id));
+    return [...ordered, ...extras];
+  }, [rawBench, benchOrderState]);
+
+  const isCustom = customLineup !== null || benchOrderState !== null;
 
   const squadAvgOvr = useMemo(() => {
     const ovrs = allPlayers
@@ -241,29 +259,49 @@ export function ElencoView({
 
   const handleResetLineup = useCallback(() => {
     clearCustomLineup(careerId);
+    clearBenchOrder(careerId);
     setCustomLineupState(null);
+    setBenchOrderState(null);
   }, [careerId]);
 
   const swapPlayers = useCallback((idA: number, idB: number) => {
     const aIsStarter = starterIds.includes(idA);
     const bIsStarter = starterIds.includes(idB);
-    const next = [...starterIds];
+    const nextStarters = [...starterIds];
+    const nextBench = bench.map((p) => p.id);
+
     if (aIsStarter && bIsStarter) {
-      const si = next.indexOf(idA);
-      const di = next.indexOf(idB);
-      if (si !== -1 && di !== -1) { [next[si], next[di]] = [next[di], next[si]]; }
+      const si = nextStarters.indexOf(idA);
+      const di = nextStarters.indexOf(idB);
+      if (si !== -1 && di !== -1) { [nextStarters[si], nextStarters[di]] = [nextStarters[di], nextStarters[si]]; }
+      setCustomLineupState(nextStarters);
+      setCustomLineup(careerId, nextStarters);
     } else if (aIsStarter && !bIsStarter) {
-      const si = next.indexOf(idA);
-      if (si !== -1) { next[si] = idB; }
+      const si = nextStarters.indexOf(idA);
+      if (si !== -1) { nextStarters[si] = idB; }
+      const bi = nextBench.indexOf(idB);
+      if (bi !== -1) { nextBench[bi] = idA; }
+      setCustomLineupState(nextStarters);
+      setCustomLineup(careerId, nextStarters);
+      setBenchOrderState(nextBench);
+      setBenchOrder(careerId, nextBench);
     } else if (!aIsStarter && bIsStarter) {
-      const si = next.indexOf(idB);
-      if (si !== -1) { next[si] = idA; }
+      const si = nextStarters.indexOf(idB);
+      if (si !== -1) { nextStarters[si] = idA; }
+      const bi = nextBench.indexOf(idA);
+      if (bi !== -1) { nextBench[bi] = idB; }
+      setCustomLineupState(nextStarters);
+      setCustomLineup(careerId, nextStarters);
+      setBenchOrderState(nextBench);
+      setBenchOrder(careerId, nextBench);
     } else {
-      return;
+      const ai = nextBench.indexOf(idA);
+      const bi = nextBench.indexOf(idB);
+      if (ai !== -1 && bi !== -1) { [nextBench[ai], nextBench[bi]] = [nextBench[bi], nextBench[ai]]; }
+      setBenchOrderState(nextBench);
+      setBenchOrder(careerId, nextBench);
     }
-    setCustomLineupState(next);
-    setCustomLineup(careerId, next);
-  }, [careerId, starterIds]);
+  }, [careerId, starterIds, bench]);
 
   const handlePlayerClick = useCallback((player: SquadPlayer) => {
     if (pendingSwap === null) {
