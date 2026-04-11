@@ -79,14 +79,96 @@ function Toggle({ checked, onChange, label }: ToggleProps) {
   );
 }
 
+const BRACKET_SIZES = [128, 64, 32, 16, 8, 4] as const;
+type BracketSize = (typeof BRACKET_SIZES)[number] | "custom";
+
+function getRoundName(matchCount: number, totalTeams: number): string {
+  if (matchCount === 1) return "Final";
+  if (matchCount === 2) return "Semifinal";
+  if (matchCount === 4) return "Quartas de final";
+  if (matchCount === 8) return "Oitavas de final";
+  return `Rodada de ${matchCount * 2}`;
+}
+
+function generateBracketRounds(totalTeams: number): BracketRound[] {
+  const rounds: BracketRound[] = [];
+  let teams = totalTeams;
+  while (teams > 1) {
+    const matchCount = teams / 2;
+    rounds.push({
+      id: generateRoundId(),
+      name: getRoundName(matchCount, totalTeams),
+      matches: Array.from({ length: matchCount }, () => ({
+        id: generateMatchId(),
+        homeTeam: "",
+        homeScore: null,
+        awayTeam: "",
+        awayScore: null,
+      })),
+    });
+    teams = matchCount;
+  }
+  return rounds;
+}
+
+function BracketSizeSelector({ onSelect }: { onSelect: (size: BracketSize) => void }) {
+  const sizeInfo: Record<number, string[]> = {
+    128: ["Rodada de 128", "Rodada de 64", "Rodada de 32", "Oitavas", "Quartas", "Semi", "Final"],
+    64:  ["Rodada de 64", "Rodada de 32", "Oitavas", "Quartas", "Semifinal", "Final"],
+    32:  ["Rodada de 32", "Oitavas", "Quartas", "Semifinal", "Final"],
+    16:  ["Oitavas de final", "Quartas de final", "Semifinal", "Final"],
+    8:   ["Quartas de final", "Semifinal", "Final"],
+    4:   ["Semifinal", "Final"],
+  };
+
+  return (
+    <div className="space-y-3">
+      <p className="text-white/40 text-xs">Escolha o tamanho do chaveamento para gerar as fases automaticamente:</p>
+      <div className="grid grid-cols-2 gap-2">
+        {BRACKET_SIZES.map((size) => (
+          <button
+            key={size}
+            type="button"
+            onClick={() => onSelect(size)}
+            className="flex flex-col gap-1 px-3 py-2.5 rounded-xl text-left transition-all hover:scale-[1.01] active:scale-[0.99]"
+            style={{
+              background: "rgba(255,255,255,0.05)",
+              border: "1px solid rgba(255,255,255,0.1)",
+            }}
+          >
+            <span className="text-white/80 text-sm font-bold">{size} times</span>
+            <span className="text-white/30 text-[10px] leading-tight">
+              {sizeInfo[size].join(" · ")}
+            </span>
+          </button>
+        ))}
+        <button
+          type="button"
+          onClick={() => onSelect("custom")}
+          className="flex flex-col gap-1 px-3 py-2.5 rounded-xl text-left transition-all hover:scale-[1.01] active:scale-[0.99] col-span-2"
+          style={{
+            background: "rgba(255,255,255,0.03)",
+            border: "1px dashed rgba(255,255,255,0.12)",
+          }}
+        >
+          <span className="text-white/50 text-sm font-semibold">✏️ Personalizado</span>
+          <span className="text-white/25 text-[10px]">Adicionar rondas manualmente</span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function BracketBuilder({
   rounds,
   onChange,
   clubName,
+  onChangeSize,
 }: {
   rounds: BracketRound[];
   onChange: (rounds: BracketRound[]) => void;
   clubName: string;
+  onChangeSize?: () => void;
 }) {
   function addRound() {
     onChange([
@@ -224,14 +306,26 @@ function BracketBuilder({
           </button>
         </div>
       ))}
-      <button
-        type="button"
-        onClick={addRound}
-        className="w-full py-2 rounded-xl text-xs font-semibold transition-colors"
-        style={{ background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.4)", border: "1px dashed rgba(255,255,255,0.12)" }}
-      >
-        + Adicionar rodada
-      </button>
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={addRound}
+          className="flex-1 py-2 rounded-xl text-xs font-semibold transition-colors"
+          style={{ background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.4)", border: "1px dashed rgba(255,255,255,0.12)" }}
+        >
+          + Adicionar rodada
+        </button>
+        {onChangeSize && (
+          <button
+            type="button"
+            onClick={onChangeSize}
+            className="py-2 px-3 rounded-xl text-xs font-semibold transition-colors"
+            style={{ background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.3)", border: "1px solid rgba(255,255,255,0.08)" }}
+          >
+            Trocar tamanho
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -338,6 +432,23 @@ function ResultModal({
   const [isChampion, setIsChampion] = useState(editing?.isChampion ?? false);
   const [bracket, setBracket] = useState<BracketRound[]>(editing?.bracket ?? []);
   const [standings, setStandings] = useState<StandingsEntry[]>(editing?.standings ?? []);
+  const [bracketSize, setBracketSize] = useState<BracketSize | null>(
+    editing?.bracket && editing.bracket.length > 0 ? "custom" : null
+  );
+
+  function handleSelectSize(size: BracketSize) {
+    setBracketSize(size);
+    if (size !== "custom") {
+      setBracket(generateBracketRounds(size));
+    } else {
+      setBracket([]);
+    }
+  }
+
+  function handleChangeSize() {
+    setBracketSize(null);
+    setBracket([]);
+  }
 
   const tournamentOptions = matchTournaments.length > 0
     ? [...matchTournaments, "Outra (digitar)"]
@@ -465,7 +576,16 @@ function ResultModal({
               {type === "mata-mata" ? "Chaveamento" : "Tabela de classificação"}
             </label>
             {type === "mata-mata" ? (
-              <BracketBuilder rounds={bracket} onChange={setBracket} clubName={clubName} />
+              bracketSize === null ? (
+                <BracketSizeSelector onSelect={handleSelectSize} />
+              ) : (
+                <BracketBuilder
+                  rounds={bracket}
+                  onChange={setBracket}
+                  clubName={clubName}
+                  onChangeSize={handleChangeSize}
+                />
+              )
             ) : (
               <StandingsBuilder entries={standings} onChange={setStandings} clubName={clubName} />
             )}
