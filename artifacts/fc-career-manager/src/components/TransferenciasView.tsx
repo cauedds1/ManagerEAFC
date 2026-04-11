@@ -112,12 +112,14 @@ function PlayerAutocomplete({
   allPlayers,
   onChange,
   onSelect,
+  localOnly,
 }: {
   value: string;
   photo: string;
   allPlayers: SquadPlayer[];
   onChange: (name: string) => void;
   onSelect: (p: PlayerSuggestion) => void;
+  localOnly?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -128,11 +130,12 @@ function PlayerAutocomplete({
     if (!q || q.length < 2) return [];
     return allPlayers
       .filter((p) => p.name.toLowerCase().includes(q))
-      .slice(0, 5)
+      .slice(0, localOnly ? 8 : 5)
       .map((p) => ({ id: p.id, name: p.name, photo: p.photo, age: p.age, nationality: "", position: p.positionPtBr }));
-  }, [value, allPlayers]);
+  }, [value, allPlayers, localOnly]);
 
   const fetchApi = useCallback(async (q: string) => {
+    if (localOnly) return;
     if (q.trim().length < 2) { setApiResults([]); return; }
     setLoading(true);
     try {
@@ -157,14 +160,14 @@ function PlayerAutocomplete({
       }
     } catch { }
     setLoading(false);
-  }, [allPlayers]);
+  }, [allPlayers, localOnly]);
 
   const handleChange = (v: string) => {
     onChange(v);
     setOpen(true);
     setApiResults([]);
     if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => fetchApi(v), 350);
+    if (!localOnly) timerRef.current = setTimeout(() => fetchApi(v), 350);
   };
 
   useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
@@ -183,7 +186,7 @@ function PlayerAutocomplete({
         onChange={(e) => handleChange(e.target.value)}
         onFocus={() => setOpen(true)}
         onBlur={() => setTimeout(() => setOpen(false), 180)}
-        placeholder="Ex: Rodrygo, Mikel Merino..."
+        placeholder={localOnly ? "Buscar no meu elenco..." : "Ex: Rodrygo, Mikel Merino..."}
         className="w-full pl-12 pr-3 py-2.5 rounded-xl text-white text-sm focus:outline-none glass placeholder:text-white/20"
         autoFocus
       />

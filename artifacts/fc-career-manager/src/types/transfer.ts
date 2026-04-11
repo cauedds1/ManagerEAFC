@@ -15,9 +15,11 @@ export interface TransferRecord {
   salary: number;
   contractYears: number;
   role: TeamRole;
-  type?: "compra" | "venda";
+  type?: "compra" | "venda" | "emprestimo";
   fromClub?: string;
   fromClubLogo?: string;
   toClub?: string;
+  loanDuration?: string;
+  loanDirection?: "entrada" | "saida";
   transferredAt: number;
 }
