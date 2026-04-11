@@ -218,6 +218,7 @@ export function NoticiaPost({ post, portalPhotos, customPortals, onUpdateImage }
   const [liked, setLiked] = useState(false);
   const [showComments, setShowComments] = useState(false);
 
+  const [hovered, setHovered] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [localImageUrl, setLocalImageUrl] = useState<string | null>(null);
@@ -293,6 +294,8 @@ export function NoticiaPost({ post, portalPhotos, customPortals, onUpdateImage }
         background: "rgba(255,255,255,0.03)",
         border: "1px solid rgba(255,255,255,0.07)",
       }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
     >
       {/* Hidden file input for image editing */}
       {onUpdateImage && (
@@ -307,7 +310,11 @@ export function NoticiaPost({ post, portalPhotos, customPortals, onUpdateImage }
 
       {/* Pencil edit button */}
       {onUpdateImage && (
-        <div ref={menuRef} className="absolute z-20" style={{ top: 10, right: 10 }}>
+        <div
+          ref={menuRef}
+          className="absolute z-20 transition-opacity duration-150"
+          style={{ bottom: 10, right: 10, opacity: hovered || menuOpen ? 1 : 0, pointerEvents: hovered || menuOpen ? "auto" : "none" }}
+        >
           <button
             onClick={() => setMenuOpen((v) => !v)}
             disabled={uploading}
@@ -316,9 +323,9 @@ export function NoticiaPost({ post, portalPhotos, customPortals, onUpdateImage }
             style={{
               width: 28,
               height: 28,
-              background: "rgba(0,0,0,0.45)",
-              color: uploading ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.45)",
-              border: "1px solid rgba(255,255,255,0.08)",
+              background: "rgba(0,0,0,0.55)",
+              color: uploading ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.55)",
+              border: "1px solid rgba(255,255,255,0.1)",
               backdropFilter: "blur(4px)",
             }}
           >
@@ -336,7 +343,7 @@ export function NoticiaPost({ post, portalPhotos, customPortals, onUpdateImage }
           {menuOpen && (
             <div
               className="absolute right-0 rounded-xl overflow-hidden shadow-2xl"
-              style={{ top: 32, minWidth: 160, background: "#0f172a", border: "1px solid rgba(255,255,255,0.1)" }}
+              style={{ bottom: 36, minWidth: 160, background: "#0f172a", border: "1px solid rgba(255,255,255,0.1)" }}
             >
               <button
                 onClick={handlePickImage}
