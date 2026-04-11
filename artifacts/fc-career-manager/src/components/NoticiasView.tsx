@@ -968,8 +968,8 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
             category: (data.category as NewsPost["category"]) ?? "geral",
           };
           localStorage.setItem(welcomeKey, "1");
-          const current = getPosts(seasonId);
-          const updated = [welcomePost, ...current];
+          const freshPosts = getPosts(seasonId);
+          const updated = [welcomePost, ...freshPosts];
           savePosts(seasonId, updated);
           setPosts(updated);
         })
