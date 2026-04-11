@@ -187,6 +187,23 @@ export async function getSquad(teamId: number, clubName: string): Promise<SquadR
 }
 
 /**
+ * Increments every player's age by 1 in the localStorage squad cache.
+ * Called when a new season starts. Does not affect the server DB —
+ * real ages are restored on the next manual squad refresh from the API.
+ */
+export function ageSquadInCache(teamId: number, clubName: string): void {
+  try {
+    const key = getCacheKey(teamId, clubName);
+    const raw = localStorage.getItem(key);
+    if (!raw) return;
+    const data = JSON.parse(raw) as SquadResult;
+    if (!Array.isArray(data.players)) return;
+    data.players = data.players.map((p) => ({ ...p, age: p.age + 1 }));
+    localStorage.setItem(key, JSON.stringify(data));
+  } catch {}
+}
+
+/**
  * Returns all players from every squad cached in localStorage,
  * deduplicated by player ID and sorted by name.
  */

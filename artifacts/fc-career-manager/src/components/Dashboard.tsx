@@ -4,6 +4,7 @@ import { SettingsPage } from "./SettingsPage";
 import {
   getSquad,
   clearSquadCache,
+  ageSquadInCache,
   type SquadResult,
   type SquadPlayer,
   PT_BR_TO_POSITION,
@@ -325,6 +326,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     try {
       const newId = generateSeasonId();
       copyPlayerMoodsToNewSeason(activeSeasonId, newId);
+      ageSquadInCache(teamId, career.clubName);
       const newSeason = await createSeason(career.id, label, competitions, true, newId);
       if (newSeason) {
         await activateSeason(newSeason.id);
@@ -340,7 +342,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     } finally {
       setCreatingNewSeason(false);
     }
-  }, [activeSeasonId, career.id, loadSeasons, onSeasonChange]);
+  }, [activeSeasonId, career.id, career.clubName, teamId, loadSeasons, onSeasonChange]);
 
   const activeSeason = seasons.find((s) => s.id === activeSeasonId);
   const displayLabel = activeSeason?.label ?? activeSeasonLabel;
