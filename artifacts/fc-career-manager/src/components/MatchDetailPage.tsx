@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import type { MatchRecord, PlayerMatchStats } from "@/types/match";
 import { getMatchResult, RESULT_STYLE, LOCATION_ICONS, LOCATION_LABELS } from "@/types/match";
 import type { SquadPlayer } from "@/lib/squadCache";
@@ -140,6 +140,13 @@ function StatRow({ label, leftVal, rightVal, leftHigher }: {
   );
 }
 
+const POS_BADGE: Record<string, { bg: string; color: string }> = {
+  GOL: { bg: "rgba(245,158,11,0.18)", color: "#f59e0b" },
+  DEF: { bg: "rgba(59,130,246,0.18)", color: "#60a5fa" },
+  MID: { bg: "rgba(16,185,129,0.18)", color: "#34d399" },
+  ATA: { bg: "rgba(239,68,68,0.18)", color: "#f87171" },
+};
+
 function PlayerDetailPanel({
   player,
   match,
@@ -151,38 +158,19 @@ function PlayerDetailPanel({
   allPlayers: SquadPlayer[];
   onClose: () => void;
 }) {
-  const panelRef = useRef<HTMLDivElement>(null);
-  const [navBottom, setNavBottom] = useState(44);
-
-  useLayoutEffect(() => {
-    const measure = () => {
-      const nav = document.querySelector("[data-dashboard-nav]");
-      if (nav) {
-        setNavBottom(nav.getBoundingClientRect().bottom);
-      }
-    };
-    measure();
-    window.addEventListener("resize", measure);
-    return () => window.removeEventListener("resize", measure);
-  }, []);
-
   const stats = match.playerStats[player.id];
   const isStarter = match.starterIds.includes(player.id);
   const minutes = stats ? calcMinutes(player.id, stats, match) : 0;
   const rating = stats?.rating ?? 0;
-  const color = rating > 0 ? ratingColor(rating) : "rgba(255,255,255,0.3)";
-  const bg = rating > 0 ? ratingBg(rating) : "rgba(255,255,255,0.06)";
+  const ratingC = rating > 0 ? ratingColor(rating) : "rgba(255,255,255,0.3)";
+  const ratingB = rating > 0 ? ratingBg(rating) : "rgba(255,255,255,0.06)";
 
   const goalsScored = stats?.goals?.length ?? 0;
   const assists = (() => {
     let count = 0;
     for (const pid of [...match.starterIds, ...match.subIds]) {
       const s = match.playerStats[pid];
-      if (s?.goals) {
-        for (const g of s.goals) {
-          if (g.assistPlayerId === player.id) count++;
-        }
-      }
+      if (s?.goals) for (const g of s.goals) if (g.assistPlayerId === player.id) count++;
     }
     return count;
   })();
@@ -191,47 +179,26 @@ function PlayerDetailPanel({
     if (!isStarter && stats) {
       for (const sid of match.starterIds) {
         const s = match.playerStats[sid];
-        if (s && s.substitutedInPlayerId === player.id && s.substitutedAtMinute != null) {
+        if (s && s.substitutedInPlayerId === player.id && s.substitutedAtMinute != null)
           return s.substitutedAtMinute;
-        }
       }
     }
     return null;
   })();
 
-  const replacedPlayer = (() => {
-    if (!isStarter && stats?.substitutedForPlayerId != null) {
-      return allPlayers.find((p) => p.id === stats.substitutedForPlayerId);
-    }
-    return null;
-  })();
+  const replacedPlayer = !isStarter && stats?.substitutedForPlayerId != null
+    ? allPlayers.find((p) => p.id === stats.substitutedForPlayerId)
+    : null;
 
-  const inPlayerForStarter = (() => {
-    if (isStarter && stats?.substituted && stats.substitutedInPlayerId != null) {
-      return allPlayers.find((p) => p.id === stats.substitutedInPlayerId);
-    }
-    return null;
-  })();
+  const inPlayerForStarter = isStarter && stats?.substituted && stats.substitutedInPlayerId != null
+    ? allPlayers.find((p) => p.id === stats.substitutedInPlayerId)
+    : null;
 
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    document.addEventListener("keydown", handler);
-    return () => document.removeEventListener("keydown", handler);
+    const h = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", h);
+    return () => document.removeEventListener("keydown", h);
   }, [onClose]);
-
-  const statItems: { label: string; value: number | string; icon?: string }[] = [
-    { label: "Minutos", value: minutes ? `${minutes}'` : "—", icon: "⏱" },
-    { label: "Gols", value: goalsScored, icon: "⚽" },
-    { label: "Assistências", value: assists, icon: "🎯" },
-    ...(stats?.passes != null ? [{ label: "Passes", value: stats.passes, icon: "🔄" }] : []),
-    ...(stats?.passAccuracy != null ? [{ label: "Precisão passes", value: `${stats.passAccuracy}%`, icon: "✅" }] : []),
-    ...(stats?.keyPasses != null ? [{ label: "Passes-chave", value: stats.keyPasses, icon: "🔑" }] : []),
-    ...(stats?.dribblesCompleted != null ? [{ label: "Dribles", value: stats.dribblesCompleted, icon: "🏃" }] : []),
-    ...(stats?.ballRecoveries != null ? [{ label: "Recuperações", value: stats.ballRecoveries, icon: "💪" }] : []),
-    ...(stats?.ballLosses != null ? [{ label: "Perdas de bola", value: stats.ballLosses, icon: "❌" }] : []),
-    ...(stats?.saves != null ? [{ label: "Defesas", value: stats.saves, icon: "🧤" }] : []),
-    ...(stats?.penaltiesSaved != null ? [{ label: "Pênaltis defendidos", value: stats.penaltiesSaved, icon: "🧱" }] : []),
-  ];
 
   const events: { label: string; minute?: number; color: string }[] = [
     ...(stats?.yellowCard ? [{ label: "Cartão amarelo", color: "#fbbf24" }] : []),
@@ -241,202 +208,157 @@ function PlayerDetailPanel({
     ...(stats?.injured ? [{ label: "Lesão", minute: stats.injuryMinute, color: "#fb923c" }] : []),
   ];
 
+  const extraStats = [
+    stats?.passes != null ? { label: "Passes", value: stats.passes } : null,
+    stats?.passAccuracy != null ? { label: "Precisão", value: `${stats.passAccuracy}%` } : null,
+    stats?.keyPasses != null ? { label: "Passes-chave", value: stats.keyPasses } : null,
+    stats?.dribblesCompleted != null ? { label: "Dribles", value: stats.dribblesCompleted } : null,
+    stats?.saves != null ? { label: "Defesas", value: stats.saves } : null,
+    stats?.ballRecoveries != null ? { label: "Recuperações", value: stats.ballRecoveries } : null,
+  ].filter(Boolean).slice(0, 4) as { label: string; value: string | number }[];
+
+  const pos = POS_BADGE[player.positionPtBr] ?? POS_BADGE.MID;
+  const hasGoals = stats?.goals && stats.goals.length > 0;
+  const hasExtras = extraStats.length > 0;
+
   return (
     <div
-      className="fixed left-0 right-0 bottom-0 z-50 flex"
-      style={{
-        top: navBottom,
-        background: "rgba(0,0,0,0.55)",
-        backdropFilter: "blur(2px)",
-      }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", background: "rgba(0,0,0,0.65)" }}
       onClick={onClose}
     >
       <div
-        ref={panelRef}
-        className="ml-auto flex flex-col overflow-y-auto"
+        className="w-full flex flex-col rounded-2xl overflow-hidden"
         style={{
-          width: "min(380px, 95vw)",
-          height: "100%",
-          background: "linear-gradient(160deg, rgba(var(--club-primary-rgb, 13,27,46), 0.25) 0%, #07111d 60%)",
-          borderLeft: "1px solid rgba(var(--club-primary-rgb, 59,130,246), 0.18)",
-          boxShadow: "-8px 0 40px rgba(0,0,0,0.5)",
-          padding: 0,
+          maxWidth: 460,
+          background: "var(--app-bg-lighter, #141024)",
+          border: "1px solid var(--surface-border)",
+          boxShadow: "0 30px 80px rgba(0,0,0,0.7)",
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
+        {/* ── Header ── */}
         <div
-          style={{
-            padding: "20px 20px 16px",
-            borderBottom: "1px solid rgba(255,255,255,0.06)",
-            background: "rgba(255,255,255,0.02)",
-          }}
+          className="flex items-start justify-between px-5 pt-5 pb-4 flex-shrink-0"
+          style={{ borderBottom: "1px solid var(--surface-border)" }}
         >
-          <div className="flex items-start gap-4">
-            <div style={{ position: "relative", flexShrink: 0 }}>
-              <PlayerPhoto photo={player.photo} name={player.name} size={64} borderColor={color} />
-              {player.number != null && (
-                <span
-                  style={{
-                    position: "absolute",
-                    bottom: -4,
-                    right: -4,
-                    background: "rgba(0,0,0,0.85)",
-                    color: "rgba(255,255,255,0.8)",
-                    borderRadius: "50%",
-                    fontSize: 10,
-                    fontWeight: 900,
-                    width: 20,
-                    height: 20,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    border: "1px solid rgba(255,255,255,0.2)",
-                  }}
-                >
-                  {player.number}
+          <div className="flex items-center gap-4 min-w-0">
+            <PlayerPhoto photo={player.photo} name={player.name} size={68} borderColor={ratingC} />
+            <div className="flex-1 min-w-0">
+              <h2 className="text-white text-base font-black leading-tight truncate">{player.name}</h2>
+              <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                <span className="text-xs font-bold px-2 py-0.5 rounded-lg" style={pos}>{player.positionPtBr}</span>
+                {player.number != null && (
+                  <span className="text-white/35 text-xs font-semibold">#{player.number}</span>
+                )}
+                {player.id === match.motmPlayerId && (
+                  <span className="text-xs px-2 py-0.5 rounded-lg font-semibold" style={{ background: "rgba(234,179,8,0.15)", color: "#fbbf24" }}>
+                    ⭐ MOTM
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-md" style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.55)" }}>
+                  {isStarter ? "Titular" : `Entrou${subEntryMinute != null ? ` ${subEntryMinute}'` : ""}`}
                 </span>
-              )}
+                {replacedPlayer && (
+                  <span className="text-white/35 text-[11px]">↑ {lastName(replacedPlayer.name)}</span>
+                )}
+                {inPlayerForStarter && (
+                  <span className="text-white/35 text-[11px]">↓ {lastName(inPlayerForStarter.name)}{stats?.substitutedAtMinute != null ? ` ${stats.substitutedAtMinute}'` : ""}</span>
+                )}
+              </div>
             </div>
-            <div className="flex-1 min-w-0 pt-1">
-              <h3 className="text-white font-black text-base leading-tight">{player.name}</h3>
-              <p className="text-white/40 text-xs mt-0.5">{player.positionPtBr}</p>
-              {rating > 0 && (
-                <div className="flex items-center gap-2 mt-2">
-                  <span
-                    className="text-xl font-black"
-                    style={{ color }}
-                  >
-                    {rating.toFixed(1)}
-                  </span>
-                  <span
-                    className="text-xs font-semibold px-2 py-0.5 rounded-full"
-                    style={{ background: bg, color }}
-                  >
-                    {rating >= 8.0 ? "Excelente" : rating >= 7.0 ? "Bom" : rating >= 6.5 ? "Regular" : "Abaixo"}
-                  </span>
-                </div>
-              )}
-            </div>
-            <button
-              onClick={onClose}
-              className="text-white/40 hover:text-white transition-colors flex-shrink-0"
-            >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
           </div>
-
-          {/* Status chips */}
-          <div className="flex flex-wrap gap-1.5 mt-3">
-            <span
-              className="text-xs px-2.5 py-0.5 rounded-full font-semibold"
-              style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.5)" }}
-            >
-              {isStarter ? "Titular" : `Entrou ${subEntryMinute != null ? `${subEntryMinute}'` : ""}`}
-            </span>
-            {replacedPlayer && (
-              <span
-                className="text-xs px-2.5 py-0.5 rounded-full font-semibold"
-                style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.4)" }}
-              >
-                ↑ {lastName(replacedPlayer.name)}
-              </span>
-            )}
-            {inPlayerForStarter && (
-              <span
-                className="text-xs px-2.5 py-0.5 rounded-full font-semibold"
-                style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.4)" }}
-              >
-                ↓ {lastName(inPlayerForStarter.name)} {stats?.substitutedAtMinute != null ? `${stats.substitutedAtMinute}'` : ""}
-              </span>
-            )}
-            {player.id === match.motmPlayerId && (
-              <span
-                className="text-xs px-2.5 py-0.5 rounded-full font-semibold"
-                style={{ background: "rgba(234,179,8,0.15)", color: "#fbbf24" }}
-              >
-                ⭐ Jogador da partida
-              </span>
-            )}
-          </div>
+          <button
+            onClick={onClose}
+            className="flex-shrink-0 ml-2 w-7 h-7 flex items-center justify-center rounded-lg text-white/50 hover:text-white transition-colors"
+            style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
 
-        {/* Stats grid */}
-        <div style={{ padding: "16px 20px" }}>
-          <p className="text-white/30 text-[10px] font-bold tracking-widest uppercase mb-3">Estatísticas</p>
-          <div className="grid grid-cols-2 gap-2">
-            {statItems.map((item, i) => (
+        {/* ── 4-col stats row ── */}
+        <div className="px-5 pt-4 pb-3 grid grid-cols-4 gap-2">
+          {[
+            { label: "Nota", value: rating > 0 ? rating.toFixed(1) : "—", accent: rating > 0 ? ratingC : undefined, sub: rating > 0 ? (rating >= 8.0 ? "Excelente" : rating >= 7.0 ? "Bom" : rating >= 6.5 ? "Regular" : "Abaixo") : undefined, subColor: ratingB },
+            { label: "Minutos", value: minutes > 0 ? `${minutes}'` : "—" },
+            { label: "Golos", value: goalsScored > 0 ? goalsScored : "—" },
+            { label: "Assist.", value: assists > 0 ? assists : "—" },
+          ].map((item, i) => (
+            <div
+              key={i}
+              className="flex flex-col items-center gap-1 rounded-xl py-3"
+              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}
+            >
+              <span className="text-xl font-black tabular-nums leading-none" style={{ color: item.accent ?? "white" }}>
+                {item.value}
+              </span>
+              {item.sub && (
+                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full" style={{ background: item.subColor, color: item.accent }}>
+                  {item.sub}
+                </span>
+              )}
+              <span className="text-white/35 text-[10px] font-semibold">{item.label}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* ── Extra stats (passes, saves, etc.) ── */}
+        {hasExtras && (
+          <div className="px-5 pb-3 grid grid-cols-2 gap-1.5">
+            {extraStats.map((item, i) => (
               <div
                 key={i}
-                className="flex flex-col gap-0.5 rounded-xl p-3"
-                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}
+                className="flex items-center justify-between px-3 py-2 rounded-xl"
+                style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}
               >
-                <span className="text-white/35 text-[10px]">{item.icon} {item.label}</span>
-                <span className="text-white font-black text-lg tabular-nums leading-tight">
-                  {typeof item.value === "number" && item.value === 0 ? (
-                    <span className="text-white/20">—</span>
-                  ) : (
-                    item.value
-                  )}
-                </span>
+                <span className="text-white/40 text-xs">{item.label}</span>
+                <span className="text-white font-bold text-sm tabular-nums">{item.value}</span>
               </div>
             ))}
           </div>
-        </div>
+        )}
 
-        {/* Events */}
-        {events.length > 0 && (
-          <div style={{ padding: "0 20px 20px" }}>
-            <p className="text-white/30 text-[10px] font-bold tracking-widest uppercase mb-3">Eventos</p>
-            <div className="flex flex-col gap-2">
-              {events.map((ev, i) => (
-                <div
-                  key={i}
-                  className="flex items-center gap-3 rounded-xl px-3 py-2"
-                  style={{ background: "rgba(255,255,255,0.04)", border: `1px solid ${ev.color}22` }}
-                >
-                  <span className="text-sm font-bold" style={{ color: ev.color }}>
-                    {ev.label}
-                  </span>
-                  {ev.minute != null && (
-                    <span className="ml-auto text-xs tabular-nums" style={{ color: ev.color }}>
-                      {ev.minute}&apos;
-                    </span>
-                  )}
+        {/* ── Goals + events list ── */}
+        {(hasGoals || events.length > 0) && (
+          <div
+            className="mx-5 mb-4 rounded-xl overflow-hidden"
+            style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
+          >
+            {hasGoals && stats!.goals.map((g, i) => {
+              const assister = g.assistPlayerId != null ? allPlayers.find((p) => p.id === g.assistPlayerId) : null;
+              const isLast = i === stats!.goals.length - 1 && events.length === 0;
+              return (
+                <div key={g.id ?? i} className="flex items-center gap-2 px-3 py-2.5" style={{ borderBottom: isLast ? "none" : "1px solid rgba(255,255,255,0.05)" }}>
+                  <span className="text-sm">⚽</span>
+                  <span className="text-white/80 text-sm font-semibold tabular-nums">{g.minute}'</span>
+                  {assister && <span className="text-white/35 text-xs ml-auto">Ass: {lastName(assister.name)}</span>}
                 </div>
-              ))}
-            </div>
+              );
+            })}
+            {events.map((ev, i) => (
+              <div key={i} className="flex items-center gap-2 px-3 py-2.5" style={{ borderBottom: i < events.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
+                <span className="text-sm font-bold" style={{ color: ev.color }}>{ev.label}</span>
+                {ev.minute != null && <span className="ml-auto text-xs tabular-nums font-semibold" style={{ color: ev.color }}>{ev.minute}'</span>}
+              </div>
+            ))}
           </div>
         )}
 
-        {/* Scorers detail */}
-        {stats?.goals && stats.goals.length > 0 && (
-          <div style={{ padding: "0 20px 20px" }}>
-            <p className="text-white/30 text-[10px] font-bold tracking-widest uppercase mb-3">Golos</p>
-            <div className="flex flex-col gap-2">
-              {stats.goals.map((g, i) => {
-                const assister = g.assistPlayerId != null
-                  ? allPlayers.find((p) => p.id === g.assistPlayerId)
-                  : null;
-                return (
-                  <div
-                    key={g.id ?? i}
-                    className="flex items-center gap-3 rounded-xl px-3 py-2"
-                    style={{ background: "rgba(52,211,153,0.06)", border: "1px solid rgba(52,211,153,0.12)" }}
-                  >
-                    <span className="text-xs">⚽</span>
-                    <span className="text-white/70 text-sm">{g.minute}&apos;</span>
-                    {assister && (
-                      <span className="text-white/35 text-xs ml-auto">Ass: {lastName(assister.name)}</span>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
+        {/* ── Close button ── */}
+        <div className="px-5 pb-5" style={{ borderTop: "1px solid var(--surface-border)", paddingTop: 14 }}>
+          <button
+            onClick={onClose}
+            className="w-full py-2.5 rounded-xl text-sm font-semibold text-white/60 hover:text-white transition-colors"
+            style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}
+          >
+            Fechar
+          </button>
+        </div>
       </div>
     </div>
   );
