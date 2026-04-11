@@ -79,3 +79,13 @@ export const careerDataTable = pgTable(
   },
   (table) => [primaryKey({ columns: [table.careerId, table.key] })],
 );
+
+export const customPortalsTable = pgTable("custom_portals", {
+  id: text("id").primaryKey(),
+  careerId: text("career_id").notNull(),
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  tone: text("tone").notNull(),
+  photoUrl: text("photo_url"),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+});

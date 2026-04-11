@@ -272,7 +272,7 @@ export function NoticiaPost({ post, portalPhotos, customPortals }: NoticiaPostPr
       {post.imageUrl && (
         <div className="overflow-hidden" style={{ maxHeight: 400 }}>
           <img
-            src={`/api/storage${post.imageUrl}`}
+            src={post.imageUrl.startsWith("http") ? post.imageUrl : `/api/storage${post.imageUrl}`}
             alt="Post"
             className="w-full object-cover"
             style={{ maxHeight: 400, display: "block" }}

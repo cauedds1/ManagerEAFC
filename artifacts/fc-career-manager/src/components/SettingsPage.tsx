@@ -1,18 +1,18 @@
 import { useState, useEffect, useRef } from "react";
 import { clearClubCache } from "@/lib/clubListCache";
 import {
-  getPortalPhotos,
-  setPortalPhoto,
-  clearPortalPhoto,
+  fetchPortalPhotos,
+  savePortalPhoto,
+  clearPortalPhotoApi,
   PORTAL_PHOTOS_EVENT,
   type PortalPhotos,
   type PortalSource,
 } from "@/lib/portalPhotosStorage";
 import {
-  getCustomPortals,
-  addCustomPortal,
-  updateCustomPortal,
-  deleteCustomPortal,
+  fetchPortals,
+  createPortal,
+  updatePortal,
+  deletePortal,
   PORTAL_TONES,
   CUSTOM_PORTALS_EVENT,
   type CustomPortal,
@@ -121,16 +121,35 @@ function CustomPortalModal({
   const [description, setDescription] = useState(initial?.description ?? "");
   const [tone, setTone] = useState<PortalTone>(initial?.tone ?? "jornalistico");
   const [photo, setPhoto] = useState<string | undefined>(initial?.photo);
+  const [photoUploading, setPhotoUploading] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
-  const valid = name.trim().length > 0 && description.trim().length > 0;
+  const valid = name.trim().length > 0 && description.trim().length > 0 && !photoUploading;
 
-  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => setPhoto(ev.target?.result as string);
-    reader.readAsDataURL(file);
+    const localUrl = URL.createObjectURL(file);
+    setPhoto(localUrl);
+    setPhotoUploading(true);
+    try {
+      const res = await fetch(`/api/storage/uploads/request-url?folder=portals`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }),
+      });
+      if (res.ok) {
+        const { uploadURL, objectPath } = (await res.json()) as { uploadURL: string; objectPath: string };
+        const put = await fetch(uploadURL, { method: "PUT", headers: { "Content-Type": file.type }, body: file });
+        if (put.ok) {
+          URL.revokeObjectURL(localUrl);
+          setPhoto(objectPath);
+        }
+      }
+    } catch {
+    } finally {
+      setPhotoUploading(false);
+    }
   };
 
   const initials = name.trim() ? name.trim().charAt(0).toUpperCase() : "?";
@@ -321,14 +340,13 @@ export function SettingsPage({ onReloadClubs, careerId }: SettingsPageProps) {
   const reenrichFinishedRef                       = useRef(false);
 
   /* ── Portal photos ── */
-  const [portalPhotos, setPortalPhotosState] = useState<PortalPhotos>(() => getPortalPhotos());
+  const [portalPhotos, setPortalPhotosState] = useState<PortalPhotos>({});
+  const [photoUploading, setPhotoUploading] = useState<PortalSource | null>(null);
   const photoInputRef                         = useRef<HTMLInputElement>(null);
   const pendingSourceRef                      = useRef<PortalSource | null>(null);
 
   /* ── Custom portals ── */
-  const [customPortals, setCustomPortals] = useState<CustomPortal[]>(() =>
-    careerId ? getCustomPortals(careerId) : []
-  );
+  const [customPortals, setCustomPortals] = useState<CustomPortal[]>([]);
   const [showPortalModal, setShowPortalModal] = useState(false);
   const [editingPortal, setEditingPortal] = useState<CustomPortal | null>(null);
   const customPhotoInputRef = useRef<HTMLInputElement>(null);
@@ -343,6 +361,12 @@ export function SettingsPage({ onReloadClubs, careerId }: SettingsPageProps) {
     esRef.current?.close();
     reenrichEsRef.current?.close();
   }, []);
+
+  useEffect(() => {
+    if (!careerId) return;
+    fetchPortals(careerId).then(setCustomPortals);
+    fetchPortalPhotos(careerId).then(setPortalPhotosState);
+  }, [careerId]);
 
   /* ─── Handlers ─── */
 
@@ -411,72 +435,93 @@ export function SettingsPage({ onReloadClubs, careerId }: SettingsPageProps) {
     es.onerror = () => { if (!reenrichFinishedRef.current) { setReenrichMsg("Conexão perdida. Tente novamente."); setReenrichState("error"); } es.close(); };
   };
 
-  const handlePortalFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const uploadToR2 = async (file: File, folder: string): Promise<string | null> => {
+    try {
+      const res = await fetch(`/api/storage/uploads/request-url?folder=${folder}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }),
+      });
+      if (!res.ok) return null;
+      const { uploadURL, objectPath } = (await res.json()) as { uploadURL: string; objectPath: string };
+      const put = await fetch(uploadURL, { method: "PUT", headers: { "Content-Type": file.type }, body: file });
+      if (!put.ok) return null;
+      return objectPath;
+    } catch {
+      return null;
+    }
+  };
+
+  const handlePortalFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     const src  = pendingSourceRef.current;
     e.target.value = ""; pendingSourceRef.current = null;
-    if (!file || !src) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const dataUrl = ev.target?.result as string;
-      setPortalPhoto(src, dataUrl);
-      setPortalPhotosState(getPortalPhotos());
-      window.dispatchEvent(new CustomEvent(PORTAL_PHOTOS_EVENT));
-    };
-    reader.readAsDataURL(file);
+    if (!file || !src || !careerId) return;
+    const localUrl = URL.createObjectURL(file);
+    setPortalPhotosState((prev) => ({ ...prev, [src]: localUrl }));
+    setPhotoUploading(src);
+    try {
+      const publicUrl = await uploadToR2(file, "portal-photos");
+      if (publicUrl) {
+        URL.revokeObjectURL(localUrl);
+        await savePortalPhoto(careerId, src, publicUrl);
+        setPortalPhotosState((prev) => ({ ...prev, [src]: publicUrl }));
+        window.dispatchEvent(new CustomEvent(PORTAL_PHOTOS_EVENT));
+      }
+    } finally {
+      setPhotoUploading(null);
+    }
   };
 
-  const handleClearPortalPhoto = (src: PortalSource) => {
-    clearPortalPhoto(src);
-    setPortalPhotosState(getPortalPhotos());
+  const handleClearPortalPhoto = async (src: PortalSource) => {
+    if (!careerId) return;
+    setPortalPhotosState((prev) => { const next = { ...prev }; delete next[src]; return next; });
+    await clearPortalPhotoApi(careerId, src);
     window.dispatchEvent(new CustomEvent(PORTAL_PHOTOS_EVENT));
   };
 
   /* ─── Custom portal handlers ─── */
 
-  const refreshCustomPortals = () => {
+  const refreshCustomPortals = async () => {
     if (!careerId) return;
-    const updated = getCustomPortals(careerId);
+    const updated = await fetchPortals(careerId);
     setCustomPortals(updated);
     window.dispatchEvent(new CustomEvent(CUSTOM_PORTALS_EVENT));
   };
 
-  const handleSavePortal = (data: { name: string; description: string; tone: PortalTone; photo?: string }) => {
+  const handleSavePortal = async (data: { name: string; description: string; tone: PortalTone; photo?: string }) => {
     if (!careerId) return;
     if (editingPortal) {
-      updateCustomPortal(careerId, editingPortal.id, data);
+      await updatePortal(careerId, editingPortal.id, data);
     } else {
-      addCustomPortal(careerId, data);
+      await createPortal(careerId, data);
     }
-    refreshCustomPortals();
+    await refreshCustomPortals();
     setShowPortalModal(false);
     setEditingPortal(null);
   };
 
-  const handleDeletePortal = (id: string) => {
+  const handleDeletePortal = async (id: string) => {
     if (!careerId) return;
-    deleteCustomPortal(careerId, id);
-    refreshCustomPortals();
+    await deletePortal(careerId, id);
+    await refreshCustomPortals();
   };
 
-  const handleCustomPortalPhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCustomPortalPhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     const portalId = pendingCustomPortalIdRef.current;
     e.target.value = ""; pendingCustomPortalIdRef.current = null;
     if (!file || !portalId || !careerId) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const dataUrl = ev.target?.result as string;
-      updateCustomPortal(careerId, portalId, { photo: dataUrl });
-      refreshCustomPortals();
-    };
-    reader.readAsDataURL(file);
+    const publicUrl = await uploadToR2(file, "portals");
+    if (!publicUrl) return;
+    await updatePortal(careerId, portalId, { photo: publicUrl });
+    await refreshCustomPortals();
   };
 
-  const handleClearCustomPortalPhoto = (portalId: string) => {
+  const handleClearCustomPortalPhoto = async (portalId: string) => {
     if (!careerId) return;
-    updateCustomPortal(careerId, portalId, { photo: undefined });
-    refreshCustomPortals();
+    await updatePortal(careerId, portalId, { photo: null });
+    await refreshCustomPortals();
   };
 
   /* ─── Render helpers ─── */

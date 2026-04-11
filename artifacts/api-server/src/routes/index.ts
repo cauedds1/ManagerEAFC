@@ -10,6 +10,7 @@ import storageRouter from "./storage";
 import diretoriaRouter from "./diretoria";
 import careersRouter from "./careers";
 import gamedataRouter from "./gamedata";
+import portalsRouter from "./portals";
 
 const router: IRouter = Router();
 
@@ -24,5 +25,6 @@ router.use(storageRouter);
 router.use(diretoriaRouter);
 router.use(careersRouter);
 router.use(gamedataRouter);
+router.use(portalsRouter);
 
 export default router;

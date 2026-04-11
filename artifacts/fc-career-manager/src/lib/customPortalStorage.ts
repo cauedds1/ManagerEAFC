@@ -37,52 +37,61 @@ export interface CustomPortal {
 export const CUSTOM_PORTALS_EVENT = "fc-custom-portals-changed";
 const MAX_PORTALS = 3;
 
-function storageKey(careerId: string): string {
-  return `fc-career-custom-portals-${careerId}`;
-}
-
-export function getCustomPortals(careerId: string): CustomPortal[] {
+export async function fetchPortals(careerId: string): Promise<CustomPortal[]> {
   try {
-    const raw = localStorage.getItem(storageKey(careerId));
-    if (!raw) return [];
-    return JSON.parse(raw) as CustomPortal[];
+    const res = await fetch(`/api/careers/${encodeURIComponent(careerId)}/portals`);
+    if (!res.ok) return [];
+    return (await res.json()) as CustomPortal[];
   } catch {
     return [];
   }
 }
 
-export function saveCustomPortals(careerId: string, portals: CustomPortal[]): void {
+export async function createPortal(
+  careerId: string,
+  data: { name: string; description: string; tone: PortalTone; photo?: string },
+): Promise<CustomPortal | null> {
   try {
-    localStorage.setItem(storageKey(careerId), JSON.stringify(portals));
-  } catch {}
+    const res = await fetch(`/api/careers/${encodeURIComponent(careerId)}/portals`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as CustomPortal;
+  } catch {
+    return null;
+  }
 }
 
-export function addCustomPortal(careerId: string, portal: Omit<CustomPortal, "id" | "careerId" | "createdAt">): CustomPortal | null {
-  const portals = getCustomPortals(careerId);
-  if (portals.length >= MAX_PORTALS) return null;
-  const newPortal: CustomPortal = {
-    ...portal,
-    id: `custom-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`,
-    careerId,
-    createdAt: Date.now(),
-  };
-  saveCustomPortals(careerId, [...portals, newPortal]);
-  return newPortal;
+export async function updatePortal(
+  careerId: string,
+  id: string,
+  updates: Partial<{ name: string; description: string; tone: PortalTone; photo: string | null }>,
+): Promise<void> {
+  try {
+    await fetch(`/api/careers/${encodeURIComponent(careerId)}/portals/${encodeURIComponent(id)}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updates),
+    });
+  } catch {
+  }
 }
 
-export function updateCustomPortal(careerId: string, id: string, updates: Partial<Omit<CustomPortal, "id" | "careerId" | "createdAt">>): void {
-  const portals = getCustomPortals(careerId);
-  const idx = portals.findIndex((p) => p.id === id);
-  if (idx === -1) return;
-  portals[idx] = { ...portals[idx], ...updates };
-  saveCustomPortals(careerId, portals);
+export async function deletePortal(careerId: string, id: string): Promise<void> {
+  try {
+    await fetch(`/api/careers/${encodeURIComponent(careerId)}/portals/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+    });
+  } catch {
+  }
 }
 
-export function deleteCustomPortal(careerId: string, id: string): void {
-  const portals = getCustomPortals(careerId).filter((p) => p.id !== id);
-  saveCustomPortals(careerId, portals);
+export function getCustomPortal(portals: CustomPortal[], id: string): CustomPortal | undefined {
+  return portals.find((p) => p.id === id);
 }
 
-export function getCustomPortal(careerId: string, id: string): CustomPortal | undefined {
-  return getCustomPortals(careerId).find((p) => p.id === id);
+export function canAddPortal(portals: CustomPortal[]): boolean {
+  return portals.length < MAX_PORTALS;
 }

@@ -5,9 +5,9 @@ import { getPosts, savePosts, addPost, generatePostId, generateCommentId } from 
 import { getOpenAIKey } from "@/lib/openaiKeyStorage";
 import { seedPosts } from "@/lib/noticiaSeed";
 import { NoticiaPost } from "./NoticiaPost";
-import { getPortalPhotos, PORTAL_PHOTOS_EVENT, type PortalPhotos } from "@/lib/portalPhotosStorage";
+import { fetchPortalPhotos, PORTAL_PHOTOS_EVENT, type PortalPhotos } from "@/lib/portalPhotosStorage";
 import {
-  getCustomPortals,
+  fetchPortals,
   CUSTOM_PORTALS_EVENT,
   type CustomPortal,
 } from "@/lib/customPortalStorage";
@@ -869,17 +869,19 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
   const [filterSource, setFilterSource] = useState<string>("all");
   const [filterCategory, setFilterCategory] = useState<NewsCategory | "all">("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [portalPhotos, setPortalPhotos] = useState<PortalPhotos>(() => getPortalPhotos());
-  const [customPortals, setCustomPortals] = useState<CustomPortal[]>(() => getCustomPortals(career.id));
+  const [portalPhotos, setPortalPhotos] = useState<PortalPhotos>({});
+  const [customPortals, setCustomPortals] = useState<CustomPortal[]>([]);
 
   useEffect(() => {
-    const refresh = () => setPortalPhotos(getPortalPhotos());
+    fetchPortalPhotos(career.id).then(setPortalPhotos);
+    const refresh = () => { fetchPortalPhotos(career.id).then(setPortalPhotos); };
     window.addEventListener(PORTAL_PHOTOS_EVENT, refresh);
     return () => window.removeEventListener(PORTAL_PHOTOS_EVENT, refresh);
-  }, []);
+  }, [career.id]);
 
   useEffect(() => {
-    const refresh = () => setCustomPortals(getCustomPortals(career.id));
+    fetchPortals(career.id).then(setCustomPortals);
+    const refresh = () => { fetchPortals(career.id).then(setCustomPortals); };
     window.addEventListener(CUSTOM_PORTALS_EVENT, refresh);
     return () => window.removeEventListener(CUSTOM_PORTALS_EVENT, refresh);
   }, [career.id]);

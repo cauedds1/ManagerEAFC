@@ -7,7 +7,7 @@ import type { CustomPortal } from "@/lib/customPortalStorage";
 import { detectMatchEvents } from "@/lib/autoNewsEngine";
 import { wasEventHandled, markEventHandled } from "@/lib/autoNewsStorage";
 import { getAllPlayerStats, getAllPlayerOverrides } from "@/lib/playerStatsStorage";
-import { getCustomPortals } from "@/lib/customPortalStorage";
+import { fetchPortals } from "@/lib/customPortalStorage";
 import { getPosts, addPost, generatePostId, generateCommentId } from "@/lib/noticiaStorage";
 import { buildPlayerPerformanceContext, buildPlayerContextString, buildSquadOvrContext } from "@/lib/playerContext";
 import { getOpenAIKey } from "@/lib/openaiKeyStorage";
@@ -87,7 +87,7 @@ export async function runAutoNews(
     const { careerId, seasonId, season, clubName, clubLeague, clubTitles, clubDescription, projeto, allMatches, allPlayers, leaguePosition } = ctx;
 
     const seasonPlayerStats = getAllPlayerStats(seasonId);
-    const customPortals = getCustomPortals(careerId);
+    const customPortals = await fetchPortals(careerId);
     const allOverrides = getAllPlayerOverrides(careerId);
 
     const allEvents = detectMatchEvents({
