@@ -717,16 +717,23 @@ function BracketSlot({ match, clubName, clubLogoUrl, isChampFinal }: {
   const homeWon = match.homeScore !== null && match.awayScore !== null && match.homeScore > match.awayScore;
   const awayWon = match.homeScore !== null && match.awayScore !== null && match.awayScore > match.homeScore;
   const hasScores = match.homeScore !== null && match.awayScore !== null;
+  const hasWinner = hasScores && (homeWon || awayWon);
   const isMyHome = !!match.homeTeam && match.homeTeam.trim().toLowerCase() === clubName.trim().toLowerCase();
   const isMyAway = !!match.awayTeam && match.awayTeam.trim().toLowerCase() === clubName.trim().toLowerCase();
   const homeLogo = isMyHome ? clubLogoUrl : resolveOpponentLogo(match.homeTeam);
   const awayLogo = isMyAway ? clubLogoUrl : resolveOpponentLogo(match.awayTeam);
 
+  const borderColor = isChampFinal
+    ? "rgba(251,191,36,0.35)"
+    : hasWinner
+    ? "rgba(52,211,153,0.28)"
+    : "rgba(255,255,255,0.1)";
+
   return (
     <div style={{
       width: "100%", height: BR_SLOT_H, borderRadius: 9, overflow: "hidden",
       background: isChampFinal ? "rgba(251,191,36,0.09)" : "rgba(255,255,255,0.05)",
-      border: isChampFinal ? "1px solid rgba(251,191,36,0.35)" : "1px solid rgba(255,255,255,0.1)",
+      border: `1px solid ${borderColor}`,
       boxShadow: isChampFinal ? "0 0 12px rgba(251,191,36,0.12)" : undefined,
     }}>
       <BracketTeamRow
@@ -747,7 +754,7 @@ function BracketVisual({ result, clubName, clubLogoUrl }: {
 }) {
   const rounds = result.bracket;
 
-  if (!rounds || rounds.length === 0) {
+  if (!rounds || rounds.length === 0 || rounds.every((r) => r.matches.length === 0)) {
     return <p className="text-white/30 text-sm text-center py-4">Nenhum jogo registrado.</p>;
   }
 
