@@ -197,22 +197,32 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
 
   useEffect(() => {
     setDbSynced(false);
-    ensureCareerAndSeason1(career).then(async (initialSeasonId) => {
-      const seasonId = initialSeasonId;
-      await Promise.all([
-        syncCareerFromDb(career.id),
-        syncSeasonFromDb(seasonId),
-      ]);
-      setActiveSeasonId((prev) => {
-        if (prev === career.id) return seasonId;
-        return prev;
-      });
-      setTransfers(getTransfers(seasonId));
-      setMatches(getMatches(seasonId));
+    (async () => {
+      const initialSeasonId = await ensureCareerAndSeason1(career);
+      await syncCareerFromDb(career.id);
+
+      // Load all seasons first so we know which is truly active
+      const loaded = await getSeasons(career.id);
+      setSeasons(loaded);
+
+      // Determine the correct active season (not necessarily the first/initial one)
+      let effectiveSeasonId = initialSeasonId;
+      if (loaded.length > 0) {
+        const active = loaded.find((s) => s.isActive) ?? loaded[loaded.length - 1];
+        effectiveSeasonId = active.id;
+        setActiveSeasonId(active.id);
+        setActiveSeasonLabel(active.label);
+      } else {
+        setActiveSeasonId((prev) => (prev === career.id ? initialSeasonId : prev));
+      }
+
+      // Sync and load data for the ACTIVE season (not the initial/first one)
+      await syncSeasonFromDb(effectiveSeasonId);
+      setTransfers(getTransfers(effectiveSeasonId));
+      setMatches(getMatches(effectiveSeasonId));
       setOverrides(getAllPlayerOverrides(career.id));
       setDbSynced(true);
-      loadSeasons();
-    });
+    })();
   }, [career.id]);
 
   const loadSeasons = useCallback(async () => {
