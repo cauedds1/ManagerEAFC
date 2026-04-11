@@ -63,7 +63,8 @@ export async function runMigrations(migrationsFolder: string): Promise<void> {
 
       console.log(`[migrations] Applying ${entry.tag} (${statements.length} statements)...`);
       for (const stmt of statements) {
-        await client.query(stmt);
+        const safeStmt = stmt.replace(/^CREATE TABLE\s+(?!IF NOT EXISTS)/im, "CREATE TABLE IF NOT EXISTS ");
+        await client.query(safeStmt);
       }
 
       await client.query(
