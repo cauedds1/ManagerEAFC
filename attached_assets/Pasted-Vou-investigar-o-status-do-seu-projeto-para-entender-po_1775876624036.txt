@@ -1,0 +1,90 @@
+Vou investigar o status do seu projeto para entender por que as migrações não foram importadas e as tabelas não foram criadas.
+
+Checked environment status
+
+Hide result
+1 of 2 services with issues
+•
+1 recent failure
+ManagerEAFC
+Online
+Postgres
+Online
+Vejo que o serviço ManagerEAFC teve uma falha recente. Vou verificar os logs de build e deploy para entender o que aconteceu com as migrações:
+
+Searched build logs: @level:error
+
+Hide result
+23:17:08
+[builder 10/12] RUN BASE_PATH=/ pnpm --filter @workspace/fc-career-manager run build
+23:17:08
+Dockerfile:14
+23:17:08
+-------------------
+23:17:08
+12 | RUN pnpm install --frozen-lockfile
+23:17:08
+13 |
+23:17:08
+14 | >>> RUN BASE_PATH=/ pnpm --filter @workspace/fc-career-manager run build
+23:17:08
+15 |
+23:17:08
+16 | RUN mkdir -p artifacts/api-server/public && \
+23:17:08
+-------------------
+23:17:08
+ERROR: failed to build: failed to solve: process "/bin/sh -c BASE_PATH=/ pnpm --filter @workspace/fc-career-manager run build" did not complete successfully: exit code: 1
+Searched deploy logs: @level:error
+
+Hide result
+No logs found
+Diagnosed deployment
+O problema está claro: o build falhou durante a etapa de compilação. O erro ocorre no comando pnpm --filter @workspace/fc-career-manager run build (linha 14 do Dockerfile).
+
+Isso significa que:
+
+As migrações não foram importadas porque o build não completou
+As tabelas não foram criadas porque a aplicação nunca foi deployada com sucesso
+Preciso ver mais detalhes do erro de build. Vou buscar os logs completos:
+
+Searched build logs
+
+Hide result
+23:17:01
+23:17:02
+[35m[Region: us-east4][0m
+23:17:02
+[35m=========================
+23:17:02
+Using Detected Dockerfile
+23:17:02
+=========================
+23:17:02
+[0m
+23:17:02
+context: w5x0-2N05
+23:17:02
+[internal] load build definition from Dockerfile
+23:17:02
+[internal] load build definition from Dockerfile
+23:17:02
+[internal] load build definition from Dockerfile
+...and 95 more logs
+Perfeito! Encontrei o problema. O erro é claro:
+
+Problema: O arquivo tsconfig.base.json está faltando. O Vite está tentando compilar o projeto e não consegue encontrar a configuração base do TypeScript.
+
+[vite:build-html] failed to resolve "extends":"../../tsconfig.base.json" in /app/artifacts/fc-career-manager/tsconfig.json
+Por que as migrações não foram importadas:
+
+O build falhou durante a compilação do fc-career-manager
+Sem um build bem-sucedido, a aplicação nunca foi deployada
+Sem a aplicação rodando, as migrações nunca foram executadas
+Portanto, as tabelas nunca foram criadas no banco de dados
+Solução: Você precisa criar o arquivo tsconfig.base.json no repositório ou ajustar as referências no tsconfig.json para apontar para o arquivo correto.
+
+Você tem acesso ao repositório? Posso ajudar a criar um PR para corrigir isso. Preciso saber:
+
+Qual é a estrutura correta do seu projeto (onde deveria estar o tsconfig.base.json)?
+Ou você quer que eu crie um arquivo tsconfig.base.json básico?
