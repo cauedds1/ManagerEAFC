@@ -185,3 +185,30 @@ export async function getSquad(teamId: number, clubName: string): Promise<SquadR
 
   return { players: [], source: "api-football", cachedAt: Date.now() };
 }
+
+/**
+ * Returns all players from every squad cached in localStorage,
+ * deduplicated by player ID and sorted by name.
+ */
+export function getAllCachedPlayers(): SquadPlayer[] {
+  const seen = new Set<number>();
+  const all: SquadPlayer[] = [];
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key || !key.startsWith(CACHE_PREFIX)) continue;
+      const raw = localStorage.getItem(key);
+      if (!raw) continue;
+      const data = JSON.parse(raw) as SquadResult;
+      if (!Array.isArray(data.players)) continue;
+      const players = reNormalizePlayers(data.players);
+      for (const p of players) {
+        if (!seen.has(p.id)) {
+          seen.add(p.id);
+          all.push(p);
+        }
+      }
+    }
+  } catch {}
+  return all.sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+}

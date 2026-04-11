@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useMemo, useEffect } from "react";
 import { createPortal } from "react-dom";
 import type { SquadPlayer } from "@/lib/squadCache";
+import { getAllCachedPlayers } from "@/lib/squadCache";
 import type {
   MatchRecord,
   PlayerMatchStats,
@@ -304,9 +305,10 @@ function GoalEditor({
 }
 
 function OpponentGoalEditor({
-  goal, index, opponentName, onChange, onRemove,
+  goal, index, opponentName, allSystemPlayers, onChange, onRemove,
 }: {
   goal: OpponentGoalEntry; index: number; opponentName: string;
+  allSystemPlayers: SquadPlayer[];
   onChange: (g: OpponentGoalEntry) => void; onRemove: () => void;
 }) {
   return (
@@ -320,15 +322,13 @@ function OpponentGoalEditor({
         <label className="text-white/40 text-xs w-16 flex-shrink-0">Minuto</label>
         <NumericInput value={goal.minute} onChange={(v) => onChange({ ...goal, minute: v ?? 0 })} min={1} max={120} placeholder="Min" className="w-16" />
       </div>
-      <div className="flex items-center gap-2">
-        <label className="text-white/40 text-xs w-16 flex-shrink-0">Jogador</label>
-        <input
-          type="text"
-          value={goal.playerName ?? ""}
-          onChange={(e) => onChange({ ...goal, playerName: e.target.value || undefined })}
-          placeholder="Nome do jogador (opcional)"
-          className="flex-1 px-2.5 py-1.5 rounded-xl text-white text-sm focus:outline-none glass"
-          style={{ background: "rgba(255,255,255,0.05)" }}
+      <div className="space-y-1">
+        <label className="text-white/40 text-xs">Jogador (opcional)</label>
+        <MotmAutocomplete
+          playerId={null}
+          playerName={goal.playerName ?? ""}
+          allPlayers={allSystemPlayers}
+          onChange={(val) => onChange({ ...goal, playerName: val.playerName || undefined })}
         />
       </div>
     </div>
@@ -894,6 +894,13 @@ export function RegistrarPartidaModal({
   const [saving, setSaving] = useState(false);
   const [pickerMode, setPickerMode] = useState<"starter" | "sub" | null>(null);
 
+  const allSystemPlayers = useMemo(() => {
+    const cached = getAllCachedPlayers();
+    const ownIds = new Set(allPlayers.map((p) => p.id));
+    const extras = cached.filter((p) => !ownIds.has(p.id));
+    return [...allPlayers, ...extras].sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+  }, [allPlayers]);
+
   const initial = useMemo(() => buildInitialDraft(seasonId), [seasonId]);
 
   const [draft, setDraft] = useState<MatchDraft>(() => {
@@ -1446,6 +1453,7 @@ export function RegistrarPartidaModal({
                       goal={g}
                       index={idx}
                       opponentName={draft.opponent}
+                      allSystemPlayers={allSystemPlayers}
                       onChange={(updated) => onChange({ opponentGoals: draft.opponentGoals.map((og, i) => i === idx ? updated : og) })}
                       onRemove={() => onChange({ opponentGoals: draft.opponentGoals.filter((_, i) => i !== idx) })}
                     />
@@ -1460,7 +1468,7 @@ export function RegistrarPartidaModal({
               <MotmAutocomplete
                 playerId={draft.motmPlayerId}
                 playerName={draft.motmPlayerName}
-                allPlayers={allPlayers}
+                allPlayers={allSystemPlayers}
                 onChange={(val) => onChange({ motmPlayerId: val.playerId, motmPlayerName: val.playerName })}
               />
             </div>
