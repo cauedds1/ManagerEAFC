@@ -1,0 +1,29 @@
+*#18 - Opção de empréstimo nas transferências
+What & Why
+Hoje as transferências só têm "Compra" e "Venda". O usuário quer adicionar "Empréstimo" com:
+
+Duração do empréstimo (em opções pré-definidas)
+Sub-opção "Contratar" (receber jogador emprestado) vs "Emprestar" (enviar jogador do meu elenco)
+"Emprestar": busca de jogador restrita ao meu elenco (sem busca na API)
+"Contratar": busca de jogador em todo o sistema (comportamento atual com API)
+Done looks like
+Novo tipo "Empréstimo" aparece ao lado de "Compra" e "Venda" no formulário de transferência.
+Ao selecionar "Empréstimo", aparecem:
+Toggle "Contratar / Emprestar" (entrada vs saída)
+Seletor de duração: "6 meses", "1 temporada", "2 temporadas", "3 temporadas"
+Busca de jogador: "Emprestar" mostra só jogadores do próprio elenco, "Contratar" mostra todos (elenco + API)
+Card de transferência exibe badge "Empréstimo" + direção (entrada/saída) + duração.
+Out of scope
+Não criar lógica de retorno automático ao fim do empréstimo.
+Não alterar os tipos "Compra" e "Venda" existentes.
+Tasks
+types/transfer.ts: adicionar "emprestimo" ao campo type, novo campo loanDuration?: string (ex: "6 meses", "1 temporada"), novo campo loanDirection?: "entrada" | "saida".
+TransferenciasView.tsx — formulário:
+Adicionar botão "Empréstimo" no seletor de tipo (ao lado de "Compra"/"Venda").
+Quando selecionado: mostrar toggle "Contratar / Emprestar" (loanDirection) e seletor de duração.
+Quando loanDirection === "saida" (Emprestar): usar autocomplete apenas com jogadores do próprio elenco (allPlayers), sem chamada à API. Quando "entrada" (Contratar): usar o PlayerAutocomplete atual (elenco + API).
+Adaptar campos obrigatórios: taxa pode ser 0 (grátis por padrão em empréstimo), contrato substituído pela duração.
+TransferenciasView.tsx — TransferCard: mostrar badge "Empréstimo" com cor distinta (laranja/âmbar), direção (↓ Entrada / ↑ Saída) e duração.
+Garantir compatibilidade: registros antigos sem type ou com type === "compra"/"venda" não são afetados.
+Relevant files
+artifacts/fc-career-manager/src/types/transfer.ts artifacts/fc-career-manager/src/components/TransferenciasView.tsx:1-250 artifacts/fc-career-manager/src/components/TransferenciasView.tsx:250-870*
