@@ -719,12 +719,26 @@ export function MatchDetailPage({
   const myScore = match.myScore;
   const oppScore = match.opponentScore;
 
+  // Posicionamento: home = meu time à esquerda; away = meu time à direita
+  const leftLogoUrl  = isHome ? clubLogoUrl : oppLogo;
+  const leftName     = isHome ? clubName    : match.opponent;
+  const leftScore    = isHome ? myScore     : oppScore;
+  const rightLogoUrl = isHome ? oppLogo     : clubLogoUrl;
+  const rightName    = isHome ? match.opponent : clubName;
+  const rightScore   = isHome ? oppScore    : myScore;
+  const leftWon  = leftScore > rightScore;
+  const rightWon = rightScore > leftScore;
+  const isDraw   = leftScore === rightScore;
+
   const glowColor =
     result === "vitoria"
       ? "rgba(16,185,129,0.14)"
       : result === "derrota"
       ? "rgba(239,68,68,0.14)"
       : "rgba(148,163,184,0.06)";
+
+  // Gradiente vem do lado do meu escudo (esquerda=casa, direita=fora)
+  const gradientAngle = isHome ? 160 : 200;
 
   const dateStr = match.date
     ? new Date(match.date + "T12:00:00").toLocaleDateString("pt-BR", {
@@ -804,7 +818,7 @@ export function MatchDetailPage({
       <div
         className="rounded-2xl overflow-hidden"
         style={{
-          background: `linear-gradient(160deg, ${glowColor} 0%, rgba(255,255,255,0.02) 55%)`,
+          background: `linear-gradient(${gradientAngle}deg, ${glowColor} 0%, rgba(255,255,255,0.02) 55%)`,
           border: "1px solid rgba(255,255,255,0.08)",
         }}
       >
@@ -835,10 +849,10 @@ export function MatchDetailPage({
 
         {/* Score */}
         <div className="flex items-center gap-4 px-5 py-5">
-          {/* My team (always on left) */}
+          {/* Left team */}
           <div className="flex flex-col items-center gap-2 flex-1 min-w-0">
-            <ClubLogo logoUrl={clubLogoUrl} name={clubName} size={72} />
-            <span className="text-white/70 text-sm font-bold text-center leading-tight">{clubName}</span>
+            <ClubLogo logoUrl={leftLogoUrl} name={leftName} size={72} />
+            <span className="text-white/70 text-sm font-bold text-center leading-tight">{leftName}</span>
           </div>
 
           <div className="flex flex-col items-center gap-2 flex-shrink-0">
@@ -846,19 +860,19 @@ export function MatchDetailPage({
               <span
                 className="text-5xl font-black tabular-nums leading-none"
                 style={{
-                  color: myScore > oppScore ? rs.color : myScore === oppScore ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.2)",
+                  color: leftWon ? rs.color : isDraw ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.2)",
                 }}
               >
-                {myScore}
+                {leftScore}
               </span>
               <span className="text-2xl font-light" style={{ color: "rgba(255,255,255,0.15)" }}>:</span>
               <span
                 className="text-5xl font-black tabular-nums leading-none"
                 style={{
-                  color: oppScore > myScore ? rs.color : oppScore === myScore ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.2)",
+                  color: rightWon ? rs.color : isDraw ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.2)",
                 }}
               >
-                {oppScore}
+                {rightScore}
               </span>
             </div>
 
@@ -874,10 +888,10 @@ export function MatchDetailPage({
             )}
           </div>
 
-          {/* Opponent */}
+          {/* Right team */}
           <div className="flex flex-col items-center gap-2 flex-1 min-w-0">
-            <ClubLogo logoUrl={oppLogo} name={match.opponent} size={72} />
-            <span className="text-white/70 text-sm font-bold text-center leading-tight">{match.opponent}</span>
+            <ClubLogo logoUrl={rightLogoUrl} name={rightName} size={72} />
+            <span className="text-white/70 text-sm font-bold text-center leading-tight">{rightName}</span>
           </div>
         </div>
 
