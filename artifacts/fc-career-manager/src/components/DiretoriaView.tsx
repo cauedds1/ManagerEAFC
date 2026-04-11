@@ -31,7 +31,8 @@ import {
 import { getLeaguePosition } from "@/lib/leagueStorage";
 import { getOpenAIKey } from "@/lib/openaiKeyStorage";
 import type { SquadPlayer } from "@/lib/squadCache";
-import { buildPlayerPerformanceContext } from "@/lib/playerContext";
+import { buildPlayerPerformanceContext, buildSquadOvrContext } from "@/lib/playerContext";
+import { getAllPlayerOverrides } from "@/lib/playerStatsStorage";
 import { getFinanceiroSettings, computeFinancialSnapshot } from "@/lib/financeiroStorage";
 
 interface DiretoriaViewProps {
@@ -413,6 +414,12 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
     return buildPlayerPerformanceContext(career.id, allPlayers);
   }, [career.id, allPlayers]);
 
+  const squadOvrContext = useMemo(() => {
+    if (allPlayers.length === 0) return "";
+    const overrides = getAllPlayerOverrides(career.id);
+    return buildSquadOvrContext(allPlayers, overrides);
+  }, [allPlayers, career.id]);
+
   const isGestor = (member: BoardMember) =>
     member.roleLabel.toLowerCase().includes("gestor") ||
     member.roleLabel.toLowerCase().includes("financeiro") ||
@@ -518,6 +525,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
         })),
         lastCheckedAt: lastChecked,
         playerPerformance: playerPerformance.length > 0 ? playerPerformance : undefined,
+        squadOvrContext: squadOvrContext || undefined,
       }),
     })
       .then((r) => r.json())
@@ -579,6 +587,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
           message: userMsg.content,
           history: newConv.slice(-14).map((m) => ({ role: m.role, content: m.content })),
           context: buildClubContext(),
+          squadOvrContext: squadOvrContext || undefined,
         }),
       });
       if (!res.ok) throw new Error(`Erro ${res.status}`);
@@ -675,6 +684,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
             history: currentMeeting.messages,
             context: buildClubContext(),
             triggerMessage: currentMeeting.reason,
+            squadOvrContext: squadOvrContext || undefined,
           }),
         });
         if (!res.ok) throw new Error(`Erro ${res.status}`);

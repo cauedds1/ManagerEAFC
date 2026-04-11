@@ -117,9 +117,13 @@ function buildClubContext(ctx: ClubContext): string {
     let ls = 0, ws = 0;
     for (const m of matches) { if (m.result === "derrota") ls++; else break; }
     for (const m of matches) { if (m.result === "vitoria") ws++; else break; }
-    if (ls >= 5) streakAlert = `\n🚨 ALERTA CRÍTICO: ${ls} derrotas consecutivas — situação grave!`;
-    else if (ls >= 3) streakAlert = `\n⚠️ ALERTA: ${ls} derrotas seguidas — pressão crescente.`;
-    else if (ws >= 4) streakAlert = `\n✅ DESTAQUE: ${ws} vitórias consecutivas — grande fase!`;
+    if (ls >= 5) {
+      const opponents = matches.slice(0, ls).map((m) => m.opponent).join(", ");
+      streakAlert = `\n🚨 ${ls} derrotas consecutivas (vs ${opponents}) — avalie a dificuldade dos adversários antes de reagir.`;
+    } else if (ls >= 3) {
+      const opponents = matches.slice(0, ls).map((m) => m.opponent).join(", ");
+      streakAlert = `\n⚠️ ${ls} derrotas seguidas (vs ${opponents}) — considere a força dos adversários.`;
+    } else if (ws >= 4) streakAlert = `\n✅ DESTAQUE: ${ws} vitórias consecutivas — grande fase!`;
   }
 
   const fmt = (n: number) => {
@@ -156,11 +160,12 @@ ${matchStr}`;
 }
 
 router.post("/diretoria/chat", async (req, res) => {
-  const { member, message, history, context } = req.body as {
+  const { member, message, history, context, squadOvrContext } = req.body as {
     member: MemberProfile;
     message: string;
     history: ChatHistoryItem[];
     context: ClubContext;
+    squadOvrContext?: string;
   };
 
   if (!message?.trim()) {
@@ -177,6 +182,18 @@ router.post("/diretoria/chat", async (req, res) => {
   const isAngry = member.mood === "irritado" || member.mood === "furioso" || member.mood === "tenso";
   const isInsulted = /xing|merda|idiot|inút|burr|lixo|sai fora|incompet|estúpid|cala boc|vai se/i.test(message);
 
+  const squadOvrSection = squadOvrContext?.trim()
+    ? `\nELENCO — OVR:\n${squadOvrContext}`
+    : "";
+
+  const calibratingSection = `\n━━━ CALIBRAÇÃO DE CONTEXTO ━━━
+Use seu conhecimento de futebol para avaliar a força de cada adversário listado nas últimas partidas.
+Antes de cobrar ou pressionar o técnico por resultados, leve em conta:
+- Se as derrotas foram contra adversários superiores (times de elite), modere a cobrança
+- O OVR médio do elenco define as expectativas realistas de desempenho
+- Uma sequência ruim contra adversários fortes é diferente de uma sequência ruim contra times inferiores
+- Considere o contexto coletivo antes de criticar individualmente`;
+
   const systemPrompt = `Você é ${member.name}, ${member.roleLabel} do ${context.clubName}. Você é um personagem de FICÇÃO em um simulador de futebol.
 
 PERSONALIDADE:
@@ -185,7 +202,8 @@ ${member.description}
 HUMOR ATUAL: ${moodLabel(member.mood)} | PACIÊNCIA: ${member.patience}/100
 
 CONTEXTO:
-${clubCtx}
+${clubCtx}${squadOvrSection}
+${calibratingSection}
 
 ━━━ REGRAS DE COMPORTAMENTO — LEIA COM ATENÇÃO ━━━
 
@@ -263,12 +281,13 @@ Ao final: NOVO_HUMOR: <excelente|bom|neutro|tenso|irritado|furioso>`;
 });
 
 router.post("/diretoria/meeting", async (req, res) => {
-  const { speaker, allMembers, history, context, triggerMessage } = req.body as {
+  const { speaker, allMembers, history, context, triggerMessage, squadOvrContext } = req.body as {
     speaker: MemberProfile;
     allMembers: MemberProfile[];
     history: { memberId?: string; memberName?: string; role: string; content: string }[];
     context: ClubContext;
     triggerMessage: string;
+    squadOvrContext?: string;
   };
 
   const userKey = (req.headers["x-openai-key"] as string | undefined) ?? "";
@@ -280,6 +299,18 @@ router.post("/diretoria/meeting", async (req, res) => {
     .filter((m) => m.id !== speaker.id)
     .map((m) => `- ${m.name} (${m.roleLabel}): ${m.description.slice(0, 120)}`)
     .join("\n");
+
+  const meetingSquadOvrSection = squadOvrContext?.trim()
+    ? `\nELENCO — OVR:\n${squadOvrContext}`
+    : "";
+
+  const meetingCalibratingSection = `\n━━━ CALIBRAÇÃO DE CONTEXTO ━━━
+Use seu conhecimento de futebol para avaliar a força dos adversários listados nas últimas partidas.
+Antes de cobrar o técnico por resultados, leve em conta:
+- Derrotas contra adversários superiores (times de elite) merecem análise, não pânico
+- O OVR médio do elenco define as expectativas realistas — não exija o impossível
+- Resultados coletivos bons moderam cobranças individuais
+- Seu cargo define o foco: presidente → clube como um todo; auxiliar técnico → campo e táticas; gestor → orçamento`;
 
   const systemPrompt = `Você é ${speaker.name}, ${speaker.roleLabel} do ${context.clubName}, participando de uma REUNIÃO DE DIRETORIA presencial.
 
@@ -293,7 +324,8 @@ ${otherMembers}
 - Técnico ${context.coachName} (presente na sala)
 
 CONTEXTO DO CLUBE:
-${clubCtx}
+${clubCtx}${meetingSquadOvrSection}
+${meetingCalibratingSection}
 
 ━━━ REGRAS DA REUNIÃO ━━━
 
@@ -436,11 +468,12 @@ Responda APENAS com JSON puro (sem markdown):
 });
 
 router.post("/diretoria/check-triggers", async (req, res) => {
-  const { context, members, lastCheckedAt, playerPerformance } = req.body as {
+  const { context, members, lastCheckedAt, playerPerformance, squadOvrContext } = req.body as {
     context: ClubContext;
     members: MemberProfile[];
     lastCheckedAt: number;
     playerPerformance?: PlayerPerfItem[];
+    squadOvrContext?: string;
   };
 
   const recentMatches = context.recentMatches.slice(0, 8);
@@ -481,23 +514,35 @@ router.post("/diretoria/check-triggers", async (req, res) => {
     recentMatches.length > 0 &&
     new Date(recentMatches[0].date).getTime() > lastCheckedAt;
 
+  const lossStreakOpponents = recentMatches
+    .slice(0, lossStreak)
+    .map((m) => m.opponent)
+    .join(", ");
+
+  const ovrNote = squadOvrContext
+    ? squadOvrContext.split("\n")[0]
+    : "";
+
   if (hasNewMatch) {
     if (lossStreak >= 5) {
+      const opponentNote = lossStreakOpponents ? ` (vs ${lossStreakOpponents})` : "";
+      const ovrPart = ovrNote ? ` | ${ovrNote}` : "";
       meetingTrigger = {
-        reason: `${lossStreak} derrotas consecutivas — crise instalada no clube`,
+        reason: `${lossStreak} derrotas consecutivas${opponentNote} — avalie a dificuldade dos adversários${ovrPart}`,
         severity: "high",
       };
     } else if (lossStreak >= 3) {
+      const opponentNote = lossStreakOpponents ? ` vs ${lossStreakOpponents}` : "";
       if (presidente) {
         notifications.push({
           memberId: presidente.id,
-          preview: `${lossStreak} derrotas seguidas. Precisamos conversar com urgência...`,
+          preview: `${lossStreak} derrotas seguidas${opponentNote}. Precisamos conversar...`,
         });
       }
       if (auxTecnico) {
         notifications.push({
           memberId: auxTecnico.id,
-          preview: "Tenho algumas análises táticas importantes para discutir com você.",
+          preview: `Tenho análises táticas sobre essas ${lossStreak} partidas${opponentNote} para discutir.`,
         });
       }
     }
@@ -512,8 +557,9 @@ router.post("/diretoria/check-triggers", async (req, res) => {
     if (leaguePos) {
       const relegZone = leaguePos.totalTeams - 3;
       if (leaguePos.position >= relegZone && lossStreak >= 2) {
+        const relegOpponents = lossStreakOpponents ? ` vs ${lossStreakOpponents}` : "";
         meetingTrigger = meetingTrigger ?? {
-          reason: `${leaguePos.position}º lugar — zona de rebaixamento com ${lossStreak} derrotas seguidas`,
+          reason: `${leaguePos.position}º lugar — zona de rebaixamento com ${lossStreak} derrotas seguidas${relegOpponents}`,
           severity: "high",
         };
       } else if (leaguePos.position <= 4 && winCount >= 3 && presidente) {
