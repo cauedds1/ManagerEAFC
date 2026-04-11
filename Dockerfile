@@ -23,9 +23,11 @@ WORKDIR /app
 
 COPY --from=builder /app/artifacts/api-server/dist/ ./dist/
 COPY --from=builder /app/artifacts/api-server/public/ ./public/
+COPY --from=builder /app/lib/db/migrations/ ./migrations/
 
 ENV NODE_ENV=production
 ENV FRONTEND_DIST=/app/public
+ENV MIGRATIONS_PATH=/app/migrations
 
 EXPOSE 3000
 

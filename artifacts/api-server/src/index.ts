@@ -1,6 +1,6 @@
 import app from "./app";
 import { logger } from "./lib/logger";
-import { db, squadPlayersTable } from "@workspace/db";
+import { db, runMigrations, squadPlayersTable } from "@workspace/db";
 import { ne, inArray, sql, like } from "drizzle-orm";
 
 const rawPort = process.env["PORT"];
@@ -15,6 +15,20 @@ const port = Number(rawPort);
 
 if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
+}
+
+async function applyMigrations() {
+  const migrationsPath = process.env["MIGRATIONS_PATH"];
+  if (!migrationsPath) {
+    return;
+  }
+  try {
+    await runMigrations(migrationsPath);
+    logger.info({ migrationsPath }, "Database migrations applied");
+  } catch (err) {
+    logger.error({ err }, "Database migration failed — aborting startup");
+    process.exit(1);
+  }
 }
 
 async function purgeInvalidSquadRows() {
@@ -81,7 +95,8 @@ async function clearCardPhotos() {
   }
 }
 
-purgeInvalidSquadRows()
+applyMigrations()
+  .then(purgeInvalidSquadRows)
   .then(migratePositionGroups)
   .then(clearCardPhotos)
   .then(() => {
