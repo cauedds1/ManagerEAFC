@@ -127,14 +127,25 @@ function MatchCard({
   const motm = match.motmPlayerId != null ? allPlayers.find((p) => p.id === match.motmPlayerId) : null;
   const isHome = match.location !== "fora";
   const oppResolvedLogo = resolveOpponentLogo(match.opponent, match.opponentLogoUrl);
-  const leftLogo = isHome ? clubLogoUrl : oppResolvedLogo;
-  const leftName = isHome ? clubName : match.opponent;
-  const leftScore = isHome ? match.myScore : match.opponentScore;
+
+  const leftLogo   = isHome ? clubLogoUrl    : oppResolvedLogo;
+  const leftName   = isHome ? clubName       : match.opponent;
+  const leftScore  = isHome ? match.myScore  : match.opponentScore;
   const leftThemed = isHome;
-  const rightLogo = isHome ? oppResolvedLogo : clubLogoUrl;
-  const rightName = isHome ? match.opponent : clubName;
-  const rightScore = isHome ? match.opponentScore : match.myScore;
+  const rightLogo   = isHome ? oppResolvedLogo : clubLogoUrl;
+  const rightName   = isHome ? match.opponent  : clubName;
+  const rightScore  = isHome ? match.opponentScore : match.myScore;
   const rightThemed = !isHome;
+
+  const myPoss   = match.matchStats.possessionPct;
+  const oppPoss  = myPoss > 0 ? 100 - myPoss : 0;
+  const leftPoss  = isHome ? myPoss  : oppPoss;
+  const rightPoss = isHome ? oppPoss : myPoss;
+
+  const myShots  = match.matchStats.myShots;
+  const oppShots = match.matchStats.opponentShots;
+  const leftShots  = isHome ? myShots  : oppShots;
+  const rightShots = isHome ? oppShots : myShots;
 
   const allParticipantIds = [...match.starterIds, ...match.subIds];
   const goalScorers: { name: string; minute: number }[] = [];
@@ -155,32 +166,36 @@ function MatchCard({
 
   const hasFooter =
     goalScorers.length > 0 ||
-    motm ||
-    match.matchStats.possessionPct > 0 ||
-    match.matchStats.myShots > 0 ||
-    match.matchStats.opponentShots > 0;
+    !!motm ||
+    myPoss > 0 ||
+    myShots > 0 ||
+    oppShots > 0;
+
+  const leftWon  = leftScore > rightScore;
+  const rightWon = rightScore > leftScore;
+  const isDraw   = leftScore === rightScore;
+
+  const glowColor =
+    result === "vitoria" ? "rgba(16,185,129,0.07)"
+    : result === "derrota" ? "rgba(239,68,68,0.07)"
+    : "rgba(148,163,184,0.04)";
 
   return (
     <div
-      className="glass rounded-2xl overflow-hidden transition-all duration-200"
+      className="rounded-2xl overflow-hidden"
       style={{
-        borderTop: "1px solid rgba(255,255,255,0.07)",
-        borderRight: "1px solid rgba(255,255,255,0.07)",
-        borderBottom: "1px solid rgba(255,255,255,0.07)",
-        borderLeft: `3px solid ${rs.color}`,
+        background: `linear-gradient(160deg, ${glowColor} 0%, rgba(255,255,255,0.02) 55%)`,
+        border: "1px solid rgba(255,255,255,0.08)",
       }}
     >
-      {/* Meta row */}
-      <div className="flex items-center justify-between gap-2 px-3 pt-2.5 pb-1 min-w-0">
+      {/* ── Meta row ── */}
+      <div className="flex items-center justify-between gap-2 px-4 pt-3 pb-0 min-w-0">
         <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
-          <span className="text-xs flex-shrink-0" title={LOCATION_LABELS[match.location]}>
+          <span className="text-xs flex-shrink-0 opacity-50" title={LOCATION_LABELS[match.location]}>
             {LOCATION_ICONS[match.location]}
           </span>
           {match.tournament && (
-            <span
-              className="px-2 py-0.5 rounded-full text-xs font-medium text-white/50 flex-shrink-0"
-              style={{ background: "rgba(255,255,255,0.07)" }}
-            >
+            <span className="text-white/60 text-xs font-semibold flex-shrink-0">
               {match.tournament}
             </span>
           )}
@@ -191,67 +206,131 @@ function MatchCard({
             <span className="text-white/20 text-xs flex-shrink-0">· #{match.tablePositionBefore}</span>
           )}
         </div>
-        <span className="text-white/25 text-xs flex-shrink-0">{dateStr}</span>
-      </div>
-
-      {/* Score row — single horizontal line */}
-      <div className="flex items-center gap-2 px-3 pb-2.5">
-        {/* Left team */}
-        <div className="flex items-center gap-2 flex-1 min-w-0">
-          <ClubCrest logoUrl={leftLogo} name={leftName} size={32} themed={leftThemed} />
-          <span className="text-white/55 text-sm font-semibold truncate leading-tight">{leftName}</span>
-        </div>
-
-        {/* Score + pill */}
-        <div className="flex flex-col items-center gap-0.5 flex-shrink-0 px-1">
-          <div className="flex items-center gap-2 tabular-nums">
-            <span className="text-2xl font-black text-white leading-none">{leftScore}</span>
-            <span className="text-white/20 text-lg font-light leading-none">–</span>
-            <span className="text-2xl font-black text-white leading-none">{rightScore}</span>
-          </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {dateStr && <span className="text-white/25 text-xs">{dateStr}</span>}
           <span
-            className="px-2.5 py-0 rounded-full text-xs font-black tracking-widest leading-5"
+            className="px-2 py-0.5 rounded-full text-[10px] font-black tracking-widest"
             style={{ background: rs.bg, color: rs.color }}
           >
             {rs.label}
           </span>
         </div>
+      </div>
+
+      {/* ── Score zone ── */}
+      <div className="flex items-center px-4 py-4 gap-2">
+        {/* Left team */}
+        <div className="flex flex-col items-center gap-2 flex-1 min-w-0">
+          <ClubCrest logoUrl={leftLogo} name={leftName} size={48} themed={leftThemed} />
+          <span className="text-white/60 text-xs font-semibold text-center w-full leading-tight line-clamp-1">
+            {leftName}
+          </span>
+        </div>
+
+        {/* Score */}
+        <div className="flex items-center gap-3 flex-shrink-0 px-2">
+          <span
+            className="text-4xl font-black tabular-nums leading-none"
+            style={{
+              color: leftWon ? rs.color : isDraw ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.2)",
+            }}
+          >
+            {leftScore}
+          </span>
+          <span className="text-xl font-light leading-none select-none" style={{ color: "rgba(255,255,255,0.12)" }}>:</span>
+          <span
+            className="text-4xl font-black tabular-nums leading-none"
+            style={{
+              color: rightWon ? rs.color : isDraw ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.2)",
+            }}
+          >
+            {rightScore}
+          </span>
+        </div>
 
         {/* Right team */}
-        <div className="flex items-center gap-2 flex-1 min-w-0 justify-end">
-          <span className="text-white/55 text-sm font-semibold truncate text-right leading-tight">{rightName}</span>
-          <ClubCrest logoUrl={rightLogo} name={rightName} size={32} themed={rightThemed} />
+        <div className="flex flex-col items-center gap-2 flex-1 min-w-0">
+          <ClubCrest logoUrl={rightLogo} name={rightName} size={48} themed={rightThemed} />
+          <span className="text-white/60 text-xs font-semibold text-center w-full leading-tight line-clamp-1">
+            {rightName}
+          </span>
         </div>
       </div>
 
-      {/* Footer chips */}
+      {/* ── Stats footer ── */}
       {hasFooter && (
-        <div
-          className="flex items-center justify-between gap-2 flex-wrap px-3 py-1.5"
-          style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}
-        >
-          <div className="flex items-center gap-1.5 text-xs text-white/35 min-w-0">
-            {goalScorers.length > 0 && (
-              <span>⚽ {goalScorers.map((g) => `${g.name} ${g.minute}'`).join(" · ")}</span>
-            )}
-          </div>
-          <div className="flex items-center gap-1.5 text-xs text-white/30 flex-wrap flex-shrink-0">
-            {match.matchStats.possessionPct > 0 && (
-              <span className="px-2 py-0.5 rounded-full" style={{ background: "rgba(255,255,255,0.05)" }}>
-                {match.matchStats.possessionPct}% posse
-              </span>
-            )}
-            {(match.matchStats.myShots > 0 || match.matchStats.opponentShots > 0) && (
-              <span className="px-2 py-0.5 rounded-full" style={{ background: "rgba(255,255,255,0.05)" }}>
-                🎯 {match.matchStats.myShots}–{match.matchStats.opponentShots}
-              </span>
-            )}
-            {motm && (
-              <span className="px-2 py-0.5 rounded-full" style={{ background: "rgba(234,179,8,0.08)", color: "#fbbf24" }}>
-                ⭐ {motm.name.split(" ").at(-1)}
-              </span>
-            )}
-          </div>
+        <div style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+
+          {/* Possession bar */}
+          {myPoss > 0 && (
+            <div className="px-4 pt-3 pb-1">
+              <div className="flex rounded-full overflow-hidden" style={{ height: 5 }}>
+                <div
+                  style={{
+                    width: `${leftPoss}%`,
+                    background: leftThemed ? "var(--club-primary)" : "rgba(255,255,255,0.18)",
+                    transition: "width 0.4s",
+                  }}
+                />
+                <div style={{ width: 2, background: "rgba(0,0,0,0.4)", flexShrink: 0 }} />
+                <div
+                  style={{
+                    flex: 1,
+                    background: rightThemed ? "var(--club-primary)" : "rgba(255,255,255,0.18)",
+                  }}
+                />
+              </div>
+              <div className="flex justify-between mt-1">
+                <span className="text-[10px] text-white/30 tabular-nums">{leftPoss}%</span>
+                <span className="text-[10px]" style={{ color: "rgba(255,255,255,0.18)" }}>posse de bola</span>
+                <span className="text-[10px] text-white/30 tabular-nums">{rightPoss}%</span>
+              </div>
+            </div>
+          )}
+
+          {/* Three-column stats row */}
+          {(leftShots > 0 || rightShots > 0 || goalScorers.length > 0 || !!motm) && (
+            <div className="grid grid-cols-3 px-4 pb-3 pt-2 gap-x-2">
+
+              {/* Left team stats */}
+              <div className="flex flex-col gap-1 items-start justify-start">
+                {leftShots > 0 && (
+                  <div className="flex items-center gap-1">
+                    <span className="text-[10px] text-white/50 font-bold tabular-nums">{leftShots}</span>
+                    <span className="text-[10px] text-white/25">finalizações</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Center: scorers + MOTM */}
+              <div className="flex flex-col items-center gap-1">
+                {goalScorers.map((g, i) => (
+                  <span key={i} className="text-[10px] text-white/40 leading-tight text-center">
+                    ⚽ {g.name} {g.minute}&apos;
+                  </span>
+                ))}
+                {motm && (
+                  <span
+                    className="text-[10px] font-semibold mt-0.5"
+                    style={{ color: "#fbbf24" }}
+                  >
+                    ⭐ {motm.name.split(" ").at(-1)}
+                  </span>
+                )}
+              </div>
+
+              {/* Right team stats */}
+              <div className="flex flex-col gap-1 items-end justify-start">
+                {rightShots > 0 && (
+                  <div className="flex items-center gap-1">
+                    <span className="text-[10px] text-white/25">finalizações</span>
+                    <span className="text-[10px] text-white/50 font-bold tabular-nums">{rightShots}</span>
+                  </div>
+                )}
+              </div>
+
+            </div>
+          )}
         </div>
       )}
     </div>
