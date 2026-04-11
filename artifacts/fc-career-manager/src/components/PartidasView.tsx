@@ -305,14 +305,18 @@ function MatchCard({
               {/* Center: scorers + MOTM */}
               <div className="flex flex-col items-center gap-1">
                 {goalScorers.map((g, i) => (
-                  <span key={i} className="text-[10px] text-white/40 leading-tight text-center">
+                  <span
+                    key={i}
+                    className="text-[10px] text-white/50 leading-tight text-center px-2 py-0.5 rounded-full"
+                    style={{ background: "rgba(255,255,255,0.06)" }}
+                  >
                     ⚽ {g.name} {g.minute}&apos;
                   </span>
                 ))}
                 {motm && (
                   <span
-                    className="text-[10px] font-semibold mt-0.5"
-                    style={{ color: "#fbbf24" }}
+                    className="text-[10px] font-semibold mt-0.5 px-2 py-0.5 rounded-full"
+                    style={{ color: "#fbbf24", background: "rgba(234,179,8,0.1)" }}
                   >
                     ⭐ {motm.name.split(" ").at(-1)}
                   </span>
