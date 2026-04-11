@@ -4,7 +4,7 @@ WORKDIR /app
 RUN npm install -g pnpm@10.26.1
 
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
-COPY tsconfig.json ./
+COPY tsconfig.json tsconfig.base.json ./
 COPY lib/ ./lib/
 COPY artifacts/api-server/ ./artifacts/api-server/
 COPY artifacts/fc-career-manager/ ./artifacts/fc-career-manager/

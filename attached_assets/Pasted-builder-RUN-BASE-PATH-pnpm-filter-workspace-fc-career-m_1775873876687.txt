@@ -1,0 +1,39 @@
+builder
+RUN BASE_PATH=/ pnpm --filter @workspace/fc-career-manager run build
+961ms
+> @workspace/fc-career-manager@0.0.0 build /app/artifacts/fc-career-manager
+> vite build --config vite.config.ts
+▲ [WARNING] Cannot find base config file "./tsconfig.base.json" [tsconfig.json]
+    ../../tsconfig.json:2:13:
+      2 │   "extends": "./tsconfig.base.json",
+        ╵              ~~~~~~~~~~~~~~~~~~~~~~
+▲ [WARNING] Cannot find base config file "../../tsconfig.base.json" [tsconfig.json]
+    tsconfig.json:2:13:
+      2 │   "extends": "../../tsconfig.base.json",
+        ╵              ~~~~~~~~~~~~~~~~~~~~~~~~~~
+vite v7.3.1 building client environment for production...
+✓ 0 modules transformed.
+✗ Build failed in 31ms
+error during build:
+[vite:build-html] failed to resolve "extends":"../../tsconfig.base.json" in /app/artifacts/fc-career-manager/tsconfig.json
+file: /app/artifacts/fc-career-manager/index.html
+    at resolveExtends (file:///app/node_modules/.pnpm/vite@7.3.1_@types+node@25.3.5_jiti@2.6.1_lightningcss@1.31.1_tsx@4.21.0_yaml@2.8.2/node_modules/vite/dist/node/chunks/config.js:5809:8)
+    at parseExtends (file:///app/node_modules/.pnpm/vite@7.3.1_@types+node@25.3.5_jiti@2.6.1_lightningcss@1.31.1_tsx@4.21.0_yaml@2.8.2/node_modules/vite/dist/node/chunks/config.js:5775:71)
+    at parse$13 (file:///app/node_modules/.pnpm/vite@7.3.1_@types+node@25.3.5_jiti@2.6.1_lightningcss@1.31.1_tsx@4.21.0_yaml@2.8.2/node_modules/vite/dist/node/chunks/config.js:5677:23)
+    at async loadTsconfigJsonForFile (file:///app/node_modules/.pnpm/vite@7.3.1_@types+node@25.3.5_jiti@2.6.1_lightningcss@1.31.1_tsx@4.21.0_yaml@2.8.2/node_modules/vite/dist/node/chunks/config.js:6286:37)
+    at async transformWithEsbuild (file:///app/node_modules/.pnpm/vite@7.3.1_@types+node@25.3.5_jiti@2.6.1_lightningcss@1.31.1_tsx@4.21.0_yaml@2.8.2/node_modules/vite/dist/node/chunks/config.js:6086:55)
+    at async Object.transform (file:///app/node_modules/.pnpm/vite@7.3.1_@types+node@25.3.5_jiti@2.6.1_lightningcss@1.31.1_tsx@4.21.0_yaml@2.8.2/node_modules/vite/dist/node/chunks/config.js:6172:20)
+    at async transform (file:///app/node_modules/.pnpm/rollup@4.59.0/node_modules/rollup/dist/es/shared/node-entry.js:21269:16)
+    at async ModuleLoader.addModuleSource (file:///app/node_modules/.pnpm/rollup@4.59.0/node_modules/rollup/dist/es/shared/node-entry.js:21497:36)
+/app/artifacts/fc-career-manager:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @workspace/fc-career-manager@0.0.0 build: `vite build --config vite.config.ts`
+Exit status 1
+Dockerfile:14
+-------------------
+12 |     RUN pnpm install --frozen-lockfile
+13 |
+14 | >>> RUN BASE_PATH=/ pnpm --filter @workspace/fc-career-manager run build
+15 |
+16 |     RUN mkdir -p artifacts/api-server/public && \
+-------------------
+ERROR: failed to build: failed to solve: process "/bin/sh -c BASE_PATH=/ pnpm --filter @workspace/fc-career-manager run build" did not complete successfully: exit code: 1
