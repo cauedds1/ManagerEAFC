@@ -11,10 +11,11 @@ import { LesoesView } from "./LesoesView";
 import { SequenciasView } from "./SequenciasView";
 import { FinanceiroView } from "./FinanceiroView";
 import { ClubStatsView } from "./ClubStatsView";
+import { CompetitionResultsView } from "./CompetitionResultsView";
+import { TrophyCabinetView } from "./TrophyCabinetView";
 
-type ClubeSubTab = "elenco" | "estatisticas" | "lesoes" | "sequencias" | "financeiro";
+type ClubeSubTab = "elenco" | "estatisticas" | "lesoes" | "sequencias" | "financeiro" | "competicoes" | "trofeus";
 type StatsMiniTab = "jogadores" | "clube";
-type Scope = "atual" | "todas";
 
 const SUB_TABS: { id: ClubeSubTab; label: string; icon: string }[] = [
   { id: "elenco",       label: "Elenco",       icon: "👥" },
@@ -22,6 +23,8 @@ const SUB_TABS: { id: ClubeSubTab; label: string; icon: string }[] = [
   { id: "lesoes",       label: "Lesões",        icon: "🤕" },
   { id: "sequencias",   label: "Sequências",    icon: "🔥" },
   { id: "financeiro",   label: "Financeiro",    icon: "💰" },
+  { id: "competicoes",  label: "Competições",   icon: "🏆" },
+  { id: "trofeus",      label: "Troféus",       icon: "🥇" },
 ];
 
 interface ClubeViewProps {
@@ -40,10 +43,12 @@ interface ClubeViewProps {
   isReadOnly?: boolean;
 }
 
-function ScopeToggle({ scope, setScope }: { scope: Scope; setScope: (s: Scope) => void }) {
+type SeqScope = "atual" | "todas";
+
+function ScopeToggle({ scope, setScope }: { scope: SeqScope; setScope: (s: SeqScope) => void }) {
   return (
     <div className="flex rounded-xl overflow-hidden border border-white/10">
-      {(["atual", "todas"] as Scope[]).map((s) => (
+      {(["atual", "todas"] as SeqScope[]).map((s) => (
         <button
           key={s}
           onClick={() => setScope(s)}
@@ -77,26 +82,26 @@ export function ClubeView({
 }: ClubeViewProps) {
   const [sub, setSub] = useState<ClubeSubTab>("elenco");
   const [statsMini, setStatsMini] = useState<StatsMiniTab>("jogadores");
-  const [statsScope, setStatsScope] = useState<Scope>("atual");
-  const [seqScope, setSeqScope] = useState<Scope>("atual");
+  const [seqScope, setSeqScope] = useState<SeqScope>("atual");
+  const [statsScope, setStatsScope] = useState<SeqScope>("atual");
 
   const hasMultipleSeasons = seasons.length > 1;
   const allSeasonIds = seasons.map((s) => s.id);
 
-  const allMatchesForStats = useMemo<MatchRecord[] | undefined>(() => {
-    if (statsScope === "atual" || !hasMultipleSeasons) return undefined;
-    return allSeasonIds.flatMap((id) => getMatches(id));
-  }, [statsScope, hasMultipleSeasons, allSeasonIds]);
+  const allSeasonMatches = useMemo<MatchRecord[]>(
+    () => allSeasonIds.flatMap((id) => getMatches(id)),
+    [allSeasonIds]
+  );
 
-  const allStatsOverride = useMemo(() => {
-    if (statsScope === "atual" || !hasMultipleSeasons) return undefined;
-    return aggregatePlayerStats(allSeasonIds);
-  }, [statsScope, hasMultipleSeasons, allSeasonIds]);
+  const allStatsOverride = useMemo(
+    () => aggregatePlayerStats(allSeasonIds),
+    [allSeasonIds]
+  );
 
   const allMatchesForSeq = useMemo<MatchRecord[] | undefined>(() => {
     if (seqScope === "atual" || !hasMultipleSeasons) return undefined;
-    return allSeasonIds.flatMap((id) => getMatches(id));
-  }, [seqScope, hasMultipleSeasons, allSeasonIds]);
+    return allSeasonMatches;
+  }, [seqScope, hasMultipleSeasons, allSeasonMatches]);
 
   return (
     <div className="w-full">
@@ -170,7 +175,8 @@ export function ClubeView({
                   );
                 })}
               </div>
-              {hasMultipleSeasons && (
+              {/* Scope toggle only for Jogadores tab with multiple seasons */}
+              {hasMultipleSeasons && statsMini === "jogadores" && (
                 <ScopeToggle scope={statsScope} setScope={setStatsScope} />
               )}
             </div>
@@ -181,8 +187,8 @@ export function ClubeView({
                   careerId={careerId}
                   seasonId={seasonId}
                   allPlayers={allPlayers}
-                  statsOverride={allStatsOverride}
-                  matchesOverride={allMatchesForStats}
+                  statsOverride={statsScope === "todas" && hasMultipleSeasons ? allStatsOverride : undefined}
+                  matchesOverride={statsScope === "todas" && hasMultipleSeasons ? allSeasonMatches : undefined}
                 />
               </div>
             )}
@@ -190,8 +196,9 @@ export function ClubeView({
               <ClubStatsView
                 careerId={careerId}
                 seasonId={seasonId}
-                season={statsScope === "atual" ? career.season : undefined}
-                matchesOverride={allMatchesForStats}
+                season={career.season}
+                seasons={seasons}
+                allSeasonMatches={allSeasonMatches}
               />
             )}
           </div>
@@ -224,6 +231,18 @@ export function ClubeView({
               isReadOnly={isReadOnly}
             />
           </div>
+        )}
+        {sub === "competicoes" && (
+          <CompetitionResultsView
+            careerId={careerId}
+            seasonId={seasonId}
+            seasons={seasons}
+            clubName={career.clubName}
+            allSeasonMatches={allSeasonMatches}
+          />
+        )}
+        {sub === "trofeus" && (
+          <TrophyCabinetView careerId={careerId} />
         )}
       </div>
     </div>

@@ -1,13 +1,16 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { getMatches } from "@/lib/matchStorage";
 import { getMatchResult } from "@/types/match";
 import type { MatchRecord } from "@/types/match";
+import type { Season } from "@/types/career";
 
 interface Props {
   careerId: string;
   seasonId: string;
   season?: string;
+  seasons?: Season[];
   matchesOverride?: MatchRecord[];
+  allSeasonMatches?: MatchRecord[];
 }
 
 interface ClubStats {
@@ -17,11 +20,13 @@ interface ClubStats {
   losses: number;
   goalsFor: number;
   goalsAgainst: number;
+  ownGoals: number;
   possession: number[];
   shotsFor: number[];
   shotsAgainst: number[];
   yellowCards: number;
   redCards: number;
+  passAccuracyPerMatch: number[];
   home: { total: number; wins: number; draws: number; losses: number; goalsFor: number; goalsAgainst: number };
   away: { total: number; wins: number; draws: number; losses: number; goalsFor: number; goalsAgainst: number };
   recentForm: ("V" | "E" | "D")[];
@@ -39,9 +44,10 @@ function fmt1(n: number): string {
 function computeStats(matches: MatchRecord[]): ClubStats {
   const stats: ClubStats = {
     total: 0, wins: 0, draws: 0, losses: 0,
-    goalsFor: 0, goalsAgainst: 0,
+    goalsFor: 0, goalsAgainst: 0, ownGoals: 0,
     possession: [], shotsFor: [], shotsAgainst: [],
     yellowCards: 0, redCards: 0,
+    passAccuracyPerMatch: [],
     home: { total: 0, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0 },
     away: { total: 0, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0 },
     recentForm: [],
@@ -65,9 +71,19 @@ function computeStats(matches: MatchRecord[]): ClubStats {
       }
     }
 
-    for (const ps of Object.values(m.playerStats)) {
+    const playerValues = Object.values(m.playerStats);
+    const passAccList: number[] = [];
+    for (const ps of playerValues) {
       if (ps.yellowCard) stats.yellowCards++;
       if (ps.redCard) stats.redCards++;
+      if (ps.ownGoal) stats.ownGoals++;
+      if (ps.passAccuracy != null && ps.passAccuracy > 0) {
+        passAccList.push(ps.passAccuracy);
+      }
+    }
+    if (passAccList.length > 0) {
+      const matchAvg = passAccList.reduce((s, v) => s + v, 0) / passAccList.length;
+      stats.passAccuracyPerMatch.push(matchAvg);
     }
 
     if (m.location === "casa") {
@@ -143,6 +159,7 @@ function WDLBar({ wins, draws, losses, label }: WDLBarProps) {
   const wPct = (wins / total) * 100;
   const dPct = (draws / total) * 100;
   const lPct = (losses / total) * 100;
+  const aproveitamento = total > 0 ? ((wins * 3 + draws) / (total * 3)) * 100 : 0;
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between">
@@ -188,7 +205,7 @@ function WDLBar({ wins, draws, losses, label }: WDLBarProps) {
         <div className="ml-auto flex items-center gap-1">
           <span className="text-white/20 text-[10px]">aproveit.</span>
           <span className="text-white/50 text-xs font-semibold tabular-nums">
-            {total > 0 ? Math.round((wins / total) * 100) : 0}%
+            {Math.round(aproveitamento)}%
           </span>
         </div>
       </div>
@@ -202,21 +219,116 @@ const FORM_STYLE: Record<"V" | "E" | "D", { bg: string; color: string }> = {
   D: { bg: "rgba(239,68,68,0.18)",   color: "#f87171" },
 };
 
-export function ClubStatsView({ careerId, seasonId, season, matchesOverride }: Props) {
-  const matches = useMemo(() => {
-    const all = matchesOverride ?? getMatches(seasonId);
-    return (!matchesOverride && season) ? all.filter((m) => m.season === season) : all;
-  }, [matchesOverride, seasonId, season]);
+function FilterDropdown({
+  value,
+  onChange,
+  options,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  options: { value: string; label: string }[];
+}) {
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className="text-xs font-semibold rounded-xl px-3 py-1.5 outline-none cursor-pointer"
+      style={{
+        background: "rgba(255,255,255,0.06)",
+        color: "rgba(255,255,255,0.7)",
+        border: "1px solid rgba(255,255,255,0.1)",
+      }}
+    >
+      {options.map((o) => (
+        <option key={o.value} value={o.value} style={{ background: "#1a1a2e" }}>
+          {o.label}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+export function ClubStatsView({
+  careerId: _careerId,
+  seasonId,
+  season,
+  seasons,
+  matchesOverride,
+  allSeasonMatches,
+}: Props) {
+  const hasMultipleSeasons = (seasons?.length ?? 0) > 1;
+
+  const [filterSeasonId, setFilterSeasonId] = useState<string>(seasonId);
+  const [filterCompetition, setFilterCompetition] = useState<string>("todas");
+
+  const baseMatches = useMemo<MatchRecord[]>(() => {
+    if (filterSeasonId === "todas") {
+      return allSeasonMatches ?? matchesOverride ?? getMatches(seasonId);
+    }
+    if (filterSeasonId === seasonId) {
+      const all = matchesOverride ?? getMatches(seasonId);
+      return (!matchesOverride && season) ? all.filter((m) => m.season === season) : all;
+    }
+    return getMatches(filterSeasonId);
+  }, [filterSeasonId, seasonId, season, matchesOverride, allSeasonMatches]);
+
+  const competitions = useMemo<string[]>(() => {
+    const set = new Set<string>();
+    for (const m of baseMatches) {
+      if (m.tournament) set.add(m.tournament);
+    }
+    return Array.from(set).sort();
+  }, [baseMatches]);
+
+  const matches = useMemo<MatchRecord[]>(() => {
+    if (filterCompetition === "todas") return baseMatches;
+    return baseMatches.filter((m) => m.tournament === filterCompetition);
+  }, [baseMatches, filterCompetition]);
 
   const stats = useMemo(() => computeStats(matches), [matches]);
 
+  const seasonOptions = useMemo(() => {
+    const opts: { value: string; label: string }[] = [];
+    if (seasons && seasons.length > 0) {
+      for (const s of [...seasons].sort((a, b) => b.createdAt - a.createdAt)) {
+        opts.push({ value: s.id, label: s.label + (s.id === seasonId ? " (atual)" : "") });
+      }
+      opts.push({ value: "todas", label: "Todas as temporadas" });
+    }
+    return opts;
+  }, [seasons, seasonId]);
+
+  const competitionOptions = useMemo(() => {
+    const opts: { value: string; label: string }[] = [{ value: "todas", label: "Todas as competições" }];
+    for (const c of competitions) {
+      opts.push({ value: c, label: c });
+    }
+    return opts;
+  }, [competitions]);
+
+  const showFilters = hasMultipleSeasons || competitions.length > 1;
+
   if (matches.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 gap-4 text-center">
-        <span className="text-5xl">🏟️</span>
-        <p className="text-white/40 text-sm">
-          Registre partidas para ver as estatísticas do clube
-        </p>
+      <div>
+        {showFilters && (
+          <div className="flex flex-wrap gap-2 pt-4 pb-3">
+            {hasMultipleSeasons && (
+              <FilterDropdown value={filterSeasonId} onChange={(v) => { setFilterSeasonId(v); setFilterCompetition("todas"); }} options={seasonOptions} />
+            )}
+            {competitions.length > 1 && (
+              <FilterDropdown value={filterCompetition} onChange={setFilterCompetition} options={competitionOptions} />
+            )}
+          </div>
+        )}
+        <div className="flex flex-col items-center justify-center py-20 gap-4 text-center">
+          <span className="text-5xl">🏟️</span>
+          <p className="text-white/40 text-sm">
+            {filterCompetition !== "todas" || filterSeasonId === "todas"
+              ? "Nenhuma partida encontrada com os filtros selecionados"
+              : "Registre partidas para ver as estatísticas do clube"}
+          </p>
+        </div>
       </div>
     );
   }
@@ -229,9 +341,31 @@ export function ClubStatsView({ careerId, seasonId, season, matchesOverride }: P
   const goalDiff = stats.goalsFor - stats.goalsAgainst;
   const hasPossession = stats.possession.length > 0;
   const hasShots = stats.shotsFor.length > 0;
+  const aproveitamento = stats.total > 0 ? ((stats.wins * 3 + stats.draws) / (stats.total * 3)) * 100 : 0;
+  const avgPassAccuracy = stats.passAccuracyPerMatch.length > 0 ? avg(stats.passAccuracyPerMatch) : null;
 
   return (
     <div className="w-full space-y-6 py-5">
+      {/* Filtros */}
+      {showFilters && (
+        <div className="flex flex-wrap gap-2">
+          {hasMultipleSeasons && (
+            <FilterDropdown
+              value={filterSeasonId}
+              onChange={(v) => { setFilterSeasonId(v); setFilterCompetition("todas"); }}
+              options={seasonOptions}
+            />
+          )}
+          {competitions.length > 1 && (
+            <FilterDropdown
+              value={filterCompetition}
+              onChange={setFilterCompetition}
+              options={competitionOptions}
+            />
+          )}
+        </div>
+      )}
+
       {/* Forma recente */}
       {stats.recentForm.length > 0 && (
         <div>
@@ -265,6 +399,21 @@ export function ClubStatsView({ careerId, seasonId, season, matchesOverride }: P
             <WDLBar wins={stats.away.wins} draws={stats.away.draws} losses={stats.away.losses} label="✈️ Fora" />
           )}
         </div>
+        {/* % Aproveitamento destaque */}
+        <div
+          className="mt-3 flex items-center justify-between px-4 py-3 rounded-2xl"
+          style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
+        >
+          <span className="text-white/35 text-xs font-semibold uppercase tracking-wide">% Aproveitamento</span>
+          <span
+            className="text-2xl font-black tabular-nums"
+            style={{
+              color: aproveitamento >= 60 ? "#34d399" : aproveitamento >= 40 ? "#fbbf24" : "#f87171",
+            }}
+          >
+            {Math.round(aproveitamento)}%
+          </span>
+        </div>
       </div>
 
       {/* Gols */}
@@ -292,10 +441,10 @@ export function ClubStatsView({ careerId, seasonId, season, matchesOverride }: P
             icon="⚖️"
           />
           <StatCard
-            label="Jogos"
-            value={stats.total}
-            sub={`temp. ${season ?? ""}`}
-            icon="📅"
+            label="Gols contra"
+            value={stats.ownGoals}
+            accent={stats.ownGoals > 0 ? "#fb923c" : "rgba(255,255,255,0.85)"}
+            icon="🤦"
           />
         </div>
 
@@ -332,6 +481,50 @@ export function ClubStatsView({ careerId, seasonId, season, matchesOverride }: P
           </div>
         )}
       </div>
+
+      {/* Passe */}
+      {avgPassAccuracy !== null && (
+        <div>
+          <p className="text-white/25 text-[11px] font-bold tracking-widest uppercase mb-3 px-0.5">Passes</p>
+          <div
+            className="flex items-center justify-between px-4 py-4 rounded-2xl"
+            style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}
+          >
+            <div>
+              <p className="text-white/35 text-[11px] font-semibold tracking-wide uppercase mb-1">Precisão média</p>
+              <p className="text-white/25 text-[10px]">
+                Média dos jogadores · {stats.passAccuracyPerMatch.length} partidas com dados
+              </p>
+            </div>
+            <span
+              className="text-3xl font-black tabular-nums"
+              style={{
+                color: avgPassAccuracy >= 80 ? "#34d399" : avgPassAccuracy >= 65 ? "#fbbf24" : "#f87171",
+              }}
+            >
+              {Math.round(avgPassAccuracy)}%
+            </span>
+          </div>
+          <div
+            className="mt-2 px-4 py-2 rounded-xl"
+            style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}
+          >
+            <div className="flex rounded-full overflow-hidden h-2 bg-white/5">
+              <div
+                className="h-full transition-all duration-700 rounded-full"
+                style={{
+                  width: `${avgPassAccuracy}%`,
+                  background: avgPassAccuracy >= 80 ? "#34d399" : avgPassAccuracy >= 65 ? "#fbbf24" : "#f87171",
+                }}
+              />
+            </div>
+            <div className="flex justify-between mt-1">
+              <span className="text-white/15 text-[10px]">0%</span>
+              <span className="text-white/15 text-[10px]">100%</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Posse + Finalizações */}
       {(hasPossession || hasShots) && (
