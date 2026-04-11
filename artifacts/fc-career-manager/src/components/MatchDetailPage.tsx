@@ -4,6 +4,7 @@ import { getMatchResult, RESULT_STYLE, LOCATION_ICONS, LOCATION_LABELS } from "@
 import type { SquadPlayer } from "@/lib/squadCache";
 import { getCachedClubList } from "@/lib/clubListCache";
 import { searchStaticClubs } from "@/lib/staticClubList";
+import { FootballPitch, pickBestEleven } from "./FootballPitch";
 
 function resolveOpponentLogo(name: string, stored?: string): string | undefined {
   if (stored) return stored;
@@ -113,231 +114,6 @@ function PlayerPhoto({
   );
 }
 
-function PitchPlayerPin({
-  player,
-  stats,
-  isMotm,
-  onClick,
-}: {
-  player: SquadPlayer;
-  stats?: PlayerMatchStats;
-  isMotm: boolean;
-  onClick: () => void;
-}) {
-  const rating = stats?.rating ?? 0;
-  const color = rating > 0 ? ratingColor(rating) : "rgba(255,255,255,0.35)";
-  const lname = lastName(player.name);
-  const hasYellow = stats?.yellowCard;
-  const hasRed = stats?.redCard;
-  const scored = stats?.goals && stats.goals.length > 0;
-
-  return (
-    <button
-      onClick={onClick}
-      className="flex flex-col items-center gap-0.5 group"
-      style={{ minWidth: 52, maxWidth: 72 }}
-    >
-      <div style={{ position: "relative" }}>
-        <PlayerPhoto photo={player.photo} name={player.name} size={44} borderColor={color} />
-        {player.number != null && (
-          <span
-            style={{
-              position: "absolute",
-              top: -4,
-              left: -5,
-              background: "rgba(0,0,0,0.75)",
-              color: "rgba(255,255,255,0.85)",
-              borderRadius: "50%",
-              fontSize: 9,
-              fontWeight: 900,
-              width: 17,
-              height: 17,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              border: "1px solid rgba(255,255,255,0.15)",
-            }}
-          >
-            {player.number}
-          </span>
-        )}
-        {rating > 0 && (
-          <span
-            style={{
-              position: "absolute",
-              bottom: -5,
-              right: -6,
-              background: color,
-              color: "#000",
-              borderRadius: 4,
-              fontSize: 9,
-              fontWeight: 900,
-              padding: "1px 3px",
-              lineHeight: 1.3,
-              boxShadow: "0 1px 3px rgba(0,0,0,0.5)",
-            }}
-          >
-            {rating.toFixed(1)}
-          </span>
-        )}
-        {isMotm && (
-          <span
-            style={{
-              position: "absolute",
-              top: -4,
-              right: -6,
-              fontSize: 11,
-              filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.8))",
-            }}
-          >
-            ⭐
-          </span>
-        )}
-        <div
-          style={{
-            position: "absolute",
-            bottom: -5,
-            left: -5,
-            display: "flex",
-            gap: 1,
-          }}
-        >
-          {scored && (
-            <span style={{ fontSize: 9, filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.8))" }}>
-              ⚽
-            </span>
-          )}
-          {hasYellow && (
-            <span
-              style={{
-                width: 7,
-                height: 10,
-                background: "#fbbf24",
-                borderRadius: 1,
-                boxShadow: "0 1px 2px rgba(0,0,0,0.5)",
-              }}
-            />
-          )}
-          {hasRed && (
-            <span
-              style={{
-                width: 7,
-                height: 10,
-                background: "#ef4444",
-                borderRadius: 1,
-                boxShadow: "0 1px 2px rgba(0,0,0,0.5)",
-              }}
-            />
-          )}
-        </div>
-      </div>
-      <span
-        style={{
-          fontSize: 10,
-          fontWeight: 700,
-          color: "rgba(255,255,255,0.9)",
-          textShadow: "0 1px 3px rgba(0,0,0,0.9)",
-          lineHeight: 1.2,
-          maxWidth: 68,
-          textAlign: "center",
-          whiteSpace: "nowrap",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-        }}
-      >
-        {lname}
-      </span>
-    </button>
-  );
-}
-
-function PitchView({
-  starters,
-  playerStats,
-  motmPlayerId,
-  onPlayerClick,
-}: {
-  starters: SquadPlayer[];
-  playerStats: Record<number, PlayerMatchStats>;
-  motmPlayerId?: number;
-  onPlayerClick: (p: SquadPlayer) => void;
-}) {
-  const gks = starters.filter((p) => p.positionPtBr === "GOL");
-  const defs = starters.filter((p) => p.positionPtBr === "DEF");
-  const mids = starters.filter((p) => p.positionPtBr === "MID");
-  const atas = starters.filter((p) => p.positionPtBr === "ATA");
-
-  // ATA no topo (ataque), GOL na base (de baixo para cima)
-  const rows = [atas, mids, defs, gks];
-
-  return (
-    <div
-      style={{
-        position: "relative",
-        background: "linear-gradient(180deg, #1c6b30 0%, #22813a 45%, #22813a 55%, #1c6b30 100%)",
-        borderRadius: 16,
-        overflow: "hidden",
-        paddingTop: 24,
-        paddingBottom: 24,
-        paddingLeft: 12,
-        paddingRight: 12,
-        minHeight: 340,
-      }}
-    >
-      {/* Field markings */}
-      <svg
-        style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}
-        viewBox="0 0 320 360"
-        preserveAspectRatio="none"
-      >
-        <rect x="16" y="6" width="288" height="348" fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="1.5" />
-        <line x1="16" y1="180" x2="304" y2="180" stroke="rgba(255,255,255,0.18)" strokeWidth="1.5" />
-        <circle cx="160" cy="180" r="36" fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="1.5" />
-        <circle cx="160" cy="180" r="2" fill="rgba(255,255,255,0.25)" />
-        <rect x="92" y="6" width="136" height="60" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="1.5" />
-        <rect x="120" y="6" width="80" height="24" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="1" />
-        <circle cx="160" cy="56" r="2" fill="rgba(255,255,255,0.2)" />
-        <rect x="92" y="294" width="136" height="60" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="1.5" />
-        <rect x="120" y="330" width="80" height="24" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="1" />
-        <circle cx="160" cy="304" r="2" fill="rgba(255,255,255,0.2)" />
-      </svg>
-
-      {/* Players */}
-      <div
-        style={{
-          position: "relative",
-          display: "flex",
-          flexDirection: "column",
-          gap: 18,
-          height: "100%",
-        }}
-      >
-        {rows.map((row, i) => (
-          <div
-            key={i}
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "flex-start",
-              gap: row.length > 4 ? 4 : 12,
-              flexWrap: row.length > 5 ? "wrap" : "nowrap",
-            }}
-          >
-            {row.map((player) => (
-              <PitchPlayerPin
-                key={player.id}
-                player={player}
-                stats={playerStats[player.id]}
-                isMotm={player.id === motmPlayerId}
-                onClick={() => onPlayerClick(player)}
-              />
-            ))}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 function StatRow({ label, leftVal, rightVal, leftHigher }: {
   label: string;
@@ -463,8 +239,8 @@ function PlayerDetailPanel({
         style={{
           width: "min(380px, 95vw)",
           height: "100%",
-          background: "#0d1b2e",
-          borderLeft: "1px solid rgba(255,255,255,0.08)",
+          background: "linear-gradient(160deg, rgba(var(--club-primary-rgb, 13 27 46), 0.25) 0%, #07111d 60%)",
+          borderLeft: "1px solid rgba(var(--club-primary-rgb, 59 130 246), 0.18)",
           boxShadow: "-8px 0 40px rgba(0,0,0,0.5)",
           padding: 0,
         }}
@@ -758,6 +534,8 @@ export function MatchDetailPage({
     .map((id) => allPlayers.find((p) => p.id === id))
     .filter((p): p is SquadPlayer => !!p);
 
+  const sortedStarterIds = pickBestEleven(starters);
+
   const subs = match.subIds
     .map((id) => allPlayers.find((p) => p.id === id))
     .filter((p): p is SquadPlayer => !!p);
@@ -923,12 +701,16 @@ export function MatchDetailPage({
         <div>
           <p className="text-white/30 text-[10px] font-bold tracking-widest uppercase mb-2">Titulares</p>
           {starters.length > 0 ? (
-            <PitchView
-              starters={starters}
-              playerStats={match.playerStats}
-              motmPlayerId={match.motmPlayerId}
-              onPlayerClick={setSelectedPlayer}
-            />
+            <div className="flex justify-center">
+              <div className="w-full max-w-[420px]">
+                <FootballPitch
+                  players={allPlayers}
+                  starterIds={sortedStarterIds}
+                  onPlayerClick={setSelectedPlayer}
+                  className="w-full"
+                />
+              </div>
+            </div>
           ) : (
             <div
               className="rounded-2xl flex items-center justify-center py-16"
