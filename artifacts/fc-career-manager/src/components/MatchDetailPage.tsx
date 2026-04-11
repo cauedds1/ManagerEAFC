@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import type { MatchRecord, PlayerMatchStats } from "@/types/match";
 import { getMatchResult, RESULT_STYLE, LOCATION_ICONS, LOCATION_LABELS } from "@/types/match";
 import type { SquadPlayer } from "@/lib/squadCache";
@@ -197,7 +198,12 @@ function PlayerDetailPanel({
   useEffect(() => {
     const h = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     document.addEventListener("keydown", h);
-    return () => document.removeEventListener("keydown", h);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", h);
+      document.body.style.overflow = prev;
+    };
   }, [onClose]);
 
   const events: { label: string; minute?: number; color: string }[] = [
@@ -221,7 +227,7 @@ function PlayerDetailPanel({
   const hasGoals = stats?.goals && stats.goals.length > 0;
   const hasExtras = extraStats.length > 0;
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       style={{ backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", background: "rgba(0,0,0,0.65)" }}
@@ -360,7 +366,8 @@ function PlayerDetailPanel({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
