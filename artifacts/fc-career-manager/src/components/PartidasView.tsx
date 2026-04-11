@@ -176,16 +176,21 @@ function MatchCard({
   const isDraw   = leftScore === rightScore;
 
   const glowColor =
-    result === "vitoria" ? "rgba(16,185,129,0.07)"
-    : result === "derrota" ? "rgba(239,68,68,0.07)"
-    : "rgba(148,163,184,0.04)";
+    result === "vitoria" ? "rgba(16,185,129,0.22)"
+    : result === "derrota" ? "rgba(239,68,68,0.22)"
+    : "rgba(200,210,220,0.10)";
+
+  const borderColor =
+    result === "vitoria" ? "rgba(52,211,153,0.35)"
+    : result === "derrota" ? "rgba(248,113,113,0.35)"
+    : "rgba(148,163,184,0.20)";
 
   return (
     <div
       className="rounded-2xl overflow-hidden"
       style={{
-        background: `linear-gradient(160deg, ${glowColor} 0%, rgba(255,255,255,0.02) 55%)`,
-        border: "1px solid rgba(255,255,255,0.08)",
+        background: `linear-gradient(150deg, ${glowColor} 0%, rgba(255,255,255,0.025) 50%)`,
+        border: `1px solid ${borderColor}`,
       }}
     >
       {/* ── Meta row ── */}
