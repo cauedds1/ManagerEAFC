@@ -239,8 +239,8 @@ function PlayerDetailPanel({
         style={{
           width: "min(380px, 95vw)",
           height: "100%",
-          background: "linear-gradient(160deg, rgba(var(--club-primary-rgb, 13 27 46), 0.25) 0%, #07111d 60%)",
-          borderLeft: "1px solid rgba(var(--club-primary-rgb, 59 130 246), 0.18)",
+          background: "linear-gradient(160deg, rgba(var(--club-primary-rgb, 13,27,46), 0.25) 0%, #07111d 60%)",
+          borderLeft: "1px solid rgba(var(--club-primary-rgb, 59,130,246), 0.18)",
           boxShadow: "-8px 0 40px rgba(0,0,0,0.5)",
           padding: 0,
         }}
