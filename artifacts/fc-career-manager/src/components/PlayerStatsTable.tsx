@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef, useEffect } from "react";
 import { getAllPlayerStats, getAllPlayerOverrides } from "@/lib/playerStatsStorage";
 import { getMatches } from "@/lib/matchStorage";
 import type { SquadPlayer } from "@/lib/squadCache";
@@ -50,6 +50,46 @@ const FILTER_TABS: { id: FilterTab; label: string; icon: string }[] = [
   { id: "defesa",       label: "Defesa",      icon: "🛡️" },
   { id: "goleiro",      label: "Goleiro",     icon: "🧤" },
 ];
+
+const LEGEND_COMMON: { sigla: string; desc: string }[] = [
+  { sigla: "#",    desc: "Nº da camisa" },
+  { sigla: "Pos",  desc: "Posição" },
+  { sigla: "J",    desc: "Jogos totais" },
+  { sigla: "S11",  desc: "Jogos como titular (Started 11)" },
+  { sigla: "Nota", desc: "Nota média por jogo" },
+];
+
+const LEGEND_BY_TAB: Record<FilterTab, { sigla: string; desc: string }[]> = {
+  ataque: [
+    { sigla: "G",     desc: "Gols" },
+    { sigla: "A",     desc: "Assistências" },
+    { sigla: "G+A",   desc: "Gols + Assistências" },
+    { sigla: "Hat",   desc: "Hat-tricks (3 ou + gols em 1 jogo)" },
+    { sigla: "Pên✗",  desc: "Pênaltis perdidos" },
+    { sigla: "OVR",   desc: "Overall (nota geral do jogador)" },
+  ],
+  intermediario: [
+    { sigla: "A",      desc: "Assistências" },
+    { sigla: "Passes", desc: "Passes totais" },
+    { sigla: "Prec%",  desc: "Precisão de passes (%)" },
+    { sigla: "PC",     desc: "Passes chave" },
+    { sigla: "Drib",   desc: "Dribles completados" },
+    { sigla: "OVR",    desc: "Overall (nota geral do jogador)" },
+  ],
+  defesa: [
+    { sigla: "Rec", desc: "Recuperações de bola" },
+    { sigla: "Per", desc: "Perdas de posse" },
+    { sigla: "CA",  desc: "Cartão amarelo" },
+    { sigla: "CV",  desc: "Cartão vermelho" },
+    { sigla: "OVR", desc: "Overall (nota geral do jogador)" },
+  ],
+  goleiro: [
+    { sigla: "Def",  desc: "Defesas (finalizações defendidas)" },
+    { sigla: "GS",   desc: "Gols sofridos" },
+    { sigla: "Pên✓", desc: "Pênaltis defendidos" },
+    { sigla: "OVR",  desc: "Overall (nota geral do jogador)" },
+  ],
+};
 
 function PlayerPhoto({ src, name }: { src: string; name: string }) {
   const [err, setErr] = useState(!src);
@@ -138,6 +178,19 @@ export function PlayerStatsTable({ careerId, seasonId, allPlayers, statsOverride
   const [filter, setFilter] = useState<FilterTab>("ataque");
   const [sortCol, setSortCol] = useState<SortCol>("goals");
   const [asc, setAsc] = useState(false);
+  const [showLegend, setShowLegend] = useState(false);
+  const legendRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showLegend) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (legendRef.current && !legendRef.current.contains(e.target as Node)) {
+        setShowLegend(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showLegend]);
 
   const rawStats = useMemo(() => statsOverride ?? getAllPlayerStats(seasonId), [statsOverride, seasonId]);
   const overrides = useMemo(() => getAllPlayerOverrides(careerId), [careerId]);
@@ -333,6 +386,68 @@ export function PlayerStatsTable({ careerId, seasonId, allPlayers, statsOverride
             </button>
           );
         })}
+
+        {/* Legend button */}
+        <div className="relative" ref={legendRef}>
+          <button
+            onClick={() => setShowLegend((v) => !v)}
+            title="Legenda das siglas"
+            className="flex items-center justify-center w-6 h-6 rounded-md transition-all duration-200"
+            style={{
+              background: showLegend ? "rgba(var(--club-primary-rgb),0.18)" : "rgba(255,255,255,0.05)",
+              border: showLegend ? "1px solid rgba(var(--club-primary-rgb),0.3)" : "1px solid rgba(255,255,255,0.08)",
+              color: showLegend ? "var(--club-primary)" : "rgba(255,255,255,0.35)",
+            }}
+          >
+            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="16" x2="12" y2="12" />
+              <line x1="12" y1="8" x2="12.01" y2="8" />
+            </svg>
+          </button>
+
+          {showLegend && (
+            <div
+              className="absolute left-0 top-8 z-30 rounded-xl shadow-2xl py-3 px-4 min-w-[230px]"
+              style={{
+                background: "#141024",
+                border: "1px solid rgba(255,255,255,0.1)",
+              }}
+            >
+              <p className="text-white/30 text-[10px] font-bold uppercase tracking-widest mb-2">
+                Siglas — {FILTER_TABS.find((f) => f.id === filter)?.label}
+              </p>
+              <div className="space-y-1">
+                {LEGEND_COMMON.map(({ sigla, desc }) => (
+                  <div key={sigla} className="flex items-baseline gap-2">
+                    <span
+                      className="text-[11px] font-bold tabular-nums flex-shrink-0 w-10 text-right"
+                      style={{ color: "rgba(var(--club-primary-rgb),0.8)" }}
+                    >
+                      {sigla}
+                    </span>
+                    <span className="text-white/50 text-[11px]">{desc}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="my-2.5" style={{ borderTop: "1px solid rgba(255,255,255,0.07)" }} />
+              <div className="space-y-1">
+                {LEGEND_BY_TAB[filter].map(({ sigla, desc }) => (
+                  <div key={sigla} className="flex items-baseline gap-2">
+                    <span
+                      className="text-[11px] font-bold tabular-nums flex-shrink-0 w-10 text-right"
+                      style={{ color: "rgba(var(--club-primary-rgb),0.8)" }}
+                    >
+                      {sigla}
+                    </span>
+                    <span className="text-white/50 text-[11px]">{desc}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
         {filter === "goleiro" && visibleRows.length === 0 && (
           <span className="text-white/25 text-xs ml-2">Nenhum goleiro com dados</span>
         )}
