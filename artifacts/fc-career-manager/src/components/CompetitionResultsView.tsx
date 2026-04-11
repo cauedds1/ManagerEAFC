@@ -1,6 +1,5 @@
 import { useState, useMemo } from "react";
 import type { Season } from "@/types/career";
-import type { MatchRecord } from "@/types/match";
 import { getMatches } from "@/lib/matchStorage";
 import {
   getCompetitionResults,
@@ -22,7 +21,6 @@ interface Props {
   seasonId: string;
   seasons: Season[];
   clubName: string;
-  allSeasonMatches: MatchRecord[];
 }
 
 function FilterDropdown({
@@ -715,7 +713,6 @@ export function CompetitionResultsView({
   seasonId,
   seasons,
   clubName,
-  allSeasonMatches: _allSeasonMatches,
 }: Props) {
   const [selectedSeasonId, setSelectedSeasonId] = useState(seasonId);
   const [results, setResults] = useState<CompetitionResult[]>(() => getCompetitionResults(careerId));

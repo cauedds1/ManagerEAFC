@@ -238,7 +238,6 @@ export function ClubeView({
             seasonId={seasonId}
             seasons={seasons}
             clubName={career.clubName}
-            allSeasonMatches={allSeasonMatches}
           />
         )}
         {sub === "trofeus" && (

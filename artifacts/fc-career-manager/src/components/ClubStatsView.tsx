@@ -306,17 +306,19 @@ export function ClubStatsView({
     return opts;
   }, [competitions]);
 
-  const showFilters = hasMultipleSeasons || competitions.length > 1;
+  const showSeasonFilter = hasMultipleSeasons;
+  const showCompFilter = competitionOptions.length > 1;
+  const showFilters = showSeasonFilter || showCompFilter;
 
   if (matches.length === 0) {
     return (
       <div>
         {showFilters && (
           <div className="flex flex-wrap gap-2 pt-4 pb-3">
-            {hasMultipleSeasons && (
+            {showSeasonFilter && (
               <FilterDropdown value={filterSeasonId} onChange={(v) => { setFilterSeasonId(v); setFilterCompetition("todas"); }} options={seasonOptions} />
             )}
-            {competitions.length > 1 && (
+            {showCompFilter && (
               <FilterDropdown value={filterCompetition} onChange={setFilterCompetition} options={competitionOptions} />
             )}
           </div>
@@ -349,14 +351,14 @@ export function ClubStatsView({
       {/* Filtros */}
       {showFilters && (
         <div className="flex flex-wrap gap-2">
-          {hasMultipleSeasons && (
+          {showSeasonFilter && (
             <FilterDropdown
               value={filterSeasonId}
               onChange={(v) => { setFilterSeasonId(v); setFilterCompetition("todas"); }}
               options={seasonOptions}
             />
           )}
-          {competitions.length > 1 && (
+          {showCompFilter && (
             <FilterDropdown
               value={filterCompetition}
               onChange={setFilterCompetition}
