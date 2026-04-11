@@ -473,6 +473,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
         </header>
 
         <div
+          data-dashboard-nav="1"
           className="sticky top-0 z-30"
           style={{ background: "rgba(var(--club-primary-rgb), 0.06)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", borderBottom: "1px solid var(--surface-border)" }}
         >

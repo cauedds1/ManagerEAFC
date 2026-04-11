@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useLayoutEffect, useRef } from "react";
 import type { MatchRecord, PlayerMatchStats } from "@/types/match";
 import { getMatchResult, RESULT_STYLE, LOCATION_ICONS, LOCATION_LABELS } from "@/types/match";
 import type { SquadPlayer } from "@/lib/squadCache";
@@ -152,6 +152,20 @@ function PlayerDetailPanel({
   onClose: () => void;
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
+  const [navBottom, setNavBottom] = useState(44);
+
+  useLayoutEffect(() => {
+    const measure = () => {
+      const nav = document.querySelector("[data-dashboard-nav]");
+      if (nav) {
+        setNavBottom(nav.getBoundingClientRect().bottom);
+      }
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, []);
+
   const stats = match.playerStats[player.id];
   const isStarter = match.starterIds.includes(player.id);
   const minutes = stats ? calcMinutes(player.id, stats, match) : 0;
@@ -229,8 +243,12 @@ function PlayerDetailPanel({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex"
-      style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(2px)" }}
+      className="fixed left-0 right-0 bottom-0 z-50 flex"
+      style={{
+        top: navBottom,
+        background: "rgba(0,0,0,0.55)",
+        backdropFilter: "blur(2px)",
+      }}
       onClick={onClose}
     >
       <div
