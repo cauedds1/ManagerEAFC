@@ -17,10 +17,10 @@ import type { SquadPlayer } from "@/lib/squadCache";
 import type { MatchRecord } from "@/types/match";
 import { getMatchResult } from "@/types/match";
 import { getMatches as getMatchesForStorage } from "@/lib/matchStorage";
-import { buildPlayerPerformanceContext, buildPlayerContextString } from "@/lib/playerContext";
+import { buildPlayerPerformanceContext, buildPlayerContextString, buildSquadOvrContext } from "@/lib/playerContext";
 import { stepPlayerMood } from "@/lib/playerPerformanceEngine";
 import { getMembers, addNotification } from "@/lib/diretoriaStorage";
-import { getAllPlayerStats } from "@/lib/playerStatsStorage";
+import { getAllPlayerStats, getAllPlayerOverrides } from "@/lib/playerStatsStorage";
 import { getLeaguePosition } from "@/lib/leagueStorage";
 import { getTransfers } from "@/lib/transferStorage";
 
@@ -274,6 +274,7 @@ function AddPostModal({
           clubDescription: career.clubDescription || undefined,
           projeto: career.projeto || undefined,
           playersContext: playerContextStr || undefined,
+          squadOvrContext: squadOvrContext || undefined,
           historicalContext: historicalContext || undefined,
           recentPostsContext: recentPostsContext || undefined,
           customPortal: isCustom ? {
@@ -891,6 +892,12 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
     const items = buildPlayerPerformanceContext(seasonId, allPlayers, career.id);
     return buildPlayerContextString(items);
   }, [seasonId, allPlayers, career.id]);
+
+  const squadOvrContext = useMemo(() => {
+    if (allPlayers.length === 0) return "";
+    const overrides = getAllPlayerOverrides(career.id);
+    return buildSquadOvrContext(allPlayers, overrides);
+  }, [allPlayers, career.id]);
 
   const historicalContext = useMemo(() => {
     if (pastSeasons.length === 0) return undefined;
