@@ -144,7 +144,7 @@ function CustomPortalModal({
       <input ref={photoInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
       <div
         className="relative w-full max-w-md rounded-3xl overflow-hidden flex flex-col"
-        style={{ background: "var(--color-surface, #1a1a2e)", border: "1px solid rgba(var(--club-primary-rgb),0.2)", maxHeight: "90vh" }}
+        style={{ background: "var(--app-bg-lighter)", border: "1px solid rgba(var(--club-primary-rgb),0.2)", maxHeight: "90vh" }}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 pt-6 pb-4" style={{ borderBottom: "1px solid rgba(var(--club-primary-rgb),0.1)" }}>
