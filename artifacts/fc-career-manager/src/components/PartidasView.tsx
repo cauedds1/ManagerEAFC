@@ -192,7 +192,7 @@ function MatchCard({
     <div
       className="rounded-2xl overflow-hidden"
       style={{
-        background: `linear-gradient(150deg, ${glowColor} 0%, rgba(255,255,255,0.025) 50%)`,
+        background: `linear-gradient(${isHome ? 135 : 225}deg, ${glowColor} 0%, rgba(255,255,255,0.025) 50%)`,
         border: `1px solid ${borderColor}`,
         cursor: onClick ? "pointer" : "default",
       }}

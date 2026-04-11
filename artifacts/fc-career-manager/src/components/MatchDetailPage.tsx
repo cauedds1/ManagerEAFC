@@ -488,7 +488,7 @@ export function MatchDetailPage({
       : "rgba(148,163,184,0.06)";
 
   // Gradiente vem do lado do meu escudo (esquerda=casa, direita=fora)
-  const gradientAngle = isHome ? 160 : 200;
+  const gradientAngle = isHome ? 135 : 225;
 
   const dateStr = match.date
     ? new Date(match.date + "T12:00:00").toLocaleDateString("pt-BR", {
