@@ -4,7 +4,8 @@ export type PortalTone =
   | "jornalistico"
   | "apaixonado"
   | "critico"
-  | "ironico";
+  | "ironico"
+  | "agressivo";
 
 export const PORTAL_TONES: { id: PortalTone; emoji: string; label: string; description: string }[] = [
   { id: "humoristico",  emoji: "😂", label: "Humorístico",  description: "Posts engraçados, memes e piadas. Não leva nada a sério." },
@@ -13,6 +14,7 @@ export const PORTAL_TONES: { id: PortalTone; emoji: string; label: string; descr
   { id: "ironico",      emoji: "😏", label: "Irônico",       description: "Sarcástico e espirituoso. Tudo com uma dose de ironia." },
   { id: "jornalistico", emoji: "📰", label: "Jornalístico",  description: "Reportagens elaboradas com contexto e profundidade." },
   { id: "serio",        emoji: "🎯", label: "Sério",         description: "Cobertura factual, objetiva e sem exageros." },
+  { id: "agressivo",    emoji: "💢", label: "Agressivo",     description: "Sem filtro. Xinga, se exalta, briga — mas também celebra quando merece." },
 ];
 
 export const PORTAL_TONE_PROMPTS: Record<PortalTone, string> = {
@@ -22,6 +24,7 @@ export const PORTAL_TONE_PROMPTS: Record<PortalTone, string> = {
   ironico:      "Tom IRÔNICO/SARCÁSTICO — usa sarcasmo e ironia na escrita. Faz insinuações inteligentes, sorri debochado de situações. Comentários afiados e espirituosos.",
   jornalistico: "Tom JORNALÍSTICO — reportagem elaborada com contexto histórico, números e análise. Escrita profissional mas acessível. Comentários mais analíticos e debatedores.",
   serio:        "Tom SÉRIO/OBJETIVO — cobertura factual e direta ao ponto. Sem exageros, sem drama. Comentários racionais e equilibrados.",
+  agressivo:    "Tom AGRESSIVO/SEM FILTRO — escreve como um torcedor raivoso e sem censura. Quando o time vai mal: xinga jogador, técnico, diretoria sem cerimônia, usa palavrões naturalmente (porra, merda, filho da puta, etc.), grita no texto. Quando vai bem: euforia total, celebração explosiva, xingamento de alegria. O tom varia com a situação do time mas NUNCA é robótico ou polido — é humano, cru e autêntico. Comentários igualmente sem filtro.",
 };
 
 export interface CustomPortal {

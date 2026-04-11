@@ -49,20 +49,16 @@ export function useImageUpload(): UseImageUploadReturn {
     setError(null);
     try {
       const fileName = pendingFile?.file.name ?? "image.jpg";
-      const res = await fetch("/api/storage/uploads/request-url", {
+      const form = new FormData();
+      form.append("file", croppedBlob, fileName);
+      const res = await fetch("/api/storage/uploads/file?folder=noticias", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: fileName, size: croppedBlob.size, contentType: "image/jpeg" }),
+        body: form,
       });
-      if (!res.ok) throw new Error("Falha ao obter URL de upload");
-      const { uploadURL, objectPath: path } = (await res.json()) as { uploadURL: string; objectPath: string };
-      const putRes = await fetch(uploadURL, {
-        method: "PUT",
-        headers: { "Content-Type": "image/jpeg" },
-        body: croppedBlob,
-      });
-      if (!putRes.ok) throw new Error("Falha no upload da imagem");
-      setObjectPath(path);
+      if (!res.ok) throw new Error("Falha no upload da imagem");
+      const { url } = (await res.json()) as { url: string };
+      if (!url) throw new Error("URL não retornada pelo servidor");
+      setObjectPath(url);
     } catch {
       setError("Erro no upload da imagem. Tente novamente.");
       setPreviewUrl(null);

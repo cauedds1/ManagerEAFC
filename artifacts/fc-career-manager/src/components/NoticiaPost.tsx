@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import type { NewsPost, NewsComment, NewsSource } from "@/types/noticias";
 import type { PortalPhotos } from "@/lib/portalPhotosStorage";
 import type { CustomPortal } from "@/lib/customPortalStorage";
@@ -211,11 +211,63 @@ interface NoticiaPostProps {
   post: NewsPost;
   portalPhotos?: PortalPhotos;
   customPortals?: CustomPortal[];
+  onUpdateImage?: (postId: string, imageUrl: string | null) => void;
 }
 
-export function NoticiaPost({ post, portalPhotos, customPortals }: NoticiaPostProps) {
+export function NoticiaPost({ post, portalPhotos, customPortals, onUpdateImage }: NoticiaPostProps) {
   const [liked, setLiked] = useState(false);
   const [showComments, setShowComments] = useState(false);
+
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [localImageUrl, setLocalImageUrl] = useState<string | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const closeMenu = useCallback(() => setMenuOpen(false), []);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) closeMenu();
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [menuOpen, closeMenu]);
+
+  const handlePickImage = () => {
+    setMenuOpen(false);
+    fileInputRef.current?.click();
+  };
+
+  const handleRemoveImage = () => {
+    setMenuOpen(false);
+    onUpdateImage?.(post.id, null);
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    const blobUrl = URL.createObjectURL(file);
+    setLocalImageUrl(blobUrl);
+    setUploading(true);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const res = await fetch(`/api/storage/uploads/file?folder=noticias`, { method: "POST", body: form });
+      if (!res.ok) throw new Error("upload failed");
+      const { url } = (await res.json()) as { url: string };
+      if (!url) throw new Error("no url");
+      onUpdateImage?.(post.id, url);
+      URL.revokeObjectURL(blobUrl);
+      setLocalImageUrl(null);
+    } catch {
+      setLocalImageUrl(null);
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const customPortal = post.source === "custom" && post.customPortalId
     ? customPortals?.find((p) => p.id === post.customPortalId)
@@ -232,14 +284,81 @@ export function NoticiaPost({ post, portalPhotos, customPortals }: NoticiaPostPr
     ? customPortal?.photo
     : portalPhotos?.[post.source as keyof PortalPhotos];
 
+  const displayImageUrl = localImageUrl ?? post.imageUrl ?? null;
+
   return (
     <article
-      className="rounded-2xl overflow-hidden"
+      className="rounded-2xl relative"
       style={{
         background: "rgba(255,255,255,0.03)",
         border: "1px solid rgba(255,255,255,0.07)",
       }}
     >
+      {/* Hidden file input for image editing */}
+      {onUpdateImage && (
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/gif"
+          className="hidden"
+          onChange={handleFileChange}
+        />
+      )}
+
+      {/* Pencil edit button */}
+      {onUpdateImage && (
+        <div ref={menuRef} className="absolute z-20" style={{ top: 10, right: 10 }}>
+          <button
+            onClick={() => setMenuOpen((v) => !v)}
+            disabled={uploading}
+            title="Editar imagem"
+            className="flex items-center justify-center rounded-lg transition-all duration-150"
+            style={{
+              width: 28,
+              height: 28,
+              background: "rgba(0,0,0,0.45)",
+              color: uploading ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.45)",
+              border: "1px solid rgba(255,255,255,0.08)",
+              backdropFilter: "blur(4px)",
+            }}
+          >
+            {uploading ? (
+              <svg className="w-3 h-3 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v3m0 12v3M3 12h3m12 0h3" />
+              </svg>
+            ) : (
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+              </svg>
+            )}
+          </button>
+
+          {menuOpen && (
+            <div
+              className="absolute right-0 rounded-xl overflow-hidden shadow-2xl"
+              style={{ top: 32, minWidth: 160, background: "#0f172a", border: "1px solid rgba(255,255,255,0.1)" }}
+            >
+              <button
+                onClick={handlePickImage}
+                className="w-full text-left text-sm px-4 py-2.5 transition-colors duration-100 hover:bg-white/[0.06]"
+                style={{ color: "rgba(255,255,255,0.8)" }}
+              >
+                {displayImageUrl ? "Trocar imagem" : "Adicionar imagem"}
+              </button>
+              {displayImageUrl && (
+                <button
+                  onClick={handleRemoveImage}
+                  className="w-full text-left text-sm px-4 py-2.5 transition-colors duration-100 hover:bg-white/[0.06]"
+                  style={{ color: "#f87171", borderTop: "1px solid rgba(255,255,255,0.06)" }}
+                >
+                  Remover imagem
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center gap-3 px-4 pt-4 pb-3">
         <SourceAvatar source={post.source} sourceName={post.sourceName} size={42} photoUrl={postPhotoUrl} />
@@ -269,10 +388,10 @@ export function NoticiaPost({ post, portalPhotos, customPortals }: NoticiaPostPr
       </div>
 
       {/* Post image */}
-      {post.imageUrl && (
+      {displayImageUrl && (
         <div className="overflow-hidden" style={{ maxHeight: 400 }}>
           <img
-            src={post.imageUrl.startsWith("http") ? post.imageUrl : `/api/storage${post.imageUrl}`}
+            src={displayImageUrl.startsWith("http") || displayImageUrl.startsWith("blob:") ? displayImageUrl : `/api/storage${displayImageUrl}`}
             alt="Post"
             className="w-full object-cover"
             style={{ maxHeight: 400, display: "block" }}
@@ -282,7 +401,7 @@ export function NoticiaPost({ post, portalPhotos, customPortals }: NoticiaPostPr
       )}
 
       {/* Content */}
-      <div className="px-4 pb-4" style={{ paddingTop: post.imageUrl ? 12 : 0 }}>
+      <div className="px-4 pb-4" style={{ paddingTop: displayImageUrl ? 12 : 0 }}>
         {post.title && (
           <p className="text-white font-black text-base leading-snug mb-2">{post.title}</p>
         )}

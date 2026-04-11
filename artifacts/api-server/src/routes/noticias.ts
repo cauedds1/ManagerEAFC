@@ -104,6 +104,7 @@ const TONE_PROMPTS: Record<string, string> = {
   ironico:      "Tom IRÔNICO/SARCÁSTICO — usa sarcasmo e ironia na escrita. Faz insinuações inteligentes, sorri debochado de situações. Comentários afiados e espirituosos.",
   jornalistico: "Tom JORNALÍSTICO — reportagem elaborada com contexto histórico, números e análise. Escrita profissional mas acessível. Comentários mais analíticos e debatedores.",
   serio:        "Tom SÉRIO/OBJETIVO — cobertura factual e direta ao ponto. Sem exageros, sem drama. Comentários racionais e equilibrados.",
+  agressivo:    "Tom AGRESSIVO/SEM FILTRO — escreve como um torcedor raivoso e sem censura. Quando o time vai mal: xinga jogador, técnico, diretoria sem cerimônia, usa palavrões naturalmente (porra, merda, filho da puta, etc.), grita no texto. Quando vai bem: euforia total, celebração explosiva, xingamento de alegria. O tom varia com a situação do time mas NUNCA é robótico ou polido — é humano, cru e autêntico. Comentários igualmente sem filtro.",
 };
 
 function getClient(userKey?: string): { client: OpenAI; usingUserKey: boolean } {

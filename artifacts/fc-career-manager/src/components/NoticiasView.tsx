@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import type { Career } from "@/types/career";
 import type { NewsPost, NewsSource, NewsCategory } from "@/types/noticias";
-import { getPosts, savePosts, addPost, generatePostId, generateCommentId } from "@/lib/noticiaStorage";
+import { getPosts, savePosts, addPost, updatePost, generatePostId, generateCommentId } from "@/lib/noticiaStorage";
 import { getOpenAIKey } from "@/lib/openaiKeyStorage";
 import { seedPosts } from "@/lib/noticiaSeed";
 import { NoticiaPost } from "./NoticiaPost";
@@ -1042,6 +1042,11 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
     return `Histórico de temporadas anteriores do clube:\n${lines.join("\n")}`;
   }, [pastSeasons]);
 
+  const handleUpdateImage = (postId: string, imageUrl: string | null) => {
+    updatePost(seasonId, postId, { imageUrl: imageUrl ?? undefined });
+    setPosts((prev) => prev.map((p) => p.id === postId ? { ...p, imageUrl: imageUrl ?? undefined } : p));
+  };
+
   const handleSavePost = (post: NewsPost) => {
     addPost(seasonId, post);
     setPosts((prev) => [post, ...prev]);
@@ -1297,7 +1302,7 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
           ) : (
             <div className="flex flex-col gap-4 lg:max-w-[560px]">
               {filtered.map((post) => (
-                <NoticiaPost key={post.id} post={post} portalPhotos={portalPhotos} customPortals={customPortals} />
+                <NoticiaPost key={post.id} post={post} portalPhotos={portalPhotos} customPortals={customPortals} onUpdateImage={isReadOnly ? undefined : handleUpdateImage} />
               ))}
             </div>
           )}

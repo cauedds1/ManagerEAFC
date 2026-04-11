@@ -43,6 +43,14 @@ export function clearPosts(seasonId: string): void {
   } catch {}
 }
 
+export function updatePost(seasonId: string, postId: string, updates: Partial<NewsPost>): void {
+  const posts = getPosts(seasonId);
+  const idx = posts.findIndex((p) => p.id === postId);
+  if (idx === -1) return;
+  posts[idx] = { ...posts[idx], ...updates };
+  savePosts(seasonId, posts);
+}
+
 export function generateNoticia(_career: Career, _trigger: string): null {
   return null;
 }

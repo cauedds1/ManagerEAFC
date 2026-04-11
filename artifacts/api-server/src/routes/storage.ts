@@ -6,7 +6,7 @@ import { isR2Configured, createPresignedUploadUrl, uploadFileToR2 } from "../lib
 const router: IRouter = Router();
 
 const ALLOWED_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
-const ALLOWED_FOLDERS = new Set(["portals", "portal-photos", "uploads", "test"]);
+const ALLOWED_FOLDERS = new Set(["portals", "portal-photos", "uploads", "noticias", "test"]);
 
 const upload = multer({
   storage: multer.memoryStorage(),
