@@ -28,6 +28,14 @@ export function addTransfer(seasonId: string, transfer: TransferRecord): void {
   saveTransfers(seasonId, list);
 }
 
+export function updateTransfer(seasonId: string, id: string, changes: Partial<TransferRecord>): void {
+  const list = getTransfers(seasonId);
+  const idx = list.findIndex((t) => t.id === id);
+  if (idx === -1) return;
+  list[idx] = { ...list[idx], ...changes };
+  saveTransfers(seasonId, list);
+}
+
 export function generatePlayerId(): number {
   return Date.now() + Math.floor(Math.random() * 10_000);
 }

@@ -21,5 +21,6 @@ export interface TransferRecord {
   toClub?: string;
   loanDuration?: string;
   loanDirection?: "entrada" | "saida";
+  loanEnded?: boolean;
   transferredAt: number;
 }

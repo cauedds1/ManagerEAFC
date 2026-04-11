@@ -26,6 +26,8 @@ const POS_STYLE: Record<PositionPtBr, { bg: string; color: string }> = {
 
 const ALL_ROLES: TeamRole[] = ["esporadico","rodizio","promessa","importante","crucial"];
 
+const LOAN_DURATIONS = ["6 meses", "1 temporada", "2 temporadas", "3 temporadas"];
+
 function formatDate(ts: number): string {
   const d = new Date(ts);
   return `${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}/${d.getFullYear()}`;
@@ -312,23 +314,56 @@ function ClubAutocomplete({
   );
 }
 
+function LoanActionButton({
+  label,
+  color,
+  onClick,
+}: {
+  label: string;
+  color: "amber" | "blue";
+  onClick: () => void;
+}) {
+  const styles =
+    color === "amber"
+      ? { bg: "rgba(251,191,36,0.12)", border: "rgba(251,191,36,0.3)", text: "#fbbf24" }
+      : { bg: "rgba(96,165,250,0.12)", border: "rgba(96,165,250,0.3)", text: "#60a5fa" };
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="text-[10px] font-bold px-2.5 py-1 rounded-lg transition-all hover:opacity-80 active:scale-95 flex-shrink-0"
+      style={{ background: styles.bg, border: `1px solid ${styles.border}`, color: styles.text }}
+    >
+      {label}
+    </button>
+  );
+}
+
 function TransferCard({
   transfer,
   clubName,
   clubLogoUrl,
+  onLoanAction,
 }: {
   transfer: TransferRecord;
   clubName: string;
   clubLogoUrl?: string | null;
+  onLoanAction?: (id: string, changes: Partial<TransferRecord>) => void;
 }) {
   const migratedPosKey = migratePositionOverride(transfer.playerPositionPtBr) ?? "MID";
   const pos = POS_STYLE[migratedPosKey] ?? POS_STYLE.MID;
   const role = ROLE_COLORS[transfer.role];
   const isVenda = transfer.type === "venda";
+  const isEmprestimo = transfer.type === "emprestimo";
   const isFree = !transfer.fromClub && !transfer.toClub;
+  const isLoanEnded = isEmprestimo && transfer.loanEnded;
 
   return (
-    <div className="flex items-center gap-4 p-4 rounded-2xl transition-all duration-200 glass glass-hover">
+    <div
+      className="flex items-center gap-4 p-4 rounded-2xl transition-all duration-200 glass glass-hover"
+      style={isLoanEnded ? { opacity: 0.55 } : {}}
+    >
       <PlayerFace src={transfer.playerPhoto} name={transfer.playerName} size={48} />
 
       <div className="flex-1 min-w-0">
@@ -348,21 +383,59 @@ function TransferCard({
               VENDA
             </span>
           )}
+          {isEmprestimo && (
+            <span
+              className="text-[10px] font-black px-2 py-0.5 rounded-md flex-shrink-0 tracking-wider"
+              style={{ background: "rgba(251,146,60,0.15)", color: "#fb923c", border: "1px solid rgba(251,146,60,0.25)" }}
+            >
+              EMPRÉSTIMO
+            </span>
+          )}
+          {isEmprestimo && transfer.loanDirection === "entrada" && !isLoanEnded && (
+            <span
+              className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md flex-shrink-0"
+              style={{ background: "rgba(96,165,250,0.12)", color: "#60a5fa" }}
+            >
+              ↓ Entrada
+            </span>
+          )}
+          {isEmprestimo && transfer.loanDirection === "saida" && !isLoanEnded && (
+            <span
+              className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md flex-shrink-0"
+              style={{ background: "rgba(251,191,36,0.12)", color: "#fbbf24" }}
+            >
+              ↑ Saída
+            </span>
+          )}
+          {isLoanEnded && (
+            <span
+              className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md flex-shrink-0"
+              style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.3)" }}
+            >
+              Encerrado
+            </span>
+          )}
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-white/30 text-xs">{transfer.playerAge} anos</span>
           <span className="text-white/20 text-xs">·</span>
           <span className="text-white/25 text-xs">{transfer.season}</span>
-          {transfer.contractYears > 0 && !isVenda && (
+          {transfer.contractYears > 0 && !isVenda && !isEmprestimo && (
             <>
               <span className="text-white/20 text-xs">·</span>
               <span className="text-white/25 text-xs">{transfer.contractYears}A</span>
             </>
           )}
+          {isEmprestimo && transfer.loanDuration && (
+            <>
+              <span className="text-white/20 text-xs">·</span>
+              <span className="text-white/35 text-xs">{transfer.loanDuration}</span>
+            </>
+          )}
         </div>
 
-        <div className="flex items-center gap-2 mt-2">
+        <div className="flex items-center gap-2 mt-2 flex-wrap">
           {isVenda ? (
             transfer.toClub ? (
               <>
@@ -377,6 +450,38 @@ function TransferCard({
             ) : (
               <span className="text-white/25 text-xs italic">Saída do clube</span>
             )
+          ) : isEmprestimo ? (
+            transfer.loanDirection === "saida" ? (
+              <>
+                <ClubBadge src={clubLogoUrl} name={clubName} size={20} />
+                <span className="text-white/30 text-xs truncate max-w-24">{clubName}</span>
+                <svg className="w-3.5 h-3.5 text-orange-400/40 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5-5 5M6 12h12" />
+                </svg>
+                {transfer.toClub ? (
+                  <>
+                    <ClubBadge src={null} name={transfer.toClub} size={20} />
+                    <span className="text-white/30 text-xs truncate max-w-24">{transfer.toClub}</span>
+                  </>
+                ) : (
+                  <span className="text-white/25 text-xs italic">Clube desconhecido</span>
+                )}
+              </>
+            ) : (
+              <>
+                {transfer.fromClub ? (
+                  <>
+                    <ClubBadge src={transfer.fromClubLogo} name={transfer.fromClub} size={20} />
+                    <span className="text-white/30 text-xs truncate max-w-24">{transfer.fromClub}</span>
+                    <svg className="w-3.5 h-3.5 text-orange-400/40 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5-5 5M6 12h12" />
+                    </svg>
+                  </>
+                ) : null}
+                <ClubBadge src={clubLogoUrl} name={clubName} size={20} />
+                <span className="text-white/30 text-xs truncate max-w-24">{clubName}</span>
+              </>
+            )
           ) : isFree ? (
             <span className="text-white/25 text-xs italic">Jogador Livre</span>
           ) : (
@@ -390,12 +495,28 @@ function TransferCard({
               <span className="text-white/30 text-xs truncate max-w-24">{clubName}</span>
             </>
           )}
+
+          {isEmprestimo && !isLoanEnded && onLoanAction && (
+            transfer.loanDirection === "saida" ? (
+              <LoanActionButton
+                label="Chamar de volta"
+                color="blue"
+                onClick={() => onLoanAction(transfer.id, { loanEnded: true })}
+              />
+            ) : transfer.loanDirection === "entrada" ? (
+              <LoanActionButton
+                label="Fim do empréstimo"
+                color="amber"
+                onClick={() => onLoanAction(transfer.id, { loanEnded: true })}
+              />
+            ) : null
+          )}
         </div>
       </div>
 
       <div className="text-right flex-shrink-0">
         <p className="text-white font-black text-base tabular-nums">{formatFee(transfer.fee)}</p>
-        {transfer.salary > 0 && !isVenda && (
+        {transfer.salary > 0 && !isVenda && !isEmprestimo && (
           <p className="text-white/35 text-xs tabular-nums">€{transfer.salary}k/sem</p>
         )}
         <p className="text-white/20 text-xs mt-0.5">{formatDate(transfer.transferredAt)}</p>
@@ -405,7 +526,9 @@ function TransferCard({
 }
 
 interface FormData {
-  transferType: "compra" | "venda";
+  transferType: "compra" | "venda" | "emprestimo";
+  loanDirection: "entrada" | "saida";
+  loanDuration: string;
   playerName: string;
   playerPositionPtBr: PositionPtBr;
   playerAge: string;
@@ -423,6 +546,8 @@ interface FormData {
 
 const DEFAULT_FORM: FormData = {
   transferType: "compra",
+  loanDirection: "entrada",
+  loanDuration: "1 temporada",
   playerName: "",
   playerPositionPtBr: "ATA",
   playerAge: "",
@@ -447,6 +572,7 @@ interface TransferenciasViewProps {
   clubLogoUrl?: string | null;
   allPlayers: SquadPlayer[];
   onTransferAdded: (transfer: TransferRecord) => void;
+  onTransferUpdated?: (id: string, changes: Partial<TransferRecord>) => void;
   isReadOnly?: boolean;
 }
 
@@ -459,6 +585,7 @@ export function TransferenciasView({
   clubLogoUrl,
   allPlayers,
   onTransferAdded,
+  onTransferUpdated,
   isReadOnly,
 }: TransferenciasViewProps) {
   const [showForm, setShowForm] = useState(false);
@@ -468,9 +595,14 @@ export function TransferenciasView({
   const sortedTransfers = [...transfers].sort((a, b) => b.transferredAt - a.transferredAt);
   const comprasCount = transfers.filter((t) => !t.type || t.type === "compra").length;
   const vendasCount = transfers.filter((t) => t.type === "venda").length;
+  const emprestimosCount = transfers.filter((t) => t.type === "emprestimo").length;
 
-  const set = (field: keyof FormData, value: string) =>
+  const set = <K extends keyof FormData>(field: K, value: FormData[K]) =>
     setForm((f) => ({ ...f, [field]: value }));
+
+  const isVendaForm = form.transferType === "venda";
+  const isEmprestimoForm = form.transferType === "emprestimo";
+  const isLoanSaida = isEmprestimoForm && form.loanDirection === "saida";
 
   const valid =
     form.playerName.trim().length >= 2 &&
@@ -482,8 +614,15 @@ export function TransferenciasView({
     setSubmitting(true);
 
     const isVenda = form.transferType === "venda";
-    const playerId = (isVenda && form.resolvedPlayerId) ? form.resolvedPlayerId : generatePlayerId();
-    if (!isVenda) {
+    const isEmprestimo = form.transferType === "emprestimo";
+    const isEntrada = !isVenda && !isLoanSaida;
+
+    const playerId =
+      ((isVenda || isLoanSaida) && form.resolvedPlayerId)
+        ? form.resolvedPlayerId
+        : generatePlayerId();
+
+    if (isEntrada) {
       setPlayerStats(seasonId, playerId, defaultStats(playerId));
     }
 
@@ -498,13 +637,16 @@ export function TransferenciasView({
       playerAge: parseInt(form.playerAge, 10) || 0,
       shirtNumber: form.shirtNumber.trim() ? parseInt(form.shirtNumber, 10) : undefined,
       fee: parseFeeInput(form.fee),
-      salary: isVenda ? 0 : (parseFloat(form.salary) || 0),
-      contractYears: isVenda ? 0 : (parseInt(form.contractYears, 10) || 1),
+      salary: isVenda || isEmprestimo ? 0 : (parseFloat(form.salary) || 0),
+      contractYears: isVenda || isEmprestimo ? 0 : (parseInt(form.contractYears, 10) || 1),
       role: form.role,
       type: form.transferType,
-      fromClub: !isVenda ? (form.fromClub.trim() || undefined) : undefined,
-      fromClubLogo: !isVenda ? (form.fromClubLogo.trim() || undefined) : undefined,
-      toClub: isVenda ? (form.toClub.trim() || undefined) : undefined,
+      fromClub: isEntrada ? (form.fromClub.trim() || undefined) : undefined,
+      fromClubLogo: isEntrada ? (form.fromClubLogo.trim() || undefined) : undefined,
+      toClub: (isVenda || isLoanSaida) ? (form.toClub.trim() || undefined) : undefined,
+      loanDuration: isEmprestimo ? form.loanDuration : undefined,
+      loanDirection: isEmprestimo ? form.loanDirection : undefined,
+      loanEnded: false,
       transferredAt: Date.now(),
     };
 
@@ -514,7 +656,7 @@ export function TransferenciasView({
     setSubmitting(false);
   };
 
-  const openForm = (type: "compra" | "venda") => {
+  const openForm = (type: "compra" | "venda" | "emprestimo") => {
     setForm({ ...DEFAULT_FORM, transferType: type });
     setShowForm(true);
   };
@@ -522,7 +664,25 @@ export function TransferenciasView({
   const inputClass = "w-full px-3 py-2.5 rounded-xl text-white text-sm focus:outline-none glass placeholder:text-white/20";
   const labelClass = "text-white/40 text-xs font-medium mb-1 block";
 
-  const isVendaForm = form.transferType === "venda";
+  const formTitle = isVendaForm
+    ? "Registrar Venda"
+    : isEmprestimoForm
+    ? "Registrar Empréstimo"
+    : "Registrar Contratação";
+
+  const submitLabel = submitting
+    ? "Registrando..."
+    : isVendaForm
+    ? "Confirmar Venda"
+    : isEmprestimoForm
+    ? "Confirmar Empréstimo"
+    : "Confirmar Contratação";
+
+  const submitStyle = isVendaForm
+    ? { background: "rgba(251,191,36,0.2)", border: "1px solid rgba(251,191,36,0.35)", color: "#fbbf24" }
+    : isEmprestimoForm
+    ? { background: "rgba(251,146,60,0.2)", border: "1px solid rgba(251,146,60,0.35)", color: "#fb923c" }
+    : { background: "var(--club-gradient)", border: "none", color: "white" };
 
   return (
     <div className="animate-fade-up space-y-5">
@@ -535,6 +695,14 @@ export function TransferenciasView({
               style={{ background: "rgba(var(--club-primary-rgb),0.15)", color: "var(--club-primary)" }}
             >
               {comprasCount} entrada{comprasCount !== 1 ? "s" : ""}
+            </span>
+          )}
+          {emprestimosCount > 0 && (
+            <span
+              className="text-xs font-bold px-2.5 py-0.5 rounded-full tabular-nums"
+              style={{ background: "rgba(251,146,60,0.12)", color: "#fb923c" }}
+            >
+              {emprestimosCount} empréstimo{emprestimosCount !== 1 ? "s" : ""}
             </span>
           )}
           {vendasCount > 0 && (
@@ -556,6 +724,16 @@ export function TransferenciasView({
                 <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7" />
               </svg>
               Registrar Venda
+            </button>
+            <button
+              onClick={() => openForm("emprestimo")}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all duration-200 hover:opacity-90 active:scale-95 glass glass-hover"
+              style={{ color: "#fb923c", border: "1px solid rgba(251,146,60,0.25)" }}
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+              </svg>
+              Empréstimo
             </button>
             <button
               onClick={() => openForm("compra")}
@@ -580,7 +758,7 @@ export function TransferenciasView({
           </div>
           <div>
             <p className="text-white/50 font-semibold text-base">Nenhuma movimentação registrada</p>
-            <p className="text-white/25 text-sm mt-1">Registre contratações e vendas do EA FC para acompanhar o mercado do seu clube.</p>
+            <p className="text-white/25 text-sm mt-1">Registre contratações, empréstimos e vendas do EA FC para acompanhar o mercado do seu clube.</p>
           </div>
           <button
             onClick={() => openForm("compra")}
@@ -593,7 +771,13 @@ export function TransferenciasView({
       ) : (
         <div className="flex flex-col gap-3">
           {sortedTransfers.map((t) => (
-            <TransferCard key={t.id} transfer={t} clubName={clubName} clubLogoUrl={clubLogoUrl} />
+            <TransferCard
+              key={t.id}
+              transfer={t}
+              clubName={clubName}
+              clubLogoUrl={clubLogoUrl}
+              onLoanAction={!isReadOnly && onTransferUpdated ? onTransferUpdated : undefined}
+            />
           ))}
         </div>
       )}
@@ -619,9 +803,7 @@ export function TransferenciasView({
               style={{ borderBottom: "1px solid var(--surface-border)" }}
             >
               <div>
-                <h3 className="text-white font-black text-lg">
-                  {isVendaForm ? "Registrar Venda" : "Registrar Contratação"}
-                </h3>
+                <h3 className="text-white font-black text-lg">{formTitle}</h3>
                 <p className="text-white/35 text-xs mt-0.5">Temporada {season}</p>
               </div>
               <button
@@ -635,28 +817,80 @@ export function TransferenciasView({
             </div>
 
             <div className="flex gap-2 px-6 pt-4 flex-shrink-0">
-              {(["compra", "venda"] as const).map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => set("transferType", t)}
-                  className="flex-1 py-2 rounded-xl text-sm font-semibold transition-all"
-                  style={{
-                    background: form.transferType === t
-                      ? t === "compra" ? "rgba(var(--club-primary-rgb),0.2)" : "rgba(251,191,36,0.15)"
-                      : "rgba(255,255,255,0.05)",
-                    color: form.transferType === t
-                      ? t === "compra" ? "var(--club-primary)" : "#fbbf24"
-                      : "rgba(255,255,255,0.4)",
-                    border: `1px solid ${form.transferType === t
-                      ? t === "compra" ? "rgba(var(--club-primary-rgb),0.4)" : "rgba(251,191,36,0.35)"
-                      : "rgba(255,255,255,0.08)"}`,
-                  }}
-                >
-                  {t === "compra" ? "Contratação" : "Venda"}
-                </button>
-              ))}
+              {(["compra", "emprestimo", "venda"] as const).map((t) => {
+                const active = form.transferType === t;
+                const activeStyle =
+                  t === "compra"
+                    ? { bg: "rgba(var(--club-primary-rgb),0.2)", color: "var(--club-primary)", border: "rgba(var(--club-primary-rgb),0.4)" }
+                    : t === "emprestimo"
+                    ? { bg: "rgba(251,146,60,0.18)", color: "#fb923c", border: "rgba(251,146,60,0.4)" }
+                    : { bg: "rgba(251,191,36,0.15)", color: "#fbbf24", border: "rgba(251,191,36,0.35)" };
+                return (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => set("transferType", t)}
+                    className="flex-1 py-2 rounded-xl text-sm font-semibold transition-all"
+                    style={{
+                      background: active ? activeStyle.bg : "rgba(255,255,255,0.05)",
+                      color: active ? activeStyle.color : "rgba(255,255,255,0.4)",
+                      border: `1px solid ${active ? activeStyle.border : "rgba(255,255,255,0.08)"}`,
+                    }}
+                  >
+                    {t === "compra" ? "Contratação" : t === "emprestimo" ? "Empréstimo" : "Venda"}
+                  </button>
+                );
+              })}
             </div>
+
+            {isEmprestimoForm && (
+              <div className="px-6 pt-3 flex-shrink-0 flex flex-col gap-3">
+                <div className="flex gap-2">
+                  {(["entrada", "saida"] as const).map((dir) => {
+                    const active = form.loanDirection === dir;
+                    return (
+                      <button
+                        key={dir}
+                        type="button"
+                        onClick={() => set("loanDirection", dir)}
+                        className="flex-1 py-2 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-1.5"
+                        style={{
+                          background: active ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.04)",
+                          color: active ? "white" : "rgba(255,255,255,0.35)",
+                          border: `1px solid ${active ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.07)"}`,
+                        }}
+                      >
+                        <span>{dir === "entrada" ? "↓" : "↑"}</span>
+                        <span>{dir === "entrada" ? "Contratar" : "Emprestar"}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <div>
+                  <label className={labelClass}>Duração do empréstimo</label>
+                  <div className="flex gap-2 flex-wrap">
+                    {LOAN_DURATIONS.map((dur) => {
+                      const active = form.loanDuration === dur;
+                      return (
+                        <button
+                          key={dur}
+                          type="button"
+                          onClick={() => set("loanDuration", dur)}
+                          className="px-3 py-1.5 rounded-xl text-xs font-semibold transition-all"
+                          style={{
+                            background: active ? "rgba(251,146,60,0.18)" : "rgba(255,255,255,0.05)",
+                            color: active ? "#fb923c" : "rgba(255,255,255,0.4)",
+                            border: `1px solid ${active ? "rgba(251,146,60,0.35)" : "rgba(255,255,255,0.08)"}`,
+                          }}
+                        >
+                          {dur}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="overflow-y-auto p-6 flex flex-col gap-5">
               <div>
@@ -676,6 +910,7 @@ export function TransferenciasView({
                       resolvedPlayerId: p.id,
                     }));
                   }}
+                  localOnly={isLoanSaida}
                 />
               </div>
 
@@ -706,7 +941,7 @@ export function TransferenciasView({
                   />
                 </div>
 
-                {!isVendaForm && (
+                {!isVendaForm && !isEmprestimoForm && (
                   <>
                     <div>
                       <label className={labelClass}>Número da camisa</label>
@@ -746,6 +981,30 @@ export function TransferenciasView({
                   </>
                 )}
 
+                {isEmprestimoForm && form.loanDirection === "entrada" && (
+                  <div className="sm:col-span-2">
+                    <label className={labelClass}>Clube de origem</label>
+                    <ClubAutocomplete
+                      value={form.fromClub}
+                      onChange={(v) => set("fromClub", v)}
+                      onSelectLogo={(logo) => set("fromClubLogo", logo ?? "")}
+                      placeholder="Ex: PSG, Benfica..."
+                    />
+                  </div>
+                )}
+
+                {isEmprestimoForm && form.loanDirection === "saida" && (
+                  <div className="sm:col-span-2">
+                    <label className={labelClass}>Clube de destino</label>
+                    <ClubAutocomplete
+                      value={form.toClub}
+                      onChange={(v) => set("toClub", v)}
+                      onSelectLogo={() => {}}
+                      placeholder="Ex: Real Madrid (vazio = destino desconhecido)"
+                    />
+                  </div>
+                )}
+
                 {isVendaForm && (
                   <div className="sm:col-span-2">
                     <label className={labelClass}>Clube de destino</label>
@@ -760,7 +1019,7 @@ export function TransferenciasView({
                 )}
               </div>
 
-              {!isVendaForm && (
+              {!isVendaForm && !isEmprestimoForm && (
                 <div>
                   <label className={labelClass}>Função no elenco</label>
                   <div className="flex flex-wrap gap-2">
@@ -793,9 +1052,9 @@ export function TransferenciasView({
                 style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
               >
                 <p className="text-white/35 text-xs font-semibold uppercase tracking-wider">
-                  {isVendaForm ? "Valor da venda" : "Valores financeiros"}
+                  {isVendaForm ? "Valor da venda" : isEmprestimoForm ? "Taxa de empréstimo" : "Valores financeiros"}
                 </p>
-                <div className={`grid gap-4 ${isVendaForm ? "grid-cols-1" : "grid-cols-2"}`}>
+                <div className={`grid gap-4 ${isVendaForm || isEmprestimoForm ? "grid-cols-1" : "grid-cols-2"}`}>
                   <div>
                     <label className={labelClass}>Taxa de transferência (€)</label>
                     <input
@@ -817,10 +1076,10 @@ export function TransferenciasView({
                         const formatted = formatFeeInput(e.target.value);
                         set("fee", formatted === "0" ? "" : formatted);
                       }}
-                      placeholder="Ex: 15.000.000"
+                      placeholder={isEmprestimoForm ? "Ex: 500.000 (0 = Grátis)" : "Ex: 15.000.000"}
                     />
                   </div>
-                  {!isVendaForm && (
+                  {!isVendaForm && !isEmprestimoForm && (
                     <div>
                       <label className={labelClass}>Salário (€k / semana)</label>
                       <input
@@ -851,16 +1110,9 @@ export function TransferenciasView({
                 onClick={handleSubmit}
                 disabled={!valid || submitting}
                 className="flex-2 py-3 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
-                style={{
-                  background: isVendaForm ? "rgba(251,191,36,0.2)" : "var(--club-gradient)",
-                  border: isVendaForm ? "1px solid rgba(251,191,36,0.35)" : "none",
-                  color: isVendaForm ? "#fbbf24" : "white",
-                  flex: 2,
-                }}
+                style={{ ...submitStyle, flex: 2 }}
               >
-                {submitting
-                  ? "Registrando..."
-                  : isVendaForm ? "Confirmar Venda" : "Confirmar Contratação"}
+                {submitLabel}
               </button>
             </div>
           </div>

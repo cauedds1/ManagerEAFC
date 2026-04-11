@@ -11,7 +11,7 @@ import {
   migratePositionOverride,
 } from "@/lib/squadCache";
 import { getAllPlayerOverrides } from "@/lib/playerStatsStorage";
-import { getTransfers, addTransfer } from "@/lib/transferStorage";
+import { getTransfers, addTransfer, updateTransfer } from "@/lib/transferStorage";
 import type { TransferRecord } from "@/types/transfer";
 import { getMatches } from "@/lib/matchStorage";
 import type { MatchRecord } from "@/types/match";
@@ -297,6 +297,11 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
   const handleTransferAdded = useCallback((transfer: TransferRecord) => {
     addTransfer(activeSeasonId, transfer);
     setTransfers((prev) => [...prev, transfer]);
+  }, [activeSeasonId]);
+
+  const handleTransferUpdated = useCallback((id: string, changes: Partial<TransferRecord>) => {
+    updateTransfer(activeSeasonId, id, changes);
+    setTransfers((prev) => prev.map((t) => t.id === id ? { ...t, ...changes } : t));
   }, [activeSeasonId]);
 
   const handleMatchAdded = useCallback((match: MatchRecord) => {
@@ -613,6 +618,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
                 clubLogoUrl={logoUrl}
                 allPlayers={allPlayers}
                 onTransferAdded={handleTransferAdded}
+                onTransferUpdated={handleTransferUpdated}
                 isReadOnly={isReadOnly}
               />
             )}
