@@ -133,17 +133,17 @@ function CustomPortalModal({
     setPhoto(localUrl);
     setPhotoUploading(true);
     try {
-      const res = await fetch(`/api/storage/uploads/request-url?folder=portals`, {
+      const form = new FormData();
+      form.append("file", file);
+      const res = await fetch(`/api/storage/uploads/file?folder=portals`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }),
+        body: form,
       });
       if (res.ok) {
-        const { uploadURL, objectPath } = (await res.json()) as { uploadURL: string; objectPath: string };
-        const put = await fetch(uploadURL, { method: "PUT", headers: { "Content-Type": file.type }, body: file });
-        if (put.ok) {
+        const { url } = (await res.json()) as { url: string };
+        if (url) {
           URL.revokeObjectURL(localUrl);
-          setPhoto(objectPath);
+          setPhoto(url);
         }
       }
     } catch {
@@ -437,16 +437,15 @@ export function SettingsPage({ onReloadClubs, careerId }: SettingsPageProps) {
 
   const uploadToR2 = async (file: File, folder: string): Promise<string | null> => {
     try {
-      const res = await fetch(`/api/storage/uploads/request-url?folder=${folder}`, {
+      const form = new FormData();
+      form.append("file", file);
+      const res = await fetch(`/api/storage/uploads/file?folder=${folder}`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }),
+        body: form,
       });
       if (!res.ok) return null;
-      const { uploadURL, objectPath } = (await res.json()) as { uploadURL: string; objectPath: string };
-      const put = await fetch(uploadURL, { method: "PUT", headers: { "Content-Type": file.type }, body: file });
-      if (!put.ok) return null;
-      return objectPath;
+      const { url } = (await res.json()) as { url: string };
+      return url ?? null;
     } catch {
       return null;
     }

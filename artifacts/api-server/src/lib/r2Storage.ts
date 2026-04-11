@@ -50,3 +50,31 @@ export async function createPresignedUploadUrl(
   const base = R2_PUBLIC_URL.replace(/\/$/, "");
   return { uploadURL, publicFileUrl: `${base}/${key}`, key };
 }
+
+export async function uploadFileToR2(
+  folder: string,
+  buffer: Buffer,
+  contentType: string,
+): Promise<string> {
+  const { R2_BUCKET_NAME, R2_PUBLIC_URL } = process.env;
+  if (!R2_BUCKET_NAME || !R2_PUBLIC_URL) {
+    throw new Error("R2_BUCKET_NAME or R2_PUBLIC_URL not configured");
+  }
+
+  const client = createR2Client();
+  const ext = contentType === "image/png" ? "png" : "jpg";
+  const key = `${folder}/${randomUUID()}.${ext}`;
+
+  await client.send(
+    new PutObjectCommand({
+      Bucket: R2_BUCKET_NAME,
+      Key: key,
+      Body: buffer,
+      ContentType: contentType,
+      ContentLength: buffer.length,
+    }),
+  );
+
+  const base = R2_PUBLIC_URL.replace(/\/$/, "");
+  return `${base}/${key}`;
+}
