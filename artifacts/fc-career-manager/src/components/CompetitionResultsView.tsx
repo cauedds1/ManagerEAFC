@@ -1,6 +1,8 @@
 import { useState, useMemo } from "react";
 import type { Season } from "@/types/career";
 import { getMatches } from "@/lib/matchStorage";
+import { getCachedClubList } from "@/lib/clubListCache";
+import { searchStaticClubs } from "@/lib/staticClubList";
 import {
   getCompetitionResults,
   addCompetitionResult,
@@ -21,6 +23,7 @@ interface Props {
   seasonId: string;
   seasons: Season[];
   clubName: string;
+  clubLogoUrl?: string | null;
 }
 
 function FilterDropdown({
@@ -620,62 +623,205 @@ function ResultModal({
   );
 }
 
-function BracketDetail({ result, clubName }: { result: CompetitionResult; clubName: string }) {
-  const isMyTeam = (name: string) =>
-    name.trim().toLowerCase() === clubName.trim().toLowerCase();
+function resolveOpponentLogo(name: string, stored?: string | null): string | undefined {
+  if (stored) return stored;
+  const q = name.toLowerCase().trim();
+  const cached = getCachedClubList();
+  if (cached && cached.length > 0) {
+    const exact = cached.find((c) => c.name.toLowerCase() === q);
+    if (exact?.logo) return exact.logo;
+    const partial = cached.find((c) => c.name.toLowerCase().includes(q) || q.includes(c.name.toLowerCase()));
+    if (partial?.logo) return partial.logo;
+  }
+  const statics = searchStaticClubs(name);
+  return statics[0]?.logo ?? undefined;
+}
 
-  if (!result.bracket || result.bracket.length === 0) {
+const BR_SLOT_H = 56;
+const BR_GAP_0 = 6;
+const BR_COL_W = 152;
+const BR_CONN_W = 26;
+const BR_HDR_H = 26;
+const BR_LINE = "rgba(255,255,255,0.18)";
+
+function bracketTotalH(n0: number): number {
+  return n0 * BR_SLOT_H + Math.max(0, n0 - 1) * BR_GAP_0;
+}
+
+function matchCenterY(roundIdx: number, matchIdx: number): number {
+  const factor = Math.pow(2, roundIdx);
+  const marginV = ((factor - 1) / 2) * (BR_SLOT_H + BR_GAP_0);
+  return marginV + matchIdx * factor * (BR_SLOT_H + BR_GAP_0) + BR_SLOT_H / 2;
+}
+
+function matchTopY(roundIdx: number, matchIdx: number): number {
+  return matchCenterY(roundIdx, matchIdx) - BR_SLOT_H / 2;
+}
+
+function TinyLogo({ logoUrl, name, isMe, size = 20 }: { logoUrl?: string | null; name: string; isMe?: boolean; size?: number }) {
+  const [failed, setFailed] = useState(false);
+  const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "?").join("") || "?";
+  if (!logoUrl || failed) {
+    return (
+      <div style={{
+        width: size, height: size, borderRadius: "50%", flexShrink: 0,
+        background: isMe ? "rgba(var(--club-primary-rgb),0.2)" : "rgba(255,255,255,0.08)",
+        border: isMe ? "1px solid rgba(var(--club-primary-rgb),0.4)" : "1px solid rgba(255,255,255,0.1)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        fontSize: size * 0.38, fontWeight: 900,
+        color: isMe ? "var(--club-primary)" : "rgba(255,255,255,0.5)",
+        letterSpacing: "-0.5px",
+      }}>{initials}</div>
+    );
+  }
+  return (
+    <img src={logoUrl} alt={name} width={size} height={size}
+      style={{ width: size, height: size, objectFit: "contain", flexShrink: 0 }}
+      onError={() => setFailed(true)} />
+  );
+}
+
+function BracketTeamRow({ name, logoUrl, score, isMe, won, lost }: {
+  name: string; logoUrl?: string | null; score: number | null;
+  isMe?: boolean; won?: boolean; lost?: boolean;
+}) {
+  const rowH = (BR_SLOT_H - 1) / 2;
+  const displayName = name || "—";
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", gap: 5,
+      padding: "0 7px", height: rowH, opacity: lost ? 0.3 : 1,
+      transition: "opacity 0.15s",
+    }}>
+      <TinyLogo logoUrl={logoUrl} name={displayName} isMe={isMe} size={20} />
+      <span style={{
+        flex: 1, fontSize: 10.5, lineHeight: 1.3,
+        fontWeight: isMe ? 700 : won ? 600 : 400,
+        color: isMe ? "var(--club-primary)" : won ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.6)",
+        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+      }}>{displayName}</span>
+      {score !== null && (
+        <span style={{
+          fontSize: 12, fontWeight: 800, fontVariantNumeric: "tabular-nums",
+          color: won ? "#34d399" : lost ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.55)",
+          minWidth: 14, textAlign: "right", flexShrink: 0,
+        }}>{score}</span>
+      )}
+    </div>
+  );
+}
+
+function BracketSlot({ match, clubName, clubLogoUrl, isChampFinal }: {
+  match: BracketMatch; clubName: string; clubLogoUrl?: string | null; isChampFinal?: boolean;
+}) {
+  const homeWon = match.homeScore !== null && match.awayScore !== null && match.homeScore > match.awayScore;
+  const awayWon = match.homeScore !== null && match.awayScore !== null && match.awayScore > match.homeScore;
+  const hasScores = match.homeScore !== null && match.awayScore !== null;
+  const isMyHome = !!match.homeTeam && match.homeTeam.trim().toLowerCase() === clubName.trim().toLowerCase();
+  const isMyAway = !!match.awayTeam && match.awayTeam.trim().toLowerCase() === clubName.trim().toLowerCase();
+  const homeLogo = isMyHome ? clubLogoUrl : resolveOpponentLogo(match.homeTeam);
+  const awayLogo = isMyAway ? clubLogoUrl : resolveOpponentLogo(match.awayTeam);
+
+  return (
+    <div style={{
+      width: "100%", height: BR_SLOT_H, borderRadius: 9, overflow: "hidden",
+      background: isChampFinal ? "rgba(251,191,36,0.09)" : "rgba(255,255,255,0.05)",
+      border: isChampFinal ? "1px solid rgba(251,191,36,0.35)" : "1px solid rgba(255,255,255,0.1)",
+      boxShadow: isChampFinal ? "0 0 12px rgba(251,191,36,0.12)" : undefined,
+    }}>
+      <BracketTeamRow
+        name={match.homeTeam} logoUrl={homeLogo} score={match.homeScore}
+        isMe={isMyHome} won={hasScores && homeWon} lost={hasScores && awayWon}
+      />
+      <div style={{ height: 1, background: "rgba(255,255,255,0.07)" }} />
+      <BracketTeamRow
+        name={match.awayTeam} logoUrl={awayLogo} score={match.awayScore}
+        isMe={isMyAway} won={hasScores && awayWon} lost={hasScores && homeWon}
+      />
+    </div>
+  );
+}
+
+function BracketVisual({ result, clubName, clubLogoUrl }: {
+  result: CompetitionResult; clubName: string; clubLogoUrl?: string | null;
+}) {
+  const rounds = result.bracket;
+
+  if (!rounds || rounds.length === 0) {
     return <p className="text-white/30 text-sm text-center py-4">Nenhum jogo registrado.</p>;
   }
 
+  const n0 = rounds[0].matches.length;
+  const totalH = bracketTotalH(n0);
+  const isChampion = result.isChampion;
+  const lastRoundIdx = rounds.length - 1;
+
   return (
-    <div className="space-y-4 mt-3">
-      {result.bracket.map((round) => (
-        <div key={round.id}>
-          <p className="text-white/40 text-[11px] font-bold uppercase tracking-wide mb-2">{round.name}</p>
-          <div className="space-y-2">
-            {round.matches.map((match) => {
-              const myHome = isMyTeam(match.homeTeam);
-              const myAway = isMyTeam(match.awayTeam);
-              const homeWon = match.homeScore !== null && match.awayScore !== null && match.homeScore > match.awayScore;
-              const awayWon = match.homeScore !== null && match.awayScore !== null && match.awayScore > match.homeScore;
-              return (
-                <div
-                  key={match.id}
-                  className="flex items-center gap-2 px-3 py-2 rounded-xl"
-                  style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}
-                >
-                  <span
-                    className="flex-1 text-xs font-semibold text-right"
-                    style={{
-                      color: myHome ? "var(--club-primary)" : homeWon ? "rgba(255,255,255,0.8)" : "rgba(255,255,255,0.4)",
-                    }}
-                  >
-                    {match.homeTeam || "—"}
-                  </span>
-                  <div className="flex items-center gap-1.5 px-2">
-                    <span className="text-sm font-black tabular-nums" style={{ color: homeWon ? "#34d399" : "rgba(255,255,255,0.5)" }}>
-                      {match.homeScore ?? "–"}
-                    </span>
-                    <span className="text-white/20 text-xs">×</span>
-                    <span className="text-sm font-black tabular-nums" style={{ color: awayWon ? "#34d399" : "rgba(255,255,255,0.5)" }}>
-                      {match.awayScore ?? "–"}
-                    </span>
-                  </div>
-                  <span
-                    className="flex-1 text-xs font-semibold"
-                    style={{
-                      color: myAway ? "var(--club-primary)" : awayWon ? "rgba(255,255,255,0.8)" : "rgba(255,255,255,0.4)",
-                    }}
-                  >
-                    {match.awayTeam || "—"}
-                  </span>
+    <div style={{ overflowX: "auto", overflowY: "hidden", paddingBottom: 8, marginTop: 4 }}>
+      <div style={{ display: "flex", alignItems: "flex-start", minWidth: "max-content" }}>
+        {rounds.map((round, rIdx) => {
+          const isLastRound = rIdx === lastRoundIdx;
+          return (
+            <div key={round.id} style={{ display: "flex", flexShrink: 0 }}>
+              {/* Round column */}
+              <div style={{ width: BR_COL_W, flexShrink: 0 }}>
+                {/* Round name header */}
+                <div style={{
+                  height: BR_HDR_H, display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 9.5, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase",
+                  color: "rgba(255,255,255,0.3)", paddingBottom: 4,
+                }}>
+                  {round.name}
                 </div>
-              );
-            })}
-          </div>
-        </div>
-      ))}
+
+                {/* Absolute-positioned match slots */}
+                <div style={{ position: "relative", height: totalH, width: "100%" }}>
+                  {round.matches.map((match, mIdx) => {
+                    const topY = matchTopY(rIdx, mIdx);
+                    const isChampFinal = isChampion && isLastRound && mIdx === 0;
+                    return (
+                      <div key={match.id} style={{ position: "absolute", top: topY, left: 0, right: 0 }}>
+                        <BracketSlot
+                          match={match}
+                          clubName={clubName}
+                          clubLogoUrl={clubLogoUrl}
+                          isChampFinal={isChampFinal}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Connector SVG */}
+              {!isLastRound && (
+                <div style={{ width: BR_CONN_W, flexShrink: 0 }}>
+                  <div style={{ height: BR_HDR_H }} />
+                  <svg width={BR_CONN_W} height={totalH} style={{ display: "block", overflow: "visible" }}>
+                    {round.matches.map((_, mIdx) => {
+                      if (mIdx % 2 !== 0) return null;
+                      if (mIdx + 1 >= round.matches.length) return null;
+                      const nextMatchIdx = Math.floor(mIdx / 2);
+                      const y1 = matchCenterY(rIdx, mIdx);
+                      const y2 = matchCenterY(rIdx, mIdx + 1);
+                      const y3 = matchCenterY(rIdx + 1, nextMatchIdx);
+                      const mx = BR_CONN_W / 2;
+                      return (
+                        <g key={mIdx}>
+                          <line x1={0} y1={y1} x2={mx} y2={y1} stroke={BR_LINE} strokeWidth={1} />
+                          <line x1={mx} y1={y1} x2={mx} y2={y2} stroke={BR_LINE} strokeWidth={1} />
+                          <line x1={0} y1={y2} x2={mx} y2={y2} stroke={BR_LINE} strokeWidth={1} />
+                          <line x1={mx} y1={y3} x2={BR_CONN_W} y2={y3} stroke={BR_LINE} strokeWidth={1} />
+                        </g>
+                      );
+                    })}
+                  </svg>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -729,12 +875,14 @@ function StandingsDetail({ result, clubName }: { result: CompetitionResult; club
 function DetailView({
   result,
   clubName,
+  clubLogoUrl,
   onBack,
   onEdit,
   onDelete,
 }: {
   result: CompetitionResult;
   clubName: string;
+  clubLogoUrl?: string | null;
   onBack: () => void;
   onEdit: () => void;
   onDelete: () => void;
@@ -819,7 +967,7 @@ function DetailView({
         </div>
 
         {result.type === "mata-mata" ? (
-          <BracketDetail result={result} clubName={clubName} />
+          <BracketVisual result={result} clubName={clubName} clubLogoUrl={clubLogoUrl} />
         ) : (
           <StandingsDetail result={result} clubName={clubName} />
         )}
@@ -833,6 +981,7 @@ export function CompetitionResultsView({
   seasonId,
   seasons,
   clubName,
+  clubLogoUrl,
 }: Props) {
   const [selectedSeasonId, setSelectedSeasonId] = useState(seasonId);
   const [results, setResults] = useState<CompetitionResult[]>(() => getCompetitionResults(careerId));
@@ -890,6 +1039,7 @@ export function CompetitionResultsView({
         <DetailView
           result={currentDetailResult}
           clubName={clubName}
+          clubLogoUrl={clubLogoUrl}
           onBack={() => setDetailResult(null)}
           onEdit={() => handleEdit(currentDetailResult)}
           onDelete={() => handleDelete(currentDetailResult.id)}

@@ -238,6 +238,7 @@ export function ClubeView({
             seasonId={seasonId}
             seasons={seasons}
             clubName={career.clubName}
+            clubLogoUrl={career.clubLogo || null}
           />
         )}
         {sub === "trofeus" && (
