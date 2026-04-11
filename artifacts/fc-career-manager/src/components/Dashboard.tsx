@@ -285,12 +285,26 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
       .map((t) => t.playerName.toLowerCase().trim()),
   );
 
+  const loanedOutIds = new Set(
+    transfers
+      .filter((t) => t.type === "emprestimo" && t.loanDirection === "saida" && !t.loanEnded)
+      .map((t) => t.playerId),
+  );
+  const loanedOutNames = new Set(
+    transfers
+      .filter((t) => t.type === "emprestimo" && t.loanDirection === "saida" && !t.loanEnded)
+      .map((t) => t.playerName.toLowerCase().trim()),
+  );
+
+  const removedIds = new Set([...soldPlayerIds, ...loanedOutIds]);
+  const removedNames = new Set([...soldPlayerNames, ...loanedOutNames]);
+
   const existingIds = new Set(squadPlayers.map((p) => p.id));
   const newTransferredPlayers = transferredPlayers.filter(
-    (p) => !existingIds.has(p.id) && !soldPlayerIds.has(p.id),
+    (p) => !existingIds.has(p.id) && !removedIds.has(p.id),
   );
   const allPlayers = [
-    ...squadPlayers.filter((p) => !soldPlayerIds.has(p.id) && !soldPlayerNames.has(p.name.toLowerCase().trim())),
+    ...squadPlayers.filter((p) => !removedIds.has(p.id) && !removedNames.has(p.name.toLowerCase().trim())),
     ...newTransferredPlayers,
   ];
 
