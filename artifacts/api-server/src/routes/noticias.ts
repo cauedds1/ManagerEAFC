@@ -200,7 +200,7 @@ Semente de unicidade: ${uniqueSeed} — use ela para garantir que este post seja
 - A PROPORÇÃO varia com o contexto da notícia: derrota ou eliminação → mais rivais zombando e menos celebração; vitória expressiva sobre rival histórico → mistura de fãs eufóricos e rivais provocando; conquista de título → mistura épica; lesão de jogador → mais neutros/analistas e menos provocação.
 - Personalidade "rival": torcedor de outro clube a alfinetar, zoar ou provocar de forma realista — como acontece nos comentários da TNT Sports ou ESPN reais. Pode ser debochado, irônico ou simplesmente provocador.
 - Personalidade "internacional": escreve EM PORTUGUÊS, mas deixa claro no conteúdo que é de outro país ("Aqui de Portugal...", "Acompanho da Argentina...", "Sou de Moçambique e...").`
-    : `Os comentários devem ter personalidades DISTINTAS e realistas: torcedor apaixonado, crítico, irônico, saudosista, zoeiro.`;
+    : `Os comentários devem ter personalidades DISTINTAS e realistas: torcedor apaixonado, crítico, irônico, estrangeiro, saudosista, criança de 14 anos.`;
 
   const userPrompt = `Crie um post de notícia com base nessa descrição: "${description.trim()}"
 
