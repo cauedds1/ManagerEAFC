@@ -23,13 +23,15 @@ function resolveOpponentLogo(name: string, stored?: string): string | undefined 
 }
 
 function ratingColor(r: number): string {
-  if (r >= 8.0) return "#34d399";
+  if (r > 8.5) return "#60a5fa";
+  if (r >= 7.6) return "#34d399";
   if (r >= 6.5) return "#fbbf24";
   return "#f87171";
 }
 
 function ratingBg(r: number): string {
-  if (r >= 8.0) return "rgba(52,211,153,0.18)";
+  if (r > 8.5) return "rgba(96,165,250,0.18)";
+  if (r >= 7.6) return "rgba(52,211,153,0.18)";
   if (r >= 6.5) return "rgba(251,191,36,0.18)";
   return "rgba(248,113,113,0.18)";
 }
@@ -253,7 +255,11 @@ function PlayerDetailPanel({
             <div className="flex-1 min-w-0">
               <h2 className="text-white text-base font-black leading-tight truncate">{player.name}</h2>
               <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                <span className="text-xs font-bold px-2 py-0.5 rounded-lg" style={pos}>{player.positionPtBr}</span>
+                {rating > 0 && (
+                  <span className="text-sm font-black px-2 py-0.5 rounded-lg tabular-nums" style={{ background: ratingB, color: ratingC }}>
+                    {rating.toFixed(1)}
+                  </span>
+                )}
                 {player.number != null && (
                   <span className="text-white/35 text-xs font-semibold">#{player.number}</span>
                 )}
@@ -290,7 +296,7 @@ function PlayerDetailPanel({
         {/* ── 4-col stats row ── */}
         <div className="px-5 pt-4 pb-3 grid grid-cols-4 gap-2">
           {[
-            { label: "Nota", value: rating > 0 ? rating.toFixed(1) : "—", accent: rating > 0 ? ratingC : undefined, sub: rating > 0 ? (rating >= 8.0 ? "Excelente" : rating >= 7.0 ? "Bom" : rating >= 6.5 ? "Regular" : "Abaixo") : undefined, subColor: ratingB },
+            { label: "Nota", value: rating > 0 ? rating.toFixed(1) : "—", accent: rating > 0 ? ratingC : undefined, sub: rating > 0 ? (rating > 8.5 ? "Excelente" : rating >= 7.6 ? "Bom" : rating >= 6.5 ? "Regular" : "Abaixo") : undefined, subColor: ratingB },
             { label: "Minutos", value: minutes > 0 ? `${minutes}'` : "—" },
             { label: "Golos", value: goalsScored > 0 ? goalsScored : "—" },
             { label: "Assist.", value: assists > 0 ? assists : "—" },

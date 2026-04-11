@@ -12,12 +12,14 @@ interface PitchPlayerData {
 }
 
 function ratingFill(r: number): string {
-  if (r >= 8.0) return "#34d399";
+  if (r > 8.5) return "#60a5fa";
+  if (r >= 7.6) return "#34d399";
   if (r >= 6.5) return "#fbbf24";
   return "#f87171";
 }
 function ratingText(r: number): string {
-  if (r >= 8.0) return "#002216";
+  if (r > 8.5) return "#001c40";
+  if (r >= 7.6) return "#002216";
   if (r >= 6.5) return "#1c1000";
   return "#1c0000";
 }
@@ -150,9 +152,16 @@ function PlayerCircle({
           <circle cx={x} cy={y} r={radius} fill="none" stroke={highlighted ? "white" : colors.stroke} strokeWidth={highlighted ? 2.5 : 1.5} />
           {photoState === "loaded" && (
             <>
-              <rect x={x - 11} y={y + radius - 9} width={22} height={11} rx={4} fill={colors.fill} stroke={colors.stroke} strokeWidth={0.8} opacity={0.95} />
-              <text x={x} y={y + radius - 2} textAnchor="middle" dominantBaseline="middle" fill={colors.text} fontSize={7} fontWeight="900" fontFamily="Inter, sans-serif">
-                {player.positionPtBr}
+              <rect
+                x={x - 11} y={y + radius - 9} width={22} height={11} rx={4}
+                fill={rating > 0 ? ratingFill(rating) : colors.fill}
+                stroke={rating > 0 ? ratingFill(rating) : colors.stroke}
+                strokeWidth={0.8} opacity={0.95}
+              />
+              <text x={x} y={y + radius - 2} textAnchor="middle" dominantBaseline="middle"
+                fill={rating > 0 ? ratingText(rating) : colors.text}
+                fontSize={7} fontWeight="900" fontFamily="Inter, sans-serif">
+                {rating > 0 ? rating.toFixed(1) : player.positionPtBr}
               </text>
             </>
           )}
@@ -163,23 +172,24 @@ function PlayerCircle({
           )}
         </>
       ) : (
-        <text x={x} y={y + 1} textAnchor="middle" dominantBaseline="middle" fill={colors.text} fontSize={label.length > 2 ? 9 : 11} fontWeight="800" fontFamily="Inter, sans-serif">
-          {label}
-        </text>
+        <>
+          <text x={x} y={y + 1} textAnchor="middle" dominantBaseline="middle" fill={colors.text} fontSize={label.length > 2 ? 9 : 11} fontWeight="800" fontFamily="Inter, sans-serif">
+            {label}
+          </text>
+          {rating > 0 && (
+            <>
+              <rect x={x - 11} y={y + radius - 9} width={22} height={11} rx={4} fill={ratingFill(rating)} opacity={0.95} />
+              <text x={x} y={y + radius - 2} textAnchor="middle" dominantBaseline="middle" fill={ratingText(rating)} fontSize={7} fontWeight="900" fontFamily="Inter, sans-serif">
+                {rating.toFixed(1)}
+              </text>
+            </>
+          )}
+        </>
       )}
 
       <text x={x} y={y + radius + 11} textAnchor="middle" dominantBaseline="middle" fill="white" opacity={0.85} fontSize={8} fontWeight="500" fontFamily="Inter, sans-serif">
         {displayName.length > 11 ? displayName.slice(0, 10) + "." : displayName}
       </text>
-
-      {rating > 0 && (
-        <>
-          <rect x={x - 11} y={y + radius + 17} width={22} height={12} rx={3} fill={ratingFill(rating)} />
-          <text x={x} y={y + radius + 23} textAnchor="middle" dominantBaseline="middle" fill={ratingText(rating)} fontSize={7.5} fontWeight="900" fontFamily="Inter, sans-serif">
-            {rating.toFixed(1)}
-          </text>
-        </>
-      )}
     </g>
   );
 }
