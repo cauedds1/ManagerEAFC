@@ -245,6 +245,10 @@ export function TrophyCabinetView({ careerId }: Props) {
   const [trophies, setTrophies] = useState<Trophy[]>(() => getTrophies(careerId));
   const [showModal, setShowModal] = useState(false);
 
+  useEffect(() => {
+    setTrophies(getTrophies(careerId));
+  }, [careerId]);
+
   function refresh() {
     setTrophies(getTrophies(careerId));
   }
@@ -364,6 +368,44 @@ export function TrophyCabinetView({ careerId }: Props) {
                       </span>
                     )}
                   </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Histórico completo */}
+      {trophies.length > 0 && (
+        <div>
+          <p className="text-white/25 text-[11px] font-bold tracking-widest uppercase mb-3">
+            Histórico
+          </p>
+          <div className="space-y-2">
+            {trophies.map((t, idx) => {
+              const photo = findTrophyPhoto(t.competitionName);
+              return (
+                <div
+                  key={t.id}
+                  className="flex items-center gap-3 px-4 py-3 rounded-xl"
+                  style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}
+                >
+                  <span
+                    className="w-6 text-center text-xs font-black tabular-nums flex-shrink-0"
+                    style={{ color: idx === 0 ? "#fbbf24" : "rgba(255,255,255,0.2)" }}
+                  >
+                    #{idx + 1}
+                  </span>
+                  <div className="w-7 h-7 flex items-center justify-center flex-shrink-0">
+                    <TrophyImage url={photo} size={28} />
+                  </div>
+                  <p className="flex-1 text-sm font-semibold text-white/80 leading-tight">{t.competitionName}</p>
+                  <span
+                    className="text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0"
+                    style={{ background: "rgba(251,191,36,0.1)", color: "#fbbf24" }}
+                  >
+                    {t.seasonLabel}
+                  </span>
                 </div>
               );
             })}

@@ -150,6 +150,15 @@ export const TROPHY_ENTRIES: TrophyEntry[] = [
     photo: "https://upload.wikimedia.org/wikipedia/commons/4/45/Copa_do_Brasil_Sport.jpg",
     aliases: ["copa do brasil", "copa brasil", "brazil cup", "copa do brazil"],
   },
+  {
+    label: "Brasileirao Série B",
+    photo: "https://upload.wikimedia.org/wikipedia/commons/f/f5/Trof%C3%A9u_Campeonato_Brasileiro_2024.jpg",
+    aliases: [
+      "brasileirao serie b", "brasileirão série b", "serie b brasil", "série b brasil",
+      "campeonato brasileiro serie b", "campeonato brasileiro série b",
+      "serie b", "série b", "brazil serie b",
+    ],
+  },
 ];
 
 function normalize(s: string): string {
