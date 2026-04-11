@@ -327,6 +327,9 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
       const newId = generateSeasonId();
       copyPlayerMoodsToNewSeason(activeSeasonId, newId);
       ageSquadInCache(teamId, career.clubName);
+      setSquad((prev) =>
+        prev ? { ...prev, players: prev.players.map((p) => ({ ...p, age: p.age + 1 })) } : prev
+      );
       const newSeason = await createSeason(career.id, label, competitions, true, newId);
       if (newSeason) {
         await activateSeason(newSeason.id);
