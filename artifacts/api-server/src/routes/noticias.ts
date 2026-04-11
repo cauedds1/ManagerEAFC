@@ -276,4 +276,135 @@ Gere 6 a 9 comentários. Pelo menos 2 deles devem ter 1 reply cada.`;
   }
 });
 
+interface GenerateWelcomeBody {
+  coachName: string;
+  coachAge?: number;
+  coachNationality?: string;
+  clubName: string;
+  clubLeague?: string;
+  clubDescription?: string;
+  projeto?: string;
+}
+
+router.post("/noticias/generate-welcome", async (req, res) => {
+  const { coachName, coachAge, coachNationality, clubName, clubLeague, clubDescription, projeto } =
+    req.body as GenerateWelcomeBody;
+
+  if (!coachName?.trim() || !clubName?.trim()) {
+    res.status(400).json({ error: "coachName e clubName são obrigatórios" });
+    return;
+  }
+
+  const userKey = (req.headers["x-openai-key"] as string | undefined) ?? "";
+  const { client, usingUserKey } = getClient(userKey);
+
+  const shortClub = clubName.split(" ").slice(0, 2).join(" ");
+  const uniqueSeed = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+  const coachDetails = [
+    coachAge ? `${coachAge} anos` : null,
+    coachNationality ? `nacionalidade: ${coachNationality}` : null,
+  ]
+    .filter(Boolean)
+    .join(", ");
+
+  const leagueInfo = clubLeague ? `\nLiga do clube: ${clubLeague}` : "";
+  const clubInfo = clubDescription?.trim() ? `\nSobre o clube: ${clubDescription.trim().slice(0, 200)}` : "";
+  const projectInfo = projeto?.trim() ? `\nProjeto da temporada: "${projeto.trim()}"` : "";
+
+  const systemPrompt = `Você é um jornalista esportivo especializado em cobertura de futebol para portais brasileiros como ESPN Brasil e TNT Sports.
+Você escreve posts no estilo de redes sociais (Instagram/Twitter) — legendas com impacto, emocionais, com emojis e hashtags.
+O clube é ${clubName} (${shortClub}).${leagueInfo}${clubInfo}${projectInfo}
+Semente de unicidade: ${uniqueSeed}`;
+
+  const userPrompt = `Um novo técnico foi anunciado no ${clubName}: **${coachName}**${coachDetails ? ` (${coachDetails})` : ""}.
+
+INSTRUÇÕES IMPORTANTES:
+1. VERIFIQUE se "${coachName}" é um treinador famoso do futebol real (ex: José Mourinho, Pep Guardiola, Carlo Ancelotti, Zinedine Zidane, Jürgen Klopp, Luis Enrique, Jorge Jesus, Tite, Renato Gaúcho, etc.).
+   - Se SIM: mencione explicitamente o histórico real dele — títulos conquistados, clubes anteriores, estilo de jogo característico, reputação, conquistas marcantes. A matéria deve ser muito mais rica com esse contexto.
+   - Se NÃO (nome fictício ou desconhecido): escreva uma matéria de apresentação genérica mas coerente com os dados fornecidos (idade, nacionalidade).
+
+2. Escreva como se fosse um post da ESPN Brasil ou TNT Sports anunciando a chegada do técnico ao ${clubName}.
+3. Tom jornalístico mas com energia de rede social — use emojis, impacto, expectativa.
+4. Gere comentários de torcedores variados: otimistas, céticos, zoeiros, saudosistas, fãs internacionais.
+
+Responda APENAS com JSON puro (sem markdown, sem code block):
+{
+  "source": "espn",
+  "sourceHandle": "@espnbrasil",
+  "sourceName": "ESPN Brasil",
+  "category": "geral",
+  "title": "<título em maiúsculas, máx 6 palavras, ex: MOURINHO É O NOVO TÉCNICO>",
+  "content": "<legenda completa no estilo Instagram/portal esportivo, 3-8 parágrafos, com emojis e hashtags>",
+  "likes": <5000 a 120000>,
+  "commentsCount": <200 a 3000>,
+  "sharesCount": <500 a 10000>,
+  "comments": [
+    {
+      "username": "@<nome_da_pessoa_handle_simples>",
+      "displayName": "<Nome Sobrenome de pessoa brasileira real>",
+      "content": "<comentário com personalidade>",
+      "likes": <10 a 5000>,
+      "personality": "<otimista|chato|corneteiro|zoeiro|saudosista|neutro|internacional>",
+      "replies": [
+        {
+          "username": "@<handle>",
+          "displayName": "<Nome Sobrenome>",
+          "content": "<reply curto>",
+          "likes": <1 a 500>,
+          "personality": "<personalidade>",
+          "replies": []
+        }
+      ]
+    }
+  ]
+}
+
+Gere 7 a 10 comentários. Pelo menos 3 devem ter replies. Se o técnico for famoso do mundo real, alguns comentários de fãs internacionais são esperados e realistas.`;
+
+  try {
+    const completionParams = usingUserKey
+      ? { model: "gpt-4o", max_tokens: 4096 }
+      : { model: "gpt-5.2", max_completion_tokens: 4096 };
+
+    const completion = await client.chat.completions.create({
+      ...completionParams,
+      stream: false,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+    } as Parameters<typeof client.chat.completions.create>[0]);
+
+    const raw = (completion as OpenAI.Chat.Completions.ChatCompletion).choices[0]?.message?.content ?? "";
+
+    let parsed: Record<string, unknown>;
+    try {
+      const jsonStr = raw.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```\s*$/i, "").trim();
+      parsed = JSON.parse(jsonStr);
+    } catch {
+      res.status(500).json({ error: "Resposta inválida da IA", raw });
+      return;
+    }
+
+    const post = {
+      source:        (parsed.source as string) ?? "espn",
+      sourceHandle:  (parsed.sourceHandle as string) ?? "@espnbrasil",
+      sourceName:    (parsed.sourceName as string) ?? "ESPN Brasil",
+      category:      parsed.category ?? "geral",
+      title:         (parsed.title as string) || undefined,
+      content:       parsed.content as string,
+      likes:         Number(parsed.likes) || 8000,
+      commentsCount: Number(parsed.commentsCount) || 400,
+      sharesCount:   Number(parsed.sharesCount) || 1200,
+      comments:      (parsed.comments as unknown[]) ?? [],
+    };
+
+    res.json(post);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: "Erro ao gerar notícia de apresentação", details: msg });
+  }
+});
+
 export default router;

@@ -888,11 +888,86 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
 
   useEffect(() => {
     let stored = getPosts(seasonId);
-    if (stored.length === 0) {
+    const isFirstSeed = stored.length === 0;
+    if (isFirstSeed) {
       stored = seedPosts(career);
       savePosts(seasonId, stored);
     }
     setPosts(stored);
+
+    const welcomeKey = `fc-welcome-done-${seasonId}`;
+    const alreadyDone = !!localStorage.getItem(welcomeKey);
+    if (isFirstSeed && !alreadyDone) {
+      localStorage.setItem(welcomeKey, "1");
+      const userKey = getOpenAIKey();
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (userKey) headers["x-openai-key"] = userKey;
+      fetch("/api/noticias/generate-welcome", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          coachName: career.coach.name,
+          coachAge: career.coach.age,
+          coachNationality: career.coach.nationality,
+          clubName: career.clubName,
+          clubLeague: career.clubLeague || undefined,
+          clubDescription: career.clubDescription || undefined,
+          projeto: career.projeto || undefined,
+        }),
+      })
+        .then((r) => r.ok ? r.json() : null)
+        .then((data) => {
+          if (!data) return;
+          const welcomePost: NewsPost = {
+            id: generatePostId(),
+            careerId: career.id,
+            source: (data.source as NewsSource) ?? "espn",
+            sourceHandle: data.sourceHandle ?? "@espnbrasil",
+            sourceName: data.sourceName ?? "ESPN Brasil",
+            ...(data.title?.trim() ? { title: data.title.trim() } : {}),
+            content: data.content as string,
+            likes: Number(data.likes) || 8000,
+            commentsCount: Number(data.commentsCount) || 400,
+            sharesCount: Number(data.sharesCount) || 1200,
+            comments: Array.isArray(data.comments)
+              ? (data.comments as Array<{
+                  username: string;
+                  displayName: string;
+                  content: string;
+                  likes: number;
+                  personality?: string;
+                  replies?: Array<unknown>;
+                }>).map((c) => ({
+                  id: generateCommentId(),
+                  username: c.username,
+                  displayName: c.displayName,
+                  content: c.content,
+                  likes: c.likes,
+                  personality: (c.personality as NewsPost["comments"][0]["personality"]) ?? "neutro",
+                  replies: Array.isArray(c.replies)
+                    ? (c.replies as Array<Record<string, unknown>>).map((r) => ({
+                        id: generateCommentId(),
+                        username: r.username as string,
+                        displayName: r.displayName as string,
+                        content: r.content as string,
+                        likes: Number(r.likes) || 10,
+                        personality: (r.personality as NewsPost["comments"][0]["personality"]) ?? "neutro",
+                        createdAt: Date.now() - Math.floor(Math.random() * 3_600_000),
+                      }))
+                    : [],
+                  createdAt: Date.now() - Math.floor(Math.random() * 3_600_000),
+                }))
+              : [],
+            createdAt: Date.now(),
+            category: (data.category as NewsPost["category"]) ?? "geral",
+          };
+          const current = getPosts(seasonId);
+          const updated = [welcomePost, ...current];
+          savePosts(seasonId, updated);
+          setPosts(updated);
+        })
+        .catch(() => {});
+    }
   }, [seasonId]);
 
   const playerContextStr = useMemo(() => {
