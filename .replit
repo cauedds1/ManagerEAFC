@@ -30,3 +30,8 @@ channel = "stable-25_05"
 [userenv]
 
 [userenv.shared]
+R2_ACCOUNT_ID = "d53f52a4cb07d614ca27d711a48bd43c"
+R2_BUCKET_NAME = "eafc-manager"
+R2_PUBLIC_URL = "https://pub-e5a35ce73d624db58d68362ce156cc74.r2.dev"
+R2_ACCESS_KEY_ID = "911b6e4e8eb888856eba0583478c61cb"
+R2_SECRET_ACCESS_KEY = "5206ba3269570a22fe3c7deeabe29cd889eaf5dfbfb5f537011a636180228ffe"
