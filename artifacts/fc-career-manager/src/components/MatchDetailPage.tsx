@@ -503,6 +503,8 @@ export function MatchDetailPage({
     match.motmPlayerId != null
       ? allPlayers.find((p) => p.id === match.motmPlayerId)
       : null;
+  const motmDisplayName = motmPlayer?.name ?? match.motmPlayerName ?? null;
+  const motmPhoto = motmPlayer?.photo;
 
   const starters = match.starterIds
     .map((id) => allPlayers.find((p) => p.id === id))
@@ -692,11 +694,16 @@ export function MatchDetailPage({
             </div>
 
             {/* Goal scorers */}
-            {goalsByPlayer.length > 0 && (
+            {(goalsByPlayer.length > 0 || (match.opponentGoals?.length ?? 0) > 0) && (
               <div className="flex flex-col items-center gap-0.5 mt-1">
                 {goalsByPlayer.map((entry, i) => (
                   <span key={i} className="text-[10px] text-white/45 text-center">
                     ⚽ {lastName(entry.player.name)} {entry.minutes.map((m) => `${m}'`).join(", ")}
+                  </span>
+                ))}
+                {(match.opponentGoals ?? []).map((g, i) => (
+                  <span key={`opp-${i}`} className="text-[10px] text-white/30 text-center">
+                    ⚽ {g.playerName ? lastName(g.playerName) : match.opponent.split(" ")[0]} {g.minute}&apos;
                   </span>
                 ))}
               </div>
@@ -711,7 +718,7 @@ export function MatchDetailPage({
         </div>
 
         {/* MOTM */}
-        {motmPlayer && (
+        {motmDisplayName && (
           <div
             className="mx-5 mb-4 flex items-center gap-3 rounded-xl px-4 py-2.5"
             style={{ background: "rgba(234,179,8,0.08)", border: "1px solid rgba(234,179,8,0.15)" }}
@@ -719,9 +726,9 @@ export function MatchDetailPage({
             <span className="text-sm">⭐</span>
             <span className="text-xs font-semibold" style={{ color: "#fbbf24" }}>Jogador da partida</span>
             <div className="flex items-center gap-2 ml-auto">
-              <PlayerPhoto photo={motmPlayer.photo} name={motmPlayer.name} size={28} borderColor="#fbbf24" />
-              <span className="text-white/80 text-sm font-bold">{motmPlayer.name}</span>
-              {(match.playerStats[motmPlayer.id]?.rating ?? 0) > 0 && (
+              <PlayerPhoto photo={motmPhoto} name={motmDisplayName} size={28} borderColor="#fbbf24" />
+              <span className="text-white/80 text-sm font-bold">{motmDisplayName}</span>
+              {motmPlayer && (match.playerStats[motmPlayer.id]?.rating ?? 0) > 0 && (
                 <span className="text-[10px] font-black px-1.5 py-0.5 rounded" style={{ background: "#fbbf24", color: "#000" }}>
                   {match.playerStats[motmPlayer.id].rating.toFixed(1)}
                 </span>

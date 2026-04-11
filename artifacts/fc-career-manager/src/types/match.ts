@@ -19,6 +19,12 @@ export interface GoalEntry {
   assistPlayerId?: number;
 }
 
+export interface OpponentGoalEntry {
+  id: string;
+  minute: number;
+  playerName?: string;
+}
+
 export interface PlayerMatchStats {
   startedOnBench: boolean;
   rating: number;
@@ -67,6 +73,8 @@ export interface MatchRecord {
   playerStats: Record<number, PlayerMatchStats>;
   matchStats: MatchStats;
   motmPlayerId?: number;
+  motmPlayerName?: string;
+  opponentGoals?: OpponentGoalEntry[];
   tablePositionBefore?: number;
   opponentLogoUrl?: string;
   createdAt: number;

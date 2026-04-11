@@ -145,7 +145,8 @@ function MatchCard({
 }) {
   const result = getMatchResult(match.myScore, match.opponentScore);
   const rs = RESULT_STYLE[result];
-  const motm = match.motmPlayerId != null ? allPlayers.find((p) => p.id === match.motmPlayerId) : null;
+  const motmSquadPlayer = match.motmPlayerId != null ? allPlayers.find((p) => p.id === match.motmPlayerId) : null;
+  const motmDisplayName = motmSquadPlayer?.name ?? match.motmPlayerName ?? null;
   const isHome = match.location !== "fora";
   const oppResolvedLogo = resolveOpponentLogo(match.opponent, match.opponentLogoUrl);
 
@@ -187,10 +188,11 @@ function MatchCard({
 
   const hasFooter =
     goalScorers.length > 0 ||
-    !!motm ||
+    !!motmDisplayName ||
     myPoss > 0 ||
     myShots > 0 ||
-    oppShots > 0;
+    oppShots > 0 ||
+    (match.opponentGoals?.length ?? 0) > 0;
 
   const leftWon  = leftScore > rightScore;
   const rightWon = rightScore > leftScore;
@@ -317,7 +319,7 @@ function MatchCard({
           )}
 
           {/* Three-column stats row */}
-          {(leftShots > 0 || rightShots > 0 || goalScorers.length > 0 || !!motm) && (
+          {(leftShots > 0 || rightShots > 0 || goalScorers.length > 0 || !!motmDisplayName || (match.opponentGoals?.length ?? 0) > 0) && (
             <div className="grid grid-cols-3 px-4 pb-3 pt-2 gap-x-2">
 
               {/* Left team stats */}
@@ -330,7 +332,7 @@ function MatchCard({
                 )}
               </div>
 
-              {/* Center: scorers + MOTM */}
+              {/* Center: scorers + opponent goals + MOTM */}
               <div className="flex flex-col items-center gap-1">
                 {goalScorers.map((g, i) => (
                   <span
@@ -341,12 +343,21 @@ function MatchCard({
                     ⚽ {g.name} {g.minute}&apos;
                   </span>
                 ))}
-                {motm && (
+                {(match.opponentGoals ?? []).map((g, i) => (
+                  <span
+                    key={i}
+                    className="text-[10px] text-white/35 leading-tight text-center px-2 py-0.5 rounded-full"
+                    style={{ background: "rgba(255,255,255,0.04)" }}
+                  >
+                    ⚽ {g.playerName ? g.playerName.split(" ").at(-1) : match.opponent.split(" ")[0]} {g.minute}&apos;
+                  </span>
+                ))}
+                {motmDisplayName && (
                   <span
                     className="text-[10px] font-semibold mt-0.5 px-2 py-0.5 rounded-full"
                     style={{ color: "#fbbf24", background: "rgba(234,179,8,0.1)" }}
                   >
-                    ⭐ {motm.name.split(" ").at(-1)}
+                    ⭐ {motmDisplayName.split(" ").at(-1)}
                   </span>
                 )}
               </div>

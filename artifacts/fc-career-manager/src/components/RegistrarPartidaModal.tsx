@@ -6,6 +6,7 @@ import type {
   PlayerMatchStats,
   MatchLocation,
   GoalEntry,
+  OpponentGoalEntry,
 } from "@/types/match";
 import { LOCATION_LABELS, LOCATION_ICONS } from "@/types/match";
 import {
@@ -49,6 +50,8 @@ interface MatchDraft {
   subIds: number[];
   playerStats: Record<number, PlayerMatchStats>;
   motmPlayerId: number | null;
+  motmPlayerName: string;
+  opponentGoals: OpponentGoalEntry[];
   myShots: number;
   opponentShots: number;
   possessionPct: number;
@@ -300,6 +303,38 @@ function GoalEditor({
   );
 }
 
+function OpponentGoalEditor({
+  goal, index, opponentName, onChange, onRemove,
+}: {
+  goal: OpponentGoalEntry; index: number; opponentName: string;
+  onChange: (g: OpponentGoalEntry) => void; onRemove: () => void;
+}) {
+  return (
+    <div className="glass rounded-xl p-3 space-y-2">
+      <div className="flex items-center gap-2">
+        <span className="text-base">⚽</span>
+        <span className="text-white/50 text-xs">{opponentName || "Adversário"} — Gol {index + 1}</span>
+        <button type="button" onClick={onRemove} className="ml-auto w-5 h-5 rounded-full flex items-center justify-center text-white/30 hover:text-red-400 hover:bg-red-400/10 transition-colors text-xs">×</button>
+      </div>
+      <div className="flex items-center gap-2">
+        <label className="text-white/40 text-xs w-16 flex-shrink-0">Minuto</label>
+        <NumericInput value={goal.minute} onChange={(v) => onChange({ ...goal, minute: v ?? 0 })} min={1} max={120} placeholder="Min" className="w-16" />
+      </div>
+      <div className="flex items-center gap-2">
+        <label className="text-white/40 text-xs w-16 flex-shrink-0">Jogador</label>
+        <input
+          type="text"
+          value={goal.playerName ?? ""}
+          onChange={(e) => onChange({ ...goal, playerName: e.target.value || undefined })}
+          placeholder="Nome do jogador (opcional)"
+          className="flex-1 px-2.5 py-1.5 rounded-xl text-white text-sm focus:outline-none glass"
+          style={{ background: "rgba(255,255,255,0.05)" }}
+        />
+      </div>
+    </div>
+  );
+}
+
 function ClubBadge({ src, name, size = 28 }: { src: string | null; name: string; size?: number }) {
   const [err, setErr] = useState(false);
   if (!src || err) {
@@ -383,40 +418,80 @@ function OpponentAutocomplete({
   );
 }
 
+function PlayerAvatar({ photo, name, size = 28 }: { photo?: string; name: string; size?: number }) {
+  const [err, setErr] = useState(false);
+  if (photo && !err) {
+    return (
+      <img
+        src={photo}
+        alt={name}
+        style={{ width: size, height: size, objectFit: "cover", borderRadius: "50%", flexShrink: 0 }}
+        onError={() => setErr(true)}
+      />
+    );
+  }
+  const initials = name.split(/\s+/).filter(Boolean).map((w) => w[0]?.toUpperCase() ?? "").join("").slice(0, 2) || "?";
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: "50%", flexShrink: 0,
+      background: "rgba(var(--club-primary-rgb),0.15)",
+      display: "flex", alignItems: "center", justifyContent: "center",
+      fontSize: size * 0.35, fontWeight: 800,
+      color: "var(--club-primary)",
+    }}>{initials}</div>
+  );
+}
+
 function MotmAutocomplete({
-  value,
+  playerId,
+  playerName,
   allPlayers,
   onChange,
 }: {
-  value: number | null;
+  playerId: number | null;
+  playerName: string;
   allPlayers: SquadPlayer[];
-  onChange: (playerId: number | null) => void;
+  onChange: (val: { playerId: number | null; playerName: string }) => void;
 }) {
-  const selectedPlayer = value != null ? allPlayers.find((p) => p.id === value) ?? null : null;
-  const [query, setQuery] = useState(selectedPlayer?.name ?? "");
+  const selectedSquadPlayer = playerId != null ? allPlayers.find((p) => p.id === playerId) ?? null : null;
+  const displayName = selectedSquadPlayer?.name ?? playerName;
+  const [query, setQuery] = useState(displayName);
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    setQuery(selectedPlayer?.name ?? "");
-  }, [value]);
+    setQuery(selectedSquadPlayer?.name ?? playerName);
+  }, [playerId, playerName]);
 
   const suggestions = useMemo(() => {
     if (!query.trim() || !open) return [];
     const q = query.toLowerCase().trim();
     return allPlayers
       .filter((p) => p.name.toLowerCase().includes(q) || p.positionPtBr.toLowerCase().includes(q))
-      .slice(0, 8);
+      .slice(0, 10);
   }, [query, open, allPlayers]);
 
   const handleSelect = (player: SquadPlayer) => {
-    onChange(player.id);
+    onChange({ playerId: player.id, playerName: player.name });
     setQuery(player.name);
     setOpen(false);
   };
 
   const handleClear = () => {
-    onChange(null);
+    onChange({ playerId: null, playerName: "" });
     setQuery("");
+  };
+
+  const handleBlur = () => {
+    setTimeout(() => {
+      setOpen(false);
+      if (query.trim() && !selectedSquadPlayer) {
+        onChange({ playerId: null, playerName: query.trim() });
+      }
+    }, 180);
+  };
+
+  const posColors: Record<string, string> = {
+    GOL: "#f59e0b", DEF: "#3b82f6", MID: "#22c55e", ATA: "#ef4444",
   };
 
   return (
@@ -425,10 +500,15 @@ function MotmAutocomplete({
         <input
           type="text"
           value={query}
-          onChange={(e) => { setQuery(e.target.value); setOpen(true); if (!e.target.value) onChange(null); }}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setOpen(true);
+            if (!e.target.value) onChange({ playerId: null, playerName: "" });
+            else if (selectedSquadPlayer) onChange({ playerId: null, playerName: e.target.value });
+          }}
           onFocus={() => setOpen(true)}
-          onBlur={() => setTimeout(() => setOpen(false), 180)}
-          placeholder="Buscar jogador..."
+          onBlur={handleBlur}
+          placeholder="Buscar ou digitar nome do jogador..."
           className="w-full px-3 py-2.5 pr-9 rounded-xl text-white text-sm focus:outline-none glass"
           style={{ border: "1px solid rgba(255,255,255,0.08)" }}
         />
@@ -448,7 +528,7 @@ function MotmAutocomplete({
       {open && suggestions.length > 0 && (
         <div
           className="absolute z-30 left-0 right-0 mt-1 rounded-2xl overflow-hidden shadow-2xl"
-          style={{ background: "rgba(15,15,20,0.97)", border: "1px solid rgba(255,255,255,0.1)", backdropFilter: "blur(20px)" }}
+          style={{ background: "rgba(15,15,20,0.97)", border: "1px solid rgba(255,255,255,0.1)", backdropFilter: "blur(20px)", maxHeight: 320, overflowY: "auto" }}
         >
           {suggestions.map((player) => (
             <button
@@ -458,15 +538,15 @@ function MotmAutocomplete({
               onClick={() => handleSelect(player)}
               className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-white/5 transition-colors text-left"
             >
-              <div
-                className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold"
-                style={{ background: "rgba(var(--club-primary-rgb),0.15)", color: "var(--club-primary)" }}
-              >
-                {player.positionPtBr.slice(0, 3)}
+              <PlayerAvatar photo={player.photo} name={player.name} size={32} />
+              <div className="flex-1 min-w-0">
+                <p className="text-white text-sm font-semibold truncate">{player.name}</p>
+                <p className="text-[10px] font-bold" style={{ color: posColors[player.positionPtBr] ?? "rgba(255,255,255,0.4)" }}>
+                  {player.positionPtBr}
+                </p>
               </div>
-              <p className="text-white text-sm font-semibold truncate flex-1">{player.name}</p>
               {player.age && (
-                <span className="text-white/35 text-xs tabular-nums">{player.age} anos</span>
+                <span className="text-white/35 text-xs tabular-nums flex-shrink-0">{player.age} anos</span>
               )}
             </button>
           ))}
@@ -832,6 +912,8 @@ export function RegistrarPartidaModal({
         subIds: editMatch.subIds,
         playerStats: editMatch.playerStats,
         motmPlayerId: editMatch.motmPlayerId ?? null,
+        motmPlayerName: editMatch.motmPlayerName ?? (editMatch.motmPlayerId != null ? allPlayers.find((p) => p.id === editMatch.motmPlayerId)?.name ?? "" : ""),
+        opponentGoals: editMatch.opponentGoals ?? [],
         myShots: editMatch.matchStats?.myShots ?? 0,
         opponentShots: editMatch.matchStats?.opponentShots ?? 0,
         possessionPct: editMatch.matchStats?.possessionPct ?? 50,
@@ -851,6 +933,8 @@ export function RegistrarPartidaModal({
       subIds: [],
       playerStats: {},
       motmPlayerId: null,
+      motmPlayerName: "",
+      opponentGoals: [],
       myShots: 0,
       opponentShots: 0,
       possessionPct: 50,
@@ -892,7 +976,8 @@ export function RegistrarPartidaModal({
       const playerStats = { ...prev.playerStats };
       delete playerStats[playerId];
       const motmPlayerId = prev.motmPlayerId === playerId ? null : prev.motmPlayerId;
-      return { ...prev, starterIds, subIds, playerStats, motmPlayerId };
+      const motmPlayerName = prev.motmPlayerId === playerId ? "" : prev.motmPlayerName;
+      return { ...prev, starterIds, subIds, playerStats, motmPlayerId, motmPlayerName };
     });
   }, []);
 
@@ -965,6 +1050,8 @@ export function RegistrarPartidaModal({
           possessionPct: draft.possessionPct,
         },
         motmPlayerId: draft.motmPlayerId ?? undefined,
+        motmPlayerName: draft.motmPlayerName.trim() || undefined,
+        opponentGoals: draft.opponentGoals.length > 0 ? draft.opponentGoals : undefined,
         tablePositionBefore: draft.tablePosition ? Number(draft.tablePosition) : undefined,
         opponentLogoUrl: draft.opponentLogoUrl ?? undefined,
       };
@@ -992,6 +1079,8 @@ export function RegistrarPartidaModal({
           possessionPct: draft.possessionPct,
         },
         motmPlayerId: draft.motmPlayerId ?? undefined,
+        motmPlayerName: draft.motmPlayerName.trim() || undefined,
+        opponentGoals: draft.opponentGoals.length > 0 ? draft.opponentGoals : undefined,
         tablePositionBefore: draft.tablePosition ? Number(draft.tablePosition) : undefined,
         opponentLogoUrl: draft.opponentLogoUrl ?? undefined,
         createdAt: Date.now(),
@@ -1331,13 +1420,48 @@ export function RegistrarPartidaModal({
               })}
             </div>
 
+            {/* Gols do adversário */}
+            <div className="space-y-2 pt-1">
+              <div className="flex items-center justify-between">
+                <label className="text-white/40 text-xs font-medium uppercase tracking-wider">
+                  ⚽ Gols do {draft.opponent || "Adversário"}
+                </label>
+                <button
+                  type="button"
+                  onClick={() => onChange({ opponentGoals: [...draft.opponentGoals, { id: generateGoalId(), minute: 0, playerName: undefined }] })}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors"
+                  style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.6)" }}
+                >
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                  </svg>
+                  Adicionar gol
+                </button>
+              </div>
+              {draft.opponentGoals.length > 0 && (
+                <div className="space-y-2">
+                  {draft.opponentGoals.map((g, idx) => (
+                    <OpponentGoalEditor
+                      key={g.id}
+                      goal={g}
+                      index={idx}
+                      opponentName={draft.opponent}
+                      onChange={(updated) => onChange({ opponentGoals: draft.opponentGoals.map((og, i) => i === idx ? updated : og) })}
+                      onRemove={() => onChange({ opponentGoals: draft.opponentGoals.filter((_, i) => i !== idx) })}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+
             {/* MOTM */}
             <div className="space-y-1.5 pt-1">
               <label className="text-white/40 text-xs font-medium uppercase tracking-wider">⭐ Melhor em Campo (MOTM)</label>
               <MotmAutocomplete
-                value={draft.motmPlayerId}
+                playerId={draft.motmPlayerId}
+                playerName={draft.motmPlayerName}
                 allPlayers={allPlayers}
-                onChange={(playerId) => onChange({ motmPlayerId: playerId })}
+                onChange={(val) => onChange({ motmPlayerId: val.playerId, motmPlayerName: val.playerName })}
               />
             </div>
           </div>
