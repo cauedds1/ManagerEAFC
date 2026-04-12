@@ -42,6 +42,7 @@ interface GenerateNoticiaBody {
   rivalName?: string;
   fanMoodScore?: number;
   fanMoodLabel?: string;
+  matchPlayerContext?: string;
 }
 
 function leagueTierLabel(league: string): string {
@@ -153,6 +154,7 @@ router.post("/noticias/generate", async (req, res) => {
     description, clubName, season, source, category,
     playersContext, squadOvrContext, teamFormContext, historicalContext, recentPostsContext, customPortal,
     clubLeague, clubTitles, clubDescription, projeto, isClassico, rivalName, fanMoodScore, fanMoodLabel,
+    matchPlayerContext,
   } = req.body as GenerateNoticiaBody;
 
   if (!description || !description.trim()) {
@@ -201,6 +203,22 @@ router.post("/noticias/generate", async (req, res) => {
     ? `\n\nHISTÓRICO DO CLUBE (use para dar profundidade narrativa quando relevante — ex: comemorações de recorde, comparações com temporadas anteriores, saudosismo de torcedores):\n${historicalContext.trim()}`
     : "";
 
+  const matchPlayerSection = matchPlayerContext?.trim()
+    ? `\n\nATUAÇÕES INDIVIDUAIS DA ÚLTIMA PARTIDA — CONTEXTO DE EXPECTATIVA:
+${matchPlayerContext.trim()}
+
+COMO USAR ESTE DADO NOS COMENTÁRIOS DA TORCIDA:
+- Leia cada linha: o tag após "→" indica o que a torcida sente sobre aquele jogador NESTA partida.
+- "DECEPÇÃO" ou "ABAIXO DO ESPERADO": inclua 1–2 comentários de torcedores cobrando, cornetando ou expressando decepção específica com esse jogador — use linguagem realista como "hoje não foi ele", "esse craque sumiu", "jogou horrível comparado com o que a gente vê sempre", "não rendeu hoje".
+- "SURPRESA POSITIVA" ou "SURPRESA GRANDE": inclua 1–2 comentários de torcedores impressionados, que não esperavam tanto — "quem esperava que esse camarada ia mandar assim?", "meu Deus, que atuação desse menino", "não é sempre que vejo esse jogador brilhar assim".
+- "dentro do esperado" ou "atuação de alto nível, consistente": comentários normais de reconhecimento — "jogou bem como sempre", "confiável".
+- "atuação fraca, mas dentro do padrão": pode ignorar ou gerar comentário leve — "nem todo jogo tem que ser perfeito".
+- MOTM ⭐: pelo menos um comentário explicitamente celebrando o destaque.
+- Jogadores com gols/assistências: pelo menos um comentário mencionando a contribuição deles.
+- REGRA: Não é necessário comentar sobre TODOS os jogadores — foque nos 2–4 mais notáveis pelo delta de expectativa, gols, MOTM ou expulsão. Os outros podem aparecer no texto do post sem aparecer nos comentários.
+- NÃO invente ratings nem médias — use apenas os dados fornecidos acima.`
+    : "";
+
   const recentPostsSection = recentPostsContext && recentPostsContext.length > 0
     ? `\n\nPOSTS RECENTES DO FEED (últimas notícias publicadas, do mais novo ao mais antigo):\n${recentPostsContext.map((p, i) => `${i + 1}. [${p.category}] ${p.title ? p.title + " — " : ""}${p.headline}`).join("\n")}\n\nUSO DOS POSTS RECENTES — REGRA IMPORTANTE: Em aproximadamente 1 a cada 4 gerações, crie conexões narrativas com eventos recentes acima. Mas NÃO faça isso na maioria das vezes — a maior parte dos posts deve ser independente e autossuficiente.`
     : "";
@@ -235,7 +253,7 @@ Cada post que você cria deve ser ÚNICO e DIFERENTE dos anteriores — varie o 
 Use linguagem informal, autêntica, com gírias brasileiras do futebol. Seja criativo e específico.
 O time é ${clubName}${season ? ` (temporada ${season})` : ""}.
 O portal que publica é ${portalName} (${portalHandle}).
-Semente de unicidade: ${uniqueSeed} — use ela para garantir que este post seja diferente de qualquer outro.${prestigeSection}${playersSection}${squadOvrSection}${teamFormSection}${historicalSection}${recentPostsSection}${fanMoodSection}${classicoSection}${customPortalSection}${globalPortalSection}`;
+Semente de unicidade: ${uniqueSeed} — use ela para garantir que este post seja diferente de qualquer outro.${prestigeSection}${playersSection}${squadOvrSection}${teamFormSection}${historicalSection}${matchPlayerSection}${recentPostsSection}${fanMoodSection}${classicoSection}${customPortalSection}${globalPortalSection}`;
 
   const commentPersonalitiesRule = isGlobalPortal
     ? `AUDIÊNCIA DOS COMENTÁRIOS — portal global com seguidores de TODO o mundo e de VÁRIOS clubes:

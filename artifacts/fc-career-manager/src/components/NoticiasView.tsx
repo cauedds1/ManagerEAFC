@@ -832,6 +832,110 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
     return buildTeamFormContext(_matches);
   }, [_matches]);
 
+  const lastMatchPlayerContext = useMemo(() => {
+    if (_matches.length === 0 || allPlayers.length === 0) return "";
+    const lastMatch = _matches[_matches.length - 1];
+    if (!lastMatch.playerStats || Object.keys(lastMatch.playerStats).length === 0) return "";
+
+    const allStats = getAllPlayerStats(seasonId);
+
+    // Count assists per player from all goals in this match
+    const assistCounts: Record<number, number> = {};
+    for (const mStat of Object.values(lastMatch.playerStats)) {
+      for (const goal of mStat.goals ?? []) {
+        if (goal.assistPlayerId) {
+          assistCounts[goal.assistPlayerId] = (assistCounts[goal.assistPlayerId] ?? 0) + 1;
+        }
+      }
+    }
+
+    const lines: string[] = [];
+
+    for (const [playerIdStr, matchStat] of Object.entries(lastMatch.playerStats)) {
+      const playerId = Number(playerIdStr);
+      const player = allPlayers.find((p) => p.id === playerId);
+      if (!player) continue;
+
+      const matchRating = matchStat.rating;
+      if (!matchRating || matchRating <= 0) continue;
+
+      const pos = player.positionPtBr ?? player.position ?? "?";
+      const goals = (matchStat.goals ?? []).length;
+      const assists = assistCounts[playerId] ?? 0;
+      const isMOTM = lastMatch.motmPlayerId === playerId;
+      const isSub = matchStat.startedOnBench;
+      const injured = matchStat.injured;
+      const redCard = matchStat.redCard;
+      const ownGoal = matchStat.ownGoal;
+
+      const seasonStats = allStats[playerId];
+      const ratings = seasonStats?.recentRatings ?? [];
+      // recentRatings already includes this match (last entry) — compare vs prior history
+      const prevRatings = ratings.slice(0, -1);
+      const seasonAvg = prevRatings.length >= 3
+        ? Math.round((prevRatings.reduce((a, b) => a + b, 0) / prevRatings.length) * 10) / 10
+        : null;
+
+      const parts: string[] = [];
+      if (goals > 0) parts.push(`${goals} gol(s)`);
+      if (assists > 0) parts.push(`${assists} assist.`);
+      if (ownGoal) parts.push("gol contra");
+      if (redCard) parts.push("expulso");
+      if (injured) parts.push("saiu lesionado");
+      if (isMOTM) parts.push("MOTM ⭐");
+      const statsStr = parts.length > 0 ? ` | ${parts.join(", ")}` : "";
+      const subLabel = isSub ? " (sub)" : "";
+
+      let expectationTag = "";
+      if (seasonAvg !== null) {
+        const delta = matchRating - seasonAvg;
+        // Classify the delta relative to the player's own baseline
+        if (delta <= -2.0 && seasonAvg >= 7.8) {
+          expectationTag = "DECEPÇÃO: estrela de alto nível muito abaixo do seu padrão — torcida pode cobrar";
+        } else if (delta <= -1.5 && seasonAvg >= 7.0) {
+          expectationTag = "ABAIXO DO ESPERADO: jogador acima da média que rendeu menos do que de costume";
+        } else if (delta <= -1.2 && seasonAvg >= 6.5) {
+          expectationTag = "levemente abaixo do padrão habitual";
+        } else if (delta >= 2.0 && seasonAvg < 6.5) {
+          expectationTag = "SURPRESA GRANDE: jogador de nível baixo/médio com atuação extraordinária — torcida surpreendida";
+        } else if (delta >= 1.5 && seasonAvg < 7.0) {
+          expectationTag = "SURPRESA POSITIVA: acima do que se esperava deste jogador";
+        } else if (delta >= 1.5 && seasonAvg >= 7.0) {
+          expectationTag = "atuação de alto nível, consistente com padrão de jogador experiente";
+        } else if (matchRating >= 8.5) {
+          expectationTag = "atuação excepcional, dentro do esperado para um jogador deste nível";
+        } else if (matchRating < 6.0) {
+          expectationTag = "atuação fraca, mas dentro do padrão deste jogador";
+        } else {
+          expectationTag = "dentro do esperado";
+        }
+        lines.push(
+          `• ${player.name} (${pos})${subLabel}: nota ${matchRating.toFixed(1)} | média anterior ${seasonAvg.toFixed(1)} → ${expectationTag}${statsStr}`
+        );
+      } else {
+        // Not enough history — only include if rating is very notable
+        if (matchRating >= 8.0 || matchRating <= 5.5 || isMOTM || goals > 0) {
+          const notableStr = matchRating >= 8.5 ? "atuação de alto nível"
+            : matchRating <= 5.5 ? "atuação fraca"
+            : matchRating >= 7.5 ? "boa atuação"
+            : "atuação regular";
+          lines.push(`• ${player.name} (${pos})${subLabel}: nota ${matchRating.toFixed(1)} — ${notableStr}${statsStr}`);
+        }
+      }
+    }
+
+    if (lines.length === 0) return "";
+
+    const result = lastMatch.myScore > lastMatch.opponentScore ? "vitória"
+      : lastMatch.myScore < lastMatch.opponentScore ? "derrota"
+      : "empate";
+
+    return [
+      `Atuações individuais — última partida vs ${lastMatch.opponent} (${result} ${lastMatch.myScore}-${lastMatch.opponentScore}, ${lastMatch.tournament}):`,
+      ...lines,
+    ].join("\n");
+  }, [_matches, allPlayers, seasonId]);
+
   const historicalContext = useMemo(() => {
     if (pastSeasons.length === 0) return undefined;
     const lines = pastSeasons.map((s) => {
@@ -964,6 +1068,7 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
           historicalContext: historicalContext,
           recentPostsContext: recentPostsCtx,
           customPortal: params.customPortal,
+          matchPlayerContext: lastMatchPlayerContext || undefined,
         }),
       });
 
