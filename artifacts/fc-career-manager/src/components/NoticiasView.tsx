@@ -1644,7 +1644,7 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
         historicalContext={historicalContext}
         recentPosts={posts.slice(0, 6)}
         customPortals={customPortals}
-        matches={matches}
+        matches={_matches}
         allPlayers={allPlayers}
         onClose={() => setShowAddModal(false)}
         onSave={handleSavePost}
