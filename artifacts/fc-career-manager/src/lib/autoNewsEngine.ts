@@ -54,6 +54,39 @@ function teamGoalMinutesSorted(match: MatchRecord): number[] {
   return minutes.sort((a, b) => a - b);
 }
 
+function buildGoalTimeline(match: MatchRecord, clubName: string, allPlayers: SquadPlayer[]): string {
+  type GoalEvent = { minute: number; team: "home" | "away"; scorer: string };
+  const events: GoalEvent[] = [];
+
+  for (const [idStr, ps] of Object.entries(match.playerStats)) {
+    for (const g of ps.goals) {
+      events.push({ minute: g.minute, team: "home", scorer: playerName(allPlayers, Number(idStr)) });
+    }
+  }
+
+  for (const og of match.opponentGoals ?? []) {
+    events.push({ minute: og.minute, team: "away", scorer: og.playerName ?? "?" });
+  }
+
+  events.sort((a, b) => a.minute - b.minute);
+
+  if (events.length === 0) return "";
+
+  let homeScore = 0;
+  let awayScore = 0;
+  const lines: string[] = [];
+
+  for (const ev of events) {
+    if (ev.team === "home") homeScore++;
+    else awayScore++;
+    const scoreStr = `${homeScore}-${awayScore}`;
+    const team = ev.team === "home" ? clubName : match.opponent;
+    lines.push(`${ev.minute}' ${team} (${ev.scorer}) → placar ${scoreStr}`);
+  }
+
+  return ` Linha do tempo dos gols (em ordem cronológica): ${lines.join("; ")}. IMPORTANTE: use esta sequência exata para descrever quem abriu o placar, quem empatou, quem virou — NÃO inverta a ordem dos gols.`;
+}
+
 function buildLineupContext(match: MatchRecord, allPlayers: SquadPlayer[]): string {
   const starters = match.starterIds.map((id) => playerName(allPlayers, id));
   const subs = match.subIds.map((id) => playerName(allPlayers, id));
@@ -74,8 +107,7 @@ function buildLineupContext(match: MatchRecord, allPlayers: SquadPlayer[]): stri
 }
 
 function matchSummary(match: MatchRecord, clubName: string, season: string, allPlayers: SquadPlayer[]): string {
-  const mins = teamGoalMinutesSorted(match);
-  const minText = mins.length > 0 ? ` Gols do ${clubName} aos: ${mins.join("', ")}'. ` : " ";
+  const timeline = buildGoalTimeline(match, clubName, allPlayers);
   const lineup = buildLineupContext(match, allPlayers);
   let extraCtx = "";
   if (match.penaltyShootout) {
@@ -87,8 +119,8 @@ function matchSummary(match: MatchRecord, clubName: string, season: string, allP
   return (
     `${clubName} ${match.myScore}x${match.opponentScore} ${match.opponent}` +
     ` — ${match.tournament}${match.stage ? ` (${match.stage})` : ""}, temporada ${season}.` +
-    minText +
-    lineup +
+    timeline +
+    ` ` + lineup +
     extraCtx
   );
 }
