@@ -489,6 +489,8 @@ export function MatchDetailPage({
     if (isRivalWin) {
       const t = setTimeout(() => setRivalCrestFlipped(true), 300);
       return () => clearTimeout(t);
+    } else {
+      setRivalCrestFlipped(false);
     }
   }, [isRivalWin]);
 
