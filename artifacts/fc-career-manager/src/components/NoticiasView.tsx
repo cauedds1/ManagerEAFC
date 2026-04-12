@@ -16,7 +16,7 @@ import { useImageUpload } from "@/hooks/useImageUpload";
 import { ImageCropModal } from "./ImageCropModal";
 import type { SquadPlayer } from "@/lib/squadCache";
 import type { MatchRecord } from "@/types/match";
-import { getMatchResult } from "@/types/match";
+import { getMatchResult, GOAL_TYPE_LABELS, LOCATION_LABELS } from "@/types/match";
 import { getMatches as getMatchesForStorage } from "@/lib/matchStorage";
 import { buildPlayerPerformanceContext, buildPlayerContextString, buildSquadOvrContext } from "@/lib/playerContext";
 import { buildTeamFormContext } from "@/lib/autoNewsService";
@@ -138,6 +138,83 @@ interface BgGenParams {
   category?: string;
   imageUrl?: string;
   customPortal?: { id: string; name: string; description?: string; tone?: string };
+  attachedMatchContext?: string;
+}
+
+function buildMatchContextString(match: MatchRecord, allPlayers: SquadPlayer[]): string {
+  const playerById = new Map(allPlayers.map((p) => [p.id, p]));
+  const result = getMatchResult(match.myScore, match.opponentScore);
+  const resultLabel = result === "vitoria" ? "Vitória" : result === "derrota" ? "Derrota" : "Empate";
+  const locationLabel = LOCATION_LABELS[match.location] ?? match.location;
+
+  const lines: string[] = [
+    `Resultado: ${resultLabel} ${match.myScore}x${match.opponentScore} vs ${match.opponent} (${locationLabel})`,
+    `Data: ${match.date} | Torneio: ${match.tournament}${match.stage ? ` — ${match.stage}` : ""}`,
+  ];
+
+  const goalLines: string[] = [];
+  const cardLines: string[] = [];
+  const injuryLines: string[] = [];
+
+  for (const [pidStr, ps] of Object.entries(match.playerStats)) {
+    const pid = Number(pidStr);
+    const player = playerById.get(pid);
+    if (!player) continue;
+    for (const g of ps.goals) {
+      const typeLabel = g.goalType ? (GOAL_TYPE_LABELS[g.goalType] ?? g.goalType) : "Gol normal";
+      const assist = g.assistPlayerId ? playerById.get(g.assistPlayerId)?.name : undefined;
+      goalLines.push(`  ⚽ ${player.name} (${g.minute}') — ${typeLabel}${assist ? `, assist: ${assist}` : ""}`);
+    }
+    if (ps.ownGoal) goalLines.push(`  🔴 ${player.name} — Gol contra${ps.ownGoalMinute ? ` (${ps.ownGoalMinute}')` : ""}`);
+    if (ps.missedPenalty) goalLines.push(`  ❌ ${player.name} — Pênalti perdido${ps.missedPenaltyMinute ? ` (${ps.missedPenaltyMinute}')` : ""}`);
+    if (ps.redCard) cardLines.push(`  🟥 ${player.name} — Cartão vermelho${ps.redCardMinute ? ` (${ps.redCardMinute}')` : ""}`);
+    else if (ps.yellowCard2) cardLines.push(`  🟨🟨 ${player.name} — 2º amarelo${ps.yellowCard2Minute ? ` (${ps.yellowCard2Minute}')` : ""}`);
+    else if (ps.yellowCard) cardLines.push(`  🟨 ${player.name} — Cartão amarelo${ps.yellowCardMinute ? ` (${ps.yellowCardMinute}')` : ""}`);
+    if (ps.injured) injuryLines.push(`  🏥 ${player.name} — Lesionado${ps.injuryMinute ? ` (${ps.injuryMinute}')` : ""}`);
+  }
+
+  if (goalLines.length) lines.push("Gols e eventos:", ...goalLines);
+  if (match.opponentGoals?.length) {
+    const oppLines = match.opponentGoals.map((g) => `  ⚽ ${g.playerName ?? "Jogador adversário"} (${g.minute}')`);
+    lines.push("Gols do adversário:", ...oppLines);
+  }
+  if (match.motmPlayerId) {
+    const motm = playerById.get(match.motmPlayerId);
+    if (motm) lines.push(`⭐ Destaque (MOTM): ${motm.name}`);
+  }
+  if (cardLines.length) lines.push("Cartões:", ...cardLines);
+  if (injuryLines.length) lines.push("Lesões:", ...injuryLines);
+
+  const ratedPlayers = Object.entries(match.playerStats)
+    .map(([pidStr, ps]) => ({ pid: Number(pidStr), ps }))
+    .filter(({ ps }) => ps.rating > 0)
+    .sort((a, b) => b.ps.rating - a.ps.rating)
+    .slice(0, 9);
+
+  if (ratedPlayers.length) {
+    const ratingLines = ratedPlayers.map(({ pid, ps }) => {
+      const player = playerById.get(pid);
+      if (!player) return null;
+      const goals = ps.goals.length;
+      const assists = Object.values(match.playerStats).reduce(
+        (acc, s) => acc + s.goals.filter((g) => g.assistPlayerId === pid).length, 0,
+      );
+      return `  ${player.name}: ${ps.rating.toFixed(1)}${goals > 0 ? ` | ${goals} gol(s)` : ""}${assists > 0 ? ` | ${assists} assist(s)` : ""}`;
+    }).filter(Boolean);
+    lines.push("Notas dos jogadores (do melhor para o pior registrado):", ...(ratingLines as string[]));
+  }
+
+  const ms = match.matchStats;
+  const statsItems = [
+    ms.myShots > 0 ? `Finalizações: ${ms.myShots}` : null,
+    ms.possessionPct > 0 ? `Posse: ${ms.possessionPct}%` : null,
+    (ms.penaltyGoals ?? 0) > 0 ? `Gols de pênalti: ${ms.penaltyGoals}` : null,
+  ].filter(Boolean);
+  if (statsItems.length) lines.push(`Estatísticas da partida: ${statsItems.join(" | ")}`);
+
+  if (match.observations?.trim()) lines.push(`Observações do treinador: "${match.observations.trim()}"`);
+
+  return lines.join("\n");
 }
 
 function SourceButton({
@@ -196,6 +273,8 @@ function AddPostModal({
   historicalContext,
   recentPosts,
   customPortals,
+  matches,
+  allPlayers,
   onClose,
   onSave,
   onGenerateBackground,
@@ -207,6 +286,8 @@ function AddPostModal({
   historicalContext?: string;
   recentPosts?: NewsPost[];
   customPortals?: CustomPortal[];
+  matches?: MatchRecord[];
+  allPlayers?: SquadPlayer[];
   onClose: () => void;
   onSave: (post: NewsPost) => void;
   onGenerateBackground: (params: BgGenParams) => void;
@@ -216,6 +297,8 @@ function AddPostModal({
   const [aiDesc, setAiDesc] = useState("");
   const [aiSource, setAiSource] = useState<string>("auto");
   const [aiCategory, setAiCategory] = useState<NewsCategory | "auto">("auto");
+  const [attachedMatchId, setAttachedMatchId] = useState<string | null>(null);
+  const [showMatchPicker, setShowMatchPicker] = useState(false);
 
   const [manSource, setManSource] = useState<NewsSource>("fanpage");
   const [manCategory, setManCategory] = useState<NewsCategory>("geral");
@@ -253,9 +336,14 @@ function AddPostModal({
     ? customPortals?.find((p) => p.id === aiSource)
     : undefined;
 
+  const attachedMatch = attachedMatchId ? (matches ?? []).find((m) => m.id === attachedMatchId) : null;
+
   const handleBgGenerate = () => {
     if (!aiDesc.trim()) return;
     const isCustom = !!selectedCustomPortal;
+    const matchCtx = attachedMatch && allPlayers
+      ? buildMatchContextString(attachedMatch, allPlayers)
+      : undefined;
     onGenerateBackground({
       description: aiDesc.trim(),
       source: !isCustom && aiSource !== "auto" ? aiSource : undefined,
@@ -267,6 +355,7 @@ function AddPostModal({
         description: selectedCustomPortal.description,
         tone: selectedCustomPortal.tone,
       } : undefined,
+      attachedMatchContext: matchCtx,
     });
     onClose();
   };
@@ -454,6 +543,94 @@ function AddPostModal({
                   ))}
                 </div>
               </div>
+
+              {/* Attached match */}
+              {(matches ?? []).length > 0 && (
+                <div>
+                  <label className="text-white/40 text-xs font-semibold uppercase tracking-wider block mb-2">
+                    Partida <span className="text-white/25 normal-case font-normal">(opcional)</span>
+                  </label>
+                  {attachedMatch ? (
+                    <div
+                      className="flex items-center gap-3 px-3 py-2.5 rounded-xl"
+                      style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(var(--club-primary-rgb),0.3)" }}
+                    >
+                      <span className="text-base flex-shrink-0">
+                        {getMatchResult(attachedMatch.myScore, attachedMatch.opponentScore) === "vitoria" ? "🟢" : getMatchResult(attachedMatch.myScore, attachedMatch.opponentScore) === "derrota" ? "🔴" : "⚪"}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-white/85 text-xs font-semibold truncate">
+                          {attachedMatch.myScore}x{attachedMatch.opponentScore} vs {attachedMatch.opponent}
+                        </div>
+                        <div className="text-white/35 text-[10px] truncate">
+                          {attachedMatch.tournament}{attachedMatch.stage ? ` — ${attachedMatch.stage}` : ""} · {attachedMatch.date}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setAttachedMatchId(null)}
+                        className="text-white/30 hover:text-white/60 transition-colors flex-shrink-0"
+                        title="Remover partida"
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <button
+                        onClick={() => setShowMatchPicker((v) => !v)}
+                        className="w-full py-3 px-4 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-all duration-150 hover:opacity-80"
+                        style={{
+                          background: "rgba(255,255,255,0.04)",
+                          border: "1px dashed rgba(255,255,255,0.12)",
+                          color: "rgba(255,255,255,0.35)",
+                        }}
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                        </svg>
+                        Anexar partida
+                      </button>
+                      {showMatchPicker && (
+                        <div
+                          className="absolute z-20 left-0 right-0 mt-1.5 rounded-xl overflow-hidden"
+                          style={{
+                            background: "rgba(20,16,36,0.98)",
+                            border: "1px solid rgba(255,255,255,0.1)",
+                            boxShadow: "0 16px 48px rgba(0,0,0,0.6)",
+                            maxHeight: 220,
+                            overflowY: "auto",
+                          }}
+                        >
+                          {[...(matches ?? [])].sort((a, b) => b.createdAt - a.createdAt).map((m) => {
+                            const res = getMatchResult(m.myScore, m.opponentScore);
+                            const icon = res === "vitoria" ? "🟢" : res === "derrota" ? "🔴" : "⚪";
+                            return (
+                              <button
+                                key={m.id}
+                                onClick={() => { setAttachedMatchId(m.id); setShowMatchPicker(false); }}
+                                className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-white/5 transition-colors"
+                                style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}
+                              >
+                                <span className="text-sm flex-shrink-0">{icon}</span>
+                                <div className="flex-1 min-w-0">
+                                  <div className="text-white/80 text-xs font-semibold truncate">
+                                    {m.myScore}x{m.opponentScore} vs {m.opponent}
+                                  </div>
+                                  <div className="text-white/30 text-[10px] truncate">
+                                    {m.tournament}{m.stage ? ` — ${m.stage}` : ""} · {m.date}
+                                  </div>
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Image picker */}
               <div>
@@ -1069,6 +1246,7 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
           recentPostsContext: recentPostsCtx,
           customPortal: params.customPortal,
           matchPlayerContext: lastMatchPlayerContext || undefined,
+          attachedMatchContext: params.attachedMatchContext || undefined,
         }),
       });
 
@@ -1466,6 +1644,8 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
         historicalContext={historicalContext}
         recentPosts={posts.slice(0, 6)}
         customPortals={customPortals}
+        matches={matches}
+        allPlayers={allPlayers}
         onClose={() => setShowAddModal(false)}
         onSave={handleSavePost}
         onGenerateBackground={handleGenerateBackground}

@@ -43,6 +43,7 @@ interface GenerateNoticiaBody {
   fanMoodScore?: number;
   fanMoodLabel?: string;
   matchPlayerContext?: string;
+  attachedMatchContext?: string;
 }
 
 function leagueTierLabel(league: string): string {
@@ -154,7 +155,7 @@ router.post("/noticias/generate", async (req, res) => {
     description, clubName, season, source, category,
     playersContext, squadOvrContext, teamFormContext, historicalContext, recentPostsContext, customPortal,
     clubLeague, clubTitles, clubDescription, projeto, isClassico, rivalName, fanMoodScore, fanMoodLabel,
-    matchPlayerContext,
+    matchPlayerContext, attachedMatchContext,
   } = req.body as GenerateNoticiaBody;
 
   if (!description || !description.trim()) {
@@ -201,6 +202,22 @@ router.post("/noticias/generate", async (req, res) => {
 
   const historicalSection = historicalContext?.trim()
     ? `\n\nHISTÓRICO DO CLUBE (use para dar profundidade narrativa quando relevante — ex: comemorações de recorde, comparações com temporadas anteriores, saudosismo de torcedores):\n${historicalContext.trim()}`
+    : "";
+
+  const attachedMatchSection = attachedMatchContext?.trim()
+    ? `\n\n━━━ PARTIDA ANEXADA — BASE PRINCIPAL DA NOTÍCIA ━━━
+${attachedMatchContext.trim()}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+INSTRUÇÕES CRÍTICAS PARA A PARTIDA ANEXADA:
+- Esta partida é o TEMA CENTRAL da notícia — use TODOS os dados acima na construção do post e dos comentários.
+- Mencione placares, artilheiros, minutos de gol, assistências e notas exatamente como estão — não invente nada.
+- Jogadores com notas altas e gols devem aparecer como protagonistas do post.
+- Jogadores com notas baixas podem gerar comentários de cobrança ou decepção.
+- O MOTM (destaque) deve ser explicitamente celebrado no post e nos comentários.
+- Cartões e expulsões geram drama — use-os para criar tensão narrativa.
+- Lesões mencionadas aumentam a gravidade emocional da notícia.
+- A descrição do usuário complementa — mas NÃO substitui — os dados factuais da partida.`
     : "";
 
   const matchPlayerSection = matchPlayerContext?.trim()
@@ -253,7 +270,7 @@ Cada post que você cria deve ser ÚNICO e DIFERENTE dos anteriores — varie o 
 Use linguagem informal, autêntica, com gírias brasileiras do futebol. Seja criativo e específico.
 O time é ${clubName}${season ? ` (temporada ${season})` : ""}.
 O portal que publica é ${portalName} (${portalHandle}).
-Semente de unicidade: ${uniqueSeed} — use ela para garantir que este post seja diferente de qualquer outro.${prestigeSection}${playersSection}${squadOvrSection}${teamFormSection}${historicalSection}${matchPlayerSection}${recentPostsSection}${fanMoodSection}${classicoSection}${customPortalSection}${globalPortalSection}`;
+Semente de unicidade: ${uniqueSeed} — use ela para garantir que este post seja diferente de qualquer outro.${prestigeSection}${playersSection}${squadOvrSection}${teamFormSection}${historicalSection}${attachedMatchSection}${matchPlayerSection}${recentPostsSection}${fanMoodSection}${classicoSection}${customPortalSection}${globalPortalSection}`;
 
   const commentPersonalitiesRule = isGlobalPortal
     ? `AUDIÊNCIA DOS COMENTÁRIOS — portal global com seguidores de TODO o mundo e de VÁRIOS clubes:
