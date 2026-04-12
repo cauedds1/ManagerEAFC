@@ -485,6 +485,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
             const headers: Record<string, string> = { "Content-Type": "application/json" };
             if (openaiKey) headers["x-openai-key"] = openaiKey;
             const triggerMember = members.find((m) => m.id === firstNotif.memberId);
+            const meetingTriggerReason = data.meetingTrigger?.reason || undefined;
             void fetch("/api/noticias/generate-leak", {
               method: "POST",
               headers,
@@ -494,6 +495,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
                 clubLeague: career.clubLeague || undefined,
                 notificationPreview: firstNotif.preview,
                 memberName: triggerMember?.name || undefined,
+                meetingReason: meetingTriggerReason,
                 customPortal: {
                   id: jornalistico.id,
                   name: jornalistico.name,
