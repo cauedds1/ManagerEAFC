@@ -123,7 +123,7 @@ function buildClassicoSection(clubName: string, rivalName: string, isLoss: boole
   section += `\nResultado: ${clubName} ${result} o clássico.`;
   section += `\nREGRAS OBRIGATÓRIAS PARA CLÁSSICO:`;
   section += `\n- Eleve MUITO o peso narrativo — clássicos são diferentes de partidas normais. Honor, orgulho, rivalidade histórica.`;
-  section += `\n- ${isLoss ? `DERROTA no clássico: a dor é AMPLIFICADA. Inclua obrigatoriamente comentários de torcedores do ${rivalName} zoando, provocando, chamando de fraco, frequês. Podem usar termos como "frango", "vexame", "passa o pé". Tom de humilhação legítima dos rivais.` : isWin ? `VITÓRIA no clássico: a celebração é ÉPICA. Tom de conquista histórica. Comentários de euforia máxima dos torcedores.` : `EMPATE no clássico: sabor amargo. Cada torcida acha que o rival "saiu vencedor moralmente". Polarização nos comentários.`}`;
+  section += `\n- ${isLoss ? `DERROTA no clássico: a dor é AMPLIFICADA. Inclua obrigatoriamente comentários de torcedores do ${rivalName} zoando, provocando, chamando de fraco, freguês. Podem usar termos como "frango", "vexame", "passa o pé", "freguês". Tom de humilhação legítima dos rivais.` : isWin ? `VITÓRIA no clássico: a celebração é ÉPICA. Tom de conquista histórica. Comentários de euforia máxima dos torcedores.` : `EMPATE no clássico: sabor amargo. Cada torcida acha que o rival "saiu vencedor moralmente". Polarização nos comentários.`}`;
   section += `\n- Comentários devem ter personas DISTINTAS: torcedores do ${clubName} (eufóricos ou arrasados), torcedores do ${rivalName} (provocadores ou lamentando), jornalistas neutros. Misture bem.`;
   section += `\n- Use linguagem de rivalidade: "clássico", "derby", "batalha histórica", "honra da cidade", etc.`;
   return section;
