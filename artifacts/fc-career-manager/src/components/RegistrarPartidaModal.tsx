@@ -9,7 +9,7 @@ import type {
   GoalEntry,
   OpponentGoalEntry,
 } from "@/types/match";
-import { LOCATION_LABELS, LOCATION_ICONS } from "@/types/match";
+import { LOCATION_LABELS, LOCATION_ICONS, GOAL_TYPE_LABELS, GOAL_TYPE_ICONS, type GoalType } from "@/types/match";
 import {
   addMatch,
   updateMatch,
@@ -302,6 +302,8 @@ function RatingBar({ value, onChange }: { value: number; onChange: (v: number) =
   );
 }
 
+const GOAL_TYPES: GoalType[] = ["normal", "cabeca", "bicicleta", "fora_area", "falta", "penalti", "contra_ataque"];
+
 function GoalEditor({
   goal, playerIndex, allParticipants, currentPlayerId, onChange, onRemove,
 }: {
@@ -309,13 +311,41 @@ function GoalEditor({
   currentPlayerId: number; onChange: (g: GoalEntry) => void; onRemove: () => void;
 }) {
   const others = allParticipants.filter((p) => p.id !== currentPlayerId);
+  const selectedType = goal.goalType ?? "normal";
   return (
-    <div className="glass rounded-xl p-3 space-y-2">
+    <div className="glass rounded-xl p-3 space-y-2.5">
       <div className="flex items-center gap-2">
-        <span className="text-base">⚽</span>
+        <span className="text-base">{GOAL_TYPE_ICONS[selectedType]}</span>
         <span className="text-white/50 text-xs">Gol {playerIndex + 1}</span>
         <button type="button" onClick={onRemove} className="ml-auto w-5 h-5 rounded-full flex items-center justify-center text-white/30 hover:text-red-400 hover:bg-red-400/10 transition-colors text-xs">×</button>
       </div>
+
+      {/* Forma do gol */}
+      <div className="space-y-1.5">
+        <label className="text-white/40 text-[11px] font-semibold uppercase tracking-wide">Forma do gol</label>
+        <div className="flex flex-wrap gap-1.5">
+          {GOAL_TYPES.map((type) => {
+            const active = selectedType === type;
+            return (
+              <button
+                key={type}
+                type="button"
+                onClick={() => onChange({ ...goal, goalType: type })}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all duration-150"
+                style={{
+                  background: active ? "rgba(var(--club-primary-rgb),0.25)" : "rgba(255,255,255,0.05)",
+                  color: active ? "var(--club-primary)" : "rgba(255,255,255,0.4)",
+                  border: active ? "1px solid rgba(var(--club-primary-rgb),0.4)" : "1px solid rgba(255,255,255,0.07)",
+                }}
+              >
+                <span>{GOAL_TYPE_ICONS[type]}</span>
+                <span>{GOAL_TYPE_LABELS[type]}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       <div className="flex items-center gap-2">
         <label className="text-white/40 text-xs w-14 flex-shrink-0">Minuto</label>
         <NumericInput value={goal.minute} onChange={(v) => onChange({ ...goal, minute: v ?? 0 })} min={1} max={120} placeholder="Min" className="w-16" />
@@ -672,6 +702,7 @@ function PlayerLineupRow({
   isSub,
   allParticipants,
   allUnused,
+  assistCount,
   onUpdate,
   onRemove,
   onSubPlayerAdded,
@@ -681,6 +712,7 @@ function PlayerLineupRow({
   isSub: boolean;
   allParticipants: SquadPlayer[];
   allUnused: SquadPlayer[];
+  assistCount: number;
   onUpdate: (patch: Partial<PlayerMatchStats>) => void;
   onRemove: () => void;
   onSubPlayerAdded?: (playerId: number) => void;
@@ -729,6 +761,7 @@ function PlayerLineupRow({
               <span className="text-white/30 text-xs">{player.positionPtBr}</span>
               {isSub && <span className="text-xs" style={{ color: "#2dd4bf" }}>sub</span>}
               {stats.goals.length > 0 && <span className="text-xs text-white/60">⚽ {stats.goals.length}</span>}
+              {assistCount > 0 && <span className="text-xs" style={{ color: "#60a5fa" }}>👟 {assistCount > 1 ? assistCount : ""}</span>}
               {stats.ownGoal && <span className="text-xs" style={{ color: "#f87171" }}>GC</span>}
               {stats.yellowCard && <span className="text-xs">🟨</span>}
               {stats.redCard && <span className="text-xs">🟥</span>}
@@ -1425,6 +1458,8 @@ export function RegistrarPartidaModal({
                 const player = allPlayers.find((p) => p.id === id);
                 const stats = draft.playerStats[id];
                 if (!player || !stats) return null;
+                const assistCount = Object.values(draft.playerStats).reduce((n, ps) =>
+                  n + ps.goals.filter((g) => g.assistPlayerId === id).length, 0);
                 return (
                   <PlayerLineupRow
                     key={id}
@@ -1433,6 +1468,7 @@ export function RegistrarPartidaModal({
                     isSub={false}
                     allParticipants={allParticipants}
                     allUnused={allUnusedForSub(id)}
+                    assistCount={assistCount}
                     onUpdate={(patch) => updatePlayerStats(id, patch)}
                     onRemove={() => removePlayer(id)}
                     onSubPlayerAdded={handleSubPlayerAdded}
@@ -1475,6 +1511,8 @@ export function RegistrarPartidaModal({
                 const player = allPlayers.find((p) => p.id === id);
                 const stats = draft.playerStats[id];
                 if (!player || !stats) return null;
+                const assistCount = Object.values(draft.playerStats).reduce((n, ps) =>
+                  n + ps.goals.filter((g) => g.assistPlayerId === id).length, 0);
                 return (
                   <PlayerLineupRow
                     key={id}
@@ -1483,6 +1521,7 @@ export function RegistrarPartidaModal({
                     isSub={true}
                     allParticipants={allParticipants}
                     allUnused={allUnusedForSub(id)}
+                    assistCount={assistCount}
                     onUpdate={(patch) => updatePlayerStats(id, patch)}
                     onRemove={() => removePlayer(id)}
                   />

@@ -13,10 +13,40 @@ export const LOCATION_ICONS: Record<MatchLocation, string> = {
   neutro: "⚖️",
 };
 
+export type GoalType =
+  | "normal"
+  | "cabeca"
+  | "bicicleta"
+  | "fora_area"
+  | "falta"
+  | "penalti"
+  | "contra_ataque";
+
+export const GOAL_TYPE_LABELS: Record<GoalType, string> = {
+  normal:        "Gol normal",
+  cabeca:        "De cabeça",
+  bicicleta:     "De bicicleta",
+  fora_area:     "Fora da área",
+  falta:         "Falta",
+  penalti:       "Pênalti",
+  contra_ataque: "Contra-ataque",
+};
+
+export const GOAL_TYPE_ICONS: Record<GoalType, string> = {
+  normal:        "⚽",
+  cabeca:        "🤕",
+  bicicleta:     "🔄",
+  fora_area:     "💥",
+  falta:         "🎯",
+  penalti:       "🥅",
+  contra_ataque: "⚡",
+};
+
 export interface GoalEntry {
   id: string;
   minute: number;
   assistPlayerId?: number;
+  goalType?: GoalType;
 }
 
 export interface OpponentGoalEntry {

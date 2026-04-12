@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import type { MatchRecord, PlayerMatchStats } from "@/types/match";
-import { getMatchResult, RESULT_STYLE, LOCATION_ICONS, LOCATION_LABELS } from "@/types/match";
+import { getMatchResult, RESULT_STYLE, LOCATION_ICONS, LOCATION_LABELS, GOAL_TYPE_ICONS, GOAL_TYPE_LABELS } from "@/types/match";
 import type { SquadPlayer } from "@/lib/squadCache";
 import { getCachedClubList } from "@/lib/clubListCache";
 import { searchStaticClubs } from "@/lib/staticClubList";
@@ -352,11 +352,18 @@ function PlayerDetailPanel({
             {hasGoals && stats!.goals.map((g, i) => {
               const assister = g.assistPlayerId != null ? allPlayers.find((p) => p.id === g.assistPlayerId) : null;
               const isLast = i === stats!.goals.length - 1 && events.length === 0;
+              const typeIcon = g.goalType ? GOAL_TYPE_ICONS[g.goalType] : "⚽";
+              const typeLabel = g.goalType && g.goalType !== "normal" ? GOAL_TYPE_LABELS[g.goalType] : null;
               return (
                 <div key={g.id ?? i} className="flex items-center gap-2 px-3 py-2.5" style={{ borderBottom: isLast ? "none" : "1px solid rgba(255,255,255,0.05)" }}>
-                  <span className="text-sm">⚽</span>
+                  <span className="text-sm">{typeIcon}</span>
                   <span className="text-white/80 text-sm font-semibold tabular-nums">{g.minute}'</span>
-                  {assister && <span className="text-white/35 text-xs ml-auto">Ass: {lastName(assister.name)}</span>}
+                  {typeLabel && (
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded" style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.4)" }}>
+                      {typeLabel}
+                    </span>
+                  )}
+                  {assister && <span className="text-white/35 text-xs ml-auto">👟 {lastName(assister.name)}</span>}
                 </div>
               );
             })}
