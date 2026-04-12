@@ -791,7 +791,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
         className="rounded-2xl overflow-hidden"
         style={{
           border: "1px solid var(--surface-border)",
-          minHeight: 520,
+          height: 520,
           display: "grid",
           gridTemplateColumns: panel === "list" ? "1fr" : "clamp(200px,28%,260px) 1fr",
         }}
