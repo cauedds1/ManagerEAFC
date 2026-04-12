@@ -80,6 +80,7 @@ export interface MatchRecord {
   opponentGoals?: OpponentGoalEntry[];
   tablePositionBefore?: number;
   opponentLogoUrl?: string;
+  observations?: string;
   createdAt: number;
 }
 

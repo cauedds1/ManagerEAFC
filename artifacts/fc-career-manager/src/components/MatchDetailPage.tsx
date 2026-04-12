@@ -955,6 +955,17 @@ export function MatchDetailPage({
         </div>
       </div>
 
+      {/* Observations */}
+      {match.observations && (
+        <div
+          className="mx-4 mb-4 rounded-2xl p-4 space-y-2"
+          style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}
+        >
+          <p className="text-white/30 text-[10px] font-bold tracking-widest uppercase">Observações</p>
+          <p className="text-white/60 text-sm leading-relaxed whitespace-pre-wrap">{match.observations}</p>
+        </div>
+      )}
+
       {/* Player detail panel */}
       {selectedPlayer && (
         <PlayerDetailPanel

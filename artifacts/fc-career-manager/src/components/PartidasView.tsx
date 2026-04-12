@@ -4,7 +4,7 @@ import { getMatchResult, RESULT_STYLE, LOCATION_ICONS, LOCATION_LABELS } from "@
 import type { SquadPlayer } from "@/lib/squadCache";
 import { getCachedClubList } from "@/lib/clubListCache";
 import { searchStaticClubs } from "@/lib/staticClubList";
-import { RegistrarPartidaModal } from "./RegistrarPartidaModal";
+import { RegistrarPartidaModal, hasSavedDraft, discardSavedDraft } from "./RegistrarPartidaModal";
 import { MatchDetailPage } from "./MatchDetailPage";
 
 function resolveOpponentLogo(name: string, stored?: string): string | undefined {
@@ -561,6 +561,7 @@ export function PartidasView({ careerId, seasonId, season, clubName, clubLogoUrl
   const [filter, setFilter] = useState<Filter>("todos");
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedMatch, setSelectedMatch] = useState<MatchRecord | null>(null);
+  const [hasDraft, setHasDraft] = useState(() => hasSavedDraft(careerId, seasonId));
   const [viewMode, setViewMode] = useState<"lista" | "grade">(() => {
     try { return (localStorage.getItem(VIEW_MODE_KEY) as "lista" | "grade") ?? "lista"; } catch { return "lista"; }
   });
@@ -568,6 +569,16 @@ export function PartidasView({ careerId, seasonId, season, clubName, clubLogoUrl
   useEffect(() => {
     try { localStorage.setItem(VIEW_MODE_KEY, viewMode); } catch { /* noop */ }
   }, [viewMode]);
+
+  const handleModalClose = () => {
+    setModalOpen(false);
+    setHasDraft(hasSavedDraft(careerId, seasonId));
+  };
+
+  const handleDiscardDraft = () => {
+    discardSavedDraft(careerId, seasonId);
+    setHasDraft(false);
+  };
 
   if (selectedMatch) {
     return (
@@ -659,6 +670,35 @@ export function PartidasView({ careerId, seasonId, season, clubName, clubLogoUrl
         </div>
       </div>
 
+      {/* Draft banner */}
+      {hasDraft && !isReadOnly && (
+        <div
+          className="flex items-center gap-3 rounded-2xl px-4 py-3"
+          style={{ background: "rgba(var(--club-primary-rgb),0.10)", border: "1px solid rgba(var(--club-primary-rgb),0.25)" }}
+        >
+          <span className="text-lg flex-shrink-0">📝</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-white/80 text-sm font-bold leading-tight">Registro em andamento</p>
+            <p className="text-white/40 text-xs mt-0.5">Você tem um rascunho salvo de registro de partida.</p>
+          </div>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <button
+              onClick={handleDiscardDraft}
+              className="text-white/30 text-xs hover:text-white/60 transition-colors px-2 py-1"
+            >
+              Descartar
+            </button>
+            <button
+              onClick={() => setModalOpen(true)}
+              className="px-3 py-1.5 rounded-xl font-bold text-xs transition-all hover:scale-[1.02] active:scale-[0.98]"
+              style={{ background: "var(--club-primary)", color: "white" }}
+            >
+              Continuar registro
+            </button>
+          </div>
+        </div>
+      )}
+
       {matches.length > 0 && (
         <>
           <div className="flex gap-2 flex-wrap">
@@ -742,7 +782,7 @@ export function PartidasView({ careerId, seasonId, season, clubName, clubLogoUrl
           clubLogoUrl={clubLogoUrl}
           allPlayers={allPlayers}
           onMatchAdded={onMatchAdded}
-          onClose={() => setModalOpen(false)}
+          onClose={handleModalClose}
           competitions={competitions}
         />
       )}

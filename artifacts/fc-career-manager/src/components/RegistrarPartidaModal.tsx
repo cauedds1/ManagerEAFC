@@ -56,6 +56,34 @@ interface MatchDraft {
   myShots: number;
   opponentShots: number;
   possessionPct: number;
+  observations: string;
+}
+
+function draftKey(careerId: string, seasonId: string) {
+  return `fc-match-draft-${careerId}-${seasonId}`;
+}
+
+function loadSavedDraft(careerId: string, seasonId: string): MatchDraft | null {
+  try {
+    const raw = localStorage.getItem(draftKey(careerId, seasonId));
+    if (!raw) return null;
+    return JSON.parse(raw) as MatchDraft;
+  } catch {
+    return null;
+  }
+}
+
+function clearSavedDraft(careerId: string, seasonId: string) {
+  try { localStorage.removeItem(draftKey(careerId, seasonId)); } catch { /* noop */ }
+}
+
+export function hasSavedDraft(careerId: string, seasonId: string): boolean {
+  const d = loadSavedDraft(careerId, seasonId);
+  return !!(d && (d.opponent.trim() || d.starterIds.length > 0 || d.myScore > 0 || d.opponentScore > 0));
+}
+
+export function discardSavedDraft(careerId: string, seasonId: string) {
+  clearSavedDraft(careerId, seasonId);
 }
 
 function mkDefault(startedOnBench = false): PlayerMatchStats {
@@ -943,8 +971,11 @@ export function RegistrarPartidaModal({
         myShots: editMatch.matchStats?.myShots ?? 0,
         opponentShots: editMatch.matchStats?.opponentShots ?? 0,
         possessionPct: editMatch.matchStats?.possessionPct ?? 50,
+        observations: editMatch.observations ?? "",
       };
     }
+    const saved = loadSavedDraft(careerId, seasonId);
+    if (saved) return { ...saved };
     return {
       opponent: "",
       opponentLogoUrl: null,
@@ -964,8 +995,14 @@ export function RegistrarPartidaModal({
       myShots: 0,
       opponentShots: 0,
       possessionPct: 50,
+      observations: "",
     };
   });
+
+  useEffect(() => {
+    if (isEditMode) return;
+    try { localStorage.setItem(draftKey(careerId, seasonId), JSON.stringify(draft)); } catch { /* noop */ }
+  }, [draft, isEditMode, careerId, seasonId]);
 
   const onChange = useCallback((patch: Partial<MatchDraft>) => {
     setDraft((prev) => ({ ...prev, ...patch }));
@@ -1109,10 +1146,12 @@ export function RegistrarPartidaModal({
         opponentGoals: draft.opponentGoals.length > 0 ? draft.opponentGoals : undefined,
         tablePositionBefore: draft.tablePosition ? Number(draft.tablePosition) : undefined,
         opponentLogoUrl: draft.opponentLogoUrl ?? undefined,
+        observations: draft.observations.trim() || undefined,
         createdAt: Date.now(),
       };
       addMatch(seasonId, match);
       applyMatchToPlayerStats(seasonId, draft.starterIds, draft.subIds, draft.playerStats);
+      clearSavedDraft(careerId, seasonId);
       onMatchAdded(match);
       onClose();
     }
@@ -1541,6 +1580,25 @@ export function RegistrarPartidaModal({
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* Observações */}
+          <div className="space-y-2">
+            <p className="text-white/40 text-xs font-medium uppercase tracking-wider">Observações</p>
+            <textarea
+              value={draft.observations}
+              onChange={(e) => onChange({ observations: e.target.value })}
+              placeholder="Descreva como foi o jogo, lances importantes, tática usada... Isso ajuda a IA a gerar notícias mais ricas sobre a partida."
+              rows={4}
+              className="w-full px-3.5 py-3 rounded-2xl text-white text-sm focus:outline-none resize-none glass leading-relaxed"
+              style={{
+                border: "1px solid rgba(255,255,255,0.08)",
+                background: "rgba(255,255,255,0.03)",
+                color: "rgba(255,255,255,0.8)",
+                caretColor: "var(--club-primary)",
+              }}
+            />
+            <p className="text-white/20 text-xs">Opcional — visível no resumo da partida e usado para geração de notícias.</p>
           </div>
 
           <div className="h-1" />
