@@ -48,6 +48,7 @@ import {
   countUnreadNoticias,
   initNoticiasSeenAt,
   markNoticiasRead,
+  markDiretoriaRead,
 } from "@/lib/unreadStorage";
 import { NotificationToast, type ToastItem } from "./NotificationToast";
 
@@ -298,13 +299,14 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
   const handleTabChange = useCallback((tab: CareerTab) => {
     setActiveTab(tab);
     if (tab === "diretoria") {
+      markDiretoriaRead(career.id);
       setDiretoriaUnread(0);
     }
     if (tab === "noticias") {
       markNoticiasRead(activeSeasonId);
       setNoticiasUnread(0);
     }
-  }, [activeSeasonId]);
+  }, [career.id, activeSeasonId]);
 
   const transferredPlayers: SquadPlayer[] = transfers.map((t) => {
     const pos = migratePositionOverride(t.playerPositionPtBr) ?? "MID";
@@ -388,8 +390,8 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
 
     if (eligibleMembers.length === 0) return;
 
-    const leaguePos = getLeaguePosition(career.id);
-    const finSettings = getFinanceiroSettings(career.id);
+    const leaguePos = getLeaguePosition(activeSeasonId);
+    const finSettings = getFinanceiroSettings(activeSeasonId);
     const finSnapshot = computeFinancialSnapshot(finSettings, transfers);
     const recentMatches = updatedMatches.slice(-10).reverse().map((m) => ({
       opponent: m.opponent,

@@ -77,6 +77,7 @@ export interface PlayerContextItem {
   overall?: number;
   ovrRelative?: string;
   age?: number;
+  consecutivePoorRatings?: number;
 }
 
 export function buildPlayerPerformanceContext(
@@ -136,6 +137,13 @@ export function buildPlayerPerformanceContext(
     const benchRatio = totalApps > 0 ? subs / totalApps : 0;
     const isBench = subs > starters && totalApps >= 3;
 
+    const allRatings = stats.recentRatings ?? [];
+    let consecutivePoorRatings = 0;
+    for (let i = allRatings.length - 1; i >= 0; i--) {
+      if (allRatings[i] < 6.5) consecutivePoorRatings++;
+      else break;
+    }
+
     items.push({
       name: player.name,
       position: pos,
@@ -152,6 +160,7 @@ export function buildPlayerPerformanceContext(
       overall,
       ovrRelative,
       age: player.age,
+      consecutivePoorRatings: consecutivePoorRatings > 0 ? consecutivePoorRatings : undefined,
     });
   }
 

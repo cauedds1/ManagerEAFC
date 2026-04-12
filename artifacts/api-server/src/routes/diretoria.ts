@@ -71,6 +71,7 @@ interface PlayerPerfItem {
   benchRatio?: number;
   overall?: number;
   age?: number;
+  consecutivePoorRatings?: number;
 }
 
 interface ChatHistoryItem {
@@ -628,60 +629,79 @@ router.post("/diretoria/check-triggers", async (req, res) => {
         });
       }
 
-      const poorStarters = playerPerformance.filter(
-        (p) => !p.isBench && (p.form === "péssima" || p.form === "ruim") && p.appearances >= 4,
+      const poorStartersStrict = playerPerformance.filter(
+        (p) =>
+          !p.isBench &&
+          (p.consecutivePoorRatings ?? 0) >= 4 &&
+          p.appearances >= 4,
       );
-      for (const poor of poorStarters.slice(0, 2)) {
+      for (const poor of poorStartersStrict.slice(0, 1)) {
         const substitute = playerPerformance.find(
           (p) =>
             p.name !== poor.name &&
             p.position === poor.position &&
-            (p.form === "boa" || p.form === "ótima" || p.form === "regular") &&
+            (p.form === "boa" || p.form === "ótima") &&
             p.isBench,
         );
-        if (substitute && auxTecnico && !notifications.find((n) => n.memberId === auxTecnico.id)) {
+        if (auxTecnico && !notifications.find((n) => n.memberId === auxTecnico.id)) {
+          const subNote = substitute ? ` ${substitute.name.split(" ")[0]} está bem e pode assumir a vaga.` : "";
           notifications.push({
             memberId: auxTecnico.id,
-            preview: `${poor.name.split(" ")[0]} está em baixa. Não devíamos dar mais minutos ao ${substitute.name.split(" ")[0]}?`,
+            preview: `${poor.name.split(" ")[0]} leva ${poor.consecutivePoorRatings} jogos seguidos em baixo rendimento como titular.${subNote}`,
           });
         }
       }
 
-      const hiddenGems = playerPerformance.filter(
-        (p) => p.isBench && p.avgRating >= 7.0 && p.appearances >= 5,
+      const starOnBench = playerPerformance.filter(
+        (p) =>
+          p.isBench &&
+          (p.benchRatio ?? 0) >= 0.85 &&
+          p.appearances >= 3 &&
+          ((p.overall ?? 0) >= 80 || p.goals + p.assists >= 8),
       );
-      for (const gem of hiddenGems.slice(0, 1)) {
-        const member = auxTecnico ?? presidente;
+      for (const star of starOnBench.slice(0, 1)) {
+        const member = presidente ?? auxTecnico;
         if (member && !notifications.find((n) => n.memberId === member.id)) {
+          const reason = (p: typeof star) =>
+            (p.overall ?? 0) >= 80
+              ? `(${p.overall} OVR)`
+              : `(${p.goals}G ${p.assists}A na temporada)`;
           notifications.push({
             memberId: member.id,
-            preview: `${gem.name.split(" ")[0]} tem média ${gem.avgRating} mas fica quase sempre no banco — ele merece mais chances.`,
+            preview: `${star.name.split(" ")[0]} ${reason(star)} está quase sempre no banco — por que um jogador assim não é titular?`,
           });
         }
       }
 
-      const highOverallBench = playerPerformance.filter(
-        (p) => p.isBench && (p.overall ?? 0) >= 80 && p.appearances >= 3,
+      const highOverallPoorFormStrict = playerPerformance.filter(
+        (p) =>
+          !p.isBench &&
+          (p.overall ?? 0) >= 80 &&
+          (p.consecutivePoorRatings ?? 0) >= 4 &&
+          p.appearances >= 4,
       );
-      for (const star of highOverallBench.slice(0, 1)) {
+      for (const star of highOverallPoorFormStrict.slice(0, 1)) {
         const member = presidente ?? auxTecnico;
         if (member && !notifications.find((n) => n.memberId === member.id)) {
           notifications.push({
             memberId: member.id,
-            preview: `A torcida está questionando: por que ${star.name.split(" ")[0]} (${star.overall} OVR) passa tanto tempo no banco?`,
+            preview: `${star.name.split(" ")[0]} (${star.overall} OVR) vai mal há ${star.consecutivePoorRatings} jogos seguidos como titular — a torcida está impaciente.`,
           });
         }
       }
 
-      const highOverallPoorForm = playerPerformance.filter(
-        (p) => !p.isBench && (p.overall ?? 0) >= 80 && (p.form === "ruim" || p.form === "péssima") && p.appearances >= 4,
+      const vaidoMantidoTitular = playerPerformance.filter(
+        (p) =>
+          p.fanMoral === "Vaiado" &&
+          !p.isBench &&
+          p.appearances >= 3,
       );
-      for (const star of highOverallPoorForm.slice(0, 1)) {
+      for (const v of vaidoMantidoTitular.slice(0, 1)) {
         const member = presidente ?? auxTecnico;
         if (member && !notifications.find((n) => n.memberId === member.id)) {
           notifications.push({
             memberId: member.id,
-            preview: `${star.name.split(" ")[0]} (${star.overall} OVR) está muito abaixo do esperado — a torcida não vai aceitar por muito tempo.`,
+            preview: `${v.name.split(" ")[0]} é vaiado pela torcida mas segue sendo titular. Em ${v.appearances} jogos a situação não mudou.`,
           });
         }
       }
@@ -699,41 +719,42 @@ router.post("/diretoria/check-triggers", async (req, res) => {
         if (member && !notifications.find((n) => n.memberId === member.id)) {
           notifications.push({
             memberId: member.id,
-            preview: `${prom.name.split(" ")[0]} tem ${prom.appearances} jogos com média ${prom.avgRating} mas passa quase tudo no banco — um jovem promissor que não pode ser desperdiçado.`,
+            preview: `${prom.name.split(" ")[0]} tem ${prom.appearances} jogos com média ${prom.avgRating} mas passa quase tudo no banco — é uma promessa sub-21 que pode se perder.`,
           });
         }
       }
     }
   }
 
-  if (hasNewMatch && context.projeto && leaguePos && recentMatches.length >= 8) {
+  if (hasNewMatch && context.projeto && leaguePos) {
     const projetoLower = context.projeto.toLowerCase();
     const isTitleProject = /título|campeão|campeon|ganhar.*campe|primeiro lugar/i.test(projetoLower);
     const isPromotionProject = /acesso|promoção|promoçao|subir|primeira divisão/i.test(projetoLower);
     const isSurvivalProject = /rebaixar|rebaixamento|permanecer|evitar.*rebaixamento|não cair/i.test(projetoLower);
 
+    const totalGames = leaguePos.wins + leaguePos.draws + leaguePos.losses;
     const relegZone = leaguePos.totalTeams - 3;
     const isInRelZone = leaguePos.position >= relegZone;
 
-    if (isTitleProject && leaguePos.position > 4 && leaguePos.losses >= 5) {
+    if (isTitleProject && totalGames >= 10 && leaguePos.position > 5 && leaguePos.losses >= 7) {
       if (presidente && !notifications.find((n) => n.memberId === presidente.id)) {
         notifications.push({
           memberId: presidente.id,
-          preview: `${leaguePos.position}º lugar — com ${leaguePos.losses} derrotas, a briga pelo título está escorregando das mãos.`,
+          preview: `${leaguePos.position}º lugar com ${leaguePos.losses} derrotas em ${totalGames} jogos — a disputa pelo título está seriamente comprometida.`,
         });
       }
-    } else if (isPromotionProject && leaguePos.position > 6 && lossStreak >= 3) {
+    } else if (isPromotionProject && totalGames >= 8 && leaguePos.position > 8 && lossStreak >= 3) {
       if (presidente && !notifications.find((n) => n.memberId === presidente.id)) {
         notifications.push({
           memberId: presidente.id,
-          preview: `${leaguePos.position}º lugar — ${lossStreak} derrotas seguidas e o acesso está escapando. Precisamos conversar.`,
+          preview: `${leaguePos.position}º lugar e ${lossStreak} derrotas seguidas — o acesso está escorregando. Precisamos de uma reação.`,
         });
       }
     }
 
-    if (isSurvivalProject && isInRelZone && !meetingTrigger) {
+    if (isSurvivalProject && isInRelZone && (lossStreak >= 3 || leaguePos.losses >= 10) && !meetingTrigger) {
       meetingTrigger = {
-        reason: `${leaguePos.position}º lugar — zona de rebaixamento. O objetivo de permanência está seriamente em risco!`,
+        reason: `${leaguePos.position}º lugar — zona de rebaixamento com ${leaguePos.losses} derrotas. O objetivo de permanência está seriamente em risco!`,
         severity: "high",
       };
     }
