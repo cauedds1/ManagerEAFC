@@ -31,6 +31,7 @@ interface PartidasViewProps {
   matches: MatchRecord[];
   allPlayers: SquadPlayer[];
   onMatchAdded: (match: MatchRecord) => void;
+  onMatchUpdated?: (match: MatchRecord) => void;
   competitions?: string[];
   isReadOnly?: boolean;
 }
@@ -665,7 +666,7 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
 
 const VIEW_MODE_KEY = "fc-partidas-view-mode";
 
-export function PartidasView({ careerId, seasonId, season, clubName, clubLogoUrl, matches, allPlayers, onMatchAdded, competitions, isReadOnly }: PartidasViewProps) {
+export function PartidasView({ careerId, seasonId, season, clubName, clubLogoUrl, matches, allPlayers, onMatchAdded, onMatchUpdated, competitions, isReadOnly }: PartidasViewProps) {
   const [filter, setFilter] = useState<Filter>("todos");
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedMatch, setSelectedMatch] = useState<MatchRecord | null>(null);
@@ -701,7 +702,7 @@ export function PartidasView({ careerId, seasonId, season, clubName, clubLogoUrl
         season={season}
         competitions={competitions}
         isReadOnly={isReadOnly}
-        onMatchUpdated={(updated) => setSelectedMatch(updated)}
+        onMatchUpdated={(updated) => { setSelectedMatch(updated); onMatchUpdated?.(updated); }}
       />
     );
   }

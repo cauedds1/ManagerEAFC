@@ -616,6 +616,10 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     }
   }, [career.id, career.clubName, career.clubLeague, career.season, career.coach.name, career.projeto, activeSeasonId, transfers, addToast, handleNewPost]);
 
+  const handleMatchUpdated = useCallback((match: MatchRecord) => {
+    setMatches((prev) => prev.map((m) => m.id === match.id ? match : m));
+  }, []);
+
   const handleMatchAdded = useCallback((match: MatchRecord) => {
     const updatedMatches = [...matches, match];
     setMatches(updatedMatches);
@@ -993,6 +997,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
                 matches={matches}
                 allPlayers={allPlayers}
                 onMatchAdded={handleMatchAdded}
+                onMatchUpdated={handleMatchUpdated}
                 competitions={activeSeason?.competitions ?? career.competitions}
                 isReadOnly={isReadOnly}
               />
