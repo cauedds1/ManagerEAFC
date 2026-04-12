@@ -143,6 +143,8 @@ function MatchCard({
   allPlayers: SquadPlayer[];
   onClick?: () => void;
 }) {
+  const [goalsOpen, setGoalsOpen] = useState(false);
+
   const result = getMatchResult(match.myScore, match.opponentScore);
   const rs = RESULT_STYLE[result];
   const motmSquadPlayer = match.motmPlayerId != null ? allPlayers.find((p) => p.id === match.motmPlayerId) : null;
@@ -170,29 +172,35 @@ function MatchCard({
   const rightShots = isHome ? oppShots : myShots;
 
   const allParticipantIds = [...match.starterIds, ...match.subIds];
-  const goalScorers: { name: string; minute: number }[] = [];
+  const myScorers: { name: string; minute: number }[] = [];
   for (const pid of allParticipantIds) {
     const pStats = match.playerStats[pid];
     const player = allPlayers.find((p) => p.id === pid);
     if (pStats && player) {
       for (const g of pStats.goals) {
-        goalScorers.push({ name: player.name.split(" ").at(-1) ?? player.name, minute: g.minute });
+        myScorers.push({ name: player.name.split(" ").at(-1) ?? player.name, minute: g.minute });
       }
     }
   }
-  goalScorers.sort((a, b) => a.minute - b.minute);
+  myScorers.sort((a, b) => a.minute - b.minute);
+
+  const opponentScorers: { name: string; minute: number }[] = (match.opponentGoals ?? [])
+    .map((g) => ({
+      name: g.playerName ? g.playerName.split(" ").at(-1)! : match.opponent.split(" ")[0],
+      minute: g.minute,
+    }))
+    .sort((a, b) => a.minute - b.minute);
+
+  const leftScorers  = isHome ? myScorers       : opponentScorers;
+  const rightScorers = isHome ? opponentScorers  : myScorers;
+  const totalGoals   = myScorers.length + opponentScorers.length;
+  const hasGoals     = totalGoals > 0;
 
   const dateStr = match.date
     ? new Date(match.date + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "2-digit" })
     : "";
 
-  const hasFooter =
-    goalScorers.length > 0 ||
-    !!motmDisplayName ||
-    myPoss > 0 ||
-    myShots > 0 ||
-    oppShots > 0 ||
-    (match.opponentGoals?.length ?? 0) > 0;
+  const hasFooter = !!motmDisplayName || myPoss > 0 || myShots > 0 || oppShots > 0;
 
   const leftWon  = leftScore > rightScore;
   const rightWon = rightScore > leftScore;
@@ -287,6 +295,53 @@ function MatchCard({
         </div>
       </div>
 
+      {/* ── Goals toggle strip ── */}
+      {hasGoals && (
+        <button
+          onClick={(e) => { e.stopPropagation(); setGoalsOpen((o) => !o); }}
+          className="w-full flex items-center justify-center gap-1.5 py-1.5 transition-colors duration-150 select-none"
+          style={{
+            borderTop: "1px solid rgba(255,255,255,0.06)",
+            background: goalsOpen ? "rgba(255,255,255,0.04)" : "transparent",
+            color: "rgba(255,255,255,0.28)",
+          }}
+        >
+          <span className="text-[10px] font-semibold">⚽ {totalGoals} {totalGoals === 1 ? "gol" : "gols"}</span>
+          <svg
+            width="10" height="10" viewBox="0 0 10 10" fill="none"
+            style={{ transition: "transform 0.2s", transform: goalsOpen ? "rotate(180deg)" : "rotate(0deg)" }}
+          >
+            <path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </button>
+      )}
+
+      {/* ── Expanded scorers ── */}
+      {goalsOpen && hasGoals && (
+        <div
+          className="grid grid-cols-2 px-4 py-2.5 gap-2"
+          style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Left team scorers */}
+          <div className="flex flex-col gap-1 items-start">
+            {leftScorers.length > 0 ? leftScorers.map((g, i) => (
+              <span key={i} className="text-[10px] leading-tight" style={{ color: leftThemed ? "rgba(var(--club-primary-rgb),0.9)" : "rgba(255,255,255,0.55)" }}>
+                ⚽ {g.name} {g.minute}&apos;
+              </span>
+            )) : <span className="text-[10px] text-white/15">—</span>}
+          </div>
+          {/* Right team scorers */}
+          <div className="flex flex-col gap-1 items-end">
+            {rightScorers.length > 0 ? rightScorers.map((g, i) => (
+              <span key={i} className="text-[10px] leading-tight" style={{ color: rightThemed ? "rgba(var(--club-primary-rgb),0.9)" : "rgba(255,255,255,0.40)" }}>
+                {g.minute}&apos; {g.name} ⚽
+              </span>
+            )) : <span className="text-[10px] text-white/15">—</span>}
+          </div>
+        </div>
+      )}
+
       {/* ── Stats footer ── */}
       {hasFooter && (
         <div style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
@@ -319,7 +374,7 @@ function MatchCard({
           )}
 
           {/* Three-column stats row */}
-          {(leftShots > 0 || rightShots > 0 || goalScorers.length > 0 || !!motmDisplayName || (match.opponentGoals?.length ?? 0) > 0) && (
+          {(leftShots > 0 || rightShots > 0 || !!motmDisplayName) && (
             <div className="grid grid-cols-3 px-4 pb-3 pt-2 gap-x-2">
 
               {/* Left team stats */}
@@ -332,29 +387,11 @@ function MatchCard({
                 )}
               </div>
 
-              {/* Center: scorers + opponent goals + MOTM */}
+              {/* Center: MOTM */}
               <div className="flex flex-col items-center gap-1">
-                {goalScorers.map((g, i) => (
-                  <span
-                    key={i}
-                    className="text-[10px] text-white/50 leading-tight text-center px-2 py-0.5 rounded-full"
-                    style={{ background: "rgba(255,255,255,0.06)" }}
-                  >
-                    ⚽ {g.name} {g.minute}&apos;
-                  </span>
-                ))}
-                {(match.opponentGoals ?? []).map((g, i) => (
-                  <span
-                    key={i}
-                    className="text-[10px] text-white/35 leading-tight text-center px-2 py-0.5 rounded-full"
-                    style={{ background: "rgba(255,255,255,0.04)" }}
-                  >
-                    ⚽ {g.playerName ? g.playerName.split(" ").at(-1) : match.opponent.split(" ")[0]} {g.minute}&apos;
-                  </span>
-                ))}
                 {motmDisplayName && (
                   <span
-                    className="text-[10px] font-semibold mt-0.5 px-2 py-0.5 rounded-full"
+                    className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
                     style={{ color: "#fbbf24", background: "rgba(234,179,8,0.1)" }}
                   >
                     ⭐ {motmDisplayName.split(" ").at(-1)}
