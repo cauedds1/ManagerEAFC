@@ -76,6 +76,7 @@ export interface PlayerContextItem {
   benchRatio: number;
   overall?: number;
   ovrRelative?: string;
+  ovrTrend?: string;
   age?: number;
   consecutivePoorRatings?: number;
 }
@@ -115,6 +116,7 @@ export function buildPlayerPerformanceContext(
     const pos = player.positionPtBr ?? player.position ?? "";
 
     let ovrRelative: string | undefined;
+    let ovrTrend: string | undefined;
 
     if (overall != null && squadAvg != null) {
       ovrRelative = relativeOvrLabel(overall, squadAvg);
@@ -125,6 +127,13 @@ export function buildPlayerPerformanceContext(
       } else if (isDefender(pos) && isBelowAvg && totalApps >= 5 && form === "ótima") {
         incidents.push("revelação da zaga/goleiro");
       }
+    }
+
+    if (overall != null && override?.ovrHistory && override.ovrHistory.length > 0) {
+      const prevOvr = override.ovrHistory[override.ovrHistory.length - 1].ovr;
+      const delta = overall - prevOvr;
+      if (delta > 0) ovrTrend = `em ascensão (+${delta})`;
+      else if (delta < 0) ovrTrend = `em queda (${delta})`;
     }
 
     const onlyNeutral = form === "regular" && incidents.length === 0 &&
@@ -159,6 +168,7 @@ export function buildPlayerPerformanceContext(
       benchRatio: Math.round(benchRatio * 100) / 100,
       overall,
       ovrRelative,
+      ovrTrend,
       age: player.age,
       consecutivePoorRatings: consecutivePoorRatings > 0 ? consecutivePoorRatings : undefined,
     });
@@ -177,7 +187,7 @@ export function buildPlayerContextString(items: PlayerContextItem[]): string {
   if (items.length === 0) return "";
   const lines = items.map((p) => {
     const ovrStr = p.overall != null
-      ? ` | OVR ${p.overall}${p.ovrRelative ? ` (${p.ovrRelative})` : ""}`
+      ? ` | OVR ${p.overall}${p.ovrRelative ? ` (${p.ovrRelative})` : ""}${p.ovrTrend ? `, ${p.ovrTrend}` : ""}`
       : "";
     const incStr = p.incidents.length > 0 ? ` | ${p.incidents.join(", ")}` : "";
     return `- ${p.name} (${p.position}): forma ${p.form} (avg ${p.avgRating})${ovrStr} | moral: ${p.fanMoral} | humor: ${p.mood} | ${p.goals}G ${p.assists}A${incStr}`;

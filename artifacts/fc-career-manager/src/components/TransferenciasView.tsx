@@ -11,7 +11,7 @@ import {
   generatePlayerId,
   generateTransferId,
 } from "@/lib/transferStorage";
-import { setPlayerStats, defaultStats } from "@/lib/playerStatsStorage";
+import { setPlayerStats, defaultStats, setPlayerOverride, getAllPlayerOverrides } from "@/lib/playerStatsStorage";
 import { getCachedClubList } from "@/lib/clubListCache";
 import { searchStaticClubs } from "@/lib/staticClubList";
 
@@ -534,6 +534,7 @@ interface FormData {
   playerAge: string;
   playerPhoto: string;
   shirtNumber: string;
+  playerOverall: string;
   fee: string;
   salary: string;
   contractYears: string;
@@ -553,6 +554,7 @@ const DEFAULT_FORM: FormData = {
   playerAge: "",
   playerPhoto: "",
   shirtNumber: "",
+  playerOverall: "",
   fee: "",
   salary: "",
   contractYears: "4",
@@ -573,6 +575,7 @@ interface TransferenciasViewProps {
   allPlayers: SquadPlayer[];
   onTransferAdded: (transfer: TransferRecord) => void;
   onTransferUpdated?: (id: string, changes: Partial<TransferRecord>) => void;
+  onHighValueSigning?: (playerName: string, ovr: number, position: string, fromClub?: string) => void;
   isReadOnly?: boolean;
 }
 
@@ -586,6 +589,7 @@ export function TransferenciasView({
   allPlayers,
   onTransferAdded,
   onTransferUpdated,
+  onHighValueSigning,
   isReadOnly,
 }: TransferenciasViewProps) {
   const [showForm, setShowForm] = useState(false);
@@ -626,6 +630,33 @@ export function TransferenciasView({
       setPlayerStats(seasonId, playerId, defaultStats(playerId));
     }
 
+    const ovrVal = parseInt(form.playerOverall, 10);
+    const signingOvr = isEntrada && !isNaN(ovrVal) && form.playerOverall.trim()
+      ? Math.max(1, Math.min(99, ovrVal))
+      : undefined;
+
+    if (isEntrada && signingOvr != null) {
+      setPlayerOverride(careerId, playerId, { overall: signingOvr });
+
+      if (onHighValueSigning) {
+        const allOverrides = getAllPlayerOverrides(careerId);
+        const ovrs = allPlayers
+          .map((p) => allOverrides[p.id]?.overall)
+          .filter((o): o is number => o != null && o > 0);
+        const squadAvg = ovrs.length > 0
+          ? Math.round(ovrs.reduce((a, b) => a + b, 0) / ovrs.length)
+          : null;
+        if (squadAvg != null && signingOvr >= squadAvg + 3) {
+          onHighValueSigning(
+            form.playerName.trim(),
+            signingOvr,
+            form.playerPositionPtBr,
+            form.fromClub.trim() || undefined,
+          );
+        }
+      }
+    }
+
     const transfer: TransferRecord = {
       id: generateTransferId(),
       careerId,
@@ -647,6 +678,7 @@ export function TransferenciasView({
       loanDuration: isEmprestimo ? form.loanDuration : undefined,
       loanDirection: isEmprestimo ? form.loanDirection : undefined,
       loanEnded: false,
+      playerOverall: signingOvr,
       transferredAt: Date.now(),
     };
 
@@ -940,6 +972,22 @@ export function TransferenciasView({
                     max={50}
                   />
                 </div>
+
+                {!isVendaForm && !isLoanSaida && (
+                  <div className="sm:col-span-2">
+                    <label className={labelClass}>Overall (OVR)</label>
+                    <input
+                      type="number"
+                      className={inputClass}
+                      value={form.playerOverall}
+                      onChange={(e) => set("playerOverall", e.target.value)}
+                      placeholder="Ex: 82 (opcional)"
+                      min={1}
+                      max={99}
+                    />
+                    <p className="text-white/20 text-xs mt-1">Preencha para registrar o nível do jogador — dispara notícia se for reforço acima da média</p>
+                  </div>
+                )}
 
                 {!isVendaForm && !isEmprestimoForm && (
                   <>

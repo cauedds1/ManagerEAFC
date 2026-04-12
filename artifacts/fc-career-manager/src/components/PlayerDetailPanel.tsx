@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { SquadPlayer, PositionPtBr } from "@/lib/squadCache";
 import { migratePositionOverride } from "@/lib/squadCache";
-import type { PlayerOverride } from "@/types/playerStats";
+import type { PlayerOverride, OvrHistoryEntry } from "@/types/playerStats";
 import {
   MOOD_LABELS,
   MOOD_COLORS,
@@ -134,7 +134,7 @@ export function PlayerDetailPanel({
   const moodStyle = MOOD_COLORS[stats.mood];
   const fanStyle  = FAN_MORAL_COLORS[stats.fanMoral];
 
-  const saveEdit = () => {
+  const saveEdit = (logHistory = false) => {
     const numberVal  = parseInt(editNumber, 10);
     const overallVal = parseInt(editOverall, 10);
     const salaryVal  = parseInt(editSalary, 10);
@@ -144,7 +144,7 @@ export function PlayerDetailPanel({
       overall:          !isNaN(overallVal) && editOverall.trim() ? Math.max(1, Math.min(99, overallVal))  : undefined,
       salary:           !isNaN(salaryVal)  && editSalary.trim()  ? Math.max(0, salaryVal)                 : undefined,
       positionOverride: editPosition !== player.positionPtBr     ? editPosition                           : undefined,
-    });
+    }, logHistory);
     setTab("stats");
     onUpdated();
   };
@@ -407,6 +407,47 @@ export function PlayerDetailPanel({
                   />
                 </div>
 
+                {(() => {
+                  const history: OvrHistoryEntry[] = override?.ovrHistory ?? [];
+                  const currentOvr = override?.overall;
+                  if (history.length === 0 && currentOvr == null) return null;
+                  const allEntries = currentOvr != null
+                    ? [...history, { ovr: currentOvr, date: 0 }]
+                    : history;
+                  if (allEntries.length < 2) return null;
+                  return (
+                    <div
+                      className="p-3 rounded-xl flex flex-col gap-2"
+                      style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
+                    >
+                      <p className="text-white/30 text-[10px] font-bold uppercase tracking-wider">Evolução de OVR</p>
+                      <div className="flex items-center gap-1 flex-wrap">
+                        {allEntries.map((entry, i) => {
+                          const isLast = i === allEntries.length - 1;
+                          const prevEntry = i > 0 ? allEntries[i - 1] : null;
+                          const delta = prevEntry ? entry.ovr - prevEntry.ovr : 0;
+                          const color = isLast ? overallColor(entry.ovr).color : "rgba(255,255,255,0.35)";
+                          return (
+                            <div key={i} className="flex items-center gap-1">
+                              {i > 0 && (
+                                <span style={{ color: delta > 0 ? "#34d399" : delta < 0 ? "#f87171" : "rgba(255,255,255,0.2)", fontSize: 10 }}>
+                                  {delta > 0 ? `▲+${delta}` : delta < 0 ? `▼${delta}` : "→"}
+                                </span>
+                              )}
+                              <span
+                                className="font-black tabular-nums text-sm px-2 py-0.5 rounded-lg"
+                                style={{ color, background: isLast ? overallColor(entry.ovr).bg : "transparent" }}
+                              >
+                                {entry.ovr}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 <div className="flex flex-col gap-1.5">
                   <label className="text-white/40 text-xs font-semibold tracking-wide uppercase">Posição</label>
                   <div className="grid grid-cols-4 gap-2">
@@ -435,24 +476,48 @@ export function PlayerDetailPanel({
           className="flex gap-3 px-6 py-5 flex-shrink-0"
           style={{ borderTop: "1px solid var(--surface-border)" }}
         >
-          {tab === "edit" ? (
-            <>
-              <button
-                onClick={cancelEdit}
-                className="flex-1 py-3 rounded-xl text-sm font-semibold text-white/55 transition-all hover:text-white/80"
-                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={saveEdit}
-                className="flex-1 py-3 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90"
-                style={{ background: "var(--club-gradient)", boxShadow: "0 4px 16px rgba(var(--club-primary-rgb),0.25)" }}
-              >
-                Salvar Alterações
-              </button>
-            </>
-          ) : (
+          {tab === "edit" ? (() => {
+            const newOvrVal = parseInt(editOverall, 10);
+            const newOvr = !isNaN(newOvrVal) && editOverall.trim() ? Math.max(1, Math.min(99, newOvrVal)) : undefined;
+            const isOvrChange = displayOverall != null && newOvr != null && newOvr !== displayOverall;
+            return (
+              <>
+                <button
+                  onClick={cancelEdit}
+                  className="flex-1 py-3 rounded-xl text-sm font-semibold text-white/55 transition-all hover:text-white/80"
+                  style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
+                >
+                  Cancelar
+                </button>
+                {isOvrChange ? (
+                  <>
+                    <button
+                      onClick={() => saveEdit(false)}
+                      className="flex-1 py-3 rounded-xl text-sm font-bold transition-all hover:opacity-90"
+                      style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.14)", color: "rgba(255,255,255,0.7)" }}
+                    >
+                      Corrigir
+                    </button>
+                    <button
+                      onClick={() => saveEdit(true)}
+                      className="flex-1 py-3 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90"
+                      style={{ background: "var(--club-gradient)", boxShadow: "0 4px 16px rgba(var(--club-primary-rgb),0.25)" }}
+                    >
+                      Atualizar OVR ↑
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => saveEdit(false)}
+                    className="flex-1 py-3 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90"
+                    style={{ background: "var(--club-gradient)", boxShadow: "0 4px 16px rgba(var(--club-primary-rgb),0.25)" }}
+                  >
+                    Salvar Alterações
+                  </button>
+                )}
+              </>
+            );
+          })() : (
             <button
               onClick={onClose}
               className="flex-1 py-3 rounded-xl text-sm font-semibold text-white/50 transition-all hover:text-white/80"

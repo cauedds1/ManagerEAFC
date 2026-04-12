@@ -384,6 +384,62 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     setNoticiasUnread((prev) => prev + 1);
   }, [addToast]);
 
+  const handleHighValueSigning = useCallback((playerName: string, ovr: number, position: string, fromClub?: string) => {
+    const openaiKey = getOpenAIKey();
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (openaiKey) headers["x-openai-key"] = openaiKey;
+    const fromClubStr = fromClub ? ` do ${fromClub}` : " de jogador livre";
+    const seasonLabel = seasons.find((s) => s.id === activeSeasonId)?.label ?? career.season;
+    void fetch("/api/noticias/generate", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        description: `${career.clubName} anuncia a contratação de ${playerName} (${position}, OVR ${ovr})${fromClubStr}. Um reforço de alto nível que eleva o patamar do elenco.`,
+        clubName: career.clubName,
+        season: seasonLabel,
+        source: "espn",
+        category: "transferencia",
+        clubLeague: career.clubLeague || undefined,
+        clubDescription: career.clubDescription || undefined,
+        projeto: career.projeto || undefined,
+      }),
+    }).then(async (res) => {
+      if (!res.ok) return;
+      const data = await res.json() as {
+        source: string; sourceHandle: string; sourceName: string; category: string;
+        title?: string; content: string; likes: number; commentsCount: number; sharesCount: number;
+        comments: Array<{ username: string; displayName: string; content: string; likes: number; personality?: string; replies?: unknown[] }>;
+      };
+      const { generatePostId, generateCommentId, addPost } = await import("@/lib/noticiaStorage");
+      const post: NewsPost = {
+        id: generatePostId(),
+        careerId: career.id,
+        source: (data.source as NewsPost["source"]) ?? "espn",
+        sourceHandle: data.sourceHandle,
+        sourceName: data.sourceName,
+        title: data.title,
+        content: data.content,
+        likes: data.likes ?? 0,
+        commentsCount: data.commentsCount ?? 0,
+        sharesCount: data.sharesCount ?? 0,
+        comments: (data.comments ?? []).map((c) => ({
+          id: generateCommentId(),
+          username: c.username,
+          displayName: c.displayName,
+          content: c.content,
+          likes: c.likes ?? 0,
+          personality: c.personality as NewsPost["comments"][number]["personality"],
+          replies: [],
+          createdAt: Date.now(),
+        })),
+        category: "transferencia",
+        createdAt: Date.now(),
+      };
+      addPost(activeSeasonId, post);
+      handleNewPost(post);
+    }).catch(() => {});
+  }, [activeSeasonId, career.id, career.clubName, career.clubLeague, career.clubDescription, career.projeto, career.season, seasons, handleNewPost]);
+
   const runDiretoriaTriggers = useCallback(async (updatedMatches: MatchRecord[], currentAllPlayers: SquadPlayer[], isClassico?: boolean, rivalName?: string, fanMood?: number, fanMoodLabelStr?: string) => {
     const members = getMembers(career.id);
     if (members.length === 0) return;
@@ -938,6 +994,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
                 allPlayers={allPlayers}
                 onTransferAdded={handleTransferAdded}
                 onTransferUpdated={handleTransferUpdated}
+                onHighValueSigning={handleHighValueSigning}
                 isReadOnly={isReadOnly}
               />
             )}

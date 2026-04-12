@@ -66,6 +66,11 @@ export interface PlayerSeasonStats {
   fanMoral: FanMoral;
 }
 
+export interface OvrHistoryEntry {
+  ovr: number;
+  date: number;
+}
+
 export interface PlayerOverride {
   playerId: number;
   nameOverride?: string;
@@ -73,4 +78,5 @@ export interface PlayerOverride {
   overall?: number;
   salary?: number;
   positionOverride?: string;
+  ovrHistory?: OvrHistoryEntry[];
 }

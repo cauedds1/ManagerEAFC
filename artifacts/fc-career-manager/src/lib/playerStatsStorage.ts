@@ -122,9 +122,27 @@ export function setPlayerOverride(
   careerId: string,
   playerId: number,
   patch: Partial<Omit<PlayerOverride, "playerId">>,
+  logHistory = false,
 ): void {
   const all = getAllPlayerOverrides(careerId);
-  all[playerId] = { ...(all[playerId] ?? {}), ...patch, playerId };
+  const existing = all[playerId] ?? {};
+
+  let ovrHistory = existing.ovrHistory ?? [];
+  if (
+    logHistory &&
+    existing.overall != null &&
+    patch.overall != null &&
+    patch.overall !== existing.overall
+  ) {
+    ovrHistory = [...ovrHistory, { ovr: existing.overall, date: Date.now() }];
+  }
+
+  all[playerId] = {
+    ...existing,
+    ...patch,
+    playerId,
+    ovrHistory: ovrHistory.length > 0 ? ovrHistory : existing.ovrHistory,
+  };
   try {
     localStorage.setItem(overridesKey(careerId), JSON.stringify(all));
   } catch {}

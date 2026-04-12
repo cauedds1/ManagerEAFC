@@ -22,5 +22,6 @@ export interface TransferRecord {
   loanDuration?: string;
   loanDirection?: "entrada" | "saida";
   loanEnded?: boolean;
+  playerOverall?: number;
   transferredAt: number;
 }
