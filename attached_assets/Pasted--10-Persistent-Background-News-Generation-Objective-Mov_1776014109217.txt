@@ -1,0 +1,55 @@
+#10 - Persistent Background News Generation
+Objective
+Move the AI news generation logic from NoticiasView (which unmounts on tab switch) to Dashboard (which always lives), so the generation continues and saves even when the user navigates away from the Notícias tab.
+
+Root Cause
+NoticiasView is conditionally rendered: activeTab === "noticias". When the user switches tab mid-generation, React unmounts the component and all setState / addPost calls in the async callback become no-ops — the post is lost.
+
+Files Changed
+artifacts/fc-career-manager/src/components/NoticiasView.tsx
+artifacts/fc-career-manager/src/components/Dashboard.tsx
+Implementation Steps
+Step 1 — Expand BgGenParams to carry all context strings
+Currently BgGenParams only has description, source, category, imageUrl, customPortal, attachedMatchContext. Expand it to also carry:
+
+playerContextStr?: string
+squadOvrContext?: string
+teamFormContext?: string
+historicalContext?: string
+lastMatchPlayerContext?: string
+recentPostsContext?: { title?: string; category: string; headline: string }[]
+seasonId: string ← needed by Dashboard to call addPost(seasonId, post)
+careerId: string
+This way AddPostModal.handleBgGenerate bundles everything it already has (from its props) into the single params object, and Dashboard's handler has no dependencies on NoticiasView state.
+
+Step 2 — Update AddPostModal.handleBgGenerate
+Include all context strings in the emitted params (they're already available as props on AddPostModal — playerContextStr, squadOvrContext, teamFormContext, historicalContext). Also include recentPosts formatted as recentPostsContext, and career.id / seasonId.
+
+The seasonId is not currently a prop of AddPostModal — add it.
+
+Step 3 — Lift generation state to Dashboard
+In Dashboard.tsx:
+
+Add state: bgGenStatus: "idle" | "generating" | "done" | "error"
+Add state: bgGenLabel: string
+Add ref: bgGenTimerRef
+Add handleNoticiaGenerateBackground(params: BgGenParams) — this is the full async function currently at line 1213 of NoticiasView, adapted to use params for context strings instead of reading from component state.
+After successful generation: call addPost(params.seasonId, post) and call onNoticiaGenerated(post) (a callback passed to NoticiasView).
+Move the toast JSX (lines 1656–1708 of NoticiasView) to Dashboard's JSX.
+Step 4 — Add onNoticiaGenerated prop + onGenerateBackground to NoticiasView
+Add prop onGenerateBackground: (params: BgGenParams) => void — Dashboard passes its handler.
+Add prop onNoticiaGenerated?: (post: NewsPost) => void — Dashboard calls this after saving the post. In NoticiasView this does: setPosts(prev => [post, ...prev]) then runs mood/notification effects.
+Remove the old handleGenerateBackground async function from NoticiasView.
+Remove bgGenStatus, bgGenLabel, bgGenTimerRef state/ref from NoticiasView.
+Remove the toast JSX from NoticiasView.
+Update the AddPostModal onGenerateBackground prop call site to use the new prop.
+Step 5 — Wire up in Dashboard
+Pass onGenerateBackground={handleNoticiaGenerateBackground} to <NoticiasView>.
+Pass onNoticiaGenerated={handleNoticiaGenerated} to <NoticiasView>.
+handleNoticiaGenerated in Dashboard: calls addPost, triggers any Dashboard-level side effects, then calls the NoticiasView callback.
+Acceptance
+User clicks "Gerar com IA", modal closes, toast appears.
+User switches to "Painel" or any other tab.
+Toast stays visible in the bottom of the screen during generation.
+When generation completes, toast shows "Notícia publicada!".
+User switches back to "Notícias" — the new post is at the top of the feed.

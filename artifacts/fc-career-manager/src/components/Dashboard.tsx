@@ -394,9 +394,8 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
       };
 
       addNewsPost(params.seasonId, post);
-      window.dispatchEvent(
-        new CustomEvent(FC_NOTICIA_GENERATED_EVENT, { detail: { post, seasonId: params.seasonId } }),
-      );
+      const detail: NoticiaGeneratedDetail = { post, seasonId: params.seasonId };
+      window.dispatchEvent(new CustomEvent<NoticiaGeneratedDetail>(FC_NOTICIA_GENERATED_EVENT, { detail }));
 
       setBgGenStatus("done");
       bgGenTimerRef.current = setTimeout(() => setBgGenStatus("idle"), 4000);
