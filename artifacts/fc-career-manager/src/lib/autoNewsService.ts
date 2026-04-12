@@ -44,6 +44,7 @@ export interface AutoNewsContext {
   allMatches: MatchRecord[];
   allPlayers: SquadPlayer[];
   leaguePosition: LeaguePosition | null;
+  onNewPost?: (post: NewsPost) => void;
 }
 
 const MAX_POSTS_PER_MATCH = 3;
@@ -84,7 +85,7 @@ export async function runAutoNews(
   ctx: AutoNewsContext,
 ): Promise<void> {
   try {
-    const { careerId, seasonId, season, clubName, clubLeague, clubTitles, clubDescription, projeto, allMatches, allPlayers, leaguePosition } = ctx;
+    const { careerId, seasonId, season, clubName, clubLeague, clubTitles, clubDescription, projeto, allMatches, allPlayers, leaguePosition, onNewPost } = ctx;
 
     const seasonPlayerStats = getAllPlayerStats(seasonId);
     const customPortals = await fetchPortals(careerId);
@@ -201,6 +202,7 @@ export async function runAutoNews(
 
         addPost(seasonId, post);
         markEventHandled(seasonId, event.key);
+        if (onNewPost) onNewPost(post);
 
         await new Promise((r) => setTimeout(r, 500));
       } catch {

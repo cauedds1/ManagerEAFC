@@ -142,6 +142,52 @@ export function clearNotification(careerId: string, memberId: string): void {
   saveNotifications(careerId, notifs);
 }
 
+const cooldownKey = (careerId: string) => `fc-diretoria-cooldown-${careerId}`;
+const pendingMeetingKey = (careerId: string) => `fc-diretoria-pending-meeting-${careerId}`;
+
+export function getMemberCooldowns(careerId: string): Record<string, number> {
+  try {
+    const raw = localStorage.getItem(cooldownKey(careerId));
+    return raw ? (JSON.parse(raw) as Record<string, number>) : {};
+  } catch {
+    return {};
+  }
+}
+
+export function setMemberCooldown(careerId: string, memberId: string, matchCount: number): void {
+  const cooldowns = getMemberCooldowns(careerId);
+  cooldowns[memberId] = matchCount;
+  try {
+    localStorage.setItem(cooldownKey(careerId), JSON.stringify(cooldowns));
+  } catch {}
+}
+
+export function getPendingMeetingTrigger(
+  careerId: string,
+): { reason: string; severity: "low" | "medium" | "high" } | null {
+  try {
+    const raw = localStorage.getItem(pendingMeetingKey(careerId));
+    return raw
+      ? (JSON.parse(raw) as { reason: string; severity: "low" | "medium" | "high" })
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+export function setPendingMeetingTrigger(
+  careerId: string,
+  trigger: { reason: string; severity: "low" | "medium" | "high" } | null,
+): void {
+  try {
+    if (trigger) {
+      localStorage.setItem(pendingMeetingKey(careerId), JSON.stringify(trigger));
+    } else {
+      localStorage.removeItem(pendingMeetingKey(careerId));
+    }
+  } catch {}
+}
+
 export function generateMemberId(): string {
   return `member-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
 }

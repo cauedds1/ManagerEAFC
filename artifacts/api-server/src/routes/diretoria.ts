@@ -70,6 +70,7 @@ interface PlayerPerfItem {
   isBench?: boolean;
   benchRatio?: number;
   overall?: number;
+  age?: number;
 }
 
 interface ChatHistoryItem {
@@ -684,6 +685,57 @@ router.post("/diretoria/check-triggers", async (req, res) => {
           });
         }
       }
+
+      const promessas = playerPerformance.filter(
+        (p) =>
+          (p.age ?? 99) <= 21 &&
+          p.avgRating >= 7.0 &&
+          p.isBench &&
+          (p.benchRatio ?? 0) >= 0.75 &&
+          p.appearances >= 5,
+      );
+      for (const prom of promessas.slice(0, 1)) {
+        const member = auxTecnico ?? presidente;
+        if (member && !notifications.find((n) => n.memberId === member.id)) {
+          notifications.push({
+            memberId: member.id,
+            preview: `${prom.name.split(" ")[0]} tem ${prom.appearances} jogos com média ${prom.avgRating} mas passa quase tudo no banco — um jovem promissor que não pode ser desperdiçado.`,
+          });
+        }
+      }
+    }
+  }
+
+  if (hasNewMatch && context.projeto && leaguePos && recentMatches.length >= 8) {
+    const projetoLower = context.projeto.toLowerCase();
+    const isTitleProject = /título|campeão|campeon|ganhar.*campe|primeiro lugar/i.test(projetoLower);
+    const isPromotionProject = /acesso|promoção|promoçao|subir|primeira divisão/i.test(projetoLower);
+    const isSurvivalProject = /rebaixar|rebaixamento|permanecer|evitar.*rebaixamento|não cair/i.test(projetoLower);
+
+    const relegZone = leaguePos.totalTeams - 3;
+    const isInRelZone = leaguePos.position >= relegZone;
+
+    if (isTitleProject && leaguePos.position > 4 && leaguePos.losses >= 5) {
+      if (presidente && !notifications.find((n) => n.memberId === presidente.id)) {
+        notifications.push({
+          memberId: presidente.id,
+          preview: `${leaguePos.position}º lugar — com ${leaguePos.losses} derrotas, a briga pelo título está escorregando das mãos.`,
+        });
+      }
+    } else if (isPromotionProject && leaguePos.position > 6 && lossStreak >= 3) {
+      if (presidente && !notifications.find((n) => n.memberId === presidente.id)) {
+        notifications.push({
+          memberId: presidente.id,
+          preview: `${leaguePos.position}º lugar — ${lossStreak} derrotas seguidas e o acesso está escapando. Precisamos conversar.`,
+        });
+      }
+    }
+
+    if (isSurvivalProject && isInRelZone && !meetingTrigger) {
+      meetingTrigger = {
+        reason: `${leaguePos.position}º lugar — zona de rebaixamento. O objetivo de permanência está seriamente em risco!`,
+        severity: "high",
+      };
     }
   }
 

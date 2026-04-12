@@ -19,6 +19,7 @@ import { runPerformanceEngine } from "@/lib/playerPerformanceEngine";
 import { copyPlayerMoodsToNewSeason } from "@/lib/playerStatsStorage";
 import { getLeaguePosition } from "@/lib/leagueStorage";
 import { runAutoNews } from "@/lib/autoNewsService";
+import type { NewsPost } from "@/types/noticias";
 import { PainelView } from "./PainelView";
 import { ClubeView } from "./ClubeView";
 import { TransferenciasView } from "./TransferenciasView";
@@ -31,6 +32,24 @@ import { NewSeasonWizard } from "./NewSeasonWizard";
 import { getSeasons, createSeason, activateSeason, generateSeasonId } from "@/lib/seasonStorage";
 import { ensureCareerAndSeason1 } from "@/lib/careerStorage";
 import { syncSeasonFromDb, syncCareerFromDb } from "@/lib/dbSync";
+import {
+  getMembers,
+  addNotification,
+  getNotifications,
+  getMemberCooldowns,
+  setMemberCooldown,
+  setPendingMeetingTrigger,
+} from "@/lib/diretoriaStorage";
+import { getFinanceiroSettings, computeFinancialSnapshot } from "@/lib/financeiroStorage";
+import { buildPlayerPerformanceContext, buildSquadOvrContext } from "@/lib/playerContext";
+import { getOpenAIKey } from "@/lib/openaiKeyStorage";
+import {
+  countUnreadDiretoria,
+  countUnreadNoticias,
+  initNoticiasSeenAt,
+  markNoticiasRead,
+} from "@/lib/unreadStorage";
+import { NotificationToast, type ToastItem } from "./NotificationToast";
 
 interface DashboardProps {
   career: Career;
@@ -257,6 +276,36 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     setOverrides(getAllPlayerOverrides(career.id));
   }, [career.id]);
 
+  const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const [diretoriaUnread, setDiretoriaUnread] = useState(0);
+  const [noticiasUnread, setNoticiasUnread] = useState(0);
+
+  useEffect(() => {
+    initNoticiasSeenAt(activeSeasonId);
+    setDiretoriaUnread(countUnreadDiretoria(career.id));
+    setNoticiasUnread(countUnreadNoticias(activeSeasonId));
+  }, [career.id, activeSeasonId]);
+
+  const addToast = useCallback((toast: Omit<ToastItem, "id">) => {
+    const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    setToasts((prev) => [...prev.slice(-2), { ...toast, id }]);
+  }, []);
+
+  const dismissToast = useCallback((id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  }, []);
+
+  const handleTabChange = useCallback((tab: CareerTab) => {
+    setActiveTab(tab);
+    if (tab === "diretoria") {
+      setDiretoriaUnread(0);
+    }
+    if (tab === "noticias") {
+      markNoticiasRead(activeSeasonId);
+      setNoticiasUnread(0);
+    }
+  }, [activeSeasonId]);
+
   const transferredPlayers: SquadPlayer[] = transfers.map((t) => {
     const pos = migratePositionOverride(t.playerPositionPtBr) ?? "MID";
     return {
@@ -318,6 +367,102 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     setTransfers((prev) => prev.map((t) => t.id === id ? { ...t, ...changes } : t));
   }, [activeSeasonId]);
 
+  const runDiretoriaTriggers = useCallback(async (updatedMatches: MatchRecord[], currentAllPlayers: SquadPlayer[]) => {
+    const members = getMembers(career.id);
+    if (members.length === 0) return;
+
+    const matchCount = updatedMatches.length;
+    const cooldowns = getMemberCooldowns(career.id);
+    const MIN_MATCHES_BETWEEN_NOTIFS = 3;
+
+    const eligibleMembers = members
+      .filter((m) => (cooldowns[m.id] ?? -99) <= matchCount - MIN_MATCHES_BETWEEN_NOTIFS)
+      .map((m) => ({
+        id: m.id,
+        name: m.name,
+        roleLabel: m.roleLabel,
+        description: m.description,
+        mood: m.mood,
+        patience: m.patience,
+      }));
+
+    if (eligibleMembers.length === 0) return;
+
+    const leaguePos = getLeaguePosition(career.id);
+    const finSettings = getFinanceiroSettings(career.id);
+    const finSnapshot = computeFinancialSnapshot(finSettings, transfers);
+    const recentMatches = updatedMatches.slice(-10).reverse().map((m) => ({
+      opponent: m.opponent,
+      myScore: m.myScore,
+      opponentScore: m.opponentScore,
+      result: m.myScore > m.opponentScore ? "vitoria" as const
+              : m.myScore < m.opponentScore ? "derrota" as const
+              : "empate" as const,
+      tournament: m.tournament,
+      date: m.date,
+    }));
+
+    const context = {
+      clubName: career.clubName,
+      clubLeague: career.clubLeague,
+      season: career.season,
+      coachName: career.coach.name,
+      squadSize: currentAllPlayers.length,
+      transfersCount: transfers.length,
+      recentMatches,
+      leaguePosition: leaguePos,
+      transferBudget: finSettings.transferBudget > 0 ? finSettings.transferBudget : undefined,
+      remainingTransferBudget: finSettings.transferBudget > 0 ? finSnapshot.remainingTransferBudget : undefined,
+      currentWageBill: finSettings.salaryBudget > 0 ? finSnapshot.currentWageBill : undefined,
+      salaryBudget: finSettings.salaryBudget > 0 ? finSettings.salaryBudget : undefined,
+      wageRoom: finSettings.salaryBudget > 0 ? finSnapshot.wageRoom : undefined,
+      netSpend: finSettings.transferBudget > 0 ? finSnapshot.netSpend : undefined,
+      projeto: career.projeto,
+    };
+
+    const playerPerf = buildPlayerPerformanceContext(activeSeasonId, currentAllPlayers, career.id);
+    const squadOvrCtx = buildSquadOvrContext(currentAllPlayers, getAllPlayerOverrides(career.id));
+    const prevMatchCreatedAt = updatedMatches.slice(-2, -1)[0]?.createdAt ?? 0;
+
+    const openaiKey = getOpenAIKey();
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (openaiKey) headers["x-openai-key"] = openaiKey;
+
+    try {
+      const res = await fetch("/api/diretoria/check-triggers", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          context,
+          members: eligibleMembers,
+          lastCheckedAt: prevMatchCreatedAt,
+          playerPerformance: playerPerf.length > 0 ? playerPerf : undefined,
+          squadOvrContext: squadOvrCtx || undefined,
+        }),
+      });
+      if (!res.ok) return;
+      const data = await res.json() as {
+        notifications: { memberId: string; preview: string }[];
+        meetingTrigger: { reason: string; severity: "low" | "medium" | "high" } | null;
+      };
+
+      if (data.notifications?.length) {
+        for (const n of data.notifications) {
+          addNotification(career.id, { memberId: n.memberId, preview: n.preview, triggeredAt: Date.now() });
+          setMemberCooldown(career.id, n.memberId, matchCount);
+          const member = members.find((m) => m.id === n.memberId);
+          addToast({ type: "diretoria", title: member?.name ?? "Diretoria", preview: n.preview });
+        }
+        setDiretoriaUnread(getNotifications(career.id).length);
+      }
+
+      if (data.meetingTrigger) {
+        setPendingMeetingTrigger(career.id, data.meetingTrigger);
+      }
+    } catch {
+    }
+  }, [career.id, career.clubName, career.clubLeague, career.season, career.coach.name, career.projeto, activeSeasonId, transfers, addToast]);
+
   const handleMatchAdded = useCallback((match: MatchRecord) => {
     const updatedMatches = [...matches, match];
     setMatches(updatedMatches);
@@ -325,6 +470,14 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
 
     const seasonLabel = seasons.find((s) => s.id === activeSeasonId)?.label ?? activeSeasonLabel;
     const leaguePos = getLeaguePosition(activeSeasonId);
+
+    const handleNewPost = (post: NewsPost) => {
+      const title = post.title ?? "Nova notícia";
+      const preview = post.sourceName ?? post.source ?? "Notícias";
+      addToast({ type: "noticias", title, preview });
+      setNoticiasUnread((prev) => prev + 1);
+    };
+
     void runAutoNews(match, {
       careerId: career.id,
       seasonId: activeSeasonId,
@@ -337,8 +490,13 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
       allMatches: updatedMatches,
       allPlayers,
       leaguePosition: leaguePos,
+      onNewPost: handleNewPost,
     });
-  }, [activeSeasonId, matches, allPlayers, seasons, activeSeasonLabel, career.id, career.clubName, career.clubLeague, career.clubTitles, career.clubDescription, career.projeto]);
+
+    setTimeout(() => {
+      void runDiretoriaTriggers(updatedMatches, allPlayers);
+    }, 1500);
+  }, [activeSeasonId, matches, allPlayers, seasons, activeSeasonLabel, career.id, career.clubName, career.clubLeague, career.clubTitles, career.clubDescription, career.projeto, runDiretoriaTriggers, addToast]);
 
   const handleNewSeasonConfirm = useCallback(async (label: string, competitions: string[]) => {
     setCreatingNewSeason(true);
@@ -515,10 +673,14 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
             <div className="flex">
               {TABS.map((tab) => {
                 const active = activeTab === tab.id;
+                const unreadCount =
+                  tab.id === "diretoria" ? diretoriaUnread
+                  : tab.id === "noticias" ? noticiasUnread
+                  : 0;
                 return (
                   <button
                     key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
+                    onClick={() => handleTabChange(tab.id)}
                     className="relative flex items-center gap-2 px-4 py-3.5 text-sm font-semibold transition-all duration-200"
                     style={{
                       color: active ? "var(--club-primary)" : "rgba(255,255,255,0.35)",
@@ -537,6 +699,17 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
                         }}
                       >
                         {transfers.length}
+                      </span>
+                    )}
+                    {!active && unreadCount > 0 && (
+                      <span
+                        className="text-xs font-bold px-1.5 py-0.5 rounded-full tabular-nums min-w-[20px] text-center"
+                        style={{
+                          background: "rgba(239,68,68,0.85)",
+                          color: "#fff",
+                        }}
+                      >
+                        {unreadCount}
                       </span>
                     )}
                     {active && (
@@ -668,6 +841,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
           </div>
         )}
       </div>
+      <NotificationToast toasts={toasts} onDismiss={dismissToast} />
     </div>
   );
 }

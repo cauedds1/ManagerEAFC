@@ -76,6 +76,7 @@ export interface PlayerContextItem {
   benchRatio: number;
   overall?: number;
   ovrRelative?: string;
+  age?: number;
 }
 
 export function buildPlayerPerformanceContext(
@@ -150,6 +151,7 @@ export function buildPlayerPerformanceContext(
       benchRatio: Math.round(benchRatio * 100) / 100,
       overall,
       ovrRelative,
+      age: player.age,
     });
   }
 

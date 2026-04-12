@@ -27,6 +27,8 @@ import {
   generateMemberId,
   generateMeetingId,
   generateMessageId,
+  getPendingMeetingTrigger,
+  setPendingMeetingTrigger,
 } from "@/lib/diretoriaStorage";
 import { getLeaguePosition } from "@/lib/leagueStorage";
 import { getOpenAIKey } from "@/lib/openaiKeyStorage";
@@ -461,6 +463,12 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
     }
     setConversations(convs);
     setNotifications(getNotifications(career.id));
+
+    const pendingMeeting = getPendingMeetingTrigger(career.id);
+    if (pendingMeeting) {
+      setMeetingTrigger(pendingMeeting);
+      setPendingMeetingTrigger(career.id, null);
+    }
   }, [career.id]);
 
   useEffect(() => {
