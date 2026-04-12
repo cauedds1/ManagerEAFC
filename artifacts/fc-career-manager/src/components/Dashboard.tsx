@@ -28,7 +28,7 @@ import { PainelView } from "./PainelView";
 import { ClubeView } from "./ClubeView";
 import { TransferenciasView } from "./TransferenciasView";
 import { PartidasView } from "./PartidasView";
-import { NoticiasView, type BgGenParams, type AiPreview, FC_NOTICIA_GENERATED_EVENT } from "./NoticiasView";
+import { NoticiasView, type BgGenParams, type AiPreview, type NoticiaGeneratedDetail, FC_NOTICIA_GENERATED_EVENT } from "./NoticiasView";
 import { DiretoriaView } from "./DiretoriaView";
 import { MomentosView } from "./MomentosView";
 import { SeasonSelectModal } from "./SeasonSelectModal";

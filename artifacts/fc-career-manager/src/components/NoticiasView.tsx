@@ -114,6 +114,10 @@ const CATEGORY_LABELS: Record<NewsCategory, string> = {
 type AddMode = "auto" | "manual";
 
 export const FC_NOTICIA_GENERATED_EVENT = "fc:noticia-generated";
+export interface NoticiaGeneratedDetail {
+  post: NewsPost;
+  seasonId: string;
+}
 
 export interface AiPreview {
   source: string;
@@ -928,7 +932,7 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
 
   useEffect(() => {
     const handler = (e: Event) => {
-      const { post, seasonId: genSeasonId } = (e as CustomEvent<{ post: NewsPost; seasonId: string }>).detail;
+      const { post, seasonId: genSeasonId } = (e as CustomEvent<NoticiaGeneratedDetail>).detail;
       if (genSeasonId !== seasonId) return;
       setPosts((prev) => {
         if (prev.some((p) => p.id === post.id)) return prev;
