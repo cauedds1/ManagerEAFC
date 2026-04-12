@@ -1641,6 +1641,26 @@ export function RegistrarPartidaModal({
                   </div>
                 </div>
 
+                {/* Goalkeeper saves */}
+                <div className="flex items-center gap-3">
+                  <span className="text-white/40 text-xs font-medium flex-1">🧤 Defesas do goleiro</span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => updatePs({ goalkeeperSaves: Math.max(0, (ps.goalkeeperSaves ?? 0) - 1) })}
+                      className="w-7 h-7 rounded-lg text-white/40 hover:text-white/80 transition-colors flex items-center justify-center font-bold"
+                      style={{ background: "rgba(255,255,255,0.06)" }}
+                    >−</button>
+                    <span className="text-white/80 text-sm font-black tabular-nums w-5 text-center">{ps.goalkeeperSaves ?? 0}</span>
+                    <button
+                      type="button"
+                      onClick={() => updatePs({ goalkeeperSaves: (ps.goalkeeperSaves ?? 0) + 1 })}
+                      className="w-7 h-7 rounded-lg text-white/40 hover:text-white/80 transition-colors flex items-center justify-center font-bold"
+                      style={{ background: "rgba(255,255,255,0.06)" }}
+                    >+</button>
+                  </div>
+                </div>
+
                 {/* Kicks list */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">

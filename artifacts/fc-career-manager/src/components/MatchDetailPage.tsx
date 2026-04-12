@@ -1056,12 +1056,19 @@ export function MatchDetailPage({
       </div>
 
       {/* Penalty kicks detail */}
-      {match.penaltyShootout && match.penaltyShootout.kicks.length > 0 && (
+      {match.penaltyShootout && (match.penaltyShootout.kicks.length > 0 || (match.penaltyShootout.goalkeeperSaves ?? 0) > 0) && (
         <div
           className="mx-4 mb-4 rounded-2xl p-4 space-y-3"
           style={{ background: "rgba(168,85,247,0.06)", border: "1px solid rgba(168,85,247,0.18)" }}
         >
-          <p className="text-[10px] font-bold tracking-widest uppercase" style={{ color: "rgba(192,132,252,0.6)" }}>🥅 Cobradores de Pênalti</p>
+          <div className="flex items-center justify-between">
+            <p className="text-[10px] font-bold tracking-widest uppercase" style={{ color: "rgba(192,132,252,0.6)" }}>🥅 Cobradores de Pênalti</p>
+            {(match.penaltyShootout?.goalkeeperSaves ?? 0) > 0 && (
+              <span className="text-xs font-bold px-2 py-0.5 rounded-lg" style={{ background: "rgba(34,197,94,0.15)", color: "#4ade80" }}>
+                🧤 {match.penaltyShootout!.goalkeeperSaves} defesa{match.penaltyShootout!.goalkeeperSaves !== 1 ? "s" : ""}
+              </span>
+            )}
+          </div>
           <div className="flex flex-col gap-1.5">
             {match.penaltyShootout.kicks.map((kick, i) => {
               const kPlayer = kick.playerId != null ? allPlayers.find((p) => p.id === kick.playerId) : null;

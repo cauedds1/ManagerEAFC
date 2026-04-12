@@ -104,6 +104,7 @@ export interface PenaltyShootout {
   myScore: number;
   opponentScore: number;
   kicks: PenaltyKick[];
+  goalkeeperSaves?: number;
 }
 
 export interface MatchRecord {
