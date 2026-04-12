@@ -358,7 +358,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
 
       const post: NewsPost = {
         id: generatePostId(),
-        careerId: career.id,
+        careerId: params.careerId,
         source: (data.source as NewsSource) ?? "fanpage",
         sourceHandle: data.sourceHandle,
         sourceName: data.sourceName,
