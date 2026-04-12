@@ -121,19 +121,48 @@ function getClient(userKey?: string): { client: OpenAI; usingUserKey: boolean } 
 }
 
 function buildFanMoodSection(clubName: string, fanMoodLabel: string, fanMoodScore: number): string {
-  let section = `\n\nHUMOR DA TORCIDA — CONTEXTO EMOCIONAL:`;
+  let section = `\n\nHUMOR DA TORCIDA — CONTEXTO EMOCIONAL (OBRIGATÓRIO APLICAR NOS COMENTÁRIOS):`;
   section += `\nEstado atual da torcida do ${clubName}: ${fanMoodLabel} (${fanMoodScore}/100).`;
+
   if (fanMoodScore < 20) {
-    section += `\nTORCIDA REVOLTADA: o ambiente é de pressão máxima. Mesmo em vitórias, os comentários cobram mais, exigem mais. Torcedores estão frustrados e qualquer deslize é amplificado. Tom geral: cobrança, decepção, ameaças de protesto.`;
+    section += `\n\nTORCIDA REVOLTADA — REGRAS OBRIGATÓRIAS PARA OS COMENTÁRIOS:`;
+    section += `\n- PROPORÇÃO: pelo menos 60-70% dos comentários devem ser negativos, de cobrança ou frustração — mesmo em vitórias.`;
+    section += `\n- CORNETAS OBRIGATÓRIAS: qualquer jogador marcado como DECEPÇÃO ou ABAIXO DO ESPERADO nos dados de atuação deve ser EXPLICITAMENTE cornetado. Use linguagem dura e direta: "tira esse cara", "não aguento mais ver esse jogador", "é uma vergonha", "esse time tá um lixo", "quando muda alguma coisa aqui?".`;
+    section += `\n- Inclua comentários de torcedores que ameaçam parar de ir ao estádio, que pedem demissão do técnico ou mudanças urgentes no elenco.`;
+    section += `\n- Vitórias são comemoradas de forma morna, sempre com ressalvas: "ganhou mas jogou horrível", "ganhou por sorte", "assim não dá pra ir longe".`;
+    section += `\n- Mesmo boas atuações individuais recebem comentários mistos — a raiva coletiva contamina tudo.`;
   } else if (fanMoodScore < 40) {
-    section += `\nTORCIDA INSATISFEITA: a paciência está diminuindo. Vitórias são comemoradas mas com ressalvas. Derrotas geram reclamações mais fortes do que o normal.`;
+    section += `\n\nTORCIDA INSATISFEITA — REGRAS OBRIGATÓRIAS PARA OS COMENTÁRIOS:`;
+    section += `\n- PROPORÇÃO: pelo menos 40-50% dos comentários devem expressar insatisfação, cobrança ou ceticismo.`;
+    section += `\n- CORNETAS: jogadores com atuação marcada como DECEPÇÃO devem ser cornetados com clareza — "hoje ele não apareceu", "essa atuação tá abaixo do que a gente espera", "precisa render mais", "não tô satisfeito com esse jogador".`;
+    section += `\n- Vitórias são comemoradas, mas rapidamente aparecem comentários lembrando problemas: "ganhou mas o time ainda tem muito a melhorar", "feliz mas preocupado".`;
+    section += `\n- Derrotas geram reação bem mais intensa do que o normal — tom de decepção profunda.`;
   } else if (fanMoodScore < 60) {
-    section += `\nTORCIDA NEUTRA: humor equilibrado. Reage de forma proporcional ao resultado — celebra vitórias normalmente, critica derrotas sem exagero.`;
+    section += `\n\nTORCIDA NEUTRA — REGRAS PARA OS COMENTÁRIOS:`;
+    section += `\n- Proporção equilibrada: reage de forma proporcional ao resultado.`;
+    section += `\n- Jogadores com atuação ruim recebem cobranças normais, sem exagero; boas atuações recebem reconhecimento natural.`;
+    section += `\n- Tom realista e sem extremos — a torcida torce mas sem histeria nem revolta.`;
   } else if (fanMoodScore < 80) {
-    section += `\nTORCIDA ANIMADA: o ambiente é positivo. Vitórias são comemoradas com entusiasmo. Pequenos erros são tolerados. Os comentários têm mais euforia natural.`;
+    section += `\n\nTORCIDA ANIMADA — REGRAS OBRIGATÓRIAS PARA OS COMENTÁRIOS:`;
+    section += `\n- PROPORÇÃO: pelo menos 60% dos comentários devem ser positivos, celebrando o time ou jogadores.`;
+    section += `\n- CELEBRAÇÕES: qualquer jogador marcado como SURPRESA POSITIVA ou com atuação de alto nível deve ser EXPLICITAMENTE celebrado — "que jogador!", "esse cara é demais", "tô apaixonado por esse time".`;
+    section += `\n- Vitórias geram comentários entusiasmados e otimistas sobre o futuro: "esse time vai longe", "que fase boa".`;
+    section += `\n- Pequenos erros são tolerados — "não foi perfeito mas tô feliz", a vibe positiva domina.`;
+    section += `\n- Inclua pelo menos 1-2 comentários de euforia específica sobre o jogador ou momento mais marcante da partida.`;
   } else {
-    section += `\nTORCIDA EUFÓRICA: o ambiente é de festa total. A torcida está nas nuvens. Os comentários transbordam orgulho, amor ao clube, sensação de que este time é especial.`;
+    section += `\n\nTORCIDA EUFÓRICA — REGRAS OBRIGATÓRIAS PARA OS COMENTÁRIOS:`;
+    section += `\n- PROPORÇÃO: pelo menos 70-80% dos comentários devem ser de euforia, celebração e orgulho.`;
+    section += `\n- OVAÇÕES OBRIGATÓRIAS: qualquer jogador com boa atuação deve ser ovacionado com intensidade máxima — "esse jogador é um fenômeno", "o melhor do Brasil nessa posição", "meu coração tá cheio".`;
+    section += `\n- Comentários de amor ao clube, sensação de que este time é especial, momentos históricos sendo vividos.`;
+    section += `\n- Use linguagem de euforia total: "esse time me arrepia", "tô em prantos de felicidade", "que grupo incrível", "orgulho demais".`;
+    section += `\n- Até derrotas recebem um tom mais amenizado: "acredito na virada", "esse time vai se recuperar", "confio demais nesse grupo".`;
+    section += `\n- Inclua pelo menos 2-3 comentários de euforia explícita que mencionem o time ou jogadores específicos.`;
   }
+
+  section += `\n\nINTEGRAÇÃO HUMOR × ATUAÇÕES INDIVIDUAIS (regra fundamental):`;
+  section += `\n- O humor da torcida AMPLIFICA as reações a atuações individuais. Com torcida revoltada/insatisfeita, DECEPÇÕES são muito mais cornetadas do que o normal — use linguagem mais dura, mais direta, mais impaciente. Com torcida animada/eufórica, SURPRESAS POSITIVAS são celebradas com muito mais intensidade — use linguagem mais efusiva, mais apaixonada.`;
+  section += `\n- NUNCA ignore o humor ao gerar comentários — ele é o filtro emocional de toda a reação da torcida.`;
+
   return section;
 }
 
