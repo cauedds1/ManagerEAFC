@@ -15,6 +15,7 @@ import type {
 } from "@/types/diretoria";
 import {
   getMembers,
+  getMeetings,
   addMember,
   updateMember,
   removeMember,
@@ -384,9 +385,14 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
   const [conversations, setConversations] = useState<Record<string, DiretoriaMessage[]>>({});
   const [notifications, setNotifications] = useState<PendingNotification[]>([]);
   const [meetingTrigger, setMeetingTrigger] = useState<MeetingTrigger | null>(null);
-  const [panel, setPanel] = useState<"list" | "chat" | "meeting">("list");
+  const [panel, setPanel] = useState<"list" | "chat" | "meeting" | "history" | "history-detail">("list");
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
   const [activeMeeting, setActiveMeeting] = useState<MeetingRecord | null>(null);
+  const [closedMeetings, setClosedMeetings] = useState<MeetingRecord[]>([]);
+  const [historyMeeting, setHistoryMeeting] = useState<MeetingRecord | null>(null);
+  const [showMeetingTitleModal, setShowMeetingTitleModal] = useState(false);
+  const [meetingTitleDraft, setMeetingTitleDraft] = useState("");
+  const [pendingSystemMeetingReason, setPendingSystemMeetingReason] = useState<string | null>(null);
   const [chatInput, setChatInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [meetingInput, setMeetingInput] = useState("");
@@ -484,6 +490,11 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
     }
   };
 
+  const refreshClosedMeetings = useCallback(() => {
+    const all = getMeetings(career.id);
+    setClosedMeetings(all.filter((m) => !!m.closedAt).sort((a, b) => (b.closedAt ?? 0) - (a.closedAt ?? 0)));
+  }, [career.id]);
+
   useEffect(() => {
     const ms = getMembers(career.id);
     setMembers(ms);
@@ -493,13 +504,14 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
     }
     setConversations(convs);
     setNotifications(getNotifications(career.id));
+    refreshClosedMeetings();
 
     const pendingMeeting = getPendingMeetingTrigger(career.id);
     if (pendingMeeting) {
       setMeetingTrigger(pendingMeeting);
       setPendingMeetingTrigger(career.id, null);
     }
-  }, [career.id]);
+  }, [career.id, refreshClosedMeetings]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -548,6 +560,20 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
     clearNotification(career.id, memberId);
     setNotifications(getNotifications(career.id));
     setTimeout(() => chatInputRef.current?.focus(), 100);
+  };
+
+  const handleOpenMeetingTitleModal = (systemReason?: string) => {
+    setPendingSystemMeetingReason(systemReason ?? null);
+    setMeetingTitleDraft(systemReason ?? "");
+    setShowMeetingTitleModal(true);
+  };
+
+  const handleConfirmMeetingTitle = () => {
+    const title = meetingTitleDraft.trim() || "Reunião de Diretoria";
+    setShowMeetingTitleModal(false);
+    setMeetingTitleDraft("");
+    handleStartMeeting(title, pendingSystemMeetingReason ? "system" : "user");
+    setPendingSystemMeetingReason(null);
   };
 
   const handleSendChat = async () => {
@@ -765,6 +791,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
     setSuggestClose(false);
     setMeetingResponding(false);
     setMeetingTypingName(null);
+    refreshClosedMeetings();
   };
 
   const handleMemberCreated = (member: BoardMember) => {
@@ -847,7 +874,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
             <button
-              onClick={() => handleStartMeeting(meetingTrigger.reason, "system")}
+              onClick={() => handleOpenMeetingTitleModal(meetingTrigger.reason)}
               className="px-3 py-1.5 rounded-lg font-bold text-xs transition-all hover:scale-[1.02] active:scale-[0.98]"
               style={{ background: "rgba(248,113,113,0.2)", color: "#f87171", border: "1px solid rgba(248,113,113,0.3)" }}
             >
@@ -886,9 +913,9 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
               )}
             </div>
             <div className="flex items-center gap-1.5">
-              {members.length >= 1 && panel === "list" && (
+              {members.length >= 1 && !activeMeeting && (
                 <button
-                  onClick={() => handleStartMeeting("Reunião convocada pelo técnico")}
+                  onClick={() => handleOpenMeetingTitleModal()}
                   className="flex items-center gap-1 px-2 py-1 rounded-lg font-semibold text-[11px] transition-all hover:scale-[1.02] active:scale-[0.98]"
                   style={{ background: "rgba(var(--club-primary-rgb),0.12)", color: "var(--club-primary)", border: "1px solid rgba(var(--club-primary-rgb),0.2)" }}
                   title="Convocar reunião"
@@ -908,59 +935,100 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto">
-            {panel === "meeting" && (
+          <div className="flex flex-col flex-1 min-h-0">
+            {activeMeeting && (
               <button
-                onClick={() => { setPanel("list"); setSelectedMemberId(null); }}
-                className="w-full flex items-center gap-2 px-4 py-2.5 text-xs text-white/40 hover:text-white/70 transition-colors"
-                style={{ borderBottom: "1px solid var(--surface-border)" }}
+                onClick={() => setPanel("meeting")}
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-left transition-all flex-shrink-0"
+                style={{
+                  background: panel === "meeting" ? "rgba(52,211,153,0.08)" : "rgba(52,211,153,0.04)",
+                  borderBottom: "1px solid var(--surface-border)",
+                  borderLeft: panel === "meeting" ? "2px solid #34d399" : "2px solid transparent",
+                }}
               >
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-                Voltar
+                <div
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-sm flex-shrink-0"
+                  style={{ background: "rgba(52,211,153,0.15)", border: "1px solid rgba(52,211,153,0.25)" }}
+                >
+                  🏢
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[11px] font-bold" style={{ color: "#34d399" }}>Em andamento</span>
+                    <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 animate-pulse" style={{ background: "#34d399" }} />
+                  </div>
+                  <span className="text-white/35 text-[10px] truncate block">{activeMeeting.reason}</span>
+                </div>
               </button>
             )}
-            {members.map((member) => {
-              const notif = memberNotif(member.id);
-              const isActive = panel === "chat" && selectedMemberId === member.id;
-              const mood = MOOD_CONFIG[member.mood];
-              return (
-                <button
-                  key={member.id}
-                  onClick={() => handleOpenChat(member.id)}
-                  className="w-full flex items-center gap-3 px-4 py-3 text-left transition-all"
-                  style={{
-                    background: isActive ? "rgba(var(--club-primary-rgb),0.1)" : "transparent",
-                    borderBottom: "1px solid rgba(255,255,255,0.04)",
-                    borderLeft: isActive ? "2px solid var(--club-primary)" : "2px solid transparent",
-                  }}
-                >
-                  <div className="relative flex-shrink-0">
-                    <AvatarCircle member={member} size={38} />
-                    {notif && (
-                      <span
-                        className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full"
-                        style={{ background: "#f87171", border: "2px solid var(--surface-bg, #0f172a)" }}
-                      />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-1">
-                      <span className="text-white text-xs font-bold truncate">{member.name}</span>
-                      <span
-                        className="flex-shrink-0 flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
-                        style={{ background: `${mood.color}18`, color: mood.color, border: `1px solid ${mood.color}22` }}
-                      >
-                        {mood.emoji} {mood.label}
-                      </span>
+
+            <div className="flex-1 overflow-y-auto">
+              {members.map((member) => {
+                const notif = memberNotif(member.id);
+                const isActive = panel === "chat" && selectedMemberId === member.id;
+                const mood = MOOD_CONFIG[member.mood];
+                return (
+                  <button
+                    key={member.id}
+                    onClick={() => handleOpenChat(member.id)}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-left transition-all"
+                    style={{
+                      background: isActive ? "rgba(var(--club-primary-rgb),0.1)" : "transparent",
+                      borderBottom: "1px solid rgba(255,255,255,0.04)",
+                      borderLeft: isActive ? "2px solid var(--club-primary)" : "2px solid transparent",
+                    }}
+                  >
+                    <div className="relative flex-shrink-0">
+                      <AvatarCircle member={member} size={38} />
+                      {notif && (
+                        <span
+                          className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full"
+                          style={{ background: "#f87171", border: "2px solid var(--surface-bg, #0f172a)" }}
+                        />
+                      )}
                     </div>
-                    <span className="text-white/35 text-[10px] truncate block">{member.roleLabel}</span>
-                    {notif && (
-                      <span className="text-white/40 text-[10px] truncate block italic">{notif.preview}</span>
-                    )}
-                  </div>
-                </button>
-              );
-            })}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="text-white text-xs font-bold truncate">{member.name}</span>
+                        <span
+                          className="flex-shrink-0 flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
+                          style={{ background: `${mood.color}18`, color: mood.color, border: `1px solid ${mood.color}22` }}
+                        >
+                          {mood.emoji} {mood.label}
+                        </span>
+                      </div>
+                      <span className="text-white/35 text-[10px] truncate block">{member.roleLabel}</span>
+                      {notif && (
+                        <span className="text-white/40 text-[10px] truncate block italic">{notif.preview}</span>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            <button
+              onClick={() => setPanel("history")}
+              className="w-full flex items-center gap-2.5 px-4 py-2.5 text-left flex-shrink-0 transition-all"
+              style={{
+                borderTop: "1px solid var(--surface-border)",
+                background: (panel === "history" || panel === "history-detail") ? "rgba(var(--club-primary-rgb),0.08)" : "transparent",
+                borderLeft: (panel === "history" || panel === "history-detail") ? "2px solid var(--club-primary)" : "2px solid transparent",
+              }}
+            >
+              <div
+                className="w-7 h-7 rounded-lg flex items-center justify-center text-xs flex-shrink-0"
+                style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)" }}
+              >
+                📋
+              </div>
+              <div className="flex-1 min-w-0">
+                <span className="text-white/55 text-xs font-semibold block">Reuniões Finalizadas</span>
+                {closedMeetings.length > 0 && (
+                  <span className="text-white/25 text-[10px]">{closedMeetings.length} {closedMeetings.length === 1 ? "reunião" : "reuniões"}</span>
+                )}
+              </div>
+            </button>
           </div>
         </div>
 
@@ -1216,7 +1284,199 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
             <p className="text-xs mt-1 opacity-70">ou convoque uma reunião</p>
           </div>
         )}
+
+        {panel === "history" && (
+          <div className="flex flex-col min-h-0" style={{ height: 520 }}>
+            <div
+              className="flex items-center gap-3 px-5 py-3 flex-shrink-0"
+              style={{ borderBottom: "1px solid var(--surface-border)", background: "rgba(255,255,255,0.02)" }}
+            >
+              <span className="text-lg">📋</span>
+              <div className="flex-1 min-w-0">
+                <span className="text-white font-bold text-sm">Reuniões Finalizadas</span>
+                <p className="text-white/35 text-xs">{closedMeetings.length} {closedMeetings.length === 1 ? "reunião" : "reuniões"} registradas</p>
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              {closedMeetings.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full text-center py-12 px-6">
+                  <div className="text-4xl mb-3 opacity-30">📋</div>
+                  <p className="text-white/30 text-sm font-medium">Nenhuma reunião finalizada</p>
+                  <p className="text-white/20 text-xs mt-1">As reuniões encerradas aparecerão aqui</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-white/[0.04]">
+                  {closedMeetings.map((mtg) => {
+                    const userMsgs = mtg.messages.filter((m) => m.role === "user").length;
+                    const charMsgs = mtg.messages.filter((m) => m.role === "character").length;
+                    const dateStr = mtg.closedAt
+                      ? new Date(mtg.closedAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })
+                      : new Date(mtg.createdAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" });
+                    return (
+                      <button
+                        key={mtg.id}
+                        onClick={() => { setHistoryMeeting(mtg); setPanel("history-detail"); }}
+                        className="w-full flex items-start gap-3 px-5 py-4 text-left hover:bg-white/[0.03] transition-colors"
+                      >
+                        <div
+                          className="w-9 h-9 rounded-full flex items-center justify-center text-sm flex-shrink-0 mt-0.5"
+                          style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}
+                        >
+                          🏢
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-white/80 text-xs font-semibold truncate">{mtg.reason}</p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-white/30 text-[10px]">{dateStr}</span>
+                            <span className="text-white/20 text-[10px]">·</span>
+                            <span className="text-white/30 text-[10px]">{userMsgs + charMsgs} mensagens</span>
+                          </div>
+                          {mtg.initiatedBy === "system" && (
+                            <span
+                              className="inline-block mt-1 text-[10px] px-1.5 py-0.5 rounded-full font-semibold"
+                              style={{ background: "rgba(251,191,36,0.1)", color: "#fbbf24" }}
+                            >
+                              Convocada pela Diretoria
+                            </span>
+                          )}
+                        </div>
+                        <svg className="w-4 h-4 text-white/20 flex-shrink-0 mt-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {panel === "history-detail" && historyMeeting && (
+          <div className="flex flex-col min-h-0" style={{ height: 520 }}>
+            <div
+              className="flex items-center gap-3 px-5 py-3 flex-shrink-0"
+              style={{ borderBottom: "1px solid var(--surface-border)", background: "rgba(255,255,255,0.02)" }}
+            >
+              <button
+                onClick={() => setPanel("history")}
+                className="text-white/30 hover:text-white/70 transition-colors mr-1"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+              </button>
+              <div className="flex-1 min-w-0">
+                <span className="text-white font-bold text-sm truncate block">{historyMeeting.reason}</span>
+                <p className="text-white/35 text-xs">
+                  {historyMeeting.closedAt
+                    ? new Date(historyMeeting.closedAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })
+                    : ""}
+                  {" · "}
+                  {historyMeeting.messages.filter(m => m.role !== "error").length} mensagens
+                </p>
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+              {historyMeeting.messages.length === 0 ? (
+                <div className="flex items-center justify-center h-full">
+                  <p className="text-white/20 text-sm">Reunião sem mensagens registradas</p>
+                </div>
+              ) : historyMeeting.messages.map((msg) => {
+                if (msg.role === "error") return null;
+                if (msg.role === "user") {
+                  return (
+                    <div key={msg.id} className="flex justify-end">
+                      <div
+                        className="max-w-[75%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed"
+                        style={{ background: "rgba(var(--club-primary-rgb),0.2)", color: "rgba(255,255,255,0.9)", borderBottomRightRadius: 4 }}
+                      >
+                        <span className="block text-[10px] opacity-50 mb-1 font-semibold">Técnico {career.coach.name}</span>
+                        {msg.content}
+                      </div>
+                    </div>
+                  );
+                }
+                const color = msg.memberColor ?? "#94a3b8";
+                return (
+                  <div key={msg.id} className="flex justify-start gap-2">
+                    <div
+                      className="w-7 h-7 flex-shrink-0 rounded-full flex items-center justify-center text-[10px] font-black mt-1"
+                      style={{ background: `${color}22`, border: `1.5px solid ${color}44`, color }}
+                    >
+                      {getInitials(msg.memberName ?? "?")}
+                    </div>
+                    <div
+                      className="max-w-[75%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed"
+                      style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.85)", borderBottomLeftRadius: 4 }}
+                    >
+                      <span className="block text-[10px] mb-1 font-bold" style={{ color }}>
+                        {msg.memberName}
+                        {members.find(m => m.id === msg.memberId) && (
+                          <span className="font-normal opacity-50"> · {members.find(m => m.id === msg.memberId)?.roleLabel}</span>
+                        )}
+                      </span>
+                      {msg.content}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
+
+      {showMeetingTitleModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(8px)" }}
+          onClick={(e) => { if (e.target === e.currentTarget) setShowMeetingTitleModal(false); }}
+        >
+          <div
+            className="glass rounded-2xl w-full max-w-sm overflow-hidden"
+            style={{ border: "1px solid var(--surface-border)" }}
+          >
+            <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom: "1px solid var(--surface-border)" }}>
+              <div className="flex items-center gap-2">
+                <span className="text-base">🏢</span>
+                <span className="text-white font-bold text-sm">Convocar Reunião</span>
+              </div>
+              <button onClick={() => setShowMeetingTitleModal(false)} className="text-white/30 hover:text-white/70 transition-colors">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+            <div className="px-5 py-4 space-y-3">
+              <div>
+                <label className="block text-white/50 text-xs font-semibold mb-1.5">Título / pauta da reunião</label>
+                <input
+                  type="text"
+                  value={meetingTitleDraft}
+                  onChange={(e) => setMeetingTitleDraft(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") handleConfirmMeetingTitle(); }}
+                  placeholder="Ex: Análise do primeiro semestre"
+                  autoFocus
+                  className="w-full px-3 py-2.5 rounded-xl text-sm text-white placeholder-white/25 glass"
+                  style={{ border: "1px solid var(--surface-border)", outline: "none", background: "rgba(255,255,255,0.05)" }}
+                />
+              </div>
+            </div>
+            <div className="px-5 pb-5 flex gap-2">
+              <button
+                onClick={() => setShowMeetingTitleModal(false)}
+                className="flex-1 py-2.5 rounded-xl font-semibold text-sm text-white/50 hover:text-white/70 glass transition-colors"
+                style={{ border: "1px solid var(--surface-border)" }}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleConfirmMeetingTitle}
+                className="flex-1 py-2.5 rounded-xl font-bold text-sm transition-all hover:scale-[1.01] active:scale-[0.99]"
+                style={{ background: "rgba(var(--club-primary-rgb),0.2)", color: "var(--club-primary)", border: "1px solid rgba(var(--club-primary-rgb),0.3)" }}
+              >
+                Iniciar Reunião
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showCreateModal && (
         <CreateMemberModal
