@@ -292,6 +292,10 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
   const bgGenTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    return () => { if (bgGenTimerRef.current) clearTimeout(bgGenTimerRef.current); };
+  }, []);
+
+  useEffect(() => {
     setFanMoodScore(getFanMood(activeSeasonId));
   }, [activeSeasonId]);
 
