@@ -24,6 +24,10 @@ interface ClubStats {
   possession: number[];
   shotsFor: number[];
   shotsAgainst: number[];
+  shotsForTotal: number;
+  playerShotsTotal: number;
+  playerShotsOnTargetTotal: number;
+  penaltyGoals: number;
   yellowCards: number;
   redCards: number;
   passAccuracyPerMatch: number[];
@@ -46,6 +50,7 @@ function computeStats(matches: MatchRecord[]): ClubStats {
     total: 0, wins: 0, draws: 0, losses: 0,
     goalsFor: 0, goalsAgainst: 0, ownGoals: 0,
     possession: [], shotsFor: [], shotsAgainst: [],
+    shotsForTotal: 0, playerShotsTotal: 0, playerShotsOnTargetTotal: 0, penaltyGoals: 0,
     yellowCards: 0, redCards: 0,
     passAccuracyPerMatch: [],
     home: { total: 0, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0 },
@@ -68,7 +73,9 @@ function computeStats(matches: MatchRecord[]): ClubStats {
       if (m.matchStats.myShots > 0 || m.matchStats.opponentShots > 0) {
         stats.shotsFor.push(m.matchStats.myShots);
         stats.shotsAgainst.push(m.matchStats.opponentShots);
+        stats.shotsForTotal += m.matchStats.myShots;
       }
+      if (m.matchStats.penaltyGoals) stats.penaltyGoals += m.matchStats.penaltyGoals;
     }
 
     const playerValues = Object.values(m.playerStats);
@@ -79,6 +86,12 @@ function computeStats(matches: MatchRecord[]): ClubStats {
       if (ps.ownGoal) stats.ownGoals++;
       if (ps.passAccuracy != null) {
         passAccList.push(ps.passAccuracy);
+      }
+      if (ps.shots != null && ps.shots > 0) {
+        stats.playerShotsTotal += ps.shots;
+        if (ps.shotsOnTargetPct != null) {
+          stats.playerShotsOnTargetTotal += ps.shots * (ps.shotsOnTargetPct / 100);
+        }
       }
     }
     if (passAccList.length > 0) {
@@ -346,6 +359,12 @@ export function ClubStatsView({
   const aproveitamento = stats.total > 0 ? ((stats.wins * 3 + stats.draws) / (stats.total * 3)) * 100 : 0;
   const avgPassAccuracy = stats.passAccuracyPerMatch.length > 0 ? avg(stats.passAccuracyPerMatch) : null;
 
+  const totalFinalizacoes = stats.shotsForTotal > 0 ? stats.shotsForTotal : stats.playerShotsTotal;
+  const precisaoFinalizacoes = stats.playerShotsTotal > 0
+    ? Math.round((stats.playerShotsOnTargetTotal / stats.playerShotsTotal) * 100)
+    : null;
+  const hasAtaqueData = totalFinalizacoes > 0 || stats.penaltyGoals > 0;
+
   return (
     <div className="w-full space-y-6 py-5">
       {/* Filtros */}
@@ -483,6 +502,62 @@ export function ClubStatsView({
           </div>
         )}
       </div>
+
+      {/* Ataque */}
+      {hasAtaqueData && (
+        <div>
+          <p className="text-white/25 text-[11px] font-bold tracking-widest uppercase mb-3 px-0.5">Ataque</p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {totalFinalizacoes > 0 && (
+              <StatCard
+                label="Finalizações"
+                value={totalFinalizacoes}
+                sub={stats.shotsFor.length > 0 ? `${fmt1(avgShotsFor)}/jogo` : undefined}
+                accent="var(--club-primary)"
+                icon="🎯"
+              />
+            )}
+            {precisaoFinalizacoes !== null && (
+              <div
+                className="flex flex-col gap-1.5 px-4 py-4 rounded-2xl"
+                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}
+              >
+                <div className="flex items-center gap-1.5">
+                  <span className="text-sm">🏹</span>
+                  <span className="text-white/35 text-[11px] font-semibold tracking-wide uppercase">% Precisão Fin.</span>
+                </div>
+                <div className="flex items-end gap-2">
+                  <span
+                    className="text-3xl font-black tabular-nums leading-none"
+                    style={{
+                      color: precisaoFinalizacoes >= 40 ? "#34d399" : precisaoFinalizacoes >= 25 ? "#fbbf24" : "#f87171",
+                    }}
+                  >
+                    {precisaoFinalizacoes}%
+                  </span>
+                </div>
+                <div className="flex rounded-full overflow-hidden h-1.5 bg-white/5 mt-1">
+                  <div
+                    className="h-full rounded-full transition-all duration-700"
+                    style={{
+                      width: `${Math.min(precisaoFinalizacoes, 100)}%`,
+                      background: precisaoFinalizacoes >= 40 ? "#34d399" : precisaoFinalizacoes >= 25 ? "#fbbf24" : "#f87171",
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+            {stats.penaltyGoals > 0 && (
+              <StatCard
+                label="Gols de Pênalti"
+                value={stats.penaltyGoals}
+                accent="#fbbf24"
+                icon="⚽"
+              />
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Passe */}
       <div>

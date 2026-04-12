@@ -56,6 +56,7 @@ interface MatchDraft {
   myShots: number;
   opponentShots: number;
   possessionPct: number;
+  penaltyGoals: number;
   observations: string;
 }
 
@@ -971,6 +972,7 @@ export function RegistrarPartidaModal({
         myShots: editMatch.matchStats?.myShots ?? 0,
         opponentShots: editMatch.matchStats?.opponentShots ?? 0,
         possessionPct: editMatch.matchStats?.possessionPct ?? 50,
+        penaltyGoals: editMatch.matchStats?.penaltyGoals ?? 0,
         observations: editMatch.observations ?? "",
       };
     }
@@ -995,6 +997,7 @@ export function RegistrarPartidaModal({
       myShots: 0,
       opponentShots: 0,
       possessionPct: 50,
+      penaltyGoals: 0,
       observations: "",
     };
   });
@@ -1111,6 +1114,7 @@ export function RegistrarPartidaModal({
           myShots: draft.myShots,
           opponentShots: draft.opponentShots,
           possessionPct: draft.possessionPct,
+          penaltyGoals: draft.penaltyGoals || undefined,
         },
         motmPlayerId: draft.motmPlayerId ?? undefined,
         motmPlayerName: draft.motmPlayerName.trim() || undefined,
@@ -1140,6 +1144,7 @@ export function RegistrarPartidaModal({
           myShots: draft.myShots,
           opponentShots: draft.opponentShots,
           possessionPct: draft.possessionPct,
+          penaltyGoals: draft.penaltyGoals || undefined,
         },
         motmPlayerId: draft.motmPlayerId ?? undefined,
         motmPlayerName: draft.motmPlayerName.trim() || undefined,
@@ -1553,6 +1558,10 @@ export function RegistrarPartidaModal({
                     <NumericInput value={draft.opponentShots} onChange={(v) => onChange({ opponentShots: v ?? 0 })} placeholder="0" className="w-16 text-center" />
                   </div>
                 </div>
+              </div>
+              <div className="flex items-center justify-between pt-1 border-t" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
+                <span className="text-white/40 text-xs">Gols de pênalti 🎯</span>
+                <NumericInput value={draft.penaltyGoals} onChange={(v) => onChange({ penaltyGoals: v ?? 0 })} placeholder="0" className="w-16 text-center" />
               </div>
               <div className="space-y-2">
                 <div className="flex items-center justify-between">

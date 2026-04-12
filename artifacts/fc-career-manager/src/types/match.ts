@@ -58,6 +58,7 @@ export interface MatchStats {
   myShots: number;
   opponentShots: number;
   possessionPct: number;
+  penaltyGoals?: number;
 }
 
 export interface MatchRecord {
