@@ -1,4 +1,5 @@
 import { loadSeasonData, loadCareerData, putSeasonData, putCareerData } from "@/lib/apiStorage";
+import { hydrateRivalsCache } from "@/lib/rivalsStorage";
 
 function matchesKey(sid: string) { return `fc-career-manager-matches-${sid}`; }
 function statsKey(sid: string) { return `fc-career-manager-stats-${sid}`; }
@@ -45,6 +46,7 @@ export async function syncSeasonFromDb(seasonId: string): Promise<void> {
   if (data.league_position !== undefined) setLocal(leagueKey(seasonId), data.league_position);
   if (data.finances !== undefined) setLocal(financeKey(seasonId), data.finances);
   if (data.news !== undefined) setLocal(newsKey(seasonId), data.news);
+  if (data.rivals !== undefined || data.rivalsLocked !== undefined) hydrateRivalsCache(seasonId, data);
 }
 
 async function migrateSeasonToDb(seasonId: string): Promise<void> {

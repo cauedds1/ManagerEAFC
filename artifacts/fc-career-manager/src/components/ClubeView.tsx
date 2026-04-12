@@ -13,9 +13,7 @@ import { FinanceiroView } from "./FinanceiroView";
 import { ClubStatsView } from "./ClubStatsView";
 import { CompetitionResultsView } from "./CompetitionResultsView";
 import { TrophyCabinetView } from "./TrophyCabinetView";
-import { RivaisView } from "./RivaisView";
-
-type ClubeSubTab = "elenco" | "estatisticas" | "lesoes" | "sequencias" | "financeiro" | "competicoes" | "trofeus" | "rivais";
+type ClubeSubTab = "elenco" | "estatisticas" | "lesoes" | "sequencias" | "financeiro" | "competicoes" | "trofeus";
 type StatsMiniTab = "jogadores" | "clube";
 
 const SUB_TABS: { id: ClubeSubTab; label: string; icon: string }[] = [
@@ -26,7 +24,6 @@ const SUB_TABS: { id: ClubeSubTab; label: string; icon: string }[] = [
   { id: "financeiro",   label: "Financeiro",    icon: "💰" },
   { id: "competicoes",  label: "Competições",   icon: "🏆" },
   { id: "trofeus",      label: "Troféus",       icon: "🥇" },
-  { id: "rivais",       label: "Rivais",        icon: "⚔️" },
 ];
 
 interface ClubeViewProps {
@@ -246,11 +243,7 @@ export function ClubeView({
         {sub === "trofeus" && (
           <TrophyCabinetView careerId={careerId} />
         )}
-        {sub === "rivais" && (
-          <div className="px-4 sm:px-6 py-6">
-            <RivaisView seasonId={seasonId} isReadOnly={isReadOnly} />
-          </div>
-        )}
+
       </div>
     </div>
   );

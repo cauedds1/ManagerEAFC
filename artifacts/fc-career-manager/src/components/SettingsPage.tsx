@@ -19,14 +19,16 @@ import {
   type PortalTone,
 } from "@/lib/customPortalStorage";
 import { getOpenAIKey, setOpenAIKey, clearOpenAIKey } from "@/lib/openaiKeyStorage";
+import { RivaisView } from "./RivaisView";
 
 interface SettingsPageProps {
   onReloadClubs: () => void;
   careerId?: string;
+  seasonId?: string;
 }
 
 type SyncState = "idle" | "running" | "done" | "error";
-type Section = "api" | "portais" | "ia";
+type Section = "api" | "portais" | "ia" | "temporada";
 
 interface SeedProgress {
   processed: number;
@@ -52,6 +54,15 @@ const PORTAL_META: { source: PortalSource; label: string; color: string; bgColor
 ];
 
 const NAV_ITEMS: { id: Section; label: string; icon: React.ReactNode }[] = [
+  {
+    id: "temporada",
+    label: "Temporada",
+    icon: (
+      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+      </svg>
+    ),
+  },
   {
     id: "api",
     label: "API & Dados",
@@ -317,8 +328,8 @@ function CustomPortalModal({
   );
 }
 
-export function SettingsPage({ onReloadClubs, careerId }: SettingsPageProps) {
-  const [section, setSection] = useState<Section>("api");
+export function SettingsPage({ onReloadClubs, careerId, seasonId }: SettingsPageProps) {
+  const [section, setSection] = useState<Section>("temporada");
 
   /* ── Player sync ── */
   const [syncState, setSyncState]     = useState<SyncState>("idle");
@@ -984,6 +995,19 @@ export function SettingsPage({ onReloadClubs, careerId }: SettingsPageProps) {
 
         {/* ── Right content ── */}
         <div className="flex-1 min-w-0">
+          {section === "temporada" && (
+            <div className="space-y-5">
+              <SectionCard
+                title="Rivais da Temporada"
+                subtitle="Defina até 3 rivais para a temporada atual. Clássicos têm tom diferenciado nas notícias e na Diretoria."
+              >
+                {seasonId
+                  ? <RivaisView seasonId={seasonId} />
+                  : <p className="text-xs text-white/30">Nenhuma temporada ativa.</p>
+                }
+              </SectionCard>
+            </div>
+          )}
           {section === "api"     && sectionApi}
           {section === "portais" && sectionPortais}
           {section === "ia"      && sectionIA}

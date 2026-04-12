@@ -17,13 +17,14 @@ export function RivaisView({ seasonId, isReadOnly }: RivaisViewProps) {
   const [locked, setLocked] = useState(false);
   const [input, setInput] = useState("");
   const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     setRivals(getSeasonRivals(seasonId));
     setLocked(areRivalsLocked(seasonId));
   }, [seasonId]);
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     const trimmed = input.trim();
     if (!trimmed) return;
     if (rivals.length >= MAX_RIVALS) {
@@ -35,25 +36,35 @@ export function RivaisView({ seasonId, isReadOnly }: RivaisViewProps) {
       return;
     }
     const next = [...rivals, trimmed];
-    setRivals(next);
-    setSeasonRivals(seasonId, next);
-    setInput("");
-    setError("");
+    setSaving(true);
+    const saved = await setSeasonRivals(seasonId, next);
+    setSaving(false);
+    if (saved) {
+      setRivals(next);
+      setInput("");
+      setError("");
+    } else {
+      setError("Rivais bloqueados — não é possível editar.");
+    }
   };
 
-  const handleRemove = (name: string) => {
+  const handleRemove = async (name: string) => {
     if (locked) return;
     const next = rivals.filter((r) => r !== name);
-    setRivals(next);
-    setSeasonRivals(seasonId, next);
+    setSaving(true);
+    const saved = await setSeasonRivals(seasonId, next);
+    setSaving(false);
+    if (saved) setRivals(next);
   };
 
-  const handleLock = () => {
+  const handleLock = async () => {
     if (rivals.length === 0) {
       setError("Adicione pelo menos um rival antes de confirmar.");
       return;
     }
-    lockRivals(seasonId);
+    setSaving(true);
+    await lockRivals(seasonId);
+    setSaving(false);
     setLocked(true);
     setError("");
   };
@@ -97,8 +108,9 @@ export function RivaisView({ seasonId, isReadOnly }: RivaisViewProps) {
               ⚔️ {r}
               {canEdit && (
                 <button
-                  onClick={() => handleRemove(r)}
-                  className="ml-1 text-white/30 hover:text-red-400 transition-colors text-xs leading-none"
+                  onClick={() => void handleRemove(r)}
+                  disabled={saving}
+                  className="ml-1 text-white/30 hover:text-red-400 transition-colors text-xs leading-none disabled:opacity-40"
                   title="Remover"
                 >
                   ✕
@@ -116,14 +128,14 @@ export function RivaisView({ seasonId, isReadOnly }: RivaisViewProps) {
               type="text"
               value={input}
               onChange={(e) => { setInput(e.target.value); setError(""); }}
-              onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+              onKeyDown={(e) => { if (e.key === "Enter") void handleAdd(); }}
               placeholder="Nome do time rival..."
-              disabled={rivals.length >= MAX_RIVALS}
+              disabled={rivals.length >= MAX_RIVALS || saving}
               className="flex-1 rounded-xl px-3 py-2 text-sm bg-white/5 border border-white/10 text-white placeholder-white/25 focus:outline-none focus:border-white/25 disabled:opacity-40"
             />
             <button
-              onClick={handleAdd}
-              disabled={!input.trim() || rivals.length >= MAX_RIVALS}
+              onClick={() => void handleAdd()}
+              disabled={!input.trim() || rivals.length >= MAX_RIVALS || saving}
               className="px-4 py-2 rounded-xl text-sm font-semibold transition-all disabled:opacity-40"
               style={{
                 background: "rgba(var(--club-primary-rgb),0.2)",
@@ -131,7 +143,7 @@ export function RivaisView({ seasonId, isReadOnly }: RivaisViewProps) {
                 color: "var(--club-primary)",
               }}
             >
-              Adicionar
+              {saving ? "..." : "Adicionar"}
             </button>
           </div>
 
@@ -139,8 +151,9 @@ export function RivaisView({ seasonId, isReadOnly }: RivaisViewProps) {
 
           {rivals.length > 0 && (
             <button
-              onClick={handleLock}
-              className="w-full py-2.5 rounded-xl text-sm font-bold transition-all"
+              onClick={() => void handleLock()}
+              disabled={saving}
+              className="w-full py-2.5 rounded-xl text-sm font-bold transition-all disabled:opacity-40"
               style={{
                 background: "rgba(var(--club-primary-rgb),0.18)",
                 border: "1px solid rgba(var(--club-primary-rgb),0.4)",
@@ -153,7 +166,7 @@ export function RivaisView({ seasonId, isReadOnly }: RivaisViewProps) {
         </div>
       )}
 
-      <div className="rounded-xl bg-white/4 border border-white/8 p-3 space-y-1.5">
+      <div className="rounded-xl p-3 space-y-1.5" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
         <p className="text-xs font-semibold text-white/50">Como funciona</p>
         <ul className="text-xs text-white/35 space-y-1 list-disc list-inside">
           <li>Partidas contra rivais são reconhecidas como <strong className="text-white/50">clássicos</strong></li>

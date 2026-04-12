@@ -38,6 +38,8 @@ export interface Season {
   careerId: string;
   label: string;
   competitions?: string[];
+  rivals?: string[];
+  rivalsLocked?: boolean;
   isActive: boolean;
   createdAt: number;
 }
