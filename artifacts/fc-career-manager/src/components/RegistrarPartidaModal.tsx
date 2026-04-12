@@ -1556,12 +1556,7 @@ export function RegistrarPartidaModal({
             <button
               type="button"
               onClick={() => {
-                const next = !draft.hasExtraTime;
-                if (!next) {
-                  onChange({ hasExtraTime: false, penaltyShootout: null });
-                } else {
-                  onChange({ hasExtraTime: true });
-                }
+                onChange({ hasExtraTime: !draft.hasExtraTime });
               }}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all duration-200 flex-shrink-0"
               style={{
@@ -1578,10 +1573,7 @@ export function RegistrarPartidaModal({
                 if (draft.penaltyShootout) {
                   onChange({ penaltyShootout: null });
                 } else {
-                  onChange({
-                    hasExtraTime: true,
-                    penaltyShootout: { myScore: 0, opponentScore: 0, kicks: [] },
-                  });
+                  onChange({ penaltyShootout: { myScore: 0, opponentScore: 0, kicks: [] } });
                 }
               }}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all duration-200 flex-shrink-0"
