@@ -311,7 +311,7 @@ function RatingBar({ value, onChange }: { value: number; onChange: (v: number) =
   );
 }
 
-const GOAL_TYPES: GoalType[] = ["normal", "cabeca", "bicicleta", "fora_area", "falta", "penalti", "contra_ataque"];
+const GOAL_TYPES: GoalType[] = ["normal", "cabeca", "bicicleta", "voleio", "fora_area", "falta", "penalti", "contra_ataque"];
 
 function GoalEditor({
   goal, playerIndex, allParticipants, currentPlayerId, onChange, onRemove,

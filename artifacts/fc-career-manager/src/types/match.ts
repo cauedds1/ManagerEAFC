@@ -17,6 +17,7 @@ export type GoalType =
   | "normal"
   | "cabeca"
   | "bicicleta"
+  | "voleio"
   | "fora_area"
   | "falta"
   | "penalti"
@@ -26,6 +27,7 @@ export const GOAL_TYPE_LABELS: Record<GoalType, string> = {
   normal:        "Gol normal",
   cabeca:        "De cabeça",
   bicicleta:     "De bicicleta",
+  voleio:        "Voleio",
   fora_area:     "Fora da área",
   falta:         "Falta",
   penalti:       "Pênalti",
@@ -36,6 +38,7 @@ export const GOAL_TYPE_ICONS: Record<GoalType, string> = {
   normal:        "⚽",
   cabeca:        "🤕",
   bicicleta:     "🔄",
+  voleio:        "🦵",
   fora_area:     "💥",
   falta:         "🎯",
   penalti:       "🥅",
