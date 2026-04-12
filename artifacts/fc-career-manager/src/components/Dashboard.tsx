@@ -13,6 +13,8 @@ import {
 import { getAllPlayerOverrides } from "@/lib/playerStatsStorage";
 import { getTransfers, addTransfer, updateTransfer } from "@/lib/transferStorage";
 import { getRivals } from "@/lib/rivalsStorage";
+import { fetchPortals } from "@/lib/customPortalStorage";
+import { addPost as addNewsPost, generatePostId, generateCommentId } from "@/lib/noticiaStorage";
 import { getFanMood, setFanMood, computeFanMoodDelta, getFanMoodLabel } from "@/lib/fanMoodStorage";
 import type { TransferRecord } from "@/types/transfer";
 import { getMatches } from "@/lib/matchStorage";
@@ -20,7 +22,7 @@ import type { MatchRecord } from "@/types/match";
 import { runPerformanceEngine } from "@/lib/playerPerformanceEngine";
 import { copyPlayerMoodsToNewSeason } from "@/lib/playerStatsStorage";
 import { getLeaguePosition } from "@/lib/leagueStorage";
-import { runAutoNews } from "@/lib/autoNewsService";
+import { runAutoNews, runRumorNews } from "@/lib/autoNewsService";
 import type { NewsPost } from "@/types/noticias";
 import { PainelView } from "./PainelView";
 import { ClubeView } from "./ClubeView";
@@ -375,6 +377,13 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     setTransfers((prev) => prev.map((t) => t.id === id ? { ...t, ...changes } : t));
   }, [activeSeasonId]);
 
+  const handleNewPost = useCallback((post: NewsPost) => {
+    const title = post.title ?? "Nova notícia";
+    const preview = post.sourceName ?? post.source ?? "Notícias";
+    addToast({ type: "noticias", title, preview });
+    setNoticiasUnread((prev) => prev + 1);
+  }, [addToast]);
+
   const runDiretoriaTriggers = useCallback(async (updatedMatches: MatchRecord[], currentAllPlayers: SquadPlayer[], isClassico?: boolean, rivalName?: string, fanMood?: number, fanMoodLabelStr?: string) => {
     const members = getMembers(career.id);
     if (members.length === 0) return;
@@ -466,6 +475,71 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
           addToast({ type: "diretoria", title: member?.name ?? "Diretoria", preview: n.preview });
         }
         setDiretoriaUnread(countUnreadDiretoria(career.id));
+
+        const firstNotif = data.notifications[0];
+        if (firstNotif && Math.random() < 0.20) {
+          void fetchPortals(career.id).then((customPortals) => {
+            const jornalistico = customPortals.find((p) => p.tone === "jornalistico");
+            if (!jornalistico) return;
+            const openaiKey = getOpenAIKey();
+            const headers: Record<string, string> = { "Content-Type": "application/json" };
+            if (openaiKey) headers["x-openai-key"] = openaiKey;
+            const triggerMember = members.find((m) => m.id === firstNotif.memberId);
+            void fetch("/api/noticias/generate-leak", {
+              method: "POST",
+              headers,
+              body: JSON.stringify({
+                clubName: career.clubName,
+                season: career.season,
+                clubLeague: career.clubLeague || undefined,
+                notificationPreview: firstNotif.preview,
+                memberName: triggerMember?.name || undefined,
+                customPortal: {
+                  id: jornalistico.id,
+                  name: jornalistico.name,
+                  description: jornalistico.description,
+                  tone: jornalistico.tone,
+                },
+              }),
+            }).then(async (leakRes) => {
+              if (!leakRes.ok) return;
+              const leakData = await leakRes.json() as {
+                source: string; sourceHandle: string; sourceName: string;
+                title?: string; content: string;
+                likes: number; commentsCount: number; sharesCount: number;
+                comments: Array<{ username: string; displayName: string; content: string; likes: number; personality?: string }>;
+              };
+              const leakPost: NewsPost = {
+                id: generatePostId(),
+                careerId: career.id,
+                source: (leakData.source as NewsPost["source"]) ?? "custom",
+                sourceHandle: leakData.sourceHandle,
+                sourceName: leakData.sourceName,
+                title: leakData.title,
+                content: leakData.content,
+                likes: leakData.likes ?? 0,
+                commentsCount: leakData.commentsCount ?? 0,
+                sharesCount: leakData.sharesCount ?? 0,
+                comments: (leakData.comments ?? []).map((c) => ({
+                  id: generateCommentId(),
+                  username: c.username,
+                  displayName: c.displayName,
+                  content: c.content,
+                  likes: c.likes ?? 0,
+                  personality: c.personality as NewsPost["comments"][number]["personality"],
+                  replies: [],
+                  createdAt: Date.now(),
+                })),
+                category: "geral",
+                createdAt: Date.now(),
+                postTag: "leak",
+                customPortalId: jornalistico.id,
+              };
+              addNewsPost(activeSeasonId, leakPost);
+              handleNewPost(leakPost);
+            }).catch(() => {});
+          });
+        }
       }
 
       if (data.meetingTrigger) {
@@ -473,7 +547,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
       }
     } catch {
     }
-  }, [career.id, career.clubName, career.clubLeague, career.season, career.coach.name, career.projeto, activeSeasonId, transfers, addToast]);
+  }, [career.id, career.clubName, career.clubLeague, career.season, career.coach.name, career.projeto, activeSeasonId, transfers, addToast, handleNewPost]);
 
   const handleMatchAdded = useCallback((match: MatchRecord) => {
     const updatedMatches = [...matches, match];
@@ -482,13 +556,6 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
 
     const seasonLabel = seasons.find((s) => s.id === activeSeasonId)?.label ?? activeSeasonLabel;
     const leaguePos = getLeaguePosition(activeSeasonId);
-
-    const handleNewPost = (post: NewsPost) => {
-      const title = post.title ?? "Nova notícia";
-      const preview = post.sourceName ?? post.source ?? "Notícias";
-      addToast({ type: "noticias", title, preview });
-      setNoticiasUnread((prev) => prev + 1);
-    };
 
     const rivals = getRivals(activeSeasonId);
     const rivalName = rivals.find(
@@ -524,7 +591,25 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     setTimeout(() => {
       void runDiretoriaTriggers(updatedMatches, allPlayers, isClassico, rivalName, newMoodScore, `${moodInfo.emoji} ${moodInfo.label}`);
     }, 1500);
-  }, [activeSeasonId, matches, allPlayers, seasons, activeSeasonLabel, career.id, career.clubName, career.clubLeague, career.clubTitles, career.clubDescription, career.projeto, runDiretoriaTriggers, addToast]);
+
+    setTimeout(() => {
+      void fetchPortals(career.id).then((customPortals) => {
+        void runRumorNews({
+          careerId: career.id,
+          seasonId: activeSeasonId,
+          season: seasonLabel,
+          clubName: career.clubName,
+          clubLeague: career.clubLeague,
+          clubDescription: career.clubDescription,
+          projeto: career.projeto,
+          allMatches: updatedMatches,
+          allPlayers,
+          customPortals,
+          onNewPost: handleNewPost,
+        });
+      });
+    }, 3000);
+  }, [activeSeasonId, matches, allPlayers, seasons, activeSeasonLabel, career.id, career.clubName, career.clubLeague, career.clubTitles, career.clubDescription, career.projeto, runDiretoriaTriggers, handleNewPost]);
 
   const handleNewSeasonConfirm = useCallback(async (label: string, competitions: string[]) => {
     setCreatingNewSeason(true);

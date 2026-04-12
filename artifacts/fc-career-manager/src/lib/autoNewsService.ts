@@ -12,6 +12,26 @@ import { getPosts, addPost, generatePostId, generateCommentId } from "@/lib/noti
 import { buildPlayerPerformanceContext, buildPlayerContextString, buildSquadOvrContext } from "@/lib/playerContext";
 import { getOpenAIKey } from "@/lib/openaiKeyStorage";
 
+function rumorStateKey(seasonId: string): string {
+  return `fc-rumor-state-${seasonId}`;
+}
+
+function getLastRumorMatchCount(seasonId: string): number {
+  try {
+    const raw = localStorage.getItem(rumorStateKey(seasonId));
+    if (!raw) return -99;
+    return (JSON.parse(raw) as { lastRumorAtMatchCount: number }).lastRumorAtMatchCount ?? -99;
+  } catch {
+    return -99;
+  }
+}
+
+function setLastRumorMatchCount(seasonId: string, count: number): void {
+  try {
+    localStorage.setItem(rumorStateKey(seasonId), JSON.stringify({ lastRumorAtMatchCount: count }));
+  } catch {}
+}
+
 interface AiResult {
   source: string;
   sourceHandle: string;
@@ -30,6 +50,20 @@ interface AiResult {
     personality?: string;
     replies?: unknown[];
   }>;
+}
+
+export interface RumorContext {
+  careerId: string;
+  seasonId: string;
+  season: string;
+  clubName: string;
+  clubLeague?: string;
+  clubDescription?: string;
+  projeto?: string;
+  allMatches: MatchRecord[];
+  allPlayers: SquadPlayer[];
+  customPortals: CustomPortal[];
+  onNewPost?: (post: NewsPost) => void;
 }
 
 export interface AutoNewsContext {
@@ -216,6 +250,100 @@ export async function runAutoNews(
       } catch {
       }
     }
+  } catch {
+  }
+}
+
+export async function runRumorNews(ctx: RumorContext): Promise<void> {
+  const { careerId, seasonId, season, clubName, clubLeague, clubDescription, projeto, allMatches, allPlayers, customPortals, onNewPost } = ctx;
+
+  const matchCount = allMatches.length;
+  if (matchCount < 2) return;
+
+  const lastRumorAt = getLastRumorMatchCount(seasonId);
+  const matchesSinceLast = matchCount - lastRumorAt;
+  if (matchesSinceLast < 2) return;
+
+  if (Math.random() >= 0.30) return;
+
+  try {
+    const playerContextStr = buildPlayerContextString(
+      buildPlayerPerformanceContext(seasonId, allPlayers, careerId),
+    );
+
+    const positionCounts: Record<string, number> = {};
+    for (const p of allPlayers) {
+      const pos = p.position ?? "GK";
+      positionCounts[pos] = (positionCounts[pos] ?? 0) + 1;
+    }
+    const needyPositions = Object.entries(positionCounts)
+      .filter(([, cnt]) => cnt <= 1)
+      .map(([pos]) => pos);
+    const squadPositionNeeds = needyPositions.length > 0
+      ? `Posições com apenas 1 jogador (possível necessidade de reforço): ${needyPositions.join(", ")}`
+      : "";
+
+    const selectedPortal = customPortals.length > 0 && Math.random() < 0.5
+      ? customPortals[Math.floor(Math.random() * customPortals.length)]
+      : null;
+
+    const openaiKey = getOpenAIKey();
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (openaiKey) headers["x-openai-key"] = openaiKey;
+
+    const body: Record<string, unknown> = {
+      clubName,
+      season,
+      clubLeague: clubLeague || undefined,
+      clubDescription: clubDescription || undefined,
+      projeto: projeto || undefined,
+      playersContext: playerContextStr || undefined,
+      squadPositionNeeds: squadPositionNeeds || undefined,
+      customPortal: selectedPortal
+        ? { id: selectedPortal.id, name: selectedPortal.name, description: selectedPortal.description, tone: selectedPortal.tone }
+        : undefined,
+    };
+
+    const res = await fetch("/api/noticias/generate-rumor", {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) return;
+
+    const data = (await res.json()) as AiResult & { customPortalId?: string };
+
+    const post: NewsPost = {
+      id: generatePostId(),
+      careerId,
+      source: (data.source as NewsPost["source"]) ?? (selectedPortal ? "custom" : "espn"),
+      sourceHandle: data.sourceHandle,
+      sourceName: data.sourceName,
+      title: data.title,
+      content: data.content,
+      likes: data.likes ?? 0,
+      commentsCount: data.commentsCount ?? 0,
+      sharesCount: data.sharesCount ?? 0,
+      comments: (data.comments ?? []).map((c) => ({
+        id: generateCommentId(),
+        username: c.username,
+        displayName: c.displayName,
+        content: c.content,
+        likes: c.likes ?? 0,
+        personality: c.personality as NewsPost["comments"][number]["personality"],
+        replies: [],
+        createdAt: Date.now(),
+      })),
+      category: "transferencia",
+      createdAt: Date.now(),
+      postTag: "rumor",
+      ...(selectedPortal ? { customPortalId: selectedPortal.id } : {}),
+    };
+
+    addPost(seasonId, post);
+    setLastRumorMatchCount(seasonId, matchCount);
+    if (onNewPost) onNewPost(post);
   } catch {
   }
 }

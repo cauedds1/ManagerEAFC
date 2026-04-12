@@ -471,4 +471,283 @@ Gere 7 a 10 comentários. Pelo menos 3 devem ter replies. Se o técnico for famo
   }
 });
 
+interface GenerateRumorBody {
+  clubName: string;
+  season?: string;
+  clubLeague?: string;
+  clubDescription?: string;
+  projeto?: string;
+  playersContext?: string;
+  squadPositionNeeds?: string;
+  customPortal?: CustomPortalPayload;
+}
+
+router.post("/noticias/generate-rumor", async (req, res) => {
+  const {
+    clubName, season, clubLeague, clubDescription, projeto,
+    playersContext, squadPositionNeeds, customPortal,
+  } = req.body as GenerateRumorBody;
+
+  if (!clubName?.trim()) {
+    res.status(400).json({ error: "clubName é obrigatório" });
+    return;
+  }
+
+  const userKey = (req.headers["x-openai-key"] as string | undefined) ?? "";
+  const { client, usingUserKey } = getClient(userKey);
+
+  const shortClub = clubName.split(" ").slice(0, 2).join(" ");
+  const uniqueSeed = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+  const isCustomPortal = !!customPortal;
+  const portalName = isCustomPortal
+    ? customPortal.name
+    : (Math.random() < 0.5 ? "TNT Sports" : "ESPN Brasil");
+  const portalHandle = isCustomPortal
+    ? `@${customPortal.name.toLowerCase().replace(/\s+/g, "").replace(/[^a-z0-9]/g, "")}`
+    : (portalName === "TNT Sports" ? "@tntsports" : "@espnbrasil");
+  const chosenSource = isCustomPortal ? "custom" : (portalName === "TNT Sports" ? "tnt" : "espn");
+
+  const customPortalSection = isCustomPortal
+    ? `\n\nPERFIL DO PORTAL:\nNome: ${customPortal.name}\nDescrição/identidade: ${customPortal.description}\n${TONE_PROMPTS[customPortal.tone] ?? TONE_PROMPTS.serio}\nAdapte TODO o conteúdo ao tom e identidade deste portal.`
+    : "";
+
+  const leagueSection = clubLeague ? `\nLiga: ${clubLeague}` : "";
+  const descSection = clubDescription?.trim() ? `\nSobre o clube: ${clubDescription.trim().slice(0, 200)}` : "";
+  const projectSection = projeto?.trim() ? `\nProjeto da temporada: "${projeto.trim()}"` : "";
+  const playersSection = playersContext?.trim()
+    ? `\n\nELENCO ATUAL (contexto de desempenho dos jogadores — use para escolher quem vazar no rumor):\n${playersContext.trim()}`
+    : "";
+  const needsSection = squadPositionNeeds?.trim()
+    ? `\n\nPOSIÇÕES COM LACUNA NO ELENCO (possíveis alvos de sondagem):\n${squadPositionNeeds.trim()}`
+    : "";
+
+  const systemPrompt = `Você é um jornalista especialista em mercado de transferências do futebol brasileiro e europeu.
+Você escreve posts de RUMORES de transferência no estilo das redes sociais brasileiras — boato, especulação, bastidores.
+Clube: ${clubName}${season ? ` (temporada ${season})` : ""}${leagueSection}${descSection}${projectSection}
+Portal: ${portalName} (${portalHandle})
+Semente de unicidade: ${uniqueSeed}${playersSection}${needsSection}${customPortalSection}`;
+
+  const rumorTypes = [
+    `Um clube estrangeiro está monitorando um dos jogadores em destaque do ${shortClub}`,
+    `Um clube rival fez uma sondagem por um jogador do ${shortClub}`,
+    `O ${shortClub} está sendo sondado sobre um atacante de outro clube para reforçar o elenco`,
+    `Agente de um jogador confirmou interesse de clube europeu em atleta do ${shortClub}`,
+    `${shortClub} monitora meio-campista cobiçado por outros clubes`,
+  ];
+  const chosenType = rumorTypes[Math.floor(Math.random() * rumorTypes.length)];
+
+  const userPrompt = `Crie um post de RUMOR de mercado com o tema: "${chosenType}".
+
+REGRAS OBRIGATÓRIAS:
+- Tom de bastidores: "fontes próximas ao clube revelam", "segundo informações exclusivas", "a reportagem apurou", "de acordo com pessoas próximas à negociação"
+- Use linguagem de rumor genuíno — não confirme nada, mas deixe no ar. Crie suspense.
+- Se mencionar um jogador do elenco, escolha com base no desempenho (quem está em boa forma chama atenção)
+- Pode inventar nomes de jogadores-alvo externos de forma coerente com o contexto da liga
+- Categoria DEVE ser "transferencia"
+- O post deve soar como uma reportagem real de mercado, não uma notícia confirmada
+- Inclua comentários de torcedores: alguns animados, outros preocupados com saída de jogador titular, outros céticos com boatos
+
+REGRAS DE COMENTARISTAS:
+- TODOS os comentários em português (pt-BR)
+- displayName = nome real de pessoa (ex: "Rafael Cunha", "Beatriz Moura")
+- username = derivado do nome (@rafaelcunha, @biamoura22)
+
+Responda APENAS com JSON puro (sem markdown, sem code block):
+{
+  "source": "${chosenSource}",
+  "sourceHandle": "${portalHandle}",
+  "sourceName": "${portalName}",
+  "category": "transferencia",
+  "title": "<título em maiúsculas, máx 6 palavras, ex: RUMOR: INTERESSE EUROPEU EM ASTRO>",
+  "content": "<legenda no estilo Instagram com tom de rumor — 3-6 parágrafos, emojis, hashtags>",
+  "likes": <800 a 50000>,
+  "commentsCount": <30 a 600>,
+  "sharesCount": <50 a 2000>,
+  "comments": [
+    {
+      "username": "@<handle>",
+      "displayName": "<Nome Sobrenome>",
+      "content": "<comentário sobre o rumor>",
+      "likes": <1 a 2000>,
+      "personality": "<otimista|chato|corneteiro|zoeiro|saudosista|neutro>",
+      "replies": []
+    }
+  ]
+}
+
+Gere 5 a 8 comentários.`;
+
+  try {
+    const completionParams = usingUserKey
+      ? { model: "gpt-4o", max_tokens: 3072 }
+      : { model: "gpt-5.2", max_completion_tokens: 3072 };
+
+    const completion = await client.chat.completions.create({
+      ...completionParams,
+      stream: false,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+    } as Parameters<typeof client.chat.completions.create>[0]);
+
+    const raw = (completion as OpenAI.Chat.Completions.ChatCompletion).choices[0]?.message?.content ?? "";
+
+    let parsed: Record<string, unknown>;
+    try {
+      const jsonStr = raw.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```\s*$/i, "").trim();
+      parsed = JSON.parse(jsonStr);
+    } catch {
+      res.status(500).json({ error: "Resposta inválida da IA", raw });
+      return;
+    }
+
+    res.json({
+      source: (parsed.source as string) ?? chosenSource,
+      sourceHandle: (parsed.sourceHandle as string) ?? portalHandle,
+      sourceName: (parsed.sourceName as string) ?? portalName,
+      category: "transferencia",
+      title: (parsed.title as string) || undefined,
+      content: parsed.content as string,
+      likes: Number(parsed.likes) || 3000,
+      commentsCount: Number(parsed.commentsCount) || 80,
+      sharesCount: Number(parsed.sharesCount) || 300,
+      comments: (parsed.comments as unknown[]) ?? [],
+      ...(isCustomPortal ? { customPortalId: customPortal.id } : {}),
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: "Erro ao gerar rumor", details: msg });
+  }
+});
+
+interface GenerateLeakBody {
+  clubName: string;
+  season?: string;
+  clubLeague?: string;
+  notificationPreview: string;
+  memberName?: string;
+  meetingReason?: string;
+  customPortal: CustomPortalPayload;
+}
+
+router.post("/noticias/generate-leak", async (req, res) => {
+  const {
+    clubName, season, clubLeague,
+    notificationPreview, memberName, meetingReason,
+    customPortal,
+  } = req.body as GenerateLeakBody;
+
+  if (!clubName?.trim() || !notificationPreview?.trim() || !customPortal) {
+    res.status(400).json({ error: "clubName, notificationPreview e customPortal são obrigatórios" });
+    return;
+  }
+
+  const userKey = (req.headers["x-openai-key"] as string | undefined) ?? "";
+  const { client, usingUserKey } = getClient(userKey);
+
+  const uniqueSeed = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const portalHandle = `@${customPortal.name.toLowerCase().replace(/\s+/g, "").replace(/[^a-z0-9]/g, "")}`;
+  const leagueSection = clubLeague ? ` (${clubLeague})` : "";
+  const tonePrompt = TONE_PROMPTS[customPortal.tone] ?? TONE_PROMPTS.jornalistico;
+
+  const memberSection = memberName ? `\nMembro da diretoria envolvido: ${memberName}` : "";
+  const reasonSection = meetingReason ? `\nMotivo/contexto da reunião: ${meetingReason}` : "";
+
+  const systemPrompt = `Você é um jornalista especialista em bastidores de futebol brasileiro. Você escreve posts no estilo de vazamentos internos — como se fosse uma fonte anônima dentro do clube revelando informações sigilosas.
+Portal: ${customPortal.name} (${portalHandle})
+${tonePrompt}
+Clube: ${clubName}${leagueSection}${season ? ` — temporada ${season}` : ""}
+Semente de unicidade: ${uniqueSeed}`;
+
+  const userPrompt = `Uma reunião interna da diretoria do ${clubName} vazou para a imprensa.
+
+Contexto do que aconteceu nos bastidores:
+"${notificationPreview}"${memberSection}${reasonSection}
+
+Crie um post com tom de VAZAMENTO, como se uma fonte anônima dentro do clube tivesse revelado o que aconteceu nos bastidores.
+
+REGRAS OBRIGATÓRIAS:
+- Use linguagem de fonte anônima: "segundo apurou a reportagem", "fontes internas revelaram", "de acordo com pessoas próximas à diretoria", "bastidores do ${clubName} estão agitados"
+- NÃO revele o diálogo literal da reunião — dê a entender o que aconteceu sem citar falas diretas
+- Pode mencionar tensão entre membros, clima interno, pressão por resultados, situação financeira — com base no contexto
+- O tom deve ser de furo jornalístico, not boato de WhatsApp
+- Categoria DEVE ser "geral"
+- Inclua comentários de torcedores reagindo: curiosos, preocupados, irônicos
+
+REGRAS DE COMENTARISTAS:
+- TODOS em português (pt-BR)
+- displayName = nome real de pessoa
+- username = derivado do nome, simples
+
+Responda APENAS com JSON puro (sem markdown, sem code block):
+{
+  "source": "custom",
+  "sourceHandle": "${portalHandle}",
+  "sourceName": "${customPortal.name}",
+  "category": "geral",
+  "title": "<título em maiúsculas, máx 6 palavras, ex: BASTIDORES AGITADOS NA DIRETORIA>",
+  "content": "<legenda com tom de vazamento — 3-5 parágrafos, emojis contextuais, hashtags>",
+  "likes": <500 a 30000>,
+  "commentsCount": <20 a 400>,
+  "sharesCount": <30 a 1500>,
+  "comments": [
+    {
+      "username": "@<handle>",
+      "displayName": "<Nome Sobrenome>",
+      "content": "<comentário reagindo ao vazamento>",
+      "likes": <1 a 1500>,
+      "personality": "<otimista|chato|corneteiro|zoeiro|saudosista|neutro>",
+      "replies": []
+    }
+  ]
+}
+
+Gere 5 a 7 comentários.`;
+
+  try {
+    const completionParams = usingUserKey
+      ? { model: "gpt-4o", max_tokens: 3072 }
+      : { model: "gpt-5.2", max_completion_tokens: 3072 };
+
+    const completion = await client.chat.completions.create({
+      ...completionParams,
+      stream: false,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+    } as Parameters<typeof client.chat.completions.create>[0]);
+
+    const raw = (completion as OpenAI.Chat.Completions.ChatCompletion).choices[0]?.message?.content ?? "";
+
+    let parsed: Record<string, unknown>;
+    try {
+      const jsonStr = raw.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```\s*$/i, "").trim();
+      parsed = JSON.parse(jsonStr);
+    } catch {
+      res.status(500).json({ error: "Resposta inválida da IA", raw });
+      return;
+    }
+
+    res.json({
+      source: "custom",
+      sourceHandle: (parsed.sourceHandle as string) ?? portalHandle,
+      sourceName: (parsed.sourceName as string) ?? customPortal.name,
+      category: "geral",
+      title: (parsed.title as string) || undefined,
+      content: parsed.content as string,
+      likes: Number(parsed.likes) || 2000,
+      commentsCount: Number(parsed.commentsCount) || 60,
+      sharesCount: Number(parsed.sharesCount) || 200,
+      comments: (parsed.comments as unknown[]) ?? [],
+      customPortalId: customPortal.id,
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: "Erro ao gerar vazamento", details: msg });
+  }
+});
+
 export default router;

@@ -29,6 +29,8 @@ export interface NewsComment {
   createdAt: number;
 }
 
+export type PostTag = "rumor" | "leak";
+
 export interface NewsPost {
   id: string;
   careerId: string;
@@ -46,4 +48,5 @@ export interface NewsPost {
   matchId?: string;
   category: NewsCategory;
   customPortalId?: string;
+  postTag?: PostTag;
 }
