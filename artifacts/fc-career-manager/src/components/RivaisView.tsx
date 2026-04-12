@@ -52,7 +52,6 @@ export function RivaisView({ seasonId, isReadOnly }: RivaisViewProps) {
   const [activeIdx, setActiveIdx] = useState(-1);
 
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setRivals(getSeasonRivals(seasonId));
@@ -237,7 +236,6 @@ export function RivaisView({ seasonId, isReadOnly }: RivaisViewProps) {
           <div ref={wrapperRef} className="relative">
             <div className="flex gap-2">
               <input
-                ref={inputRef}
                 type="text"
                 value={input}
                 onChange={(e) => handleInputChange(e.target.value)}
