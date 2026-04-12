@@ -330,11 +330,18 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     };
   });
 
-  const squadPlayers: SquadPlayer[] = (squad?.players ?? []).map((p) => ({
-    ...p,
-    name: overrides[p.id]?.nameOverride ?? p.name,
-    number: overrides[p.id]?.shirtNumber ?? p.number,
-  }));
+  const squadPlayers: SquadPlayer[] = (squad?.players ?? []).map((p) => {
+    const ovr = overrides[p.id];
+    const posOvr = ovr?.positionOverride
+      ? migratePositionOverride(ovr.positionOverride)
+      : undefined;
+    return {
+      ...p,
+      name: ovr?.nameOverride ?? p.name,
+      number: ovr?.shirtNumber ?? p.number,
+      ...(posOvr ? { positionPtBr: posOvr, position: PT_BR_TO_POSITION[posOvr] ?? p.position } : {}),
+    };
+  });
 
   const soldPlayerIds = new Set(
     transfers.filter((t) => t.type === "venda").map((t) => t.playerId),
