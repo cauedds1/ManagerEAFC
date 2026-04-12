@@ -491,7 +491,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
       date: m.date,
     }));
     const finSettings = getFinanceiroSettings(career.id);
-    const finSnapshot = computeFinancialSnapshot(finSettings, transfers);
+    const finSnapshot = computeFinancialSnapshot(finSettings, transfers, getAllPlayerOverrides(career.id));
     return {
       clubName: career.clubName,
       clubLeague: career.clubLeague,

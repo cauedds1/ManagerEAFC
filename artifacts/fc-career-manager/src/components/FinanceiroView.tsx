@@ -7,6 +7,7 @@ import {
   getActiveCompras,
   type FinanceiroSettings,
 } from "@/lib/financeiroStorage";
+import { getAllPlayerOverrides } from "@/lib/playerStatsStorage";
 
 function parseBudgetInput(raw: string): number {
   const trimmed = raw.trim().replace(/\s/g, "");
@@ -110,10 +111,11 @@ interface FinanceiroViewProps {
 
 export function FinanceiroView({ careerId, seasonId, transfers, season, isReadOnly }: FinanceiroViewProps) {
   const [settings, setSettings] = useState<FinanceiroSettings>(() => getFinanceiroSettings(seasonId));
+  const overrides = useMemo(() => getAllPlayerOverrides(careerId), [careerId]);
 
   const snapshot = useMemo(
-    () => computeFinancialSnapshot(settings, transfers),
-    [settings, transfers],
+    () => computeFinancialSnapshot(settings, transfers, overrides),
+    [settings, transfers, overrides],
   );
 
   const updateSettings = (partial: Partial<FinanceiroSettings>) => {

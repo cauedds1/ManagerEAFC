@@ -463,7 +463,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
 
     const leaguePos = getLeaguePosition(activeSeasonId);
     const finSettings = getFinanceiroSettings(activeSeasonId);
-    const finSnapshot = computeFinancialSnapshot(finSettings, transfers);
+    const finSnapshot = computeFinancialSnapshot(finSettings, transfers, getAllPlayerOverrides(career.id));
     const prevMatch = updatedMatches.slice(-2, -1)[0];
     const lastCheckedAt = prevMatch?.createdAt ?? 0;
 

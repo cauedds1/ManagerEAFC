@@ -48,6 +48,7 @@ export interface FinancialSnapshot {
 export function computeFinancialSnapshot(
   settings: FinanceiroSettings,
   transfers: TransferRecord[],
+  overrides?: Record<number, { salary?: number }>,
 ): FinancialSnapshot {
   const compras = transfers.filter((t) => !t.type || t.type === "compra");
   const vendas = transfers.filter((t) => t.type === "venda");
@@ -70,7 +71,24 @@ export function computeFinancialSnapshot(
       !soldPlayerNames.has(c.playerName.toLowerCase().trim()),
   );
 
-  const currentWageBill = activeCompras.reduce((acc, t) => acc + (t.salary ?? 0), 0);
+  const transferPlayerIds = new Set(activeCompras.map((c) => c.playerId));
+
+  const wageBillFromTransfers = activeCompras.reduce((acc, t) => {
+    const overrideSalary = overrides?.[t.playerId]?.salary;
+    return acc + (overrideSalary ?? t.salary ?? 0);
+  }, 0);
+
+  const wageBillFromOriginalSquad = overrides
+    ? Object.entries(overrides).reduce((acc, [idStr, ov]) => {
+        const id = Number(idStr);
+        if (!transferPlayerIds.has(id) && (ov.salary ?? 0) > 0) {
+          return acc + ov.salary!;
+        }
+        return acc;
+      }, 0)
+    : 0;
+
+  const currentWageBill = wageBillFromTransfers + wageBillFromOriginalSquad;
   const wageRoom = settings.salaryBudget - currentWageBill;
 
   return {
