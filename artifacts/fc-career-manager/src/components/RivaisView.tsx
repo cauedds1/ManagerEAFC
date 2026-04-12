@@ -73,15 +73,27 @@ export function RivaisView({ seasonId, isReadOnly }: RivaisViewProps) {
   const addRival = useCallback(async (name: string) => {
     const trimmed = name.trim();
     if (!trimmed) return;
+
+    let resolvedName = trimmed;
+
+    if (clubs.length > 0) {
+      const match = clubs.find((c) => c.name.toLowerCase() === trimmed.toLowerCase());
+      if (!match) {
+        setError("Selecione um time da lista de sugestões.");
+        return;
+      }
+      resolvedName = match.name;
+    }
+
     if (rivals.length >= MAX_RIVALS) {
       setError(`Máximo de ${MAX_RIVALS} rivais por temporada.`);
       return;
     }
-    if (rivals.some((r) => r.toLowerCase() === trimmed.toLowerCase())) {
+    if (rivals.some((r) => r.toLowerCase() === resolvedName.toLowerCase())) {
       setError("Este rival já foi adicionado.");
       return;
     }
-    const next = [...rivals, trimmed];
+    const next = [...rivals, resolvedName];
     setSaving(true);
     const saved = await setSeasonRivals(seasonId, next);
     setSaving(false);
@@ -95,7 +107,7 @@ export function RivaisView({ seasonId, isReadOnly }: RivaisViewProps) {
     } else {
       setError("Rivais bloqueados — não é possível editar.");
     }
-  }, [rivals, seasonId]);
+  }, [rivals, seasonId, clubs]);
 
   const handleInputChange = (value: string) => {
     setInput(value);
@@ -246,7 +258,7 @@ export function RivaisView({ seasonId, isReadOnly }: RivaisViewProps) {
               </button>
             </div>
 
-            {showDropdown && suggestions.length > 0 && (
+            {input.trim().length > 0 && clubs.length > 0 && (showDropdown || suggestions.length === 0) && (
               <div
                 className="absolute left-0 right-0 z-50 mt-1 rounded-xl overflow-hidden"
                 style={{
@@ -255,47 +267,49 @@ export function RivaisView({ seasonId, isReadOnly }: RivaisViewProps) {
                   boxShadow: "0 12px 32px rgba(0,0,0,0.6)",
                 }}
               >
-                {suggestions.map((club, idx) => {
-                  const isActive = idx === activeIdx;
-                  return (
-                    <button
-                      key={club.id}
-                      type="button"
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        handleSelectSuggestion(club);
-                      }}
-                      onMouseEnter={() => setActiveIdx(idx)}
-                      className="w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors duration-100"
-                      style={{
-                        background: isActive
-                          ? "rgba(var(--club-primary-rgb),0.12)"
-                          : "transparent",
-                        borderBottom: idx < suggestions.length - 1
-                          ? "1px solid rgba(255,255,255,0.05)"
-                          : "none",
-                      }}
-                    >
-                      <ClubLogo logo={club.logo} name={club.name} />
-                      <div className="flex-1 min-w-0">
-                        <p
-                          className="text-sm font-semibold truncate leading-tight"
-                          style={{ color: isActive ? "var(--club-primary)" : "rgba(255,255,255,0.85)" }}
-                        >
-                          {club.name}
-                        </p>
-                        <p className="text-xs text-white/35 truncate leading-tight mt-0.5">
-                          {club.league}
-                        </p>
-                      </div>
-                    </button>
-                  );
-                })}
+                {suggestions.length > 0 ? (
+                  suggestions.map((club, idx) => {
+                    const isActive = idx === activeIdx;
+                    return (
+                      <button
+                        key={club.id}
+                        type="button"
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          handleSelectSuggestion(club);
+                        }}
+                        onMouseEnter={() => setActiveIdx(idx)}
+                        className="w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors duration-100"
+                        style={{
+                          background: isActive
+                            ? "rgba(var(--club-primary-rgb),0.12)"
+                            : "transparent",
+                          borderBottom: idx < suggestions.length - 1
+                            ? "1px solid rgba(255,255,255,0.05)"
+                            : "none",
+                        }}
+                      >
+                        <ClubLogo logo={club.logo} name={club.name} />
+                        <div className="flex-1 min-w-0">
+                          <p
+                            className="text-sm font-semibold truncate leading-tight"
+                            style={{ color: isActive ? "var(--club-primary)" : "rgba(255,255,255,0.85)" }}
+                          >
+                            {club.name}
+                          </p>
+                          <p className="text-xs text-white/35 truncate leading-tight mt-0.5">
+                            {club.league}
+                          </p>
+                        </div>
+                      </button>
+                    );
+                  })
+                ) : (
+                  <div className="px-4 py-3 text-xs text-white/35">
+                    Nenhum time encontrado para "{input}"
+                  </div>
+                )}
               </div>
-            )}
-
-            {input.trim().length > 0 && clubs.length > 0 && suggestions.length === 0 && !showDropdown && (
-              <p className="text-xs text-white/30 mt-1.5 px-1">Nenhum time encontrado para "{input}"</p>
             )}
           </div>
 
