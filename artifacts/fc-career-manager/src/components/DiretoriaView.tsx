@@ -589,7 +589,12 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
           playerPerformanceContext: playerContextStr || undefined,
         }),
       });
-      if (!res.ok) throw new Error(`Erro ${res.status}`);
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({})) as { details?: string };
+        const details = errBody.details ?? "";
+        const isAuthErr = /api key|apikey|authentication|401|unauthorized/i.test(details);
+        throw Object.assign(new Error("api_error"), { isAuthErr });
+      }
       const data = await res.json() as { reply: string; newMood: string };
       const charMsg: DiretoriaMessage = {
         id: generateMessageId(),
@@ -604,11 +609,15 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
       const newMood = validateMood(data.newMood);
       updateMember(career.id, selectedMemberId, { mood: newMood });
       setMembers((prev) => prev.map((m) => m.id === selectedMemberId ? { ...m, mood: newMood } : m));
-    } catch {
+    } catch (e) {
+      const isAuthErr = (e as { isAuthErr?: boolean })?.isAuthErr;
+      const errText = isAuthErr
+        ? "⚠️ Chave OpenAI não configurada. Acesse as configurações (ícone ⚙️) para adicionar sua chave e usar a Diretoria."
+        : "Não consegui responder agora. Verifique sua conexão e tente novamente.";
       const errMsg: DiretoriaMessage = {
         id: generateMessageId(),
         role: "character",
-        content: "Desculpe, não consegui responder agora. Tente novamente.",
+        content: errText,
         timestamp: Date.now(),
       };
       const fallConv = [...newConv, errMsg];
@@ -655,6 +664,8 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
     setSuggestClose(false);
 
     let didSuggestClose = false;
+    let failCount = 0;
+    let lastErrorMsg = "";
 
     for (const member of members) {
       setMeetingTypingName(member.name);
@@ -688,7 +699,16 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
             playerPerformanceContext: playerContextStr || undefined,
           }),
         });
-        if (!res.ok) throw new Error(`Erro ${res.status}`);
+        if (!res.ok) {
+          const errBody = await res.json().catch(() => ({})) as { details?: string };
+          const details = errBody.details ?? "";
+          if (/api key|apikey|authentication|401|unauthorized/i.test(details)) {
+            lastErrorMsg = "chave_openai";
+          } else {
+            lastErrorMsg = `Erro ${res.status}`;
+          }
+          throw new Error(lastErrorMsg);
+        }
         const data = await res.json() as { reply: string; newMood: string; suggestClose: boolean; speakerMemberId: string };
 
         const charMsg: MeetingMessage = {
@@ -711,8 +731,23 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
         setMembers((prev) => prev.map((m) => m.id === member.id ? { ...m, mood: newMood } : m));
         if (data.suggestClose) didSuggestClose = true;
       } catch {
-        // skip this member's turn
+        failCount++;
       }
+    }
+
+    if (failCount > 0 && failCount === members.length) {
+      const isKeyError = lastErrorMsg === "chave_openai";
+      const errContent = isKeyError
+        ? "⚠️ Chave OpenAI não configurada. Acesse as configurações (ícone ⚙️) e adicione sua chave para usar a Diretoria."
+        : `⚠️ Erro ao conectar com a IA (${lastErrorMsg}). Verifique sua chave OpenAI nas configurações e tente novamente.`;
+      const errMsg: MeetingMessage = {
+        id: generateMessageId(),
+        role: "error",
+        content: errContent,
+        timestamp: Date.now(),
+      };
+      currentMeeting = { ...currentMeeting, messages: [...currentMeeting.messages, errMsg] };
+      setActiveMeeting({ ...currentMeeting });
     }
 
     setMeetingTypingName(null);
@@ -1071,6 +1106,18 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
                 </div>
               )}
               {activeMeeting.messages.map((msg) => {
+                if (msg.role === "error") {
+                  return (
+                    <div key={msg.id} className="flex justify-center px-2">
+                      <div
+                        className="max-w-[90%] px-4 py-2.5 rounded-xl text-xs leading-relaxed text-center"
+                        style={{ background: "rgba(239,68,68,0.1)", color: "#fca5a5", border: "1px solid rgba(239,68,68,0.25)" }}
+                      >
+                        {msg.content}
+                      </div>
+                    </div>
+                  );
+                }
                 if (msg.role === "user") {
                   return (
                     <div key={msg.id} className="flex justify-end">

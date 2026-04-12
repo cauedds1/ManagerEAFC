@@ -32,7 +32,7 @@ export interface DiretoriaMessage {
 
 export interface MeetingMessage {
   id: string;
-  role: "user" | "character";
+  role: "user" | "character" | "error";
   memberId?: string;
   memberName?: string;
   memberColor?: string;
