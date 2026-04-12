@@ -40,6 +40,7 @@ export interface NewsPost {
   title?: string;
   content: string;
   imageUrl?: string;
+  imageFit?: "cover" | "contain";
   likes: number;
   commentsCount: number;
   sharesCount: number;

@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import type { NewsPost, NewsComment, NewsSource } from "@/types/noticias";
 import type { PortalPhotos } from "@/lib/portalPhotosStorage";
 import type { CustomPortal } from "@/lib/customPortalStorage";
@@ -212,11 +213,13 @@ interface NoticiaPostProps {
   portalPhotos?: PortalPhotos;
   customPortals?: CustomPortal[];
   onUpdateImage?: (postId: string, imageUrl: string | null) => void;
+  onUpdateImageFit?: (postId: string, fit: "cover" | "contain") => void;
 }
 
-export function NoticiaPost({ post, portalPhotos, customPortals, onUpdateImage }: NoticiaPostProps) {
+export function NoticiaPost({ post, portalPhotos, customPortals, onUpdateImage, onUpdateImageFit }: NoticiaPostProps) {
   const [liked, setLiked] = useState(false);
   const [showComments, setShowComments] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
 
   const [hovered, setHovered] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -287,7 +290,37 @@ export function NoticiaPost({ post, portalPhotos, customPortals, onUpdateImage }
 
   const displayImageUrl = localImageUrl ?? post.imageUrl ?? null;
 
+  const lightboxPortal = lightboxOpen && displayImageUrl
+    ? createPortal(
+        <div
+          className="fixed inset-0 z-[300] flex items-center justify-center"
+          style={{ background: "rgba(0,0,0,0.93)" }}
+          onClick={() => setLightboxOpen(false)}
+        >
+          <button
+            onClick={() => setLightboxOpen(false)}
+            className="absolute top-4 right-4 w-9 h-9 rounded-full flex items-center justify-center transition-all hover:bg-white/10"
+            style={{ color: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.12)" }}
+            aria-label="Fechar"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+          <img
+            src={displayImageUrl.startsWith("http") || displayImageUrl.startsWith("blob:") ? displayImageUrl : `/api/storage${displayImageUrl}`}
+            alt="Foto completa"
+            onClick={(e) => e.stopPropagation()}
+            className="max-w-full max-h-full object-contain rounded-xl shadow-2xl"
+            style={{ maxWidth: "92vw", maxHeight: "92vh" }}
+          />
+        </div>,
+        document.body
+      )
+    : null;
+
   return (
+    <>
     <article
       className="rounded-2xl relative"
       style={{
@@ -343,7 +376,7 @@ export function NoticiaPost({ post, portalPhotos, customPortals, onUpdateImage }
           {menuOpen && (
             <div
               className="absolute right-0 rounded-xl overflow-hidden shadow-2xl"
-              style={{ bottom: 36, minWidth: 160, background: "#0f172a", border: "1px solid rgba(255,255,255,0.1)" }}
+              style={{ bottom: 36, minWidth: 180, background: "#0f172a", border: "1px solid rgba(255,255,255,0.1)" }}
             >
               <button
                 onClick={handlePickImage}
@@ -352,6 +385,32 @@ export function NoticiaPost({ post, portalPhotos, customPortals, onUpdateImage }
               >
                 {displayImageUrl ? "Trocar imagem" : "Adicionar imagem"}
               </button>
+              {displayImageUrl && onUpdateImageFit && (
+                <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                  <p className="px-4 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.25)" }}>
+                    Ajuste da imagem
+                  </p>
+                  <div className="flex gap-1.5 px-3 pb-2.5">
+                    {(["cover", "contain"] as const).map((fit) => {
+                      const active = (post.imageFit ?? "cover") === fit;
+                      return (
+                        <button
+                          key={fit}
+                          onClick={() => { onUpdateImageFit(post.id, fit); setMenuOpen(false); }}
+                          className="flex-1 text-xs font-semibold py-1.5 rounded-lg transition-all duration-150"
+                          style={{
+                            background: active ? "rgba(var(--club-primary-rgb),0.22)" : "rgba(255,255,255,0.06)",
+                            color: active ? "var(--club-primary)" : "rgba(255,255,255,0.45)",
+                            border: `1px solid ${active ? "rgba(var(--club-primary-rgb),0.45)" : "rgba(255,255,255,0.08)"}`,
+                          }}
+                        >
+                          {fit === "cover" ? "Preencher" : "Completo"}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
               {displayImageUrl && (
                 <button
                   onClick={handleRemoveImage}
@@ -408,12 +467,20 @@ export function NoticiaPost({ post, portalPhotos, customPortals, onUpdateImage }
 
       {/* Post image */}
       {displayImageUrl && (
-        <div className="overflow-hidden" style={{ maxHeight: 400 }}>
+        <div
+          className="overflow-hidden relative"
+          style={{ maxHeight: post.imageFit === "contain" ? undefined : 400 }}
+        >
           <img
             src={displayImageUrl.startsWith("http") || displayImageUrl.startsWith("blob:") ? displayImageUrl : `/api/storage${displayImageUrl}`}
             alt="Post"
-            className="w-full object-cover"
-            style={{ maxHeight: 400, display: "block" }}
+            onClick={() => setLightboxOpen(true)}
+            className={`w-full cursor-zoom-in ${post.imageFit === "contain" ? "object-contain" : "object-cover"}`}
+            style={{
+              maxHeight: post.imageFit === "contain" ? undefined : 400,
+              display: "block",
+              background: post.imageFit === "contain" ? "rgba(0,0,0,0.4)" : undefined,
+            }}
             loading="lazy"
           />
         </div>
@@ -493,5 +560,8 @@ export function NoticiaPost({ post, portalPhotos, customPortals, onUpdateImage }
         </div>
       )}
     </article>
+
+    {lightboxPortal}
+    </>
   );
 }

@@ -1048,6 +1048,11 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
     setPosts((prev) => prev.map((p) => p.id === postId ? { ...p, imageUrl: imageUrl ?? undefined } : p));
   };
 
+  const handleUpdateImageFit = (postId: string, fit: "cover" | "contain") => {
+    updatePost(seasonId, postId, { imageFit: fit });
+    setPosts((prev) => prev.map((p) => p.id === postId ? { ...p, imageFit: fit } : p));
+  };
+
   const handleSavePost = (post: NewsPost) => {
     addPost(seasonId, post);
     setPosts((prev) => [post, ...prev]);
@@ -1303,7 +1308,7 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
           ) : (
             <div className="flex flex-col gap-4 lg:max-w-[560px]">
               {filtered.map((post) => (
-                <NoticiaPost key={post.id} post={post} portalPhotos={portalPhotos} customPortals={customPortals} onUpdateImage={isReadOnly ? undefined : handleUpdateImage} />
+                <NoticiaPost key={post.id} post={post} portalPhotos={portalPhotos} customPortals={customPortals} onUpdateImage={isReadOnly ? undefined : handleUpdateImage} onUpdateImageFit={isReadOnly ? undefined : handleUpdateImageFit} />
               ))}
             </div>
           )}
