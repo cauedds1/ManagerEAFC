@@ -45,6 +45,7 @@ export interface PlayerMatchStats {
   passAccuracy?: number;
   keyPasses?: number;
   dribblesCompleted?: number;
+  dribblesSuccessRate?: number;
   ballRecoveries?: number;
   ballLosses?: number;
   saves?: number;

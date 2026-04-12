@@ -71,6 +71,7 @@ function mkDefault(startedOnBench = false): PlayerMatchStats {
     passAccuracy: undefined,
     keyPasses: undefined,
     dribblesCompleted: undefined,
+    dribblesSuccessRate: undefined,
     ballRecoveries: undefined,
     ballLosses: undefined,
     saves: undefined,
@@ -773,7 +774,13 @@ function PlayerLineupRow({
                 },
                 {
                   label: "Dribles", icon: "🔄",
-                  node: <NumericInput value={stats.dribblesCompleted} onChange={(v) => onUpdate({ dribblesCompleted: v })} placeholder="Completos" className="w-20 text-right" />,
+                  node: (
+                    <div className="flex items-center gap-1">
+                      <NumericInput value={stats.dribblesCompleted} onChange={(v) => onUpdate({ dribblesCompleted: v })} placeholder="Dribles" className="w-16 text-right" />
+                      <NumericInput value={stats.dribblesSuccessRate} onChange={(v) => onUpdate({ dribblesSuccessRate: v ? Math.min(100, v) : undefined })} max={100} placeholder="%" className="w-12 text-right" />
+                      <span className="text-white/30 text-xs">%</span>
+                    </div>
+                  ),
                 },
                 {
                   label: "Rec. / Perdas", icon: "🛡️",

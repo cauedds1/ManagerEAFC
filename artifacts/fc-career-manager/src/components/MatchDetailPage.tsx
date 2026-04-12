@@ -221,7 +221,10 @@ function PlayerDetailPanel({
     stats?.passes != null ? { label: "Passes", value: stats.passes } : null,
     stats?.passAccuracy != null ? { label: "Precisão", value: `${stats.passAccuracy}%` } : null,
     stats?.keyPasses != null ? { label: "Passes-chave", value: stats.keyPasses } : null,
-    stats?.dribblesCompleted != null ? { label: "Dribles", value: stats.dribblesCompleted } : null,
+    stats?.dribblesCompleted != null ? {
+      label: "Dribles",
+      value: stats.dribblesSuccessRate != null ? `${stats.dribblesCompleted} (${stats.dribblesSuccessRate}%)` : stats.dribblesCompleted,
+    } : null,
     stats?.saves != null ? { label: "Defesas", value: stats.saves } : null,
     stats?.ballRecoveries != null ? { label: "Recuperações", value: stats.ballRecoveries } : null,
   ].filter(Boolean).slice(0, 4) as { label: string; value: string | number }[];
