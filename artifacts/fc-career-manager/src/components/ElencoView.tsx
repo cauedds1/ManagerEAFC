@@ -4,7 +4,14 @@ import type { SquadResult, SquadPlayer, PositionPtBr, PositionGroup } from "@/li
 import { migratePositionOverride, PT_BR_TO_POSITION } from "@/lib/squadCache";
 import type { PlayerOverride } from "@/types/playerStats";
 import { getAllPlayerOverrides } from "@/lib/playerStatsStorage";
-import { getCustomPlayers, addCustomPlayer, generateCustomPlayerId } from "@/lib/customPlayersStorage";
+import {
+  getCustomPlayers,
+  addCustomPlayer,
+  removeCustomPlayer,
+  getHiddenPlayerIds,
+  addHiddenPlayerId,
+  generateCustomPlayerId,
+} from "@/lib/customPlayersStorage";
 import { FootballPitch, pickBestEleven } from "./FootballPitch";
 import { PlayerDetailPanel } from "./PlayerDetailPanel";
 import {
@@ -215,13 +222,27 @@ export function ElencoView({
   );
 
   const [customPlayers, setCustomPlayers] = useState<SquadPlayer[]>(() => getCustomPlayers(careerId));
+  const [hiddenPlayerIds, setHiddenPlayerIds] = useState<number[]>(() => getHiddenPlayerIds(careerId));
   const [showAddPlayer, setShowAddPlayer] = useState(false);
   const [addForm, setAddForm] = useState<AddPlayerForm>(DEFAULT_ADD_FORM);
 
+  const hiddenSet = useMemo(() => new Set(hiddenPlayerIds), [hiddenPlayerIds]);
+
   const mergedPlayers = useMemo<SquadPlayer[]>(
-    () => [...allPlayers, ...customPlayers],
-    [allPlayers, customPlayers]
+    () => [...allPlayers, ...customPlayers].filter((p) => !hiddenSet.has(p.id)),
+    [allPlayers, customPlayers, hiddenSet]
   );
+
+  const handleRemovePlayer = (player: SquadPlayer) => {
+    if (player.id < 0) {
+      removeCustomPlayer(careerId, player.id);
+      setCustomPlayers((prev) => prev.filter((p) => p.id !== player.id));
+    } else {
+      addHiddenPlayerId(careerId, player.id);
+      setHiddenPlayerIds((prev) => [...prev, player.id]);
+    }
+    setDetailPlayer(null);
+  };
 
   const setAddField = <K extends keyof AddPlayerForm>(field: K, value: AddPlayerForm[K]) =>
     setAddForm((f) => ({ ...f, [field]: value }));
@@ -736,6 +757,7 @@ export function ElencoView({
           override={overrides[detailPlayer.id]}
           onClose={() => setDetailPlayer(null)}
           onUpdated={refreshOverrides}
+          onRemove={() => handleRemovePlayer(detailPlayer)}
         />
       )}
 

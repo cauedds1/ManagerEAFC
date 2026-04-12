@@ -1,6 +1,31 @@
 import type { SquadPlayer } from "@/lib/squadCache";
 import { putCareerData } from "@/lib/apiStorage";
 
+function hiddenKey(careerId: string): string {
+  return `fc-career-manager-hidden-players-${careerId}`;
+}
+
+export function getHiddenPlayerIds(careerId: string): number[] {
+  try {
+    const raw = localStorage.getItem(hiddenKey(careerId));
+    if (!raw) return [];
+    return JSON.parse(raw) as number[];
+  } catch {
+    return [];
+  }
+}
+
+export function addHiddenPlayerId(careerId: string, id: number): void {
+  const list = getHiddenPlayerIds(careerId);
+  if (!list.includes(id)) {
+    list.push(id);
+    try {
+      localStorage.setItem(hiddenKey(careerId), JSON.stringify(list));
+    } catch {}
+    void putCareerData(careerId, "hiddenPlayerIds", list);
+  }
+}
+
 function key(careerId: string): string {
   return `fc-career-manager-custom-players-${careerId}`;
 }

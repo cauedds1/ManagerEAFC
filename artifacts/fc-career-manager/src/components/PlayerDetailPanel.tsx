@@ -89,6 +89,7 @@ interface PlayerDetailPanelProps {
   override?: PlayerOverride;
   onClose: () => void;
   onUpdated: () => void;
+  onRemove?: () => void;
 }
 
 type Tab = "stats" | "edit";
@@ -99,8 +100,10 @@ export function PlayerDetailPanel({
   override,
   onClose,
   onUpdated,
+  onRemove,
 }: PlayerDetailPanelProps) {
   const [tab, setTab] = useState<Tab>("stats");
+  const [confirmRemove, setConfirmRemove] = useState(false);
   const [stats, setStatsState] = useState(() => getPlayerStats(careerId, player.id));
 
   const totalMatches = (stats.matchesAsStarter ?? 0) + (stats.matchesAsSubstitute ?? 0);
@@ -369,6 +372,46 @@ export function PlayerDetailPanel({
                     ))}
                   </div>
                 </div>
+
+                {onRemove && (
+                  <div
+                    className="mt-1 p-3 rounded-xl flex items-center justify-between gap-3"
+                    style={{ background: "rgba(239,68,68,0.04)", border: "1px solid rgba(239,68,68,0.12)" }}
+                  >
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-red-400/80">Remover do Elenco</p>
+                      <p className="text-[10px] text-white/25 leading-snug mt-0.5">
+                        {confirmRemove ? "Confirma a remoção? Essa ação não pode ser desfeita." : "Remove o jogador da visualização do elenco."}
+                      </p>
+                    </div>
+                    {confirmRemove ? (
+                      <div className="flex gap-1.5 flex-shrink-0">
+                        <button
+                          onClick={() => setConfirmRemove(false)}
+                          className="px-2.5 py-1.5 rounded-lg text-[11px] font-semibold text-white/50 transition-all hover:text-white/80"
+                          style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.09)" }}
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          onClick={() => { onRemove(); onClose(); }}
+                          className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-red-400 transition-all hover:opacity-80"
+                          style={{ background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.3)" }}
+                        >
+                          Confirmar
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setConfirmRemove(true)}
+                        className="flex-shrink-0 px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-red-400/70 transition-all hover:text-red-400"
+                        style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.18)" }}
+                      >
+                        Remover
+                      </button>
+                    )}
+                  </div>
+                )}
               </>
             )}
 
