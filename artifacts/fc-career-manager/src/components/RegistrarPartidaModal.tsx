@@ -714,6 +714,7 @@ function SearchablePlayerSelect({
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [dropdownRect, setDropdownRect] = useState<{ top: number; left: number; width: number } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -725,18 +726,31 @@ function SearchablePlayerSelect({
     query === "" || p.name.toLowerCase().includes(query.toLowerCase()) || p.positionPtBr.toLowerCase().includes(query.toLowerCase())
   );
 
+  const updateRect = useCallback(() => {
+    if (containerRef.current) {
+      const r = containerRef.current.getBoundingClientRect();
+      setDropdownRect({ top: r.bottom + 4, left: r.left, width: r.width });
+    }
+  }, []);
+
   useEffect(() => {
     if (!open) return;
     const handler = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false);
     };
     document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [open]);
+    document.addEventListener("scroll", updateRect, true);
+    window.addEventListener("resize", updateRect);
+    return () => {
+      document.removeEventListener("mousedown", handler);
+      document.removeEventListener("scroll", updateRect, true);
+      window.removeEventListener("resize", updateRect);
+    };
+  }, [open, updateRect]);
 
   useEffect(() => {
-    if (open) { setQuery(""); setTimeout(() => inputRef.current?.focus(), 30); }
-  }, [open]);
+    if (open) { updateRect(); setQuery(""); setTimeout(() => inputRef.current?.focus(), 30); }
+  }, [open, updateRect]);
 
   if (selectedPlayer && !open) {
     return (
@@ -776,33 +790,22 @@ function SearchablePlayerSelect({
     );
   }
 
-  return (
-    <div ref={containerRef} className="relative">
-      <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl glass" style={{ border: "1px solid rgba(var(--club-primary-rgb),0.35)" }}>
-        <svg className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "rgba(255,255,255,0.25)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
-        </svg>
-        <input
-          ref={inputRef}
-          type="text"
-          value={query}
-          onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
-          onFocus={() => setOpen(true)}
-          placeholder="Buscar jogador..."
-          className="flex-1 bg-transparent text-white/90 text-sm placeholder-white/25 focus:outline-none"
-        />
-        {query && (
-          <button type="button" onClick={() => setQuery("")} className="text-white/30 hover:text-white/60">
-            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        )}
-      </div>
-      {open && (
+  const dropdownPortal = open && dropdownRect
+    ? createPortal(
         <div
-          className="absolute left-0 right-0 z-50 rounded-xl overflow-hidden shadow-2xl mt-1"
-          style={{ background: "rgba(12,12,18,0.98)", border: "1px solid rgba(255,255,255,0.12)", backdropFilter: "blur(24px)" }}
+          style={{
+            position: "fixed",
+            top: dropdownRect.top,
+            left: dropdownRect.left,
+            width: dropdownRect.width,
+            zIndex: 9999,
+            borderRadius: "0.75rem",
+            overflow: "hidden",
+            boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
+            background: "rgba(12,12,18,0.98)",
+            border: "1px solid rgba(255,255,255,0.12)",
+            backdropFilter: "blur(24px)",
+          }}
         >
           <div className="overflow-y-auto" style={{ maxHeight: 220 }}>
             {filtered.length === 0 ? (
@@ -828,8 +831,35 @@ function SearchablePlayerSelect({
               ))
             )}
           </div>
-        </div>
-      )}
+        </div>,
+        document.body,
+      )
+    : null;
+
+  return (
+    <div ref={containerRef} className="relative">
+      <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl glass" style={{ border: "1px solid rgba(var(--club-primary-rgb),0.35)" }}>
+        <svg className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "rgba(255,255,255,0.25)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+        </svg>
+        <input
+          ref={inputRef}
+          type="text"
+          value={query}
+          onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
+          onFocus={() => setOpen(true)}
+          placeholder="Buscar jogador..."
+          className="flex-1 bg-transparent text-white/90 text-sm placeholder-white/25 focus:outline-none"
+        />
+        {query && (
+          <button type="button" onClick={() => setQuery("")} className="text-white/30 hover:text-white/60">
+            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        )}
+      </div>
+      {dropdownPortal}
     </div>
   );
 }
