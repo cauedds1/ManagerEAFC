@@ -322,7 +322,7 @@ export function NoticiaPost({ post, portalPhotos, customPortals, onUpdateImage, 
   return (
     <>
     <article
-      className="rounded-2xl relative"
+      className="rounded-2xl relative overflow-hidden"
       style={{
         background: "rgba(255,255,255,0.03)",
         border: "1px solid rgba(255,255,255,0.07)",
