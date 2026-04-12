@@ -198,7 +198,7 @@ export function detectMatchEvents(input: EngineInput): DetectedEvent[] {
     const heroName = lastScoredKick?.playerId != null ? playerName(allPlayers, lastScoredKick.playerId) : null;
 
     const missedKicks = ps.kicks.filter((k) => !k.scored && k.playerId != null);
-    const missedNames = missedKicks.map((k) => playerName(allPlayers, k.playerId!));
+    const missedNames = [...new Set(missedKicks.map((k) => playerName(allPlayers, k.playerId!)))];
 
     const gkPlayer = allPlayers.find(
       (p) => newMatch.starterIds.includes(p.id) && (p.position === "Goalkeeper" || p.positionPtBr === "GOL"),
