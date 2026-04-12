@@ -47,7 +47,7 @@ export function computeFanMoodDelta(
   const isLoss = myScore < opponentScore;
 
   if (isClassico && isLoss) return -16;
-  if (isLoss && opponentScore - myScore >= 4) return -14;
+  if (isLoss && opponentScore >= 4) return -14;
   if (isLoss) return -8;
   if (isDraw) return -2;
   if (isClassico && isWin) return +12;
