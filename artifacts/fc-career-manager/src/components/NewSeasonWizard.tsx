@@ -47,7 +47,7 @@ export function NewSeasonWizard({
   const [step, setStep] = useState<1 | 2>(1);
   const suggestedLabel = suggestNextSeasonLabel(existingSeasons.map((s) => s.label));
   const [label, setLabel] = useState(suggestedLabel);
-  const [selected, setSelected] = useState<string[]>(currentCompetitions ?? []);
+  const [selected, setSelected] = useState<string[]>([]);
   const [custom, setCustom] = useState("");
 
   const toggleCompetition = (name: string) => {
