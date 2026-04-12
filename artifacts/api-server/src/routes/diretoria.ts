@@ -728,7 +728,7 @@ router.post("/diretoria/check-triggers", async (req, res) => {
           const reason = (p: typeof star) =>
             (p.overall ?? 0) >= 80
               ? `estrela do elenco`
-              : `${p.goals}G ${p.assists}A na temporada`;
+              : `um dos melhores do elenco`;
           notifications.push({
             memberId: member.id,
             preview: `${star.name.split(" ")[0]} (${reason(star)}) está quase sempre no banco — por que um jogador assim não é titular?`,
