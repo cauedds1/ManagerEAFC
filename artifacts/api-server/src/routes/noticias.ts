@@ -256,8 +256,22 @@ LEGENDA — TOM JORNALÍSTICO OBRIGATÓRIO:
 
   const prestigeSection = buildClubPrestigeSection(clubName, clubLeague, clubTitles, clubDescription, projeto);
 
-  const isDescLoss = /derrota|perdeu|perde|goleada sofrida/i.test(description);
-  const isDescWin = /vitória|vitoria|venceu|vence|goleada aplicada|goleada!/i.test(description);
+  const isDescLoss = /derrota|perdeu|perde|goleada sofrida|eliminado/i.test(description);
+  const isDescWin = /vitória|vitoria|venceu|vence|goleada aplicada|goleada!|classificou|classifica/i.test(description);
+  const isDescPenalties = /pênaltis|penaltis|classificou nos pênaltis|eliminado nos pênaltis/i.test(description);
+  const penaltySection = isDescPenalties
+    ? `\n\nDISPUTA DE PÊNALTIS — INSTRUÇÕES ESPECIAIS DE NARRAÇÃO:
+Esta notícia envolve uma disputa de pênaltis. A descrição pode mencionar herói (quem marcou o pênalti decisivo), goleiro herói (quem fez defesas cruciais) e quem perdeu cobranças.
+REGRAS OBRIGATÓRIAS PARA PÊNALTIS:
+- Narre a TENSÃO PSICOLÓGICA — cada cobrança é um duelo individual de nervos: a corrida para a bola, a respiração presa da torcida, o goleiro se jogando.
+- Se a descrição mencionar um HERÓI (jogador que marcou o pênalti decisivo): coloque-o como protagonista absoluto da notícia. Descreva o momento do gol com detalhes dramáticos — a comemoração, a explosão das arquibancadas, a catarse coletiva.
+- Se a descrição mencionar um GOLEIRO HERÓI (que fez defesas): ele deve ser celebrado como o grande nome da partida. Descreva a defesa decisiva com toda a dramaticidade.
+- Se a descrição mencionar quem PERDEU cobrança(s): trate com sensibilidade — sem humilhação gratuita. A pressão de cobrar pênalti é enorme. Comentários de torcedores podem expressar tristeza ou decepção, mas evite crueldade.
+- Crie comentários de torcedores que viveram cada cobrança: "cada pênalti era um infarto", "quando ele bateu e entrou eu gritei igual louco", "não acreditei quando o goleiro defendeu".
+- Use linguagem que transmita o ritmo da disputa: "primeiro pênalti convertido", "segunda cobrança defendida", "decisivo".
+- Em caso de ELIMINAÇÃO: a dor dos pênaltis é diferente — é uma crueldade do futebol, não uma derrota simples. Transmita esse sentimento único de impotência e tristeza.`
+    : "";
+
   const classicoSection = isClassico && rivalName
     ? buildClassicoSection(clubName, rivalName, isDescLoss, isDescWin)
     : "";
@@ -271,7 +285,7 @@ Use linguagem informal, autêntica, com gírias brasileiras do futebol. Seja cri
 O time é ${clubName}${season ? ` (temporada ${season})` : ""}.
 O portal que publica é ${portalName} (${portalHandle}).
 Semente de unicidade: ${uniqueSeed} — use ela para garantir que este post seja diferente de qualquer outro.
-REGRA ABSOLUTA: NUNCA mencione números de OVR, overall, ratings ou diferenças numéricas de atributos em nenhuma parte do texto gerado (título, legenda, comentários, replies). Em vez disso, use apenas termos qualitativos naturais como "estrela do elenco", "acima da média", "jogador de alto nível", "craque do time", "peça importante", "abaixo da média do elenco", "reforço de qualidade", etc. Os dados numéricos existem apenas para a sua calibração interna — não os exponha no texto.${prestigeSection}${playersSection}${squadOvrSection}${teamFormSection}${historicalSection}${attachedMatchSection}${matchPlayerSection}${recentPostsSection}${fanMoodSection}${classicoSection}${customPortalSection}${globalPortalSection}`;
+REGRA ABSOLUTA: NUNCA mencione números de OVR, overall, ratings ou diferenças numéricas de atributos em nenhuma parte do texto gerado (título, legenda, comentários, replies). Em vez disso, use apenas termos qualitativos naturais como "estrela do elenco", "acima da média", "jogador de alto nível", "craque do time", "peça importante", "abaixo da média do elenco", "reforço de qualidade", etc. Os dados numéricos existem apenas para a sua calibração interna — não os exponha no texto.${prestigeSection}${playersSection}${squadOvrSection}${teamFormSection}${historicalSection}${attachedMatchSection}${matchPlayerSection}${recentPostsSection}${fanMoodSection}${penaltySection}${classicoSection}${customPortalSection}${globalPortalSection}`;
 
   const commentPersonalitiesRule = isGlobalPortal
     ? `AUDIÊNCIA DOS COMENTÁRIOS — portal global com seguidores de TODO o mundo e de VÁRIOS clubes:

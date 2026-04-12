@@ -77,11 +77,18 @@ function matchSummary(match: MatchRecord, clubName: string, season: string, allP
   const mins = teamGoalMinutesSorted(match);
   const minText = mins.length > 0 ? ` Gols do ${clubName} aos: ${mins.join("', ")}'. ` : " ";
   const lineup = buildLineupContext(match, allPlayers);
+  let extraCtx = "";
+  if (match.penaltyShootout) {
+    extraCtx = ` [Prorrogação + pênaltis: ${clubName} ${match.penaltyShootout.myScore}×${match.penaltyShootout.opponentScore} ${match.opponent} nos pênaltis.]`;
+  } else if (match.hasExtraTime) {
+    extraCtx = " [Partida decidida após prorrogação (+30 min).]";
+  }
   return (
     `${clubName} ${match.myScore}x${match.opponentScore} ${match.opponent}` +
     ` — ${match.tournament}${match.stage ? ` (${match.stage})` : ""}, temporada ${season}.` +
     minText +
-    lineup
+    lineup +
+    extraCtx
   );
 }
 
@@ -104,6 +111,8 @@ export function detectMatchEvents(input: EngineInput): DetectedEvent[] {
   const totalGoals = newMatch.myScore + newMatch.opponentScore;
   const teamMins = teamGoalMinutesSorted(newMatch);
   const summary = matchSummary(newMatch, clubName, season, allPlayers);
+
+  const hasPenalties = newMatch.penaltyShootout != null;
 
   const rivalMatch = detectRival(newMatch.opponent, rivals);
   const isClassico = rivalMatch != null;
@@ -174,8 +183,73 @@ export function detectMatchEvents(input: EngineInput): DetectedEvent[] {
     });
   }
 
-  /* ── Empate disputado (≥2 a ≥2) ou empate em branco (0x0) ── */
-  if (isDraw && newMatch.myScore >= 2) {
+  /* ── Disputa de pênaltis (classificação ou eliminação) ── */
+  if (hasPenalties && newMatch.penaltyShootout) {
+    const ps = newMatch.penaltyShootout;
+    const penWin = ps.myScore > ps.opponentScore;
+    const penLoss = ps.myScore < ps.opponentScore;
+    const regularScore = `${newMatch.myScore}x${newMatch.opponentScore}`;
+    const penScore = `${ps.myScore}×${ps.opponentScore}`;
+    const afterStr = newMatch.hasExtraTime ? "prorrogação" : "90 minutos";
+
+    const scoredKicks = ps.kicks.filter((k) => k.scored && k.playerId != null);
+    const lastScoredKick = scoredKicks.at(-1);
+    const heroName = lastScoredKick?.playerId != null ? playerName(allPlayers, lastScoredKick.playerId) : null;
+
+    const missedKicks = ps.kicks.filter((k) => !k.scored && k.playerId != null);
+    const missedNames = missedKicks.map((k) => playerName(allPlayers, k.playerId!));
+
+    const gkPlayer = allPlayers.find(
+      (p) => newMatch.starterIds.includes(p.id) && (p.position === "Goalkeeper" || p.positionPtBr === "GOL"),
+    );
+    const gkName = gkPlayer ? gkPlayer.name.split(" ").slice(0, 2).join(" ") : null;
+
+    if (penWin) {
+      let desc = `O ${clubName} se CLASSIFICOU nos pênaltis! A partida terminou ${regularScore} após ${afterStr} e foi decidida na disputa de pênaltis: ${clubName} ${penScore} ${newMatch.opponent}.`;
+      if (heroName) desc += ` PÊNALTI DECISIVO: ${heroName} marcou o gol da classificação, mandando a torcida ao delírio.`;
+      if ((ps.goalkeeperSaves ?? 0) > 0 && gkName) {
+        if (ps.goalkeeperSaves === 1) {
+          desc += ` GOLEIRO HERÓI: ${gkName} defendeu a cobrança decisiva do adversário, salvando o clube da eliminação.`;
+        } else {
+          desc += ` GOLEIRO HERÓI: ${gkName} foi extraordinário, defendendo ${ps.goalkeeperSaves} cobranças na disputa.`;
+        }
+      }
+      if (missedNames.length > 0) {
+        desc += ` Do lado do ${clubName}, ${missedNames.join(" e ")} ${missedNames.length === 1 ? "perdeu sua cobrança" : "perderam suas cobranças"}, mas o time avançou mesmo assim.`;
+      }
+      desc += ` ${summary} Descreva a tensão insuportável cobrada a cobrada, o momento do gol classificatório, a explosão da torcida e os principais destaques da partida.`;
+      events.push(withClassico({
+        key: `classificacao-penaltis-${newMatch.id}`,
+        type: "classificacao_penaltis",
+        title: `${clubName} se classifica nos pênaltis! ${regularScore} → (${penScore} pen.)`,
+        aiDescription: desc,
+        source: "tnt",
+        category: "resultado",
+        priority: 1,
+      }));
+    } else if (penLoss) {
+      let desc = `O ${clubName} foi ELIMINADO nos pênaltis. A partida terminou ${regularScore} após ${afterStr} e a decisão foi para os pênaltis: ${clubName} ${penScore} ${newMatch.opponent}.`;
+      if (missedNames.length > 0) {
+        desc += ` Cobrança(s) desperdiçada(s) pelo ${clubName}: ${missedNames.join(", ")}.`;
+      }
+      if ((ps.goalkeeperSaves ?? 0) > 0 && gkName) {
+        desc += ` ${gkName} fez ${ps.goalkeeperSaves} defesa(s) na disputa, mas não foi suficiente para salvar o time.`;
+      }
+      desc += ` ${summary} Descreva a dor da eliminação nos pênaltis — a tensão das cobranças, o momento em que o adversário converteu o pênalti que deu a classificação, a tristeza da torcida e o que essa eliminação representa para o ${clubName}.`;
+      events.push(withClassico({
+        key: `eliminacao-penaltis-${newMatch.id}`,
+        type: "eliminacao_penaltis",
+        title: `${clubName} eliminado nos pênaltis — ${regularScore} (${penScore} pen.)`,
+        aiDescription: desc,
+        source: "espn",
+        category: "resultado",
+        priority: 1,
+      }));
+    }
+  }
+
+  /* ── Empate disputado (≥2 a ≥2) ou empate em branco (0x0) — suprimido quando há pênaltis ── */
+  if (!hasPenalties && isDraw && newMatch.myScore >= 2) {
     events.push({
       key: `empate-disputado-${newMatch.id}`,
       type: "empate_disputado",
@@ -185,7 +259,7 @@ export function detectMatchEvents(input: EngineInput): DetectedEvent[] {
       category: "resultado",
       priority: 2,
     });
-  } else if (isDraw && newMatch.myScore === 0) {
+  } else if (!hasPenalties && isDraw && newMatch.myScore === 0) {
     events.push({
       key: `empate-branco-${newMatch.id}`,
       type: "empate_branco",

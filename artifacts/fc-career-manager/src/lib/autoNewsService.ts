@@ -1,5 +1,5 @@
 import type { MatchRecord } from "@/types/match";
-import { getMatchResult } from "@/types/match";
+import { getMatchResultFull } from "@/types/match";
 import type { NewsPost } from "@/types/noticias";
 import type { SquadPlayer } from "@/lib/squadCache";
 import type { LeaguePosition } from "@/lib/leagueStorage";
@@ -109,9 +109,11 @@ export function buildTeamFormContext(allMatches: MatchRecord[], currentMatch?: M
   if (recent.length === 0) return "";
 
   const lines = recent.map((m) => {
-    const r = getMatchResult(m.myScore, m.opponentScore);
-    const label = r === "vitoria" ? "V" : r === "derrota" ? "D" : "E";
-    return `${label} ${m.opponent} (${m.myScore}-${m.opponentScore})`;
+    const r = getMatchResultFull(m.myScore, m.opponentScore, m.penaltyShootout);
+    const base = r === "vitoria" ? "V" : r === "derrota" ? "D" : "E";
+    const suffix = m.penaltyShootout ? "(pen.)" : m.hasExtraTime ? "(prorr.)" : "";
+    const label = suffix ? `${base}${suffix}` : base;
+    return `${label} ${m.opponent} (${m.myScore}-${m.opponentScore}${m.penaltyShootout ? ` | pen. ${m.penaltyShootout.myScore}-${m.penaltyShootout.opponentScore}` : ""})`;
   });
 
   return `Sequência recente (mais recente primeiro): ${lines.join(" | ")}`;
