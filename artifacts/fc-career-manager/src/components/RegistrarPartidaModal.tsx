@@ -696,6 +696,139 @@ function PlayerPicker({
   );
 }
 
+function SearchablePlayerSelect({
+  allUnused,
+  allParticipants,
+  selectedId,
+  onChange,
+}: {
+  allUnused: SquadPlayer[];
+  allParticipants: SquadPlayer[];
+  selectedId?: number;
+  onChange: (id: number | undefined) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const selectedPlayer = selectedId != null
+    ? (allUnused.find((p) => p.id === selectedId) ?? allParticipants.find((p) => p.id === selectedId))
+    : null;
+
+  const filtered = allUnused.filter((p) =>
+    query === "" || p.name.toLowerCase().includes(query.toLowerCase()) || p.positionPtBr.toLowerCase().includes(query.toLowerCase())
+  );
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  useEffect(() => {
+    if (open) { setQuery(""); setTimeout(() => inputRef.current?.focus(), 30); }
+  }, [open]);
+
+  if (selectedPlayer && !open) {
+    return (
+      <div className="flex items-center gap-2">
+        <div className="flex-1 flex items-center gap-2 px-2.5 py-1.5 rounded-xl glass" style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
+          {selectedPlayer.photo ? (
+            <img src={selectedPlayer.photo} alt="" className="w-5 h-5 rounded-full object-cover flex-shrink-0" />
+          ) : (
+            <div className="w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center" style={{ background: "rgba(var(--club-primary-rgb),0.08)" }}>
+              <svg viewBox="0 0 40 40" className="w-3 h-3 text-white/20" fill="currentColor"><circle cx="20" cy="14" r="7"/><path d="M6 36c0-7.732 6.268-14 14-14s14 6.268 14 14H6z"/></svg>
+            </div>
+          )}
+          <span className="text-white/90 text-sm font-semibold truncate flex-1">{selectedPlayer.name}</span>
+          <span className="text-xs font-bold px-1.5 py-0.5 rounded flex-shrink-0" style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.4)" }}>{selectedPlayer.positionPtBr}</span>
+        </div>
+        <button
+          type="button"
+          onClick={() => { onChange(undefined); }}
+          className="w-7 h-7 rounded-lg flex items-center justify-center text-white/30 hover:text-white/60 hover:bg-white/08 transition-colors flex-shrink-0"
+          title="Remover"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="w-7 h-7 rounded-lg flex items-center justify-center text-white/30 hover:text-white/60 hover:bg-white/08 transition-colors flex-shrink-0"
+          title="Trocar"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+          </svg>
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div ref={containerRef} className="relative">
+      <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl glass" style={{ border: "1px solid rgba(var(--club-primary-rgb),0.35)" }}>
+        <svg className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "rgba(255,255,255,0.25)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+        </svg>
+        <input
+          ref={inputRef}
+          type="text"
+          value={query}
+          onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
+          onFocus={() => setOpen(true)}
+          placeholder="Buscar jogador..."
+          className="flex-1 bg-transparent text-white/90 text-sm placeholder-white/25 focus:outline-none"
+        />
+        {query && (
+          <button type="button" onClick={() => setQuery("")} className="text-white/30 hover:text-white/60">
+            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        )}
+      </div>
+      {open && (
+        <div
+          className="absolute left-0 right-0 z-50 rounded-xl overflow-hidden shadow-2xl mt-1"
+          style={{ background: "rgba(12,12,18,0.98)", border: "1px solid rgba(255,255,255,0.12)", backdropFilter: "blur(24px)" }}
+        >
+          <div className="overflow-y-auto" style={{ maxHeight: 220 }}>
+            {filtered.length === 0 ? (
+              <p className="text-white/25 text-xs text-center py-5">Nenhum jogador disponível</p>
+            ) : (
+              filtered.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => { onChange(p.id); setOpen(false); setQuery(""); }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-white/[0.06] transition-colors text-left"
+                >
+                  <div className="w-7 h-7 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center" style={{ background: "rgba(var(--club-primary-rgb),0.06)" }}>
+                    {p.photo ? <img src={p.photo} alt={p.name} className="w-full h-full object-cover" /> : (
+                      <svg viewBox="0 0 40 40" className="w-4 h-4 text-white/20" fill="currentColor"><circle cx="20" cy="14" r="7"/><path d="M6 36c0-7.732 6.268-14 14-14s14 6.268 14 14H6z"/></svg>
+                    )}
+                  </div>
+                  <span className="flex-1 text-white text-sm font-semibold truncate">{p.name}</span>
+                  <span className="text-xs font-bold px-1.5 py-0.5 rounded flex-shrink-0" style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.45)" }}>
+                    {p.positionPtBr}
+                  </span>
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function PlayerLineupRow({
   player,
   stats,
@@ -927,24 +1060,15 @@ function PlayerLineupRow({
                       </div>
                       <div>
                         <span className="text-white/40 text-xs block mb-1">Quem entrou:</span>
-                        <select
-                          value={stats.substitutedInPlayerId ?? ""}
-                          onChange={(e) => {
-                            const newId = e.target.value ? Number(e.target.value) : undefined;
+                        <SearchablePlayerSelect
+                          allUnused={allUnused}
+                          allParticipants={allParticipants}
+                          selectedId={stats.substitutedInPlayerId}
+                          onChange={(newId) => {
                             onUpdate({ substitutedInPlayerId: newId });
                             if (newId) onSubPlayerAdded?.(newId);
                           }}
-                          className="w-full px-2.5 py-1.5 rounded-xl text-white text-sm focus:outline-none glass"
-                          style={{ background: "rgba(255,255,255,0.05)" }}
-                        >
-                          <option value="">Selecionar</option>
-                          {allUnused.map((p) => <option key={p.id} value={p.id}>{p.name} ({p.positionPtBr})</option>)}
-                          {stats.substitutedInPlayerId != null && !allUnused.find((p) => p.id === stats.substitutedInPlayerId) && (
-                            <option value={stats.substitutedInPlayerId}>
-                              {allParticipants.find((p) => p.id === stats.substitutedInPlayerId)?.name ?? `#${stats.substitutedInPlayerId}`}
-                            </option>
-                          )}
-                        </select>
+                        />
                       </div>
                     </div>
                   )}
