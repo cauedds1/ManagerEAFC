@@ -48,7 +48,7 @@ export function RivaisView({ seasonId, isReadOnly }: RivaisViewProps) {
 
   const [clubs] = useState<ClubEntry[]>(() => getCachedClubList() ?? []);
   const [suggestions, setSuggestions] = useState<ClubEntry[]>([]);
-  const [showDropdown, setShowDropdown] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   const [activeIdx, setActiveIdx] = useState(-1);
 
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -62,7 +62,7 @@ export function RivaisView({ seasonId, isReadOnly }: RivaisViewProps) {
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
-        setShowDropdown(false);
+        setIsOpen(false);
         setActiveIdx(-1);
       }
     };
@@ -102,7 +102,7 @@ export function RivaisView({ seasonId, isReadOnly }: RivaisViewProps) {
       setInput("");
       setError("");
       setSuggestions([]);
-      setShowDropdown(false);
+      setIsOpen(false);
       setActiveIdx(-1);
     } else {
       setError("Rivais bloqueados — não é possível editar.");
@@ -115,22 +115,30 @@ export function RivaisView({ seasonId, isReadOnly }: RivaisViewProps) {
     setActiveIdx(-1);
     if (!value.trim() || clubs.length === 0) {
       setSuggestions([]);
-      setShowDropdown(false);
+      setIsOpen(false);
       return;
     }
     const filtered = searchClubs(value, clubs).slice(0, MAX_SUGGESTIONS);
     setSuggestions(filtered);
-    setShowDropdown(filtered.length > 0);
+    setIsOpen(true);
   };
 
   const handleSelectSuggestion = (club: ClubEntry) => {
-    setShowDropdown(false);
+    setIsOpen(false);
     setActiveIdx(-1);
     void addRival(club.name);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (!showDropdown) {
+    if (e.key === "Escape") {
+      if (isOpen) {
+        e.preventDefault();
+        setIsOpen(false);
+        setActiveIdx(-1);
+      }
+      return;
+    }
+    if (!isOpen || suggestions.length === 0) {
       if (e.key === "Enter") void addRival(input);
       return;
     }
@@ -147,9 +155,6 @@ export function RivaisView({ seasonId, isReadOnly }: RivaisViewProps) {
       } else {
         void addRival(input);
       }
-    } else if (e.key === "Escape") {
-      setShowDropdown(false);
-      setActiveIdx(-1);
     }
   };
 
@@ -238,7 +243,7 @@ export function RivaisView({ seasonId, isReadOnly }: RivaisViewProps) {
                 onChange={(e) => handleInputChange(e.target.value)}
                 onKeyDown={handleKeyDown}
                 onFocus={() => {
-                  if (suggestions.length > 0) setShowDropdown(true);
+                  if (suggestions.length > 0) setIsOpen(true);
                 }}
                 placeholder={clubs.length > 0 ? "Pesquise um time do sistema..." : "Nome do time rival..."}
                 disabled={isDisabled}
@@ -258,7 +263,7 @@ export function RivaisView({ seasonId, isReadOnly }: RivaisViewProps) {
               </button>
             </div>
 
-            {input.trim().length > 0 && clubs.length > 0 && (showDropdown || suggestions.length === 0) && (
+            {isOpen && input.trim().length > 0 && clubs.length > 0 && (
               <div
                 className="absolute left-0 right-0 z-50 mt-1 rounded-xl overflow-hidden"
                 style={{
