@@ -387,8 +387,6 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
         patience: m.patience,
       }));
 
-    if (eligibleMembers.length === 0) return;
-
     const leaguePos = getLeaguePosition(activeSeasonId);
     const finSettings = getFinanceiroSettings(activeSeasonId);
     const finSnapshot = computeFinancialSnapshot(finSettings, transfers);
