@@ -34,7 +34,7 @@ import { MomentosView } from "./MomentosView";
 import { SeasonSelectModal } from "./SeasonSelectModal";
 import { NewSeasonWizard } from "./NewSeasonWizard";
 import { getSeasons, createSeason, activateSeason, generateSeasonId } from "@/lib/seasonStorage";
-import { ensureCareerAndSeason1 } from "@/lib/careerStorage";
+import { ensureCareerAndSeason1, deleteCareer } from "@/lib/careerStorage";
 import { syncSeasonFromDb, syncCareerFromDb } from "@/lib/dbSync";
 import {
   getMembers,
@@ -61,6 +61,7 @@ interface DashboardProps {
   onGoToCareers: () => void;
   onChangeClub: () => void;
   onReloadClubs: () => void;
+  onDeleteCareer?: () => void;
 }
 
 type CareerTab = "painel" | "partidas" | "clube" | "transferencias" | "noticias" | "diretoria" | "momentos" | "configuracoes";
@@ -166,7 +167,7 @@ function CoachAvatar({ career }: { career: Career }) {
   );
 }
 
-export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub, onReloadClubs }: DashboardProps) {
+export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub, onReloadClubs, onDeleteCareer }: DashboardProps) {
   const teamId = career.clubId > 0 ? career.clubId : 0;
 
   const logoUrl = useClubLogo(career);
@@ -1026,7 +1027,12 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
               />
             )}
             {activeTab === "configuracoes" && (
-              <SettingsPage onReloadClubs={onReloadClubs} careerId={career.id} seasonId={activeSeasonId} />
+              <SettingsPage
+                onReloadClubs={onReloadClubs}
+                careerId={career.id}
+                seasonId={activeSeasonId}
+                onDeleteCareer={onDeleteCareer ? () => { deleteCareer(career.id); onDeleteCareer(); } : undefined}
+              />
             )}
           </div>
         )}

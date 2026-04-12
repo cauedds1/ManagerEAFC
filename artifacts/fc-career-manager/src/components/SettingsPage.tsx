@@ -25,6 +25,7 @@ interface SettingsPageProps {
   onReloadClubs: () => void;
   careerId?: string;
   seasonId?: string;
+  onDeleteCareer?: () => void;
 }
 
 type SyncState = "idle" | "running" | "done" | "error";
@@ -328,8 +329,9 @@ function CustomPortalModal({
   );
 }
 
-export function SettingsPage({ onReloadClubs, careerId, seasonId }: SettingsPageProps) {
+export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer }: SettingsPageProps) {
   const [section, setSection] = useState<Section>("temporada");
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
 
   /* ── Player sync ── */
   const [syncState, setSyncState]     = useState<SyncState>("idle");
@@ -1006,6 +1008,72 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId }: SettingsPage
                   : <p className="text-xs text-white/30">Nenhuma temporada ativa.</p>
                 }
               </SectionCard>
+
+              {onDeleteCareer && (
+                <div
+                  className="rounded-2xl overflow-hidden"
+                  style={{ background: "rgba(239,68,68,0.04)", border: "1px solid rgba(239,68,68,0.15)" }}
+                >
+                  <div className="px-6 py-4" style={{ borderBottom: "1px solid rgba(239,68,68,0.1)" }}>
+                    <h3 className="text-sm font-bold" style={{ color: "#f87171" }}>Zona de Perigo</h3>
+                    <p className="text-white/35 text-xs mt-0.5 leading-relaxed">
+                      Ações irreversíveis que afetam permanentemente esta carreira.
+                    </p>
+                  </div>
+                  <div className="px-6 py-5">
+                    {!deleteConfirm ? (
+                      <div className="flex items-start gap-4">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-white/70 text-sm font-semibold">Excluir carreira</p>
+                          <p className="text-white/35 text-xs mt-0.5 leading-relaxed">
+                            Remove permanentemente todos os dados: elenco, transferências, notícias, temporadas e configurações. Essa ação não pode ser desfeita.
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => setDeleteConfirm(true)}
+                          className="flex-shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all duration-150 hover:opacity-90 active:scale-95"
+                          style={{ background: "rgba(239,68,68,0.12)", color: "#f87171", border: "1px solid rgba(239,68,68,0.25)" }}
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                          Excluir
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col gap-4">
+                        <div
+                          className="flex items-start gap-3 rounded-xl px-4 py-3"
+                          style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)" }}
+                        >
+                          <svg className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: "#f87171" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                          </svg>
+                          <p className="text-xs leading-relaxed" style={{ color: "#f87171" }}>
+                            Tem certeza? Todos os dados desta carreira serão <strong>permanentemente excluídos</strong> e não poderão ser recuperados.
+                          </p>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => setDeleteConfirm(false)}
+                            className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150 hover:opacity-80"
+                            style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.08)" }}
+                          >
+                            Cancelar
+                          </button>
+                          <button
+                            onClick={onDeleteCareer}
+                            className="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all duration-150 hover:opacity-90 active:scale-[0.98]"
+                            style={{ background: "rgba(239,68,68,0.85)", color: "white" }}
+                          >
+                            Sim, excluir carreira
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           )}
           {section === "api"     && sectionApi}

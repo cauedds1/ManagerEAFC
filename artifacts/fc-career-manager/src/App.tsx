@@ -376,6 +376,7 @@ export default function App() {
           onGoToCareers={handleGoToCareers}
           onChangeClub={handleChangeClub}
           onReloadClubs={handleReloadClubs}
+          onDeleteCareer={handleGoToCareers}
         />
       );
     }
