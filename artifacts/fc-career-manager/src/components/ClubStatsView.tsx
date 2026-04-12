@@ -279,11 +279,10 @@ export function ClubStatsView({
       return allSeasonMatches ?? matchesOverride ?? getMatches(seasonId);
     }
     if (filterSeasonId === seasonId) {
-      const all = matchesOverride ?? getMatches(seasonId);
-      return (!matchesOverride && season) ? all.filter((m) => m.season === season) : all;
+      return matchesOverride ?? getMatches(seasonId);
     }
     return getMatches(filterSeasonId);
-  }, [filterSeasonId, seasonId, season, matchesOverride, allSeasonMatches]);
+  }, [filterSeasonId, seasonId, matchesOverride, allSeasonMatches]);
 
   const competitions = useMemo<string[]>(() => {
     const set = new Set<string>();
