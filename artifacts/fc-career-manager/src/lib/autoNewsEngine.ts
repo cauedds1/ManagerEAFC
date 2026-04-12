@@ -79,7 +79,8 @@ function matchSummary(match: MatchRecord, clubName: string, season: string, allP
   const lineup = buildLineupContext(match, allPlayers);
   let extraCtx = "";
   if (match.penaltyShootout) {
-    extraCtx = ` [Prorrogação + pênaltis: ${clubName} ${match.penaltyShootout.myScore}×${match.penaltyShootout.opponentScore} ${match.opponent} nos pênaltis.]`;
+    const penLabel = match.hasExtraTime ? "Prorrogação + pênaltis" : "Disputa de pênaltis";
+    extraCtx = ` [${penLabel}: ${clubName} ${match.penaltyShootout.myScore}×${match.penaltyShootout.opponentScore} ${match.opponent} nos pênaltis.]`;
   } else if (match.hasExtraTime) {
     extraCtx = " [Partida decidida após prorrogação (+30 min).]";
   }
@@ -229,6 +230,9 @@ export function detectMatchEvents(input: EngineInput): DetectedEvent[] {
       }));
     } else if (penLoss) {
       let desc = `O ${clubName} foi ELIMINADO nos pênaltis. A partida terminou ${regularScore} após ${afterStr} e a decisão foi para os pênaltis: ${clubName} ${penScore} ${newMatch.opponent}.`;
+      if (heroName) {
+        desc += ` ${heroName} chegou a converter sua cobrança, mas não foi suficiente para salvar o ${clubName}.`;
+      }
       if (missedNames.length > 0) {
         desc += ` Cobrança(s) desperdiçada(s) pelo ${clubName}: ${missedNames.join(", ")}.`;
       }
