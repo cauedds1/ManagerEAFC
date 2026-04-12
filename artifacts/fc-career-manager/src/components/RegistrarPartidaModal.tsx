@@ -896,8 +896,9 @@ function PlayerLineupRow({
               {stats.goals.length > 0 && <span className="text-xs text-white/60">⚽ {stats.goals.length}</span>}
               {assistCount > 0 && <span className="text-xs" style={{ color: "#60a5fa" }}>👟 {assistCount > 1 ? assistCount : ""}</span>}
               {stats.ownGoal && <span className="text-xs" style={{ color: "#f87171" }}>GC</span>}
-              {stats.yellowCard && <span className="text-xs">🟨</span>}
-              {stats.redCard && <span className="text-xs">🟥</span>}
+              {stats.yellowCard && !stats.yellowCard2 && <span className="text-xs">🟨</span>}
+              {stats.yellowCard2 && <span className="text-xs">🟨🟨</span>}
+              {stats.redCard && !stats.yellowCard2 && <span className="text-xs">🟥</span>}
               {stats.substituted && <span className="text-xs text-white/40">🔄</span>}
               {stats.injured && <span className="text-xs text-white/40">🚑</span>}
             </div>
@@ -1034,11 +1035,77 @@ function PlayerLineupRow({
                   </div>
                 )}
               </div>
-              <div className="glass rounded-xl p-3">
-                <Toggle checked={stats.yellowCard ?? false} onChange={(v) => onUpdate({ yellowCard: v })} label="Cartão amarelo" />
+              <div className="glass rounded-xl p-3 space-y-2">
+                <Toggle
+                  checked={stats.yellowCard ?? false}
+                  onChange={(v) => {
+                    if (!v) {
+                      onUpdate({
+                        yellowCard: false,
+                        yellowCardMinute: undefined,
+                        yellowCard2: false,
+                        yellowCard2Minute: undefined,
+                        ...(stats.yellowCard2 ? { redCard: false } : {}),
+                      });
+                    } else {
+                      onUpdate({ yellowCard: true });
+                    }
+                  }}
+                  label="Cartão amarelo"
+                />
+                {stats.yellowCard && (
+                  <div className="pl-11 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-white/40 text-xs w-20 flex-shrink-0">1º amarelo:</span>
+                      <NumericInput value={stats.yellowCardMinute} onChange={(v) => onUpdate({ yellowCardMinute: v })} min={1} max={120} placeholder="Min" className="w-16" />
+                    </div>
+                    <Toggle
+                      checked={stats.yellowCard2 ?? false}
+                      onChange={(v) => {
+                        if (v) onUpdate({ yellowCard2: true, redCard: true });
+                        else onUpdate({ yellowCard2: false, yellowCard2Minute: undefined, redCard: false });
+                      }}
+                      label="2º Amarelo → 🟥 Expulsão"
+                    />
+                    {stats.yellowCard2 && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-white/40 text-xs w-20 flex-shrink-0">2º amarelo:</span>
+                        <NumericInput value={stats.yellowCard2Minute} onChange={(v) => onUpdate({ yellowCard2Minute: v })} min={1} max={120} placeholder="Min" className="w-16" />
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
-              <div className="glass rounded-xl p-3">
-                <Toggle checked={stats.redCard ?? false} onChange={(v) => onUpdate({ redCard: v })} label="Cartão vermelho" />
+              <div className="glass rounded-xl p-3 space-y-2">
+                {stats.yellowCard2 ? (
+                  <div className="flex items-center gap-3">
+                    <div style={{
+                      width: 36, height: 20, borderRadius: 10, flexShrink: 0,
+                      background: "rgba(239,68,68,0.35)", border: "1px solid rgba(239,68,68,0.5)",
+                      display: "flex", alignItems: "center", padding: "2px",
+                    }}>
+                      <div style={{ width: 16, height: 16, borderRadius: 8, background: "#ef4444", marginLeft: "auto" }} />
+                    </div>
+                    <span className="text-white/55 text-sm flex-1">Cartão vermelho</span>
+                    <span className="text-xs text-white/30 italic">
+                      2º amarelo{stats.yellowCard2Minute ? ` — ${stats.yellowCard2Minute}'` : ""}
+                    </span>
+                  </div>
+                ) : (
+                  <>
+                    <Toggle
+                      checked={stats.redCard ?? false}
+                      onChange={(v) => onUpdate({ redCard: v, redCardMinute: v ? stats.redCardMinute : undefined })}
+                      label="Cartão vermelho"
+                    />
+                    {stats.redCard && (
+                      <div className="flex items-center gap-2 pl-11">
+                        <span className="text-white/40 text-xs">Minuto:</span>
+                        <NumericInput value={stats.redCardMinute} onChange={(v) => onUpdate({ redCardMinute: v })} min={1} max={120} placeholder="Min" className="w-16" />
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
               <div className="glass rounded-xl p-3 space-y-2">
                 <Toggle checked={stats.injured} onChange={(v) => onUpdate({ injured: v, injuryMinute: v ? stats.injuryMinute : undefined })} label="Lesionado" />

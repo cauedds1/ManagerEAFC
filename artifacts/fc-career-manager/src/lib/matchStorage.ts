@@ -108,7 +108,7 @@ export function applyMatchToPlayerStats(
       totalMinutes: current.totalMinutes + Math.max(0, minutes),
       goals: current.goals + goalsScored,
       assists: current.assists + assistsGiven,
-      yellowCards: current.yellowCards + (pStats.yellowCard ? 1 : 0),
+      yellowCards: current.yellowCards + (pStats.yellowCard ? 1 : 0) + (pStats.yellowCard2 ? 1 : 0),
       redCards: current.redCards + (pStats.redCard ? 1 : 0),
       totalOwnGoals: (current.totalOwnGoals ?? 0) + (pStats.ownGoal ? 1 : 0),
       totalMissedPenalties: (current.totalMissedPenalties ?? 0) + (pStats.missedPenalty ? 1 : 0),

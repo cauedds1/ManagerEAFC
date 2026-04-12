@@ -70,7 +70,11 @@ export interface PlayerMatchStats {
   substitutedInPlayerId?: number;
   substitutedForPlayerId?: number;
   yellowCard?: boolean;
+  yellowCardMinute?: number;
+  yellowCard2?: boolean;
+  yellowCard2Minute?: number;
   redCard?: boolean;
+  redCardMinute?: number;
   shots?: number;
   shotsOnTargetPct?: number;
   passes?: number;

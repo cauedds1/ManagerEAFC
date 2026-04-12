@@ -211,8 +211,9 @@ function PlayerDetailPanel({
   }, [onClose]);
 
   const events: { label: string; minute?: number; color: string }[] = [
-    ...(stats?.yellowCard ? [{ label: "Cartão amarelo", color: "#fbbf24" }] : []),
-    ...(stats?.redCard ? [{ label: "Cartão vermelho", color: "#ef4444" }] : []),
+    ...(stats?.yellowCard ? [{ label: "Cartão amarelo", minute: stats.yellowCardMinute, color: "#fbbf24" }] : []),
+    ...(stats?.yellowCard2 ? [{ label: "2º Cartão amarelo", minute: stats.yellowCard2Minute, color: "#fbbf24" }] : []),
+    ...(stats?.redCard ? [{ label: "Cartão vermelho", minute: stats.yellowCard2 ? stats.yellowCard2Minute : stats.redCardMinute, color: "#ef4444" }] : []),
     ...(stats?.ownGoal ? [{ label: "Autogolo", minute: stats.ownGoalMinute, color: "#f87171" }] : []),
     ...(stats?.missedPenalty ? [{ label: "Pênalti falhado", minute: stats.missedPenaltyMinute, color: "#f97316" }] : []),
     ...(stats?.injured ? [{ label: "Lesão", minute: stats.injuryMinute, color: "#fb923c" }] : []),
@@ -1005,8 +1006,9 @@ export function MatchDetailPage({
                         {stats?.goals && stats.goals.length > 0 && (
                           <span className="ml-1">· {stats.goals.length} ⚽</span>
                         )}
-                        {stats?.yellowCard && <span className="ml-1">🟨</span>}
-                        {stats?.redCard && <span className="ml-1">🟥</span>}
+                        {stats?.yellowCard && !stats?.yellowCard2 && <span className="ml-1">🟨</span>}
+                        {stats?.yellowCard2 && <span className="ml-1">🟨🟨</span>}
+                        {stats?.redCard && !stats?.yellowCard2 && <span className="ml-1">🟥</span>}
                       </p>
                     </div>
                     {rating > 0 ? (
