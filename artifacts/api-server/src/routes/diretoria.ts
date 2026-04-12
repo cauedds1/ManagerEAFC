@@ -255,6 +255,8 @@ ${calibratingSection}
 
 5. Use linguagem brasileira natural. Nunca quebre o personagem.
 
+6. NUNCA mencione números de OVR, overall ou ratings numéricos nas suas falas — use apenas termos qualitativos naturais como "estrela do elenco", "acima da média", "jogador de alto nível", "um dos melhores que temos", "abaixo do esperado", etc. Os dados numéricos são informações internas de calibração — um diretor real não fala em "OVR".
+
 ${isAngry || isInsulted ? "⚡ ATENÇÃO: a mensagem atual é desrespeitosa ou o humor está ruim — aplique OBRIGATORIAMENTE a regra 3. NÃO use frases proibidas. Reaja com dureza." : ""}
 
 Ao final: NOVO_HUMOR: <excelente|bom|neutro|tenso|irritado|furioso>`;
@@ -372,6 +374,7 @@ ${meetingCalibratingSection}
 
 7. TAMANHO: máximo 2 parágrafos curtos. Sem introduções.
 8. Use linguagem brasileira natural. Nunca quebre o personagem.
+9. NUNCA mencione números de OVR, overall ou ratings numéricos nas suas falas — use apenas termos qualitativos naturais como "estrela do elenco", "acima da média", "jogador de alto nível", "um dos melhores que temos", "abaixo do esperado", etc.
 
 Ao final: NOVO_HUMOR: <excelente|bom|neutro|tenso|irritado|furioso>
 Ao final: SUGERIR_ENCERRAMENTO: <sim|nao> (sim somente se a pauta foi concluída naturalmente)`;
@@ -724,11 +727,11 @@ router.post("/diretoria/check-triggers", async (req, res) => {
         if (member && !notifications.find((n) => n.memberId === member.id)) {
           const reason = (p: typeof star) =>
             (p.overall ?? 0) >= 80
-              ? `(${p.overall} OVR)`
-              : `(${p.goals}G ${p.assists}A na temporada)`;
+              ? `estrela do elenco`
+              : `${p.goals}G ${p.assists}A na temporada`;
           notifications.push({
             memberId: member.id,
-            preview: `${star.name.split(" ")[0]} ${reason(star)} está quase sempre no banco — por que um jogador assim não é titular?`,
+            preview: `${star.name.split(" ")[0]} (${reason(star)}) está quase sempre no banco — por que um jogador assim não é titular?`,
           });
         }
       }
@@ -745,7 +748,7 @@ router.post("/diretoria/check-triggers", async (req, res) => {
         if (member && !notifications.find((n) => n.memberId === member.id)) {
           notifications.push({
             memberId: member.id,
-            preview: `${star.name.split(" ")[0]} (${star.overall} OVR) vai mal há ${star.consecutivePoorRatings} jogos seguidos como titular — a torcida está impaciente.`,
+            preview: `${star.name.split(" ")[0]}, estrela do elenco, vai mal há ${star.consecutivePoorRatings} jogos seguidos como titular — a torcida está impaciente.`,
           });
         }
       }

@@ -193,7 +193,7 @@ router.post("/noticias/generate", async (req, res) => {
     : "";
 
   const squadOvrSection = squadOvrContext?.trim()
-    ? `\n\nCONTEXTO DE NÍVEL DO ELENCO — use para calibrar expectativas individuais:\n${squadOvrContext.trim()}\n\nREGRAS DE POSIÇÃO E OVR:\n- Goleiros e zagueiros NÃO são cobrados por falta de gols — isso é absolutamente normal para a posição.\n- Use a média de OVR do elenco + o nome da liga para avaliar se o time tem qualidade para dominar partidas: elenco de OVR alto numa liga fraca → exigência alta; elenco de OVR médio na Premier League → exigência moderada.\n- Um jogador abaixo da média do elenco em boa forma é uma SURPRESA positiva — trate como revelação.\n- Calibre sempre: o mesmo OVR tem peso diferente em elencos diferentes.`
+    ? `\n\nCONTEXTO DE NÍVEL DO ELENCO — use para calibrar expectativas individuais:\n${squadOvrContext.trim()}\n\nREGRAS DE POSIÇÃO E NÍVEL DO ELENCO:\n- Goleiros e zagueiros NÃO são cobrados por falta de gols — isso é absolutamente normal para a posição.\n- Use o nível do elenco + o nome da liga para avaliar se o time tem qualidade para dominar partidas: elenco forte numa liga fraca → exigência alta; elenco médio na Premier League → exigência moderada.\n- Um jogador abaixo da média do elenco em boa forma é uma SURPRESA positiva — trate como revelação.\n- Calibre sempre: o mesmo nível de jogador tem peso diferente em elencos diferentes.\n- REGRA DE SAÍDA OBRIGATÓRIA: NUNCA mencione números de OVR, overall, ratings ou diferenças numéricas de atributos no texto gerado (título, legenda, comentários, replies). Use exclusivamente termos qualitativos como "estrela do elenco", "acima da média", "jogador de alto nível", "peça importante", "abaixo da média do elenco", "reforço de qualidade", etc.`
     : "";
 
   const teamFormSection = teamFormContext?.trim()
@@ -270,7 +270,8 @@ Cada post que você cria deve ser ÚNICO e DIFERENTE dos anteriores — varie o 
 Use linguagem informal, autêntica, com gírias brasileiras do futebol. Seja criativo e específico.
 O time é ${clubName}${season ? ` (temporada ${season})` : ""}.
 O portal que publica é ${portalName} (${portalHandle}).
-Semente de unicidade: ${uniqueSeed} — use ela para garantir que este post seja diferente de qualquer outro.${prestigeSection}${playersSection}${squadOvrSection}${teamFormSection}${historicalSection}${attachedMatchSection}${matchPlayerSection}${recentPostsSection}${fanMoodSection}${classicoSection}${customPortalSection}${globalPortalSection}`;
+Semente de unicidade: ${uniqueSeed} — use ela para garantir que este post seja diferente de qualquer outro.
+REGRA ABSOLUTA: NUNCA mencione números de OVR, overall, ratings ou diferenças numéricas de atributos em nenhuma parte do texto gerado (título, legenda, comentários, replies). Em vez disso, use apenas termos qualitativos naturais como "estrela do elenco", "acima da média", "jogador de alto nível", "craque do time", "peça importante", "abaixo da média do elenco", "reforço de qualidade", etc. Os dados numéricos existem apenas para a sua calibração interna — não os exponha no texto.${prestigeSection}${playersSection}${squadOvrSection}${teamFormSection}${historicalSection}${attachedMatchSection}${matchPlayerSection}${recentPostsSection}${fanMoodSection}${classicoSection}${customPortalSection}${globalPortalSection}`;
 
   const commentPersonalitiesRule = isGlobalPortal
     ? `AUDIÊNCIA DOS COMENTÁRIOS — portal global com seguidores de TODO o mundo e de VÁRIOS clubes:
