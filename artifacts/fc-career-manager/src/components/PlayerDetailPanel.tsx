@@ -412,9 +412,13 @@ export function PlayerDetailPanel({
                   const currentOvr = override?.overall;
                   if (history.length === 0 && currentOvr == null) return null;
                   const allEntries = currentOvr != null
-                    ? [...history, { ovr: currentOvr, date: 0 }]
+                    ? [...history, { ovr: currentOvr, date: Date.now() }]
                     : history;
                   if (allEntries.length < 2) return null;
+                  const fmtDate = (ts: number) => {
+                    const d = new Date(ts);
+                    return d.toLocaleDateString("pt-BR", { month: "short", year: "2-digit" }).replace(". de ", "/").replace(".", "");
+                  };
                   return (
                     <div
                       className="p-3 rounded-xl flex flex-col gap-2"
@@ -434,12 +438,17 @@ export function PlayerDetailPanel({
                                   {delta > 0 ? `▲+${delta}` : delta < 0 ? `▼${delta}` : "→"}
                                 </span>
                               )}
-                              <span
-                                className="font-black tabular-nums text-sm px-2 py-0.5 rounded-lg"
-                                style={{ color, background: isLast ? overallColor(entry.ovr).bg : "transparent" }}
-                              >
-                                {entry.ovr}
-                              </span>
+                              <div className="flex flex-col items-center">
+                                <span
+                                  className="font-black tabular-nums text-sm px-2 py-0.5 rounded-lg"
+                                  style={{ color, background: isLast ? overallColor(entry.ovr).bg : "transparent" }}
+                                >
+                                  {entry.ovr}
+                                </span>
+                                {entry.date > 0 && (
+                                  <span className="text-white/20 text-[9px] tabular-nums leading-tight">{fmtDate(entry.date)}</span>
+                                )}
+                              </div>
                             </div>
                           );
                         })}
@@ -496,7 +505,7 @@ export function PlayerDetailPanel({
                       className="flex-1 py-3 rounded-xl text-sm font-bold transition-all hover:opacity-90"
                       style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.14)", color: "rgba(255,255,255,0.7)" }}
                     >
-                      Corrigir
+                      Editar
                     </button>
                     <button
                       onClick={() => saveEdit(true)}

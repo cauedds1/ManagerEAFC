@@ -575,7 +575,7 @@ interface TransferenciasViewProps {
   allPlayers: SquadPlayer[];
   onTransferAdded: (transfer: TransferRecord) => void;
   onTransferUpdated?: (id: string, changes: Partial<TransferRecord>) => void;
-  onHighValueSigning?: (playerName: string, ovr: number, position: string, fromClub?: string) => void;
+  onHighValueSigning?: (playerName: string, ovr: number, position: string, fromClub?: string, deltaVsAvg?: number) => void;
   isReadOnly?: boolean;
 }
 
@@ -652,6 +652,7 @@ export function TransferenciasView({
             signingOvr,
             form.playerPositionPtBr,
             form.fromClub.trim() || undefined,
+            signingOvr - squadAvg,
           );
         }
       }

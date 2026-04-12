@@ -384,17 +384,18 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     setNoticiasUnread((prev) => prev + 1);
   }, [addToast]);
 
-  const handleHighValueSigning = useCallback((playerName: string, ovr: number, position: string, fromClub?: string) => {
+  const handleHighValueSigning = useCallback((playerName: string, ovr: number, position: string, fromClub?: string, deltaVsAvg?: number) => {
     const openaiKey = getOpenAIKey();
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (openaiKey) headers["x-openai-key"] = openaiKey;
     const fromClubStr = fromClub ? ` do ${fromClub}` : " de jogador livre";
+    const deltaStr = deltaVsAvg != null && deltaVsAvg > 0 ? `, ${deltaVsAvg} pontos acima da média do elenco` : "";
     const seasonLabel = seasons.find((s) => s.id === activeSeasonId)?.label ?? career.season;
     void fetch("/api/noticias/generate", {
       method: "POST",
       headers,
       body: JSON.stringify({
-        description: `${career.clubName} anuncia a contratação de ${playerName} (${position}, OVR ${ovr})${fromClubStr}. Um reforço de alto nível que eleva o patamar do elenco.`,
+        description: `${career.clubName} anuncia a contratação de ${playerName} (${position}, OVR ${ovr})${fromClubStr}${deltaStr}. Um reforço de alto nível que eleva o patamar do elenco.`,
         clubName: career.clubName,
         season: seasonLabel,
         source: "espn",
