@@ -507,7 +507,7 @@ export function MatchDetailPage({
   const isDraw   = leftScore === rightScore;
 
   const glowColor = isRivalWin
-    ? "rgba(234,88,12,0.22)"
+    ? "rgba(234,88,12,0.26)"
     : isRivalLoss
       ? "rgba(88,0,0,0.40)"
       : result === "vitoria"
@@ -664,9 +664,13 @@ export function MatchDetailPage({
           <div
             className="rounded-2xl overflow-hidden"
             style={{
-              background: `linear-gradient(${gradientAngle}deg, ${glowColor} 0%, rgba(255,255,255,0.02) 55%)`,
+              background: isRivalWin
+                ? `linear-gradient(${gradientAngle}deg, rgba(154,52,18,0.30) 0%, rgba(234,88,12,0.08) 55%, rgba(0,0,0,0.18) 100%)`
+                : isRivalLoss
+                  ? `linear-gradient(${gradientAngle}deg, rgba(40,0,0,0.55) 0%, rgba(88,0,0,0.20) 60%, rgba(0,0,0,0.25) 100%)`
+                  : `linear-gradient(${gradientAngle}deg, ${glowColor} 0%, rgba(255,255,255,0.02) 55%)`,
               border: isRivalWin
-                ? "1px solid rgba(249,115,22,0.50)"
+                ? "1px solid rgba(249,115,22,0.60)"
                 : isRivalLoss
                   ? "1px solid rgba(127,29,29,0.65)"
                   : "1px solid rgba(255,255,255,0.08)",
