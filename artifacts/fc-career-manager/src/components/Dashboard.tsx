@@ -12,6 +12,7 @@ import {
 } from "@/lib/squadCache";
 import { getAllPlayerOverrides } from "@/lib/playerStatsStorage";
 import { getTransfers, addTransfer, updateTransfer } from "@/lib/transferStorage";
+import { getRivals } from "@/lib/rivalsStorage";
 import type { TransferRecord } from "@/types/transfer";
 import { getMatches } from "@/lib/matchStorage";
 import type { MatchRecord } from "@/types/match";
@@ -368,7 +369,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     setTransfers((prev) => prev.map((t) => t.id === id ? { ...t, ...changes } : t));
   }, [activeSeasonId]);
 
-  const runDiretoriaTriggers = useCallback(async (updatedMatches: MatchRecord[], currentAllPlayers: SquadPlayer[]) => {
+  const runDiretoriaTriggers = useCallback(async (updatedMatches: MatchRecord[], currentAllPlayers: SquadPlayer[], isClassico?: boolean, rivalName?: string) => {
     const members = getMembers(career.id);
     if (members.length === 0) return;
 
@@ -439,6 +440,8 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
           lastCheckedAt,
           playerPerformance: playerPerf.length > 0 ? playerPerf : undefined,
           squadOvrContext: squadOvrCtx || undefined,
+          isClassico: isClassico || undefined,
+          rivalName: rivalName || undefined,
         }),
       });
       if (!res.ok) return;
@@ -479,6 +482,12 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
       setNoticiasUnread((prev) => prev + 1);
     };
 
+    const rivals = getRivals(activeSeasonId);
+    const rivalName = rivals.find(
+      (r) => r.toLowerCase() === match.opponent.toLowerCase(),
+    ) ?? undefined;
+    const isClassico = rivalName != null;
+
     void runAutoNews(match, {
       careerId: career.id,
       seasonId: activeSeasonId,
@@ -491,11 +500,12 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
       allMatches: updatedMatches,
       allPlayers,
       leaguePosition: leaguePos,
+      rivals,
       onNewPost: handleNewPost,
     });
 
     setTimeout(() => {
-      void runDiretoriaTriggers(updatedMatches, allPlayers);
+      void runDiretoriaTriggers(updatedMatches, allPlayers, isClassico, rivalName);
     }, 1500);
   }, [activeSeasonId, matches, allPlayers, seasons, activeSeasonLabel, career.id, career.clubName, career.clubLeague, career.clubTitles, career.clubDescription, career.projeto, runDiretoriaTriggers, addToast]);
 

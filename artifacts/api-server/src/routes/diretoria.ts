@@ -471,12 +471,14 @@ Responda APENAS com JSON puro (sem markdown):
 });
 
 router.post("/diretoria/check-triggers", async (req, res) => {
-  const { context, members, lastCheckedAt, playerPerformance, squadOvrContext } = req.body as {
+  const { context, members, lastCheckedAt, playerPerformance, squadOvrContext, isClassico, rivalName } = req.body as {
     context: ClubContext;
     members: MemberProfile[];
     lastCheckedAt: number;
     playerPerformance?: PlayerPerfItem[];
     squadOvrContext?: string;
+    isClassico?: boolean;
+    rivalName?: string;
   };
 
   const recentMatches = context.recentMatches.slice(0, 8);
@@ -528,6 +530,22 @@ router.post("/diretoria/check-triggers", async (req, res) => {
     : "";
 
   if (hasNewMatch) {
+    const newestResult = recentMatches[0]?.result;
+    if (isClassico && rivalName && newestResult === "derrota") {
+      if (presidente && !notifications.find((n) => n.memberId === presidente.id)) {
+        notifications.push({
+          memberId: presidente.id,
+          preview: `Derrota no clássico contra o ${rivalName}. Isso dói mais do que qualquer resultado normal — precisamos de uma resposta imediata.`,
+        });
+      }
+      if (lossStreak >= 2 && !meetingTrigger) {
+        meetingTrigger = {
+          reason: `Derrota no clássico contra o ${rivalName} com ${lossStreak} derrotas consecutivas — a torcida está revoltada e exige posicionamento`,
+          severity: "high",
+        };
+      }
+    }
+
     if (lossStreak >= 5) {
       const opponentNote = lossStreakOpponents ? ` (vs ${lossStreakOpponents})` : "";
       const ovrPart = ovrNote ? ` | ${ovrNote}` : "";

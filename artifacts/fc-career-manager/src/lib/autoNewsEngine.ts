@@ -12,6 +12,8 @@ export interface DetectedEvent {
   source: NewsSource;
   category: NewsCategory;
   priority: number;
+  isClassico?: boolean;
+  rivalName?: string;
 }
 
 interface EngineInput {
@@ -22,6 +24,7 @@ interface EngineInput {
   leaguePosition: LeaguePosition | null;
   clubName: string;
   season: string;
+  rivals?: string[];
 }
 
 function playerName(allPlayers: SquadPlayer[], id: number): string {
@@ -82,8 +85,14 @@ function matchSummary(match: MatchRecord, clubName: string, season: string, allP
   );
 }
 
+function detectRival(opponentName: string, rivals?: string[]): string | null {
+  if (!rivals || rivals.length === 0) return null;
+  const q = opponentName.toLowerCase().trim();
+  return rivals.find((r) => r.toLowerCase().trim() === q) ?? null;
+}
+
 export function detectMatchEvents(input: EngineInput): DetectedEvent[] {
-  const { newMatch, allMatches, seasonPlayerStats, allPlayers, leaguePosition, clubName, season } = input;
+  const { newMatch, allMatches, seasonPlayerStats, allPlayers, leaguePosition, clubName, season, rivals } = input;
 
   const events: DetectedEvent[] = [];
   const sorted = sortedByDate(allMatches);
@@ -95,6 +104,23 @@ export function detectMatchEvents(input: EngineInput): DetectedEvent[] {
   const totalGoals = newMatch.myScore + newMatch.opponentScore;
   const teamMins = teamGoalMinutesSorted(newMatch);
   const summary = matchSummary(newMatch, clubName, season, allPlayers);
+
+  const rivalMatch = detectRival(newMatch.opponent, rivals);
+  const isClassico = rivalMatch != null;
+  const classicoPrefix = isClassico
+    ? `🔥 CLÁSSICO ENTRE RIVAIS — ${clubName} x ${newMatch.opponent}! Esta é uma das partidas mais esperadas da temporada, uma batalha de rivalidade histórica. `
+    : "";
+
+  function withClassico(ev: DetectedEvent): DetectedEvent {
+    if (!isClassico) return ev;
+    return {
+      ...ev,
+      isClassico: true,
+      rivalName: rivalMatch!,
+      aiDescription: classicoPrefix + ev.aiDescription,
+      priority: Math.max(1, ev.priority - 1),
+    };
+  }
 
   /* ── Jogo maluco (≥5 gols totais) ── */
   if (totalGoals >= 5) {
@@ -596,5 +622,9 @@ export function detectMatchEvents(input: EngineInput): DetectedEvent[] {
     }
   }
 
-  return events.sort((a, b) => a.priority - b.priority);
+  const finalEvents = isClassico
+    ? events.map(withClassico)
+    : events;
+
+  return finalEvents.sort((a, b) => a.priority - b.priority);
 }

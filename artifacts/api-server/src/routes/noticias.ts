@@ -38,6 +38,8 @@ interface GenerateNoticiaBody {
   clubTitles?: ClubTitle[];
   clubDescription?: string;
   projeto?: string;
+  isClassico?: boolean;
+  rivalName?: string;
 }
 
 function leagueTierLabel(league: string): string {
@@ -114,11 +116,24 @@ function getClient(userKey?: string): { client: OpenAI; usingUserKey: boolean } 
   return { client: defaultOpenai as unknown as OpenAI, usingUserKey: false };
 }
 
+function buildClassicoSection(clubName: string, rivalName: string, isLoss: boolean, isWin: boolean): string {
+  const result = isWin ? "venceu" : isLoss ? "perdeu" : "empatou";
+  let section = `\n\nCLÁSSICO ENTRE RIVAIS — CONTEXTO ESPECIAL:`;
+  section += `\nEsta é uma rivalidade histórica: ${clubName} x ${rivalName}.`;
+  section += `\nResultado: ${clubName} ${result} o clássico.`;
+  section += `\nREGRAS OBRIGATÓRIAS PARA CLÁSSICO:`;
+  section += `\n- Eleve MUITO o peso narrativo — clássicos são diferentes de partidas normais. Honor, orgulho, rivalidade histórica.`;
+  section += `\n- ${isLoss ? `DERROTA no clássico: a dor é AMPLIFICADA. Inclua obrigatoriamente comentários de torcedores do ${rivalName} zoando, provocando, chamando de fraco, frequês. Podem usar termos como "frango", "vexame", "passa o pé". Tom de humilhação legítima dos rivais.` : isWin ? `VITÓRIA no clássico: a celebração é ÉPICA. Tom de conquista histórica. Comentários de euforia máxima dos torcedores.` : `EMPATE no clássico: sabor amargo. Cada torcida acha que o rival "saiu vencedor moralmente". Polarização nos comentários.`}`;
+  section += `\n- Comentários devem ter personas DISTINTAS: torcedores do ${clubName} (eufóricos ou arrasados), torcedores do ${rivalName} (provocadores ou lamentando), jornalistas neutros. Misture bem.`;
+  section += `\n- Use linguagem de rivalidade: "clássico", "derby", "batalha histórica", "honra da cidade", etc.`;
+  return section;
+}
+
 router.post("/noticias/generate", async (req, res) => {
   const {
     description, clubName, season, source, category,
     playersContext, squadOvrContext, teamFormContext, historicalContext, recentPostsContext, customPortal,
-    clubLeague, clubTitles, clubDescription, projeto,
+    clubLeague, clubTitles, clubDescription, projeto, isClassico, rivalName,
   } = req.body as GenerateNoticiaBody;
 
   if (!description || !description.trim()) {
@@ -187,12 +202,18 @@ LEGENDA — TOM JORNALÍSTICO OBRIGATÓRIO:
 
   const prestigeSection = buildClubPrestigeSection(clubName, clubLeague, clubTitles, clubDescription, projeto);
 
+  const isDescLoss = /derrota|perdeu|perde|goleada sofrida/i.test(description);
+  const isDescWin = /vitória|vitoria|venceu|vence|goleada aplicada|goleada!/i.test(description);
+  const classicoSection = isClassico && rivalName
+    ? buildClassicoSection(clubName, rivalName, isDescLoss, isDescWin)
+    : "";
+
   const systemPrompt = `Você é um especialista em criar posts de futebol para redes sociais brasileiras no estilo Instagram.
 Cada post que você cria deve ser ÚNICO e DIFERENTE dos anteriores — varie o estilo, tom, escolha de emojis, estrutura da legenda e perfil dos comentaristas.
 Use linguagem informal, autêntica, com gírias brasileiras do futebol. Seja criativo e específico.
 O time é ${clubName}${season ? ` (temporada ${season})` : ""}.
 O portal que publica é ${portalName} (${portalHandle}).
-Semente de unicidade: ${uniqueSeed} — use ela para garantir que este post seja diferente de qualquer outro.${prestigeSection}${playersSection}${squadOvrSection}${teamFormSection}${historicalSection}${recentPostsSection}${customPortalSection}${globalPortalSection}`;
+Semente de unicidade: ${uniqueSeed} — use ela para garantir que este post seja diferente de qualquer outro.${prestigeSection}${playersSection}${squadOvrSection}${teamFormSection}${historicalSection}${recentPostsSection}${classicoSection}${customPortalSection}${globalPortalSection}`;
 
   const commentPersonalitiesRule = isGlobalPortal
     ? `AUDIÊNCIA DOS COMENTÁRIOS — portal global com seguidores de TODO o mundo e de VÁRIOS clubes:
