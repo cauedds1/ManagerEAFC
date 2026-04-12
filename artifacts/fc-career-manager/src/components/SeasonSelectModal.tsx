@@ -1,6 +1,5 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import type { Season } from "@/types/career";
-import type { MatchRecord } from "@/types/match";
 import { getMatches } from "@/lib/matchStorage";
 
 interface SeasonSelectModalProps {
@@ -8,6 +7,7 @@ interface SeasonSelectModalProps {
   activeSeasonId: string;
   onSelect: (season: Season) => void;
   onNewSeason: () => void;
+  onRenameSeason: (seasonId: string, newLabel: string) => void;
   onClose: () => void;
 }
 
@@ -29,13 +29,81 @@ function SeasonStats({ seasonId }: { seasonId: string }) {
   );
 }
 
+function EditLabelInline({
+  currentLabel,
+  onSave,
+  onCancel,
+}: {
+  currentLabel: string;
+  onSave: (label: string) => void;
+  onCancel: () => void;
+}) {
+  const [value, setValue] = useState(currentLabel);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+    inputRef.current?.select();
+  }, []);
+
+  const commit = () => {
+    const trimmed = value.trim();
+    if (trimmed && trimmed !== currentLabel) onSave(trimmed);
+    else onCancel();
+  };
+
+  return (
+    <div className="flex items-center gap-1.5 w-full" onClick={(e) => e.stopPropagation()}>
+      <input
+        ref={inputRef}
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") commit();
+          if (e.key === "Escape") onCancel();
+        }}
+        className="flex-1 px-2 py-0.5 rounded-lg text-sm font-bold focus:outline-none"
+        style={{
+          background: "rgba(255,255,255,0.08)",
+          border: "1px solid rgba(var(--club-primary-rgb),0.5)",
+          color: "var(--club-primary)",
+          caretColor: "var(--club-primary)",
+        }}
+        placeholder="ex: 2025/26"
+        maxLength={20}
+      />
+      <button
+        onClick={commit}
+        className="w-6 h-6 flex items-center justify-center rounded text-emerald-400 hover:bg-emerald-400/10 transition-colors flex-shrink-0"
+        title="Salvar"
+      >
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+          <path d="M2 6L5 9L10 3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </button>
+      <button
+        onClick={onCancel}
+        className="w-6 h-6 flex items-center justify-center rounded text-white/30 hover:bg-white/10 transition-colors flex-shrink-0"
+        title="Cancelar"
+      >
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+          <path d="M2 2L8 8M8 2L2 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+        </svg>
+      </button>
+    </div>
+  );
+}
+
 export function SeasonSelectModal({
   seasons,
   activeSeasonId,
   onSelect,
   onNewSeason,
+  onRenameSeason,
   onClose,
 }: SeasonSelectModalProps) {
+  const [editingId, setEditingId] = useState<string | null>(null);
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-start justify-end"
@@ -76,11 +144,12 @@ export function SeasonSelectModal({
           )}
           {[...seasons].reverse().map((season) => {
             const isActive = season.id === activeSeasonId;
+            const isEditing = editingId === season.id;
+
             return (
-              <button
+              <div
                 key={season.id}
-                onClick={() => onSelect(season)}
-                className="w-full text-left px-4 py-3 rounded-xl transition-all duration-150"
+                className="w-full text-left px-4 py-3 rounded-xl transition-all duration-150 group"
                 style={{
                   background: isActive
                     ? "rgba(var(--club-primary-rgb),0.12)"
@@ -90,32 +159,64 @@ export function SeasonSelectModal({
                     : "1px solid rgba(255,255,255,0.05)",
                 }}
               >
-                <div className="flex items-center justify-between mb-1">
-                  <span
-                    className="font-bold text-sm"
-                    style={{ color: isActive ? "var(--club-primary)" : "rgba(255,255,255,0.85)" }}
-                  >
-                    {season.label}
-                  </span>
-                  {isActive && (
-                    <span
-                      className="text-xs font-semibold px-2 py-0.5 rounded-full"
-                      style={{
-                        background: "rgba(var(--club-primary-rgb),0.2)",
-                        color: "var(--club-primary)",
+                <div className="flex items-center justify-between mb-1 gap-2">
+                  {isEditing ? (
+                    <EditLabelInline
+                      currentLabel={season.label}
+                      onSave={(newLabel) => {
+                        onRenameSeason(season.id, newLabel);
+                        setEditingId(null);
                       }}
-                    >
-                      Atual
-                    </span>
-                  )}
-                  {!isActive && (
-                    <span className="text-xs text-white/25 px-2 py-0.5 rounded-full" style={{ background: "rgba(255,255,255,0.04)" }}>
-                      Ver
-                    </span>
+                      onCancel={() => setEditingId(null)}
+                    />
+                  ) : (
+                    <>
+                      <button
+                        className="flex-1 text-left min-w-0"
+                        onClick={() => { if (!isEditing) onSelect(season); }}
+                      >
+                        <span
+                          className="font-bold text-sm truncate block"
+                          style={{ color: isActive ? "var(--club-primary)" : "rgba(255,255,255,0.85)" }}
+                        >
+                          {season.label}
+                        </span>
+                      </button>
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setEditingId(season.id); }}
+                          className="w-6 h-6 flex items-center justify-center rounded text-white/20 hover:text-white/70 hover:bg-white/10 transition-all opacity-0 group-hover:opacity-100"
+                          title="Renomear temporada"
+                        >
+                          <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
+                            <path d="M7.5 1.5L9.5 3.5L3.5 9.5H1.5V7.5L7.5 1.5Z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/>
+                          </svg>
+                        </button>
+                        {isActive ? (
+                          <span
+                            className="text-xs font-semibold px-2 py-0.5 rounded-full"
+                            style={{
+                              background: "rgba(var(--club-primary-rgb),0.2)",
+                              color: "var(--club-primary)",
+                            }}
+                          >
+                            Atual
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => onSelect(season)}
+                            className="text-xs text-white/25 px-2 py-0.5 rounded-full hover:text-white/60 transition-colors"
+                            style={{ background: "rgba(255,255,255,0.04)" }}
+                          >
+                            Ver
+                          </button>
+                        )}
+                      </div>
+                    </>
                   )}
                 </div>
-                <SeasonStats seasonId={season.id} />
-              </button>
+                {!isEditing && <SeasonStats seasonId={season.id} />}
+              </div>
             );
           })}
         </div>

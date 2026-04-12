@@ -63,6 +63,19 @@ export function suggestNextSeasonLabel(existingLabels: string[]): string {
   return `${year}/${String(year + 1).slice(2)}`;
 }
 
+export async function updateSeasonLabel(seasonId: string, label: string): Promise<boolean> {
+  try {
+    const res = await fetch(`/api/seasons/${seasonId}/label`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ label }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 export function generateSeasonId(): string {
   return `s-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
 }

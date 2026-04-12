@@ -33,7 +33,7 @@ import { DiretoriaView } from "./DiretoriaView";
 import { MomentosView } from "./MomentosView";
 import { SeasonSelectModal } from "./SeasonSelectModal";
 import { NewSeasonWizard } from "./NewSeasonWizard";
-import { getSeasons, createSeason, activateSeason, generateSeasonId } from "@/lib/seasonStorage";
+import { getSeasons, createSeason, activateSeason, generateSeasonId, updateSeasonLabel } from "@/lib/seasonStorage";
 import { ensureCareerAndSeason1, deleteCareer } from "@/lib/careerStorage";
 import { syncSeasonFromDb, syncCareerFromDb } from "@/lib/dbSync";
 import {
@@ -727,6 +727,11 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
           activeSeasonId={activeSeasonId}
           onSelect={switchToSeason}
           onNewSeason={() => { setShowSeasonModal(false); setShowNewSeasonWizard(true); }}
+          onRenameSeason={(seasonId, newLabel) => {
+            void updateSeasonLabel(seasonId, newLabel);
+            setSeasons((prev) => prev.map((s) => s.id === seasonId ? { ...s, label: newLabel } : s));
+            if (seasonId === activeSeasonId) setActiveSeasonLabel(newLabel);
+          }}
           onClose={() => setShowSeasonModal(false)}
         />
       )}

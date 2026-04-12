@@ -235,6 +235,21 @@ router.post("/careers/:id/seasons", async (req, res) => {
   }
 });
 
+router.patch("/seasons/:id/label", async (req, res) => {
+  try {
+    const { id: seasonId } = req.params;
+    const { label } = req.body as { label?: string };
+    if (!label?.trim()) return res.status(400).json({ error: "label is required" });
+    const row = await db.select().from(seasonsTable).where(eq(seasonsTable.id, seasonId)).limit(1);
+    if (!row.length) return res.status(404).json({ error: "Season not found" });
+    await db.update(seasonsTable).set({ label: label.trim() }).where(eq(seasonsTable.id, seasonId));
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error("PATCH /seasons/:id/label error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 router.put("/seasons/:id/activate", async (req, res) => {
   try {
     const { id: seasonId } = req.params;
