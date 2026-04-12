@@ -14,6 +14,7 @@ const POS_STYLE: Record<string, { bg: string; color: string }> = {
 interface DerivedStats {
   avgRating: number | null;
   hatTricks: number;
+  totalPenScored: number;
   totalPasses: number;
   passAccuracy: number | null;
   totalKeyPasses: number;
@@ -38,7 +39,7 @@ type FilterTab = "ataque" | "intermediario" | "defesa" | "goleiro";
 
 type SortCol =
   | "name" | "number" | "pos" | "total" | "starter" | "rating"
-  | "goals" | "assists" | "ga" | "hat" | "penMissed"
+  | "goals" | "assists" | "ga" | "hat" | "penScored" | "penMissed"
   | "passes" | "passAcc" | "keyPasses" | "dribbles"
   | "recoveries" | "losses" | "yellow" | "red"
   | "saves" | "goalsAgainst" | "penSaved"
@@ -65,6 +66,7 @@ const LEGEND_BY_TAB: Record<FilterTab, { sigla: string; desc: string }[]> = {
     { sigla: "A",     desc: "Assistências" },
     { sigla: "G+A",   desc: "Gols + Assistências" },
     { sigla: "Hat",   desc: "Hat-tricks (3 ou + gols em 1 jogo)" },
+    { sigla: "Pên⚽",  desc: "Gols de pênalti" },
     { sigla: "Pên✗",  desc: "Pênaltis perdidos" },
     { sigla: "OVR",   desc: "Overall (nota geral do jogador)" },
   ],
@@ -202,6 +204,7 @@ export function PlayerStatsTable({ careerId, seasonId, allPlayers, statsOverride
     for (const p of allPlayers) {
       let ratingSum = 0; let ratingCount = 0;
       let hatTricks = 0;
+      let totalPenScored = 0;
       let totalPasses = 0;
       let passAccSum = 0; let passAccCount = 0;
       let totalKeyPasses = 0;
@@ -220,6 +223,7 @@ export function PlayerStatsTable({ careerId, seasonId, allPlayers, statsOverride
         if (ps) {
           if (ps.rating > 0) { ratingSum += ps.rating; ratingCount++; }
           if (ps.goals.length >= 3) hatTricks++;
+          totalPenScored += ps.goals.filter((g) => g.goalType === "penalti").length;
           if (ps.passes != null)           totalPasses     += ps.passes;
           if (ps.passAccuracy != null)     { passAccSum += ps.passAccuracy; passAccCount++; }
           if (ps.keyPasses != null)        totalKeyPasses  += ps.keyPasses;
@@ -240,6 +244,7 @@ export function PlayerStatsTable({ careerId, seasonId, allPlayers, statsOverride
       map[p.id] = {
         avgRating: ratingCount > 0 ? ratingSum / ratingCount : null,
         hatTricks,
+        totalPenScored,
         totalPasses,
         passAccuracy: passAccCount > 0 ? passAccSum / passAccCount : null,
         totalKeyPasses,
@@ -268,7 +273,7 @@ export function PlayerStatsTable({ careerId, seasonId, allPlayers, statsOverride
           player: p,
           stats: rawStats[p.id],
           derived: derivedMap[p.id] ?? {
-            avgRating: null, hatTricks: 0, totalPasses: 0, passAccuracy: null,
+            avgRating: null, hatTricks: 0, totalPenScored: 0, totalPasses: 0, passAccuracy: null,
             totalKeyPasses: 0, totalDribblesCompleted: 0, totalBallRecoveries: 0,
             totalBallLosses: 0, totalSaves: 0, totalPenaltiesSaved: 0, totalGoalsAgainst: 0,
           },
@@ -314,6 +319,7 @@ export function PlayerStatsTable({ careerId, seasonId, allPlayers, statsOverride
         case "assists":     diff = a.stats.assists - b.stats.assists; break;
         case "ga":          diff = (a.stats.goals + a.stats.assists) - (b.stats.goals + b.stats.assists); break;
         case "hat":         diff = a.derived.hatTricks - b.derived.hatTricks; break;
+        case "penScored":   diff = a.derived.totalPenScored - b.derived.totalPenScored; break;
         case "penMissed":   diff = a.stats.totalMissedPenalties - b.stats.totalMissedPenalties; break;
         case "passes":      diff = a.derived.totalPasses - b.derived.totalPasses; break;
         case "passAcc":     diff = (a.derived.passAccuracy ?? 0) - (b.derived.passAccuracy ?? 0); break;
@@ -463,6 +469,7 @@ export function PlayerStatsTable({ careerId, seasonId, allPlayers, statsOverride
                 <Th label="A"      col="assists"  {...th} title="Assistências" accent="#60a5fa" />
                 <Th label="G+A"    col="ga"       {...th} title="Gols + Assistências" accent="#a78bfa" />
                 <Th label="Hat"    col="hat"      {...th} title="Hat-tricks (3+ gols em 1 jogo)" accent="#fbbf24" />
+                <Th label="Pên⚽"  col="penScored" {...th} title="Gols de pênalti" accent="#34d399" />
                 <Th label="Pên✗"   col="penMissed" {...th} title="Pênaltis perdidos" accent="#f87171" />
                 <Th label="OVR"    col="overall"  {...th} title="Overall" />
               </tr>
@@ -546,6 +553,11 @@ export function PlayerStatsTable({ careerId, seasonId, allPlayers, statsOverride
                       <td className="px-2 py-2.5 text-center">
                         {derived.hatTricks > 0
                           ? <span className="font-bold tabular-nums text-xs" style={{ color: "#fbbf24" }}>🎩 {derived.hatTricks}</span>
+                          : <Dash />}
+                      </td>
+                      <td className="px-2 py-2.5 text-center">
+                        {derived.totalPenScored > 0
+                          ? <span className="font-semibold tabular-nums text-xs" style={{ color: "#34d399" }}>{derived.totalPenScored}</span>
                           : <Dash />}
                       </td>
                       <td className="px-2 py-2.5 text-center">
