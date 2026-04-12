@@ -67,6 +67,8 @@ function mkDefault(startedOnBench = false): PlayerMatchStats {
     missedPenalty: false,
     injured: false,
     substituted: false,
+    shots: undefined,
+    shotsOnTargetPct: undefined,
     passes: undefined,
     passAccuracy: undefined,
     keyPasses: undefined,
@@ -761,6 +763,16 @@ function PlayerLineupRow({
             <span className="text-white/50 text-xs font-medium uppercase tracking-wider block mb-2">Estatísticas</span>
             <div className="space-y-0">
               {[
+                {
+                  label: "Finalizações", icon: "⚽",
+                  node: (
+                    <div className="flex items-center gap-1">
+                      <NumericInput value={stats.shots} onChange={(v) => onUpdate({ shots: v })} placeholder="Total" className="w-14 text-right" />
+                      <NumericInput value={stats.shotsOnTargetPct} onChange={(v) => onUpdate({ shotsOnTargetPct: v ? Math.min(100, v) : undefined })} max={100} placeholder="%" className="w-12 text-right" />
+                      <span className="text-white/30 text-xs">%</span>
+                    </div>
+                  ),
+                },
                 {
                   label: "Passes", icon: "🎯",
                   node: (

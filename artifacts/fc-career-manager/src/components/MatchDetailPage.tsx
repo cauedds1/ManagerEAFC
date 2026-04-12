@@ -218,6 +218,10 @@ function PlayerDetailPanel({
   ];
 
   const extraStats = [
+    stats?.shots != null ? {
+      label: "Finalizações",
+      value: stats.shotsOnTargetPct != null ? `${stats.shots} (${stats.shotsOnTargetPct}% no gol)` : stats.shots,
+    } : null,
     stats?.passes != null ? { label: "Passes", value: stats.passes } : null,
     stats?.passAccuracy != null ? { label: "Precisão", value: `${stats.passAccuracy}%` } : null,
     stats?.keyPasses != null ? { label: "Passes-chave", value: stats.keyPasses } : null,
