@@ -35,6 +35,7 @@ interface NoticiasViewProps {
   matches?: MatchRecord[];
   pastSeasons?: Season[];
   isReadOnly?: boolean;
+  onGenerateBackground: (params: BgGenParams) => void;
 }
 
 const NEGATIVE_KEYWORDS = [
@@ -112,7 +113,9 @@ const CATEGORY_LABELS: Record<NewsCategory, string> = {
 
 type AddMode = "auto" | "manual";
 
-interface AiPreview {
+export const FC_NOTICIA_GENERATED_EVENT = "fc:noticia-generated";
+
+export interface AiPreview {
   source: string;
   sourceHandle: string;
   sourceName: string;
@@ -132,13 +135,21 @@ interface AiPreview {
   }>;
 }
 
-interface BgGenParams {
+export interface BgGenParams {
   description: string;
   source?: string;
   category?: string;
   imageUrl?: string;
   customPortal?: { id: string; name: string; description?: string; tone?: string };
   attachedMatchContext?: string;
+  playerContextStr?: string;
+  squadOvrContext?: string;
+  teamFormContext?: string;
+  historicalContext?: string;
+  lastMatchPlayerContext?: string;
+  recentPostsContext?: { title?: string; category: string; headline: string }[];
+  seasonId: string;
+  careerId: string;
 }
 
 function buildMatchContextString(match: MatchRecord, allPlayers: SquadPlayer[]): string {
@@ -271,10 +282,13 @@ function AddPostModal({
   squadOvrContext,
   teamFormContext,
   historicalContext,
+  lastMatchPlayerContext,
   recentPosts,
   customPortals,
   matches,
   allPlayers,
+  seasonId,
+  careerId,
   onClose,
   onSave,
   onGenerateBackground,
@@ -284,10 +298,13 @@ function AddPostModal({
   squadOvrContext?: string;
   teamFormContext?: string;
   historicalContext?: string;
+  lastMatchPlayerContext?: string;
   recentPosts?: NewsPost[];
   customPortals?: CustomPortal[];
   matches?: MatchRecord[];
   allPlayers?: SquadPlayer[];
+  seasonId: string;
+  careerId: string;
   onClose: () => void;
   onSave: (post: NewsPost) => void;
   onGenerateBackground: (params: BgGenParams) => void;
@@ -344,6 +361,11 @@ function AddPostModal({
     const matchCtx = attachedMatch && allPlayers
       ? buildMatchContextString(attachedMatch, allPlayers)
       : undefined;
+    const recentPostsCtx = recentPosts?.slice(0, 6).map((p) => ({
+      title: p.title,
+      category: p.category,
+      headline: p.content.split("\n").find((l) => l.trim().length > 10)?.trim().slice(0, 120) ?? p.content.slice(0, 120),
+    }));
     onGenerateBackground({
       description: aiDesc.trim(),
       source: !isCustom && aiSource !== "auto" ? aiSource : undefined,
@@ -356,6 +378,14 @@ function AddPostModal({
         tone: selectedCustomPortal.tone,
       } : undefined,
       attachedMatchContext: matchCtx,
+      playerContextStr: playerContextStr || undefined,
+      squadOvrContext: squadOvrContext || undefined,
+      teamFormContext: teamFormContext || undefined,
+      historicalContext: historicalContext || undefined,
+      lastMatchPlayerContext: lastMatchPlayerContext || undefined,
+      recentPostsContext: recentPostsCtx,
+      seasonId,
+      careerId,
     });
     onClose();
   };
@@ -873,9 +903,7 @@ const SOURCE_SIDEBAR_COLOR: Record<string, { color: string; bg: string }> = {
 const CUSTOM_SIDEBAR_COLOR = { color: "#a78bfa", bg: "rgba(167,139,250,0.15)" };
 
 
-type BgGenStatus = "idle" | "generating" | "done" | "error";
-
-export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matches = [], pastSeasons = [], isReadOnly }: NoticiasViewProps) {
+export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matches = [], pastSeasons = [], isReadOnly, onGenerateBackground }: NoticiasViewProps) {
   const [posts, setPosts] = useState<NewsPost[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [filterSource, setFilterSource] = useState<string>("all");
@@ -883,9 +911,6 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
   const [searchQuery, setSearchQuery] = useState("");
   const [portalPhotos, setPortalPhotos] = useState<PortalPhotos>({});
   const [customPortals, setCustomPortals] = useState<CustomPortal[]>([]);
-  const [bgGenStatus, setBgGenStatus] = useState<BgGenStatus>("idle");
-  const [bgGenLabel, setBgGenLabel] = useState("");
-  const bgGenTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     fetchPortalPhotos(career.id).then(setPortalPhotos);
@@ -900,6 +925,51 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
     window.addEventListener(CUSTOM_PORTALS_EVENT, refresh);
     return () => window.removeEventListener(CUSTOM_PORTALS_EVENT, refresh);
   }, [career.id]);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { post, seasonId: genSeasonId } = (e as CustomEvent<{ post: NewsPost; seasonId: string }>).detail;
+      if (genSeasonId !== seasonId) return;
+      setPosts((prev) => {
+        if (prev.some((p) => p.id === post.id)) return prev;
+        return [post, ...prev];
+      });
+      if (allPlayers.length > 0 && (post.content || post.comments?.length)) {
+        const criticised = scanPostForCriticism(post.content, post.comments ?? [], allPlayers);
+        const allStats = getAllPlayerStats(seasonId);
+        const members = getMembers(career.id);
+        const auxTecnico = members.find(
+          (m) =>
+            m.roleLabel.toLowerCase().includes("auxiliar") ||
+            m.roleLabel.toLowerCase().includes("técnico") ||
+            m.roleLabel.toLowerCase().includes("tecnico"),
+        );
+        const presidente = members.find((m) => m.roleLabel.toLowerCase().includes("presidente"));
+        for (const playerId of criticised) {
+          stepPlayerMood(seasonId, playerId, -1);
+          const stats = allStats[playerId];
+          const player = allPlayers.find((p) => p.id === playerId);
+          if (!stats || !player) continue;
+          const isKeyPlayer =
+            stats.fanMoral === "idolo" ||
+            (stats.goals ?? 0) + (stats.assists ?? 0) >= 10 ||
+            (stats.matchesAsStarter ?? 0) >= 10;
+          if (isKeyPlayer) {
+            const notifMember = auxTecnico ?? presidente;
+            if (notifMember) {
+              addNotification(career.id, {
+                memberId: notifMember.id,
+                preview: `${player.name.split(" ")[0]} está sendo criticado publicamente — precisamos conversar sobre isso.`,
+                triggeredAt: Date.now(),
+              });
+            }
+          }
+        }
+      }
+    };
+    window.addEventListener(FC_NOTICIA_GENERATED_EVENT, handler);
+    return () => window.removeEventListener(FC_NOTICIA_GENERATED_EVENT, handler);
+  }, [seasonId, allPlayers, career.id]);
 
   useEffect(() => {
     let stored = getPosts(seasonId);
@@ -1207,103 +1277,6 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
           }
         }
       }
-    }
-  };
-
-  const handleGenerateBackground = async (params: BgGenParams) => {
-    if (bgGenTimerRef.current) clearTimeout(bgGenTimerRef.current);
-    setBgGenLabel(params.description.slice(0, 48) + (params.description.length > 48 ? "…" : ""));
-    setBgGenStatus("generating");
-
-    try {
-      const userKey = getOpenAIKey();
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (userKey) headers["x-openai-key"] = userKey;
-
-      const recentPostsCtx = posts.slice(0, 6).map((p) => ({
-        title: p.title,
-        category: p.category,
-        headline: p.content.split("\n").find((l) => l.trim().length > 10)?.trim().slice(0, 120) ?? p.content.slice(0, 120),
-      }));
-
-      const res = await fetch("/api/noticias/generate", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          description: params.description,
-          clubName: career.clubName,
-          season: career.season,
-          source: params.source,
-          category: params.category,
-          clubLeague: career.clubLeague || undefined,
-          clubTitles: career.clubTitles?.length ? career.clubTitles : undefined,
-          clubDescription: career.clubDescription || undefined,
-          projeto: career.projeto || undefined,
-          playersContext: playerContextStr || undefined,
-          squadOvrContext: squadOvrContext || undefined,
-          teamFormContext: teamFormContext || undefined,
-          historicalContext: historicalContext,
-          recentPostsContext: recentPostsCtx,
-          customPortal: params.customPortal,
-          matchPlayerContext: lastMatchPlayerContext || undefined,
-          attachedMatchContext: params.attachedMatchContext || undefined,
-        }),
-      });
-
-      if (!res.ok) {
-        setBgGenStatus("error");
-        bgGenTimerRef.current = setTimeout(() => setBgGenStatus("idle"), 5000);
-        return;
-      }
-
-      const data = (await res.json()) as AiPreview;
-      const customPortal = params.customPortal
-        ? customPortals.find((cp) => cp.id === params.customPortal!.id)
-        : undefined;
-
-      const post: NewsPost = {
-        id: generatePostId(),
-        careerId: career.id,
-        source: (data.source as NewsSource) ?? "fanpage",
-        sourceHandle: data.sourceHandle,
-        sourceName: data.sourceName,
-        ...(data.title?.trim() ? { title: data.title.trim() } : {}),
-        content: data.content,
-        ...(params.imageUrl ? { imageUrl: params.imageUrl } : {}),
-        ...(customPortal ? { customPortalId: customPortal.id } : {}),
-        likes: data.likes,
-        commentsCount: data.commentsCount,
-        sharesCount: data.sharesCount,
-        comments: data.comments.map((c) => ({
-          id: generateCommentId(),
-          username: c.username,
-          displayName: c.displayName,
-          content: c.content,
-          likes: c.likes,
-          personality: (c.personality as NewsPost["comments"][0]["personality"]) ?? "neutro",
-          replies: Array.isArray(c.replies)
-            ? (c.replies as typeof data.comments).map((r) => ({
-                id: generateCommentId(),
-                username: r.username,
-                displayName: r.displayName,
-                content: r.content,
-                likes: r.likes,
-                personality: (r.personality as NewsPost["comments"][0]["personality"]) ?? "neutro",
-                createdAt: Date.now() - Math.floor(Math.random() * 3_600_000),
-              }))
-            : [],
-          createdAt: Date.now() - Math.floor(Math.random() * 3_600_000),
-        })),
-        createdAt: Date.now(),
-        category: (data.category as NewsCategory) ?? "geral",
-      };
-
-      handleSavePost(post);
-      setBgGenStatus("done");
-      bgGenTimerRef.current = setTimeout(() => setBgGenStatus("idle"), 4000);
-    } catch {
-      setBgGenStatus("error");
-      bgGenTimerRef.current = setTimeout(() => setBgGenStatus("idle"), 5000);
     }
   };
 
@@ -1642,70 +1615,20 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
         squadOvrContext={squadOvrContext || undefined}
         teamFormContext={teamFormContext || undefined}
         historicalContext={historicalContext}
+        lastMatchPlayerContext={lastMatchPlayerContext || undefined}
         recentPosts={posts.slice(0, 6)}
         customPortals={customPortals}
         matches={_matches}
         allPlayers={allPlayers}
+        seasonId={seasonId}
+        careerId={career.id}
         onClose={() => setShowAddModal(false)}
         onSave={handleSavePost}
-        onGenerateBackground={handleGenerateBackground}
+        onGenerateBackground={onGenerateBackground}
       />,
       document.body
     )}
 
-    {/* Background generation toast */}
-    {bgGenStatus !== "idle" && createPortal(
-      <div
-        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[400] flex items-center gap-3 px-4 py-3 rounded-2xl shadow-2xl transition-all duration-300"
-        style={{
-          background: bgGenStatus === "done"
-            ? "rgba(16,185,129,0.15)"
-            : bgGenStatus === "error"
-            ? "rgba(239,68,68,0.15)"
-            : "rgba(18,14,31,0.95)",
-          border: `1px solid ${bgGenStatus === "done" ? "rgba(16,185,129,0.35)" : bgGenStatus === "error" ? "rgba(239,68,68,0.35)" : "rgba(255,255,255,0.12)"}`,
-          backdropFilter: "blur(16px)",
-          minWidth: 260,
-          maxWidth: "90vw",
-        }}
-      >
-        {bgGenStatus === "generating" && (
-          <svg className="w-4 h-4 animate-spin flex-shrink-0" fill="none" viewBox="0 0 24 24" style={{ color: "var(--club-primary)" }}>
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-          </svg>
-        )}
-        {bgGenStatus === "done" && (
-          <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} style={{ color: "#34d399" }}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-          </svg>
-        )}
-        {bgGenStatus === "error" && (
-          <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} style={{ color: "#f87171" }}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        )}
-        <div className="flex-1 min-w-0">
-          <p className="text-white/90 text-sm font-semibold leading-tight">
-            {bgGenStatus === "generating" && "Gerando notícia em segundo plano..."}
-            {bgGenStatus === "done" && "Notícia publicada!"}
-            {bgGenStatus === "error" && "Erro ao gerar notícia"}
-          </p>
-          {bgGenLabel && (
-            <p className="text-white/40 text-xs mt-0.5 truncate">{bgGenLabel}</p>
-          )}
-        </div>
-        <button
-          onClick={() => { if (bgGenTimerRef.current) clearTimeout(bgGenTimerRef.current); setBgGenStatus("idle"); }}
-          className="w-6 h-6 flex items-center justify-center rounded-lg text-white/30 hover:text-white/60 transition-colors flex-shrink-0"
-        >
-          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-      </div>,
-      document.body
-    )}
     </>
   );
 }

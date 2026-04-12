@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import type { Career, Season } from "@/types/career";
 import { SettingsPage } from "./SettingsPage";
 import {
@@ -23,12 +23,12 @@ import { runPerformanceEngine } from "@/lib/playerPerformanceEngine";
 import { copyPlayerMoodsToNewSeason } from "@/lib/playerStatsStorage";
 import { getLeaguePosition } from "@/lib/leagueStorage";
 import { runAutoNews, runRumorNews } from "@/lib/autoNewsService";
-import type { NewsPost } from "@/types/noticias";
+import type { NewsPost, NewsSource, NewsCategory } from "@/types/noticias";
 import { PainelView } from "./PainelView";
 import { ClubeView } from "./ClubeView";
 import { TransferenciasView } from "./TransferenciasView";
 import { PartidasView } from "./PartidasView";
-import { NoticiasView } from "./NoticiasView";
+import { NoticiasView, type BgGenParams, type AiPreview, FC_NOTICIA_GENERATED_EVENT } from "./NoticiasView";
 import { DiretoriaView } from "./DiretoriaView";
 import { MomentosView } from "./MomentosView";
 import { SeasonSelectModal } from "./SeasonSelectModal";
@@ -65,6 +65,7 @@ interface DashboardProps {
 }
 
 type CareerTab = "painel" | "partidas" | "clube" | "transferencias" | "noticias" | "diretoria" | "momentos" | "configuracoes";
+type BgGenStatus = "idle" | "generating" | "done" | "error";
 
 const TABS: { id: CareerTab; label: string; icon: React.ReactNode }[] = [
   {
@@ -286,6 +287,10 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
   const [noticiasUnread, setNoticiasUnread] = useState(0);
   const [fanMoodScore, setFanMoodScore] = useState<number>(() => getFanMood(career.currentSeasonId ?? career.id));
 
+  const [bgGenStatus, setBgGenStatus] = useState<BgGenStatus>("idle");
+  const [bgGenLabel, setBgGenLabel] = useState("");
+  const bgGenTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useEffect(() => {
     setFanMoodScore(getFanMood(activeSeasonId));
   }, [activeSeasonId]);
@@ -304,6 +309,98 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
   const dismissToast = useCallback((id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
+
+  const handleNoticiaGenerateBackground = useCallback(async (params: BgGenParams) => {
+    if (bgGenTimerRef.current) clearTimeout(bgGenTimerRef.current);
+    setBgGenLabel(params.description.slice(0, 48) + (params.description.length > 48 ? "…" : ""));
+    setBgGenStatus("generating");
+
+    try {
+      const userKey = getOpenAIKey();
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (userKey) headers["x-openai-key"] = userKey;
+
+      const res = await fetch("/api/noticias/generate", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          description: params.description,
+          clubName: career.clubName,
+          season: career.season,
+          source: params.source,
+          category: params.category,
+          clubLeague: career.clubLeague || undefined,
+          clubTitles: career.clubTitles?.length ? career.clubTitles : undefined,
+          clubDescription: career.clubDescription || undefined,
+          projeto: career.projeto || undefined,
+          playersContext: params.playerContextStr || undefined,
+          squadOvrContext: params.squadOvrContext || undefined,
+          teamFormContext: params.teamFormContext || undefined,
+          historicalContext: params.historicalContext,
+          recentPostsContext: params.recentPostsContext,
+          customPortal: params.customPortal,
+          matchPlayerContext: params.lastMatchPlayerContext || undefined,
+          attachedMatchContext: params.attachedMatchContext || undefined,
+        }),
+      });
+
+      if (!res.ok) {
+        setBgGenStatus("error");
+        bgGenTimerRef.current = setTimeout(() => setBgGenStatus("idle"), 5000);
+        return;
+      }
+
+      const data = (await res.json()) as AiPreview;
+
+      const post: NewsPost = {
+        id: generatePostId(),
+        careerId: career.id,
+        source: (data.source as NewsSource) ?? "fanpage",
+        sourceHandle: data.sourceHandle,
+        sourceName: data.sourceName,
+        ...(data.title?.trim() ? { title: data.title.trim() } : {}),
+        content: data.content,
+        ...(params.imageUrl ? { imageUrl: params.imageUrl } : {}),
+        ...(params.customPortal ? { customPortalId: params.customPortal.id } : {}),
+        likes: data.likes,
+        commentsCount: data.commentsCount,
+        sharesCount: data.sharesCount,
+        comments: data.comments.map((c) => ({
+          id: generateCommentId(),
+          username: c.username,
+          displayName: c.displayName,
+          content: c.content,
+          likes: c.likes,
+          personality: (c.personality as NewsPost["comments"][0]["personality"]) ?? "neutro",
+          replies: Array.isArray(c.replies)
+            ? (c.replies as typeof data.comments).map((r) => ({
+                id: generateCommentId(),
+                username: r.username,
+                displayName: r.displayName,
+                content: r.content,
+                likes: r.likes,
+                personality: (r.personality as NewsPost["comments"][0]["personality"]) ?? "neutro",
+                createdAt: Date.now() - Math.floor(Math.random() * 3_600_000),
+              }))
+            : [],
+          createdAt: Date.now() - Math.floor(Math.random() * 3_600_000),
+        })),
+        createdAt: Date.now(),
+        category: (data.category as NewsCategory) ?? "geral",
+      };
+
+      addNewsPost(params.seasonId, post);
+      window.dispatchEvent(
+        new CustomEvent(FC_NOTICIA_GENERATED_EVENT, { detail: { post, seasonId: params.seasonId } }),
+      );
+
+      setBgGenStatus("done");
+      bgGenTimerRef.current = setTimeout(() => setBgGenStatus("idle"), 4000);
+    } catch {
+      setBgGenStatus("error");
+      bgGenTimerRef.current = setTimeout(() => setBgGenStatus("idle"), 5000);
+    }
+  }, [career]);
 
   const handleTabChange = useCallback((tab: CareerTab) => {
     setActiveTab(tab);
@@ -1025,6 +1122,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
                 matches={matches}
                 pastSeasons={seasons.filter((s) => !s.isActive)}
                 isReadOnly={isReadOnly}
+                onGenerateBackground={handleNoticiaGenerateBackground}
               />
             )}
             {activeTab === "diretoria" && (
@@ -1054,6 +1152,57 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
           </div>
         )}
       </div>
+      {bgGenStatus !== "idle" && (
+        <div
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[400] flex items-center gap-3 px-4 py-3 rounded-2xl shadow-2xl transition-all duration-300"
+          style={{
+            background: bgGenStatus === "done"
+              ? "rgba(16,185,129,0.15)"
+              : bgGenStatus === "error"
+              ? "rgba(239,68,68,0.15)"
+              : "rgba(18,14,31,0.95)",
+            border: `1px solid ${bgGenStatus === "done" ? "rgba(16,185,129,0.35)" : bgGenStatus === "error" ? "rgba(239,68,68,0.35)" : "rgba(255,255,255,0.12)"}`,
+            backdropFilter: "blur(16px)",
+            minWidth: 260,
+            maxWidth: "90vw",
+          }}
+        >
+          {bgGenStatus === "generating" && (
+            <svg className="w-4 h-4 animate-spin flex-shrink-0" fill="none" viewBox="0 0 24 24" style={{ color: "var(--club-primary)" }}>
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            </svg>
+          )}
+          {bgGenStatus === "done" && (
+            <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} style={{ color: "#34d399" }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+          )}
+          {bgGenStatus === "error" && (
+            <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} style={{ color: "#f87171" }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          )}
+          <div className="flex-1 min-w-0">
+            <p className="text-white/90 text-sm font-semibold leading-tight">
+              {bgGenStatus === "generating" && "Gerando notícia em segundo plano..."}
+              {bgGenStatus === "done" && "Notícia publicada!"}
+              {bgGenStatus === "error" && "Erro ao gerar notícia"}
+            </p>
+            {bgGenLabel && (
+              <p className="text-white/40 text-xs mt-0.5 truncate">{bgGenLabel}</p>
+            )}
+          </div>
+          <button
+            onClick={() => { if (bgGenTimerRef.current) clearTimeout(bgGenTimerRef.current); setBgGenStatus("idle"); }}
+            className="w-6 h-6 flex items-center justify-center rounded-lg text-white/30 hover:text-white/60 transition-colors flex-shrink-0"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
       <NotificationToast toasts={toasts} onDismiss={dismissToast} />
     </div>
   );
