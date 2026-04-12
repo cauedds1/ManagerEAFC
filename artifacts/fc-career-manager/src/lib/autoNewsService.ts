@@ -45,6 +45,8 @@ export interface AutoNewsContext {
   allPlayers: SquadPlayer[];
   leaguePosition: LeaguePosition | null;
   rivals?: string[];
+  fanMoodScore?: number;
+  fanMoodLabel?: string;
   onNewPost?: (post: NewsPost) => void;
 }
 
@@ -86,7 +88,7 @@ export async function runAutoNews(
   ctx: AutoNewsContext,
 ): Promise<void> {
   try {
-    const { careerId, seasonId, season, clubName, clubLeague, clubTitles, clubDescription, projeto, allMatches, allPlayers, leaguePosition, rivals, onNewPost } = ctx;
+    const { careerId, seasonId, season, clubName, clubLeague, clubTitles, clubDescription, projeto, allMatches, allPlayers, leaguePosition, rivals, fanMoodScore, fanMoodLabel, onNewPost } = ctx;
 
     const seasonPlayerStats = getAllPlayerStats(seasonId);
     const customPortals = await fetchPortals(careerId);
@@ -155,6 +157,8 @@ export async function runAutoNews(
           recentPostsContext: recentPosts.length > 0 ? recentPosts : undefined,
           isClassico: event.isClassico || undefined,
           rivalName: event.rivalName || undefined,
+          fanMoodScore: fanMoodScore ?? undefined,
+          fanMoodLabel: fanMoodLabel ?? undefined,
           customPortal: isCustom
             ? {
                 id: selectedPortal.id,

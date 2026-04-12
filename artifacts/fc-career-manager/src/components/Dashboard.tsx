@@ -13,6 +13,7 @@ import {
 import { getAllPlayerOverrides } from "@/lib/playerStatsStorage";
 import { getTransfers, addTransfer, updateTransfer } from "@/lib/transferStorage";
 import { getRivals } from "@/lib/rivalsStorage";
+import { getFanMood, setFanMood, computeFanMoodDelta, getFanMoodLabel } from "@/lib/fanMoodStorage";
 import type { TransferRecord } from "@/types/transfer";
 import { getMatches } from "@/lib/matchStorage";
 import type { MatchRecord } from "@/types/match";
@@ -280,6 +281,11 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const [diretoriaUnread, setDiretoriaUnread] = useState(0);
   const [noticiasUnread, setNoticiasUnread] = useState(0);
+  const [fanMoodScore, setFanMoodScore] = useState<number>(() => getFanMood(career.currentSeasonId ?? career.id));
+
+  useEffect(() => {
+    setFanMoodScore(getFanMood(activeSeasonId));
+  }, [activeSeasonId]);
 
   useEffect(() => {
     initNoticiasSeenAt(activeSeasonId);
@@ -369,7 +375,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     setTransfers((prev) => prev.map((t) => t.id === id ? { ...t, ...changes } : t));
   }, [activeSeasonId]);
 
-  const runDiretoriaTriggers = useCallback(async (updatedMatches: MatchRecord[], currentAllPlayers: SquadPlayer[], isClassico?: boolean, rivalName?: string) => {
+  const runDiretoriaTriggers = useCallback(async (updatedMatches: MatchRecord[], currentAllPlayers: SquadPlayer[], isClassico?: boolean, rivalName?: string, fanMood?: number, fanMoodLabelStr?: string) => {
     const members = getMembers(career.id);
     if (members.length === 0) return;
 
@@ -442,6 +448,8 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
           squadOvrContext: squadOvrCtx || undefined,
           isClassico: isClassico || undefined,
           rivalName: rivalName || undefined,
+          fanMoodScore: fanMood ?? undefined,
+          fanMoodLabel: fanMoodLabelStr ?? undefined,
         }),
       });
       if (!res.ok) return;
@@ -488,6 +496,13 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     ) ?? undefined;
     const isClassico = rivalName != null;
 
+    const currentMood = getFanMood(activeSeasonId);
+    const moodDelta = computeFanMoodDelta(match.myScore, match.opponentScore, isClassico);
+    const newMoodScore = Math.max(0, Math.min(100, currentMood + moodDelta));
+    void setFanMood(activeSeasonId, newMoodScore);
+    setFanMoodScore(newMoodScore);
+    const moodInfo = getFanMoodLabel(newMoodScore);
+
     void runAutoNews(match, {
       careerId: career.id,
       seasonId: activeSeasonId,
@@ -501,11 +516,13 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
       allPlayers,
       leaguePosition: leaguePos,
       rivals,
+      fanMoodScore: newMoodScore,
+      fanMoodLabel: `${moodInfo.emoji} ${moodInfo.label}`,
       onNewPost: handleNewPost,
     });
 
     setTimeout(() => {
-      void runDiretoriaTriggers(updatedMatches, allPlayers, isClassico, rivalName);
+      void runDiretoriaTriggers(updatedMatches, allPlayers, isClassico, rivalName, newMoodScore, `${moodInfo.emoji} ${moodInfo.label}`);
     }, 1500);
   }, [activeSeasonId, matches, allPlayers, seasons, activeSeasonLabel, career.id, career.clubName, career.clubLeague, career.clubTitles, career.clubDescription, career.projeto, runDiretoriaTriggers, addToast]);
 
@@ -633,6 +650,23 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
               </div>
 
               <div className="flex items-center gap-2 flex-shrink-0">
+                {(() => {
+                  const moodInfo = getFanMoodLabel(fanMoodScore);
+                  return (
+                    <div
+                      className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold"
+                      style={{
+                        background: `${moodInfo.color}18`,
+                        border: `1px solid ${moodInfo.color}35`,
+                        color: moodInfo.color,
+                      }}
+                      title={`Humor da torcida: ${moodInfo.label} (${fanMoodScore}/100)`}
+                    >
+                      <span>{moodInfo.emoji}</span>
+                      <span className="hidden sm:inline">{moodInfo.label}</span>
+                    </div>
+                  );
+                })()}
                 <div className="flex items-center gap-1.5">
                   <span className="text-white/40 text-xs">Temp:</span>
                   <button

@@ -40,6 +40,8 @@ interface GenerateNoticiaBody {
   projeto?: string;
   isClassico?: boolean;
   rivalName?: string;
+  fanMoodScore?: number;
+  fanMoodLabel?: string;
 }
 
 function leagueTierLabel(league: string): string {
@@ -116,6 +118,23 @@ function getClient(userKey?: string): { client: OpenAI; usingUserKey: boolean } 
   return { client: defaultOpenai as unknown as OpenAI, usingUserKey: false };
 }
 
+function buildFanMoodSection(clubName: string, fanMoodLabel: string, fanMoodScore: number): string {
+  let section = `\n\nHUMOR DA TORCIDA — CONTEXTO EMOCIONAL:`;
+  section += `\nEstado atual da torcida do ${clubName}: ${fanMoodLabel} (${fanMoodScore}/100).`;
+  if (fanMoodScore < 20) {
+    section += `\nTORCIDA REVOLTADA: o ambiente é de pressão máxima. Mesmo em vitórias, os comentários cobram mais, exigem mais. Torcedores estão frustrados e qualquer deslize é amplificado. Tom geral: cobrança, decepção, ameaças de protesto.`;
+  } else if (fanMoodScore < 40) {
+    section += `\nTORCIDA INSATISFEITA: a paciência está diminuindo. Vitórias são comemoradas mas com ressalvas. Derrotas geram reclamações mais fortes do que o normal.`;
+  } else if (fanMoodScore < 60) {
+    section += `\nTORCIDA NEUTRA: humor equilibrado. Reage de forma proporcional ao resultado — celebra vitórias normalmente, critica derrotas sem exagero.`;
+  } else if (fanMoodScore < 80) {
+    section += `\nTORCIDA ANIMADA: o ambiente é positivo. Vitórias são comemoradas com entusiasmo. Pequenos erros são tolerados. Os comentários têm mais euforia natural.`;
+  } else {
+    section += `\nTORCIDA EUFÓRICA: o ambiente é de festa total. A torcida está nas nuvens. Os comentários transbordam orgulho, amor ao clube, sensação de que este time é especial.`;
+  }
+  return section;
+}
+
 function buildClassicoSection(clubName: string, rivalName: string, isLoss: boolean, isWin: boolean): string {
   const result = isWin ? "venceu" : isLoss ? "perdeu" : "empatou";
   let section = `\n\nCLÁSSICO ENTRE RIVAIS — CONTEXTO ESPECIAL:`;
@@ -133,7 +152,7 @@ router.post("/noticias/generate", async (req, res) => {
   const {
     description, clubName, season, source, category,
     playersContext, squadOvrContext, teamFormContext, historicalContext, recentPostsContext, customPortal,
-    clubLeague, clubTitles, clubDescription, projeto, isClassico, rivalName,
+    clubLeague, clubTitles, clubDescription, projeto, isClassico, rivalName, fanMoodScore, fanMoodLabel,
   } = req.body as GenerateNoticiaBody;
 
   if (!description || !description.trim()) {
@@ -207,13 +226,16 @@ LEGENDA — TOM JORNALÍSTICO OBRIGATÓRIO:
   const classicoSection = isClassico && rivalName
     ? buildClassicoSection(clubName, rivalName, isDescLoss, isDescWin)
     : "";
+  const fanMoodSection = (fanMoodScore !== undefined && fanMoodLabel)
+    ? buildFanMoodSection(clubName, fanMoodLabel, fanMoodScore)
+    : "";
 
   const systemPrompt = `Você é um especialista em criar posts de futebol para redes sociais brasileiras no estilo Instagram.
 Cada post que você cria deve ser ÚNICO e DIFERENTE dos anteriores — varie o estilo, tom, escolha de emojis, estrutura da legenda e perfil dos comentaristas.
 Use linguagem informal, autêntica, com gírias brasileiras do futebol. Seja criativo e específico.
 O time é ${clubName}${season ? ` (temporada ${season})` : ""}.
 O portal que publica é ${portalName} (${portalHandle}).
-Semente de unicidade: ${uniqueSeed} — use ela para garantir que este post seja diferente de qualquer outro.${prestigeSection}${playersSection}${squadOvrSection}${teamFormSection}${historicalSection}${recentPostsSection}${classicoSection}${customPortalSection}${globalPortalSection}`;
+Semente de unicidade: ${uniqueSeed} — use ela para garantir que este post seja diferente de qualquer outro.${prestigeSection}${playersSection}${squadOvrSection}${teamFormSection}${historicalSection}${recentPostsSection}${fanMoodSection}${classicoSection}${customPortalSection}${globalPortalSection}`;
 
   const commentPersonalitiesRule = isGlobalPortal
     ? `AUDIÊNCIA DOS COMENTÁRIOS — portal global com seguidores de TODO o mundo e de VÁRIOS clubes:

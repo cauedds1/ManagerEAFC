@@ -471,7 +471,7 @@ Responda APENAS com JSON puro (sem markdown):
 });
 
 router.post("/diretoria/check-triggers", async (req, res) => {
-  const { context, members, lastCheckedAt, playerPerformance, squadOvrContext, isClassico, rivalName } = req.body as {
+  const { context, members, lastCheckedAt, playerPerformance, squadOvrContext, isClassico, rivalName, fanMoodScore, fanMoodLabel } = req.body as {
     context: ClubContext;
     members: MemberProfile[];
     lastCheckedAt: number;
@@ -479,6 +479,8 @@ router.post("/diretoria/check-triggers", async (req, res) => {
     squadOvrContext?: string;
     isClassico?: boolean;
     rivalName?: string;
+    fanMoodScore?: number;
+    fanMoodLabel?: string;
   };
 
   const recentMatches = context.recentMatches.slice(0, 8);
@@ -543,6 +545,20 @@ router.post("/diretoria/check-triggers", async (req, res) => {
           reason: `Derrota no clássico contra o ${rivalName} com ${lossStreak} derrotas consecutivas — a torcida está revoltada e exige posicionamento`,
           severity: "high",
         };
+      }
+    }
+
+    if (typeof fanMoodScore === "number" && fanMoodScore < 20 && fanMoodLabel) {
+      if (!meetingTrigger) {
+        meetingTrigger = {
+          reason: `Torcida ${fanMoodLabel} (${fanMoodScore}/100) — a pressão popular atingiu nível crítico. A diretoria precisa se posicionar publicamente`,
+          severity: "high",
+        };
+      } else if (presidente && !notifications.find((n) => n.memberId === presidente.id)) {
+        notifications.push({
+          memberId: presidente.id,
+          preview: `A torcida está ${fanMoodLabel.toLowerCase()}. Precisamos agir antes que a situação saia de controle.`,
+        });
       }
     }
 
