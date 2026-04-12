@@ -163,12 +163,14 @@ ${matchStr}`;
 }
 
 router.post("/diretoria/chat", async (req, res) => {
-  const { member, message, history, context, squadOvrContext } = req.body as {
+  const { member, message, history, context, squadOvrContext, squadRosterContext, playerPerformanceContext } = req.body as {
     member: MemberProfile;
     message: string;
     history: ChatHistoryItem[];
     context: ClubContext;
     squadOvrContext?: string;
+    squadRosterContext?: string;
+    playerPerformanceContext?: string;
   };
 
   if (!message?.trim()) {
@@ -186,7 +188,15 @@ router.post("/diretoria/chat", async (req, res) => {
   const isInsulted = /xing|merda|idiot|inút|burr|lixo|sai fora|incompet|estúpid|cala boc|vai se/i.test(message);
 
   const squadOvrSection = squadOvrContext?.trim()
-    ? `\nELENCO — OVR:\n${squadOvrContext}`
+    ? `\nELENCO — OVR RESUMO:\n${squadOvrContext}`
+    : "";
+
+  const squadRosterSection = squadRosterContext?.trim()
+    ? `\nELENCO COMPLETO (você conhece todos estes jogadores — não peça que o técnico os liste):\n${squadRosterContext}`
+    : "";
+
+  const playerPerfSection = playerPerformanceContext?.trim()
+    ? `\nDESEMPENHO DOS JOGADORES NA TEMPORADA (forma, gols, assistências, moral):\n${playerPerformanceContext}`
     : "";
 
   const calibratingSection = `\n━━━ CALIBRAÇÃO DE CONTEXTO ━━━
@@ -205,8 +215,10 @@ ${member.description}
 HUMOR ATUAL: ${moodLabel(member.mood)} | PACIÊNCIA: ${member.patience}/100
 
 CONTEXTO:
-${clubCtx}${squadOvrSection}
+${clubCtx}${squadOvrSection}${squadRosterSection}${playerPerfSection}
 ${calibratingSection}
+
+⚠️ REGRA IMPORTANTE: Você já conhece o elenco completo listado acima. NUNCA peça ao técnico para listar os jogadores, mandar a lista de titulares ou qualquer coisa que você já sabe. Use as informações acima para dar opiniões fundamentadas diretamente.
 
 ━━━ REGRAS DE COMPORTAMENTO — LEIA COM ATENÇÃO ━━━
 
@@ -284,13 +296,15 @@ Ao final: NOVO_HUMOR: <excelente|bom|neutro|tenso|irritado|furioso>`;
 });
 
 router.post("/diretoria/meeting", async (req, res) => {
-  const { speaker, allMembers, history, context, triggerMessage, squadOvrContext } = req.body as {
+  const { speaker, allMembers, history, context, triggerMessage, squadOvrContext, squadRosterContext, playerPerformanceContext } = req.body as {
     speaker: MemberProfile;
     allMembers: MemberProfile[];
     history: { memberId?: string; memberName?: string; role: string; content: string }[];
     context: ClubContext;
     triggerMessage: string;
     squadOvrContext?: string;
+    squadRosterContext?: string;
+    playerPerformanceContext?: string;
   };
 
   const userKey = (req.headers["x-openai-key"] as string | undefined) ?? "";
@@ -304,7 +318,15 @@ router.post("/diretoria/meeting", async (req, res) => {
     .join("\n");
 
   const meetingSquadOvrSection = squadOvrContext?.trim()
-    ? `\nELENCO — OVR:\n${squadOvrContext}`
+    ? `\nELENCO — OVR RESUMO:\n${squadOvrContext}`
+    : "";
+
+  const meetingRosterSection = squadRosterContext?.trim()
+    ? `\nELENCO COMPLETO (todos já conhecem estes jogadores — não peçam ao técnico para listar):\n${squadRosterContext}`
+    : "";
+
+  const meetingPlayerPerfSection = playerPerformanceContext?.trim()
+    ? `\nDESEMPENHO DOS JOGADORES NA TEMPORADA:\n${playerPerformanceContext}`
     : "";
 
   const meetingCalibratingSection = `\n━━━ CALIBRAÇÃO DE CONTEXTO ━━━
@@ -327,8 +349,10 @@ ${otherMembers}
 - Técnico ${context.coachName} (presente na sala)
 
 CONTEXTO DO CLUBE:
-${clubCtx}${meetingSquadOvrSection}
+${clubCtx}${meetingSquadOvrSection}${meetingRosterSection}${meetingPlayerPerfSection}
 ${meetingCalibratingSection}
+
+⚠️ REGRA IMPORTANTE: Todos na reunião já conhecem o elenco completo listado acima. NUNCA peçam ao técnico para listar jogadores, enviar nomes de titulares ou dados que já estão disponíveis. Use as informações acima para debater com embasamento.
 
 ━━━ REGRAS DA REUNIÃO ━━━
 

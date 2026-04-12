@@ -33,7 +33,7 @@ import {
 import { getLeaguePosition } from "@/lib/leagueStorage";
 import { getOpenAIKey } from "@/lib/openaiKeyStorage";
 import type { SquadPlayer } from "@/lib/squadCache";
-import { buildPlayerPerformanceContext, buildSquadOvrContext } from "@/lib/playerContext";
+import { buildPlayerPerformanceContext, buildSquadOvrContext, buildPlayerContextString } from "@/lib/playerContext";
 import { getAllPlayerOverrides } from "@/lib/playerStatsStorage";
 import { getFinanceiroSettings, computeFinancialSnapshot } from "@/lib/financeiroStorage";
 
@@ -421,6 +421,37 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
     return buildSquadOvrContext(allPlayers, overrides);
   }, [allPlayers, career.id]);
 
+  const squadRosterContext = useMemo(() => {
+    if (allPlayers.length === 0) return "";
+    const overrides = getAllPlayerOverrides(career.id);
+    const groups: Record<string, string[]> = {
+      "Goleiros": [],
+      "Defensores": [],
+      "Meio-campistas": [],
+      "Atacantes": [],
+    };
+    for (const p of allPlayers) {
+      const ovr = overrides[p.id]?.overall;
+      const pos = p.positionPtBr ?? p.position ?? "";
+      const ovrStr = ovr != null ? ` OVR ${ovr}` : "";
+      const ageStr = p.age ? `, ${p.age} anos` : "";
+      const line = `${p.name} — ${pos}${ovrStr}${ageStr}`;
+      if (/goleiro|keeper|GK/i.test(pos)) groups["Goleiros"].push(line);
+      else if (/zaga|lateral|defes|CB|LB|RB|WB|libero/i.test(pos)) groups["Defensores"].push(line);
+      else if (/meio|volante|armad|CM|CAM|CDM|LM|RM|meia/i.test(pos)) groups["Meio-campistas"].push(line);
+      else groups["Atacantes"].push(line);
+    }
+    return Object.entries(groups)
+      .filter(([, lines]) => lines.length > 0)
+      .map(([label, lines]) => `${label}:\n${lines.map((l) => `  • ${l}`).join("\n")}`)
+      .join("\n");
+  }, [allPlayers, career.id]);
+
+  const playerContextStr = useMemo(() => {
+    if (playerPerformance.length === 0) return "";
+    return buildPlayerContextString(playerPerformance);
+  }, [playerPerformance]);
+
   const isGestor = (member: BoardMember) =>
     member.roleLabel.toLowerCase().includes("gestor") ||
     member.roleLabel.toLowerCase().includes("financeiro") ||
@@ -554,6 +585,8 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
           history: newConv.slice(-14).map((m) => ({ role: m.role, content: m.content })),
           context: buildClubContext(),
           squadOvrContext: squadOvrContext || undefined,
+          squadRosterContext: squadRosterContext || undefined,
+          playerPerformanceContext: playerContextStr || undefined,
         }),
       });
       if (!res.ok) throw new Error(`Erro ${res.status}`);
@@ -651,6 +684,8 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
             context: buildClubContext(),
             triggerMessage: currentMeeting.reason,
             squadOvrContext: squadOvrContext || undefined,
+            squadRosterContext: squadRosterContext || undefined,
+            playerPerformanceContext: playerContextStr || undefined,
           }),
         });
         if (!res.ok) throw new Error(`Erro ${res.status}`);
