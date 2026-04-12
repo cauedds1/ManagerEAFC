@@ -142,23 +142,23 @@ export function clearNotification(careerId: string, memberId: string): void {
   saveNotifications(careerId, notifs);
 }
 
-const cooldownKey = (careerId: string) => `fc-diretoria-cooldown-${careerId}`;
+const cooldownKey = (careerId: string, seasonId: string) => `fc-diretoria-cooldown-${careerId}-${seasonId}`;
 const pendingMeetingKey = (careerId: string) => `fc-diretoria-pending-meeting-${careerId}`;
 
-export function getMemberCooldowns(careerId: string): Record<string, number> {
+export function getMemberCooldowns(careerId: string, seasonId: string): Record<string, number> {
   try {
-    const raw = localStorage.getItem(cooldownKey(careerId));
+    const raw = localStorage.getItem(cooldownKey(careerId, seasonId));
     return raw ? (JSON.parse(raw) as Record<string, number>) : {};
   } catch {
     return {};
   }
 }
 
-export function setMemberCooldown(careerId: string, memberId: string, matchCount: number): void {
-  const cooldowns = getMemberCooldowns(careerId);
+export function setMemberCooldown(careerId: string, seasonId: string, memberId: string, matchCount: number): void {
+  const cooldowns = getMemberCooldowns(careerId, seasonId);
   cooldowns[memberId] = matchCount;
   try {
-    localStorage.setItem(cooldownKey(careerId), JSON.stringify(cooldowns));
+    localStorage.setItem(cooldownKey(careerId, seasonId), JSON.stringify(cooldowns));
   } catch {}
 }
 

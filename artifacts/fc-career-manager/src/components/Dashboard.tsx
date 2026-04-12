@@ -373,7 +373,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     if (members.length === 0) return;
 
     const matchCount = updatedMatches.length;
-    const cooldowns = getMemberCooldowns(career.id);
+    const cooldowns = getMemberCooldowns(career.id, activeSeasonId);
     const MIN_MATCHES_BETWEEN_NOTIFS = 3;
 
     const eligibleMembers = members
@@ -392,6 +392,9 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     const leaguePos = getLeaguePosition(activeSeasonId);
     const finSettings = getFinanceiroSettings(activeSeasonId);
     const finSnapshot = computeFinancialSnapshot(finSettings, transfers);
+    const prevMatch = updatedMatches.slice(-2, -1)[0];
+    const lastCheckedAt = prevMatch?.createdAt ?? 0;
+
     const recentMatches = updatedMatches.slice(-10).reverse().map((m) => ({
       opponent: m.opponent,
       myScore: m.myScore,
@@ -401,6 +404,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
               : "empate" as const,
       tournament: m.tournament,
       date: m.date,
+      createdAt: m.createdAt,
     }));
 
     const context = {
@@ -434,7 +438,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
         body: JSON.stringify({
           context,
           members: eligibleMembers,
-          lastCheckedAt: 0,
+          lastCheckedAt,
           playerPerformance: playerPerf.length > 0 ? playerPerf : undefined,
           squadOvrContext: squadOvrCtx || undefined,
         }),
@@ -448,7 +452,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
       if (data.notifications?.length) {
         for (const n of data.notifications) {
           addNotification(career.id, { memberId: n.memberId, preview: n.preview, triggeredAt: Date.now() });
-          setMemberCooldown(career.id, n.memberId, matchCount);
+          setMemberCooldown(career.id, activeSeasonId, n.memberId, matchCount);
           const member = members.find((m) => m.id === n.memberId);
           addToast({ type: "diretoria", title: member?.name ?? "Diretoria", preview: n.preview });
         }

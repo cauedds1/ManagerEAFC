@@ -395,7 +395,6 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
   const [suggestClose, setSuggestClose] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
-  const [triggerChecked, setTriggerChecked] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [transferPosition, setTransferPosition] = useState("");
   const [transferBudget, setTransferBudget] = useState("");
@@ -511,47 +510,6 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
       projeto: career.projeto,
     };
   }, [career, matches, transfers, squadSize]);
-
-  useEffect(() => {
-    if (triggerChecked || members.length === 0 || matches.length === 0) return;
-    if (allPlayers.length > 0 && playerPerformance.length === 0) return;
-    setTriggerChecked(true);
-
-    const lastChecked = Number(localStorage.getItem(`fc-diretoria-trigger-checked-${career.id}`) ?? "0");
-    fetch("/api/diretoria/check-triggers", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-openai-key": getOpenAIKey() },
-      body: JSON.stringify({
-        context: buildClubContext(),
-        members: members.map((m) => ({
-          id: m.id,
-          name: m.name,
-          roleLabel: m.roleLabel,
-          description: m.description,
-          mood: m.mood,
-          patience: m.patience,
-        })),
-        lastCheckedAt: lastChecked,
-        playerPerformance: playerPerformance.length > 0 ? playerPerformance : undefined,
-        squadOvrContext: squadOvrContext || undefined,
-      }),
-    })
-      .then((r) => r.json())
-      .then((data: { notifications: { memberId: string; preview: string }[]; meetingTrigger: MeetingTrigger | null }) => {
-        localStorage.setItem(`fc-diretoria-trigger-checked-${career.id}`, String(Date.now()));
-        if (data.meetingTrigger) setMeetingTrigger(data.meetingTrigger);
-        if (data.notifications?.length) {
-          const fresh: PendingNotification[] = data.notifications.map((n) => ({
-            memberId: n.memberId,
-            preview: n.preview,
-            triggeredAt: Date.now(),
-          }));
-          fresh.forEach((n) => addNotification(career.id, n));
-          setNotifications(getNotifications(career.id));
-        }
-      })
-      .catch(() => {});
-  }, [triggerChecked, members, matches, playerPerformance, allPlayers, career.id, buildClubContext]);
 
   const handleOpenChat = (memberId: string) => {
     setSelectedMemberId(memberId);

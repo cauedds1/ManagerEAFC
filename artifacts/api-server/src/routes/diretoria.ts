@@ -18,6 +18,7 @@ interface MatchCtx {
   result: "vitoria" | "empate" | "derrota";
   tournament: string;
   date: string;
+  createdAt?: number;
 }
 
 interface LeagueCtx {
@@ -512,9 +513,10 @@ router.post("/diretoria/check-triggers", async (req, res) => {
       m.roleLabel.toLowerCase().includes("financeiro"),
   );
 
-  const hasNewMatch =
-    recentMatches.length > 0 &&
-    new Date(recentMatches[0].date).getTime() > lastCheckedAt;
+  const newestMatchTs = recentMatches.length > 0
+    ? (recentMatches[0].createdAt ?? new Date(recentMatches[0].date).getTime())
+    : 0;
+  const hasNewMatch = recentMatches.length > 0 && newestMatchTs > lastCheckedAt;
 
   const lossStreakOpponents = recentMatches
     .slice(0, lossStreak)
