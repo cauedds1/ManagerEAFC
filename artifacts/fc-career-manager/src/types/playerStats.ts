@@ -76,6 +76,7 @@ export interface PlayerOverride {
   nameOverride?: string;
   shirtNumber?: number;
   overall?: number;
+  ovrUpdatedAt?: number;
   salary?: number;
   positionOverride?: string;
   ovrHistory?: OvrHistoryEntry[];

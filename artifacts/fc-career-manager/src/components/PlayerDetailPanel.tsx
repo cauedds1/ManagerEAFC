@@ -412,7 +412,7 @@ export function PlayerDetailPanel({
                   const currentOvr = override?.overall;
                   if (history.length === 0 && currentOvr == null) return null;
                   const allEntries = currentOvr != null
-                    ? [...history, { ovr: currentOvr, date: Date.now() }]
+                    ? [...history, { ovr: currentOvr, date: override?.ovrUpdatedAt ?? Date.now() }]
                     : history;
                   if (allEntries.length < 2) return null;
                   const fmtDate = (ts: number) => {

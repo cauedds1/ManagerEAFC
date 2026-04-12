@@ -128,19 +128,18 @@ export function setPlayerOverride(
   const existing = all[playerId] ?? {};
 
   let ovrHistory = existing.ovrHistory ?? [];
-  if (
-    logHistory &&
-    existing.overall != null &&
-    patch.overall != null &&
-    patch.overall !== existing.overall
-  ) {
-    ovrHistory = [...ovrHistory, { ovr: existing.overall, date: Date.now() }];
+  const now = Date.now();
+  const ovrIsChanging = patch.overall != null && patch.overall !== existing.overall;
+
+  if (logHistory && existing.overall != null && ovrIsChanging) {
+    ovrHistory = [...ovrHistory, { ovr: existing.overall, date: existing.ovrUpdatedAt ?? now }];
   }
 
   all[playerId] = {
     ...existing,
     ...patch,
     playerId,
+    ovrUpdatedAt: ovrIsChanging ? now : existing.ovrUpdatedAt,
     ovrHistory: ovrHistory.length > 0 ? ovrHistory : existing.ovrHistory,
   };
   try {
