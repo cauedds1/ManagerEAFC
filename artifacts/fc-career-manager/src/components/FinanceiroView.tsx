@@ -353,13 +353,34 @@ export function FinanceiroView({ careerId, seasonId, transfers, season, isReadOn
           </div>
           <div className="divide-y" style={{ borderColor: "rgba(255,255,255,0.04)" }}>
             {biggestCompra && (
-              <div className="flex items-center gap-4 px-5 py-3">
-                <span
-                  className="text-[10px] font-black px-2 py-0.5 rounded-md flex-shrink-0"
-                  style={{ background: "rgba(var(--club-primary-rgb),0.15)", color: "var(--club-primary)" }}
-                >
-                  C
-                </span>
+              <div className="flex items-center gap-3 px-5 py-3">
+                <div className="relative flex-shrink-0">
+                  {biggestCompra.playerPhoto ? (
+                    <img
+                      src={biggestCompra.playerPhoto}
+                      alt={biggestCompra.playerName}
+                      className="w-10 h-10 rounded-xl object-cover"
+                      style={{ background: "rgba(255,255,255,0.06)" }}
+                      onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; (e.currentTarget.nextSibling as HTMLElement).style.display = "flex"; }}
+                    />
+                  ) : null}
+                  <div
+                    className="w-10 h-10 rounded-xl items-center justify-center text-sm font-black flex-shrink-0"
+                    style={{
+                      display: biggestCompra.playerPhoto ? "none" : "flex",
+                      background: "rgba(var(--club-primary-rgb),0.15)",
+                      color: "var(--club-primary)",
+                    }}
+                  >
+                    {biggestCompra.playerName.charAt(0)}
+                  </div>
+                  <span
+                    className="absolute -bottom-1 -right-1 text-[9px] font-black px-1 py-0 rounded leading-4"
+                    style={{ background: "rgba(var(--club-primary-rgb),0.9)", color: "#fff" }}
+                  >
+                    C
+                  </span>
+                </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-white text-sm font-semibold truncate">{biggestCompra.playerName}</p>
                   <p className="text-white/30 text-xs">{biggestCompra.playerPositionPtBr} · {biggestCompra.season}</p>
@@ -368,13 +389,34 @@ export function FinanceiroView({ careerId, seasonId, transfers, season, isReadOn
               </div>
             )}
             {biggestVenda && (
-              <div className="flex items-center gap-4 px-5 py-3">
-                <span
-                  className="text-[10px] font-black px-2 py-0.5 rounded-md flex-shrink-0"
-                  style={{ background: "rgba(52,211,153,0.12)", color: "#34d399" }}
-                >
-                  V
-                </span>
+              <div className="flex items-center gap-3 px-5 py-3">
+                <div className="relative flex-shrink-0">
+                  {biggestVenda.playerPhoto ? (
+                    <img
+                      src={biggestVenda.playerPhoto}
+                      alt={biggestVenda.playerName}
+                      className="w-10 h-10 rounded-xl object-cover"
+                      style={{ background: "rgba(255,255,255,0.06)" }}
+                      onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; (e.currentTarget.nextSibling as HTMLElement).style.display = "flex"; }}
+                    />
+                  ) : null}
+                  <div
+                    className="w-10 h-10 rounded-xl items-center justify-center text-sm font-black"
+                    style={{
+                      display: biggestVenda.playerPhoto ? "none" : "flex",
+                      background: "rgba(52,211,153,0.12)",
+                      color: "#34d399",
+                    }}
+                  >
+                    {biggestVenda.playerName.charAt(0)}
+                  </div>
+                  <span
+                    className="absolute -bottom-1 -right-1 text-[9px] font-black px-1 py-0 rounded leading-4"
+                    style={{ background: "rgba(52,211,153,0.85)", color: "#fff" }}
+                  >
+                    V
+                  </span>
+                </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-white text-sm font-semibold truncate">{biggestVenda.playerName}</p>
                   <p className="text-white/30 text-xs">{biggestVenda.playerPositionPtBr} · {biggestVenda.season}</p>

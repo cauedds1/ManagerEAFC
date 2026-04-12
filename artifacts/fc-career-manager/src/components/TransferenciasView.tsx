@@ -460,7 +460,7 @@ function TransferCard({
                 </svg>
                 {transfer.toClub ? (
                   <>
-                    <ClubBadge src={null} name={transfer.toClub} size={20} />
+                    <ClubBadge src={transfer.toClubLogo ?? null} name={transfer.toClub} size={20} />
                     <span className="text-white/30 text-xs truncate max-w-24">{transfer.toClub}</span>
                   </>
                 ) : (
@@ -544,6 +544,7 @@ interface FormData {
   fromClub: string;
   fromClubLogo: string;
   toClub: string;
+  toClubLogo: string;
   resolvedPlayerId: number | null;
 }
 
@@ -566,6 +567,7 @@ const DEFAULT_FORM: FormData = {
   fromClub: "",
   fromClubLogo: "",
   toClub: "",
+  toClubLogo: "",
   resolvedPlayerId: null,
 };
 
@@ -680,6 +682,7 @@ export function TransferenciasView({
       fromClub: isEntrada ? (form.fromClub.trim() || undefined) : undefined,
       fromClubLogo: isEntrada ? (form.fromClubLogo.trim() || undefined) : undefined,
       toClub: (isVenda || isLoanSaida) ? (form.toClub.trim() || undefined) : undefined,
+      toClubLogo: (isVenda || isLoanSaida) ? (form.toClubLogo.trim() || undefined) : undefined,
       loanDuration: isEmprestimo ? form.loanDuration : undefined,
       loanDirection: isEmprestimo ? form.loanDirection : undefined,
       loanEnded: false,
@@ -1106,7 +1109,7 @@ export function TransferenciasView({
                     <ClubAutocomplete
                       value={form.toClub}
                       onChange={(v) => set("toClub", v)}
-                      onSelectLogo={() => {}}
+                      onSelectLogo={(logo) => set("toClubLogo", logo ?? "")}
                       placeholder="Ex: Real Madrid (vazio = destino desconhecido)"
                     />
                   </div>
@@ -1118,7 +1121,7 @@ export function TransferenciasView({
                     <ClubAutocomplete
                       value={form.toClub}
                       onChange={(v) => set("toClub", v)}
-                      onSelectLogo={() => {}}
+                      onSelectLogo={(logo) => set("toClubLogo", logo ?? "")}
                       placeholder="Ex: Real Madrid (vazio = destino desconhecido)"
                     />
                     <p className="text-white/20 text-xs mt-1">Deixe vazio se o destino não for definido</p>

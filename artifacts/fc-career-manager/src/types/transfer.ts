@@ -19,6 +19,7 @@ export interface TransferRecord {
   fromClub?: string;
   fromClubLogo?: string;
   toClub?: string;
+  toClubLogo?: string;
   loanDuration?: string;
   loanDirection?: "entrada" | "saida";
   loanEnded?: boolean;
