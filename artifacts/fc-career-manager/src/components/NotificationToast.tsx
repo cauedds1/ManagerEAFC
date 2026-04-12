@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { playNotificationSound } from "@/lib/notificationSound";
 
 export interface ToastItem {
   id: string;
@@ -24,6 +25,7 @@ function SingleToast({
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    playNotificationSound(toast.type);
     timerRef.current = setTimeout(() => onDismiss(toast.id), AUTO_DISMISS_MS);
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);

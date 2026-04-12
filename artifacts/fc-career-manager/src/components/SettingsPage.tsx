@@ -19,6 +19,7 @@ import {
   type PortalTone,
 } from "@/lib/customPortalStorage";
 import { getOpenAIKey, setOpenAIKey, clearOpenAIKey } from "@/lib/openaiKeyStorage";
+import { isSoundEnabled, setSoundEnabled, playNotificationSound } from "@/lib/notificationSound";
 import { RivaisView } from "./RivaisView";
 
 interface SettingsPageProps {
@@ -332,6 +333,7 @@ function CustomPortalModal({
 export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer }: SettingsPageProps) {
   const [section, setSection] = useState<Section>("temporada");
   const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [soundEnabled, setSoundEnabledState] = useState(() => isSoundEnabled());
 
   /* ── Player sync ── */
   const [syncState, setSyncState]     = useState<SyncState>("idle");
@@ -999,6 +1001,42 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
         <div className="flex-1 min-w-0">
           {section === "temporada" && (
             <div className="space-y-5">
+              <SectionCard
+                title="Notificações"
+                subtitle="Configurações de som e alertas do aplicativo."
+              >
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-white/80 text-sm font-semibold">Som de notificação</p>
+                    <p className="text-white/35 text-xs mt-0.5 leading-relaxed">
+                      Toca um som quando uma notícia é gerada ou a Diretoria envia mensagem.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={soundEnabled}
+                    onClick={() => {
+                      const next = !soundEnabled;
+                      setSoundEnabledState(next);
+                      setSoundEnabled(next);
+                      if (next) playNotificationSound("noticias");
+                    }}
+                    className="relative flex-shrink-0 w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none"
+                    style={{
+                      background: soundEnabled
+                        ? "var(--club-primary, #22c55e)"
+                        : "rgba(255,255,255,0.12)",
+                    }}
+                  >
+                    <span
+                      className="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-200"
+                      style={{ transform: soundEnabled ? "translateX(20px)" : "translateX(0)" }}
+                    />
+                  </button>
+                </div>
+              </SectionCard>
+
               <SectionCard
                 title="Rivais da Temporada"
                 subtitle="Defina até 3 rivais para a temporada atual. Clássicos têm tom diferenciado nas notícias e na Diretoria."
