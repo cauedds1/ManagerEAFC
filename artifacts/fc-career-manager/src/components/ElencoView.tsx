@@ -750,7 +750,7 @@ export function ElencoView({
       )}
 
 
-      {detailPlayer && (
+      {detailPlayer && createPortal(
         <PlayerDetailPanel
           player={detailPlayer}
           careerId={careerId}
@@ -758,7 +758,8 @@ export function ElencoView({
           onClose={() => setDetailPlayer(null)}
           onUpdated={refreshOverrides}
           onRemove={() => handleRemovePlayer(detailPlayer)}
-        />
+        />,
+        document.body
       )}
 
       {showAddPlayer && createPortal(

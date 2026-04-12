@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
+import { createPortal } from "react-dom";
 import type { Career } from "@/types/career";
 import type { NewsPost, NewsSource, NewsCategory } from "@/types/noticias";
 import { getPosts, savePosts, addPost, updatePost, generatePostId, generateCommentId } from "@/lib/noticiaStorage";
@@ -1414,7 +1415,7 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
 
     </div>
 
-    {showAddModal && !isReadOnly && (
+    {showAddModal && !isReadOnly && createPortal(
       <AddPostModal
         career={career}
         playerContextStr={playerContextStr || undefined}
@@ -1425,7 +1426,8 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
         customPortals={customPortals}
         onClose={() => setShowAddModal(false)}
         onSave={handleSavePost}
-      />
+      />,
+      document.body
     )}
     </>
   );
