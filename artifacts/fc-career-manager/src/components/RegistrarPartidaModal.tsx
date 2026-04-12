@@ -155,6 +155,7 @@ function NumericInput({
   max = 999,
   placeholder = "",
   className = "",
+  emptyAsZero = false,
 }: {
   value: number | undefined;
   onChange: (v: number | undefined) => void;
@@ -162,13 +163,17 @@ function NumericInput({
   max?: number;
   placeholder?: string;
   className?: string;
+  emptyAsZero?: boolean;
 }) {
-  const [text, setText] = useState(value != null ? String(value) : "");
+  const toDisplay = (v: number | undefined) =>
+    v != null && !(emptyAsZero && v === 0) ? String(v) : "";
+
+  const [text, setText] = useState(toDisplay(value));
 
   useEffect(() => {
-    const n = text === "" ? undefined : parseInt(text, 10);
+    const n = text === "" ? (emptyAsZero ? 0 : undefined) : parseInt(text, 10);
     if (value !== n) {
-      setText(value != null ? String(value) : "");
+      setText(toDisplay(value));
     }
   }, [value]);
 
@@ -183,9 +188,9 @@ function NumericInput({
         const raw = e.target.value.replace(/[^0-9]/g, "");
         const stripped = raw === "" ? "" : String(parseInt(raw, 10));
         setText(stripped);
-        if (stripped === "") { onChange(undefined); return; }
+        if (stripped === "") { onChange(emptyAsZero ? 0 : undefined); return; }
         const n = Math.max(min, Math.min(max, parseInt(stripped, 10)));
-        onChange(isNaN(n) ? undefined : n);
+        onChange(isNaN(n) ? (emptyAsZero ? 0 : undefined) : n);
       }}
       className={`px-2.5 py-1.5 rounded-xl text-white text-sm font-semibold focus:outline-none glass tabular-nums ${className}`}
     />
@@ -964,8 +969,8 @@ function PlayerLineupRow({
                     label: "Finalizações", icon: "⚽",
                     node: (
                       <div className="flex items-center gap-1">
-                        <NumericInput value={stats.shots} onChange={(v) => onUpdate({ shots: v })} placeholder="Total" className="w-14 text-right" />
-                        <NumericInput value={stats.shotsOnTargetPct} onChange={(v) => onUpdate({ shotsOnTargetPct: v ? Math.min(100, v) : undefined })} max={100} placeholder="%" className="w-12 text-right" />
+                        <NumericInput emptyAsZero value={stats.shots} onChange={(v) => onUpdate({ shots: v })} placeholder="Total" className="w-14 text-right" />
+                        <NumericInput emptyAsZero value={stats.shotsOnTargetPct} onChange={(v) => onUpdate({ shotsOnTargetPct: v != null ? Math.min(100, v) : undefined })} max={100} placeholder="%" className="w-12 text-right" />
                         <span className="text-white/30 text-xs">%</span>
                       </div>
                     ),
@@ -974,10 +979,10 @@ function PlayerLineupRow({
                     label: "Passes", icon: "🎯",
                     node: (
                       <div className="flex items-center gap-1">
-                        <NumericInput value={stats.passes} onChange={(v) => onUpdate({ passes: v })} placeholder="Total" className="w-14 text-right" />
-                        <NumericInput value={stats.passAccuracy} onChange={(v) => onUpdate({ passAccuracy: v ? Math.min(100, v) : undefined })} max={100} placeholder="%" className="w-12 text-right" />
+                        <NumericInput emptyAsZero value={stats.passes} onChange={(v) => onUpdate({ passes: v })} placeholder="Total" className="w-14 text-right" />
+                        <NumericInput emptyAsZero value={stats.passAccuracy} onChange={(v) => onUpdate({ passAccuracy: v != null ? Math.min(100, v) : undefined })} max={100} placeholder="%" className="w-12 text-right" />
                         <span className="text-white/30 text-xs">%</span>
-                        <NumericInput value={stats.keyPasses} onChange={(v) => onUpdate({ keyPasses: v })} placeholder="Chave" className="w-14 text-right" />
+                        <NumericInput emptyAsZero value={stats.keyPasses} onChange={(v) => onUpdate({ keyPasses: v })} placeholder="Chave" className="w-14 text-right" />
                       </div>
                     ),
                   },
@@ -985,8 +990,8 @@ function PlayerLineupRow({
                     label: "Dribles", icon: "🔄",
                     node: (
                       <div className="flex items-center gap-1">
-                        <NumericInput value={stats.dribblesCompleted} onChange={(v) => onUpdate({ dribblesCompleted: v })} placeholder="Dribles" className="w-16 text-right" />
-                        <NumericInput value={stats.dribblesSuccessRate} onChange={(v) => onUpdate({ dribblesSuccessRate: v ? Math.min(100, v) : undefined })} max={100} placeholder="%" className="w-12 text-right" />
+                        <NumericInput emptyAsZero value={stats.dribblesCompleted} onChange={(v) => onUpdate({ dribblesCompleted: v })} placeholder="Dribles" className="w-16 text-right" />
+                        <NumericInput emptyAsZero value={stats.dribblesSuccessRate} onChange={(v) => onUpdate({ dribblesSuccessRate: v != null ? Math.min(100, v) : undefined })} max={100} placeholder="%" className="w-12 text-right" />
                         <span className="text-white/30 text-xs">%</span>
                       </div>
                     ),
@@ -995,16 +1000,16 @@ function PlayerLineupRow({
                     label: "Rec. / Perdas", icon: "🛡️",
                     node: (
                       <div className="flex items-center gap-1">
-                        <NumericInput value={stats.ballRecoveries} onChange={(v) => onUpdate({ ballRecoveries: v })} placeholder="Rec." className="w-14 text-right" />
+                        <NumericInput emptyAsZero value={stats.ballRecoveries} onChange={(v) => onUpdate({ ballRecoveries: v })} placeholder="Rec." className="w-14 text-right" />
                         <span className="text-white/20 text-xs">|</span>
-                        <NumericInput value={stats.ballLosses} onChange={(v) => onUpdate({ ballLosses: v })} placeholder="Perda" className="w-14 text-right" />
+                        <NumericInput emptyAsZero value={stats.ballLosses} onChange={(v) => onUpdate({ ballLosses: v })} placeholder="Perda" className="w-14 text-right" />
                       </div>
                     ),
                   },
                 ] : []),
                 ...(isGK ? [
-                  { label: "Defesas", icon: "🧤", node: <NumericInput value={stats.saves} onChange={(v) => onUpdate({ saves: v })} placeholder="Total" className="w-16 text-right" /> },
-                  { label: "Pên. Def.", icon: "🥅", node: <NumericInput value={stats.penaltiesSaved} onChange={(v) => onUpdate({ penaltiesSaved: v })} placeholder="—" className="w-16 text-right" /> },
+                  { label: "Defesas", icon: "🧤", node: <NumericInput emptyAsZero value={stats.saves} onChange={(v) => onUpdate({ saves: v })} placeholder="Total" className="w-16 text-right" /> },
+                  { label: "Pên. Def.", icon: "🥅", node: <NumericInput emptyAsZero value={stats.penaltiesSaved} onChange={(v) => onUpdate({ penaltiesSaved: v })} placeholder="—" className="w-16 text-right" /> },
                 ] : []),
               ].map(({ label, icon, node }) => (
                 <div key={label} className="flex items-center gap-3 py-2 border-b" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
