@@ -959,47 +959,49 @@ function PlayerLineupRow({
             <span className="text-white/50 text-xs font-medium uppercase tracking-wider block mb-2">Estatísticas</span>
             <div className="space-y-0">
               {[
-                {
-                  label: "Finalizações", icon: "⚽",
-                  node: (
-                    <div className="flex items-center gap-1">
-                      <NumericInput value={stats.shots} onChange={(v) => onUpdate({ shots: v })} placeholder="Total" className="w-14 text-right" />
-                      <NumericInput value={stats.shotsOnTargetPct} onChange={(v) => onUpdate({ shotsOnTargetPct: v ? Math.min(100, v) : undefined })} max={100} placeholder="%" className="w-12 text-right" />
-                      <span className="text-white/30 text-xs">%</span>
-                    </div>
-                  ),
-                },
-                {
-                  label: "Passes", icon: "🎯",
-                  node: (
-                    <div className="flex items-center gap-1">
-                      <NumericInput value={stats.passes} onChange={(v) => onUpdate({ passes: v })} placeholder="Total" className="w-14 text-right" />
-                      <NumericInput value={stats.passAccuracy} onChange={(v) => onUpdate({ passAccuracy: v ? Math.min(100, v) : undefined })} max={100} placeholder="%" className="w-12 text-right" />
-                      <span className="text-white/30 text-xs">%</span>
-                      <NumericInput value={stats.keyPasses} onChange={(v) => onUpdate({ keyPasses: v })} placeholder="Chave" className="w-14 text-right" />
-                    </div>
-                  ),
-                },
-                {
-                  label: "Dribles", icon: "🔄",
-                  node: (
-                    <div className="flex items-center gap-1">
-                      <NumericInput value={stats.dribblesCompleted} onChange={(v) => onUpdate({ dribblesCompleted: v })} placeholder="Dribles" className="w-16 text-right" />
-                      <NumericInput value={stats.dribblesSuccessRate} onChange={(v) => onUpdate({ dribblesSuccessRate: v ? Math.min(100, v) : undefined })} max={100} placeholder="%" className="w-12 text-right" />
-                      <span className="text-white/30 text-xs">%</span>
-                    </div>
-                  ),
-                },
-                {
-                  label: "Rec. / Perdas", icon: "🛡️",
-                  node: (
-                    <div className="flex items-center gap-1">
-                      <NumericInput value={stats.ballRecoveries} onChange={(v) => onUpdate({ ballRecoveries: v })} placeholder="Rec." className="w-14 text-right" />
-                      <span className="text-white/20 text-xs">|</span>
-                      <NumericInput value={stats.ballLosses} onChange={(v) => onUpdate({ ballLosses: v })} placeholder="Perda" className="w-14 text-right" />
-                    </div>
-                  ),
-                },
+                ...(!isGK ? [
+                  {
+                    label: "Finalizações", icon: "⚽",
+                    node: (
+                      <div className="flex items-center gap-1">
+                        <NumericInput value={stats.shots} onChange={(v) => onUpdate({ shots: v })} placeholder="Total" className="w-14 text-right" />
+                        <NumericInput value={stats.shotsOnTargetPct} onChange={(v) => onUpdate({ shotsOnTargetPct: v ? Math.min(100, v) : undefined })} max={100} placeholder="%" className="w-12 text-right" />
+                        <span className="text-white/30 text-xs">%</span>
+                      </div>
+                    ),
+                  },
+                  {
+                    label: "Passes", icon: "🎯",
+                    node: (
+                      <div className="flex items-center gap-1">
+                        <NumericInput value={stats.passes} onChange={(v) => onUpdate({ passes: v })} placeholder="Total" className="w-14 text-right" />
+                        <NumericInput value={stats.passAccuracy} onChange={(v) => onUpdate({ passAccuracy: v ? Math.min(100, v) : undefined })} max={100} placeholder="%" className="w-12 text-right" />
+                        <span className="text-white/30 text-xs">%</span>
+                        <NumericInput value={stats.keyPasses} onChange={(v) => onUpdate({ keyPasses: v })} placeholder="Chave" className="w-14 text-right" />
+                      </div>
+                    ),
+                  },
+                  {
+                    label: "Dribles", icon: "🔄",
+                    node: (
+                      <div className="flex items-center gap-1">
+                        <NumericInput value={stats.dribblesCompleted} onChange={(v) => onUpdate({ dribblesCompleted: v })} placeholder="Dribles" className="w-16 text-right" />
+                        <NumericInput value={stats.dribblesSuccessRate} onChange={(v) => onUpdate({ dribblesSuccessRate: v ? Math.min(100, v) : undefined })} max={100} placeholder="%" className="w-12 text-right" />
+                        <span className="text-white/30 text-xs">%</span>
+                      </div>
+                    ),
+                  },
+                  {
+                    label: "Rec. / Perdas", icon: "🛡️",
+                    node: (
+                      <div className="flex items-center gap-1">
+                        <NumericInput value={stats.ballRecoveries} onChange={(v) => onUpdate({ ballRecoveries: v })} placeholder="Rec." className="w-14 text-right" />
+                        <span className="text-white/20 text-xs">|</span>
+                        <NumericInput value={stats.ballLosses} onChange={(v) => onUpdate({ ballLosses: v })} placeholder="Perda" className="w-14 text-right" />
+                      </div>
+                    ),
+                  },
+                ] : []),
                 ...(isGK ? [
                   { label: "Defesas", icon: "🧤", node: <NumericInput value={stats.saves} onChange={(v) => onUpdate({ saves: v })} placeholder="Total" className="w-16 text-right" /> },
                   { label: "Pên. Def.", icon: "🥅", node: <NumericInput value={stats.penaltiesSaved} onChange={(v) => onUpdate({ penaltiesSaved: v })} placeholder="—" className="w-16 text-right" /> },
