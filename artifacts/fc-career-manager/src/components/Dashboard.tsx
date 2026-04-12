@@ -35,7 +35,6 @@ import { syncSeasonFromDb, syncCareerFromDb } from "@/lib/dbSync";
 import {
   getMembers,
   addNotification,
-  getNotifications,
   getMemberCooldowns,
   setMemberCooldown,
   setPendingMeetingTrigger,
@@ -424,8 +423,6 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
 
     const playerPerf = buildPlayerPerformanceContext(activeSeasonId, currentAllPlayers, career.id);
     const squadOvrCtx = buildSquadOvrContext(currentAllPlayers, getAllPlayerOverrides(career.id));
-    const prevMatchCreatedAt = updatedMatches.slice(-2, -1)[0]?.createdAt ?? 0;
-
     const openaiKey = getOpenAIKey();
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (openaiKey) headers["x-openai-key"] = openaiKey;
@@ -437,7 +434,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
         body: JSON.stringify({
           context,
           members: eligibleMembers,
-          lastCheckedAt: prevMatchCreatedAt,
+          lastCheckedAt: 0,
           playerPerformance: playerPerf.length > 0 ? playerPerf : undefined,
           squadOvrContext: squadOvrCtx || undefined,
         }),
@@ -455,7 +452,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
           const member = members.find((m) => m.id === n.memberId);
           addToast({ type: "diretoria", title: member?.name ?? "Diretoria", preview: n.preview });
         }
-        setDiretoriaUnread(getNotifications(career.id).length);
+        setDiretoriaUnread(countUnreadDiretoria(career.id));
       }
 
       if (data.meetingTrigger) {
