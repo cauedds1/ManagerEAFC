@@ -529,10 +529,12 @@ interface FormData {
   transferType: "compra" | "venda" | "emprestimo";
   loanDirection: "entrada" | "saida";
   loanDuration: string;
+  playerMode: "search" | "create";
   playerName: string;
   playerPositionPtBr: PositionPtBr;
   playerAge: string;
   playerPhoto: string;
+  playerNationality: string;
   shirtNumber: string;
   playerOverall: string;
   fee: string;
@@ -549,10 +551,12 @@ const DEFAULT_FORM: FormData = {
   transferType: "compra",
   loanDirection: "entrada",
   loanDuration: "1 temporada",
+  playerMode: "search",
   playerName: "",
   playerPositionPtBr: "ATA",
   playerAge: "",
   playerPhoto: "",
+  playerNationality: "",
   shirtNumber: "",
   playerOverall: "",
   fee: "",
@@ -927,24 +931,78 @@ export function TransferenciasView({
 
             <div className="overflow-y-auto p-6 flex flex-col gap-5">
               <div>
-                <label className={labelClass}>Nome do jogador *</label>
-                <PlayerAutocomplete
-                  value={form.playerName}
-                  photo={form.playerPhoto}
-                  allPlayers={allPlayers}
-                  onChange={(v) => set("playerName", v)}
-                  onSelect={(p) => {
-                    setForm((f) => ({
-                      ...f,
-                      playerName: p.name,
-                      playerPhoto: p.photo,
-                      playerAge: p.age ? String(p.age) : f.playerAge,
-                      playerPositionPtBr: p.position,
-                      resolvedPlayerId: p.id,
-                    }));
-                  }}
-                  localOnly={isLoanSaida}
-                />
+                <div className="flex items-center justify-between mb-2">
+                  <label className={labelClass} style={{ marginBottom: 0 }}>Jogador *</label>
+                  <div className="flex rounded-lg overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.1)" }}>
+                    {(["search", "create"] as const).map((mode) => (
+                      <button
+                        key={mode}
+                        type="button"
+                        onClick={() => setForm((f) => ({ ...f, playerMode: mode, playerName: "", playerPhoto: "", playerNationality: "", resolvedPlayerId: null }))}
+                        className="px-2.5 py-1 text-[11px] font-semibold transition-all"
+                        style={{
+                          background: form.playerMode === mode ? "rgba(var(--club-primary-rgb),0.2)" : "rgba(255,255,255,0.04)",
+                          color: form.playerMode === mode ? "var(--club-primary)" : "rgba(255,255,255,0.35)",
+                        }}
+                      >
+                        {mode === "search" ? "🔍 Buscar" : "✏️ Criar"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {form.playerMode === "search" ? (
+                  <PlayerAutocomplete
+                    value={form.playerName}
+                    photo={form.playerPhoto}
+                    allPlayers={allPlayers}
+                    onChange={(v) => set("playerName", v)}
+                    onSelect={(p) => {
+                      setForm((f) => ({
+                        ...f,
+                        playerName: p.name,
+                        playerPhoto: p.photo,
+                        playerAge: p.age ? String(p.age) : f.playerAge,
+                        playerPositionPtBr: p.position,
+                        resolvedPlayerId: p.id,
+                      }));
+                    }}
+                    localOnly={isLoanSaida}
+                  />
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    <input
+                      type="text"
+                      autoFocus
+                      className={inputClass}
+                      value={form.playerName}
+                      onChange={(e) => set("playerName", e.target.value)}
+                      placeholder="Nome completo do jogador"
+                    />
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className={labelClass}>Nacionalidade</label>
+                        <input
+                          type="text"
+                          className={inputClass}
+                          value={form.playerNationality}
+                          onChange={(e) => set("playerNationality", e.target.value)}
+                          placeholder="Ex: Brasileiro"
+                        />
+                      </div>
+                      <div>
+                        <label className={labelClass}>Foto (URL, opcional)</label>
+                        <input
+                          type="url"
+                          className={inputClass}
+                          value={form.playerPhoto}
+                          onChange={(e) => set("playerPhoto", e.target.value)}
+                          placeholder="https://..."
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

@@ -1,8 +1,10 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
-import type { SquadResult, SquadPlayer, PositionPtBr } from "@/lib/squadCache";
-import { migratePositionOverride } from "@/lib/squadCache";
+import { createPortal } from "react-dom";
+import type { SquadResult, SquadPlayer, PositionPtBr, PositionGroup } from "@/lib/squadCache";
+import { migratePositionOverride, PT_BR_TO_POSITION } from "@/lib/squadCache";
 import type { PlayerOverride } from "@/types/playerStats";
 import { getAllPlayerOverrides } from "@/lib/playerStatsStorage";
+import { getCustomPlayers, addCustomPlayer, generateCustomPlayerId } from "@/lib/customPlayersStorage";
 import { FootballPitch, pickBestEleven } from "./FootballPitch";
 import { PlayerDetailPanel } from "./PlayerDetailPanel";
 import {
@@ -21,6 +23,26 @@ import {
   getFormationLabel,
   DEFAULT_FORMATION,
 } from "@/lib/formations";
+
+const ALL_POSITIONS: PositionPtBr[] = ["GOL", "DEF", "MID", "ATA"];
+
+interface AddPlayerForm {
+  name: string;
+  position: PositionPtBr;
+  age: string;
+  nationality: string;
+  photo: string;
+  overall: string;
+}
+
+const DEFAULT_ADD_FORM: AddPlayerForm = {
+  name: "",
+  position: "ATA",
+  age: "",
+  nationality: "",
+  photo: "",
+  overall: "",
+};
 
 const POS_STYLE: Record<PositionPtBr, { bg: string; color: string }> = {
   GOL: { bg: "rgba(245,158,11,0.18)",  color: "#f59e0b" },
@@ -192,6 +214,45 @@ export function ElencoView({
     () => getAllPlayerOverrides(careerId)
   );
 
+  const [customPlayers, setCustomPlayers] = useState<SquadPlayer[]>(() => getCustomPlayers(careerId));
+  const [showAddPlayer, setShowAddPlayer] = useState(false);
+  const [addForm, setAddForm] = useState<AddPlayerForm>(DEFAULT_ADD_FORM);
+
+  const mergedPlayers = useMemo<SquadPlayer[]>(
+    () => [...allPlayers, ...customPlayers],
+    [allPlayers, customPlayers]
+  );
+
+  const setAddField = <K extends keyof AddPlayerForm>(field: K, value: AddPlayerForm[K]) =>
+    setAddForm((f) => ({ ...f, [field]: value }));
+
+  const addFormValid = addForm.name.trim().length >= 2 && addForm.age.trim() !== "" && parseInt(addForm.age, 10) > 0;
+
+  const handleAddPlayer = () => {
+    if (!addFormValid) return;
+    const ovrVal = parseInt(addForm.overall, 10);
+    const player: SquadPlayer = {
+      id: generateCustomPlayerId(),
+      name: addForm.name.trim(),
+      age: parseInt(addForm.age, 10),
+      positionPtBr: addForm.position,
+      position: PT_BR_TO_POSITION[addForm.position] as PositionGroup,
+      photo: addForm.photo.trim(),
+      number: undefined,
+    };
+    addCustomPlayer(careerId, player);
+    const next = [...customPlayers, player];
+    setCustomPlayers(next);
+    if (ovrVal > 0 && !isNaN(ovrVal)) {
+      import("@/lib/playerStatsStorage").then(({ setPlayerOverride }) => {
+        setPlayerOverride(careerId, player.id, { overall: Math.max(1, Math.min(99, ovrVal)) });
+      });
+    }
+    setAddForm(DEFAULT_ADD_FORM);
+    setShowAddPlayer(false);
+    onOverridesUpdated?.();
+  };
+
   const [customLineup, setCustomLineupState] = useState<number[] | null>(
     () => getCustomLineup(careerId)
   );
@@ -228,14 +289,14 @@ export function ElencoView({
     onOverridesUpdated?.();
   }, [careerId, onOverridesUpdated]);
 
-  const defaultStarterIds = allPlayers.length > 0 ? pickBestEleven(allPlayers) : [];
+  const defaultStarterIds = mergedPlayers.length > 0 ? pickBestEleven(mergedPlayers) : [];
   const starterIds: number[] = customLineup ?? defaultStarterIds;
   const starterSet = new Set(starterIds);
   const starters = starterIds
-    .map((id) => allPlayers.find((p) => p.id === id))
+    .map((id) => mergedPlayers.find((p) => p.id === id))
     .filter((p): p is SquadPlayer => p != null);
 
-  const rawBench = allPlayers.filter((p) => !starterSet.has(p.id));
+  const rawBench = mergedPlayers.filter((p) => !starterSet.has(p.id));
   const bench: SquadPlayer[] = useMemo(() => {
     if (!benchOrderState) return rawBench;
     const benchMap = new Map(rawBench.map((p) => [p.id, p]));
@@ -250,12 +311,12 @@ export function ElencoView({
   const isCustom = customLineup !== null || benchOrderState !== null;
 
   const squadAvgOvr = useMemo(() => {
-    const ovrs = allPlayers
+    const ovrs = mergedPlayers
       .map((p) => overrides[p.id]?.overall)
       .filter((o): o is number => o != null && o > 0);
     if (ovrs.length === 0) return null;
     return Math.round(ovrs.reduce((a, b) => a + b, 0) / ovrs.length);
-  }, [allPlayers, overrides]);
+  }, [mergedPlayers, overrides]);
 
   const handleResetLineup = useCallback(() => {
     clearCustomLineup(careerId);
@@ -344,8 +405,8 @@ export function ElencoView({
               {sourceLabel}
             </span>
           )}
-          {allPlayers.length > 0 && !squadLoading && (
-            <span className="text-white/25 text-xs">{allPlayers.length} jogadores</span>
+          {mergedPlayers.length > 0 && !squadLoading && (
+            <span className="text-white/25 text-xs">{mergedPlayers.length} jogadores</span>
           )}
           {squadAvgOvr != null && !squadLoading && (
             <span
@@ -358,7 +419,18 @@ export function ElencoView({
           )}
         </div>
         <div className="flex items-center gap-3">
-          {allPlayers.length > 0 && !squadLoading && (
+          <button
+            onClick={() => setShowAddPlayer(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all duration-200 hover:opacity-90 active:scale-95"
+            style={{ background: "rgba(var(--club-primary-rgb),0.15)", color: "var(--club-primary)", border: "1px solid rgba(var(--club-primary-rgb),0.3)" }}
+            title="Adicionar jogador manualmente"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+            Adicionar Jogador
+          </button>
+          {mergedPlayers.length > 0 && !squadLoading && (
             <>
               {isCustom && (
                 <button
@@ -437,15 +509,22 @@ export function ElencoView({
             </button>
           </div>
         </div>
-      ) : allPlayers.length === 0 ? (
+      ) : mergedPlayers.length === 0 ? (
         <div className="px-4 sm:px-6 pb-6">
-          <div className="flex flex-col items-center justify-center py-16 rounded-2xl gap-3 glass w-full">
+          <div className="flex flex-col items-center justify-center py-16 rounded-2xl gap-4 glass w-full">
             <svg className="w-8 h-8 text-white/15" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
             <p className="text-white/30 text-sm text-center leading-relaxed">
               Nenhum jogador encontrado para este clube
             </p>
+            <button
+              onClick={() => setShowAddPlayer(true)}
+              className="px-5 py-2 rounded-xl text-xs font-bold text-white transition-all hover:opacity-90"
+              style={{ background: "var(--club-gradient)" }}
+            >
+              Adicionar jogador manualmente
+            </button>
           </div>
         </div>
       ) : tab === "pitch" ? (
@@ -554,7 +633,7 @@ export function ElencoView({
             {/* Left: pitch */}
             <div className="w-full lg:w-[420px] flex-shrink-0">
               <FootballPitch
-                players={allPlayers}
+                players={mergedPlayers}
                 starterIds={starterIds}
                 className="w-full"
                 onPlayerClick={handlePlayerClick}
@@ -658,6 +737,140 @@ export function ElencoView({
           onClose={() => setDetailPlayer(null)}
           onUpdated={refreshOverrides}
         />
+      )}
+
+      {showAddPlayer && createPortal(
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0"
+            style={{ background: "rgba(0,0,0,0.45)", backdropFilter: "blur(6px)" }}
+            onClick={() => { setShowAddPlayer(false); setAddForm(DEFAULT_ADD_FORM); }}
+          />
+          <div
+            className="relative w-full max-w-md rounded-3xl overflow-hidden flex flex-col"
+            style={{
+              background: "var(--app-bg-lighter)",
+              border: "1px solid var(--surface-border)",
+              boxShadow: "0 40px 80px rgba(0,0,0,0.5)",
+              maxHeight: "90vh",
+            }}
+          >
+            <div
+              className="flex items-center justify-between px-6 py-4 flex-shrink-0"
+              style={{ borderBottom: "1px solid var(--surface-border)" }}
+            >
+              <div>
+                <h3 className="text-white font-black text-lg">Adicionar Jogador</h3>
+                <p className="text-white/35 text-xs mt-0.5">Registre um jogador da base ou contratação não listada</p>
+              </div>
+              <button
+                onClick={() => { setShowAddPlayer(false); setAddForm(DEFAULT_ADD_FORM); }}
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-white/40 hover:text-white/80 hover:bg-white/10 transition-all"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="overflow-y-auto p-6 flex flex-col gap-5">
+              <div>
+                <label className="text-white/40 text-xs font-medium mb-1 block">Nome *</label>
+                <input
+                  type="text"
+                  autoFocus
+                  className="w-full px-3 py-2.5 rounded-xl text-white text-sm focus:outline-none glass placeholder:text-white/20"
+                  value={addForm.name}
+                  onChange={(e) => setAddField("name", e.target.value)}
+                  placeholder="Ex: João Silva"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-white/40 text-xs font-medium mb-1 block">Posição *</label>
+                  <select
+                    className="w-full px-3 py-2.5 rounded-xl text-white text-sm focus:outline-none glass cursor-pointer"
+                    style={{ appearance: "none" }}
+                    value={addForm.position}
+                    onChange={(e) => setAddField("position", e.target.value as PositionPtBr)}
+                  >
+                    {ALL_POSITIONS.map((p) => (
+                      <option key={p} value={p} style={{ background: "#1a1030" }}>{p}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-white/40 text-xs font-medium mb-1 block">Idade *</label>
+                  <input
+                    type="number"
+                    className="w-full px-3 py-2.5 rounded-xl text-white text-sm focus:outline-none glass placeholder:text-white/20"
+                    value={addForm.age}
+                    onChange={(e) => setAddField("age", e.target.value)}
+                    placeholder="Ex: 19"
+                    min={14}
+                    max={50}
+                  />
+                </div>
+
+                <div>
+                  <label className="text-white/40 text-xs font-medium mb-1 block">Overall (OVR)</label>
+                  <input
+                    type="number"
+                    className="w-full px-3 py-2.5 rounded-xl text-white text-sm focus:outline-none glass placeholder:text-white/20"
+                    value={addForm.overall}
+                    onChange={(e) => setAddField("overall", e.target.value)}
+                    placeholder="Ex: 72"
+                    min={1}
+                    max={99}
+                  />
+                </div>
+                <div>
+                  <label className="text-white/40 text-xs font-medium mb-1 block">Nacionalidade</label>
+                  <input
+                    type="text"
+                    className="w-full px-3 py-2.5 rounded-xl text-white text-sm focus:outline-none glass placeholder:text-white/20"
+                    value={addForm.nationality}
+                    onChange={(e) => setAddField("nationality", e.target.value)}
+                    placeholder="Ex: Brasileiro"
+                  />
+                </div>
+
+                <div className="col-span-2">
+                  <label className="text-white/40 text-xs font-medium mb-1 block">Foto (URL, opcional)</label>
+                  <input
+                    type="url"
+                    className="w-full px-3 py-2.5 rounded-xl text-white text-sm focus:outline-none glass placeholder:text-white/20"
+                    value={addForm.photo}
+                    onChange={(e) => setAddField("photo", e.target.value)}
+                    placeholder="https://..."
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div
+              className="flex gap-3 px-6 py-4 flex-shrink-0"
+              style={{ borderTop: "1px solid var(--surface-border)" }}
+            >
+              <button
+                onClick={() => { setShowAddPlayer(false); setAddForm(DEFAULT_ADD_FORM); }}
+                className="flex-1 py-3 rounded-xl text-sm font-semibold text-white/60 glass glass-hover transition-all"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleAddPlayer}
+                disabled={!addFormValid}
+                className="py-3 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+                style={{ flex: 2, background: "var(--club-gradient)" }}
+              >
+                Adicionar ao Elenco
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
     </div>
   );
