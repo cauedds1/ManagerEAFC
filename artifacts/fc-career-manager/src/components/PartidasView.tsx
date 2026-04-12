@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import type { MatchRecord, MatchResult } from "@/types/match";
-import { getMatchResult, RESULT_STYLE, LOCATION_ICONS, LOCATION_LABELS } from "@/types/match";
+import { getMatchResult, getMatchResultFull, RESULT_STYLE, LOCATION_ICONS, LOCATION_LABELS } from "@/types/match";
 import type { SquadPlayer } from "@/lib/squadCache";
 import { getCachedClubList } from "@/lib/clubListCache";
 import { searchStaticClubs } from "@/lib/staticClubList";
@@ -164,7 +164,7 @@ function MatchCard({
 }) {
   const [goalsOpen, setGoalsOpen] = useState(false);
 
-  const result = getMatchResult(match.myScore, match.opponentScore);
+  const result = getMatchResultFull(match.myScore, match.opponentScore, match.penaltyShootout);
   const rs = RESULT_STYLE[result];
   const motmSquadPlayer = match.motmPlayerId != null ? allPlayers.find((p) => p.id === match.motmPlayerId) : null;
   const motmDisplayName = motmSquadPlayer?.name ?? match.motmPlayerName ?? null;
@@ -336,20 +336,36 @@ function MatchCard({
         </div>
 
         {/* Score */}
-        <div className="flex items-center gap-3 flex-shrink-0 px-2">
-          <span
-            className="text-4xl font-black tabular-nums leading-none"
-            style={{ color: leftScoreColor }}
-          >
-            {leftScore}
-          </span>
-          <span className="text-xl font-light leading-none select-none" style={{ color: "rgba(255,255,255,0.12)" }}>:</span>
-          <span
-            className="text-4xl font-black tabular-nums leading-none"
-            style={{ color: rightScoreColor }}
-          >
-            {rightScore}
-          </span>
+        <div className="flex flex-col items-center gap-1 flex-shrink-0 px-2">
+          <div className="flex items-center gap-3">
+            <span
+              className="text-4xl font-black tabular-nums leading-none"
+              style={{ color: leftScoreColor }}
+            >
+              {leftScore}
+            </span>
+            <span className="text-xl font-light leading-none select-none" style={{ color: "rgba(255,255,255,0.12)" }}>:</span>
+            <span
+              className="text-4xl font-black tabular-nums leading-none"
+              style={{ color: rightScoreColor }}
+            >
+              {rightScore}
+            </span>
+          </div>
+          {match.penaltyShootout && (() => {
+            const leftPen = isHome ? match.penaltyShootout.myScore : match.penaltyShootout.opponentScore;
+            const rightPen = isHome ? match.penaltyShootout.opponentScore : match.penaltyShootout.myScore;
+            return (
+              <div className="flex items-center gap-1">
+                <span className="text-[10px] font-bold tabular-nums" style={{ color: "rgba(192,132,252,0.8)" }}>
+                  ({leftPen} × {rightPen} pen.)
+                </span>
+              </div>
+            );
+          })()}
+          {match.hasExtraTime && !match.penaltyShootout && (
+            <span className="text-[10px] font-semibold" style={{ color: "rgba(251,191,36,0.7)" }}>prorrogação</span>
+          )}
         </div>
 
         {/* Right team */}
@@ -500,7 +516,7 @@ function CompactMatchCard({
   onClick?: () => void;
   seasonId: string;
 }) {
-  const result = getMatchResult(match.myScore, match.opponentScore);
+  const result = getMatchResultFull(match.myScore, match.opponentScore, match.penaltyShootout);
   const rs = RESULT_STYLE[result];
   const oppLogoUrl = resolveOpponentLogo(match.opponent, match.opponentLogoUrl);
 
@@ -594,12 +610,24 @@ function CompactMatchCard({
           </span>
         </div>
 
-        <div className="flex flex-col items-center gap-1.5 flex-1">
+        <div className="flex flex-col items-center gap-1 flex-1">
           <span className="text-white font-black tabular-nums leading-none" style={{ fontSize: 22 }}>
             {leftScore}
             <span className="text-white/20 font-light" style={{ fontSize: 14, margin: "0 2px" }}>–</span>
             {rightScore}
           </span>
+          {match.penaltyShootout && (() => {
+            const leftPen = isHome ? match.penaltyShootout.myScore : match.penaltyShootout.opponentScore;
+            const rightPen = isHome ? match.penaltyShootout.opponentScore : match.penaltyShootout.myScore;
+            return (
+              <span className="font-bold tabular-nums" style={{ fontSize: 9, color: "rgba(192,132,252,0.85)" }}>
+                ({leftPen}×{rightPen} pen.)
+              </span>
+            );
+          })()}
+          {match.hasExtraTime && !match.penaltyShootout && (
+            <span className="font-semibold" style={{ fontSize: 9, color: "rgba(251,191,36,0.7)" }}>prorrogação</span>
+          )}
           <span
             className="px-2 py-0.5 rounded-full font-black"
             style={{ background: "rgba(0,0,0,0.3)", color: rs.color, fontSize: 9, letterSpacing: "0.05em" }}

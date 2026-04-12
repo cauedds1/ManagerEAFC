@@ -8,6 +8,8 @@ import type {
   MatchLocation,
   GoalEntry,
   OpponentGoalEntry,
+  PenaltyShootout,
+  PenaltyKick,
 } from "@/types/match";
 import { LOCATION_LABELS, LOCATION_ICONS, GOAL_TYPE_LABELS, GOAL_TYPE_ICONS, type GoalType } from "@/types/match";
 import {
@@ -58,6 +60,8 @@ interface MatchDraft {
   possessionPct: number;
   penaltyGoals: number;
   observations: string;
+  hasExtraTime: boolean;
+  penaltyShootout: PenaltyShootout | null;
 }
 
 function draftKey(careerId: string, seasonId: string) {
@@ -1235,6 +1239,8 @@ export function RegistrarPartidaModal({
         possessionPct: editMatch.matchStats?.possessionPct ?? 50,
         penaltyGoals: editMatch.matchStats?.penaltyGoals ?? 0,
         observations: editMatch.observations ?? "",
+        hasExtraTime: editMatch.hasExtraTime ?? false,
+        penaltyShootout: editMatch.penaltyShootout ?? null,
       };
     }
     const saved = loadSavedDraft(careerId, seasonId);
@@ -1260,6 +1266,8 @@ export function RegistrarPartidaModal({
       possessionPct: 50,
       penaltyGoals: 0,
       observations: "",
+      hasExtraTime: false,
+      penaltyShootout: null,
     };
   });
 
@@ -1382,6 +1390,8 @@ export function RegistrarPartidaModal({
         opponentGoals: draft.opponentGoals.length > 0 ? draft.opponentGoals : undefined,
         tablePositionBefore: draft.tablePosition ? Number(draft.tablePosition) : undefined,
         opponentLogoUrl: draft.opponentLogoUrl ?? undefined,
+        hasExtraTime: draft.hasExtraTime || undefined,
+        penaltyShootout: draft.penaltyShootout ?? undefined,
       };
       updateMatch(seasonId, updated);
       onMatchUpdated?.(updated);
@@ -1413,6 +1423,8 @@ export function RegistrarPartidaModal({
         tablePositionBefore: draft.tablePosition ? Number(draft.tablePosition) : undefined,
         opponentLogoUrl: draft.opponentLogoUrl ?? undefined,
         observations: draft.observations.trim() || undefined,
+        hasExtraTime: draft.hasExtraTime || undefined,
+        penaltyShootout: draft.penaltyShootout ?? undefined,
         createdAt: Date.now(),
       };
       addMatch(seasonId, match);
@@ -1538,6 +1550,167 @@ export function RegistrarPartidaModal({
               );
             })()}
           </div>
+
+          {/* Prorrogação + Pênaltis */}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                const next = !draft.hasExtraTime;
+                if (!next) {
+                  onChange({ hasExtraTime: false, penaltyShootout: null });
+                } else {
+                  onChange({ hasExtraTime: true });
+                }
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all duration-200 flex-shrink-0"
+              style={{
+                background: draft.hasExtraTime ? "rgba(251,191,36,0.18)" : "rgba(255,255,255,0.05)",
+                color: draft.hasExtraTime ? "#fbbf24" : "rgba(255,255,255,0.35)",
+                border: draft.hasExtraTime ? "1px solid rgba(251,191,36,0.35)" : "1px solid rgba(255,255,255,0.08)",
+              }}
+            >
+              ⏱ Prorrogação
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (draft.penaltyShootout) {
+                  onChange({ penaltyShootout: null });
+                } else {
+                  onChange({
+                    hasExtraTime: true,
+                    penaltyShootout: { myScore: 0, opponentScore: 0, kicks: [] },
+                  });
+                }
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all duration-200 flex-shrink-0"
+              style={{
+                background: draft.penaltyShootout ? "rgba(168,85,247,0.18)" : "rgba(255,255,255,0.05)",
+                color: draft.penaltyShootout ? "#c084fc" : "rgba(255,255,255,0.35)",
+                border: draft.penaltyShootout ? "1px solid rgba(168,85,247,0.35)" : "1px solid rgba(255,255,255,0.08)",
+              }}
+            >
+              🥅 Pênaltis
+            </button>
+            {draft.hasExtraTime && !draft.penaltyShootout && (
+              <span className="text-xs text-white/30 italic">+30 min para jogadores em campo</span>
+            )}
+          </div>
+
+          {/* Seção de pênaltis */}
+          {draft.penaltyShootout && (() => {
+            const ps = draft.penaltyShootout;
+            const allInField = [...draft.starterIds, ...draft.subIds].map((id) => allPlayers.find((p) => p.id === id)).filter((p): p is SquadPlayer => !!p);
+
+            const updatePs = (patch: Partial<PenaltyShootout>) =>
+              onChange({ penaltyShootout: { ...ps, ...patch } });
+
+            const addKick = () =>
+              updatePs({ kicks: [...ps.kicks, { scored: true }] });
+
+            const updateKick = (idx: number, patch: Partial<PenaltyKick>) =>
+              updatePs({ kicks: ps.kicks.map((k, i) => (i === idx ? { ...k, ...patch } : k)) });
+
+            const removeKick = (idx: number) =>
+              updatePs({ kicks: ps.kicks.filter((_, i) => i !== idx) });
+
+            return (
+              <div
+                className="rounded-2xl p-4 space-y-4"
+                style={{ background: "rgba(168,85,247,0.06)", border: "1px solid rgba(168,85,247,0.2)" }}
+              >
+                <p className="text-white/50 text-xs font-bold uppercase tracking-wider">🥅 Disputa de Pênaltis</p>
+
+                {/* Penalty score */}
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 flex flex-col items-center gap-1">
+                    <span className="text-white/30 text-xs text-center">{clubName}</span>
+                    <ScoreInput
+                      value={ps.myScore}
+                      onChange={(v) => updatePs({ myScore: v })}
+                    />
+                  </div>
+                  <span className="text-white/20 font-light flex-shrink-0" style={{ fontSize: 18 }}>×</span>
+                  <div className="flex-1 flex flex-col items-center gap-1">
+                    <span className="text-white/30 text-xs text-center">{draft.opponent || "Adversário"}</span>
+                    <ScoreInput
+                      value={ps.opponentScore}
+                      onChange={(v) => updatePs({ opponentScore: v })}
+                    />
+                  </div>
+                </div>
+
+                {/* Kicks list */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-white/30 text-xs font-medium uppercase tracking-wider">Cobradores ({ps.kicks.length})</span>
+                    <button
+                      type="button"
+                      onClick={addKick}
+                      className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors"
+                      style={{ background: "rgba(168,85,247,0.15)", color: "#c084fc" }}
+                    >
+                      + Cobrador
+                    </button>
+                  </div>
+                  {ps.kicks.length === 0 ? (
+                    <p className="text-white/15 text-xs text-center py-2">Nenhum cobrador adicionado</p>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {ps.kicks.map((kick, idx) => {
+                        const kickPlayer = kick.playerId != null ? allInField.find((p) => p.id === kick.playerId) : null;
+                        return (
+                          <div key={idx} className="flex items-center gap-2 rounded-xl px-2 py-1.5" style={{ background: "rgba(255,255,255,0.03)" }}>
+                            <span className="text-white/25 text-xs w-4 flex-shrink-0 tabular-nums">{idx + 1}.</span>
+                            {/* Player select */}
+                            <div className="flex-1 min-w-0">
+                              <select
+                                value={kick.playerId ?? ""}
+                                onChange={(e) => updateKick(idx, { playerId: e.target.value ? Number(e.target.value) : undefined })}
+                                className="w-full bg-transparent text-white text-xs focus:outline-none rounded-lg py-0.5"
+                                style={{ border: "1px solid rgba(255,255,255,0.1)", padding: "2px 6px", background: "rgba(255,255,255,0.05)", color: kick.playerId ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.3)" }}
+                              >
+                                <option value="" style={{ background: "#1a1a2e" }}>Selecionar jogador...</option>
+                                {allInField.map((p) => (
+                                  <option key={p.id} value={p.id} style={{ background: "#1a1a2e" }}>{p.name} ({p.positionPtBr})</option>
+                                ))}
+                              </select>
+                              {kickPlayer && (
+                                <span className="text-[10px] text-white/30 block mt-0.5 px-1">{kickPlayer.positionPtBr}</span>
+                              )}
+                            </div>
+                            {/* Scored/Missed toggle */}
+                            <button
+                              type="button"
+                              onClick={() => updateKick(idx, { scored: !kick.scored })}
+                              className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold flex-shrink-0 transition-all"
+                              style={{
+                                background: kick.scored ? "rgba(34,197,94,0.2)" : "rgba(239,68,68,0.2)",
+                                color: kick.scored ? "#4ade80" : "#f87171",
+                                border: kick.scored ? "1px solid rgba(34,197,94,0.35)" : "1px solid rgba(239,68,68,0.35)",
+                                minWidth: 70,
+                              }}
+                            >
+                              {kick.scored ? "✓ Gol" : "✗ Erro"}
+                            </button>
+                            {/* Remove */}
+                            <button
+                              type="button"
+                              onClick={() => removeKick(idx)}
+                              className="w-6 h-6 flex items-center justify-center text-white/20 hover:text-red-400 transition-colors flex-shrink-0"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Data + Local */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

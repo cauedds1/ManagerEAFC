@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import type { MatchRecord, PlayerMatchStats } from "@/types/match";
-import { getMatchResult, RESULT_STYLE, LOCATION_ICONS, LOCATION_LABELS, GOAL_TYPE_ICONS, GOAL_TYPE_LABELS } from "@/types/match";
+import { getMatchResult, getMatchResultFull, RESULT_STYLE, LOCATION_ICONS, LOCATION_LABELS, GOAL_TYPE_ICONS, GOAL_TYPE_LABELS } from "@/types/match";
 import type { SquadPlayer } from "@/lib/squadCache";
 import { getCachedClubList } from "@/lib/clubListCache";
 import { searchStaticClubs } from "@/lib/staticClubList";
@@ -478,7 +478,7 @@ export function MatchDetailPage({
     setIsEditModalOpen(false);
   };
 
-  const result = getMatchResult(match.myScore, match.opponentScore);
+  const result = getMatchResultFull(match.myScore, match.opponentScore, match.penaltyShootout);
   const rs = RESULT_STYLE[result];
   const isHome = match.location !== "fora";
   const oppLogo = resolveOpponentLogo(match.opponent, match.opponentLogoUrl);
@@ -769,6 +769,30 @@ export function MatchDetailPage({
               </span>
             </div>
 
+            {/* Extra time / penalty score */}
+            {match.hasExtraTime && !match.penaltyShootout && (
+              <span className="text-xs font-semibold" style={{ color: "rgba(251,191,36,0.75)" }}>após prorrogação</span>
+            )}
+            {match.penaltyShootout && (() => {
+              const leftPen = isHome ? match.penaltyShootout.myScore : match.penaltyShootout.opponentScore;
+              const rightPen = isHome ? match.penaltyShootout.opponentScore : match.penaltyShootout.myScore;
+              const penWon = leftPen > rightPen;
+              return (
+                <div className="flex flex-col items-center gap-0.5 mt-1">
+                  <span className="text-[10px] font-medium" style={{ color: "rgba(192,132,252,0.55)" }}>pênaltis</span>
+                  <span
+                    className="text-xl font-black tabular-nums leading-none"
+                    style={{ color: "rgba(192,132,252,0.9)", letterSpacing: "0.04em" }}
+                  >
+                    {leftPen} × {rightPen}
+                  </span>
+                  <span className="text-[10px] font-medium" style={{ color: penWon ? "rgba(52,211,153,0.7)" : "rgba(248,113,113,0.7)" }}>
+                    {penWon ? `${leftName} vence nos pênaltis` : `${rightName} vence nos pênaltis`}
+                  </span>
+                </div>
+              );
+            })()}
+
             {/* Goal scorers */}
             {(goalsByPlayer.length > 0 || (match.opponentGoals?.length ?? 0) > 0) && (
               <div className="flex flex-col items-center gap-0.5 mt-1">
@@ -1030,6 +1054,37 @@ export function MatchDetailPage({
 
         </div>
       </div>
+
+      {/* Penalty kicks detail */}
+      {match.penaltyShootout && match.penaltyShootout.kicks.length > 0 && (
+        <div
+          className="mx-4 mb-4 rounded-2xl p-4 space-y-3"
+          style={{ background: "rgba(168,85,247,0.06)", border: "1px solid rgba(168,85,247,0.18)" }}
+        >
+          <p className="text-[10px] font-bold tracking-widest uppercase" style={{ color: "rgba(192,132,252,0.6)" }}>🥅 Cobradores de Pênalti</p>
+          <div className="flex flex-col gap-1.5">
+            {match.penaltyShootout.kicks.map((kick, i) => {
+              const kPlayer = kick.playerId != null ? allPlayers.find((p) => p.id === kick.playerId) : null;
+              const kName = kPlayer ? kPlayer.name : "Jogador desconhecido";
+              return (
+                <div key={i} className="flex items-center gap-2">
+                  <span className="text-white/20 text-xs w-4 flex-shrink-0 tabular-nums">{i + 1}.</span>
+                  <span className="text-white/70 text-xs flex-1 font-medium">{kName}</span>
+                  <span
+                    className="text-xs font-bold px-2 py-0.5 rounded-lg"
+                    style={{
+                      background: kick.scored ? "rgba(34,197,94,0.18)" : "rgba(239,68,68,0.18)",
+                      color: kick.scored ? "#4ade80" : "#f87171",
+                    }}
+                  >
+                    {kick.scored ? "✓ Gol" : "✗ Erro"}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Observations */}
       {match.observations && (

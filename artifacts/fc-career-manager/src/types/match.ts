@@ -95,6 +95,17 @@ export interface MatchStats {
   penaltyGoals?: number;
 }
 
+export interface PenaltyKick {
+  playerId?: number;
+  scored: boolean;
+}
+
+export interface PenaltyShootout {
+  myScore: number;
+  opponentScore: number;
+  kicks: PenaltyKick[];
+}
+
 export interface MatchRecord {
   id: string;
   careerId: string;
@@ -116,6 +127,8 @@ export interface MatchRecord {
   tablePositionBefore?: number;
   opponentLogoUrl?: string;
   observations?: string;
+  hasExtraTime?: boolean;
+  penaltyShootout?: PenaltyShootout;
   createdAt: number;
 }
 
@@ -123,6 +136,18 @@ export function getMatchResult(myScore: number, opponentScore: number): MatchRes
   if (myScore > opponentScore) return "vitoria";
   if (myScore < opponentScore) return "derrota";
   return "empate";
+}
+
+export function getMatchResultFull(
+  myScore: number,
+  opponentScore: number,
+  penaltyShootout?: PenaltyShootout,
+): MatchResult {
+  if (penaltyShootout) {
+    if (penaltyShootout.myScore > penaltyShootout.opponentScore) return "vitoria";
+    if (penaltyShootout.myScore < penaltyShootout.opponentScore) return "derrota";
+  }
+  return getMatchResult(myScore, opponentScore);
 }
 
 export const RESULT_STYLE: Record<MatchResult, { label: string; bg: string; color: string; border: string }> = {
