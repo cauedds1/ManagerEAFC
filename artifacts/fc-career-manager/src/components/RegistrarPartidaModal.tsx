@@ -721,6 +721,7 @@ function SearchablePlayerSelect({
   const [dropdownRect, setDropdownRect] = useState<{ top: number; left: number; width: number } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const selectedPlayer = selectedId != null
     ? (allUnused.find((p) => p.id === selectedId) ?? allParticipants.find((p) => p.id === selectedId))
@@ -740,7 +741,10 @@ function SearchablePlayerSelect({
   useEffect(() => {
     if (!open) return;
     const handler = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false);
+      if (
+        containerRef.current && !containerRef.current.contains(e.target as Node) &&
+        dropdownRef.current && !dropdownRef.current.contains(e.target as Node)
+      ) setOpen(false);
     };
     document.addEventListener("mousedown", handler);
     document.addEventListener("scroll", updateRect, true);
@@ -797,6 +801,7 @@ function SearchablePlayerSelect({
   const dropdownPortal = open && dropdownRect
     ? createPortal(
         <div
+          ref={dropdownRef}
           style={{
             position: "fixed",
             top: dropdownRect.top,
