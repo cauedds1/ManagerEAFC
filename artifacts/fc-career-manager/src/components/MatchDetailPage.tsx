@@ -7,6 +7,7 @@ import { getCachedClubList } from "@/lib/clubListCache";
 import { searchStaticClubs } from "@/lib/staticClubList";
 import { FootballPitch, pickBestEleven } from "./FootballPitch";
 import { RegistrarPartidaModal } from "./RegistrarPartidaModal";
+import { isRival } from "@/lib/rivalsStorage";
 
 function resolveOpponentLogo(name: string, stored?: string): string | undefined {
   if (stored) return stored;
@@ -468,6 +469,7 @@ export function MatchDetailPage({
   const [match, setMatch] = useState<MatchRecord>(initialMatch);
   const [selectedPlayer, setSelectedPlayer] = useState<SquadPlayer | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [rivalCrestFlipped, setRivalCrestFlipped] = useState(false);
 
   const handleMatchUpdated = (updated: MatchRecord) => {
     setMatch(updated);
@@ -479,6 +481,16 @@ export function MatchDetailPage({
   const rs = RESULT_STYLE[result];
   const isHome = match.location !== "fora";
   const oppLogo = resolveOpponentLogo(match.opponent, match.opponentLogoUrl);
+
+  const isRivalWin  = result === "vitoria" && isRival(seasonId ?? "", match.opponent);
+  const isRivalLoss = result === "derrota" && isRival(seasonId ?? "", match.opponent);
+
+  useEffect(() => {
+    if (isRivalWin) {
+      const t = setTimeout(() => setRivalCrestFlipped(true), 300);
+      return () => clearTimeout(t);
+    }
+  }, [isRivalWin]);
 
   const myScore = match.myScore;
   const oppScore = match.opponentScore;
@@ -494,12 +506,15 @@ export function MatchDetailPage({
   const rightWon = rightScore > leftScore;
   const isDraw   = leftScore === rightScore;
 
-  const glowColor =
-    result === "vitoria"
-      ? "rgba(16,185,129,0.14)"
-      : result === "derrota"
-      ? "rgba(239,68,68,0.14)"
-      : "rgba(148,163,184,0.06)";
+  const glowColor = isRivalWin
+    ? "rgba(234,88,12,0.22)"
+    : isRivalLoss
+      ? "rgba(88,0,0,0.40)"
+      : result === "vitoria"
+        ? "rgba(16,185,129,0.14)"
+        : result === "derrota"
+          ? "rgba(239,68,68,0.14)"
+          : "rgba(148,163,184,0.06)";
 
   // Gradiente vem do lado do meu escudo (esquerda=casa, direita=fora)
   const gradientAngle = isHome ? 135 : 225;
@@ -650,7 +665,11 @@ export function MatchDetailPage({
             className="rounded-2xl overflow-hidden"
             style={{
               background: `linear-gradient(${gradientAngle}deg, ${glowColor} 0%, rgba(255,255,255,0.02) 55%)`,
-              border: "1px solid rgba(255,255,255,0.08)",
+              border: isRivalWin
+                ? "1px solid rgba(249,115,22,0.50)"
+                : isRivalLoss
+                  ? "1px solid rgba(127,29,29,0.65)"
+                  : "1px solid rgba(255,255,255,0.08)",
             }}
           >
         {/* Meta */}
@@ -678,11 +697,35 @@ export function MatchDetailPage({
           </div>
         </div>
 
+        {/* Clássico banner */}
+        {(isRivalWin || isRivalLoss) && (
+          <div style={{
+            textAlign: "center",
+            padding: "7px 20px",
+            fontSize: 11,
+            fontVariant: "small-caps",
+            letterSpacing: "0.09em",
+            fontWeight: 700,
+            background: isRivalWin ? "rgba(154,52,18,0.30)" : "rgba(40,0,0,0.45)",
+            color: isRivalWin ? "#fb923c" : "#fca5a5",
+            borderTop: isRivalWin ? "1px solid rgba(249,115,22,0.2)" : "1px solid rgba(127,29,29,0.3)",
+            borderBottom: isRivalWin ? "1px solid rgba(249,115,22,0.2)" : "1px solid rgba(127,29,29,0.3)",
+          }}>
+            {isRivalWin ? "⚔️ CLÁSSICO · VITÓRIA SOBRE RIVAL" : "💀 DERROTA NO CLÁSSICO"}
+          </div>
+        )}
+
         {/* Score */}
         <div className="flex items-center gap-4 px-5 py-5">
           {/* Left team */}
           <div className="flex flex-col items-center gap-2 flex-1 min-w-0">
-            <ClubLogo logoUrl={leftLogoUrl} name={leftName} size={72} />
+            <div style={{
+              transform: isRivalWin && !isHome ? (rivalCrestFlipped ? "rotate(180deg)" : "rotate(0deg)") : "none",
+              transition: isRivalWin && !isHome ? "transform 0.6s cubic-bezier(0.34,1.56,0.64,1)" : undefined,
+              opacity: isRivalLoss && isHome ? 0.4 : 1,
+            }}>
+              <ClubLogo logoUrl={leftLogoUrl} name={leftName} size={72} />
+            </div>
             <span className="text-white/70 text-sm font-bold text-center leading-tight">{leftName}</span>
           </div>
 
@@ -691,7 +734,13 @@ export function MatchDetailPage({
               <span
                 className="text-5xl font-black tabular-nums leading-none"
                 style={{
-                  color: leftWon ? rs.color : isDraw ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.2)",
+                  color: isDraw
+                    ? "rgba(255,255,255,0.85)"
+                    : isRivalWin
+                      ? (isHome ? "#f97316" : "rgba(255,255,255,0.15)")
+                      : isRivalLoss
+                        ? (isHome ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.85)")
+                        : leftWon ? rs.color : "rgba(255,255,255,0.2)",
                 }}
               >
                 {leftScore}
@@ -700,7 +749,13 @@ export function MatchDetailPage({
               <span
                 className="text-5xl font-black tabular-nums leading-none"
                 style={{
-                  color: rightWon ? rs.color : isDraw ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.2)",
+                  color: isDraw
+                    ? "rgba(255,255,255,0.85)"
+                    : isRivalWin
+                      ? (!isHome ? "#f97316" : "rgba(255,255,255,0.15)")
+                      : isRivalLoss
+                        ? (!isHome ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.85)")
+                        : rightWon ? rs.color : "rgba(255,255,255,0.2)",
                 }}
               >
                 {rightScore}
@@ -726,7 +781,13 @@ export function MatchDetailPage({
 
           {/* Right team */}
           <div className="flex flex-col items-center gap-2 flex-1 min-w-0">
-            <ClubLogo logoUrl={rightLogoUrl} name={rightName} size={72} />
+            <div style={{
+              transform: isRivalWin && isHome ? (rivalCrestFlipped ? "rotate(180deg)" : "rotate(0deg)") : "none",
+              transition: isRivalWin && isHome ? "transform 0.6s cubic-bezier(0.34,1.56,0.64,1)" : undefined,
+              opacity: isRivalLoss && !isHome ? 0.4 : 1,
+            }}>
+              <ClubLogo logoUrl={rightLogoUrl} name={rightName} size={72} />
+            </div>
             <span className="text-white/70 text-sm font-bold text-center leading-tight">{rightName}</span>
           </div>
         </div>

@@ -6,6 +6,7 @@ import { getCachedClubList } from "@/lib/clubListCache";
 import { searchStaticClubs } from "@/lib/staticClubList";
 import { RegistrarPartidaModal, hasSavedDraft, discardSavedDraft } from "./RegistrarPartidaModal";
 import { MatchDetailPage } from "./MatchDetailPage";
+import { isRival } from "@/lib/rivalsStorage";
 
 function resolveOpponentLogo(name: string, stored?: string): string | undefined {
   if (stored) return stored;
@@ -58,11 +59,15 @@ function ClubCrest({
   name,
   size = 52,
   themed = false,
+  flipped = false,
+  dimmed = false,
 }: {
   logoUrl?: string | null;
   name: string;
   size?: number;
   themed?: boolean;
+  flipped?: boolean;
+  dimmed?: boolean;
 }) {
   const [imgFailed, setImgFailed] = useState(false);
 
@@ -72,6 +77,11 @@ function ClubCrest({
     .slice(0, 2)
     .map((w) => w[0].toUpperCase())
     .join("");
+
+  const extraStyle: React.CSSProperties = {
+    ...(flipped && { transform: "rotate(180deg)" }),
+    ...(dimmed && { opacity: 0.4 }),
+  };
 
   const fallback = (
     <div
@@ -89,6 +99,7 @@ function ClubCrest({
         color: themed ? "var(--club-primary)" : "rgba(255,255,255,0.55)",
         letterSpacing: "-0.5px",
         flexShrink: 0,
+        ...extraStyle,
       }}
     >
       {initials}
@@ -106,15 +117,19 @@ function ClubCrest({
       width={size}
       height={size}
       className="object-contain drop-shadow-md"
-      style={{ width: size, height: size, flexShrink: 0 }}
+      style={{ width: size, height: size, flexShrink: 0, ...extraStyle }}
       onError={() => setImgFailed(true)}
     />
   );
 }
 
-function MiniCrest({ logoUrl, name, size = 32, themed = false }: { logoUrl?: string | null; name: string; size?: number; themed?: boolean }) {
+function MiniCrest({ logoUrl, name, size = 32, themed = false, flipped = false, dimmed = false }: { logoUrl?: string | null; name: string; size?: number; themed?: boolean; flipped?: boolean; dimmed?: boolean }) {
   const [failed, setFailed] = useState(false);
   const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join("");
+  const extraStyle: React.CSSProperties = {
+    ...(flipped && { transform: "rotate(180deg)" }),
+    ...(dimmed && { opacity: 0.4 }),
+  };
   if (!logoUrl || failed) {
     return (
       <div style={{
@@ -124,10 +139,11 @@ function MiniCrest({ logoUrl, name, size = 32, themed = false }: { logoUrl?: str
         display: "flex", alignItems: "center", justifyContent: "center",
         fontSize: size * 0.36, fontWeight: 900,
         color: themed ? "var(--club-primary)" : "rgba(255,255,255,0.5)",
+        ...extraStyle,
       }}>{initials}</div>
     );
   }
-  return <img src={logoUrl} alt={name} width={size} height={size} style={{ width: size, height: size, objectFit: "contain", flexShrink: 0 }} onError={() => setFailed(true)} />;
+  return <img src={logoUrl} alt={name} width={size} height={size} style={{ width: size, height: size, objectFit: "contain", flexShrink: 0, ...extraStyle }} onError={() => setFailed(true)} />;
 }
 
 function MatchCard({
@@ -136,12 +152,14 @@ function MatchCard({
   clubLogoUrl,
   allPlayers,
   onClick,
+  seasonId,
 }: {
   match: MatchRecord;
   clubName: string;
   clubLogoUrl?: string | null;
   allPlayers: SquadPlayer[];
   onClick?: () => void;
+  seasonId: string;
 }) {
   const [goalsOpen, setGoalsOpen] = useState(false);
 
@@ -151,6 +169,9 @@ function MatchCard({
   const motmDisplayName = motmSquadPlayer?.name ?? match.motmPlayerName ?? null;
   const isHome = match.location !== "fora";
   const oppResolvedLogo = resolveOpponentLogo(match.opponent, match.opponentLogoUrl);
+
+  const isRivalWin  = result === "vitoria" && isRival(seasonId, match.opponent);
+  const isRivalLoss = result === "derrota" && isRival(seasonId, match.opponent);
 
   const leftLogo   = isHome ? clubLogoUrl    : oppResolvedLogo;
   const leftName   = isHome ? clubName       : match.opponent;
@@ -206,21 +227,49 @@ function MatchCard({
   const rightWon = rightScore > leftScore;
   const isDraw   = leftScore === rightScore;
 
-  const glowColor =
-    result === "vitoria" ? "rgba(16,185,129,0.22)"
-    : result === "derrota" ? "rgba(239,68,68,0.22)"
-    : "rgba(200,210,220,0.10)";
+  const glowColor = isRivalWin
+    ? "rgba(234,88,12,0.26)"
+    : isRivalLoss
+      ? "rgba(88,0,0,0.40)"
+      : result === "vitoria" ? "rgba(16,185,129,0.22)"
+        : result === "derrota" ? "rgba(239,68,68,0.22)"
+        : "rgba(200,210,220,0.10)";
 
-  const borderColor =
-    result === "vitoria" ? "rgba(52,211,153,0.35)"
-    : result === "derrota" ? "rgba(248,113,113,0.35)"
-    : "rgba(148,163,184,0.20)";
+  const borderColor = isRivalWin
+    ? "rgba(249,115,22,0.60)"
+    : isRivalLoss
+      ? "rgba(127,29,29,0.65)"
+      : result === "vitoria" ? "rgba(52,211,153,0.35)"
+        : result === "derrota" ? "rgba(248,113,113,0.35)"
+        : "rgba(148,163,184,0.20)";
+
+  const cardBg = isRivalWin
+    ? `linear-gradient(${isHome ? 135 : 225}deg, rgba(154,52,18,0.30) 0%, rgba(234,88,12,0.08) 55%, rgba(0,0,0,0.18) 100%)`
+    : isRivalLoss
+      ? `linear-gradient(${isHome ? 135 : 225}deg, rgba(40,0,0,0.55) 0%, rgba(88,0,0,0.20) 60%, rgba(0,0,0,0.25) 100%)`
+      : `linear-gradient(${isHome ? 135 : 225}deg, ${glowColor} 0%, rgba(255,255,255,0.025) 50%)`;
+
+  const leftScoreColor = isDraw
+    ? "rgba(255,255,255,0.85)"
+    : isRivalWin
+      ? (isHome ? "#f97316" : "rgba(255,255,255,0.15)")
+      : isRivalLoss
+        ? (isHome ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.85)")
+        : leftWon ? rs.color : "rgba(255,255,255,0.2)";
+
+  const rightScoreColor = isDraw
+    ? "rgba(255,255,255,0.85)"
+    : isRivalWin
+      ? (!isHome ? "#f97316" : "rgba(255,255,255,0.15)")
+      : isRivalLoss
+        ? (!isHome ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.85)")
+        : rightWon ? rs.color : "rgba(255,255,255,0.2)";
 
   return (
     <div
       className="rounded-2xl overflow-hidden"
       style={{
-        background: `linear-gradient(${isHome ? 135 : 225}deg, ${glowColor} 0%, rgba(255,255,255,0.025) 50%)`,
+        background: cardBg,
         border: `1px solid ${borderColor}`,
         cursor: onClick ? "pointer" : "default",
       }}
@@ -243,6 +292,22 @@ function MatchCard({
           {match.tablePositionBefore != null && (
             <span className="text-white/20 text-xs flex-shrink-0">· #{match.tablePositionBefore}</span>
           )}
+          {isRivalWin && (
+            <span
+              className="px-2 py-0.5 rounded-full text-[10px] font-black flex-shrink-0"
+              style={{ background: "rgba(154,52,18,0.35)", color: "#fb923c", border: "1px solid rgba(249,115,22,0.4)" }}
+            >
+              ⚔️ CLÁSSICO
+            </span>
+          )}
+          {isRivalLoss && (
+            <span
+              className="px-2 py-0.5 rounded-full text-[10px] font-black flex-shrink-0"
+              style={{ background: "rgba(40,0,0,0.5)", color: "#fca5a5", border: "1px solid rgba(127,29,29,0.5)" }}
+            >
+              💀 CLÁSSICO
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
           {dateStr && <span className="text-white/25 text-xs">{dateStr}</span>}
@@ -259,7 +324,11 @@ function MatchCard({
       <div className="flex items-center px-4 py-4 gap-2">
         {/* Left team */}
         <div className="flex flex-col items-center gap-2 flex-1 min-w-0">
-          <ClubCrest logoUrl={leftLogo} name={leftName} size={48} themed={leftThemed} />
+          <ClubCrest
+            logoUrl={leftLogo} name={leftName} size={48} themed={leftThemed}
+            flipped={isRivalWin && !isHome}
+            dimmed={isRivalLoss && isHome}
+          />
           <span className="text-white/60 text-xs font-semibold text-center w-full leading-tight line-clamp-1">
             {leftName}
           </span>
@@ -269,18 +338,14 @@ function MatchCard({
         <div className="flex items-center gap-3 flex-shrink-0 px-2">
           <span
             className="text-4xl font-black tabular-nums leading-none"
-            style={{
-              color: leftWon ? rs.color : isDraw ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.2)",
-            }}
+            style={{ color: leftScoreColor }}
           >
             {leftScore}
           </span>
           <span className="text-xl font-light leading-none select-none" style={{ color: "rgba(255,255,255,0.12)" }}>:</span>
           <span
             className="text-4xl font-black tabular-nums leading-none"
-            style={{
-              color: rightWon ? rs.color : isDraw ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.2)",
-            }}
+            style={{ color: rightScoreColor }}
           >
             {rightScore}
           </span>
@@ -288,7 +353,11 @@ function MatchCard({
 
         {/* Right team */}
         <div className="flex flex-col items-center gap-2 flex-1 min-w-0">
-          <ClubCrest logoUrl={rightLogo} name={rightName} size={48} themed={rightThemed} />
+          <ClubCrest
+            logoUrl={rightLogo} name={rightName} size={48} themed={rightThemed}
+            flipped={isRivalWin && isHome}
+            dimmed={isRivalLoss && !isHome}
+          />
           <span className="text-white/60 text-xs font-semibold text-center w-full leading-tight line-clamp-1">
             {rightName}
           </span>
@@ -422,11 +491,13 @@ function CompactMatchCard({
   clubName,
   clubLogoUrl,
   onClick,
+  seasonId,
 }: {
   match: MatchRecord;
   clubName: string;
   clubLogoUrl?: string | null;
   onClick?: () => void;
+  seasonId: string;
 }) {
   const result = getMatchResult(match.myScore, match.opponentScore);
   const rs = RESULT_STYLE[result];
@@ -440,6 +511,9 @@ function CompactMatchCard({
   const shortOpp = match.opponent.length > 14 ? match.opponent.split(" ").slice(0, 2).join(" ") : match.opponent;
   const shortClub = clubName.length > 14 ? clubName.split(" ").slice(0, 2).join(" ") : clubName;
 
+  const isRivalWin  = result === "vitoria" && isRival(seasonId, match.opponent);
+  const isRivalLoss = result === "derrota" && isRival(seasonId, match.opponent);
+
   const leftLogo   = isHome ? clubLogoUrl : oppLogoUrl;
   const leftName   = isHome ? shortClub : shortOpp;
   const leftThemed = isHome;
@@ -449,15 +523,41 @@ function CompactMatchCard({
   const rightThemed = !isHome;
   const rightScore  = isHome ? match.opponentScore : match.myScore;
 
+  const cardBorderLeft = isRivalWin
+    ? "3px solid #f97316"
+    : isRivalLoss
+      ? "3px solid rgba(127,29,29,0.9)"
+      : `3px solid ${rs.color}`;
+
+  const cardBorderRest = isRivalWin
+    ? "1px solid rgba(249,115,22,0.30)"
+    : isRivalLoss
+      ? "1px solid rgba(127,29,29,0.45)"
+      : `1px solid ${rs.border}`;
+
+  const cardBg = isRivalWin
+    ? "linear-gradient(160deg, rgba(154,52,18,0.30) 0%, rgba(0,0,0,0.18) 100%)"
+    : isRivalLoss
+      ? "linear-gradient(160deg, rgba(40,0,0,0.55) 0%, rgba(0,0,0,0.25) 100%)"
+      : `linear-gradient(160deg, ${rs.bg} 0%, rgba(0,0,0,0.18) 100%)`;
+
+  const tournamentColor = isRivalWin
+    ? "#fb923c"
+    : isRivalLoss
+      ? "rgba(252,165,165,0.6)"
+      : rs.color;
+
+  const tournamentPrefix = isRivalWin ? "⚔️ " : isRivalLoss ? "💀 " : "";
+
   return (
     <div
       className="rounded-2xl flex flex-col overflow-hidden cursor-pointer hover:scale-[1.01] active:scale-[0.99] transition-transform duration-150"
       style={{
-        borderTop: `1px solid ${rs.border}`,
-        borderRight: `1px solid ${rs.border}`,
-        borderBottom: `1px solid ${rs.border}`,
-        borderLeft: `3px solid ${rs.color}`,
-        background: `linear-gradient(160deg, ${rs.bg} 0%, rgba(0,0,0,0.18) 100%)`,
+        borderTop: cardBorderRest,
+        borderRight: cardBorderRest,
+        borderBottom: cardBorderRest,
+        borderLeft: cardBorderLeft,
+        background: cardBg,
       }}
       onClick={onClick}
     >
@@ -468,9 +568,9 @@ function CompactMatchCard({
       >
         <span
           className="text-xs font-bold leading-tight truncate"
-          style={{ color: rs.color, flex: 1, minWidth: 0 }}
+          style={{ color: tournamentColor, flex: 1, minWidth: 0 }}
         >
-          {match.tournament || "Amistoso"}
+          {tournamentPrefix}{match.tournament || "Amistoso"}
         </span>
         {dateStr && (
           <span className="text-white/35 text-xs flex-shrink-0 font-medium tabular-nums">{dateStr}</span>
@@ -480,7 +580,11 @@ function CompactMatchCard({
       {/* Middle: crests + score */}
       <div className="flex items-center justify-between px-3 py-3.5 gap-1">
         <div className="flex flex-col items-center gap-1.5" style={{ width: 48 }}>
-          <MiniCrest logoUrl={leftLogo} name={leftName} size={34} themed={leftThemed} />
+          <MiniCrest
+            logoUrl={leftLogo} name={leftName} size={34} themed={leftThemed}
+            flipped={isRivalWin && !isHome}
+            dimmed={isRivalLoss && isHome}
+          />
           <span
             className="text-white/40 text-center leading-tight w-full"
             style={{ fontSize: 9, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
@@ -504,7 +608,11 @@ function CompactMatchCard({
         </div>
 
         <div className="flex flex-col items-center gap-1.5" style={{ width: 48 }}>
-          <MiniCrest logoUrl={rightLogo} name={rightName} size={34} themed={rightThemed} />
+          <MiniCrest
+            logoUrl={rightLogo} name={rightName} size={34} themed={rightThemed}
+            flipped={isRivalWin && isHome}
+            dimmed={isRivalLoss && !isHome}
+          />
           <span
             className="text-white/40 text-center leading-tight w-full"
             style={{ fontSize: 9, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
@@ -747,6 +855,7 @@ export function PartidasView({ careerId, seasonId, season, clubName, clubLogoUrl
                     clubLogoUrl={clubLogoUrl}
                     allPlayers={allPlayers}
                     onClick={() => setSelectedMatch(m)}
+                    seasonId={seasonId}
                   />
                 ))
               )}
@@ -763,6 +872,7 @@ export function PartidasView({ careerId, seasonId, season, clubName, clubLogoUrl
                     clubName={clubName}
                     clubLogoUrl={clubLogoUrl}
                     onClick={() => setSelectedMatch(m)}
+                    seasonId={seasonId}
                   />
                 ))
               )}
