@@ -132,6 +132,14 @@ interface AiPreview {
   }>;
 }
 
+interface BgGenParams {
+  description: string;
+  source?: string;
+  category?: string;
+  imageUrl?: string;
+  customPortal?: { id: string; name: string; description?: string; tone?: string };
+}
+
 function SourceButton({
   label,
   active,
@@ -190,6 +198,7 @@ function AddPostModal({
   customPortals,
   onClose,
   onSave,
+  onGenerateBackground,
 }: {
   career: Career;
   playerContextStr?: string;
@@ -200,15 +209,13 @@ function AddPostModal({
   customPortals?: CustomPortal[];
   onClose: () => void;
   onSave: (post: NewsPost) => void;
+  onGenerateBackground: (params: BgGenParams) => void;
 }) {
   const [mode, setMode] = useState<AddMode>("auto");
 
   const [aiDesc, setAiDesc] = useState("");
   const [aiSource, setAiSource] = useState<string>("auto");
   const [aiCategory, setAiCategory] = useState<NewsCategory | "auto">("auto");
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [aiPreview, setAiPreview] = useState<AiPreview | null>(null);
-  const [aiError, setAiError] = useState<string | null>(null);
 
   const [manSource, setManSource] = useState<NewsSource>("fanpage");
   const [manCategory, setManCategory] = useState<NewsCategory>("geral");
@@ -246,108 +253,21 @@ function AddPostModal({
     ? customPortals?.find((p) => p.id === aiSource)
     : undefined;
 
-  const handleGenerate = async () => {
+  const handleBgGenerate = () => {
     if (!aiDesc.trim()) return;
-    setIsGenerating(true);
-    setAiError(null);
-    setAiPreview(null);
-    try {
-      const userKey = getOpenAIKey();
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (userKey) headers["x-openai-key"] = userKey;
-
-      const recentPostsContext = recentPosts && recentPosts.length > 0
-        ? recentPosts.slice(0, 6).map((p) => ({
-            title: p.title,
-            category: p.category,
-            headline: p.content.split("\n").find((l) => l.trim().length > 10)?.trim().slice(0, 120) ?? p.content.slice(0, 120),
-          }))
-        : undefined;
-
-      const isCustom = !!selectedCustomPortal;
-
-      const res = await fetch("/api/noticias/generate", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          description: aiDesc.trim(),
-          clubName: career.clubName,
-          season: career.season,
-          source: !isCustom && aiSource !== "auto" ? aiSource : undefined,
-          category: aiCategory !== "auto" ? aiCategory : undefined,
-          clubLeague: career.clubLeague || undefined,
-          clubTitles: career.clubTitles?.length ? career.clubTitles : undefined,
-          clubDescription: career.clubDescription || undefined,
-          projeto: career.projeto || undefined,
-          playersContext: playerContextStr || undefined,
-          squadOvrContext: squadOvrContext || undefined,
-          teamFormContext: teamFormContext || undefined,
-          historicalContext: historicalContext || undefined,
-          recentPostsContext: recentPostsContext || undefined,
-          customPortal: isCustom ? {
-            id: selectedCustomPortal.id,
-            name: selectedCustomPortal.name,
-            description: selectedCustomPortal.description,
-            tone: selectedCustomPortal.tone,
-          } : undefined,
-        }),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: "Erro desconhecido" }));
-        setAiError((err as { error?: string }).error ?? "Erro ao gerar notícia");
-        return;
-      }
-      const data = (await res.json()) as AiPreview;
-      setAiPreview(data);
-    } catch (e) {
-      setAiError("Falha na conexão com o servidor");
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
-  const handlePublishAi = () => {
-    if (!aiPreview) return;
-    const post: NewsPost = {
-      id: generatePostId(),
-      careerId: career.id,
-      source: (aiPreview.source as NewsSource) ?? "fanpage",
-      sourceHandle: aiPreview.sourceHandle,
-      sourceName: aiPreview.sourceName,
-      ...(aiPreview.title?.trim() ? { title: aiPreview.title.trim() } : {}),
-      content: aiPreview.content,
-      ...(imageObjectPath ? { imageUrl: imageObjectPath } : {}),
-      ...(selectedCustomPortal ? { customPortalId: selectedCustomPortal.id } : {}),
-      likes: aiPreview.likes,
-      commentsCount: aiPreview.commentsCount,
-      sharesCount: aiPreview.sharesCount,
-      comments: aiPreview.comments.map((c) => ({
-        id: generateCommentId(),
-        username: c.username,
-        displayName: c.displayName,
-        content: c.content,
-        likes: c.likes,
-        personality: (c.personality as NewsPost["comments"][0]["personality"]) ?? "neutro",
-        replies: Array.isArray(c.replies)
-          ? c.replies.map((r: unknown) => {
-              const rc = r as typeof c;
-              return {
-                id: generateCommentId(),
-                username: rc.username,
-                displayName: rc.displayName,
-                content: rc.content,
-                likes: rc.likes,
-                personality: (rc.personality as NewsPost["comments"][0]["personality"]) ?? "neutro",
-                createdAt: Date.now() - Math.floor(Math.random() * 3_600_000),
-              };
-            })
-          : [],
-        createdAt: Date.now() - Math.floor(Math.random() * 3_600_000),
-      })),
-      createdAt: Date.now(),
-      category: (aiPreview.category as NewsCategory) ?? "geral",
-    };
-    onSave(post);
+    const isCustom = !!selectedCustomPortal;
+    onGenerateBackground({
+      description: aiDesc.trim(),
+      source: !isCustom && aiSource !== "auto" ? aiSource : undefined,
+      category: aiCategory !== "auto" ? aiCategory : undefined,
+      imageUrl: imageObjectPath || undefined,
+      customPortal: isCustom ? {
+        id: selectedCustomPortal.id,
+        name: selectedCustomPortal.name,
+        description: selectedCustomPortal.description,
+        tone: selectedCustomPortal.tone,
+      } : undefined,
+    });
     onClose();
   };
 
@@ -598,105 +518,17 @@ function AddPostModal({
               </div>
 
               {/* Generate button */}
-              {!aiPreview && (
-                <button
-                  onClick={handleGenerate}
-                  disabled={!aiDesc.trim() || isGenerating}
-                  className="w-full py-3 rounded-xl text-sm font-bold text-white transition-all duration-200 hover:opacity-90 active:scale-[0.98] disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                  style={{ background: "var(--club-gradient)" }}
-                >
-                  {isGenerating ? (
-                    <>
-                      <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                      </svg>
-                      Gerando com IA...
-                    </>
-                  ) : (
-                    <>
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
-                      </svg>
-                      Gerar com IA
-                    </>
-                  )}
-                </button>
-              )}
-
-              {/* Error */}
-              {aiError && (
-                <div
-                  className="rounded-xl px-4 py-3 text-xs"
-                  style={{ background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.25)", color: "rgba(252,165,165,0.9)" }}
-                >
-                  {aiError}
-                </div>
-              )}
-
-              {/* Preview */}
-              {aiPreview && (
-                <div
-                  className="rounded-xl p-4 flex flex-col gap-3"
-                  style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)" }}
-                >
-                  <div className="flex items-center gap-2">
-                    <span
-                      className="text-xs font-bold px-2 py-0.5 rounded-md"
-                      style={{ background: "rgba(var(--club-primary-rgb),0.15)", color: "var(--club-primary)" }}
-                    >
-                      {aiPreview.sourceName}
-                    </span>
-                    <span
-                      className="text-xs px-2 py-0.5 rounded-md"
-                      style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.5)" }}
-                    >
-                      {CATEGORY_LABELS[(aiPreview.category as NewsCategory)] ?? aiPreview.category}
-                    </span>
-                    <span className="ml-auto text-white/25 text-xs">{aiPreview.comments.length} comentários gerados</span>
-                  </div>
-                  {aiPreview.title && (
-                    <p className="text-white font-bold text-sm leading-snug">{aiPreview.title}</p>
-                  )}
-                  <p
-                    className="text-white/70 text-xs leading-relaxed"
-                    style={{
-                      display: "-webkit-box",
-                      WebkitLineClamp: 5,
-                      WebkitBoxOrient: "vertical",
-                      overflow: "hidden",
-                    } as React.CSSProperties}
-                  >
-                    {aiPreview.content}
-                  </p>
-                  <div className="flex gap-3 text-white/30 text-xs">
-                    <span>❤️ {aiPreview.likes.toLocaleString("pt-BR")}</span>
-                    <span>💬 {aiPreview.commentsCount}</span>
-                    <span>↗️ {aiPreview.sharesCount}</span>
-                  </div>
-                  <div className="flex gap-2 mt-1">
-                    <button
-                      onClick={handlePublishAi}
-                      disabled={isUploadingImage}
-                      className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white transition-all duration-200 hover:opacity-90 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
-                      style={{ background: "var(--club-gradient)" }}
-                    >
-                      {isUploadingImage ? "Enviando foto..." : "Publicar notícia"}
-                    </button>
-                    <button
-                      onClick={() => { setAiPreview(null); handleGenerate(); }}
-                      className="px-4 py-2.5 rounded-xl text-xs font-semibold transition-all duration-150"
-                      style={{
-                        background: "rgba(255,255,255,0.06)",
-                        color: "rgba(255,255,255,0.5)",
-                        border: "1px solid rgba(255,255,255,0.08)",
-                      }}
-                    >
-                      Regenerar
-                    </button>
-                  </div>
-                </div>
-              )}
+              <button
+                onClick={handleBgGenerate}
+                disabled={!aiDesc.trim() || isUploadingImage}
+                className="w-full py-3 rounded-xl text-sm font-bold text-white transition-all duration-200 hover:opacity-90 active:scale-[0.98] disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                style={{ background: "var(--club-gradient)" }}
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                </svg>
+                {isUploadingImage ? "Aguardando foto..." : "Gerar com IA"}
+              </button>
             </div>
           ) : (
             <div className="p-5 flex flex-col gap-4">
@@ -864,6 +696,8 @@ const SOURCE_SIDEBAR_COLOR: Record<string, { color: string; bg: string }> = {
 const CUSTOM_SIDEBAR_COLOR = { color: "#a78bfa", bg: "rgba(167,139,250,0.15)" };
 
 
+type BgGenStatus = "idle" | "generating" | "done" | "error";
+
 export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matches = [], pastSeasons = [], isReadOnly }: NoticiasViewProps) {
   const [posts, setPosts] = useState<NewsPost[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -872,6 +706,9 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
   const [searchQuery, setSearchQuery] = useState("");
   const [portalPhotos, setPortalPhotos] = useState<PortalPhotos>({});
   const [customPortals, setCustomPortals] = useState<CustomPortal[]>([]);
+  const [bgGenStatus, setBgGenStatus] = useState<BgGenStatus>("idle");
+  const [bgGenLabel, setBgGenLabel] = useState("");
+  const bgGenTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     fetchPortalPhotos(career.id).then(setPortalPhotos);
@@ -1089,6 +926,101 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
           }
         }
       }
+    }
+  };
+
+  const handleGenerateBackground = async (params: BgGenParams) => {
+    if (bgGenTimerRef.current) clearTimeout(bgGenTimerRef.current);
+    setBgGenLabel(params.description.slice(0, 48) + (params.description.length > 48 ? "…" : ""));
+    setBgGenStatus("generating");
+
+    try {
+      const userKey = getOpenAIKey();
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (userKey) headers["x-openai-key"] = userKey;
+
+      const recentPostsCtx = posts.slice(0, 6).map((p) => ({
+        title: p.title,
+        category: p.category,
+        headline: p.content.split("\n").find((l) => l.trim().length > 10)?.trim().slice(0, 120) ?? p.content.slice(0, 120),
+      }));
+
+      const res = await fetch("/api/noticias/generate", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          description: params.description,
+          clubName: career.clubName,
+          season: career.season,
+          source: params.source,
+          category: params.category,
+          clubLeague: career.clubLeague || undefined,
+          clubTitles: career.clubTitles?.length ? career.clubTitles : undefined,
+          clubDescription: career.clubDescription || undefined,
+          projeto: career.projeto || undefined,
+          playersContext: playerContextStr || undefined,
+          squadOvrContext: squadOvrContext || undefined,
+          teamFormContext: teamFormContext || undefined,
+          historicalContext: historicalContext,
+          recentPostsContext: recentPostsCtx,
+          customPortal: params.customPortal,
+        }),
+      });
+
+      if (!res.ok) {
+        setBgGenStatus("error");
+        bgGenTimerRef.current = setTimeout(() => setBgGenStatus("idle"), 5000);
+        return;
+      }
+
+      const data = (await res.json()) as AiPreview;
+      const customPortal = params.customPortal
+        ? customPortals.find((cp) => cp.id === params.customPortal!.id)
+        : undefined;
+
+      const post: NewsPost = {
+        id: generatePostId(),
+        careerId: career.id,
+        source: (data.source as NewsSource) ?? "fanpage",
+        sourceHandle: data.sourceHandle,
+        sourceName: data.sourceName,
+        ...(data.title?.trim() ? { title: data.title.trim() } : {}),
+        content: data.content,
+        ...(params.imageUrl ? { imageUrl: params.imageUrl } : {}),
+        ...(customPortal ? { customPortalId: customPortal.id } : {}),
+        likes: data.likes,
+        commentsCount: data.commentsCount,
+        sharesCount: data.sharesCount,
+        comments: data.comments.map((c) => ({
+          id: generateCommentId(),
+          username: c.username,
+          displayName: c.displayName,
+          content: c.content,
+          likes: c.likes,
+          personality: (c.personality as NewsPost["comments"][0]["personality"]) ?? "neutro",
+          replies: Array.isArray(c.replies)
+            ? (c.replies as typeof data.comments).map((r) => ({
+                id: generateCommentId(),
+                username: r.username,
+                displayName: r.displayName,
+                content: r.content,
+                likes: r.likes,
+                personality: (r.personality as NewsPost["comments"][0]["personality"]) ?? "neutro",
+                createdAt: Date.now() - Math.floor(Math.random() * 3_600_000),
+              }))
+            : [],
+          createdAt: Date.now() - Math.floor(Math.random() * 3_600_000),
+        })),
+        createdAt: Date.now(),
+        category: (data.category as NewsCategory) ?? "geral",
+      };
+
+      handleSavePost(post);
+      setBgGenStatus("done");
+      bgGenTimerRef.current = setTimeout(() => setBgGenStatus("idle"), 4000);
+    } catch {
+      setBgGenStatus("error");
+      bgGenTimerRef.current = setTimeout(() => setBgGenStatus("idle"), 5000);
     }
   };
 
@@ -1431,7 +1363,62 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
         customPortals={customPortals}
         onClose={() => setShowAddModal(false)}
         onSave={handleSavePost}
+        onGenerateBackground={handleGenerateBackground}
       />,
+      document.body
+    )}
+
+    {/* Background generation toast */}
+    {bgGenStatus !== "idle" && createPortal(
+      <div
+        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[400] flex items-center gap-3 px-4 py-3 rounded-2xl shadow-2xl transition-all duration-300"
+        style={{
+          background: bgGenStatus === "done"
+            ? "rgba(16,185,129,0.15)"
+            : bgGenStatus === "error"
+            ? "rgba(239,68,68,0.15)"
+            : "rgba(18,14,31,0.95)",
+          border: `1px solid ${bgGenStatus === "done" ? "rgba(16,185,129,0.35)" : bgGenStatus === "error" ? "rgba(239,68,68,0.35)" : "rgba(255,255,255,0.12)"}`,
+          backdropFilter: "blur(16px)",
+          minWidth: 260,
+          maxWidth: "90vw",
+        }}
+      >
+        {bgGenStatus === "generating" && (
+          <svg className="w-4 h-4 animate-spin flex-shrink-0" fill="none" viewBox="0 0 24 24" style={{ color: "var(--club-primary)" }}>
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+          </svg>
+        )}
+        {bgGenStatus === "done" && (
+          <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} style={{ color: "#34d399" }}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+          </svg>
+        )}
+        {bgGenStatus === "error" && (
+          <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} style={{ color: "#f87171" }}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        )}
+        <div className="flex-1 min-w-0">
+          <p className="text-white/90 text-sm font-semibold leading-tight">
+            {bgGenStatus === "generating" && "Gerando notícia em segundo plano..."}
+            {bgGenStatus === "done" && "Notícia publicada!"}
+            {bgGenStatus === "error" && "Erro ao gerar notícia"}
+          </p>
+          {bgGenLabel && (
+            <p className="text-white/40 text-xs mt-0.5 truncate">{bgGenLabel}</p>
+          )}
+        </div>
+        <button
+          onClick={() => { if (bgGenTimerRef.current) clearTimeout(bgGenTimerRef.current); setBgGenStatus("idle"); }}
+          className="w-6 h-6 flex items-center justify-center rounded-lg text-white/30 hover:text-white/60 transition-colors flex-shrink-0"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>,
       document.body
     )}
     </>
