@@ -38,10 +38,13 @@ import { ensureCareerAndSeason1, deleteCareer } from "@/lib/careerStorage";
 import { syncSeasonFromDb, syncCareerFromDb } from "@/lib/dbSync";
 import {
   getMembers,
+  getConversation,
+  saveConversation,
   addNotification,
   getMemberCooldowns,
   setMemberCooldown,
   setPendingMeetingTrigger,
+  generateMessageId,
 } from "@/lib/diretoriaStorage";
 import { getFinanceiroSettings, computeFinancialSnapshot } from "@/lib/financeiroStorage";
 import { buildPlayerPerformanceContext, buildSquadOvrContext } from "@/lib/playerContext";
@@ -133,6 +136,23 @@ const TABS: { id: CareerTab; label: string; icon: React.ReactNode }[] = [
     ),
   },
 ];
+
+function saveDiretoriaNotificationAsChatMessage(careerId: string, memberId: string, preview: string): void {
+  const content = preview.trim();
+  if (!content) return;
+  const existing = getConversation(careerId, memberId);
+  const lastMessage = existing.at(-1);
+  if (lastMessage?.role === "character" && lastMessage.content === content) return;
+  saveConversation(careerId, memberId, [
+    ...existing,
+    {
+      id: generateMessageId(),
+      role: "character",
+      content,
+      timestamp: Date.now(),
+    },
+  ]);
+}
 
 function useClubLogo(career: Career): string | null {
   const [src, setSrc] = useState<string | null>(() => {
@@ -635,6 +655,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
       if (data.notifications?.length) {
         for (const n of data.notifications) {
           addNotification(career.id, { memberId: n.memberId, preview: n.preview, triggeredAt: Date.now() });
+          saveDiretoriaNotificationAsChatMessage(career.id, n.memberId, n.preview);
           setMemberCooldown(career.id, activeSeasonId, n.memberId, matchCount);
           const member = members.find((m) => m.id === n.memberId);
           addToast({ type: "diretoria", title: member?.name ?? "Diretoria", preview: n.preview });

@@ -580,6 +580,25 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
   }, [career, matches, transfers, squadSize]);
 
   const handleOpenChat = (memberId: string) => {
+    const pendingNotif = notifications.find((n) => n.memberId === memberId);
+    if (pendingNotif?.preview.trim()) {
+      const existing = getConversation(career.id, memberId);
+      const content = pendingNotif.preview.trim();
+      const lastMessage = existing.at(-1);
+      if (!(lastMessage?.role === "character" && lastMessage.content === content)) {
+        const migratedConv: DiretoriaMessage[] = [
+          ...existing,
+          {
+            id: generateMessageId(),
+            role: "character",
+            content,
+            timestamp: pendingNotif.triggeredAt ?? Date.now(),
+          },
+        ];
+        saveConversation(career.id, memberId, migratedConv);
+        setConversations((prev) => ({ ...prev, [memberId]: migratedConv }));
+      }
+    }
     setSelectedMemberId(memberId);
     setPanel("chat");
     clearNotification(career.id, memberId);
