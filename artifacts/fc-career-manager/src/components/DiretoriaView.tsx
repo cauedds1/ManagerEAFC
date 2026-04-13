@@ -95,6 +95,31 @@ function getInitials(name: string): string {
   return name.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase();
 }
 
+function renderMarkdown(text: string) {
+  const lines = text.split("\n");
+  return lines.map((line, lineIdx) => {
+    const parts = line.split(/(\*{3}[^*]+\*{3}|\*{2}[^*]+\*{2}|\*[^*]+\*)/g);
+    const rendered = parts.map((part, i) => {
+      if (/^\*{3}[^*]+\*{3}$/.test(part)) {
+        return <strong key={i}><em>{part.slice(3, -3)}</em></strong>;
+      }
+      if (/^\*{2}[^*]+\*{2}$/.test(part)) {
+        return <strong key={i}>{part.slice(2, -2)}</strong>;
+      }
+      if (/^\*[^*]+\*$/.test(part)) {
+        return <em key={i}>{part.slice(1, -1)}</em>;
+      }
+      return part;
+    });
+    return (
+      <span key={lineIdx}>
+        {rendered}
+        {lineIdx < lines.length - 1 && <br />}
+      </span>
+    );
+  });
+}
+
 function MoodBadge({ mood, small }: { mood: MoodLevel; small?: boolean }) {
   const cfg = MOOD_CONFIG[mood];
   return (
@@ -1082,7 +1107,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
                       : { background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.85)", borderBottomLeftRadius: 4 }
                     }
                   >
-                    {msg.content}
+                    {renderMarkdown(msg.content)}
                   </div>
                 </div>
               ))}
@@ -1194,7 +1219,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
                         style={{ background: "rgba(var(--club-primary-rgb),0.2)", color: "rgba(255,255,255,0.9)", borderBottomRightRadius: 4 }}
                       >
                         <span className="block text-[10px] opacity-50 mb-1 font-semibold">Técnico {career.coach.name}</span>
-                        {msg.content}
+                        {renderMarkdown(msg.content)}
                       </div>
                     </div>
                   );
@@ -1217,7 +1242,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
                         {msg.memberName}
                         {member && <span className="font-normal opacity-50"> · {member.roleLabel}</span>}
                       </span>
-                      {msg.content}
+                      {renderMarkdown(msg.content)}
                     </div>
                   </div>
                 );
@@ -1390,7 +1415,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
                         style={{ background: "rgba(var(--club-primary-rgb),0.2)", color: "rgba(255,255,255,0.9)", borderBottomRightRadius: 4 }}
                       >
                         <span className="block text-[10px] opacity-50 mb-1 font-semibold">Técnico {career.coach.name}</span>
-                        {msg.content}
+                        {renderMarkdown(msg.content)}
                       </div>
                     </div>
                   );
@@ -1414,7 +1439,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
                           <span className="font-normal opacity-50"> · {members.find(m => m.id === msg.memberId)?.roleLabel}</span>
                         )}
                       </span>
-                      {msg.content}
+                      {renderMarkdown(msg.content)}
                     </div>
                   </div>
                 );
