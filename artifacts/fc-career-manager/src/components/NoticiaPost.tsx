@@ -214,9 +214,12 @@ interface NoticiaPostProps {
   customPortals?: CustomPortal[];
   onUpdateImage?: (postId: string, imageUrl: string | null) => void;
   onUpdateImageFit?: (postId: string, fit: "cover" | "contain") => void;
+  onDelete?: (postId: string) => void;
+  onRefresh?: (postId: string) => void;
+  isRefreshing?: boolean;
 }
 
-export function NoticiaPost({ post, portalPhotos, customPortals, onUpdateImage, onUpdateImageFit }: NoticiaPostProps) {
+export function NoticiaPost({ post, portalPhotos, customPortals, onUpdateImage, onUpdateImageFit, onDelete, onRefresh, isRefreshing }: NoticiaPostProps) {
   const [liked, setLiked] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -247,6 +250,18 @@ export function NoticiaPost({ post, portalPhotos, customPortals, onUpdateImage, 
   const handleRemoveImage = () => {
     setMenuOpen(false);
     onUpdateImage?.(post.id, null);
+  };
+
+  const handleRefresh = () => {
+    setMenuOpen(false);
+    onRefresh?.(post.id);
+  };
+
+  const handleDelete = () => {
+    setMenuOpen(false);
+    if (window.confirm("Excluir esta manchete? Essa ação não pode ser desfeita.")) {
+      onDelete?.(post.id);
+    }
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -289,6 +304,7 @@ export function NoticiaPost({ post, portalPhotos, customPortals, onUpdateImage, 
     : portalPhotos?.[post.source as keyof PortalPhotos];
 
   const displayImageUrl = localImageUrl ?? post.imageUrl ?? null;
+  const hasEditActions = !!onUpdateImage || !!onDelete || !!onRefresh;
 
   const lightboxPortal = lightboxOpen && displayImageUrl
     ? createPortal(
@@ -342,7 +358,7 @@ export function NoticiaPost({ post, portalPhotos, customPortals, onUpdateImage, 
       )}
 
       {/* Pencil edit button */}
-      {onUpdateImage && (
+      {hasEditActions && (
         <div
           ref={menuRef}
           className="absolute z-20 transition-opacity duration-150"
@@ -350,19 +366,19 @@ export function NoticiaPost({ post, portalPhotos, customPortals, onUpdateImage, 
         >
           <button
             onClick={() => setMenuOpen((v) => !v)}
-            disabled={uploading}
-            title="Editar imagem"
+            disabled={uploading || isRefreshing}
+            title="Editar notícia"
             className="flex items-center justify-center rounded-lg transition-all duration-150"
             style={{
               width: 28,
               height: 28,
               background: "rgba(0,0,0,0.55)",
-              color: uploading ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.55)",
+              color: uploading || isRefreshing ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.55)",
               border: "1px solid rgba(255,255,255,0.1)",
               backdropFilter: "blur(4px)",
             }}
           >
-            {uploading ? (
+            {uploading || isRefreshing ? (
               <svg className="w-3 h-3 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v3m0 12v3M3 12h3m12 0h3" />
               </svg>
@@ -378,13 +394,25 @@ export function NoticiaPost({ post, portalPhotos, customPortals, onUpdateImage, 
               className="absolute right-0 rounded-xl overflow-hidden shadow-2xl"
               style={{ bottom: 36, minWidth: 180, background: "#0f172a", border: "1px solid rgba(255,255,255,0.1)" }}
             >
-              <button
-                onClick={handlePickImage}
-                className="w-full text-left text-sm px-4 py-2.5 transition-colors duration-100 hover:bg-white/[0.06]"
-                style={{ color: "rgba(255,255,255,0.8)" }}
-              >
-                {displayImageUrl ? "Trocar imagem" : "Adicionar imagem"}
-              </button>
+              {onRefresh && post.matchId && (
+                <button
+                  onClick={handleRefresh}
+                  disabled={isRefreshing}
+                  className="w-full text-left text-sm px-4 py-2.5 transition-colors duration-100 hover:bg-white/[0.06] disabled:opacity-50"
+                  style={{ color: "rgba(255,255,255,0.8)" }}
+                >
+                  {isRefreshing ? "Atualizando..." : "Atualizar notícia"}
+                </button>
+              )}
+              {onUpdateImage && (
+                <button
+                  onClick={handlePickImage}
+                  className="w-full text-left text-sm px-4 py-2.5 transition-colors duration-100 hover:bg-white/[0.06]"
+                  style={{ color: "rgba(255,255,255,0.8)", borderTop: onRefresh && post.matchId ? "1px solid rgba(255,255,255,0.06)" : undefined }}
+                >
+                  {displayImageUrl ? "Trocar imagem" : "Adicionar imagem"}
+                </button>
+              )}
               {displayImageUrl && onUpdateImageFit && (
                 <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
                   <p className="px-4 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.25)" }}>
@@ -418,6 +446,15 @@ export function NoticiaPost({ post, portalPhotos, customPortals, onUpdateImage, 
                   style={{ color: "#f87171", borderTop: "1px solid rgba(255,255,255,0.06)" }}
                 >
                   Remover imagem
+                </button>
+              )}
+              {onDelete && (
+                <button
+                  onClick={handleDelete}
+                  className="w-full text-left text-sm px-4 py-2.5 transition-colors duration-100 hover:bg-white/[0.06]"
+                  style={{ color: "#f87171", borderTop: "1px solid rgba(255,255,255,0.06)" }}
+                >
+                  Excluir manchete
                 </button>
               )}
             </div>

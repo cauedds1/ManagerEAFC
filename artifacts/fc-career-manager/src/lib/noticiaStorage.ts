@@ -29,6 +29,11 @@ export function addPost(seasonId: string, post: NewsPost): void {
   savePosts(seasonId, posts);
 }
 
+export function removePost(seasonId: string, postId: string): void {
+  const posts = getPosts(seasonId).filter((p) => p.id !== postId);
+  savePosts(seasonId, posts);
+}
+
 export function generatePostId(): string {
   return `post-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
 }

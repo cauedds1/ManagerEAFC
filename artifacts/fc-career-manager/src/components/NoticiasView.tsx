@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { createPortal } from "react-dom";
 import type { Career } from "@/types/career";
 import type { NewsPost, NewsSource, NewsCategory } from "@/types/noticias";
-import { getPosts, savePosts, addPost, updatePost, generatePostId, generateCommentId } from "@/lib/noticiaStorage";
+import { getPosts, savePosts, addPost, updatePost, removePost, generatePostId, generateCommentId } from "@/lib/noticiaStorage";
 import { getOpenAIKey } from "@/lib/openaiKeyStorage";
 import { seedPosts } from "@/lib/noticiaSeed";
 import { NoticiaPost } from "./NoticiaPost";
@@ -915,6 +915,7 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
   const [searchQuery, setSearchQuery] = useState("");
   const [portalPhotos, setPortalPhotos] = useState<PortalPhotos>({});
   const [customPortals, setCustomPortals] = useState<CustomPortal[]>([]);
+  const [refreshingPostId, setRefreshingPostId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchPortalPhotos(career.id).then(setPortalPhotos);
@@ -1245,6 +1246,113 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
     setPosts((prev) => prev.map((p) => p.id === postId ? { ...p, imageFit: fit } : p));
   };
 
+  const handleDeletePost = (postId: string) => {
+    removePost(seasonId, postId);
+    setPosts((prev) => prev.filter((p) => p.id !== postId));
+  };
+
+  const handleRefreshPost = async (postId: string) => {
+    const post = posts.find((p) => p.id === postId);
+    if (!post?.matchId || refreshingPostId) return;
+    const match = _matches.find((m) => m.id === post.matchId);
+    if (!match) {
+      window.alert("Não encontrei a partida vinculada a esta notícia.");
+      return;
+    }
+    setRefreshingPostId(postId);
+    try {
+      const matchCtx = buildMatchContextString(match, allPlayers);
+      const recentPostsCtx = posts
+        .filter((p) => p.id !== postId)
+        .slice(0, 6)
+        .map((p) => ({
+          title: p.title,
+          category: p.category,
+          headline: p.content.split("\n").find((l) => l.trim().length > 10)?.trim().slice(0, 120) ?? p.content.slice(0, 120),
+        }));
+      const customPortal = post.source === "custom" && post.customPortalId
+        ? customPortals.find((p) => p.id === post.customPortalId)
+        : undefined;
+      const openaiKey = getOpenAIKey();
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (openaiKey) headers["x-openai-key"] = openaiKey;
+      const res = await fetch("/api/noticias/generate", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          description: [
+            "Atualize/refaça esta mesma notícia usando os dados atuais e corrigidos da partida vinculada.",
+            "Se o placar, resultado, gols, pênaltis, expulsões ou destaques mudaram, corrija a narrativa inteira.",
+            "Mantenha o mesmo tipo de publicação e o mesmo portal da notícia original, mas gere texto e comentários novos coerentes com a partida atualizada.",
+            `Notícia original: ${post.title ? `${post.title} — ` : ""}${post.content}`,
+          ].join("\n"),
+          clubName: career.clubName,
+          season: career.season,
+          source: post.source !== "custom" ? post.source : undefined,
+          category: post.category,
+          clubLeague: career.clubLeague || undefined,
+          clubDescription: career.clubDescription || undefined,
+          projeto: career.projeto || undefined,
+          playersContext: playerContextStr || undefined,
+          squadOvrContext: squadOvrContext || undefined,
+          teamFormContext: buildTeamFormContext(_matches, match) || undefined,
+          historicalContext: historicalContext || undefined,
+          attachedMatchContext: matchCtx,
+          recentPostsContext: recentPostsCtx.length > 0 ? recentPostsCtx : undefined,
+          customPortal: customPortal ? {
+            id: customPortal.id,
+            name: customPortal.name,
+            description: customPortal.description,
+            tone: customPortal.tone,
+          } : undefined,
+        }),
+      });
+      if (!res.ok) throw new Error("Erro ao atualizar notícia");
+      const data = await res.json() as AiPreview & { customPortalId?: string };
+      const refreshed: NewsPost = {
+        ...post,
+        source: (data.source as NewsSource) ?? post.source,
+        sourceHandle: data.sourceHandle ?? post.sourceHandle,
+        sourceName: data.sourceName ?? post.sourceName,
+        title: data.title?.trim() || undefined,
+        content: data.content,
+        likes: Number(data.likes) || post.likes,
+        commentsCount: Number(data.commentsCount) || post.commentsCount,
+        sharesCount: Number(data.sharesCount) || post.sharesCount,
+        comments: (data.comments ?? []).map((c) => ({
+          id: generateCommentId(),
+          username: c.username,
+          displayName: c.displayName,
+          content: c.content,
+          likes: Number(c.likes) || 0,
+          personality: c.personality as NewsPost["comments"][number]["personality"],
+          replies: Array.isArray(c.replies)
+            ? (c.replies as Array<Record<string, unknown>>).map((r) => ({
+                id: generateCommentId(),
+                username: String(r.username ?? "@torcedor"),
+                displayName: String(r.displayName ?? "Torcedor"),
+                content: String(r.content ?? ""),
+                likes: Number(r.likes) || 0,
+                personality: r.personality as NewsPost["comments"][number]["personality"],
+                replies: [],
+                createdAt: Date.now() - Math.floor(Math.random() * 3_600_000),
+              }))
+            : [],
+          createdAt: Date.now() - Math.floor(Math.random() * 3_600_000),
+        })),
+        category: (data.category as NewsPost["category"]) ?? post.category,
+        createdAt: Date.now(),
+        customPortalId: customPortal?.id ?? post.customPortalId,
+      };
+      updatePost(seasonId, postId, refreshed);
+      setPosts((prev) => prev.map((p) => p.id === postId ? refreshed : p));
+    } catch {
+      window.alert("Não foi possível atualizar a notícia agora. Verifique sua chave de IA e tente novamente.");
+    } finally {
+      setRefreshingPostId(null);
+    }
+  };
+
   const handleSavePost = (post: NewsPost) => {
     addPost(seasonId, post);
     setPosts((prev) => [post, ...prev]);
@@ -1500,7 +1608,17 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
           ) : (
             <div className="flex flex-col gap-4 lg:max-w-[560px]">
               {filtered.map((post) => (
-                <NoticiaPost key={post.id} post={post} portalPhotos={portalPhotos} customPortals={customPortals} onUpdateImage={isReadOnly ? undefined : handleUpdateImage} onUpdateImageFit={isReadOnly ? undefined : handleUpdateImageFit} />
+                <NoticiaPost
+                  key={post.id}
+                  post={post}
+                  portalPhotos={portalPhotos}
+                  customPortals={customPortals}
+                  onUpdateImage={isReadOnly ? undefined : handleUpdateImage}
+                  onUpdateImageFit={isReadOnly ? undefined : handleUpdateImageFit}
+                  onDelete={isReadOnly ? undefined : handleDeletePost}
+                  onRefresh={isReadOnly ? undefined : handleRefreshPost}
+                  isRefreshing={refreshingPostId === post.id}
+                />
               ))}
             </div>
           )}
