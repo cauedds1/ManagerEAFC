@@ -163,6 +163,18 @@ function buildFanMoodSection(clubName: string, fanMoodLabel: string, fanMoodScor
   section += `\n- O humor da torcida AMPLIFICA as reações a atuações individuais. Com torcida revoltada/insatisfeita, DECEPÇÕES são muito mais cornetadas do que o normal — use linguagem mais dura, mais direta, mais impaciente. Com torcida animada/eufórica, SURPRESAS POSITIVAS são celebradas com muito mais intensidade — use linguagem mais efusiva, mais apaixonada.`;
   section += `\n- NUNCA ignore o humor ao gerar comentários — ele é o filtro emocional de toda a reação da torcida.`;
 
+  section += `\n\nHUMOR EM POSTS SEM CONTEXTO DE PARTIDA (transferências, treinos, rumores, especulações):`;
+  section += `\n- O humor da torcida contamina TODOS os posts, mesmo sem resultado de partida.`;
+  if (fanMoodScore < 20) {
+    section += `\n- TORCIDA REVOLTADA em post de contratação, treino ou rumor: os comentários devem transbordar impaciência acumulada — "já era hora, tá na hora de mudar muito mais coisa aqui", "enquanto isso o time continua jogando mal", "isso não resolve nada", "vem com essa conversa de reforço mas não conserta o que tá errado", "cansei desse clube". Aproveite qualquer notícia para manifestar frustração com o clube em geral.`;
+  } else if (fanMoodScore < 40) {
+    section += `\n- TORCIDA INSATISFEITA em post sem partida: misture ceticismo e esperança frustrada — "espero que isso mude alguma coisa", "na teoria parece bom mas vamos ver", "já vi promessa demais nesse clube", "tô na torcida mas com o pé atrás".`;
+  } else if (fanMoodScore >= 80) {
+    section += `\n- TORCIDA EUFÓRICA em post sem partida: qualquer novidade é recebida com empolgação máxima — "esse clube tá numa fase incrível", "que fase boa, tudo dando certo", "acredito muito nesse projeto", "o melhor momento do clube nos últimos anos".`;
+  } else if (fanMoodScore >= 60) {
+    section += `\n- TORCIDA ANIMADA em post sem partida: otimismo contagia os comentários — "boa notícia, tô confiante", "fase boa do clube, continuem assim", "esse reforço/treino vai ajudar muito".`;
+  }
+
   return section;
 }
 
@@ -371,7 +383,20 @@ Responda APENAS com JSON puro (sem markdown, sem code block):
   ]
 }
 
-Gere 6 a 9 comentários. Pelo menos 2 deles devem ter 1 reply cada.`;
+Gere 7 a 10 comentários.
+
+REGRAS DE REPLIES — OBRIGATÓRIO:
+- 3 a 5 comentários DEVEM ter replies (não deixe a maioria sem resposta)
+- Cada thread pode ter 1 a 4 replies
+- Os replies devem ser VARIADOS e orgânicos como nas redes sociais de verdade:
+  * Concordância: "@usuario Exatamente isso! Pensei a mesma coisa"
+  * Discordância com argumento: "@usuario Não concordo não, esse jogador nunca..."
+  * Zoeira/briga por opinião contrária: "@usuario Cala boca, que análise de torcedor de sofá", "que opinião lixo essa", "deixa de palhaço"
+  * Ironia/sarcasmo: "@usuario Claro, porque você entende muito de futebol né 🙄"
+  * Torcedor de outro clube se intrometendo: "@usuario Vocês vivem nessa lamentação mesmo kkk"
+  * Réplica de defesa: "@usuario Pode discordar à vontade, não muda o que eu pensei"
+- Replies podem gerar subconflitos — duas ou mais pessoas discutindo no mesmo thread
+- NUNCA gere replies genéricos como "concordo" ou "verdade" sozinhos — sempre adicione personalidade e contexto`;
 
   try {
     const completionParams = usingUserKey
@@ -503,7 +528,15 @@ Responda APENAS com JSON puro (sem markdown, sem code block):
   ]
 }
 
-Gere 7 a 10 comentários. Pelo menos 3 devem ter replies. Se o técnico for famoso do mundo real, alguns comentários de fãs internacionais são esperados e realistas.`;
+Gere 7 a 10 comentários.
+
+REGRAS DE REPLIES — OBRIGATÓRIO:
+- 3 a 5 comentários DEVEM ter replies
+- Cada thread pode ter 1 a 3 replies
+- Os replies devem ser VARIADOS: concordância entusiasmada, discordância com argumento, zoeira por opinião contrária ("que análise essa", "deixa de ser negativo"), ironia, torcedores de outros clubes se intrometendo com provocações
+- Replies podem gerar subconflitos — duas pessoas discutindo no mesmo thread
+- NUNCA gere replies genéricos como "concordo" sozinhos — sempre adicione personalidade
+- Se o técnico for famoso do mundo real, fãs internacionais são esperados e podem ter replies de outros internacionais`;
 
   try {
     const completionParams = usingUserKey
@@ -559,12 +592,14 @@ interface GenerateRumorBody {
   playersContext?: string;
   squadPositionNeeds?: string;
   customPortal?: CustomPortalPayload;
+  fanMoodScore?: number;
+  fanMoodLabel?: string;
 }
 
 router.post("/noticias/generate-rumor", async (req, res) => {
   const {
     clubName, season, clubLeague, clubDescription, projeto,
-    playersContext, squadPositionNeeds, customPortal,
+    playersContext, squadPositionNeeds, customPortal, fanMoodScore, fanMoodLabel,
   } = req.body as GenerateRumorBody;
 
   if (!clubName?.trim()) {
@@ -601,11 +636,15 @@ router.post("/noticias/generate-rumor", async (req, res) => {
     ? `\n\nPOSIÇÕES COM LACUNA NO ELENCO (possíveis alvos de sondagem):\n${squadPositionNeeds.trim()}`
     : "";
 
+  const rumorFanMoodSection = (fanMoodScore !== undefined && fanMoodLabel)
+    ? buildFanMoodSection(clubName, fanMoodLabel, fanMoodScore)
+    : "";
+
   const systemPrompt = `Você é um jornalista especialista em mercado de transferências do futebol brasileiro e europeu.
 Você escreve posts de RUMORES de transferência no estilo das redes sociais brasileiras — boato, especulação, bastidores.
 Clube: ${clubName}${season ? ` (temporada ${season})` : ""}${leagueSection}${descSection}${projectSection}
 Portal: ${portalName} (${portalHandle})
-Semente de unicidade: ${uniqueSeed}${playersSection}${needsSection}${customPortalSection}`;
+Semente de unicidade: ${uniqueSeed}${playersSection}${needsSection}${rumorFanMoodSection}${customPortalSection}`;
 
   const rumorTypes = [
     `Um clube estrangeiro está monitorando um dos jogadores em destaque do ${shortClub}`,
@@ -625,7 +664,7 @@ REGRAS OBRIGATÓRIAS:
 - Pode inventar nomes de jogadores-alvo externos de forma coerente com o contexto da liga
 - Categoria DEVE ser "transferencia"
 - O post deve soar como uma reportagem real de mercado, não uma notícia confirmada
-- Inclua comentários de torcedores: alguns animados, outros preocupados com saída de jogador titular, outros céticos com boatos
+- Inclua comentários de torcedores variados: animados, preocupados, céticos, irritados (conforme humor da torcida indicado)
 
 REGRAS DE COMENTARISTAS:
 - TODOS os comentários em português (pt-BR)
@@ -650,12 +689,27 @@ Responda APENAS com JSON puro (sem markdown, sem code block):
       "content": "<comentário sobre o rumor>",
       "likes": <1 a 2000>,
       "personality": "<otimista|chato|corneteiro|zoeiro|saudosista|neutro>",
-      "replies": []
+      "replies": [
+        {
+          "username": "@<handle>",
+          "displayName": "<Nome Sobrenome>",
+          "content": "<reply curto com personalidade>",
+          "likes": <1 a 300>,
+          "personality": "<personalidade>",
+          "replies": []
+        }
+      ]
     }
   ]
 }
 
-Gere 5 a 8 comentários.`;
+Gere 6 a 9 comentários.
+
+REGRAS DE REPLIES — OBRIGATÓRIO:
+- 2 a 4 comentários DEVEM ter replies
+- Os replies devem ser variados: concordância, discordância, zoeira por opinião contrária ("que análise lixo", "cala boca"), ironia, torcedor de outro clube se intrometendo
+- Replies podem gerar subconflitos no mesmo thread
+- NUNCA gere replies genéricos como "concordo" sozinhos — sempre adicione personalidade`;
 
   try {
     const completionParams = usingUserKey
@@ -778,12 +832,26 @@ Responda APENAS com JSON puro (sem markdown, sem code block):
       "content": "<comentário reagindo ao vazamento>",
       "likes": <1 a 1500>,
       "personality": "<otimista|chato|corneteiro|zoeiro|saudosista|neutro>",
-      "replies": []
+      "replies": [
+        {
+          "username": "@<handle>",
+          "displayName": "<Nome Sobrenome>",
+          "content": "<reply curto com personalidade>",
+          "likes": <1 a 300>,
+          "personality": "<personalidade>",
+          "replies": []
+        }
+      ]
     }
   ]
 }
 
-Gere 5 a 7 comentários.`;
+Gere 5 a 8 comentários.
+
+REGRAS DE REPLIES:
+- 2 a 3 comentários devem ter replies
+- Varie o tom: concordância, discordância, zoeira, ironia, briga por opinião contrária
+- NUNCA gere replies genéricos — sempre adicione personalidade e contexto`;
 
   try {
     const completionParams = usingUserKey

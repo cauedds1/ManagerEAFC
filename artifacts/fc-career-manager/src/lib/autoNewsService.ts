@@ -63,6 +63,8 @@ export interface RumorContext {
   allMatches: MatchRecord[];
   allPlayers: SquadPlayer[];
   customPortals: CustomPortal[];
+  fanMoodScore?: number;
+  fanMoodLabel?: string;
   onNewPost?: (post: NewsPost) => void;
 }
 
@@ -257,7 +259,7 @@ export async function runAutoNews(
 }
 
 export async function runRumorNews(ctx: RumorContext): Promise<void> {
-  const { careerId, seasonId, season, clubName, clubLeague, clubDescription, projeto, allMatches, allPlayers, customPortals, onNewPost } = ctx;
+  const { careerId, seasonId, season, clubName, clubLeague, clubDescription, projeto, allMatches, allPlayers, customPortals, fanMoodScore, fanMoodLabel, onNewPost } = ctx;
 
   const matchCount = allMatches.length;
   if (matchCount < 2) return;
@@ -301,6 +303,8 @@ export async function runRumorNews(ctx: RumorContext): Promise<void> {
       projeto: projeto || undefined,
       playersContext: playerContextStr || undefined,
       squadPositionNeeds: squadPositionNeeds || undefined,
+      fanMoodScore: fanMoodScore ?? undefined,
+      fanMoodLabel: fanMoodLabel ?? undefined,
       customPortal: selectedPortal
         ? { id: selectedPortal.id, name: selectedPortal.name, description: selectedPortal.description, tone: selectedPortal.tone }
         : undefined,

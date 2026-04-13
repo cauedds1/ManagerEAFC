@@ -776,6 +776,8 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
           allMatches: updatedMatches,
           allPlayers,
           customPortals,
+          fanMoodScore: newMoodScore,
+          fanMoodLabel: `${moodInfo.emoji} ${moodInfo.label}`,
           onNewPost: handleNewPost,
         });
       });
