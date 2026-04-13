@@ -7,9 +7,10 @@ import {
   type LeaguePosition,
 } from "@/lib/leagueStorage";
 import type { MatchRecord } from "@/types/match";
-import { getMatchResult, RESULT_STYLE } from "@/types/match";
+import { getMatchResultFull, RESULT_STYLE } from "@/types/match";
 import { getCachedClubList } from "@/lib/clubListCache";
 import { searchStaticClubs } from "@/lib/staticClubList";
+import { isRival } from "@/lib/rivalsStorage";
 
 function resolveOpponentLogo(name: string, stored?: string): string | undefined {
   if (stored) return stored;
@@ -312,10 +313,12 @@ function TopPerformers({
 }
 
 function LastMatches({
+  seasonId,
   matches,
   clubName,
   clubLogoUrl,
 }: {
+  seasonId: string;
   matches: MatchRecord[];
   clubName: string;
   clubLogoUrl?: string | null;
@@ -359,8 +362,10 @@ function LastMatches({
       <SectionTitle>Últimas Partidas</SectionTitle>
       <div className="flex gap-3 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
         {last5.map((m) => {
-          const result = getMatchResult(m.myScore, m.opponentScore);
+          const result = getMatchResultFull(m.myScore, m.opponentScore, m.penaltyShootout);
           const rs = RESULT_STYLE[result];
+          const isRivalWin = result === "vitoria" && isRival(seasonId, m.opponent);
+          const isRivalLoss = result === "derrota" && isRival(seasonId, m.opponent);
           const oppLogoUrl = resolveOpponentLogo(m.opponent, m.opponentLogoUrl);
           const dateStr = m.date
             ? new Date(m.date + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })
@@ -376,6 +381,27 @@ function LastMatches({
           const rightName = isHome ? shortOpp : shortClub;
           const rightThemed = !isHome;
           const rightScore = isHome ? m.opponentScore : m.myScore;
+          const cardBorderLeft = isRivalWin
+            ? "3px solid #f97316"
+            : isRivalLoss
+              ? "3px solid rgba(127,29,29,0.9)"
+              : `3px solid ${rs.color}`;
+          const cardBorderRest = isRivalWin
+            ? "1px solid rgba(249,115,22,0.30)"
+            : isRivalLoss
+              ? "1px solid rgba(127,29,29,0.45)"
+              : `1px solid ${rs.border}`;
+          const cardBg = isRivalWin
+            ? "linear-gradient(160deg, rgba(154,52,18,0.30) 0%, rgba(0,0,0,0.18) 100%)"
+            : isRivalLoss
+              ? "linear-gradient(160deg, rgba(40,0,0,0.55) 0%, rgba(0,0,0,0.25) 100%)"
+              : `linear-gradient(160deg, ${rs.bg} 0%, rgba(0,0,0,0.18) 100%)`;
+          const tournamentColor = isRivalWin
+            ? "#fb923c"
+            : isRivalLoss
+              ? "rgba(252,165,165,0.6)"
+              : rs.color;
+          const tournamentPrefix = isRivalWin ? "⚔️ " : isRivalLoss ? "💀 " : "";
 
           return (
             <div
@@ -383,11 +409,11 @@ function LastMatches({
               className="rounded-2xl flex-shrink-0 flex flex-col overflow-hidden"
               style={{
                 width: 190,
-                borderTop: `1px solid ${rs.border}`,
-                borderRight: `1px solid ${rs.border}`,
-                borderBottom: `1px solid ${rs.border}`,
-                borderLeft: `3px solid ${rs.color}`,
-                background: `linear-gradient(160deg, ${rs.bg} 0%, rgba(0,0,0,0.18) 100%)`,
+                borderTop: cardBorderRest,
+                borderRight: cardBorderRest,
+                borderBottom: cardBorderRest,
+                borderLeft: cardBorderLeft,
+                background: cardBg,
               }}
             >
               {/* Header: tournament (full) + date */}
@@ -397,9 +423,9 @@ function LastMatches({
               >
                 <span
                   className="text-xs font-bold leading-tight"
-                  style={{ color: rs.color, flex: 1, minWidth: 0, wordBreak: "break-word" }}
+                  style={{ color: tournamentColor, flex: 1, minWidth: 0, wordBreak: "break-word" }}
                 >
-                  {m.tournament || "Amistoso"}
+                  {tournamentPrefix}{m.tournament || "Amistoso"}
                 </span>
                 {dateStr && (
                   <span className="text-white/35 text-xs flex-shrink-0 font-medium tabular-nums">{dateStr}</span>
@@ -598,7 +624,7 @@ export function PainelView({
         ))}
       </div>
 
-      <LastMatches matches={matches} clubName={clubName} clubLogoUrl={clubLogoUrl} />
+      <LastMatches seasonId={seasonId} matches={matches} clubName={clubName} clubLogoUrl={clubLogoUrl} />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <LeagueCard careerId={careerId} isReadOnly={isReadOnly} />
