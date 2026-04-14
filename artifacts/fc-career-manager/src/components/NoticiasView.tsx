@@ -25,6 +25,7 @@ import { getMembers, addNotification } from "@/lib/diretoriaStorage";
 import { getAllPlayerStats, getAllPlayerOverrides } from "@/lib/playerStatsStorage";
 import { getLeaguePosition } from "@/lib/leagueStorage";
 import { getTransfers } from "@/lib/transferStorage";
+import { getFanMood, getFanMoodLabel } from "@/lib/fanMoodStorage";
 
 import type { Season } from "@/types/career";
 
@@ -1273,6 +1274,8 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
       const customPortal = post.source === "custom" && post.customPortalId
         ? customPortals.find((p) => p.id === post.customPortalId)
         : undefined;
+      const fanMoodScore = getFanMood(seasonId);
+      const fanMoodInfo = getFanMoodLabel(fanMoodScore);
       const openaiKey = getOpenAIKey();
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       if (openaiKey) headers["x-openai-key"] = openaiKey;
@@ -1298,6 +1301,8 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
           teamFormContext: buildTeamFormContext(_matches, match) || undefined,
           historicalContext: historicalContext || undefined,
           attachedMatchContext: matchCtx,
+          fanMoodScore,
+          fanMoodLabel: `${fanMoodInfo.emoji} ${fanMoodInfo.label}`,
           recentPostsContext: recentPostsCtx.length > 0 ? recentPostsCtx : undefined,
           customPortal: customPortal ? {
             id: customPortal.id,

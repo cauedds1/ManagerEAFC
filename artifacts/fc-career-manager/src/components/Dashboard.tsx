@@ -365,6 +365,8 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
           customPortal: params.customPortal,
           matchPlayerContext: params.lastMatchPlayerContext || undefined,
           attachedMatchContext: params.attachedMatchContext || undefined,
+          fanMoodScore,
+          fanMoodLabel: `${getFanMoodLabel(fanMoodScore).emoji} ${getFanMoodLabel(fanMoodScore).label}`,
         }),
       });
 
@@ -423,7 +425,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
       setBgGenStatus("error");
       bgGenTimerRef.current = setTimeout(() => setBgGenStatus("idle"), 5000);
     }
-  }, [career]);
+  }, [career, fanMoodScore]);
 
   const handleTabChange = useCallback((tab: CareerTab) => {
     setActiveTab(tab);

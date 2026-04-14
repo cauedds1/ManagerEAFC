@@ -126,17 +126,19 @@ function buildFanMoodSection(clubName: string, fanMoodLabel: string, fanMoodScor
 
   if (fanMoodScore < 20) {
     section += `\n\nTORCIDA REVOLTADA — REGRAS OBRIGATÓRIAS PARA OS COMENTÁRIOS:`;
-    section += `\n- PROPORÇÃO: pelo menos 60-70% dos comentários devem ser negativos, de cobrança ou frustração — mesmo em vitórias.`;
-    section += `\n- CORNETAS OBRIGATÓRIAS: qualquer jogador marcado como DECEPÇÃO ou ABAIXO DO ESPERADO nos dados de atuação deve ser EXPLICITAMENTE cornetado. Use linguagem dura e direta: "tira esse cara", "não aguento mais ver esse jogador", "é uma vergonha", "esse time tá um lixo", "quando muda alguma coisa aqui?".`;
-    section += `\n- Inclua comentários de torcedores que ameaçam parar de ir ao estádio, que pedem demissão do técnico ou mudanças urgentes no elenco.`;
+    section += `\n- PROPORÇÃO: em resultado ruim, 60-70% dos comentários devem ser negativos, de cobrança ou frustração; em vitória, reduza a intensidade e misture alívio com ressalvas.`;
+    section += `\n- CORNETAS OBRIGATÓRIAS: jogadores marcados como DECEPÇÃO ou ABAIXO DO ESPERADO devem receber cobrança explícita, mas com base no jogo: "não dá pra passar pano", "tem que render mais", "acabou a paciência", "hoje comprometeu", "precisa ir pro banco".`;
+    section += `\n- Inclua alguns comentários pedindo mudanças no técnico, diretoria ou elenco, mas não transforme todos os comentários no mesmo tipo de protesto.`;
     section += `\n- Vitórias são comemoradas de forma morna, sempre com ressalvas: "ganhou mas jogou horrível", "ganhou por sorte", "assim não dá pra ir longe".`;
-    section += `\n- Mesmo boas atuações individuais recebem comentários mistos — a raiva coletiva contamina tudo.`;
+    section += `\n- Mesmo boas atuações individuais podem receber comentários mistos, mas preserve reconhecimento real quando alguém foi bem.`;
   } else if (fanMoodScore < 40) {
     section += `\n\nTORCIDA INSATISFEITA — REGRAS OBRIGATÓRIAS PARA OS COMENTÁRIOS:`;
-    section += `\n- PROPORÇÃO: pelo menos 40-50% dos comentários devem expressar insatisfação, cobrança ou ceticismo.`;
-    section += `\n- CORNETAS: jogadores com atuação marcada como DECEPÇÃO devem ser cornetados com clareza — "hoje ele não apareceu", "essa atuação tá abaixo do que a gente espera", "precisa render mais", "não tô satisfeito com esse jogador".`;
+    section += `\n- PROPORÇÃO: em resultado ruim, cerca de metade dos comentários deve expressar insatisfação, cobrança, sarcasmo ou ceticismo. A outra metade pode misturar análise, zoeira, preocupação e reconhecimento pontual.`;
+    section += `\n- CORNETAS: jogadores com atuação marcada como DECEPÇÃO ou ABAIXO DO ESPERADO devem ser cobrados com clareza — "hoje ele se escondeu", "não dá pra passar pano", "tem que render mais", "tá devendo", "atuação muito abaixo".`;
+    section += `\n- Crie algumas críticas diretas ao coletivo, ao técnico e ao sistema defensivo quando o time sofrer gols em sequência, levar 3+ gols, perder para adversário controlável ou apagar no segundo tempo.`;
+    section += `\n- Inclua 1 ou 2 comentários mais bravos, usando expressões naturais como "tô puto", "vergonha", "não aguento mais", "isso é inadmissível" ou "parece pelada", mas sem exagerar a ponto de todos soarem iguais.`;
     section += `\n- Vitórias são comemoradas, mas rapidamente aparecem comentários lembrando problemas: "ganhou mas o time ainda tem muito a melhorar", "feliz mas preocupado".`;
-    section += `\n- Derrotas geram reação bem mais intensa do que o normal — tom de decepção profunda.`;
+    section += `\n- Derrotas geram reação mais intensa que o normal, com cobrança nominal de quem foi mal, mas ainda deve haver variedade de vozes.`;
   } else if (fanMoodScore < 60) {
     section += `\n\nTORCIDA NEUTRA — REGRAS PARA OS COMENTÁRIOS:`;
     section += `\n- Proporção equilibrada: reage de forma proporcional ao resultado.`;
@@ -161,6 +163,7 @@ function buildFanMoodSection(clubName: string, fanMoodLabel: string, fanMoodScor
 
   section += `\n\nINTEGRAÇÃO HUMOR × ATUAÇÕES INDIVIDUAIS (regra fundamental):`;
   section += `\n- O humor da torcida AMPLIFICA as reações a atuações individuais. Com torcida revoltada/insatisfeita, DECEPÇÕES são muito mais cornetadas do que o normal — use linguagem mais dura, mais direta, mais impaciente. Com torcida animada/eufórica, SURPRESAS POSITIVAS são celebradas com muito mais intensidade — use linguagem mais efusiva, mais apaixonada.`;
+  section += `\n- Se houver derrota, apagão, goleada sofrida ou sequência ruim com torcida abaixo de 40/100, não suavize todos os comentários com "pelo menos" ou "dá para melhorar". Misture críticas fortes com análises e reações moderadas para manter realismo.`;
   section += `\n- NUNCA ignore o humor ao gerar comentários — ele é o filtro emocional de toda a reação da torcida.`;
 
   section += `\n\nHUMOR EM POSTS SEM CONTEXTO DE PARTIDA (transferências, treinos, rumores, especulações):`;
@@ -176,6 +179,24 @@ function buildFanMoodSection(clubName: string, fanMoodLabel: string, fanMoodScor
   }
 
   return section;
+}
+
+function buildCrisisReactionSection(description: string, fanMoodScore?: number): string {
+  const text = description.toLowerCase();
+  const isBadLoss = /derrota|perdeu|perde|goleada sofrida|eliminado|vexame|apag[aã]o|tomou|sofreu|0-3|0x3|1-3|1x3|2-4|2x4|3 gols|quatro gols|4 gols/i.test(text);
+  const isWeakOpponent = /advers[aá]rio menor|time menor|control[aá]vel|lanterna|zebra|oxford|perdeu para/i.test(text);
+  const angryMood = fanMoodScore !== undefined && fanMoodScore < 40;
+  if (!isBadLoss && !(angryMood && isWeakOpponent)) return "";
+
+  return `\n\nREAÇÃO DE CRISE PÓS-JOGO — OBRIGATÓRIO NOS COMENTÁRIOS:
+- Esta notícia envolve resultado ruim, apagão defensivo ou sensação de vexame. Os comentários devem ter críticas mais duras, mas ainda variados e naturais.
+- Gere 7 a 10 comentários: em torcida insatisfeita/revoltada, 3 a 5 devem ser claramente críticos; o restante pode ser análise, zoeira, preocupação, defesa pontual de algum jogador ou cobrança mais calma.
+- Inclua algumas críticas diretas ao TIME como coletivo: postura ruim, defesa perdida, meio-campo que não protege, jogadores assistindo o jogo acontecer.
+- Inclua críticas nominais aos jogadores citados nos dados quando eles tiverem nota baixa, erro, expulsão, sumiço ou desempenho abaixo do esperado.
+- Inclua pelo menos uma cobrança ao técnico/comissão quando fizer sentido: plano de jogo confuso, demora para mexer, time mal treinado, apagão recorrente.
+- Use linguagem de arquibancada brasileira com raiva realista em poucos comentários: "tô puto", "vergonha", "não dá mais", "acabou a paciência", "isso é inadmissível", "parece pelada", "ninguém marca ninguém".
+- Evite comentários longos demais e polidos quando forem de revolta, mas mantenha alguns comentários analíticos para equilíbrio.
+- Não transforme todos em xingamento vazio: a crítica deve apontar falha concreta da partida e, quando possível, citar jogador/linha/setor.`;
 }
 
 function buildClassicoSection(clubName: string, rivalName: string, isLoss: boolean, isWin: boolean): string {
@@ -319,6 +340,7 @@ REGRAS OBRIGATÓRIAS PARA PÊNALTIS:
   const fanMoodSection = (fanMoodScore !== undefined && fanMoodLabel)
     ? buildFanMoodSection(clubName, fanMoodLabel, fanMoodScore)
     : "";
+  const crisisReactionSection = buildCrisisReactionSection(description, fanMoodScore);
 
   const systemPrompt = `Você é um especialista em criar posts de futebol para redes sociais brasileiras no estilo Instagram.
 Cada post que você cria deve ser ÚNICO e DIFERENTE dos anteriores — varie o estilo, tom, escolha de emojis, estrutura da legenda e perfil dos comentaristas.
@@ -326,7 +348,7 @@ Use linguagem informal, autêntica, com gírias brasileiras do futebol. Seja cri
 O time é ${clubName}${season ? ` (temporada ${season})` : ""}.
 O portal que publica é ${portalName} (${portalHandle}).
 Semente de unicidade: ${uniqueSeed} — use ela para garantir que este post seja diferente de qualquer outro.
-REGRA ABSOLUTA: NUNCA mencione números de OVR, overall, ratings ou diferenças numéricas de atributos em nenhuma parte do texto gerado (título, legenda, comentários, replies). Em vez disso, use apenas termos qualitativos naturais como "estrela do elenco", "acima da média", "jogador de alto nível", "craque do time", "peça importante", "abaixo da média do elenco", "reforço de qualidade", etc. Os dados numéricos existem apenas para a sua calibração interna — não os exponha no texto.${prestigeSection}${playersSection}${squadOvrSection}${teamFormSection}${historicalSection}${attachedMatchSection}${matchPlayerSection}${recentPostsSection}${fanMoodSection}${penaltySection}${classicoSection}${customPortalSection}${globalPortalSection}`;
+REGRA ABSOLUTA: NUNCA mencione números de OVR, overall, ratings ou diferenças numéricas de atributos em nenhuma parte do texto gerado (título, legenda, comentários, replies). Em vez disso, use apenas termos qualitativos naturais como "estrela do elenco", "acima da média", "jogador de alto nível", "craque do time", "peça importante", "abaixo da média do elenco", "reforço de qualidade", etc. Os dados numéricos existem apenas para a sua calibração interna — não os exponha no texto.${prestigeSection}${playersSection}${squadOvrSection}${teamFormSection}${historicalSection}${attachedMatchSection}${matchPlayerSection}${recentPostsSection}${fanMoodSection}${crisisReactionSection}${penaltySection}${classicoSection}${customPortalSection}${globalPortalSection}`;
 
   const commentPersonalitiesRule = isGlobalPortal
     ? `AUDIÊNCIA DOS COMENTÁRIOS — portal global com seguidores de TODO o mundo e de VÁRIOS clubes:
@@ -350,6 +372,7 @@ REGRAS OBRIGATÓRIAS PARA COMENTARISTAS:
 - displayName DEVE ser um nome de pessoa real e comum (ex: "Lucas Ferreira", "Ana Souza", "Pedro Mendes", "Carla Lima", "João Carlos", "Thiago Rocha")
 - username DEVE ser derivado do nome da pessoa, curto e simples, como uma pessoa real usaria (ex: @lucasferreira, @anasouza22, @pedromendes_fc, @carlamlima, @joaocarlos17)
 - NUNCA use nomes de fanpage, coletivos ou conceitos abstratos — ERRADO: @nossosbonsmomentos, @bolaplenitude, @amantesdacorneta2023
+- Quando a torcida estiver insatisfeita/revoltada e o resultado for ruim, não gere comentários todos moderados com "precisa melhorar"; inclua cobrança forte, concreta e emocional em parte dos comentários, mantendo variedade.
 
 Responda APENAS com JSON puro (sem markdown, sem code block):
 {
