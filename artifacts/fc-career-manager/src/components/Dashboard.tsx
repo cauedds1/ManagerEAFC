@@ -758,7 +758,17 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     const isClassico = rivalName != null;
 
     const currentMood = getFanMood(activeSeasonId);
-    const moodDelta = computeFanMoodDelta(match.myScore, match.opponentScore, isClassico);
+    const sortedMatches = [...matches].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    let unbeatenStreak = 0;
+    for (let i = sortedMatches.length - 1; i >= 0; i--) {
+      const m = sortedMatches[i];
+      if (m.myScore > m.opponentScore || m.myScore === m.opponentScore) {
+        unbeatenStreak++;
+      } else {
+        break;
+      }
+    }
+    const moodDelta = computeFanMoodDelta(match.myScore, match.opponentScore, isClassico, unbeatenStreak);
     const newMoodScore = Math.max(0, Math.min(100, currentMood + moodDelta));
     void setFanMood(activeSeasonId, newMoodScore);
     setFanMoodScore(newMoodScore);

@@ -41,18 +41,33 @@ export function computeFanMoodDelta(
   myScore: number,
   opponentScore: number,
   isClassico: boolean,
+  unbeatenStreak: number = 0,
 ): number {
   const isWin = myScore > opponentScore;
   const isDraw = myScore === opponentScore;
   const isLoss = myScore < opponentScore;
 
-  if (isClassico && isLoss) return -16;
-  if (isLoss && opponentScore >= 4) return -14;
-  if (isLoss) return -8;
-  if (isDraw) return -2;
-  if (isClassico && isWin) return +12;
-  if (isWin && myScore >= 4) return +10;
-  return +6;
+  if (isLoss) {
+    if (isClassico) return -16;
+    if (opponentScore >= 4) return -14;
+    return -9;
+  }
+
+  if (isDraw) {
+    return unbeatenStreak >= 5 ? +1 : 0;
+  }
+
+  let base = 0;
+  if (isClassico) base = +14;
+  else if (myScore >= 4) base = +11;
+  else base = +8;
+
+  let streakBonus = 0;
+  if (unbeatenStreak >= 8) streakBonus = +7;
+  else if (unbeatenStreak >= 5) streakBonus = +5;
+  else if (unbeatenStreak >= 3) streakBonus = +3;
+
+  return base + streakBonus;
 }
 
 export function hydrateFanMoodCache(seasonId: string, data: Record<string, unknown>): void {
