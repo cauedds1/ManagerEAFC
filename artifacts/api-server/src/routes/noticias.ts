@@ -199,6 +199,42 @@ function buildCrisisReactionSection(description: string, fanMoodScore?: number):
 - Não transforme todos em xingamento vazio: a crítica deve apontar falha concreta da partida e, quando possível, citar jogador/linha/setor.`;
 }
 
+function getRecentResultLabels(teamFormContext?: string): string[] {
+  if (!teamFormContext?.trim()) return [];
+  const [, resultsText = teamFormContext] = teamFormContext.split(":");
+  return resultsText
+    .split("|")
+    .map((item) => item.trim().match(/^([VDE])(?:\(|\s)/)?.[1])
+    .filter((label): label is string => !!label);
+}
+
+function buildPositiveMomentumRecalibrationSection(teamFormContext?: string, fanMoodScore?: number): string {
+  if (fanMoodScore === undefined || fanMoodScore >= 40) return "";
+  const results = getRecentResultLabels(teamFormContext);
+  if (results.length < 2) return "";
+
+  let consecutiveWins = 0;
+  for (const result of results) {
+    if (result !== "V") break;
+    consecutiveWins += 1;
+  }
+
+  const winsInLastFive = results.slice(0, 5).filter((result) => result === "V").length;
+  if (consecutiveWins < 2 && winsInLastFive < 4) return "";
+
+  const intensity = consecutiveWins >= 3 || winsInLastFive >= 4
+    ? "sequência forte de vitórias"
+    : "início de sequência positiva";
+
+  return `\n\nRECALIBRAGEM POR BOA FASE RECENTE — MUITO IMPORTANTE:
+- Apesar do humor geral ainda estar baixo, o time está em ${intensity}. Isso deve DIMINUIR a quantidade e a intensidade dos críticos.
+- A torcida ainda pode estar com um pé atrás por causa do histórico recente, mas vitórias seguidas compram paciência.
+- Em vez de metade dos comentários críticos, use algo mais equilibrado: 2 a 3 comentários de cobrança/cautela, 3 a 5 comentários positivos ou aliviados, e 1 a 2 comentários de análise/zoeira.
+- Críticas devem soar como desconfiança residual, não como revolta total: "tô gostando, mas quero ver manter", "boa sequência, só não pode relaxar", "ainda tem coisa pra corrigir".
+- Celebre jogadores decisivos e a evolução coletiva quando houver sequência de vitórias. Não trate cada erro como crise se o time vem ganhando.
+- Evite exagerar em "vergonha", "vexame", "acabou a paciência" em posts de vitória durante boa sequência. Esse vocabulário só deve aparecer se a partida atual foi ruim apesar da sequência.`;
+}
+
 function buildClassicoSection(clubName: string, rivalName: string, isLoss: boolean, isWin: boolean): string {
   const result = isWin ? "venceu" : isLoss ? "perdeu" : "empatou";
   let section = `\n\nCLÁSSICO ENTRE RIVAIS — CONTEXTO ESPECIAL:`;
@@ -341,6 +377,7 @@ REGRAS OBRIGATÓRIAS PARA PÊNALTIS:
     ? buildFanMoodSection(clubName, fanMoodLabel, fanMoodScore)
     : "";
   const crisisReactionSection = buildCrisisReactionSection(description, fanMoodScore);
+  const positiveMomentumRecalibrationSection = buildPositiveMomentumRecalibrationSection(teamFormContext, fanMoodScore);
 
   const systemPrompt = `Você é um especialista em criar posts de futebol para redes sociais brasileiras no estilo Instagram.
 Cada post que você cria deve ser ÚNICO e DIFERENTE dos anteriores — varie o estilo, tom, escolha de emojis, estrutura da legenda e perfil dos comentaristas.
@@ -348,7 +385,7 @@ Use linguagem informal, autêntica, com gírias brasileiras do futebol. Seja cri
 O time é ${clubName}${season ? ` (temporada ${season})` : ""}.
 O portal que publica é ${portalName} (${portalHandle}).
 Semente de unicidade: ${uniqueSeed} — use ela para garantir que este post seja diferente de qualquer outro.
-REGRA ABSOLUTA: NUNCA mencione números de OVR, overall, ratings ou diferenças numéricas de atributos em nenhuma parte do texto gerado (título, legenda, comentários, replies). Em vez disso, use apenas termos qualitativos naturais como "estrela do elenco", "acima da média", "jogador de alto nível", "craque do time", "peça importante", "abaixo da média do elenco", "reforço de qualidade", etc. Os dados numéricos existem apenas para a sua calibração interna — não os exponha no texto.${prestigeSection}${playersSection}${squadOvrSection}${teamFormSection}${historicalSection}${attachedMatchSection}${matchPlayerSection}${recentPostsSection}${fanMoodSection}${crisisReactionSection}${penaltySection}${classicoSection}${customPortalSection}${globalPortalSection}`;
+REGRA ABSOLUTA: NUNCA mencione números de OVR, overall, ratings ou diferenças numéricas de atributos em nenhuma parte do texto gerado (título, legenda, comentários, replies). Em vez disso, use apenas termos qualitativos naturais como "estrela do elenco", "acima da média", "jogador de alto nível", "craque do time", "peça importante", "abaixo da média do elenco", "reforço de qualidade", etc. Os dados numéricos existem apenas para a sua calibração interna — não os exponha no texto.${prestigeSection}${playersSection}${squadOvrSection}${teamFormSection}${historicalSection}${attachedMatchSection}${matchPlayerSection}${recentPostsSection}${fanMoodSection}${positiveMomentumRecalibrationSection}${crisisReactionSection}${penaltySection}${classicoSection}${customPortalSection}${globalPortalSection}`;
 
   const commentPersonalitiesRule = isGlobalPortal
     ? `AUDIÊNCIA DOS COMENTÁRIOS — portal global com seguidores de TODO o mundo e de VÁRIOS clubes:
