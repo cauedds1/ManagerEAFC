@@ -1286,13 +1286,26 @@ export function RegistrarPartidaModal({
   }, []);
 
   const updatePlayerStats = useCallback((playerId: number, patch: Partial<PlayerMatchStats>) => {
-    setDraft((prev) => ({
-      ...prev,
-      playerStats: {
-        ...prev.playerStats,
-        [playerId]: { ...prev.playerStats[playerId], ...patch },
-      },
-    }));
+    setDraft((prev) => {
+      const current = prev.playerStats[playerId];
+      let myScoreDelta = 0;
+      let opponentScoreDelta = 0;
+      if (patch.goals !== undefined) {
+        myScoreDelta = patch.goals.length - (current?.goals?.length ?? 0);
+      }
+      if (patch.ownGoal !== undefined && patch.ownGoal !== (current?.ownGoal ?? false)) {
+        opponentScoreDelta = patch.ownGoal ? 1 : -1;
+      }
+      return {
+        ...prev,
+        myScore: Math.max(0, prev.myScore + myScoreDelta),
+        opponentScore: Math.max(0, prev.opponentScore + opponentScoreDelta),
+        playerStats: {
+          ...prev.playerStats,
+          [playerId]: { ...current, ...patch },
+        },
+      };
+    });
   }, []);
 
   const addPlayer = useCallback((player: SquadPlayer, asSub: boolean) => {
@@ -1955,7 +1968,7 @@ export function RegistrarPartidaModal({
                 </label>
                 <button
                   type="button"
-                  onClick={() => onChange({ opponentGoals: [...draft.opponentGoals, { id: generateGoalId(), minute: 0, playerName: undefined }] })}
+                  onClick={() => onChange({ opponentGoals: [...draft.opponentGoals, { id: generateGoalId(), minute: 0, playerName: undefined }], opponentScore: draft.opponentScore + 1 })}
                   className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors"
                   style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.6)" }}
                 >
@@ -1975,7 +1988,7 @@ export function RegistrarPartidaModal({
                       opponentName={draft.opponent}
                       allSystemPlayers={allSystemPlayers}
                       onChange={(updated) => onChange({ opponentGoals: draft.opponentGoals.map((og, i) => i === idx ? updated : og) })}
-                      onRemove={() => onChange({ opponentGoals: draft.opponentGoals.filter((_, i) => i !== idx) })}
+                      onRemove={() => onChange({ opponentGoals: draft.opponentGoals.filter((_, i) => i !== idx), opponentScore: Math.max(0, draft.opponentScore - 1) })}
                     />
                   ))}
                 </div>
