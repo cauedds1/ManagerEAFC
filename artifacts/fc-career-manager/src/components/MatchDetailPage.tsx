@@ -793,21 +793,39 @@ export function MatchDetailPage({
               );
             })()}
 
-            {/* Goal scorers */}
-            {(goalsByPlayer.length > 0 || (match.opponentGoals?.length ?? 0) > 0) && (
-              <div className="flex flex-col items-center gap-0.5 mt-1">
-                {goalsByPlayer.map((entry, i) => (
-                  <span key={i} className="text-[10px] text-white/45 text-center">
-                    ⚽ {lastName(entry.player.name)} {entry.minutes.map((m) => `${m}'`).join(", ")}
-                  </span>
-                ))}
-                {(match.opponentGoals ?? []).map((g, i) => (
-                  <span key={`opp-${i}`} className="text-[10px] text-white/30 text-center">
-                    ⚽ {g.playerName ? lastName(g.playerName) : match.opponent.split(" ")[0]} {g.minute}&apos;
-                  </span>
-                ))}
-              </div>
-            )}
+            {/* Goal scorers — two-column layout */}
+            {(goalsByPlayer.length > 0 || (match.opponentGoals?.length ?? 0) > 0) && (() => {
+              const myGoalEntries = goalsByPlayer
+                .flatMap((entry) => entry.minutes.map((m) => ({ name: lastName(entry.player.name), minute: m })))
+                .sort((a, b) => a.minute - b.minute);
+              const oppGoalEntries = (match.opponentGoals ?? [])
+                .map((g) => ({ name: g.playerName ? lastName(g.playerName) : match.opponent.split(" ")[0], minute: g.minute }))
+                .sort((a, b) => a.minute - b.minute);
+              const leftGoals = isHome ? myGoalEntries : oppGoalEntries;
+              const rightGoals = isHome ? oppGoalEntries : myGoalEntries;
+              return (
+                <div className="flex gap-3 mt-1.5 w-full">
+                  {/* Left team goals — right-aligned */}
+                  <div className="flex-1 flex flex-col items-end gap-0.5">
+                    {leftGoals.map((g, i) => (
+                      <span key={i} className="text-[10px] text-white/50 text-right leading-tight">
+                        {g.name} {g.minute}&apos; ⚽
+                      </span>
+                    ))}
+                  </div>
+                  {/* Thin vertical divider */}
+                  <div className="w-px self-stretch bg-white/10 flex-shrink-0" />
+                  {/* Right team goals — left-aligned */}
+                  <div className="flex-1 flex flex-col items-start gap-0.5">
+                    {rightGoals.map((g, i) => (
+                      <span key={i} className="text-[10px] text-white/50 text-left leading-tight">
+                        ⚽ {g.name} {g.minute}&apos;
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
 
           {/* Right team */}
