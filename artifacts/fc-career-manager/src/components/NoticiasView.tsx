@@ -157,14 +157,21 @@ export interface BgGenParams {
   careerId: string;
 }
 
+const LOCATION_LABELS_AI: Record<string, string> = {
+  casa: "Jogo em casa (mandante — estádio do próprio clube)",
+  fora: "Jogo fora de casa (visitante — estádio do adversário)",
+  neutro: "Campo neutro",
+};
+
 function buildMatchContextString(match: MatchRecord, allPlayers: SquadPlayer[]): string {
   const playerById = new Map(allPlayers.map((p) => [p.id, p]));
   const result = getMatchResult(match.myScore, match.opponentScore);
   const resultLabel = result === "vitoria" ? "Vitória" : result === "derrota" ? "Derrota" : "Empate";
-  const locationLabel = LOCATION_LABELS[match.location] ?? match.location;
+  const locationLabel = LOCATION_LABELS_AI[match.location] ?? LOCATION_LABELS[match.location] ?? match.location;
 
   const lines: string[] = [
-    `Resultado: ${resultLabel} ${match.myScore}x${match.opponentScore} vs ${match.opponent} (${locationLabel})`,
+    `Resultado: ${resultLabel} ${match.myScore}x${match.opponentScore} vs ${match.opponent}`,
+    `Local: ${locationLabel}`,
     `Data: ${match.date} | Torneio: ${match.tournament}${match.stage ? ` — ${match.stage}` : ""}`,
   ];
 

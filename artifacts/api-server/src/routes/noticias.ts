@@ -311,6 +311,7 @@ ${attachedMatchContext.trim()}
 INSTRUÇÕES CRÍTICAS PARA A PARTIDA ANEXADA:
 - Esta partida é o TEMA CENTRAL da notícia — use TODOS os dados acima na construção do post e dos comentários.
 - Mencione placares, artilheiros, minutos de gol, assistências e notas exatamente como estão — não invente nada.
+- LOCALIZAÇÃO DO JOGO — REGRA ABSOLUTA: O campo "Local:" indica onde a partida foi disputada. "Jogo fora de casa (visitante)" significa que o clube jogou NO ESTÁDIO DO ADVERSÁRIO. "Jogo em casa (mandante)" significa que o adversário veio jogar no estádio do clube. NÃO confunda — nos comentários e no texto da notícia, use "fora de casa", "como visitante", "no estádio deles" (visitante) ou "em casa", "no nosso estádio", "diante da nossa torcida" (mandante) conforme o campo "Local:" indicar.
 - Jogadores com notas altas e gols devem aparecer como protagonistas do post.
 - Jogadores com notas baixas podem gerar comentários de cobrança ou decepção.
 - O MOTM (destaque) deve ser explicitamente celebrado no post e nos comentários.
