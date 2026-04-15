@@ -1,15 +1,22 @@
 import OpenAI from "openai";
 
 async function callGemini(systemPrompt: string, userPrompt: string): Promise<string> {
-  const { ai } = await import("@workspace/integrations-gemini-ai");
-  const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
+  const GEMINI_MODEL = "gemini-2.0-flash";
+  const params = {
+    model: GEMINI_MODEL,
     contents: [{ role: "user", parts: [{ text: userPrompt }] }],
-    config: {
-      systemInstruction: systemPrompt,
-      maxOutputTokens: 8192,
-    },
-  });
+    config: { systemInstruction: systemPrompt, maxOutputTokens: 8192 },
+  };
+
+  if (process.env.GEMINI_API_KEY) {
+    const { GoogleGenAI } = await import("@google/genai");
+    const directAi = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    const response = await directAi.models.generateContent(params);
+    return response.text ?? "";
+  }
+
+  const { ai } = await import("@workspace/integrations-gemini-ai");
+  const response = await ai.models.generateContent(params);
   return response.text ?? "";
 }
 
