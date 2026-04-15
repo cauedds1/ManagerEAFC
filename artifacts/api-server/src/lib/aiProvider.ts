@@ -1,7 +1,7 @@
 import OpenAI from "openai";
-import { ai } from "@workspace/integrations-gemini-ai";
 
 async function callGemini(systemPrompt: string, userPrompt: string): Promise<string> {
+  const { ai } = await import("@workspace/integrations-gemini-ai");
   const response = await ai.models.generateContent({
     model: "gemini-3-flash-preview",
     contents: [{ role: "user", parts: [{ text: userPrompt }] }],

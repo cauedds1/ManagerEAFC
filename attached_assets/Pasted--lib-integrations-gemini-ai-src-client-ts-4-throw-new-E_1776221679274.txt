@@ -1,0 +1,99 @@
+/lib/integrations-gemini-ai/src/client.ts:4
+  throw new Error(
+        ^
+Error: AI_INTEGRATIONS_GEMINI_BASE_URL must be set. Did you forget to provision the Gemini AI integration?
+    at <anonymous> (/lib/integrations-gemini-ai/src/client.ts:4:9)
+    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:665:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)
+Node.js v22.22.2
+Node.js v22.22.2
+/lib/integrations-gemini-ai/src/client.ts:4
+  throw new Error(
+        ^
+Error: AI_INTEGRATIONS_GEMINI_BASE_URL must be set. Did you forget to provision the Gemini AI integration?
+    at <anonymous> (/lib/integrations-gemini-ai/src/client.ts:4:9)
+    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:665:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)
+Error: AI_INTEGRATIONS_GEMINI_BASE_URL must be set. Did you forget to provision the Gemini AI integration?
+    at <anonymous> (/lib/integrations-gemini-ai/src/client.ts:4:9)
+    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:665:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)
+Node.js v22.22.2
+/lib/integrations-gemini-ai/src/client.ts:4
+  throw new Error(
+        ^
+Error: AI_INTEGRATIONS_GEMINI_BASE_URL must be set. Did you forget to provision the Gemini AI integration?
+    at <anonymous> (/lib/integrations-gemini-ai/src/client.ts:4:9)
+Node.js v22.22.2
+    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:665:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)
+/lib/integrations-gemini-ai/src/client.ts:4
+  throw new Error(
+        ^
+/lib/integrations-gemini-ai/src/client.ts:4
+Node.js v22.22.2
+  throw new Error(
+    at <anonymous> (/lib/integrations-gemini-ai/src/client.ts:4:9)
+        ^
+Error: AI_INTEGRATIONS_GEMINI_BASE_URL must be set. Did you forget to provision the Gemini AI integration?
+    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:665:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)
+Node.js v22.22.2
+/lib/integrations-gemini-ai/src/client.ts:4
+  throw new Error(
+        ^
+Error: AI_INTEGRATIONS_GEMINI_BASE_URL must be set. Did you forget to provision the Gemini AI integration?
+    at <anonymous> (/lib/integrations-gemini-ai/src/client.ts:4:9)
+    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:665:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)
+/lib/integrations-gemini-ai/src/client.ts:4
+Node.js v22.22.2
+  throw new Error(
+        ^
+Error: AI_INTEGRATIONS_GEMINI_BASE_URL must be set. Did you forget to provision the Gemini AI integration?
+    at <anonymous> (/lib/integrations-gemini-ai/src/client.ts:4:9)
+    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:665:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)
+/lib/integrations-gemini-ai/src/client.ts:4
+  throw new Error(
+Node.js v22.22.2
+        ^
+Error: AI_INTEGRATIONS_GEMINI_BASE_URL must be set. Did you forget to provision the Gemini AI integration?
+    at <anonymous> (/lib/integrations-gemini-ai/src/client.ts:4:9)
+    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:665:26)
+/lib/integrations-gemini-ai/src/client.ts:4
+  throw new Error(
+        ^
+Error: AI_INTEGRATIONS_GEMINI_BASE_URL must be set. Did you forget to provision the Gemini AI integration?
+    at <anonymous> (/lib/integrations-gemini-ai/src/client.ts:4:9)
+    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:665:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)
+Node.js v22.22.2
+/lib/integrations-gemini-ai/src/client.ts:4
+  throw new Error(
+        ^
+Error: AI_INTEGRATIONS_GEMINI_BASE_URL must be set. Did you forget to provision the Gemini AI integration?
+    at <anonymous> (/lib/integrations-gemini-ai/src/client.ts:4:9)
+    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:665:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)
+Node.js v22.22.2
+Node.js v22.22.2
+        ^
+/lib/integrations-gemini-ai/src/client.ts:4
+  throw new Error(
+Error: AI_INTEGRATIONS_GEMINI_BASE_URL must be set. Did you forget to provision the Gemini AI integration?
+    at <anonymous> (/lib/integrations-gemini-ai/src/client.ts:4:9)
+    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:665:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)
