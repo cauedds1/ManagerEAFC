@@ -221,6 +221,45 @@ export const STATIC_CLUBS: StaticClub[] = [
   // --- Croatia ---
   { id: 680, name: "Dinamo Zagreb",       logo: `${CDN}/680.png`,  league: "HNL Croatia" },
   { id: 681, name: "Hajduk Split",        logo: `${CDN}/681.png`,  league: "HNL Croatia" },
+
+  // --- Switzerland / Super League ---
+  { id: 1101, name: "FC Basel 1893",      logo: `${CDN}/1101.png`, league: "Swiss Super League" },
+  { id: 1107, name: "BSC Young Boys",     logo: `${CDN}/1107.png`, league: "Swiss Super League" },
+  { id: 1102, name: "FC Zürich",          logo: `${CDN}/1102.png`, league: "Swiss Super League" },
+  { id: 1103, name: "Servette FC",        logo: `${CDN}/1103.png`, league: "Swiss Super League" },
+  { id: 1104, name: "FC Lugano",          logo: `${CDN}/1104.png`, league: "Swiss Super League" },
+  { id: 1106, name: "FC St. Gallen",      logo: `${CDN}/1106.png`, league: "Swiss Super League" },
+  { id: 1108, name: "Grasshopper Club",   logo: `${CDN}/1108.png`, league: "Swiss Super League" },
+  { id: 1105, name: "FC Lausanne-Sport",  logo: `${CDN}/1105.png`, league: "Swiss Super League" },
+
+  // --- Romania ---
+  { id: 626, name: "FCSB",               logo: `${CDN}/626.png`,  league: "Liga 1 Romania" },
+  { id: 627, name: "CFR Cluj",            logo: `${CDN}/627.png`,  league: "Liga 1 Romania" },
+
+  // --- Serbia ---
+  { id: 402, name: "Red Star Belgrade",   logo: `${CDN}/402.png`,  league: "SuperLiga Serbia" },
+  { id: 403, name: "Partizan",            logo: `${CDN}/403.png`,  league: "SuperLiga Serbia" },
+
+  // --- Denmark ---
+  { id: 384, name: "FC Copenhagen",       logo: `${CDN}/384.png`,  league: "Superligaen" },
+  { id: 390, name: "Brøndby IF",          logo: `${CDN}/390.png`,  league: "Superligaen" },
+  { id: 388, name: "FC Midtjylland",      logo: `${CDN}/388.png`,  league: "Superligaen" },
+
+  // --- Norway ---
+  { id: 357, name: "Rosenborg BK",        logo: `${CDN}/357.png`,  league: "Eliteserien" },
+  { id: 352, name: "FK Bodø/Glimt",       logo: `${CDN}/352.png`,  league: "Eliteserien" },
+
+  // --- Sweden ---
+  { id: 364, name: "Malmö FF",            logo: `${CDN}/364.png`,  league: "Allsvenskan" },
+  { id: 362, name: "AIK",                 logo: `${CDN}/362.png`,  league: "Allsvenskan" },
+
+  // --- Poland ---
+  { id: 500, name: "Legia Warsaw",        logo: `${CDN}/500.png`,  league: "Ekstraklasa" },
+  { id: 503, name: "Lech Poznań",         logo: `${CDN}/503.png`,  league: "Ekstraklasa" },
+
+  // --- Ukraine ---
+  { id: 385, name: "Shakhtar Donetsk",    logo: `${CDN}/385.png`,  league: "Ukrainian Premier League" },
+  { id: 386, name: "Dynamo Kyiv",         logo: `${CDN}/386.png`,  league: "Ukrainian Premier League" },
 ];
 
 export function searchStaticClubs(query: string): StaticClub[] {

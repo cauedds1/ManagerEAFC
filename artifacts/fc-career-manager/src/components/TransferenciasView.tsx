@@ -252,6 +252,18 @@ function PlayerAutocomplete({
   );
 }
 
+function findClubLogo(name: string): string | null {
+  if (!name.trim()) return null;
+  const q = name.toLowerCase().trim();
+  const cached = getCachedClubList();
+  if (cached && cached.length > 0) {
+    const match = cached.find((c) => c.name.toLowerCase() === q || c.name.toLowerCase().includes(q));
+    if (match?.logo) return match.logo;
+  }
+  const staticMatches = searchStaticClubs(name);
+  return staticMatches[0]?.logo ?? null;
+}
+
 function ClubAutocomplete({
   value,
   onChange,
@@ -276,6 +288,17 @@ function ClubAutocomplete({
     return searchStaticClubs(value);
   }, [value, open]);
 
+  const handleBlur = () => {
+    setTimeout(() => {
+      setOpen(false);
+      // Auto-match logo if user typed without selecting from dropdown
+      if (value.trim()) {
+        const logo = findClubLogo(value);
+        if (logo) onSelectLogo(logo);
+      }
+    }, 180);
+  };
+
   return (
     <div className="relative">
       <input
@@ -284,7 +307,7 @@ function ClubAutocomplete({
         value={value}
         onChange={(e) => { onChange(e.target.value); setOpen(true); }}
         onFocus={() => setOpen(true)}
-        onBlur={() => setTimeout(() => setOpen(false), 180)}
+        onBlur={handleBlur}
         placeholder={placeholder ?? "Ex: Manchester City (vazio = Jogador Livre)"}
         className="w-full px-3 py-2.5 rounded-xl text-white text-sm focus:outline-none glass placeholder:text-white/20"
       />
