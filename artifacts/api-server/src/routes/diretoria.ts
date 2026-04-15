@@ -273,7 +273,7 @@ Ao final: NOVO_HUMOR: <excelente|bom|neutro|tenso|irritado|furioso>`;
   try {
     const params = usingUserKey
       ? { model: "gpt-4o", max_tokens: 1024 }
-      : { model: "gpt-5.2", max_completion_tokens: 1024 };
+      : { model: "gpt-4o-mini", max_tokens: 1024 };
 
     const completion = await client.chat.completions.create({
       ...params,
@@ -398,7 +398,7 @@ Agora é sua vez de falar, ${speaker.name}.`;
   try {
     const params = usingUserKey
       ? { model: "gpt-4o", max_tokens: 768 }
-      : { model: "gpt-5.2", max_completion_tokens: 768 };
+      : { model: "gpt-4o-mini", max_tokens: 768 };
 
     const completion = await client.chat.completions.create({
       ...params,
@@ -466,7 +466,7 @@ Responda APENAS com JSON puro (sem markdown):
   try {
     const params = usingUserKey
       ? { model: "gpt-4o", max_tokens: 512 }
-      : { model: "gpt-5.2", max_completion_tokens: 512 };
+      : { model: "gpt-4o-mini", max_tokens: 512 };
 
     const completion = await client.chat.completions.create({
       ...params,
@@ -929,7 +929,7 @@ Responda APENAS com JSON puro (sem markdown):
   try {
     const params = usingUserKey
       ? { model: "gpt-4o", max_tokens: 1024 }
-      : { model: "gpt-5.2", max_completion_tokens: 1024 };
+      : { model: "gpt-4o-mini", max_tokens: 1024 };
 
     const completion = await client.chat.completions.create({
       ...params,
@@ -1026,7 +1026,7 @@ Responda APENAS com o texto do projeto, sem JSON, sem aspas.`;
   try {
     const params = usingUserKey
       ? { model: "gpt-4o-mini" as const, max_tokens: 180 as const }
-      : { model: "gpt-5.2" as const, max_completion_tokens: 180 as const };
+      : { model: "gpt-4o-mini" as const, max_tokens: 180 as const };
 
     const completion = await client.chat.completions.create({
       ...params,
@@ -1079,7 +1079,7 @@ REGRAS:
   try {
     const params = usingUserKey
       ? { model: "gpt-4o-mini" as const, max_tokens: 400 as const }
-      : { model: "gpt-5.2" as const, max_completion_tokens: 400 as const };
+      : { model: "gpt-4o-mini" as const, max_tokens: 400 as const };
 
     const completion = await client.chat.completions.create({
       ...params,

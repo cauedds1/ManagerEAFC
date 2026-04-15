@@ -1,6 +1,7 @@
 import { Router } from "express";
 import OpenAI from "openai";
 import { openai as defaultOpenai } from "@workspace/integrations-openai-ai-server";
+import { callNewsCompletion } from "../lib/aiProvider";
 
 const router = Router();
 
@@ -459,20 +460,7 @@ REGRAS DE REPLIES — OBRIGATÓRIO:
 - NUNCA gere replies genéricos como "concordo" ou "verdade" sozinhos — sempre adicione personalidade e contexto`;
 
   try {
-    const completionParams = usingUserKey
-      ? { model: "gpt-4o", max_tokens: 4096 }
-      : { model: "gpt-5.2", max_completion_tokens: 4096 };
-
-    const completion = await client.chat.completions.create({
-      ...completionParams,
-      stream: false,
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
-    } as Parameters<typeof client.chat.completions.create>[0]);
-
-    const raw = (completion as OpenAI.Chat.Completions.ChatCompletion).choices[0]?.message?.content ?? "";
+    const raw = await callNewsCompletion(client, usingUserKey, systemPrompt, userPrompt, 4096);
 
     let parsed: Record<string, unknown>;
     try {
@@ -599,20 +587,7 @@ REGRAS DE REPLIES — OBRIGATÓRIO:
 - Se o técnico for famoso do mundo real, fãs internacionais são esperados e podem ter replies de outros internacionais`;
 
   try {
-    const completionParams = usingUserKey
-      ? { model: "gpt-4o", max_tokens: 4096 }
-      : { model: "gpt-5.2", max_completion_tokens: 4096 };
-
-    const completion = await client.chat.completions.create({
-      ...completionParams,
-      stream: false,
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
-    } as Parameters<typeof client.chat.completions.create>[0]);
-
-    const raw = (completion as OpenAI.Chat.Completions.ChatCompletion).choices[0]?.message?.content ?? "";
+    const raw = await callNewsCompletion(client, usingUserKey, systemPrompt, userPrompt, 4096);
 
     let parsed: Record<string, unknown>;
     try {
@@ -772,20 +747,7 @@ REGRAS DE REPLIES — OBRIGATÓRIO:
 - NUNCA gere replies genéricos como "concordo" sozinhos — sempre adicione personalidade`;
 
   try {
-    const completionParams = usingUserKey
-      ? { model: "gpt-4o", max_tokens: 3072 }
-      : { model: "gpt-5.2", max_completion_tokens: 3072 };
-
-    const completion = await client.chat.completions.create({
-      ...completionParams,
-      stream: false,
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
-    } as Parameters<typeof client.chat.completions.create>[0]);
-
-    const raw = (completion as OpenAI.Chat.Completions.ChatCompletion).choices[0]?.message?.content ?? "";
+    const raw = await callNewsCompletion(client, usingUserKey, systemPrompt, userPrompt, 3072);
 
     let parsed: Record<string, unknown>;
     try {
@@ -914,20 +876,7 @@ REGRAS DE REPLIES:
 - NUNCA gere replies genéricos — sempre adicione personalidade e contexto`;
 
   try {
-    const completionParams = usingUserKey
-      ? { model: "gpt-4o", max_tokens: 3072 }
-      : { model: "gpt-5.2", max_completion_tokens: 3072 };
-
-    const completion = await client.chat.completions.create({
-      ...completionParams,
-      stream: false,
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
-    } as Parameters<typeof client.chat.completions.create>[0]);
-
-    const raw = (completion as OpenAI.Chat.Completions.ChatCompletion).choices[0]?.message?.content ?? "";
+    const raw = await callNewsCompletion(client, usingUserKey, systemPrompt, userPrompt, 3072);
 
     let parsed: Record<string, unknown>;
     try {
