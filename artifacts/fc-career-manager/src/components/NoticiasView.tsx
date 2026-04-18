@@ -985,6 +985,16 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
   }, [seasonId, allPlayers, career.id]);
 
   useEffect(() => {
+    const handler = (e: Event) => {
+      const { postId, imageUrl } = (e as CustomEvent<{ postId: string; imageUrl: string }>).detail ?? {};
+      if (!postId || !imageUrl) return;
+      setPosts((prev) => prev.map((p) => p.id === postId ? { ...p, imageUrl, imageFit: "cover" } : p));
+    };
+    window.addEventListener("fc-news-image-updated", handler);
+    return () => window.removeEventListener("fc-news-image-updated", handler);
+  }, []);
+
+  useEffect(() => {
     let stored = getPosts(seasonId);
     const isFirstSeed = stored.length === 0;
     if (isFirstSeed) {

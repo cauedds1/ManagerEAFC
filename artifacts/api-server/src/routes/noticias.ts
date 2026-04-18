@@ -907,4 +907,114 @@ REGRAS DE REPLIES:
   }
 });
 
+interface ImagePromptContext {
+  eventType: string;
+  playerName?: string;
+  opponent?: string;
+  streak?: number;
+  milestone?: number;
+  score?: string;
+}
+
+interface GenerateNewsImageBody {
+  clubName: string;
+  clubLeague?: string;
+  imagePromptContext: ImagePromptContext;
+  isClassico?: boolean;
+  rivalName?: string;
+}
+
+function buildNewsImagePrompt(clubName: string, ctx: ImagePromptContext, isClassico?: boolean): string {
+  const club = clubName;
+  const rival = ctx.opponent ?? "";
+  const player = ctx.playerName ?? "";
+  const streak = ctx.streak ?? 0;
+  const score = ctx.score ?? "";
+  const milestone = ctx.milestone ?? 0;
+
+  const baseStyle = `Ultra-cinematic sports card graphic. Dark background with dramatic lighting. Professional sports broadcast aesthetic. Bold and impactful composition. Photorealistic style, high contrast, volumetric lighting. No text, no numbers, no labels in the image.`;
+
+  const prompts: Record<string, string> = {
+    hat_trick: `${baseStyle} A football (soccer) player${player ? ` named ${player}` : ""} celebrating a hat-trick on the pitch, holding three fingers up triumphantly, wearing a ${club} jersey. Stadium crowd going wild in the background. Golden confetti raining down. Intense rim lighting, euphoric celebration pose. Electric atmosphere.`,
+
+    goleada_aplicada: `${baseStyle} A dominant football team celebrating a crushing victory, ${club} players in a group hug on the pitch${rival ? ` after defeating ${rival}` : ""}. Scoreboard blurred in the background showing a big win. Fireworks and celebration flares. Team in triumphant formation, arms raised.`,
+
+    virada: `${baseStyle} Dramatic comeback moment in football. ${club} player scoring the winning goal in the second half, fist pumping with intense emotion${rival ? ` against ${rival}` : ""}. Stadium erupting, flares lit in the stands. Backlit by stadium floodlights creating dramatic silhouette. The moment of the comeback, pure drama.`,
+
+    gol_acrescimos: `${baseStyle} Last-minute winner football goal celebration. ${club} player running with arms wide after scoring in injury time. Pitch with stadium lights casting dramatic shadows. Clock showing 90+ in the blurred background. Pure ecstasy, teammates chasing the scorer.`,
+
+    classificacao_penaltis: `${baseStyle} Penalty shootout victory celebration. ${club} goalkeeper diving heroically${rival ? ` against ${rival}` : ""}. Team players running from their positions to celebrate. Intense stadium atmosphere with supporters in the background. Dramatic low angle shot.`,
+
+    invicta: `${baseStyle} ${club} football team celebrating an unbeaten run of ${streak} matches. Players forming a shield wall formation symbolizing defensive strength. Background shows a long corridor of victories. Dramatic dark blue and gold lighting. Epic, cinematic wide shot of the team.`,
+
+    win_streak: `${baseStyle} ${club} players celebrating ${streak} consecutive victories, group celebration on the pitch. Trophies and winning momentum visual metaphor. Fire and energy trails behind the players. Championship-level atmosphere with full stadium in background.`,
+
+    fim_invicta: `${baseStyle} Dramatic, melancholic football scene. ${club} player with head bowed after losing to ${rival}, ending a ${streak}-game unbeaten run. Dark, moody lighting. Rain on the pitch. The weight of defeat. Cinematic, emotional sports photography aesthetic.`,
+
+    lideranca: `${baseStyle} ${club} players celebrating reaching the top of the league table. Number one podium visual. Captain holding up a symbolic trophy or pointing to the sky. Confetti, flares, full stadium celebrating. Golden light from above, triumphant composition.`,
+
+    jogo_maluco: `${baseStyle} Explosive, high-scoring football match between ${club}${rival ? ` and ${rival}` : ""}. Multiple celebration moments collaged dramatically. Goals, emotion, chaos of a thrilling match. Electric blue and orange color explosion. Scoreboard visual showing${score ? ` ${score}` : " high-scoring result"}.`,
+
+    clean_sheet_streak: `${baseStyle} ${club} goalkeeper making a spectacular save, arms fully extended. The net behind untouched. ${streak} clean sheets celebration. Defensive wall standing strong. Dark stadium background with golden goalkeeper gloves catching the light. Wall of defense metaphor.`,
+
+    gol_streak: `${baseStyle} ${player ? player : "A"} football striker${player ? ` of ${club}` : ` wearing ${club} jersey`} celebrating after scoring in ${streak} consecutive matches. Boots on fire visual effect. Golden boot symbolism. Artilheiro on a scoring run, pure joy and determination. Dynamic action pose.`,
+
+    marco_gols: `${baseStyle} ${player ? player : "A striker"} of ${club} celebrating reaching ${milestone} goals this season. Golden Boot trophy symbolism. Number ${milestone} glowing in the stadium lights. Confetti and celebration flares. The moment of the milestone goal. Pure euphoria.`,
+
+    marco_time_gols: `${baseStyle} ${club} team celebrating ${milestone} collective goals this season. Group explosion of joy. Players forming a number shape symbolically. Offensive team power visualization. Stadium packed, flares, celebration colors of the team.`,
+
+    z4: `${baseStyle} Dramatic, tense football atmosphere. ${club} players looking concerned and focused in the dressing room or on the pitch. Dark red warning light aesthetic. Relegation battle visualization. Determined faces, a team fighting for survival. Dark, gritty, urgent mood.`,
+  };
+
+  const classicoCover = isClassico
+    ? `${baseStyle} Epic rivalry match between ${club} and ${rival}. Two teams clashing in a legendary derby. Flames dividing the pitch, two sets of supporters. Historic rivalry atmosphere. Fire, passion, intensity. Derby day atmosphere.`
+    : null;
+
+  return classicoCover ?? prompts[ctx.eventType] ?? `${baseStyle} ${club} football team celebrating a major achievement. Dynamic sports photography. Stadium atmosphere, team in joy.`;
+}
+
+router.post("/noticias/generate-image", async (req, res) => {
+  const { clubName, imagePromptContext, isClassico, rivalName } = req.body as GenerateNewsImageBody;
+
+  if (!clubName || !imagePromptContext?.eventType) {
+    res.status(400).json({ error: "clubName e imagePromptContext.eventType são obrigatórios" });
+    return;
+  }
+
+  const userKey = (req.headers["x-openai-key"] as string | undefined) ?? "";
+  if (!userKey || !userKey.trim().startsWith("sk-")) {
+    res.status(402).json({ error: "Chave OpenAI necessária para geração de imagens" });
+    return;
+  }
+
+  const client = new OpenAI({ apiKey: userKey.trim() });
+
+  const ctxWithRival = isClassico && rivalName
+    ? { ...imagePromptContext, opponent: rivalName }
+    : imagePromptContext;
+
+  const prompt = buildNewsImagePrompt(clubName, ctxWithRival, isClassico);
+
+  try {
+    const response = await client.images.generate({
+      model: "dall-e-3",
+      prompt,
+      n: 1,
+      size: "1024x1792",
+      quality: "standard",
+    });
+
+    const imageUrl = response.data?.[0]?.url;
+    if (!imageUrl) {
+      res.status(500).json({ error: "Imagem não gerada" });
+      return;
+    }
+
+    res.json({ imageUrl });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: "Erro ao gerar imagem", details: msg });
+  }
+});
+
 export default router;

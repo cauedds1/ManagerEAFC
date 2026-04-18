@@ -5,12 +5,40 @@ import type { SquadPlayer } from "@/lib/squadCache";
 import type { LeaguePosition } from "@/lib/leagueStorage";
 import type { CustomPortal } from "@/lib/customPortalStorage";
 import { detectMatchEvents } from "@/lib/autoNewsEngine";
+import type { ImagePromptContext } from "@/lib/autoNewsEngine";
 import { wasEventHandled, markEventHandled } from "@/lib/autoNewsStorage";
 import { getAllPlayerStats, getAllPlayerOverrides } from "@/lib/playerStatsStorage";
 import { fetchPortals } from "@/lib/customPortalStorage";
-import { getPosts, addPost, generatePostId, generateCommentId } from "@/lib/noticiaStorage";
+import { getPosts, addPost, updatePost, generatePostId, generateCommentId } from "@/lib/noticiaStorage";
 import { buildPlayerPerformanceContext, buildPlayerContextString, buildSquadOvrContext } from "@/lib/playerContext";
 import { getOpenAIKey } from "@/lib/openaiKeyStorage";
+
+const FC_NEWS_IMAGE_UPDATED_EVENT = "fc-news-image-updated";
+
+async function generateNewsImage(
+  postId: string,
+  seasonId: string,
+  clubName: string,
+  clubLeague: string | undefined,
+  imagePromptContext: ImagePromptContext,
+  isClassico: boolean | undefined,
+  rivalName: string | undefined,
+  headers: Record<string, string>,
+): Promise<void> {
+  try {
+    const res = await fetch("/api/noticias/generate-image", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ clubName, clubLeague, imagePromptContext, isClassico, rivalName }),
+    });
+    if (!res.ok) return;
+    const data = (await res.json()) as { imageUrl?: string };
+    if (!data.imageUrl) return;
+    updatePost(seasonId, postId, { imageUrl: data.imageUrl, imageFit: "cover" });
+    window.dispatchEvent(new CustomEvent(FC_NEWS_IMAGE_UPDATED_EVENT, { detail: { postId, imageUrl: data.imageUrl } }));
+  } catch {
+  }
+}
 
 function rumorStateKey(seasonId: string): string {
   return `fc-rumor-state-${seasonId}`;
@@ -249,6 +277,14 @@ export async function runAutoNews(
         addPost(seasonId, post);
         markEventHandled(seasonId, event.key);
         if (onNewPost) onNewPost(post);
+
+        const shouldGenerateImage = (event.imageWorthy || event.isClassico) && !!openaiKey;
+        if (shouldGenerateImage && event.imagePromptContext) {
+          const imgCtx = event.isClassico && event.rivalName
+            ? { ...event.imagePromptContext, opponent: event.rivalName }
+            : event.imagePromptContext;
+          void generateNewsImage(post.id, seasonId, clubName, clubLeague, imgCtx, event.isClassico, event.rivalName, headers);
+        }
 
         await new Promise((r) => setTimeout(r, 500));
       } catch {

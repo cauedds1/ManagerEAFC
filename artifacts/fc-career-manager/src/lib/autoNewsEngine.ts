@@ -4,6 +4,15 @@ import type { NewsSource, NewsCategory } from "@/types/noticias";
 import type { LeaguePosition } from "@/lib/leagueStorage";
 import type { SquadPlayer } from "@/lib/squadCache";
 
+export interface ImagePromptContext {
+  eventType: string;
+  playerName?: string;
+  opponent?: string;
+  streak?: number;
+  milestone?: number;
+  score?: string;
+}
+
 export interface DetectedEvent {
   key: string;
   type: string;
@@ -14,6 +23,8 @@ export interface DetectedEvent {
   priority: number;
   isClassico?: boolean;
   rivalName?: string;
+  imageWorthy?: boolean;
+  imagePromptContext?: ImagePromptContext;
 }
 
 interface EngineInput {
@@ -174,6 +185,8 @@ export function detectMatchEvents(input: EngineInput): DetectedEvent[] {
       source: "espn",
       category: "resultado",
       priority: 1,
+      imageWorthy: true,
+      imagePromptContext: { eventType: "jogo_maluco", opponent: newMatch.opponent, score: `${newMatch.myScore}x${newMatch.opponentScore}` },
     });
   }
 
@@ -200,6 +213,8 @@ export function detectMatchEvents(input: EngineInput): DetectedEvent[] {
       source: "tnt",
       category: "resultado",
       priority: 1,
+      imageWorthy: true,
+      imagePromptContext: { eventType: "virada", opponent: newMatch.opponent, score: `${newMatch.myScore}x${newMatch.opponentScore}` },
     });
   }
 
@@ -259,6 +274,8 @@ export function detectMatchEvents(input: EngineInput): DetectedEvent[] {
         source: "tnt",
         category: "resultado",
         priority: 1,
+        imageWorthy: true,
+        imagePromptContext: { eventType: "classificacao_penaltis", opponent: newMatch.opponent, score: regularScore },
       }));
     } else if (penLoss) {
       let desc = `O ${clubName} foi ELIMINADO nos pênaltis. A partida terminou ${regularScore} após ${afterStr} e a decisão foi para os pênaltis: ${clubName} ${penScore} ${newMatch.opponent}.`;
@@ -335,6 +352,8 @@ export function detectMatchEvents(input: EngineInput): DetectedEvent[] {
       source: "espn",
       category: "resultado",
       priority: 1,
+      imageWorthy: true,
+      imagePromptContext: { eventType: "gol_acrescimos", opponent: newMatch.opponent, score: `${newMatch.myScore}x${newMatch.opponentScore}` },
     });
   }
 
@@ -348,6 +367,8 @@ export function detectMatchEvents(input: EngineInput): DetectedEvent[] {
       source: "tnt",
       category: "resultado",
       priority: 1,
+      imageWorthy: true,
+      imagePromptContext: { eventType: "goleada_aplicada", opponent: newMatch.opponent, score: `${newMatch.myScore}x${newMatch.opponentScore}` },
     });
   }
 
@@ -377,6 +398,8 @@ export function detectMatchEvents(input: EngineInput): DetectedEvent[] {
       source: "espn",
       category: "resultado",
       priority: 1,
+      imageWorthy: true,
+      imagePromptContext: { eventType: "hat_trick", playerName: pName, score: `${newMatch.myScore}x${newMatch.opponentScore}` },
     });
   }
 
@@ -403,6 +426,10 @@ export function detectMatchEvents(input: EngineInput): DetectedEvent[] {
       source: "tnt",
       category: "resultado",
       priority: 2,
+      ...(streak >= 5 ? {
+        imageWorthy: true,
+        imagePromptContext: { eventType: "gol_streak", playerName: pName, streak, milestone: seasonGoals },
+      } : {}),
     });
   }
 
@@ -424,6 +451,10 @@ export function detectMatchEvents(input: EngineInput): DetectedEvent[] {
           source: "espn",
           category: "resultado",
           priority: 2,
+          ...(milestone >= 10 ? {
+            imageWorthy: true,
+            imagePromptContext: { eventType: "marco_gols", playerName: pName, milestone },
+          } : {}),
         });
         break;
       }
@@ -500,6 +531,10 @@ export function detectMatchEvents(input: EngineInput): DetectedEvent[] {
         source: "tnt",
         category: "resultado",
         priority: ws >= 5 ? 1 : 2,
+        ...(ws >= 5 ? {
+          imageWorthy: true,
+          imagePromptContext: { eventType: "win_streak", streak: ws },
+        } : {}),
       });
     }
   }
@@ -516,6 +551,8 @@ export function detectMatchEvents(input: EngineInput): DetectedEvent[] {
         source: "espn",
         category: "resultado",
         priority: us >= 10 ? 1 : 2,
+        imageWorthy: true,
+        imagePromptContext: { eventType: "invicta", streak: us },
       });
     }
   }
@@ -532,6 +569,10 @@ export function detectMatchEvents(input: EngineInput): DetectedEvent[] {
         source: "fanpage",
         category: "resultado",
         priority: 2,
+        ...(cs >= 5 ? {
+          imageWorthy: true,
+          imagePromptContext: { eventType: "clean_sheet_streak", streak: cs },
+        } : {}),
       });
     }
   }
@@ -565,6 +606,8 @@ export function detectMatchEvents(input: EngineInput): DetectedEvent[] {
         source: "tnt",
         category: "resultado",
         priority: 1,
+        imageWorthy: true,
+        imagePromptContext: { eventType: "fim_invicta", opponent: newMatch.opponent, streak: prevUnbeaten },
       });
     }
   }
@@ -682,6 +725,8 @@ export function detectMatchEvents(input: EngineInput): DetectedEvent[] {
       source: "espn",
       category: "resultado",
       priority: 1,
+      imageWorthy: true,
+      imagePromptContext: { eventType: "lideranca" },
     });
   }
 
@@ -711,6 +756,8 @@ export function detectMatchEvents(input: EngineInput): DetectedEvent[] {
         source: "espn",
         category: "resultado",
         priority: 1,
+        imageWorthy: true,
+        imagePromptContext: { eventType: "z4", opponent: newMatch.opponent },
       });
     }
   }
@@ -728,6 +775,10 @@ export function detectMatchEvents(input: EngineInput): DetectedEvent[] {
         source: "fanpage",
         category: "conquista",
         priority: 2,
+        ...(ms >= 100 ? {
+          imageWorthy: true,
+          imagePromptContext: { eventType: "marco_time_gols", milestone: ms },
+        } : {}),
       });
     }
   }
