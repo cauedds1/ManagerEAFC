@@ -323,7 +323,7 @@ function LastMatches({
   clubName: string;
   clubLogoUrl?: string | null;
 }) {
-  const last5 = [...matches].sort((a, b) => b.createdAt - a.createdAt).slice(0, 5);
+  const last5 = [...matches].sort((a, b) => b.createdAt - a.createdAt).slice(0, 6);
 
   const LOCATION_LABEL: Record<string, string> = { casa: "Casa", fora: "Fora", neutro: "Neutro" };
   const LOCATION_ICON: Record<string, string> = { casa: "🏠", fora: "✈️", neutro: "⚖️" };
@@ -332,13 +332,13 @@ function LastMatches({
     return (
       <div className="glass rounded-2xl p-5 flex flex-col gap-3">
         <SectionTitle>Últimas Partidas</SectionTitle>
-        <div className="flex gap-3 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
-          {Array.from({ length: 5 }).map((_, i) => (
+        <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(6, 1fr)" }}>
+          {Array.from({ length: 6 }).map((_, i) => (
             <div
               key={i}
-              className="rounded-2xl flex-shrink-0 flex flex-col items-center justify-center gap-3 p-4"
+              className="rounded-2xl flex flex-col items-center justify-center gap-3 p-4"
               style={{
-                width: 136, minHeight: 168,
+                minHeight: 168,
                 background: "rgba(255,255,255,0.025)",
                 border: "1px dashed rgba(255,255,255,0.07)",
               }}
@@ -360,7 +360,7 @@ function LastMatches({
   return (
     <div className="glass rounded-2xl p-5 flex flex-col gap-3">
       <SectionTitle>Últimas Partidas</SectionTitle>
-      <div className="flex gap-3 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
+      <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(6, 1fr)" }}>
         {last5.map((m) => {
           const result = getMatchResultFull(m.myScore, m.opponentScore, m.penaltyShootout);
           const rs = RESULT_STYLE[result];
@@ -406,9 +406,8 @@ function LastMatches({
           return (
             <div
               key={m.id}
-              className="rounded-2xl flex-shrink-0 flex flex-col overflow-hidden"
+              className="rounded-2xl flex flex-col overflow-hidden"
               style={{
-                width: 190,
                 borderTop: cardBorderRest,
                 borderRight: cardBorderRest,
                 borderBottom: cardBorderRest,
