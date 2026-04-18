@@ -1,5 +1,4 @@
 uploads = []
-outputs = []
 
 [[generated]]
 id = "eJAz348DfSp9X1KLpPuup"
@@ -240,3 +239,15 @@ id = "m_b56WII7L6F0EfS-rP4F"
 uri = "file://artifacts/fc-career-manager/public/trophies/brasileirao-serie-b.png"
 type = "image"
 title = "brasileirao serie b trophy"
+
+[[generated]]
+id = "c2CS2pRlynT-ztSzUjSDl"
+uri = "file://attached_assets/watford_noticia_exemplo.png"
+type = "image"
+title = "watford unbeaten streak news card"
+
+[[outputs]]
+id = "XdmrkZE5d676nLMszlZND"
+uri = "file://attached_assets/watford_noticia_exemplo.png"
+type = "image"
+title = "Exemplo de imagem gerada por IA para a notícia"
