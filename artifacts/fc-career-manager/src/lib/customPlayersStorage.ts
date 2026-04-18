@@ -5,6 +5,36 @@ function hiddenKey(careerId: string): string {
   return `fc-career-manager-hidden-players-${careerId}`;
 }
 
+function formerKey(careerId: string): string {
+  return `fc-career-manager-former-players-${careerId}`;
+}
+
+export function getFormerPlayers(careerId: string): SquadPlayer[] {
+  try {
+    const raw = localStorage.getItem(formerKey(careerId));
+    if (!raw) return [];
+    return JSON.parse(raw) as SquadPlayer[];
+  } catch {
+    return [];
+  }
+}
+
+export function saveFormerPlayers(careerId: string, players: SquadPlayer[]): void {
+  try {
+    localStorage.setItem(formerKey(careerId), JSON.stringify(players));
+  } catch {}
+  void putCareerData(careerId, "formerPlayers", players);
+}
+
+export function addFormerPlayer(careerId: string, player: SquadPlayer): void {
+  const list = getFormerPlayers(careerId);
+  const exists = list.some((p) => p.id === player.id);
+  if (!exists) {
+    list.push(player);
+    saveFormerPlayers(careerId, list);
+  }
+}
+
 export function getHiddenPlayerIds(careerId: string): number[] {
   try {
     const raw = localStorage.getItem(hiddenKey(careerId));

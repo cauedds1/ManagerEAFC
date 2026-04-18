@@ -10,6 +10,7 @@ import {
   removeCustomPlayer,
   getHiddenPlayerIds,
   addHiddenPlayerId,
+  addFormerPlayer,
   generateCustomPlayerId,
 } from "@/lib/customPlayersStorage";
 import { FootballPitch, pickBestEleven } from "./FootballPitch";
@@ -202,6 +203,7 @@ interface ElencoViewProps {
   onRefresh: () => void;
   onOpenSettings: () => void;
   onOverridesUpdated?: () => void;
+  onPlayerRemoved?: () => void;
 }
 
 export function ElencoView({
@@ -213,6 +215,7 @@ export function ElencoView({
   onRefresh,
   onOpenSettings,
   onOverridesUpdated,
+  onPlayerRemoved,
 }: ElencoViewProps) {
   const [tab, setTab] = useState<SquadTab>("pitch");
   const [pendingSwap, setPendingSwap] = useState<SquadPlayer | null>(null);
@@ -234,6 +237,16 @@ export function ElencoView({
   );
 
   const handleRemovePlayer = (player: SquadPlayer) => {
+    const ovr = overrides[player.id];
+    const posOvr = ovr?.positionOverride ? migratePositionOverride(ovr.positionOverride) : undefined;
+    const resolvedPlayer: SquadPlayer = {
+      ...player,
+      name: ovr?.nameOverride ?? player.name,
+      number: ovr?.shirtNumber ?? player.number,
+      ...(posOvr ? { positionPtBr: posOvr, position: PT_BR_TO_POSITION[posOvr] ?? player.position } : {}),
+    };
+    addFormerPlayer(careerId, resolvedPlayer);
+
     if (player.id < 0) {
       removeCustomPlayer(careerId, player.id);
       setCustomPlayers((prev) => prev.filter((p) => p.id !== player.id));
@@ -242,6 +255,7 @@ export function ElencoView({
       setHiddenPlayerIds((prev) => [...prev, player.id]);
     }
     setDetailPlayer(null);
+    onPlayerRemoved?.();
   };
 
   const setAddField = <K extends keyof AddPlayerForm>(field: K, value: AddPlayerForm[K]) =>

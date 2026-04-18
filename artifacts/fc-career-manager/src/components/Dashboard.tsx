@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import type { Career, Season } from "@/types/career";
 import { SettingsPage } from "./SettingsPage";
 import {
@@ -47,6 +47,7 @@ import {
   generateMessageId,
 } from "@/lib/diretoriaStorage";
 import { getFinanceiroSettings, computeFinancialSnapshot } from "@/lib/financeiroStorage";
+import { getFormerPlayers } from "@/lib/customPlayersStorage";
 import { buildPlayerPerformanceContext, buildSquadOvrContext } from "@/lib/playerContext";
 import { getOpenAIKey } from "@/lib/openaiKeyStorage";
 import {
@@ -496,6 +497,22 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     ...squadPlayers.filter((p) => !removedIds.has(p.id) && !removedNames.has(p.name.toLowerCase().trim())),
     ...newTransferredPlayers,
   ];
+
+  const [formerPlayers, setFormerPlayers] = useState<SquadPlayer[]>(
+    () => getFormerPlayers(career.id)
+  );
+
+  const handlePlayerRemoved = useCallback(() => {
+    setFormerPlayers(getFormerPlayers(career.id));
+  }, [career.id]);
+
+  const allPlayersWithFormer = useMemo(() => {
+    const currentIds = new Set(allPlayers.map((p) => p.id));
+    return [
+      ...allPlayers,
+      ...formerPlayers.filter((p) => !currentIds.has(p.id)),
+    ];
+  }, [allPlayers, formerPlayers]);
 
   const handleTransferAdded = useCallback((transfer: TransferRecord) => {
     addTransfer(activeSeasonId, transfer);
@@ -1100,10 +1117,12 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
             squadLoading={squadLoading}
             squadError={squadError}
             allPlayers={allPlayers}
+            historicalPlayers={allPlayersWithFormer}
             transfers={transfers}
             onRefresh={handleRefreshSquad}
             onOpenSettings={() => setActiveTab("configuracoes")}
             onOverridesUpdated={refreshOverrides}
+            onPlayerRemoved={handlePlayerRemoved}
             isReadOnly={isReadOnly}
           />
         )}
@@ -1115,7 +1134,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
                 seasonId={activeSeasonId}
                 clubName={career.clubName}
                 clubLogoUrl={logoUrl}
-                allPlayers={allPlayers}
+                allPlayers={allPlayersWithFormer}
                 season={displayLabel}
                 matches={matches}
                 transferCount={transfers.length}
@@ -1130,7 +1149,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
                 clubName={career.clubName}
                 clubLogoUrl={logoUrl}
                 matches={matches}
-                allPlayers={allPlayers}
+                allPlayers={allPlayersWithFormer}
                 onMatchAdded={handleMatchAdded}
                 onMatchUpdated={handleMatchUpdated}
                 competitions={activeSeason?.competitions ?? career.competitions}
@@ -1156,7 +1175,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
               <NoticiasView
                 career={career}
                 seasonId={activeSeasonId}
-                allPlayers={allPlayers}
+                allPlayers={allPlayersWithFormer}
                 matches={matches}
                 pastSeasons={seasons.filter((s) => !s.isActive)}
                 isReadOnly={isReadOnly}
@@ -1169,7 +1188,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
                 matches={matches}
                 transfers={transfers}
                 squadSize={allPlayers.length}
-                allPlayers={allPlayers}
+                allPlayers={allPlayersWithFormer}
               />
             )}
             {activeTab === "momentos" && (

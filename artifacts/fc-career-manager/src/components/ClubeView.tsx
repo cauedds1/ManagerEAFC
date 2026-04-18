@@ -35,10 +35,12 @@ interface ClubeViewProps {
   squadLoading: boolean;
   squadError: boolean;
   allPlayers: SquadPlayer[];
+  historicalPlayers?: SquadPlayer[];
   transfers: TransferRecord[];
   onRefresh: () => void;
   onOpenSettings: () => void;
   onOverridesUpdated?: () => void;
+  onPlayerRemoved?: () => void;
   isReadOnly?: boolean;
 }
 
@@ -73,12 +75,15 @@ export function ClubeView({
   squadLoading,
   squadError,
   allPlayers,
+  historicalPlayers,
   transfers,
   onRefresh,
   onOpenSettings,
   onOverridesUpdated,
+  onPlayerRemoved,
   isReadOnly,
 }: ClubeViewProps) {
+  const statsPlayers = historicalPlayers ?? allPlayers;
   const [sub, setSub] = useState<ClubeSubTab>("elenco");
   const [statsMini, setStatsMini] = useState<StatsMiniTab>("jogadores");
   const [seqScope, setSeqScope] = useState<SeqScope>("atual");
@@ -146,6 +151,7 @@ export function ClubeView({
             onRefresh={onRefresh}
             onOpenSettings={onOpenSettings}
             onOverridesUpdated={onOverridesUpdated}
+            onPlayerRemoved={onPlayerRemoved}
           />
         )}
 
@@ -185,7 +191,7 @@ export function ClubeView({
                 <PlayerStatsTable
                   careerId={careerId}
                   seasonId={seasonId}
-                  allPlayers={allPlayers}
+                  allPlayers={statsPlayers}
                   statsOverride={statsScope === "todas" && hasMultipleSeasons ? allStatsOverride : undefined}
                   matchesOverride={statsScope === "todas" && hasMultipleSeasons ? allSeasonMatches : undefined}
                 />
