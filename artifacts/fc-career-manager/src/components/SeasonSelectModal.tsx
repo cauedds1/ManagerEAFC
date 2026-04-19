@@ -112,15 +112,15 @@ export function SeasonSelectModal({
       <div
         className="h-full w-80 max-w-full flex flex-col shadow-2xl"
         style={{
-          background: "rgba(15,15,25,0.97)",
+          background: "var(--app-bg)",
           backdropFilter: "blur(24px)",
           WebkitBackdropFilter: "blur(24px)",
-          borderLeft: "1px solid rgba(255,255,255,0.06)",
+          borderLeft: "1px solid rgba(var(--club-primary-rgb),0.15)",
         }}
       >
         <div
           className="flex items-center justify-between px-5 py-4"
-          style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
+          style={{ borderBottom: "1px solid rgba(var(--club-primary-rgb),0.1)" }}
         >
           <div>
             <h2 className="text-white font-black text-base">Temporadas</h2>
@@ -223,7 +223,7 @@ export function SeasonSelectModal({
 
         <div
           className="p-4"
-          style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}
+          style={{ borderTop: "1px solid rgba(var(--club-primary-rgb),0.1)" }}
         >
           <button
             onClick={onNewSeason}

@@ -674,15 +674,15 @@ export function MatchDetailPage({
           <div
             className="relative w-full max-w-md flex flex-col animate-fade-up rounded-2xl overflow-hidden"
             style={{
-              background: "rgba(12,12,18,0.98)",
-              border: "1px solid rgba(255,255,255,0.1)",
+              background: "var(--app-bg)",
+              border: "1px solid rgba(var(--club-primary-rgb),0.18)",
               backdropFilter: "blur(24px)",
               maxHeight: "80vh",
             }}
           >
             <div
               className="flex items-center justify-between px-5 py-4 flex-shrink-0"
-              style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
+              style={{ borderBottom: "1px solid rgba(var(--club-primary-rgb),0.1)" }}
             >
               <div>
                 <p className="text-white font-bold text-base">Confrontos Diretos</p>
@@ -755,8 +755,10 @@ export function MatchDetailPage({
                   <button
                     key={m.id}
                     onClick={() => { setShowH2H(false); onSelectMatch?.(m); }}
-                    className="w-full text-left flex items-center gap-3 px-3 py-3 rounded-xl transition-colors hover:bg-white/05 active:scale-[0.99]"
-                    style={{ border: "1px solid rgba(255,255,255,0.055)" }}
+                    className="w-full text-left flex items-center gap-3 px-3 py-3 rounded-xl transition-colors active:scale-[0.99]"
+                    style={{ border: "1px solid rgba(var(--club-primary-rgb),0.08)", background: "rgba(var(--club-primary-rgb),0.03)" }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(var(--club-primary-rgb),0.09)"; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(var(--club-primary-rgb),0.03)"; }}
                   >
                     <div
                       className="w-8 h-8 rounded-lg flex-shrink-0 flex items-center justify-center font-bold text-sm"
