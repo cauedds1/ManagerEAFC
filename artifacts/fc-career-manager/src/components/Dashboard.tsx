@@ -50,7 +50,7 @@ import {
 import { getFinanceiroSettings, computeFinancialSnapshot } from "@/lib/financeiroStorage";
 import { getFormerPlayers, addFormerPlayer } from "@/lib/customPlayersStorage";
 import { buildPlayerPerformanceContext, buildSquadOvrContext } from "@/lib/playerContext";
-import { getOpenAIKey } from "@/lib/openaiKeyStorage";
+import { getAiHeaders } from "@/lib/apiStorage";
 import {
   countUnreadDiretoria,
   countUnreadNoticias,
@@ -342,9 +342,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     setBgGenStatus("generating");
 
     try {
-      const userKey = getOpenAIKey();
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (userKey) headers["x-openai-key"] = userKey;
+      const headers = getAiHeaders();
 
       const res = await fetch("/api/noticias/generate", {
         method: "POST",
@@ -551,9 +549,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
   }, [addToast]);
 
   const handleHighValueSigning = useCallback((playerName: string, ovr: number, position: string, fromClub?: string, deltaVsAvg?: number) => {
-    const openaiKey = getOpenAIKey();
-    const headers: Record<string, string> = { "Content-Type": "application/json" };
-    if (openaiKey) headers["x-openai-key"] = openaiKey;
+    const headers = getAiHeaders();
     const fromClubStr = fromClub ? ` do ${fromClub}` : " de jogador livre";
     const deltaStr = deltaVsAvg != null && deltaVsAvg > 0 ? `, ${deltaVsAvg} pontos acima da média do elenco` : "";
     const seasonLabel = seasons.find((s) => s.id === activeSeasonId)?.label ?? career.season;
@@ -666,9 +662,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
 
     const playerPerf = buildPlayerPerformanceContext(activeSeasonId, currentAllPlayers, career.id);
     const squadOvrCtx = buildSquadOvrContext(currentAllPlayers, getAllPlayerOverrides(career.id));
-    const openaiKey = getOpenAIKey();
-    const headers: Record<string, string> = { "Content-Type": "application/json" };
-    if (openaiKey) headers["x-openai-key"] = openaiKey;
+    const headers = getAiHeaders();
 
     try {
       const res = await fetch("/api/diretoria/check-triggers", {
@@ -707,9 +701,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
           void fetchPortals(career.id).then((customPortals) => {
             const jornalistico = customPortals.find((p) => p.tone === "jornalistico");
             if (!jornalistico) return;
-            const openaiKey = getOpenAIKey();
-            const headers: Record<string, string> = { "Content-Type": "application/json" };
-            if (openaiKey) headers["x-openai-key"] = openaiKey;
+            const headers = getAiHeaders();
             const triggerMember = members.find((m) => m.id === firstNotif.memberId);
             const meetingTriggerReason = data.meetingTrigger?.reason || undefined;
             void fetch("/api/noticias/generate-leak", {

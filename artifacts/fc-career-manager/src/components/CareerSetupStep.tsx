@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { ClubEntry } from "@/types/club";
-import { getOpenAIKey } from "@/lib/openaiKeyStorage";
+import { getAiHeaders } from "@/lib/apiStorage";
 
 interface ClubTitle {
   name: string;
@@ -138,7 +138,7 @@ export function CareerSetupStep({
     try {
       const res = await fetch("/api/generate-projeto", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-openai-key": getOpenAIKey() },
+        headers: getAiHeaders(),
         body: JSON.stringify({
           clubName: club.name,
           clubLeague: club.league,

@@ -32,7 +32,7 @@ import {
   setPendingMeetingTrigger,
 } from "@/lib/diretoriaStorage";
 import { getLeaguePosition } from "@/lib/leagueStorage";
-import { getOpenAIKey } from "@/lib/openaiKeyStorage";
+import { getAiHeaders } from "@/lib/apiStorage";
 import type { SquadPlayer } from "@/lib/squadCache";
 import { buildPlayerPerformanceContext, buildSquadOvrContext, buildPlayerContextString, playerDisplayName } from "@/lib/playerContext";
 import { getAllPlayerOverrides } from "@/lib/playerStatsStorage";
@@ -213,7 +213,7 @@ function CreateMemberModal({ career, membersCount, onClose, onCreated, effective
     try {
       const res = await fetch("/api/diretoria/generate-member", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-openai-key": getOpenAIKey() },
+        headers: getAiHeaders(),
         body: JSON.stringify({
           roleLabel: finalRoleLabel,
           personalityStyle,
@@ -500,7 +500,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
       const squadForContext = allPlayers.slice(0, 25).map((p) => ({ name: p.name, position: p.positionPtBr ?? p.position }));
       const res = await fetch("/api/diretoria/suggest-transfer", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-openai-key": getOpenAIKey() },
+        headers: getAiHeaders(),
         body: JSON.stringify({
           context: buildClubContext(),
           position: transferPosition.trim(),
@@ -645,7 +645,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
     try {
       const res = await fetch("/api/diretoria/chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-openai-key": getOpenAIKey() },
+        headers: getAiHeaders(),
         body: JSON.stringify({
           member: {
             id: member.id,
@@ -747,7 +747,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
       try {
         const res = await fetch("/api/diretoria/meeting", {
           method: "POST",
-          headers: { "Content-Type": "application/json", "x-openai-key": getOpenAIKey() },
+          headers: getAiHeaders(),
           body: JSON.stringify({
             speaker: {
               id: member.id,

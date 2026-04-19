@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { ClubEntry } from "@/types/club";
 import { getSquad, SquadPlayer } from "@/lib/squadCache";
-import { getOpenAIKey } from "@/lib/openaiKeyStorage";
+import { getAiHeaders } from "@/lib/apiStorage";
 
 interface ClubTitle {
   name: string;
@@ -323,7 +323,7 @@ export function TeamPreview({ club, season, onNext, onBack, onClubInfoLoaded }: 
     try {
       const res = await fetch("/api/club-info", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-openai-key": getOpenAIKey() },
+        headers: getAiHeaders(),
         body: JSON.stringify({ clubName: club.name, clubLeague: club.league, clubCountry: club.country }),
       });
       if (!res.ok) throw new Error("Falha");

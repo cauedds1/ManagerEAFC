@@ -5,6 +5,10 @@ function authHeader(): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
+export function getAiHeaders(): Record<string, string> {
+  return { "Content-Type": "application/json", ...authHeader() };
+}
+
 export async function putSeasonData(seasonId: string, key: string, value: unknown): Promise<void> {
   try {
     await fetch(`${BASE}/data/season/${encodeURIComponent(seasonId)}/${encodeURIComponent(key)}`, {

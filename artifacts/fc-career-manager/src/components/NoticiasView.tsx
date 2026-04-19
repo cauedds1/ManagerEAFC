@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import type { Career } from "@/types/career";
 import type { NewsPost, NewsSource, NewsCategory } from "@/types/noticias";
 import { getPosts, savePosts, addPost, updatePost, removePost, generatePostId, generateCommentId } from "@/lib/noticiaStorage";
-import { getOpenAIKey } from "@/lib/openaiKeyStorage";
+import { getAiHeaders } from "@/lib/apiStorage";
 import { seedPosts } from "@/lib/noticiaSeed";
 import { NoticiaPost } from "./NoticiaPost";
 import { fetchPortalPhotos, PORTAL_PHOTOS_EVENT, type PortalPhotos } from "@/lib/portalPhotosStorage";
@@ -1000,12 +1000,9 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
     const alreadyPending = !!localStorage.getItem(welcomePendingKey);
     if (isFirstSeed && !alreadyDone && !alreadyPending) {
       localStorage.setItem(welcomePendingKey, "1");
-      const userKey = getOpenAIKey();
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (userKey) headers["x-openai-key"] = userKey;
       fetch("/api/noticias/generate-welcome", {
         method: "POST",
-        headers,
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           coachName: career.coach.name,
           coachAge: career.coach.age,
@@ -1284,9 +1281,7 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
         : undefined;
       const fanMoodScore = getFanMood(seasonId);
       const fanMoodInfo = getFanMoodLabel(fanMoodScore);
-      const openaiKey = getOpenAIKey();
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (openaiKey) headers["x-openai-key"] = openaiKey;
+      const headers = getAiHeaders();
       const res = await fetch("/api/noticias/generate", {
         method: "POST",
         headers,

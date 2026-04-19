@@ -10,7 +10,7 @@ import { getAllPlayerStats, getAllPlayerOverrides } from "@/lib/playerStatsStora
 import { fetchPortals } from "@/lib/customPortalStorage";
 import { getPosts, addPost, generatePostId, generateCommentId } from "@/lib/noticiaStorage";
 import { buildPlayerPerformanceContext, buildPlayerContextString, buildSquadOvrContext, buildStartingXIContext } from "@/lib/playerContext";
-import { getOpenAIKey } from "@/lib/openaiKeyStorage";
+import { getAiHeaders } from "@/lib/apiStorage";
 
 function rumorStateKey(seasonId: string): string {
   return `fc-rumor-state-${seasonId}`;
@@ -173,9 +173,7 @@ export async function runAutoNews(
             .slice(0, 120) ?? p.content.slice(0, 120),
       }));
 
-    const openaiKey = getOpenAIKey();
-    const headers: Record<string, string> = { "Content-Type": "application/json" };
-    if (openaiKey) headers["x-openai-key"] = openaiKey;
+    const headers = getAiHeaders();
 
     for (let i = 0; i < top.length; i++) {
       const event = top[i];
@@ -322,9 +320,7 @@ export async function runPromotionRelegationNews(ctx: PromotionRelegationContext
     : `O clube ${clubName} foi REBAIXADO de "${oldLeague}" para "${newLeague}". Uma temporada decepcionante que resultou na queda de divisão; o clube disputará "${newLeague}" na temporada ${newSeasonLabel}. Gere uma notícia especial anunciando esse rebaixamento com tom dramático e análise das consequências.`;
 
   try {
-    const openaiKey = getOpenAIKey();
-    const headers: Record<string, string> = { "Content-Type": "application/json" };
-    if (openaiKey) headers["x-openai-key"] = openaiKey;
+    const headers = getAiHeaders();
 
     const body: Record<string, unknown> = {
       description,
@@ -412,9 +408,7 @@ export async function runRumorNews(ctx: RumorContext): Promise<void> {
       ? customPortals[Math.floor(Math.random() * customPortals.length)]
       : null;
 
-    const openaiKey = getOpenAIKey();
-    const headers: Record<string, string> = { "Content-Type": "application/json" };
-    if (openaiKey) headers["x-openai-key"] = openaiKey;
+    const headers = getAiHeaders();
 
     const body: Record<string, unknown> = {
       clubName,
