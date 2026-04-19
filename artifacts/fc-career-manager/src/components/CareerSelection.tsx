@@ -10,6 +10,7 @@ interface CareerSelectionProps {
   onSelectCareer: (career: Career) => void;
   onCreateNew: () => void;
   onCareersChange: (careers: Career[]) => void;
+  onLogout?: () => void;
 }
 
 function formatDate(ts: number): string {
@@ -185,7 +186,7 @@ function NewCareerCard({ onClick, index }: { onClick: () => void; index: number 
   );
 }
 
-export function CareerSelection({ careers, onSelectCareer, onCreateNew, onCareersChange }: CareerSelectionProps) {
+export function CareerSelection({ careers, onSelectCareer, onCreateNew, onCareersChange, onLogout }: CareerSelectionProps) {
   const [localCareers, setLocalCareers] = useState(careers);
 
   useEffect(() => { setLocalCareers(careers); }, [careers]);
@@ -250,7 +251,7 @@ export function CareerSelection({ careers, onSelectCareer, onCreateNew, onCareer
           )}
         </div>
 
-        <div className="relative">
+        <div className="relative flex flex-col gap-2">
           <button
             onClick={onCreateNew}
             className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-white text-sm transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
@@ -261,6 +262,18 @@ export function CareerSelection({ careers, onSelectCareer, onCreateNew, onCareer
             </svg>
             Nova Carreira
           </button>
+          {onLogout && (
+            <button
+              onClick={onLogout}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 hover:opacity-80"
+              style={{ color: "rgba(255,255,255,0.3)", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 9V5.25A2.25 2.25 0 0 1 10.5 3h6a2.25 2.25 0 0 1 2.25 2.25v13.5A2.25 2.25 0 0 1 16.5 21h-6a2.25 2.25 0 0 1-2.25-2.25V15M12 9l3 3m0 0-3 3m3-3H2.25" />
+              </svg>
+              Sair da conta
+            </button>
+          )}
         </div>
       </div>
 

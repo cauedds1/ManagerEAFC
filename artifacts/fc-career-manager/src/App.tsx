@@ -21,6 +21,15 @@ import {
 } from "@/lib/clubListCache";
 import { listCareers, saveCareer, migrateFromLegacy, updateCareerSeason } from "@/lib/careerStorage";
 
+const AUTH_TOKEN_KEY = "fc_auth_token";
+const AUTH_USER_KEY = "fc_auth_user";
+
+interface AuthUser {
+  id: number;
+  email: string;
+  name: string;
+}
+
 type AppView =
   | "init"
   | "landing"
@@ -138,6 +147,7 @@ export default function App() {
   const [activeCareer, setActiveCareer] = useState<Career | null>(null);
   const [wizardMode, setWizardMode] = useState<WizardMode>("new");
   const [progress, setProgress] = useState<LoadingProgress>({ loaded: 0, total: 0, leagueName: "" });
+  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
 
   useEffect(() => {
     resetTheme();
@@ -214,9 +224,21 @@ export default function App() {
     setView("landing");
   }, []);
 
-  const handleAuthContinue = useCallback(() => {
+  const handleAuthSuccess = useCallback((token: string, user: AuthUser) => {
+    localStorage.setItem(AUTH_TOKEN_KEY, token);
+    localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user));
+    setAuthUser(user);
     handleLandingStart();
   }, [handleLandingStart]);
+
+  const handleLogout = useCallback(() => {
+    localStorage.removeItem(AUTH_TOKEN_KEY);
+    localStorage.removeItem(AUTH_USER_KEY);
+    setAuthUser(null);
+    setActiveCareer(null);
+    resetTheme();
+    setView("landing");
+  }, []);
 
   useEffect(() => {
     migrateFromLegacy();
@@ -224,7 +246,14 @@ export default function App() {
     setCareers(loadedCareers);
     const hasCareers = loadedCareers.length > 0;
 
-    if (!hasCareers) {
+    const storedUser = localStorage.getItem(AUTH_USER_KEY);
+    if (storedUser) {
+      try { setAuthUser(JSON.parse(storedUser) as AuthUser); } catch {}
+    }
+
+    const isLoggedIn = Boolean(localStorage.getItem(AUTH_TOKEN_KEY));
+
+    if (!isLoggedIn) {
       setView("landing");
       return;
     }
@@ -366,7 +395,7 @@ export default function App() {
     }
 
     if (view === "auth") {
-      return <AuthPage onBack={handleAuthBack} onContinue={handleAuthContinue} />;
+      return <AuthPage onBack={handleAuthBack} onAuthSuccess={handleAuthSuccess} />;
     }
 
     if (view === "loading-clubs") {
@@ -393,6 +422,7 @@ export default function App() {
           onSelectCareer={enterCareer}
           onCreateNew={handleCreateNew}
           onCareersChange={handleCareersChange}
+          onLogout={handleLogout}
         />
       );
     }
@@ -428,6 +458,7 @@ export default function App() {
         onSelectCareer={enterCareer}
         onCreateNew={handleCreateNew}
         onCareersChange={handleCareersChange}
+        onLogout={handleLogout}
       />
     );
   };

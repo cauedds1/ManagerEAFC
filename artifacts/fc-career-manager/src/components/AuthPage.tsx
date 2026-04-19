@@ -2,19 +2,77 @@ import { useState } from "react";
 
 interface AuthPageProps {
   onBack: () => void;
-  onContinue: () => void;
+  onAuthSuccess: (token: string, user: { id: number; email: string; name: string }) => void;
 }
 
-export function AuthPage({ onBack, onContinue }: AuthPageProps) {
+const API_BASE = "/api";
+
+export function AuthPage({ onBack, onAuthSuccess }: AuthPageProps) {
   const [mode, setMode] = useState<"login" | "signup">("login");
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const isLogin = mode === "login";
 
+  const handleSubmit = async () => {
+    setError("");
+    if (!email.trim() || !password) {
+      setError("Preencha e-mail e senha.");
+      return;
+    }
+    if (!isLogin && !name.trim()) {
+      setError("Informe seu nome.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const endpoint = isLogin ? `${API_BASE}/auth/login` : `${API_BASE}/auth/register`;
+      const body: Record<string, string> = { email: email.trim(), password };
+      if (!isLogin) body.name = name.trim();
+
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      const data = (await res.json()) as { token?: string; user?: { id: number; email: string; name: string }; error?: string };
+
+      if (!res.ok) {
+        setError(data.error ?? "Ocorreu um erro. Tente novamente.");
+        return;
+      }
+
+      if (!data.token || !data.user) {
+        setError("Resposta inválida do servidor.");
+        return;
+      }
+
+      localStorage.setItem("fc_auth_token", data.token);
+      localStorage.setItem("fc_auth_user", JSON.stringify(data.user));
+      onAuthSuccess(data.token, data.user);
+    } catch {
+      setError("Não foi possível conectar ao servidor.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") handleSubmit();
+  };
+
+  const switchMode = () => {
+    setMode(isLogin ? "signup" : "login");
+    setError("");
+  };
+
   return (
     <div className="relative h-full flex flex-col items-center justify-center px-4 overflow-y-auto py-10">
-      {/* Back button */}
       <button
         onClick={onBack}
         className="absolute top-6 left-6 flex items-center gap-2 text-white/40 hover:text-white/70 text-sm font-medium transition-colors duration-200">
@@ -25,7 +83,6 @@ export function AuthPage({ onBack, onContinue }: AuthPageProps) {
       </button>
 
       <div className="w-full max-w-sm">
-        {/* Logo */}
         <div className="flex flex-col items-center mb-8">
           <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4"
             style={{ background: "linear-gradient(135deg,#8B5CF6,#6366F1)", boxShadow: "0 8px 32px rgba(139,92,246,0.4)" }}>
@@ -42,46 +99,38 @@ export function AuthPage({ onBack, onContinue }: AuthPageProps) {
           </p>
         </div>
 
-        {/* Card */}
         <div className="rounded-2xl p-6"
           style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
 
-          {/* Google button */}
-          <button
-            onClick={onContinue}
-            className="w-full flex items-center justify-center gap-3 py-3 rounded-xl font-semibold text-sm transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] mb-4"
-            style={{ background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.85)", border: "1px solid rgba(255,255,255,0.12)" }}>
-            <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none">
-              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-            </svg>
-            Continuar com Google
-          </button>
-
-          {/* Divider */}
-          <div className="flex items-center gap-3 mb-4">
-            <div className="flex-1 h-px" style={{ background: "rgba(255,255,255,0.08)" }} />
-            <span className="text-white/25 text-xs font-medium">ou</span>
-            <div className="flex-1 h-px" style={{ background: "rgba(255,255,255,0.08)" }} />
-          </div>
-
-          {/* Fields */}
           <div className="flex flex-col gap-3 mb-4">
+            {!isLogin && (
+              <div>
+                <label className="block text-white/50 text-xs font-medium mb-1.5">Nome</label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Seu nome"
+                  autoComplete="name"
+                  className="w-full px-4 py-3 rounded-xl text-sm text-white placeholder-white/25 outline-none transition-all duration-200"
+                  style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", fontFamily: "inherit" }}
+                  onFocus={e => { e.currentTarget.style.border = "1px solid rgba(139,92,246,0.5)"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(139,92,246,0.1)"; }}
+                  onBlur={e => { e.currentTarget.style.border = "1px solid rgba(255,255,255,0.1)"; e.currentTarget.style.boxShadow = "none"; }}
+                />
+              </div>
+            )}
             <div>
               <label className="block text-white/50 text-xs font-medium mb-1.5">E-mail</label>
               <input
                 type="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
+                onKeyDown={handleKeyDown}
                 placeholder="seu@email.com"
-                className="w-full px-4 py-3 rounded-xl text-sm text-white placeholder-white/25 outline-none transition-all duration-200 focus:ring-1"
-                style={{
-                  background: "rgba(255,255,255,0.05)",
-                  border: "1px solid rgba(255,255,255,0.1)",
-                  fontFamily: "inherit",
-                }}
+                autoComplete="email"
+                className="w-full px-4 py-3 rounded-xl text-sm text-white placeholder-white/25 outline-none transition-all duration-200"
+                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", fontFamily: "inherit" }}
                 onFocus={e => { e.currentTarget.style.border = "1px solid rgba(139,92,246,0.5)"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(139,92,246,0.1)"; }}
                 onBlur={e => { e.currentTarget.style.border = "1px solid rgba(255,255,255,0.1)"; e.currentTarget.style.boxShadow = "none"; }}
               />
@@ -92,52 +141,37 @@ export function AuthPage({ onBack, onContinue }: AuthPageProps) {
                 type="password"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
-                placeholder={isLogin ? "Sua senha" : "Mínimo 8 caracteres"}
+                onKeyDown={handleKeyDown}
+                placeholder={isLogin ? "Sua senha" : "Mínimo 6 caracteres"}
+                autoComplete={isLogin ? "current-password" : "new-password"}
                 className="w-full px-4 py-3 rounded-xl text-sm text-white placeholder-white/25 outline-none transition-all duration-200"
-                style={{
-                  background: "rgba(255,255,255,0.05)",
-                  border: "1px solid rgba(255,255,255,0.1)",
-                  fontFamily: "inherit",
-                }}
+                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", fontFamily: "inherit" }}
                 onFocus={e => { e.currentTarget.style.border = "1px solid rgba(139,92,246,0.5)"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(139,92,246,0.1)"; }}
                 onBlur={e => { e.currentTarget.style.border = "1px solid rgba(255,255,255,0.1)"; e.currentTarget.style.boxShadow = "none"; }}
               />
             </div>
           </div>
 
-          {isLogin && (
-            <div className="text-right mb-4">
-              <button className="text-xs font-medium transition-colors duration-200"
-                style={{ color: "rgba(139,92,246,0.8)" }}
-                onMouseEnter={e => e.currentTarget.style.color = "#a78bfa"}
-                onMouseLeave={e => e.currentTarget.style.color = "rgba(139,92,246,0.8)"}>
-                Esqueceu a senha?
-              </button>
+          {error && (
+            <div className="mb-4 px-4 py-3 rounded-xl text-sm text-red-300"
+              style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)" }}>
+              {error}
             </div>
           )}
 
-          {/* Submit */}
           <button
-            onClick={onContinue}
-            className="w-full py-3 rounded-xl font-bold text-white text-sm transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+            onClick={handleSubmit}
+            disabled={loading}
+            className="w-full py-3 rounded-xl font-bold text-white text-sm transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60 disabled:scale-100"
             style={{ background: "linear-gradient(135deg,#8B5CF6,#6366F1)", boxShadow: "0 4px 20px rgba(139,92,246,0.35)" }}>
-            {isLogin ? "Entrar" : "Criar conta"}
+            {loading ? "Aguarde..." : isLogin ? "Entrar" : "Criar conta"}
           </button>
-
-          {/* Notice (stub) */}
-          <div className="mt-4 p-3 rounded-xl text-center"
-            style={{ background: "rgba(139,92,246,0.08)", border: "1px solid rgba(139,92,246,0.15)" }}>
-            <p className="text-violet-300/70 text-xs leading-relaxed">
-              Autenticação em breve. Por enquanto, clique em qualquer botão para continuar.
-            </p>
-          </div>
         </div>
 
-        {/* Toggle */}
         <p className="text-center text-white/35 text-sm mt-5">
           {isLogin ? "Não tem conta?" : "Já tem uma conta?"}{" "}
           <button
-            onClick={() => setMode(isLogin ? "signup" : "login")}
+            onClick={switchMode}
             className="font-semibold transition-colors duration-200"
             style={{ color: "#a78bfa" }}
             onMouseEnter={e => e.currentTarget.style.color = "#c4b5fd"}

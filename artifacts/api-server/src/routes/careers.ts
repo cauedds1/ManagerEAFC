@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { db, careersTable, seasonsTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, isNull, or } from "drizzle-orm";
+import { requireAuth, type AuthRequest } from "../middleware/auth";
 
 const router = Router();
 
@@ -8,9 +9,14 @@ function generateId(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 }
 
-router.get("/careers", async (_req, res) => {
+router.get("/careers", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const rows = await db.select().from(careersTable).orderBy(careersTable.createdAt);
+    const userId = req.user!.id;
+    const rows = await db
+      .select()
+      .from(careersTable)
+      .where(or(eq(careersTable.userId, userId), isNull(careersTable.userId)))
+      .orderBy(careersTable.createdAt);
     return res.json(
       rows.map((r) => ({
         id: r.id,
@@ -40,8 +46,9 @@ router.get("/careers", async (_req, res) => {
   }
 });
 
-router.post("/careers", async (req, res) => {
+router.post("/careers", requireAuth, async (req: AuthRequest, res) => {
   try {
+    const userId = req.user!.id;
     const body = req.body as {
       id?: string;
       coach: object;
@@ -91,6 +98,7 @@ router.post("/careers", async (req, res) => {
         projeto: body.projeto ?? null,
         competitionsJson: body.competitions ? JSON.stringify(body.competitions) : null,
         currentSeasonId: body.currentSeasonId ?? null,
+        userId,
         createdAt: body.createdAt ?? now,
         updatedAt: body.updatedAt ?? now,
       })
@@ -103,7 +111,7 @@ router.post("/careers", async (req, res) => {
   }
 });
 
-router.put("/careers/:id", async (req, res) => {
+router.put("/careers/:id", requireAuth, async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
     const body = req.body as Partial<{
@@ -151,7 +159,7 @@ router.put("/careers/:id", async (req, res) => {
   }
 });
 
-router.delete("/careers/:id", async (req, res) => {
+router.delete("/careers/:id", requireAuth, async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
     await db.delete(seasonsTable).where(eq(seasonsTable.careerId, id));
@@ -163,7 +171,7 @@ router.delete("/careers/:id", async (req, res) => {
   }
 });
 
-router.get("/careers/:id/seasons", async (req, res) => {
+router.get("/careers/:id/seasons", requireAuth, async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
     const rows = await db
@@ -187,7 +195,7 @@ router.get("/careers/:id/seasons", async (req, res) => {
   }
 });
 
-router.post("/careers/:id/seasons", async (req, res) => {
+router.post("/careers/:id/seasons", requireAuth, async (req: AuthRequest, res) => {
   try {
     const { id: careerId } = req.params;
     const body = req.body as {
@@ -235,7 +243,7 @@ router.post("/careers/:id/seasons", async (req, res) => {
   }
 });
 
-router.patch("/seasons/:id/label", async (req, res) => {
+router.patch("/seasons/:id/label", requireAuth, async (req: AuthRequest, res) => {
   try {
     const { id: seasonId } = req.params;
     const { label } = req.body as { label?: string };
@@ -250,7 +258,7 @@ router.patch("/seasons/:id/label", async (req, res) => {
   }
 });
 
-router.put("/seasons/:id/activate", async (req, res) => {
+router.put("/seasons/:id/activate", requireAuth, async (req: AuthRequest, res) => {
   try {
     const { id: seasonId } = req.params;
     const row = await db.select().from(seasonsTable).where(eq(seasonsTable.id, seasonId)).limit(1);

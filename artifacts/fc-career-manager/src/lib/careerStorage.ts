@@ -6,6 +6,12 @@ import { createSeason } from "@/lib/seasonStorage";
 const CAREERS_KEY = "fc-career-manager-careers";
 const LEGACY_CLUB_KEY = "fc-career-manager-club";
 const SYNCED_KEY = "fc-career-manager-synced-ids";
+const AUTH_TOKEN_KEY = "fc_auth_token";
+
+function getAuthHeaders(): HeadersInit {
+  const token = localStorage.getItem(AUTH_TOKEN_KEY);
+  return token ? { "Content-Type": "application/json", Authorization: `Bearer ${token}` } : { "Content-Type": "application/json" };
+}
 
 function generateId(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
@@ -60,7 +66,7 @@ export function deleteCareer(id: string): void {
   try {
     localStorage.setItem(CAREERS_KEY, JSON.stringify(careers));
   } catch {}
-  fetch(`/api/careers/${id}`, { method: "DELETE" }).catch(() => {});
+  fetch(`/api/careers/${id}`, { method: "DELETE", headers: getAuthHeaders() }).catch(() => {});
 }
 
 export interface CareerExtras {
@@ -101,7 +107,7 @@ export function updateCareerSeason(id: string, season: string): void {
     } catch {}
     fetch(`/api/careers/${id}`, {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      headers: getAuthHeaders(),
       body: JSON.stringify({ season }),
     }).catch(() => {});
   }
@@ -151,7 +157,7 @@ async function syncCareerToDb(career: Career): Promise<void> {
   try {
     await fetch("/api/careers", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: getAuthHeaders(),
       body: JSON.stringify({
         id: career.id,
         coach: career.coach,
@@ -185,7 +191,7 @@ export async function ensureCareerAndSeason1(career: Career): Promise<string> {
 
   await syncCareerToDb(career);
 
-  const existingSeasons = await fetch(`/api/careers/${career.id}/seasons`)
+  const existingSeasons = await fetch(`/api/careers/${career.id}/seasons`, { headers: getAuthHeaders() })
     .then((r) => r.json())
     .catch(() => []) as Array<{ id: string }>;
 

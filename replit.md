@@ -34,6 +34,20 @@ This is a pnpm monorepo with the following packages:
 - Backend API: `pnpm --filter @workspace/api-server run dev` (port 8080)
 - Frontend proxies `/api/*` to the backend via Vite proxy config
 
+## Authentication
+
+JWT-based authentication (email + password). No third-party provider needed.
+- Backend: bcryptjs (password hashing) + jsonwebtoken (JWT signing)
+- Token stored in `localStorage` under key `fc_auth_token`
+- All `/api/careers*` and `/api/seasons*` routes require `Authorization: Bearer <token>` header
+- First user to register claims all orphaned careers (user_id=null) — migration-safe for existing data
+- Routes: `POST /api/auth/register`, `POST /api/auth/login`, `GET /api/auth/me`
+
+### Multi-tenancy
+- `careers.user_id` column (nullable) links careers to users
+- GET /api/careers returns only careers where `user_id = :me` OR `user_id IS NULL`
+- POST /api/careers sets `user_id` from JWT payload
+
 ## Required Environment Variables
 
 - `AI_INTEGRATIONS_OPENAI_BASE_URL` — Auto-provisioned via Replit AI Integrations
@@ -41,12 +55,15 @@ This is a pnpm monorepo with the following packages:
 - `API_FOOTBALL_KEY` — User-provided API key for api-football.com (needed to load clubs/squad data)
 - `PUBLIC_OBJECT_SEARCH_PATHS` — Comma-separated paths for Replit Object Storage (public)
 - `PRIVATE_OBJECT_DIR` — Directory path for Replit Object Storage (private)
+- `JWT_SECRET` — Secret for signing JWTs (set in Railway for production; defaults to dev secret locally)
 
 ## Database
 
 PostgreSQL managed by Replit. Schema managed via Drizzle Kit.
 - Push schema: `pnpm --filter @workspace/db run push`
 - Force push: `pnpm --filter @workspace/db run push-force`
+- Migration `0002_users_multitenancy.sql`: adds `users` table + `user_id` column to `careers`
+- Migrations are applied on server startup when `MIGRATIONS_PATH` env var is set
 
 ## API Codegen
 

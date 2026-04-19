@@ -11,9 +11,11 @@ import diretoriaRouter from "./diretoria";
 import careersRouter from "./careers";
 import gamedataRouter from "./gamedata";
 import portalsRouter from "./portals";
+import authRouter from "./auth";
 
 const router: IRouter = Router();
 
+router.use(authRouter);
 router.use(healthRouter);
 router.use(clubsRouter);
 router.use(squadRouter);

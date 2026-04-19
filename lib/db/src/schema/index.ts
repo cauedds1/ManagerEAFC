@@ -1,4 +1,4 @@
-import { pgTable, integer, text, bigint, boolean, primaryKey } from "drizzle-orm/pg-core";
+import { pgTable, integer, text, bigint, boolean, primaryKey, serial } from "drizzle-orm/pg-core";
 
 export const clubsTable = pgTable("clubs", {
   id: integer("id").primaryKey(),
@@ -45,6 +45,7 @@ export const careersTable = pgTable("careers", {
   projeto: text("projeto"),
   competitionsJson: text("competitions_json"),
   currentSeasonId: text("current_season_id"),
+  userId: integer("user_id"),
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
   updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
 });
@@ -79,6 +80,14 @@ export const careerDataTable = pgTable(
   },
   (table) => [primaryKey({ columns: [table.careerId, table.key] })],
 );
+
+export const usersTable = pgTable("users", {
+  id: serial("id").primaryKey(),
+  email: text("email").notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
+  name: text("name").notNull(),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+});
 
 export const customPortalsTable = pgTable("custom_portals", {
   id: text("id").primaryKey(),
