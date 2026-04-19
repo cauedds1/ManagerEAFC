@@ -575,6 +575,7 @@ interface FormData {
   tradeEnabled: boolean;
   tradePlayerName: string;
   tradePlayerPhoto: string;
+  tradePlayerNationality: string;
   tradePlayerId: number | null;
   tradePlayerAge: string;
   tradePlayerPosition: PositionPtBr;
@@ -606,6 +607,7 @@ const DEFAULT_FORM: FormData = {
   tradeEnabled: false,
   tradePlayerName: "",
   tradePlayerPhoto: "",
+  tradePlayerNationality: "",
   tradePlayerId: null,
   tradePlayerAge: "",
   tradePlayerPosition: "ATA",
@@ -1297,6 +1299,7 @@ export function TransferenciasView({
                       tradeEnabled: !f.tradeEnabled,
                       tradePlayerName: "",
                       tradePlayerPhoto: "",
+                      tradePlayerNationality: "",
                       tradePlayerId: null,
                       tradePlayerAge: "",
                       tradePlayerPosition: "ATA",
@@ -1371,12 +1374,14 @@ export function TransferenciasView({
                       ) : (
                         <>
                           <p className="text-xs text-white/30">Registre o jogador que o outro clube enviará como parte desta negociação. Ele será adicionado ao seu elenco.</p>
+
+                          {/* Search / Create toggle */}
                           <div className="flex rounded-lg overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.1)", alignSelf: "flex-start" }}>
                             {(["search", "create"] as const).map((mode) => (
                               <button
                                 key={mode}
                                 type="button"
-                                onClick={() => setForm((f) => ({ ...f, tradePlayerMode: mode, tradePlayerName: "", tradePlayerPhoto: "", tradePlayerId: null }))}
+                                onClick={() => setForm((f) => ({ ...f, tradePlayerMode: mode, tradePlayerName: "", tradePlayerPhoto: "", tradePlayerNationality: "", tradePlayerId: null }))}
                                 className="px-2.5 py-1 text-[11px] font-semibold transition-all"
                                 style={{
                                   background: form.tradePlayerMode === mode ? "rgba(251,146,60,0.2)" : "rgba(255,255,255,0.04)",
@@ -1387,7 +1392,9 @@ export function TransferenciasView({
                               </button>
                             ))}
                           </div>
+
                           {form.tradePlayerMode === "search" ? (
+                            /* Search: show all players (squad + API) */
                             <PlayerAutocomplete
                               value={form.tradePlayerName}
                               photo={form.tradePlayerPhoto}
@@ -1402,17 +1409,44 @@ export function TransferenciasView({
                                 tradePlayerPosition: p.position,
                               }))}
                               localOnly={false}
-                              hideLocalResults={true}
                             />
                           ) : (
-                            <input
-                              type="text"
-                              className={inputClass}
-                              value={form.tradePlayerName}
-                              onChange={(e) => set("tradePlayerName", e.target.value)}
-                              placeholder="Nome completo do jogador"
-                            />
+                            /* Create: full player creation form */
+                            <div className="flex flex-col gap-3">
+                              <input
+                                type="text"
+                                autoFocus
+                                className={inputClass}
+                                value={form.tradePlayerName}
+                                onChange={(e) => set("tradePlayerName", e.target.value)}
+                                placeholder="Nome completo do jogador"
+                              />
+                              <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                  <label className={labelClass}>Nacionalidade</label>
+                                  <input
+                                    type="text"
+                                    className={inputClass}
+                                    value={form.tradePlayerNationality}
+                                    onChange={(e) => set("tradePlayerNationality", e.target.value)}
+                                    placeholder="Ex: Espanhol"
+                                  />
+                                </div>
+                                <div>
+                                  <label className={labelClass}>Foto (URL, opcional)</label>
+                                  <input
+                                    type="url"
+                                    className={inputClass}
+                                    value={form.tradePlayerPhoto}
+                                    onChange={(e) => set("tradePlayerPhoto", e.target.value)}
+                                    placeholder="https://..."
+                                  />
+                                </div>
+                              </div>
+                            </div>
                           )}
+
+                          {/* Position / Age / OVR — always visible so user can confirm/adjust after search */}
                           <div className="grid grid-cols-3 gap-2">
                             <div>
                               <label className={labelClass}>Posição</label>
