@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 
 async function callGeminiDirect(systemPrompt: string, userPrompt: string): Promise<string> {
   const { GoogleGenAI } = await import("@google/genai");
@@ -177,4 +178,56 @@ export async function callDiretoriaCompletion(
   }
 
   return callOpenAI(client, systemPrompt, userPrompt, maxTokens, model);
+}
+
+async function callOpenAIMessages(
+  client: OpenAI,
+  messages: ChatCompletionMessageParam[],
+  maxTokens: number,
+  model: string,
+): Promise<string> {
+  const completion = await client.chat.completions.create({
+    model,
+    max_tokens: maxTokens,
+    stream: false,
+    messages,
+  } as Parameters<typeof client.chat.completions.create>[0]);
+  return (completion as OpenAI.Chat.Completions.ChatCompletion).choices[0]?.message?.content ?? "";
+}
+
+export async function callDiretoriaChatWithPlan(
+  plan: string,
+  messages: ChatCompletionMessageParam[],
+  maxTokens = 1024,
+): Promise<string> {
+  if (plan === "ultra") {
+    const serverClient = getServerOpenAIClient();
+    if (serverClient) {
+      try {
+        return await callOpenAIMessages(serverClient, messages, maxTokens, "gpt-4o");
+      } catch {}
+    }
+  }
+
+  const systemMsg = messages.find((m) => m.role === "system")?.content;
+  const systemPrompt = typeof systemMsg === "string" ? systemMsg : "";
+  const nonSystem = messages.filter((m) => m.role !== "system");
+  const combinedUser = nonSystem
+    .map((m) => {
+      const role = m.role === "user" ? "Usuário" : "Assistente";
+      const text = typeof m.content === "string" ? m.content : "";
+      return `${role}: ${text}`;
+    })
+    .join("\n\n");
+
+  try {
+    return await callGemini(systemPrompt, combinedUser);
+  } catch {}
+
+  const serverClient = getServerOpenAIClient();
+  if (serverClient) {
+    return callOpenAIMessages(serverClient, messages, maxTokens, "gpt-4o-mini");
+  }
+
+  throw new Error("Nenhum provedor de IA disponível");
 }

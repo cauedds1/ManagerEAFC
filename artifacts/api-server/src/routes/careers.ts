@@ -1,7 +1,8 @@
 import { Router } from "express";
-import { db, careersTable, seasonsTable } from "@workspace/db";
+import { db, careersTable, seasonsTable, usersTable } from "@workspace/db";
 import { eq, isNull, or } from "drizzle-orm";
 import { requireAuth, type AuthRequest } from "../middleware/auth";
+import { getPlanLimits } from "../lib/planLimits";
 
 const router = Router();
 
@@ -75,6 +76,21 @@ router.post("/careers", requireAuth, async (req: AuthRequest, res) => {
       return res.status(400).json({ error: "coach and clubName are required" });
     }
 
+    const [dbUser] = await db.select({ plan: usersTable.plan }).from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+    const plan = dbUser?.plan ?? "free";
+    const limits = getPlanLimits(plan);
+    if (limits.maxCareers !== Infinity) {
+      const existing = await db.select({ id: careersTable.id }).from(careersTable).where(eq(careersTable.userId, userId));
+      if (existing.length >= limits.maxCareers) {
+        return res.status(403).json({
+          error: `Plano ${plan} permite no máximo ${limits.maxCareers} carreira(s)`,
+          code: "PLAN_LIMIT_REACHED",
+          plan,
+          limit: limits.maxCareers,
+        });
+      }
+    }
+
     const id = body.id ?? generateId();
     const now = Date.now();
 
@@ -114,6 +130,13 @@ router.post("/careers", requireAuth, async (req: AuthRequest, res) => {
 router.put("/careers/:id", requireAuth, async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
+    const userId = req.user!.id;
+
+    const [career] = await db.select({ userId: careersTable.userId }).from(careersTable).where(eq(careersTable.id, id)).limit(1);
+    if (!career || career.userId !== userId) {
+      return res.status(404).json({ error: "Carreira não encontrada" });
+    }
+
     const body = req.body as Partial<{
       coach: object;
       clubId: number;
@@ -162,6 +185,13 @@ router.put("/careers/:id", requireAuth, async (req: AuthRequest, res) => {
 router.delete("/careers/:id", requireAuth, async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
+    const userId = req.user!.id;
+
+    const [career] = await db.select({ userId: careersTable.userId }).from(careersTable).where(eq(careersTable.id, id)).limit(1);
+    if (!career || career.userId !== userId) {
+      return res.status(404).json({ error: "Carreira não encontrada" });
+    }
+
     await db.delete(seasonsTable).where(eq(seasonsTable.careerId, id));
     await db.delete(careersTable).where(eq(careersTable.id, id));
     return res.json({ ok: true });
@@ -174,6 +204,13 @@ router.delete("/careers/:id", requireAuth, async (req: AuthRequest, res) => {
 router.get("/careers/:id/seasons", requireAuth, async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
+    const userId = req.user!.id;
+
+    const [career] = await db.select({ userId: careersTable.userId }).from(careersTable).where(eq(careersTable.id, id)).limit(1);
+    if (!career || career.userId !== userId) {
+      return res.status(404).json({ error: "Carreira não encontrada" });
+    }
+
     const rows = await db
       .select()
       .from(seasonsTable)
@@ -198,6 +235,13 @@ router.get("/careers/:id/seasons", requireAuth, async (req: AuthRequest, res) =>
 router.post("/careers/:id/seasons", requireAuth, async (req: AuthRequest, res) => {
   try {
     const { id: careerId } = req.params;
+    const userId = req.user!.id;
+
+    const [career] = await db.select({ userId: careersTable.userId }).from(careersTable).where(eq(careersTable.id, careerId)).limit(1);
+    if (!career || career.userId !== userId) {
+      return res.status(404).json({ error: "Carreira não encontrada" });
+    }
+
     const body = req.body as {
       id?: string;
       label: string;
@@ -246,10 +290,13 @@ router.post("/careers/:id/seasons", requireAuth, async (req: AuthRequest, res) =
 router.patch("/seasons/:id/label", requireAuth, async (req: AuthRequest, res) => {
   try {
     const { id: seasonId } = req.params;
+    const userId = req.user!.id;
     const { label } = req.body as { label?: string };
     if (!label?.trim()) return res.status(400).json({ error: "label is required" });
-    const row = await db.select().from(seasonsTable).where(eq(seasonsTable.id, seasonId)).limit(1);
-    if (!row.length) return res.status(404).json({ error: "Season not found" });
+    const [row] = await db.select({ careerId: seasonsTable.careerId }).from(seasonsTable).where(eq(seasonsTable.id, seasonId)).limit(1);
+    if (!row) return res.status(404).json({ error: "Season not found" });
+    const [career] = await db.select({ userId: careersTable.userId }).from(careersTable).where(eq(careersTable.id, row.careerId)).limit(1);
+    if (!career || career.userId !== userId) return res.status(404).json({ error: "Season not found" });
     await db.update(seasonsTable).set({ label: label.trim() }).where(eq(seasonsTable.id, seasonId));
     return res.json({ ok: true });
   } catch (err) {
@@ -261,9 +308,12 @@ router.patch("/seasons/:id/label", requireAuth, async (req: AuthRequest, res) =>
 router.put("/seasons/:id/activate", requireAuth, async (req: AuthRequest, res) => {
   try {
     const { id: seasonId } = req.params;
-    const row = await db.select().from(seasonsTable).where(eq(seasonsTable.id, seasonId)).limit(1);
-    if (!row.length) return res.status(404).json({ error: "Season not found" });
-    const { careerId } = row[0];
+    const userId = req.user!.id;
+    const [row] = await db.select({ careerId: seasonsTable.careerId }).from(seasonsTable).where(eq(seasonsTable.id, seasonId)).limit(1);
+    if (!row) return res.status(404).json({ error: "Season not found" });
+    const { careerId } = row;
+    const [career] = await db.select({ userId: careersTable.userId }).from(careersTable).where(eq(careersTable.id, careerId)).limit(1);
+    if (!career || career.userId !== userId) return res.status(404).json({ error: "Season not found" });
 
     await db
       .update(seasonsTable)

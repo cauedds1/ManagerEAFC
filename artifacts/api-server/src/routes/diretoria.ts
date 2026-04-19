@@ -1,15 +1,10 @@
 import { Router } from "express";
 import OpenAI from "openai";
-import { openai as defaultOpenai } from "@workspace/integrations-openai-ai-server";
+import { requireAuth, type AuthRequest } from "../middleware/auth";
+import { callDiretoriaWithPlan, callDiretoriaChatWithPlan } from "../lib/aiProvider";
+import { getPlanLimits } from "../lib/planLimits";
 
 const router = Router();
-
-function getClient(userKey?: string): { client: OpenAI; usingUserKey: boolean } {
-  if (userKey && userKey.trim().startsWith("sk-")) {
-    return { client: new OpenAI({ apiKey: userKey.trim() }), usingUserKey: true };
-  }
-  return { client: defaultOpenai as unknown as OpenAI, usingUserKey: false };
-}
 
 interface MatchCtx {
   opponent: string;
@@ -175,7 +170,14 @@ TABELA: ${leagueStr}${streakAlert}${finStr}${projetoLine}
 ${matchStr}`;
 }
 
-router.post("/diretoria/chat", async (req, res) => {
+router.post("/diretoria/chat", requireAuth, async (req: AuthRequest, res) => {
+  const plan = req.user!.plan;
+  const limits = getPlanLimits(plan);
+  if (!limits.diretoriaEnabled) {
+    res.status(403).json({ error: "Diretoria não está disponível no plano Free", code: "PLAN_LIMIT_REACHED", plan });
+    return;
+  }
+
   const { member, message, history, context, squadOvrContext, squadRosterContext, playerPerformanceContext } = req.body as {
     member: MemberProfile;
     message: string;
@@ -190,9 +192,6 @@ router.post("/diretoria/chat", async (req, res) => {
     res.status(400).json({ error: "message é obrigatório" });
     return;
   }
-
-  const userKey = (req.headers["x-openai-key"] as string | undefined) ?? "";
-  const { client, usingUserKey } = getClient(userKey);
 
   const clubCtx = buildClubContext(context);
   const tier = clubTierFromLeague(context.clubLeague);
@@ -286,18 +285,7 @@ Ao final: NOVO_HUMOR: <excelente|bom|neutro|tenso|irritado|furioso>`;
   ];
 
   try {
-    const params = usingUserKey
-      ? { model: "gpt-4o", max_tokens: 1024 }
-      : { model: "gpt-4o-mini", max_tokens: 1024 };
-
-    const completion = await client.chat.completions.create({
-      ...params,
-      stream: false,
-      messages: msgs,
-    } as Parameters<typeof client.chat.completions.create>[0]);
-
-    const raw =
-      (completion as OpenAI.Chat.Completions.ChatCompletion).choices[0]?.message?.content ?? "";
+    const raw = await callDiretoriaChatWithPlan(plan, msgs, 1024);
 
     const moodMatch = raw.match(/NOVO_HUMOR:\s*(excelente|bom|neutro|tenso|irritado|furioso)/i);
     const newMood = moodMatch ? moodMatch[1].toLowerCase() : member.mood;
@@ -312,7 +300,14 @@ Ao final: NOVO_HUMOR: <excelente|bom|neutro|tenso|irritado|furioso>`;
   }
 });
 
-router.post("/diretoria/meeting", async (req, res) => {
+router.post("/diretoria/meeting", requireAuth, async (req: AuthRequest, res) => {
+  const plan = req.user!.plan;
+  const limits = getPlanLimits(plan);
+  if (!limits.diretoriaEnabled) {
+    res.status(403).json({ error: "Diretoria não está disponível no plano Free", code: "PLAN_LIMIT_REACHED", plan });
+    return;
+  }
+
   const { speaker, allMembers, history, context, triggerMessage, squadOvrContext, squadRosterContext, playerPerformanceContext } = req.body as {
     speaker: MemberProfile;
     allMembers: MemberProfile[];
@@ -323,9 +318,6 @@ router.post("/diretoria/meeting", async (req, res) => {
     squadRosterContext?: string;
     playerPerformanceContext?: string;
   };
-
-  const userKey = (req.headers["x-openai-key"] as string | undefined) ?? "";
-  const { client, usingUserKey } = getClient(userKey);
 
   const clubCtx = buildClubContext(context);
   const tier = clubTierFromLeague(context.clubLeague);
@@ -413,21 +405,7 @@ ${histStr || "(início da reunião — você pode abrir com seu posicionamento)"
 Agora é sua vez de falar, ${speaker.name}.`;
 
   try {
-    const params = usingUserKey
-      ? { model: "gpt-4o", max_tokens: 768 }
-      : { model: "gpt-4o-mini", max_tokens: 768 };
-
-    const completion = await client.chat.completions.create({
-      ...params,
-      stream: false,
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
-    } as Parameters<typeof client.chat.completions.create>[0]);
-
-    const raw =
-      (completion as OpenAI.Chat.Completions.ChatCompletion).choices[0]?.message?.content ?? "";
+    const raw = await callDiretoriaWithPlan(plan, systemPrompt, userPrompt, 768);
 
     const moodMatch = raw.match(/NOVO_HUMOR:\s*(excelente|bom|neutro|tenso|irritado|furioso)/i);
     const newMood = moodMatch ? moodMatch[1].toLowerCase() : speaker.mood;
@@ -444,7 +422,14 @@ Agora é sua vez de falar, ${speaker.name}.`;
   }
 });
 
-router.post("/diretoria/generate-member", async (req, res) => {
+router.post("/diretoria/generate-member", requireAuth, async (req: AuthRequest, res) => {
+  const plan = req.user!.plan;
+  const planLimits = getPlanLimits(plan);
+  if (!planLimits.diretoriaEnabled) {
+    res.status(403).json({ error: "Diretoria não está disponível no plano Free", code: "PLAN_LIMIT_REACHED", plan });
+    return;
+  }
+
   const { roleLabel, personalityStyle, clubName, clubLeague, extraTraits } = req.body as {
     roleLabel: string;
     personalityStyle: string;
@@ -452,9 +437,6 @@ router.post("/diretoria/generate-member", async (req, res) => {
     clubLeague: string;
     extraTraits?: string;
   };
-
-  const userKey = (req.headers["x-openai-key"] as string | undefined) ?? "";
-  const { client, usingUserKey } = getClient(userKey);
 
   const tier = clubTierFromLeague(clubLeague);
 
@@ -481,21 +463,7 @@ Responda APENAS com JSON puro (sem markdown):
 }`;
 
   try {
-    const params = usingUserKey
-      ? { model: "gpt-4o", max_tokens: 512 }
-      : { model: "gpt-4o-mini", max_tokens: 512 };
-
-    const completion = await client.chat.completions.create({
-      ...params,
-      stream: false,
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
-    } as Parameters<typeof client.chat.completions.create>[0]);
-
-    const raw =
-      (completion as OpenAI.Chat.Completions.ChatCompletion).choices[0]?.message?.content ?? "";
+    const raw = await callDiretoriaWithPlan(plan, systemPrompt, userPrompt, 512);
     const jsonStr = raw
       .replace(/^```json\s*/i, "")
       .replace(/^```\s*/i, "")
@@ -514,7 +482,13 @@ Responda APENAS com JSON puro (sem markdown):
   }
 });
 
-router.post("/diretoria/check-triggers", async (req, res) => {
+router.post("/diretoria/check-triggers", requireAuth, async (req: AuthRequest, res) => {
+  const plan = req.user!.plan;
+  const limits = getPlanLimits(plan);
+  if (!limits.diretoriaEnabled) {
+    res.status(403).json({ error: "Diretoria não está disponível no plano Free", code: "PLAN_LIMIT_REACHED", plan });
+    return;
+  }
   const { context, members, lastCheckedAt, playerPerformance, squadOvrContext, isClassico, rivalName, fanMoodScore, fanMoodLabel } = req.body as {
     context: ClubContext;
     members: MemberProfile[];
@@ -882,7 +856,14 @@ router.post("/diretoria/check-triggers", async (req, res) => {
   res.json({ notifications: unique, meetingTrigger });
 });
 
-router.post("/diretoria/suggest-transfer", async (req, res) => {
+router.post("/diretoria/suggest-transfer", requireAuth, async (req: AuthRequest, res) => {
+  const plan = req.user!.plan;
+  const limits = getPlanLimits(plan);
+  if (!limits.diretoriaEnabled) {
+    res.status(403).json({ error: "Diretoria não está disponível no plano Free", code: "PLAN_LIMIT_REACHED", plan });
+    return;
+  }
+
   const { context, position, currentSquad, estimatedBudget } = req.body as {
     context: ClubContext;
     position: string;
@@ -894,9 +875,6 @@ router.post("/diretoria/suggest-transfer", async (req, res) => {
     res.status(400).json({ error: "position é obrigatório" });
     return;
   }
-
-  const userKey = (req.headers["x-openai-key"] as string | undefined) ?? "";
-  const { client, usingUserKey } = getClient(userKey);
 
   const tier = clubTierFromLeague(context.clubLeague);
   const squadStr = currentSquad.slice(0, 20).map((p) => `${p.name} (${p.position})`).join(", ");
@@ -944,21 +922,7 @@ Responda APENAS com JSON puro (sem markdown):
 }`;
 
   try {
-    const params = usingUserKey
-      ? { model: "gpt-4o", max_tokens: 1024 }
-      : { model: "gpt-4o-mini", max_tokens: 1024 };
-
-    const completion = await client.chat.completions.create({
-      ...params,
-      stream: false,
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
-    } as Parameters<typeof client.chat.completions.create>[0]);
-
-    const raw =
-      (completion as OpenAI.Chat.Completions.ChatCompletion).choices[0]?.message?.content ?? "";
+    const raw = await callDiretoriaWithPlan(plan, systemPrompt, userPrompt, 1024);
     const jsonStr = raw
       .replace(/^```json\s*/i, "")
       .replace(/^```\s*/i, "")
@@ -983,7 +947,9 @@ Responda APENAS com JSON puro (sem markdown):
   }
 });
 
-router.post("/generate-projeto", async (req, res) => {
+router.post("/generate-projeto", requireAuth, async (req: AuthRequest, res) => {
+  const plan = req.user!.plan;
+
   const { clubName, clubLeague, clubCountry, clubDescription, clubTitles } = req.body as {
     clubName: string;
     clubLeague?: string;
@@ -996,9 +962,6 @@ router.post("/generate-projeto", async (req, res) => {
     res.status(400).json({ error: "clubName é obrigatório" });
     return;
   }
-
-  const userKey = (req.headers["x-openai-key"] as string | undefined) ?? "";
-  const { client, usingUserKey } = getClient(userKey);
 
   const totalTitles = (clubTitles ?? []).reduce((sum, t) => sum + t.count, 0);
   const hasChampions = (clubTitles ?? []).some(t => /champions|liga dos campe|european cup/i.test(t.name) && t.count > 0);
@@ -1040,21 +1003,10 @@ O texto deve soar como se fosse a diretoria/clube apresentando o projeto ao téc
 Exemplos de início: "Nosso objetivo é...", "Queremos...", "A missão do ${clubName} é...".
 Responda APENAS com o texto do projeto, sem JSON, sem aspas.`;
 
+  const systemPromptProjeto = "Você é especialista em futebol mundial. Conhece profundamente o nível de cada clube. Para clubes históricos e de elite (Arsenal, Real Madrid, Barcelona, Bayern, Liverpool, Juventus, PSG, etc.), SEMPRE gere objetivos ambiciosos de conquistas de títulos — nunca de permanência ou sobrevivência. Responda apenas com o texto do projeto, sem formatação.";
+
   try {
-    const params = usingUserKey
-      ? { model: "gpt-4o-mini" as const, max_tokens: 180 as const }
-      : { model: "gpt-4o-mini" as const, max_tokens: 180 as const };
-
-    const completion = await client.chat.completions.create({
-      ...params,
-      stream: false,
-      messages: [
-        { role: "system", content: "Você é especialista em futebol mundial. Conhece profundamente o nível de cada clube. Para clubes históricos e de elite (Arsenal, Real Madrid, Barcelona, Bayern, Liverpool, Juventus, PSG, etc.), SEMPRE gere objetivos ambiciosos de conquistas de títulos — nunca de permanência ou sobrevivência. Responda apenas com o texto do projeto, sem formatação." },
-        { role: "user", content: userPrompt },
-      ],
-    });
-
-    const projeto = (completion.choices[0]?.message?.content ?? "").trim();
+    const projeto = (await callDiretoriaWithPlan(plan, systemPromptProjeto, userPrompt, 180)).trim();
     res.json({ projeto });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -1062,7 +1014,9 @@ Responda APENAS com o texto do projeto, sem JSON, sem aspas.`;
   }
 });
 
-router.post("/club-info", async (req, res) => {
+router.post("/club-info", requireAuth, async (req: AuthRequest, res) => {
+  const plan = req.user!.plan;
+
   const { clubName, clubLeague, clubCountry } = req.body as {
     clubName: string;
     clubLeague?: string;
@@ -1073,9 +1027,6 @@ router.post("/club-info", async (req, res) => {
     res.status(400).json({ error: "clubName é obrigatório" });
     return;
   }
-
-  const userKey = (req.headers["x-openai-key"] as string | undefined) ?? "";
-  const { client, usingUserKey } = getClient(userKey);
 
   const userPrompt = `Forneça informações sobre o clube: ${clubName}${clubLeague ? ` (${clubLeague})` : ""}${clubCountry ? `, ${clubCountry}` : ""}.
 
@@ -1093,24 +1044,10 @@ REGRAS:
 - Seja factual e preciso — se não souber com certeza, omita
 - description: 2-3 frases curtas e informativas em pt-BR`;
 
+  const systemPromptClubInfo = "Você é especialista em futebol mundial. Responda SOMENTE com JSON válido, sem markdown.";
+
   try {
-    const params = usingUserKey
-      ? { model: "gpt-4o-mini" as const, max_tokens: 400 as const }
-      : { model: "gpt-4o-mini" as const, max_tokens: 400 as const };
-
-    const completion = await client.chat.completions.create({
-      ...params,
-      stream: false,
-      messages: [
-        {
-          role: "system",
-          content: "Você é especialista em futebol mundial. Responda SOMENTE com JSON válido, sem markdown.",
-        },
-        { role: "user", content: userPrompt },
-      ],
-    });
-
-    const raw = completion.choices[0]?.message?.content ?? "{}";
+    const raw = await callDiretoriaWithPlan(plan, systemPromptClubInfo, userPrompt, 400);
     const jsonStr = raw
       .replace(/^```json\s*/i, "")
       .replace(/^```\s*/i, "")

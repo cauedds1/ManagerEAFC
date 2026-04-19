@@ -792,7 +792,7 @@ REGRAS DE REPLIES — OBRIGATÓRIO:
 - NUNCA gere replies genéricos como "concordo" sozinhos — sempre adicione personalidade`;
 
   try {
-    const raw = await callNewsCompletion(client, usingUserKey, systemPrompt, userPrompt, 3072);
+    const raw = await callNewsWithPlan(userPlan, systemPrompt, userPrompt, 3072);
 
     let parsed: Record<string, unknown>;
     try {
@@ -833,7 +833,9 @@ interface GenerateLeakBody {
   customPortal: CustomPortalPayload;
 }
 
-router.post("/noticias/generate-leak", async (req, res) => {
+router.post("/noticias/generate-leak", requireAuth, async (req: AuthRequest, res) => {
+  const userPlan = req.user!.plan;
+
   const {
     clubName, season, clubLeague, currentCompetitions,
     notificationPreview, memberName, meetingReason,
@@ -844,9 +846,6 @@ router.post("/noticias/generate-leak", async (req, res) => {
     res.status(400).json({ error: "clubName, notificationPreview e customPortal são obrigatórios" });
     return;
   }
-
-  const userKey = (req.headers["x-openai-key"] as string | undefined) ?? "";
-  const { client, usingUserKey } = getClient(userKey);
 
   const uniqueSeed = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const portalHandle = `@${customPortal.name.toLowerCase().replace(/\s+/g, "").replace(/[^a-z0-9]/g, "")}`;
