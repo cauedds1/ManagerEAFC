@@ -981,9 +981,9 @@ export function MatchDetailPage({
               return (
                 <div className="flex gap-3 mt-1.5 w-full">
                   {/* Left team goals — right-aligned */}
-                  <div className="flex-1 flex flex-col items-end gap-0.5">
+                  <div className="flex-1 flex flex-col items-end gap-0.5 overflow-hidden">
                     {leftGoals.map((g, i) => (
-                      <span key={i} className="text-[10px] text-white/50 text-right leading-tight">
+                      <span key={i} className="text-[10px] text-white/50 text-right leading-tight whitespace-nowrap">
                         {g.name} {g.minute}&apos;{g.isPenalty ? " (P)" : ""}
                       </span>
                     ))}
@@ -991,9 +991,9 @@ export function MatchDetailPage({
                   {/* Thin vertical divider */}
                   <div className="w-px self-stretch bg-white/10 flex-shrink-0" />
                   {/* Right team goals — left-aligned */}
-                  <div className="flex-1 flex flex-col items-start gap-0.5">
+                  <div className="flex-1 flex flex-col items-start gap-0.5 overflow-hidden">
                     {rightGoals.map((g, i) => (
-                      <span key={i} className="text-[10px] text-white/50 text-left leading-tight">
+                      <span key={i} className="text-[10px] text-white/50 text-left leading-tight whitespace-nowrap">
                         {g.name} {g.minute}&apos;{g.isPenalty ? " (P)" : ""}
                       </span>
                     ))}
