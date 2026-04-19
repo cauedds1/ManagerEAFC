@@ -550,6 +550,20 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     ];
   }, [allPlayers, formerPlayers]);
 
+  // For the elenco (squad) display in historical (read-only) seasons, include former
+  // players who were NOT sold/loaned out in that specific season — they were still
+  // squad members during that season.
+  const elencoPlayers = useMemo(() => {
+    if (!isReadOnly) return allPlayers;
+    const currentIds = new Set(allPlayers.map((p) => p.id));
+    return [
+      ...allPlayers,
+      ...formerPlayers.filter(
+        (p) => !currentIds.has(p.id) && !removedIds.has(p.id) && !removedNames.has(p.name.toLowerCase().trim())
+      ),
+    ];
+  }, [allPlayers, formerPlayers, removedIds, removedNames, isReadOnly]);
+
   const handleTransferAdded = useCallback((transfer: TransferRecord) => {
     addTransfer(activeSeasonId, transfer);
     setTransfers((prev) => [...prev, transfer]);
@@ -1223,7 +1237,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
             squad={squad}
             squadLoading={squadLoading}
             squadError={squadError}
-            allPlayers={allPlayers}
+            allPlayers={elencoPlayers}
             historicalPlayers={allPlayersWithFormer}
             transfers={transfers}
             onRefresh={handleRefreshSquad}

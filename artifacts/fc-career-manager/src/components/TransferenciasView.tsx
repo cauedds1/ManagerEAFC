@@ -736,6 +736,15 @@ export function TransferenciasView({
 
     onTransferAdded(transfer);
 
+    // For sales and loan-outs, notify that the player left so they remain in
+    // historical stats even after being removed from the active squad.
+    if (isVenda || isLoanSaida) {
+      const leftPlayer = allPlayers.find((p) => p.id === playerId);
+      if (leftPlayer) {
+        onPlayerLeftInTrade?.(leftPlayer);
+      }
+    }
+
     const squadIds = new Set(allPlayers.map((p) => p.id));
     const tradeIsValid = form.tradeEnabled && form.tradePlayerName.trim().length >= 2 &&
       (isEntrada
