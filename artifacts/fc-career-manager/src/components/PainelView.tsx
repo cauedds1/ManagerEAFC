@@ -11,6 +11,7 @@ import { getMatchResultFull, RESULT_STYLE } from "@/types/match";
 import { getCachedClubList } from "@/lib/clubListCache";
 import { searchStaticClubs } from "@/lib/staticClubList";
 import { isRival } from "@/lib/rivalsStorage";
+import { MatchDetailPage } from "./MatchDetailPage";
 
 function resolveOpponentLogo(name: string, stored?: string): string | undefined {
   if (stored) return stored;
@@ -60,6 +61,7 @@ interface PainelViewProps {
   season: string;
   matches: MatchRecord[];
   transferCount: number;
+  competitions?: string[];
   isReadOnly?: boolean;
 }
 
@@ -317,11 +319,13 @@ function LastMatches({
   matches,
   clubName,
   clubLogoUrl,
+  onMatchClick,
 }: {
   seasonId: string;
   matches: MatchRecord[];
   clubName: string;
   clubLogoUrl?: string | null;
+  onMatchClick?: (match: MatchRecord) => void;
 }) {
   const last5 = [...matches].sort((a, b) => b.createdAt - a.createdAt).slice(0, 6);
 
@@ -404,15 +408,17 @@ function LastMatches({
           const tournamentPrefix = isRivalWin ? "⚔️ " : isRivalLoss ? "💀 " : "";
 
           return (
-            <div
+            <button
               key={m.id}
-              className="rounded-2xl flex flex-col overflow-hidden"
+              onClick={() => onMatchClick?.(m)}
+              className="rounded-2xl flex flex-col overflow-hidden text-left w-full transition-all duration-150 active:scale-95 hover:brightness-110"
               style={{
                 borderTop: cardBorderRest,
                 borderRight: cardBorderRest,
                 borderBottom: cardBorderRest,
                 borderLeft: cardBorderLeft,
                 background: cardBg,
+                cursor: onMatchClick ? "pointer" : "default",
               }}
             >
               {/* Header: tournament (full) + date */}
@@ -483,7 +489,7 @@ function LastMatches({
                   {LOCATION_ICON[m.location]}
                 </span>
               </div>
-            </div>
+            </button>
           );
         })}
       </div>
@@ -544,6 +550,7 @@ function MessagesSection() {
 }
 
 export function PainelView({
+  careerId: careerIdProp,
   seasonId,
   clubName,
   clubLogoUrl,
@@ -551,9 +558,11 @@ export function PainelView({
   season,
   matches,
   transferCount,
+  competitions,
   isReadOnly,
 }: PainelViewProps) {
-  const careerId = seasonId;
+  const careerId = careerIdProp ?? seasonId;
+  const [selectedMatch, setSelectedMatch] = useState<MatchRecord | null>(null);
   const quickStats = [
     {
       label: "Partidas",
@@ -598,6 +607,26 @@ export function PainelView({
     },
   ];
 
+  if (selectedMatch) {
+    return (
+      <MatchDetailPage
+        key={selectedMatch.id}
+        match={selectedMatch}
+        clubName={clubName}
+        clubLogoUrl={clubLogoUrl}
+        allPlayers={allPlayers}
+        onBack={() => setSelectedMatch(null)}
+        onSelectMatch={(m) => setSelectedMatch(m)}
+        careerId={careerId}
+        seasonId={seasonId}
+        season={season}
+        competitions={competitions}
+        isReadOnly={isReadOnly}
+        onMatchUpdated={(updated) => setSelectedMatch(updated)}
+      />
+    );
+  }
+
   return (
     <div className="space-y-5 animate-fade-up">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -623,7 +652,13 @@ export function PainelView({
         ))}
       </div>
 
-      <LastMatches seasonId={seasonId} matches={matches} clubName={clubName} clubLogoUrl={clubLogoUrl} />
+      <LastMatches
+        seasonId={seasonId}
+        matches={matches}
+        clubName={clubName}
+        clubLogoUrl={clubLogoUrl}
+        onMatchClick={setSelectedMatch}
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <LeagueCard careerId={careerId} isReadOnly={isReadOnly} />

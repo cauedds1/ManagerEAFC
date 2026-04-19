@@ -1184,6 +1184,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
                 season={displayLabel}
                 matches={matches}
                 transferCount={transfers.length}
+                competitions={activeSeason?.competitions ?? career.competitions}
                 isReadOnly={isReadOnly}
               />
             )}
