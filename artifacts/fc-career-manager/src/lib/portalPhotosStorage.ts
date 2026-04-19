@@ -1,3 +1,13 @@
+const AUTH_TOKEN_KEY = "fc_auth_token";
+
+function getAuthHeaders(): HeadersInit {
+  const token = localStorage.getItem(AUTH_TOKEN_KEY);
+  return {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+}
+
 export type PortalSource = "tnt" | "espn" | "fanpage";
 
 export interface PortalPhotos {
@@ -10,7 +20,9 @@ export const PORTAL_PHOTOS_EVENT = "fc-portal-photos-updated";
 
 export async function fetchPortalPhotos(careerId: string): Promise<PortalPhotos> {
   try {
-    const res = await fetch(`/api/data/career/${encodeURIComponent(careerId)}`);
+    const res = await fetch(`/api/data/career/${encodeURIComponent(careerId)}`, {
+      headers: getAuthHeaders(),
+    });
     if (!res.ok) return {};
     const { data } = (await res.json()) as { data: Record<string, unknown> };
     return {
@@ -31,7 +43,7 @@ export async function savePortalPhoto(
   try {
     await fetch(`/api/data/career/${encodeURIComponent(careerId)}/portal_photo_${source}`, {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      headers: getAuthHeaders(),
       body: JSON.stringify({ value: url }),
     });
   } catch {
@@ -42,7 +54,7 @@ export async function clearPortalPhotoApi(careerId: string, source: PortalSource
   try {
     await fetch(`/api/data/career/${encodeURIComponent(careerId)}/portal_photo_${source}`, {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      headers: getAuthHeaders(),
       body: JSON.stringify({ value: null }),
     });
   } catch {

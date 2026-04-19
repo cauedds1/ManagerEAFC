@@ -360,7 +360,9 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
 
   /* ── Portal photos ── */
   const [portalPhotos, setPortalPhotosState] = useState<PortalPhotos>({});
-  const [photoUploading, setPhotoUploading] = useState<PortalSource | null>(null);
+  const [draftUrls, setDraftUrls] = useState<Record<PortalSource, string>>({ tnt: "", espn: "", fanpage: "" });
+  const [savingPortal, setSavingPortal] = useState<PortalSource | null>(null);
+  const [savedPortal, setSavedPortal] = useState<PortalSource | null>(null);
   const photoInputRef                         = useRef<HTMLInputElement>(null);
   const pendingSourceRef                      = useRef<PortalSource | null>(null);
 
@@ -477,8 +479,25 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
   const handleClearPortalPhoto = async (src: PortalSource) => {
     if (!careerId) return;
     setPortalPhotosState((prev) => { const next = { ...prev }; delete next[src]; return next; });
+    setDraftUrls((prev) => ({ ...prev, [src]: "" }));
     await clearPortalPhotoApi(careerId, src);
     window.dispatchEvent(new CustomEvent(PORTAL_PHOTOS_EVENT));
+  };
+
+  const handleConfirmPortalUrl = async (src: PortalSource) => {
+    const url = draftUrls[src].trim();
+    if (!url || !careerId) return;
+    setSavingPortal(src);
+    try {
+      await savePortalPhoto(careerId, src, url);
+      setPortalPhotosState((prev) => ({ ...prev, [src]: url }));
+      setDraftUrls((prev) => ({ ...prev, [src]: "" }));
+      window.dispatchEvent(new CustomEvent(PORTAL_PHOTOS_EVENT));
+      setSavedPortal(src);
+      setTimeout(() => setSavedPortal(null), 2000);
+    } finally {
+      setSavingPortal(null);
+    }
   };
 
   /* ─── Custom portal handlers ─── */
@@ -799,53 +818,41 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
 
       <SectionCard
         title="Fotos dos Portais"
-        subtitle="Personalize a foto de perfil de cada portal. A imagem aparece no avatar circular do feed de Notícias. Formatos: JPG, PNG, WebP."
+        subtitle="Cole a URL de uma imagem (JPG, PNG, WebP) e clique em Confirmar para salvar."
       >
         <div className="space-y-3">
           {PORTAL_META.map(({ source, label, color, bgColor }) => {
             const photo = portalPhotos[source];
+            const draft = draftUrls[source];
+            const isSaving = savingPortal === source;
+            const isSaved = savedPortal === source;
             return (
               <div
                 key={source}
-                className="flex items-center gap-4 rounded-2xl px-4 py-3"
+                className="rounded-2xl px-4 py-3 flex flex-col gap-3"
                 style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}
               >
-                {/* Avatar preview */}
-                <div
-                  className="flex-shrink-0 rounded-full overflow-hidden flex items-center justify-center font-black"
-                  style={{ width: 52, height: 52, background: photo ? "transparent" : bgColor, border: `2.5px solid ${color}`, color, fontSize: 20 }}
-                >
-                  {photo
-                    ? <img src={photo} alt={label} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-                    : label.charAt(0).toUpperCase()
-                  }
-                </div>
-
-                {/* Info */}
-                <div className="flex-1 min-w-0">
-                  <p className="text-white font-semibold text-sm">{label}</p>
-                  <p className="text-xs mt-0.5" style={{ color: photo ? "#34d399" : "rgba(255,255,255,0.3)" }}>
-                    {photo ? "Foto personalizada ativa" : "Usando inicial do nome"}
-                  </p>
-                </div>
-
-                {/* Actions */}
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <button
-                    onClick={() => { pendingSourceRef.current = source; photoInputRef.current?.click(); }}
-                    className="px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-150 hover:opacity-90 active:scale-95"
-                    style={{
-                      background: `color-mix(in srgb, ${color} 12%, transparent)`,
-                      border: `1px solid color-mix(in srgb, ${color} 28%, transparent)`,
-                      color,
-                    }}
+                {/* Top row: avatar + info + remove */}
+                <div className="flex items-center gap-4">
+                  <div
+                    className="flex-shrink-0 rounded-full overflow-hidden flex items-center justify-center font-black"
+                    style={{ width: 52, height: 52, background: photo ? "transparent" : bgColor, border: `2.5px solid ${color}`, color, fontSize: 20 }}
                   >
-                    {photo ? "Trocar" : "Adicionar foto"}
-                  </button>
+                    {photo
+                      ? <img src={photo} alt={label} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                      : label.charAt(0).toUpperCase()
+                    }
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white font-semibold text-sm">{label}</p>
+                    <p className="text-xs mt-0.5" style={{ color: isSaved ? "#34d399" : photo ? "#34d399" : "rgba(255,255,255,0.3)" }}>
+                      {isSaved ? "Foto salva com sucesso!" : photo ? "Foto personalizada ativa" : "Usando inicial do nome"}
+                    </p>
+                  </div>
                   {photo && (
                     <button
                       onClick={() => handleClearPortalPhoto(source)}
-                      className="w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-150 hover:bg-white/[0.08] active:scale-95"
+                      className="w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-150 hover:bg-white/[0.08] active:scale-95 flex-shrink-0"
                       style={{ color: "rgba(255,255,255,0.35)", border: "1px solid rgba(255,255,255,0.08)" }}
                       title="Remover foto"
                     >
@@ -854,6 +861,31 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
                       </svg>
                     </button>
                   )}
+                </div>
+
+                {/* URL input + confirm button */}
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    placeholder="Cole a URL da imagem aqui..."
+                    value={draft}
+                    onChange={(e) => setDraftUrls((prev) => ({ ...prev, [source]: e.target.value }))}
+                    onKeyDown={(e) => { if (e.key === "Enter") handleConfirmPortalUrl(source); }}
+                    className="flex-1 rounded-xl px-3 py-2 text-sm text-white placeholder-white/30 outline-none"
+                    style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}
+                  />
+                  <button
+                    onClick={() => handleConfirmPortalUrl(source)}
+                    disabled={!draft.trim() || isSaving}
+                    className="px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-150 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0"
+                    style={{
+                      background: `color-mix(in srgb, ${color} 18%, transparent)`,
+                      border: `1px solid color-mix(in srgb, ${color} 35%, transparent)`,
+                      color,
+                    }}
+                  >
+                    {isSaving ? "Salvando..." : "Confirmar"}
+                  </button>
                 </div>
               </div>
             );
