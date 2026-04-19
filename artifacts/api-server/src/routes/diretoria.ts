@@ -73,7 +73,17 @@ interface PlayerPerfItem {
   benchRatio?: number;
   overall?: number;
   age?: number;
+  number?: number;
   consecutivePoorRatings?: number;
+}
+
+function playerLabel(p: PlayerPerfItem): string {
+  const isAbbrev = /^[A-Z]\.?$/.test(p.name.trim()) || p.name.trim().length <= 2;
+  if (!isAbbrev) return p.name;
+  const extras: string[] = [];
+  if (p.number) extras.push(`nº${p.number}`);
+  if (p.position) extras.push(p.position);
+  return extras.length > 0 ? `${p.name} (${extras.join(", ")})` : p.name;
 }
 
 interface ChatHistoryItem {
@@ -260,7 +270,7 @@ ${calibratingSection}
 
 6. NUNCA mencione números de OVR, overall ou ratings numéricos nas suas falas — use apenas termos qualitativos naturais como "estrela do elenco", "acima da média", "jogador de alto nível", "um dos melhores que temos", "abaixo do esperado", etc. Os dados numéricos são informações internas de calibração — um diretor real não fala em "OVR".
 
-7. NOMES DOS JOGADORES: Ao citar qualquer jogador, use o nome EXATAMENTE como aparece no contexto — NUNCA abrevie, trunque ou omita partes. Se o nome for "G. Jesus", diga "G. Jesus", JAMAIS apenas "G." ou "G.,". Se for "R. Lewandowski", diga "R. Lewandowski". Citar apenas a inicial seguida de ponto e vírgula é proibido.
+7. NOMES DOS JOGADORES: Ao citar qualquer jogador, use o identificador COMPLETO como aparece no contexto. Se o nome no contexto for "G. Jesus", diga "G. Jesus" — NUNCA apenas "G.". Se o nome for apenas uma inicial com ponto (ex: "N. (nº8, ATA)"), use o identificador completo "N. (nº8, ATA)" ou refira-se ao jogador pela posição: "o atacante de número 8" ou "nosso atacante nº8". JAMAIS cite apenas a inicial isolada como "N." ou "G." sem mais contexto.
 
 ${isAngry || isInsulted ? "⚡ ATENÇÃO: a mensagem atual é desrespeitosa ou o humor está ruim — aplique OBRIGATORIAMENTE a regra 3. NÃO use frases proibidas. Reaja com dureza." : ""}
 
@@ -381,7 +391,7 @@ ${meetingCalibratingSection}
 8. Use linguagem brasileira natural. Nunca quebre o personagem.
 9. NUNCA mencione números de OVR, overall ou ratings numéricos nas suas falas — use apenas termos qualitativos naturais como "estrela do elenco", "acima da média", "jogador de alto nível", "um dos melhores que temos", "abaixo do esperado", etc.
 
-10. NOMES DOS JOGADORES: Ao citar qualquer jogador, use o nome EXATAMENTE como aparece no contexto — NUNCA abrevie, trunque ou omita partes. Se o nome for "G. Jesus", diga "G. Jesus", JAMAIS apenas "G." ou "G.,". Se for "R. Lewandowski", diga "R. Lewandowski". Citar apenas a inicial seguida de ponto e vírgula é proibido.
+10. NOMES DOS JOGADORES: Ao citar qualquer jogador, use o identificador COMPLETO como aparece no contexto. Se o nome no contexto for "G. Jesus", diga "G. Jesus" — NUNCA apenas "G.". Se o nome for apenas uma inicial com ponto (ex: "N. (nº8, ATA)"), use o identificador completo "N. (nº8, ATA)" ou refira-se ao jogador pela posição: "o atacante de número 8" ou "nosso atacante nº8". JAMAIS cite apenas a inicial isolada como "N." ou "G." sem mais contexto.
 
 Ao final: NOVO_HUMOR: <excelente|bom|neutro|tenso|irritado|furioso>
 Ao final: SUGERIR_ENCERRAMENTO: <sim|nao> (sim somente se a pauta foi concluída naturalmente)`;
@@ -659,7 +669,7 @@ router.post("/diretoria/check-triggers", async (req, res) => {
       const idolos = playerPerformance.filter((p) => p.fanMoral === "Ídolo" && p.goals + p.assists >= 8);
 
       if (worstPlayers.length >= 2 && auxTecnico && !notifications.find((n) => n.memberId === auxTecnico.id)) {
-        const names = worstPlayers.map((p) => p.name).join(", ");
+        const names = worstPlayers.map((p) => playerLabel(p)).join(", ");
         const seqNote = lossStreakOpponents ? ` Precisamos ver isso no contexto da sequência recente.` : "";
         notifications.push({
           memberId: auxTecnico.id,
@@ -670,7 +680,7 @@ router.post("/diretoria/check-triggers", async (req, res) => {
       if (vaiados.length >= 1 && presidente && !notifications.find((n) => n.memberId === presidente.id)) {
         notifications.push({
           memberId: presidente.id,
-          preview: `${vaiados[0].name} está sendo vaiado. A torcida está insatisfeita.`,
+          preview: `${playerLabel(vaiados[0])} está sendo vaiado. A torcida está insatisfeita.`,
         });
       }
 
@@ -679,7 +689,7 @@ router.post("/diretoria/check-triggers", async (req, res) => {
         if (topScorer && !notifications.find((n) => n.memberId === presidente.id)) {
           notifications.push({
             memberId: presidente.id,
-            preview: `${topScorer.name} está brilhando mas o time vai mal — precisamos de reforços?`,
+            preview: `${playerLabel(topScorer)} está brilhando mas o time vai mal — precisamos de reforços?`,
           });
         }
       }
@@ -714,10 +724,10 @@ router.post("/diretoria/check-triggers", async (req, res) => {
             p.isBench,
         );
         if (auxTecnico && !notifications.find((n) => n.memberId === auxTecnico.id)) {
-          const subNote = substitute ? ` ${substitute.name} está bem e pode assumir a vaga.` : "";
+          const subNote = substitute ? ` ${playerLabel(substitute)} está bem e pode assumir a vaga.` : "";
           notifications.push({
             memberId: auxTecnico.id,
-            preview: `${poor.name} leva ${poor.consecutivePoorRatings} jogos seguidos em baixo rendimento como titular.${subNote}`,
+            preview: `${playerLabel(poor)} leva ${poor.consecutivePoorRatings} jogos seguidos em baixo rendimento como titular.${subNote}`,
           });
         }
       }
@@ -738,7 +748,7 @@ router.post("/diretoria/check-triggers", async (req, res) => {
               : `um dos melhores do elenco`;
           notifications.push({
             memberId: member.id,
-            preview: `${star.name} (${reason(star)}) está quase sempre no banco — por que um jogador assim não é titular?`,
+            preview: `${playerLabel(star)} (${reason(star)}) está quase sempre no banco — por que um jogador assim não é titular?`,
           });
         }
       }
@@ -755,7 +765,7 @@ router.post("/diretoria/check-triggers", async (req, res) => {
         if (member && !notifications.find((n) => n.memberId === member.id)) {
           notifications.push({
             memberId: member.id,
-            preview: `${star.name}, estrela do elenco, vai mal há ${star.consecutivePoorRatings} jogos seguidos como titular — a torcida está impaciente.`,
+            preview: `${playerLabel(star)}, estrela do elenco, vai mal há ${star.consecutivePoorRatings} jogos seguidos como titular — a torcida está impaciente.`,
           });
         }
       }
@@ -771,7 +781,7 @@ router.post("/diretoria/check-triggers", async (req, res) => {
         if (member && !notifications.find((n) => n.memberId === member.id)) {
           notifications.push({
             memberId: member.id,
-            preview: `${v.name} é vaiado pela torcida mas segue sendo titular. Em ${v.appearances} jogos a situação não mudou.`,
+            preview: `${playerLabel(v)} é vaiado pela torcida mas segue sendo titular. Em ${v.appearances} jogos a situação não mudou.`,
           });
         }
       }
@@ -789,7 +799,7 @@ router.post("/diretoria/check-triggers", async (req, res) => {
         if (member && !notifications.find((n) => n.memberId === member.id)) {
           notifications.push({
             memberId: member.id,
-            preview: `${prom.name} tem ${prom.appearances} jogos com média ${prom.avgRating} mas passa quase tudo no banco — é uma promessa sub-21 que pode se perder.`,
+            preview: `${playerLabel(prom)} tem ${prom.appearances} jogos com média ${prom.avgRating} mas passa quase tudo no banco — é uma promessa sub-21 que pode se perder.`,
           });
         }
       }

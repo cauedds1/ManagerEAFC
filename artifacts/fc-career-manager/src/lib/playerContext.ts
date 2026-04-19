@@ -79,7 +79,17 @@ export interface PlayerContextItem {
   ovrRelative?: string;
   ovrTrend?: string;
   age?: number;
+  number?: number;
   consecutivePoorRatings?: number;
+}
+
+export function playerDisplayName(p: { name: string; position?: string; number?: number }): string {
+  const isAbbreviated = /^[A-Z]\.?$/.test(p.name.trim()) || p.name.trim().length <= 2;
+  if (!isAbbreviated) return p.name;
+  const parts: string[] = [];
+  if (p.number) parts.push(`nº${p.number}`);
+  if (p.position) parts.push(p.position);
+  return parts.length > 0 ? `${p.name} (${parts.join(", ")})` : p.name;
 }
 
 export function buildPlayerPerformanceContext(
@@ -171,6 +181,7 @@ export function buildPlayerPerformanceContext(
       ovrRelative,
       ovrTrend,
       age: player.age,
+      number: player.number,
       consecutivePoorRatings: consecutivePoorRatings > 0 ? consecutivePoorRatings : undefined,
     });
   }
@@ -191,7 +202,8 @@ export function buildPlayerContextString(items: PlayerContextItem[]): string {
       ? ` | OVR ${p.overall}${p.ovrRelative ? ` (${p.ovrRelative})` : ""}${p.ovrTrend ? `, ${p.ovrTrend}` : ""}`
       : "";
     const incStr = p.incidents.length > 0 ? ` | ${p.incidents.join(", ")}` : "";
-    return `- ${p.name} (${p.position}): forma ${p.form} (avg ${p.avgRating})${ovrStr} | moral: ${p.fanMoral} | humor: ${p.mood} | ${p.goals}G ${p.assists}A${incStr}`;
+    const displayName = playerDisplayName(p);
+    return `- ${displayName} (${p.position}): forma ${p.form} (avg ${p.avgRating})${ovrStr} | moral: ${p.fanMoral} | humor: ${p.mood} | ${p.goals}G ${p.assists}A${incStr}`;
   });
   return lines.join("\n");
 }

@@ -34,7 +34,7 @@ import {
 import { getLeaguePosition } from "@/lib/leagueStorage";
 import { getOpenAIKey } from "@/lib/openaiKeyStorage";
 import type { SquadPlayer } from "@/lib/squadCache";
-import { buildPlayerPerformanceContext, buildSquadOvrContext, buildPlayerContextString } from "@/lib/playerContext";
+import { buildPlayerPerformanceContext, buildSquadOvrContext, buildPlayerContextString, playerDisplayName } from "@/lib/playerContext";
 import { getAllPlayerOverrides } from "@/lib/playerStatsStorage";
 import { getFinanceiroSettings, computeFinancialSnapshot } from "@/lib/financeiroStorage";
 
@@ -469,7 +469,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
       const pos = p.positionPtBr ?? p.position ?? "";
       const ovrStr = ovr != null ? ` OVR ${ovr}` : "";
       const ageStr = p.age ? `, ${p.age} anos` : "";
-      const line = `${p.name} — ${pos}${ovrStr}${ageStr}`;
+      const line = `${playerDisplayName(p)} — ${pos}${ovrStr}${ageStr}`;
       if (/goleiro|keeper|GK/i.test(pos)) groups["Goleiros"].push(line);
       else if (/zaga|lateral|defes|CB|LB|RB|WB|libero/i.test(pos)) groups["Defensores"].push(line);
       else if (/meio|volante|armad|CM|CAM|CDM|LM|RM|meia/i.test(pos)) groups["Meio-campistas"].push(line);
