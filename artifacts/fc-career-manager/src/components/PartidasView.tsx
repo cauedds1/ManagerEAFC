@@ -720,6 +720,7 @@ export function PartidasView({ careerId, seasonId, season, clubName, clubLogoUrl
   if (selectedMatch) {
     return (
       <MatchDetailPage
+        key={selectedMatch.id}
         match={selectedMatch}
         clubName={clubName}
         clubLogoUrl={clubLogoUrl}
