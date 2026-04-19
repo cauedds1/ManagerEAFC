@@ -260,6 +260,8 @@ ${calibratingSection}
 
 6. NUNCA mencione números de OVR, overall ou ratings numéricos nas suas falas — use apenas termos qualitativos naturais como "estrela do elenco", "acima da média", "jogador de alto nível", "um dos melhores que temos", "abaixo do esperado", etc. Os dados numéricos são informações internas de calibração — um diretor real não fala em "OVR".
 
+7. NOMES DOS JOGADORES: Ao citar qualquer jogador, use o nome EXATAMENTE como aparece no contexto — NUNCA abrevie, trunque ou omita partes. Se o nome for "G. Jesus", diga "G. Jesus", JAMAIS apenas "G." ou "G.,". Se for "R. Lewandowski", diga "R. Lewandowski". Citar apenas a inicial seguida de ponto e vírgula é proibido.
+
 ${isAngry || isInsulted ? "⚡ ATENÇÃO: a mensagem atual é desrespeitosa ou o humor está ruim — aplique OBRIGATORIAMENTE a regra 3. NÃO use frases proibidas. Reaja com dureza." : ""}
 
 Ao final: NOVO_HUMOR: <excelente|bom|neutro|tenso|irritado|furioso>`;
@@ -378,6 +380,8 @@ ${meetingCalibratingSection}
 7. TAMANHO: máximo 2 parágrafos curtos. Sem introduções.
 8. Use linguagem brasileira natural. Nunca quebre o personagem.
 9. NUNCA mencione números de OVR, overall ou ratings numéricos nas suas falas — use apenas termos qualitativos naturais como "estrela do elenco", "acima da média", "jogador de alto nível", "um dos melhores que temos", "abaixo do esperado", etc.
+
+10. NOMES DOS JOGADORES: Ao citar qualquer jogador, use o nome EXATAMENTE como aparece no contexto — NUNCA abrevie, trunque ou omita partes. Se o nome for "G. Jesus", diga "G. Jesus", JAMAIS apenas "G." ou "G.,". Se for "R. Lewandowski", diga "R. Lewandowski". Citar apenas a inicial seguida de ponto e vírgula é proibido.
 
 Ao final: NOVO_HUMOR: <excelente|bom|neutro|tenso|irritado|furioso>
 Ao final: SUGERIR_ENCERRAMENTO: <sim|nao> (sim somente se a pauta foi concluída naturalmente)`;
@@ -655,7 +659,7 @@ router.post("/diretoria/check-triggers", async (req, res) => {
       const idolos = playerPerformance.filter((p) => p.fanMoral === "Ídolo" && p.goals + p.assists >= 8);
 
       if (worstPlayers.length >= 2 && auxTecnico && !notifications.find((n) => n.memberId === auxTecnico.id)) {
-        const names = worstPlayers.map((p) => p.name.split(" ")[0]).join(", ");
+        const names = worstPlayers.map((p) => p.name).join(", ");
         const seqNote = lossStreakOpponents ? ` Precisamos ver isso no contexto da sequência recente.` : "";
         notifications.push({
           memberId: auxTecnico.id,
@@ -666,7 +670,7 @@ router.post("/diretoria/check-triggers", async (req, res) => {
       if (vaiados.length >= 1 && presidente && !notifications.find((n) => n.memberId === presidente.id)) {
         notifications.push({
           memberId: presidente.id,
-          preview: `${vaiados[0].name.split(" ")[0]} está sendo vaiado. A torcida está insatisfeita.`,
+          preview: `${vaiados[0].name} está sendo vaiado. A torcida está insatisfeita.`,
         });
       }
 
@@ -675,7 +679,7 @@ router.post("/diretoria/check-triggers", async (req, res) => {
         if (topScorer && !notifications.find((n) => n.memberId === presidente.id)) {
           notifications.push({
             memberId: presidente.id,
-            preview: `${topScorer.name.split(" ")[0]} está brilhando mas o time vai mal — precisamos de reforços?`,
+            preview: `${topScorer.name} está brilhando mas o time vai mal — precisamos de reforços?`,
           });
         }
       }
@@ -710,10 +714,10 @@ router.post("/diretoria/check-triggers", async (req, res) => {
             p.isBench,
         );
         if (auxTecnico && !notifications.find((n) => n.memberId === auxTecnico.id)) {
-          const subNote = substitute ? ` ${substitute.name.split(" ")[0]} está bem e pode assumir a vaga.` : "";
+          const subNote = substitute ? ` ${substitute.name} está bem e pode assumir a vaga.` : "";
           notifications.push({
             memberId: auxTecnico.id,
-            preview: `${poor.name.split(" ")[0]} leva ${poor.consecutivePoorRatings} jogos seguidos em baixo rendimento como titular.${subNote}`,
+            preview: `${poor.name} leva ${poor.consecutivePoorRatings} jogos seguidos em baixo rendimento como titular.${subNote}`,
           });
         }
       }
@@ -734,7 +738,7 @@ router.post("/diretoria/check-triggers", async (req, res) => {
               : `um dos melhores do elenco`;
           notifications.push({
             memberId: member.id,
-            preview: `${star.name.split(" ")[0]} (${reason(star)}) está quase sempre no banco — por que um jogador assim não é titular?`,
+            preview: `${star.name} (${reason(star)}) está quase sempre no banco — por que um jogador assim não é titular?`,
           });
         }
       }
@@ -751,7 +755,7 @@ router.post("/diretoria/check-triggers", async (req, res) => {
         if (member && !notifications.find((n) => n.memberId === member.id)) {
           notifications.push({
             memberId: member.id,
-            preview: `${star.name.split(" ")[0]}, estrela do elenco, vai mal há ${star.consecutivePoorRatings} jogos seguidos como titular — a torcida está impaciente.`,
+            preview: `${star.name}, estrela do elenco, vai mal há ${star.consecutivePoorRatings} jogos seguidos como titular — a torcida está impaciente.`,
           });
         }
       }
@@ -767,7 +771,7 @@ router.post("/diretoria/check-triggers", async (req, res) => {
         if (member && !notifications.find((n) => n.memberId === member.id)) {
           notifications.push({
             memberId: member.id,
-            preview: `${v.name.split(" ")[0]} é vaiado pela torcida mas segue sendo titular. Em ${v.appearances} jogos a situação não mudou.`,
+            preview: `${v.name} é vaiado pela torcida mas segue sendo titular. Em ${v.appearances} jogos a situação não mudou.`,
           });
         }
       }
@@ -785,7 +789,7 @@ router.post("/diretoria/check-triggers", async (req, res) => {
         if (member && !notifications.find((n) => n.memberId === member.id)) {
           notifications.push({
             memberId: member.id,
-            preview: `${prom.name.split(" ")[0]} tem ${prom.appearances} jogos com média ${prom.avgRating} mas passa quase tudo no banco — é uma promessa sub-21 que pode se perder.`,
+            preview: `${prom.name} tem ${prom.appearances} jogos com média ${prom.avgRating} mas passa quase tudo no banco — é uma promessa sub-21 que pode se perder.`,
           });
         }
       }
