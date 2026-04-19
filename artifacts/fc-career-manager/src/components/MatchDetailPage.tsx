@@ -663,22 +663,21 @@ export function MatchDetailPage({
         </div>
       </div>
 
-      {/* H2H Drawer */}
+      {/* H2H Modal */}
       {showH2H && createPortal(
-        <div className="fixed inset-0 z-50 flex items-end justify-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div
             className="absolute inset-0"
-            style={{ background: "rgba(0,0,0,0.72)", backdropFilter: "blur(6px)" }}
+            style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(16px)" }}
             onClick={() => setShowH2H(false)}
           />
           <div
-            className="relative w-full max-w-lg flex flex-col animate-fade-up"
+            className="relative w-full max-w-md flex flex-col animate-fade-up rounded-2xl overflow-hidden"
             style={{
-              background: "rgba(12,17,26,0.99)",
-              border: "1px solid rgba(255,255,255,0.07)",
-              borderBottom: "none",
-              borderRadius: "20px 20px 0 0",
-              maxHeight: "78vh",
+              background: "rgba(12,12,18,0.98)",
+              border: "1px solid rgba(255,255,255,0.1)",
+              backdropFilter: "blur(24px)",
+              maxHeight: "80vh",
             }}
           >
             <div
