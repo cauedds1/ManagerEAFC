@@ -56,6 +56,7 @@ export const seasonsTable = pgTable("seasons", {
   label: text("label").notNull(),
   competitionsJson: text("competitions_json"),
   isActive: boolean("is_active").notNull().default(false),
+  finalized: boolean("finalized").default(false),
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
 });
 

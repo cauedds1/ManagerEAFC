@@ -223,6 +223,7 @@ router.get("/careers/:id/seasons", requireAuth, async (req: AuthRequest, res) =>
         label: r.label,
         competitions: r.competitionsJson ? JSON.parse(r.competitionsJson) : undefined,
         isActive: r.isActive,
+        finalized: r.finalized ?? false,
         createdAt: Number(r.createdAt),
       })),
     );
@@ -283,6 +284,22 @@ router.post("/careers/:id/seasons", requireAuth, async (req: AuthRequest, res) =
     return res.status(201).json({ id });
   } catch (err) {
     console.error("POST /careers/:id/seasons error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.patch("/seasons/:id/finalize", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const { id: seasonId } = req.params;
+    const userId = req.user!.id;
+    const [row] = await db.select({ careerId: seasonsTable.careerId }).from(seasonsTable).where(eq(seasonsTable.id, seasonId)).limit(1);
+    if (!row) return res.status(404).json({ error: "Season not found" });
+    const [career] = await db.select({ userId: careersTable.userId }).from(careersTable).where(eq(careersTable.id, row.careerId)).limit(1);
+    if (!career || career.userId !== userId) return res.status(404).json({ error: "Season not found" });
+    await db.update(seasonsTable).set({ finalized: true }).where(eq(seasonsTable.id, seasonId));
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error("PATCH /seasons/:id/finalize error:", err);
     return res.status(500).json({ error: "Internal server error" });
   }
 });

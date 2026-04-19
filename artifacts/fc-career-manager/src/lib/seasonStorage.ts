@@ -88,6 +88,18 @@ export async function updateSeasonLabel(seasonId: string, label: string): Promis
   }
 }
 
+export async function finalizeSeasonApi(seasonId: string): Promise<boolean> {
+  try {
+    const res = await fetch(`/api/seasons/${seasonId}/finalize`, {
+      method: "PATCH",
+      headers: getAuthHeaders(),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 export function generateSeasonId(): string {
   return `s-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
 }

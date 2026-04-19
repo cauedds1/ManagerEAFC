@@ -34,6 +34,8 @@ import { DiretoriaView } from "./DiretoriaView";
 import { MomentosView } from "./MomentosView";
 import { SeasonSelectModal } from "./SeasonSelectModal";
 import { NewSeasonWizard } from "./NewSeasonWizard";
+import { FinalizeSeasonModal } from "./FinalizeSeasonModal";
+import { SeasonSummaryView } from "./SeasonSummaryView";
 import { getSeasons, createSeason, activateSeason, generateSeasonId, updateSeasonLabel } from "@/lib/seasonStorage";
 import { ensureCareerAndSeason1, deleteCareer } from "@/lib/careerStorage";
 import { syncSeasonFromDb, syncCareerFromDb } from "@/lib/dbSync";
@@ -70,7 +72,7 @@ interface DashboardProps {
   onDeleteCareer?: () => void;
 }
 
-type CareerTab = "painel" | "partidas" | "clube" | "transferencias" | "noticias" | "diretoria" | "momentos" | "configuracoes";
+type CareerTab = "resumo" | "painel" | "partidas" | "clube" | "transferencias" | "noticias" | "diretoria" | "momentos" | "configuracoes";
 type BgGenStatus = "idle" | "generating" | "done" | "error";
 
 const TABS: { id: CareerTab; label: string; icon: React.ReactNode }[] = [
@@ -213,6 +215,8 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
   const [showSeasonModal, setShowSeasonModal] = useState(false);
   const [showNewSeasonWizard, setShowNewSeasonWizard] = useState(false);
   const [creatingNewSeason, setCreatingNewSeason] = useState(false);
+  const [showFinalizeModal, setShowFinalizeModal] = useState(false);
+  const [finalizeTargetSeasonId, setFinalizeTargetSeasonId] = useState<string | null>(null);
   const [dbSynced, setDbSynced] = useState(false);
   const isReadOnly = seasons.length > 0 && seasons.find((s) => s.id === activeSeasonId)?.isActive === false;
 
@@ -292,6 +296,8 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     setActiveSeasonLabel(season.label);
     setTransfers(getTransfers(season.id));
     setMatches(getMatches(season.id));
+    if (season.finalized) setActiveTab("resumo");
+    else setActiveTab("painel");
   }, []);
 
   const handleRefreshSquad = useCallback(() => {
@@ -906,6 +912,20 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
   const displayLabel = activeSeason?.label ?? activeSeasonLabel;
   const effectiveLeague = activeSeason?.competitions?.[0] ?? career.clubLeague;
   const currentCompetitions = activeSeason?.competitions ?? career.competitions ?? [];
+  const isFinalized = !!activeSeason?.finalized;
+
+  const handleFinalizeSeason = useCallback((seasonId: string) => {
+    setFinalizeTargetSeasonId(seasonId);
+    setShowFinalizeModal(true);
+  }, []);
+
+  const handleFinalizeConfirm = useCallback(() => {
+    if (!finalizeTargetSeasonId) return;
+    setSeasons((prev) => prev.map((s) => s.id === finalizeTargetSeasonId ? { ...s, finalized: true } : s));
+    setShowFinalizeModal(false);
+    setFinalizeTargetSeasonId(null);
+    setActiveTab("resumo");
+  }, [finalizeTargetSeasonId]);
 
   if (!dbSynced) {
     return (
@@ -932,9 +952,21 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
             setSeasons((prev) => prev.map((s) => s.id === seasonId ? { ...s, label: newLabel } : s));
             if (seasonId === activeSeasonId) setActiveSeasonLabel(newLabel);
           }}
+          onFinalizeSeason={handleFinalizeSeason}
           onClose={() => setShowSeasonModal(false)}
         />
       )}
+      {showFinalizeModal && finalizeTargetSeasonId && (() => {
+        const targetSeason = seasons.find((s) => s.id === finalizeTargetSeasonId);
+        return (
+          <FinalizeSeasonModal
+            seasonId={finalizeTargetSeasonId}
+            seasonLabel={targetSeason?.label ?? displayLabel}
+            onFinalize={handleFinalizeConfirm}
+            onCancel={() => { setShowFinalizeModal(false); setFinalizeTargetSeasonId(null); }}
+          />
+        );
+      })()}
       {showNewSeasonWizard && (
         <NewSeasonWizard
           existingSeasons={seasons}
@@ -1073,6 +1105,30 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
         >
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex">
+              {isFinalized && (() => {
+                const active = activeTab === "resumo";
+                return (
+                  <button
+                    key="resumo"
+                    onClick={() => handleTabChange("resumo")}
+                    className="relative flex items-center gap-2 px-4 py-3.5 text-sm font-semibold transition-all duration-200"
+                    style={{ color: active ? "var(--club-primary)" : "rgba(255,255,255,0.35)" }}
+                  >
+                    <span style={{ color: active ? "var(--club-primary)" : "rgba(255,255,255,0.3)" }}>
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                    </span>
+                    Resumo
+                    {active && (
+                      <span
+                        className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full"
+                        style={{ background: "var(--club-primary)" }}
+                      />
+                    )}
+                  </button>
+                );
+              })()}
               {TABS.map((tab) => {
                 const active = activeTab === tab.id;
                 const unreadCount =
@@ -1172,6 +1228,16 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
         )}
         {activeTab !== "clube" && (
           <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6">
+            {activeTab === "resumo" && isFinalized && (
+              <SeasonSummaryView
+                careerId={career.id}
+                seasonId={activeSeasonId}
+                seasonLabel={displayLabel}
+                career={career}
+                allPlayers={allPlayersWithFormer}
+                clubLogoUrl={logoUrl}
+              />
+            )}
             {activeTab === "painel" && (
               <PainelView
                 careerId={career.id}

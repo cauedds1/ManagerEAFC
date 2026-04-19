@@ -10,6 +10,7 @@ function leagueKey(sid: string) { return `fc-career-manager-league-${sid}`; }
 function financeKey(sid: string) { return `fc-financeiro-settings-${sid}`; }
 function newsKey(sid: string) { return `fc-career-noticias-${sid}`; }
 function injuryKey(sid: string) { return `fc-injuries-${sid}`; }
+function summaryKey(sid: string) { return `fc-season-summary-${sid}`; }
 
 function overridesKey(cid: string) { return `fc-career-manager-overrides-${cid}`; }
 function lineupKey(cid: string) { return `fc-career-manager-lineup-${cid}`; }
@@ -50,6 +51,7 @@ export async function syncSeasonFromDb(seasonId: string): Promise<void> {
   if (data.injuries !== undefined) sessionSet(injuryKey(seasonId), data.injuries);
   if (data.rivals !== undefined || data.rivalsLocked !== undefined) hydrateRivalsCache(seasonId, data);
   if (data.fan_mood !== undefined) hydrateFanMoodCache(seasonId, data);
+  if (data.season_summary !== undefined) sessionSet(summaryKey(seasonId), data.season_summary);
 }
 
 async function migrateSeasonToDb(seasonId: string): Promise<void> {

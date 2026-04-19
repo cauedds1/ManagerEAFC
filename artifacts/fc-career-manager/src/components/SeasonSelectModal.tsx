@@ -8,6 +8,7 @@ interface SeasonSelectModalProps {
   onSelect: (season: Season) => void;
   onNewSeason: () => void;
   onRenameSeason: (seasonId: string, newLabel: string) => void;
+  onFinalizeSeason: (seasonId: string) => void;
   onClose: () => void;
 }
 
@@ -100,6 +101,7 @@ export function SeasonSelectModal({
   onSelect,
   onNewSeason,
   onRenameSeason,
+  onFinalizeSeason,
   onClose,
 }: SeasonSelectModalProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -145,6 +147,7 @@ export function SeasonSelectModal({
           {[...seasons].reverse().map((season) => {
             const isActive = season.id === activeSeasonId;
             const isEditing = editingId === season.id;
+            const isFinalized = !!season.finalized;
 
             return (
               <div
@@ -175,23 +178,30 @@ export function SeasonSelectModal({
                         className="flex-1 text-left min-w-0"
                         onClick={() => { if (!isEditing) onSelect(season); }}
                       >
-                        <span
-                          className="font-bold text-sm truncate block"
-                          style={{ color: isActive ? "var(--club-primary)" : "rgba(255,255,255,0.85)" }}
-                        >
-                          {season.label}
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className="font-bold text-sm truncate block"
+                            style={{ color: isActive ? "var(--club-primary)" : "rgba(255,255,255,0.85)" }}
+                          >
+                            {season.label}
+                          </span>
+                          {isFinalized && (
+                            <span className="text-xs flex-shrink-0" title="Temporada finalizada">🏁</span>
+                          )}
+                        </div>
                       </button>
                       <div className="flex items-center gap-1.5 flex-shrink-0">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setEditingId(season.id); }}
-                          className="w-6 h-6 flex items-center justify-center rounded text-white/20 hover:text-white/70 hover:bg-white/10 transition-all opacity-0 group-hover:opacity-100"
-                          title="Renomear temporada"
-                        >
-                          <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
-                            <path d="M7.5 1.5L9.5 3.5L3.5 9.5H1.5V7.5L7.5 1.5Z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/>
-                          </svg>
-                        </button>
+                        {!isFinalized && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setEditingId(season.id); }}
+                            className="w-6 h-6 flex items-center justify-center rounded text-white/20 hover:text-white/70 hover:bg-white/10 transition-all opacity-0 group-hover:opacity-100"
+                            title="Renomear temporada"
+                          >
+                            <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
+                              <path d="M7.5 1.5L9.5 3.5L3.5 9.5H1.5V7.5L7.5 1.5Z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/>
+                            </svg>
+                          </button>
+                        )}
                         {isActive ? (
                           <span
                             className="text-xs font-semibold px-2 py-0.5 rounded-full"
@@ -216,6 +226,26 @@ export function SeasonSelectModal({
                   )}
                 </div>
                 {!isEditing && <SeasonStats seasonId={season.id} />}
+
+                {/* Finalizar button — only for active non-finalized season */}
+                {isActive && !isFinalized && !isEditing && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onFinalizeSeason(season.id);
+                      onClose();
+                    }}
+                    className="mt-2.5 w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all hover:opacity-90 active:scale-95"
+                    style={{
+                      background: "rgba(234,179,8,0.12)",
+                      border: "1px solid rgba(234,179,8,0.25)",
+                      color: "#fbbf24",
+                    }}
+                  >
+                    <span>🏁</span>
+                    Finalizar Temporada
+                  </button>
+                )}
               </div>
             );
           })}

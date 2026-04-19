@@ -41,5 +41,6 @@ export interface Season {
   rivals?: string[];
   rivalsLocked?: boolean;
   isActive: boolean;
+  finalized?: boolean;
   createdAt: number;
 }
