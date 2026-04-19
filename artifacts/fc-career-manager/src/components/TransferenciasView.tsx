@@ -115,6 +115,7 @@ function PlayerAutocomplete({
   onChange,
   onSelect,
   localOnly,
+  hideLocalResults,
 }: {
   value: string;
   photo: string;
@@ -122,19 +123,21 @@ function PlayerAutocomplete({
   onChange: (name: string) => void;
   onSelect: (p: PlayerSuggestion) => void;
   localOnly?: boolean;
+  hideLocalResults?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [apiResults, setApiResults] = useState<PlayerSuggestion[]>([]);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const localResults = useMemo<PlayerSuggestion[]>(() => {
+    if (hideLocalResults) return [];
     const q = value.trim().toLowerCase();
     if (!q || q.length < 2) return [];
     return allPlayers
       .filter((p) => p.name.toLowerCase().includes(q))
       .slice(0, localOnly ? 8 : 5)
       .map((p) => ({ id: p.id, name: p.name, photo: p.photo, age: p.age, nationality: "", position: p.positionPtBr }));
-  }, [value, allPlayers, localOnly]);
+  }, [value, allPlayers, localOnly, hideLocalResults]);
 
   const fetchApi = useCallback(async (q: string) => {
     if (localOnly) return;
@@ -733,11 +736,13 @@ export function TransferenciasView({
 
     onTransferAdded(transfer);
 
+    const squadIds = new Set(allPlayers.map((p) => p.id));
     const tradeIsValid = form.tradeEnabled && form.tradePlayerName.trim().length >= 2 &&
       (isEntrada
         ? form.tradePlayerId !== null
         : isVenda
-          ? (form.tradePlayerMode === "create" || form.tradePlayerId !== null)
+          ? (form.tradePlayerMode === "create" ||
+              (form.tradePlayerId !== null && !squadIds.has(form.tradePlayerId)))
           : false);
 
     if (tradeIsValid) {
@@ -1388,6 +1393,7 @@ export function TransferenciasView({
                                 tradePlayerPosition: p.position,
                               }))}
                               localOnly={false}
+                              hideLocalResults={true}
                             />
                           ) : (
                             <input
