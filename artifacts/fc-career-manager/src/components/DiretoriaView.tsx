@@ -44,6 +44,8 @@ interface DiretoriaViewProps {
   transfers: TransferRecord[];
   squadSize: number;
   allPlayers?: SquadPlayer[];
+  effectiveLeague?: string;
+  currentCompetitions?: string[];
 }
 
 interface TransferSuggestion {
@@ -215,7 +217,7 @@ function CreateMemberModal({ career, membersCount, onClose, onCreated }: CreateM
           roleLabel: finalRoleLabel,
           personalityStyle,
           clubName: career.clubName,
-          clubLeague: career.clubLeague,
+          clubLeague: effectiveLeague ?? career.clubLeague,
           extraTraits: extraTraits.trim() || undefined,
         }),
       });
@@ -405,7 +407,7 @@ function CreateMemberModal({ career, membersCount, onClose, onCreated }: CreateM
   );
 }
 
-export function DiretoriaView({ career, matches, transfers, squadSize, allPlayers = [] }: DiretoriaViewProps) {
+export function DiretoriaView({ career, matches, transfers, squadSize, allPlayers = [], effectiveLeague, currentCompetitions = [] }: DiretoriaViewProps) {
   const [members, setMembers] = useState<BoardMember[]>([]);
   const [conversations, setConversations] = useState<Record<string, DiretoriaMessage[]>>({});
   const [notifications, setNotifications] = useState<PendingNotification[]>([]);
@@ -562,7 +564,8 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
     const finSnapshot = computeFinancialSnapshot(finSettings, transfers, getAllPlayerOverrides(career.id));
     return {
       clubName: career.clubName,
-      clubLeague: career.clubLeague,
+      clubLeague: effectiveLeague ?? career.clubLeague,
+      currentCompetitions: currentCompetitions.length ? currentCompetitions : undefined,
       season: career.season,
       coachName: career.coach.name,
       squadSize,
@@ -577,7 +580,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
       netSpend: finSettings.transferBudget > 0 ? finSnapshot.netSpend : undefined,
       projeto: career.projeto,
     };
-  }, [career, matches, transfers, squadSize]);
+  }, [career, matches, transfers, squadSize, effectiveLeague, currentCompetitions]);
 
   const handleOpenChat = (memberId: string) => {
     const pendingNotif = notifications.find((n) => n.memberId === memberId);

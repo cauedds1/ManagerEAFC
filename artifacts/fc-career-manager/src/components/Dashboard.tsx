@@ -355,7 +355,8 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
           season: career.season,
           source: params.source,
           category: params.category,
-          clubLeague: career.clubLeague || undefined,
+          clubLeague: effectiveLeague || undefined,
+          currentCompetitions: currentCompetitions.length ? currentCompetitions : undefined,
           clubTitles: career.clubTitles?.length ? career.clubTitles : undefined,
           clubDescription: career.clubDescription || undefined,
           projeto: career.projeto || undefined,
@@ -560,7 +561,8 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
         season: seasonLabel,
         source: "espn",
         category: "transferencia",
-        clubLeague: career.clubLeague || undefined,
+        clubLeague: effectiveLeague || undefined,
+        currentCompetitions: currentCompetitions.length ? currentCompetitions : undefined,
         clubDescription: career.clubDescription || undefined,
         projeto: career.projeto || undefined,
       }),
@@ -640,7 +642,8 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
 
     const context = {
       clubName: career.clubName,
-      clubLeague: career.clubLeague,
+      clubLeague: effectiveLeague,
+      currentCompetitions: currentCompetitions.length ? currentCompetitions : undefined,
       season: career.season,
       coachName: career.coach.name,
       squadSize: currentAllPlayers.length,
@@ -710,7 +713,8 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
               body: JSON.stringify({
                 clubName: career.clubName,
                 season: career.season,
-                clubLeague: career.clubLeague || undefined,
+                clubLeague: effectiveLeague || undefined,
+                currentCompetitions: currentCompetitions.length ? currentCompetitions : undefined,
                 notificationPreview: firstNotif.preview,
                 memberName: triggerMember?.name || undefined,
                 meetingReason: meetingTriggerReason,
@@ -809,7 +813,8 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
       seasonId: activeSeasonId,
       season: seasonLabel,
       clubName: career.clubName,
-      clubLeague: career.clubLeague,
+      clubLeague: effectiveLeague,
+      currentCompetitions: currentCompetitions.length ? currentCompetitions : undefined,
       clubTitles: career.clubTitles,
       clubDescription: career.clubDescription,
       projeto: career.projeto,
@@ -833,7 +838,8 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
           seasonId: activeSeasonId,
           season: seasonLabel,
           clubName: career.clubName,
-          clubLeague: career.clubLeague,
+          clubLeague: effectiveLeague,
+          currentCompetitions: currentCompetitions.length ? currentCompetitions : undefined,
           clubDescription: career.clubDescription,
           projeto: career.projeto,
           allMatches: updatedMatches,
@@ -875,6 +881,8 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
 
   const activeSeason = seasons.find((s) => s.id === activeSeasonId);
   const displayLabel = activeSeason?.label ?? activeSeasonLabel;
+  const effectiveLeague = activeSeason?.competitions?.[0] ?? career.clubLeague;
+  const currentCompetitions = activeSeason?.competitions ?? career.competitions ?? [];
 
   if (!dbSynced) {
     return (
@@ -964,7 +972,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
 
                 <div>
                   <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight leading-tight">{career.clubName}</h1>
-                  <p className="text-white/50 text-sm">{career.clubLeague}</p>
+                  <p className="text-white/50 text-sm">{effectiveLeague}</p>
                   {(career.clubStadium || career.clubFounded) && (
                     <p className="text-white/20 text-xs mt-0.5 truncate">
                       {career.clubStadium && <span>{career.clubStadium}</span>}
@@ -1202,6 +1210,8 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
                 transfers={transfers}
                 squadSize={allPlayers.length}
                 allPlayers={allPlayersWithFormer}
+                effectiveLeague={effectiveLeague}
+                currentCompetitions={currentCompetitions}
               />
             )}
             {activeTab === "momentos" && (

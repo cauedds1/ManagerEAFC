@@ -46,6 +46,7 @@ interface GenerateNoticiaBody {
   fanMoodLabel?: string;
   matchPlayerContext?: string;
   attachedMatchContext?: string;
+  currentCompetitions?: string[];
 }
 
 function leagueTierLabel(league: string): string {
@@ -62,8 +63,9 @@ function buildClubPrestigeSection(
   clubTitles?: ClubTitle[],
   clubDescription?: string,
   projeto?: string,
+  currentCompetitions?: string[],
 ): string {
-  if (!clubLeague && !clubTitles?.length && !projeto && !clubDescription) return "";
+  if (!clubLeague && !clubTitles?.length && !projeto && !clubDescription && !currentCompetitions?.length) return "";
 
   const league = clubLeague ?? "";
   const tier = league ? leagueTierLabel(league) : "";
@@ -93,6 +95,9 @@ function buildClubPrestigeSection(
   section += `\nClube: ${clubName}`;
   if (league) section += ` | Liga: ${league}${tier ? ` (${tier})` : ""}`;
   section += `\nTítulos históricos: ${titlesStr}`;
+  if (currentCompetitions && currentCompetitions.length > 0) {
+    section += `\nCompetições desta temporada: ${currentCompetitions.join(", ")} — ao gerar notícias e comentários, leve em conta que o clube está disputando essas competições e mencione-as quando relevante.`;
+  }
   if (clubDescription?.trim()) {
     section += `\nIdentidade: ${clubDescription.trim().slice(0, 200)}`;
   }
@@ -255,7 +260,7 @@ router.post("/noticias/generate", async (req, res) => {
     description, clubName, season, source, category,
     playersContext, squadOvrContext, teamFormContext, startingXIContext, historicalContext, recentPostsContext, customPortal,
     clubLeague, clubTitles, clubDescription, projeto, isClassico, rivalName, fanMoodScore, fanMoodLabel,
-    matchPlayerContext, attachedMatchContext,
+    matchPlayerContext, attachedMatchContext, currentCompetitions,
   } = req.body as GenerateNoticiaBody;
 
   if (!description || !description.trim()) {
@@ -359,7 +364,7 @@ LEGENDA — TOM JORNALÍSTICO OBRIGATÓRIO:
 - O texto deve soar como ESPN ou TNT Sports reais: informativo, envolvente, mas sem parcialidade`
     : "";
 
-  const prestigeSection = buildClubPrestigeSection(clubName, clubLeague, clubTitles, clubDescription, projeto);
+  const prestigeSection = buildClubPrestigeSection(clubName, clubLeague, clubTitles, clubDescription, projeto, currentCompetitions);
 
   const isDescLoss = /derrota|perdeu|perde|goleada sofrida|eliminado/i.test(description);
   const isDescWin = /vitória|vitoria|venceu|vence|goleada aplicada|goleada!|classificou|classifica/i.test(description);
@@ -635,12 +640,13 @@ interface GenerateRumorBody {
   customPortal?: CustomPortalPayload;
   fanMoodScore?: number;
   fanMoodLabel?: string;
+  currentCompetitions?: string[];
 }
 
 router.post("/noticias/generate-rumor", async (req, res) => {
   const {
     clubName, season, clubLeague, clubDescription, projeto,
-    playersContext, squadPositionNeeds, customPortal, fanMoodScore, fanMoodLabel,
+    playersContext, squadPositionNeeds, customPortal, fanMoodScore, fanMoodLabel, currentCompetitions,
   } = req.body as GenerateRumorBody;
 
   if (!clubName?.trim()) {
@@ -668,6 +674,7 @@ router.post("/noticias/generate-rumor", async (req, res) => {
     : "";
 
   const leagueSection = clubLeague ? `\nLiga: ${clubLeague}` : "";
+  const competitionsSection = currentCompetitions && currentCompetitions.length > 0 ? `\nCompetições da temporada: ${currentCompetitions.join(", ")}` : "";
   const descSection = clubDescription?.trim() ? `\nSobre o clube: ${clubDescription.trim().slice(0, 200)}` : "";
   const projectSection = projeto?.trim() ? `\nProjeto da temporada: "${projeto.trim()}"` : "";
   const playersSection = playersContext?.trim()
@@ -683,7 +690,7 @@ router.post("/noticias/generate-rumor", async (req, res) => {
 
   const systemPrompt = `Você é um jornalista especialista em mercado de transferências do futebol brasileiro e europeu.
 Você escreve posts de RUMORES de transferência no estilo das redes sociais brasileiras — boato, especulação, bastidores.
-Clube: ${clubName}${season ? ` (temporada ${season})` : ""}${leagueSection}${descSection}${projectSection}
+Clube: ${clubName}${season ? ` (temporada ${season})` : ""}${leagueSection}${competitionsSection}${descSection}${projectSection}
 Portal: ${portalName} (${portalHandle})
 Semente de unicidade: ${uniqueSeed}${playersSection}${needsSection}${rumorFanMoodSection}${customPortalSection}`;
 
@@ -787,6 +794,7 @@ interface GenerateLeakBody {
   clubName: string;
   season?: string;
   clubLeague?: string;
+  currentCompetitions?: string[];
   notificationPreview: string;
   memberName?: string;
   meetingReason?: string;
@@ -795,7 +803,7 @@ interface GenerateLeakBody {
 
 router.post("/noticias/generate-leak", async (req, res) => {
   const {
-    clubName, season, clubLeague,
+    clubName, season, clubLeague, currentCompetitions,
     notificationPreview, memberName, meetingReason,
     customPortal,
   } = req.body as GenerateLeakBody;
@@ -811,6 +819,7 @@ router.post("/noticias/generate-leak", async (req, res) => {
   const uniqueSeed = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const portalHandle = `@${customPortal.name.toLowerCase().replace(/\s+/g, "").replace(/[^a-z0-9]/g, "")}`;
   const leagueSection = clubLeague ? ` (${clubLeague})` : "";
+  const competitionsLeakSection = currentCompetitions && currentCompetitions.length > 0 ? ` — competições da temporada: ${currentCompetitions.join(", ")}` : "";
   const tonePrompt = TONE_PROMPTS[customPortal.tone] ?? TONE_PROMPTS.jornalistico;
 
   const memberSection = memberName ? `\nMembro da diretoria envolvido: ${memberName}` : "";
@@ -819,7 +828,7 @@ router.post("/noticias/generate-leak", async (req, res) => {
   const systemPrompt = `Você é um jornalista especialista em bastidores de futebol brasileiro. Você escreve posts no estilo de vazamentos internos — como se fosse uma fonte anônima dentro do clube revelando informações sigilosas.
 Portal: ${customPortal.name} (${portalHandle})
 ${tonePrompt}
-Clube: ${clubName}${leagueSection}${season ? ` — temporada ${season}` : ""}
+Clube: ${clubName}${leagueSection}${competitionsLeakSection}${season ? ` — temporada ${season}` : ""}
 Semente de unicidade: ${uniqueSeed}`;
 
   const userPrompt = `Uma reunião interna da diretoria do ${clubName} vazou para a imprensa.
