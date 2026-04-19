@@ -29,7 +29,7 @@ async function callGemini(systemPrompt: string, userPrompt: string): Promise<str
       const msg = err instanceof Error ? err.message : String(err);
       const isQuota = msg.includes("429") || msg.includes("quota") || msg.includes("RESOURCE_EXHAUSTED");
       if (!isQuota) throw err;
-      console.warn("[aiProvider] GEMINI_API_KEY com cota esgotada, tentando integração Replit...");
+      console.warn("[aiProvider] GEMINI_API_KEY com cota esgotada, tentando fallback...");
     }
   }
 
@@ -38,6 +38,14 @@ async function callGemini(systemPrompt: string, userPrompt: string): Promise<str
   }
 
   throw new Error("Nenhum provedor Gemini disponível");
+}
+
+function getServerOpenAIClient(): OpenAI | null {
+  const key = process.env.OPENAI_API_KEY;
+  if (key && key.trim().startsWith("sk-")) {
+    return new OpenAI({ apiKey: key.trim() });
+  }
+  return null;
 }
 
 async function callOpenAI(
@@ -76,8 +84,13 @@ export async function callNewsCompletion(
       return await callGemini(systemPrompt, userPrompt);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      console.warn("[aiProvider] Gemini falhou, usando gpt-4o-mini:", msg);
+      console.warn("[aiProvider] Gemini falhou, usando OpenAI:", msg);
     }
+  }
+
+  const serverClient = getServerOpenAIClient();
+  if (serverClient) {
+    return callOpenAI(serverClient, systemPrompt, userPrompt, maxTokens, "gpt-4o-mini");
   }
 
   return callOpenAI(client, systemPrompt, userPrompt, maxTokens, "gpt-4o-mini");
@@ -91,5 +104,17 @@ export async function callDiretoriaCompletion(
   maxTokens = 1024,
 ): Promise<string> {
   const model = usingUserKey ? "gpt-4o" : "gpt-4o-mini";
+
+  if (!usingUserKey) {
+    try {
+      return await callGemini(systemPrompt, userPrompt);
+    } catch {
+    }
+    const serverClient = getServerOpenAIClient();
+    if (serverClient) {
+      return callOpenAI(serverClient, systemPrompt, userPrompt, maxTokens, model);
+    }
+  }
+
   return callOpenAI(client, systemPrompt, userPrompt, maxTokens, model);
 }
