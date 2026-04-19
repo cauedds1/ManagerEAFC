@@ -390,15 +390,6 @@ export function LandingPage({ onStart, onLogin }: LandingPageProps) {
 
         {/* Hero content — centralizado */}
         <div style={{ position: "relative", zIndex: 1, width: "100%", maxWidth: 780, margin: "0 auto", textAlign: "center" }}>
-          {/* Badge */}
-          <div style={{ display: "inline-flex", marginBottom: 28, position: "relative", padding: 1.5, borderRadius: 100, overflow: "hidden" }}>
-            <div style={{ position: "absolute", width: "300%", height: "300%", top: "-100%", left: "-100%", background: "conic-gradient(from 0deg, #7c5cfc, #3d9cf5, #00e5a0, #7c5cfc)", animation: "rotateBadge 3s linear infinite", transformOrigin: "center" }} />
-            <div style={{ position: "relative", background: "#0f0f1a", borderRadius: 100, padding: "7px 22px", display: "flex", alignItems: "center", gap: 8, zIndex: 1 }}>
-              <span style={{ width: 6, height: 6, borderRadius: 3, background: "#7c5cfc", display: "inline-block" }} />
-              <span style={{ color: "#a0a0cc", fontSize: 11, letterSpacing: "0.15em", fontWeight: 600 }}>CAREER MODE REIMAGINADO</span>
-            </div>
-          </div>
-
           {/* Headline */}
           <div className="font-bebas" style={{ lineHeight: 0.92, marginBottom: 20 }}>
             <div style={{ fontSize: "clamp(2.8rem,5.5vw,4.8rem)", color: "#f0f0ff", animation: "landingSlideUp 0.9s ease 0.1s both" }}>Sua carreira.</div>
