@@ -875,6 +875,39 @@ export function detectMatchEvents(input: EngineInput): DetectedEvent[] {
     }
   }
 
+  /* ── Evento base garantido (fallback — dispara sempre para todo resultado) ── */
+  {
+    const resultKey = isWin
+      ? `vitoria-simples-${newMatch.id}`
+      : isLoss
+        ? `derrota-simples-${newMatch.id}`
+        : `empate-simples-${newMatch.id}`;
+
+    const resultTitle = isWin
+      ? `${clubName} ${newMatch.myScore}x${newMatch.opponentScore} ${newMatch.opponent}`
+      : isLoss
+        ? `Derrota: ${newMatch.opponent} ${newMatch.opponentScore}x${newMatch.myScore} ${clubName}`
+        : `Empate: ${clubName} ${newMatch.myScore}x${newMatch.opponentScore} ${newMatch.opponent}`;
+
+    const resultSource: NewsSource = isWin ? "fanpage" : isLoss ? "espn" : "fanpage";
+
+    const resultDesc = isWin
+      ? `O ${clubName} venceu o ${newMatch.opponent} por ${newMatch.myScore}x${newMatch.opponentScore} no ${newMatch.tournament}${newMatch.stage ? ` (${newMatch.stage})` : ""}. ${summary} Descreva a atuação do time, os destaques individuais e o que esta vitória representa na tabela da temporada.`
+      : isLoss
+        ? `O ${clubName} foi derrotado pelo ${newMatch.opponent} por ${newMatch.opponentScore}x${newMatch.myScore} no ${newMatch.tournament}${newMatch.stage ? ` (${newMatch.stage})` : ""}. ${summary} Relate a frustração da torcida, os erros do time e o que precisa melhorar nos próximos jogos.`
+        : `O ${clubName} empatou com o ${newMatch.opponent} em ${newMatch.myScore}x${newMatch.opponentScore} no ${newMatch.tournament}${newMatch.stage ? ` (${newMatch.stage})` : ""}. ${summary} Analise o empate — ponto conquistado ou vitória perdida? Destaque os melhores momentos e o que o resultado significa para a campanha.`;
+
+    events.push({
+      key: resultKey,
+      type: isWin ? "vitoria_simples" : isLoss ? "derrota_simples" : "empate_simples",
+      title: resultTitle,
+      aiDescription: resultDesc,
+      source: resultSource,
+      category: "resultado",
+      priority: 5,
+    });
+  }
+
   const finalEvents = isClassico
     ? events.map(withClassico)
     : events;
