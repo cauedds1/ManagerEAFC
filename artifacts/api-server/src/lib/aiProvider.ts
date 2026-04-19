@@ -1,23 +1,43 @@
 import OpenAI from "openai";
 
-async function callGemini(systemPrompt: string, userPrompt: string): Promise<string> {
-  const GEMINI_MODEL = "gemini-2.0-flash";
-  const params = {
-    model: GEMINI_MODEL,
+async function callGeminiDirect(systemPrompt: string, userPrompt: string): Promise<string> {
+  const { GoogleGenAI } = await import("@google/genai");
+  const directAi = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
+  const response = await directAi.models.generateContent({
+    model: "gemini-2.0-flash",
     contents: [{ role: "user", parts: [{ text: userPrompt }] }],
     config: { systemInstruction: systemPrompt, maxOutputTokens: 8192 },
-  };
+  });
+  return response.text ?? "";
+}
 
+async function callGeminiReplit(systemPrompt: string, userPrompt: string): Promise<string> {
+  const { ai } = await import("@workspace/integrations-gemini-ai");
+  const response = await ai.models.generateContent({
+    model: "gemini-2.5-flash",
+    contents: [{ role: "user", parts: [{ text: userPrompt }] }],
+    config: { systemInstruction: systemPrompt, maxOutputTokens: 8192 },
+  });
+  return response.text ?? "";
+}
+
+async function callGemini(systemPrompt: string, userPrompt: string): Promise<string> {
   if (process.env.GEMINI_API_KEY) {
-    const { GoogleGenAI } = await import("@google/genai");
-    const directAi = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-    const response = await directAi.models.generateContent(params);
-    return response.text ?? "";
+    try {
+      return await callGeminiDirect(systemPrompt, userPrompt);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      const isQuota = msg.includes("429") || msg.includes("quota") || msg.includes("RESOURCE_EXHAUSTED");
+      if (!isQuota) throw err;
+      console.warn("[aiProvider] GEMINI_API_KEY com cota esgotada, tentando integração Replit...");
+    }
   }
 
-  const { ai } = await import("@workspace/integrations-gemini-ai");
-  const response = await ai.models.generateContent(params);
-  return response.text ?? "";
+  if (process.env.AI_INTEGRATIONS_GEMINI_BASE_URL) {
+    return await callGeminiReplit(systemPrompt, userPrompt);
+  }
+
+  throw new Error("Nenhum provedor Gemini disponível");
 }
 
 async function callOpenAI(
