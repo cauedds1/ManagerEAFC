@@ -241,7 +241,6 @@ export function LandingPage({ onStart, onLogin }: LandingPageProps) {
   const stepLineRef   = useRef<HTMLDivElement>(null);
 
   const [activeClub, setActiveClub]   = useState(0);
-  const [imgVisible, setImgVisible]   = useState(true);
   const [typedText, setTypedText]     = useState("");
   const [typingDone, setTypingDone]   = useState(false);
   const [aiTextIdx, setAiTextIdx]     = useState(0);
@@ -338,11 +337,10 @@ export function LandingPage({ onStart, onLogin }: LandingPageProps) {
     return () => clearInterval(interval);
   }, [aiTextIdx]);
 
-  /* ── Club switch with fade ─── */
+  /* ── Club switch — instant set, CSS handles crossfade ─── */
   const switchClub = (idx: number) => {
     if (idx === activeClub) return;
-    setImgVisible(false);
-    setTimeout(() => { setActiveClub(idx); setImgVisible(true); }, 200);
+    setActiveClub(idx);
   };
 
   const resultColor = (r: string) => r === "V" ? "#00e5a0" : r === "D" ? "#ef4444" : "#555577";
@@ -590,14 +588,25 @@ export function LandingPage({ onStart, onLogin }: LandingPageProps) {
                   <span style={{ color: club.accent, fontSize: 11, fontWeight: 600, transition: "color 0.5s" }}>{club.league}</span>
                 </div>
               </div>
-              {/* Screenshot image — natural proportions, no crop */}
-              <div style={{ position: "relative", lineHeight: 0, background: club.bg }}>
-                <img
-                  key={activeClub}
-                  src={club.img}
-                  alt={`Tema ${club.name}`}
-                  style={{ width: "100%", height: "auto", display: "block", opacity: imgVisible ? 1 : 0, transition: "opacity 0.3s ease" }}
-                />
+              {/* Screenshot image — stacked crossfade, natural proportions */}
+              <div style={{ position: "relative", lineHeight: 0, background: club.bg, transition: "background-color 0.5s ease" }}>
+                {/* Transparent spacer: sets natural height based on active image */}
+                <img src={club.img} aria-hidden="true" style={{ width: "100%", height: "auto", display: "block", opacity: 0, pointerEvents: "none" }} />
+                {/* All images stacked — CSS crossfade */}
+                {CLUBS.map((c, i) => (
+                  <img
+                    key={c.id}
+                    src={c.img}
+                    alt={`Tema ${c.name}`}
+                    style={{
+                      position: "absolute", inset: 0, width: "100%", height: "100%",
+                      objectFit: "cover", objectPosition: "top left",
+                      display: "block",
+                      opacity: i === activeClub ? 1 : 0,
+                      transition: "opacity 0.55s ease",
+                    }}
+                  />
+                ))}
                 {/* Hover overlay */}
                 <div style={{ position: "absolute", inset: 0, background: `linear-gradient(to top, rgba(${club.accentRgb},0.06) 0%, transparent 40%)`, transition: "all 0.5s", pointerEvents: "none" }} />
               </div>
