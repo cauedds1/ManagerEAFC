@@ -156,9 +156,7 @@ function buildClubContext(ctx: ClubContext): string {
     ? `\nPROJETO DO TÉCNICO: "${ctx.projeto}" — use esse contexto para avaliar o desempenho e cobranças internas.`
     : "";
 
-  const competitionsLine = ctx.currentCompetitions && ctx.currentCompetitions.length > 0
-    ? `\nCOMPETIÇÕES DA TEMPORADA: ${ctx.currentCompetitions.join(", ")}`
-    : "";
+  const competitionsLine = `\nCOMPETIÇÕES DA TEMPORADA: ${ctx.currentCompetitions && ctx.currentCompetitions.length > 0 ? ctx.currentCompetitions.join(", ") : ctx.clubLeague}`;
 
   return `CLUBE: ${ctx.clubName} | LIGA: ${ctx.clubLeague} (${tier}) | TEMP: ${ctx.season}${competitionsLine}
 TÉCNICO: ${ctx.coachName} | ELENCO: ${ctx.squadSize} jogadores | CONTRATAÇÕES: ${ctx.transfersCount}

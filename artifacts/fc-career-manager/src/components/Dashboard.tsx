@@ -601,7 +601,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
       addPost(activeSeasonId, post);
       handleNewPost(post);
     }).catch(() => {});
-  }, [activeSeasonId, career.id, career.clubName, career.clubLeague, career.clubDescription, career.projeto, career.season, seasons, handleNewPost]);
+  }, [activeSeasonId, career.id, career.clubName, career.clubLeague, career.clubDescription, career.projeto, career.season, career.competitions, seasons, handleNewPost]);
 
   const runDiretoriaTriggers = useCallback(async (updatedMatches: MatchRecord[], currentAllPlayers: SquadPlayer[], isClassico?: boolean, rivalName?: string, fanMood?: number, fanMoodLabelStr?: string) => {
     const members = getMembers(career.id);
@@ -771,7 +771,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
       }
     } catch {
     }
-  }, [career.id, career.clubName, career.clubLeague, career.season, career.coach.name, career.projeto, activeSeasonId, seasons, transfers, addToast, handleNewPost]);
+  }, [career.id, career.clubName, career.clubLeague, career.season, career.coach.name, career.projeto, career.competitions, activeSeasonId, seasons, transfers, addToast, handleNewPost]);
 
   const handleMatchUpdated = useCallback((match: MatchRecord) => {
     setMatches((prev) => prev.map((m) => m.id === match.id ? match : m));
@@ -851,7 +851,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
         });
       });
     }, 3000);
-  }, [activeSeasonId, matches, allPlayers, seasons, activeSeasonLabel, career.id, career.clubName, career.clubLeague, career.clubTitles, career.clubDescription, career.projeto, runDiretoriaTriggers, handleNewPost]);
+  }, [activeSeasonId, matches, allPlayers, seasons, activeSeasonLabel, career.id, career.clubName, career.clubLeague, career.clubTitles, career.clubDescription, career.projeto, career.competitions, runDiretoriaTriggers, handleNewPost]);
 
   const handleNewSeasonConfirm = useCallback(async (label: string, competitions: string[]) => {
     setCreatingNewSeason(true);
