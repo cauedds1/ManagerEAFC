@@ -725,6 +725,7 @@ export function PartidasView({ careerId, seasonId, season, clubName, clubLogoUrl
         clubLogoUrl={clubLogoUrl}
         allPlayers={allPlayers}
         onBack={() => setSelectedMatch(null)}
+        onSelectMatch={(m) => setSelectedMatch(m)}
         careerId={careerId}
         seasonId={seasonId}
         season={season}

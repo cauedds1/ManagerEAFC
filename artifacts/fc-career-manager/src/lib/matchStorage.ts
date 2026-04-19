@@ -45,6 +45,26 @@ export function generateGoalId(): string {
   return `g-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`;
 }
 
+const MATCHES_KEY_PREFIX = "fc-career-manager-matches-";
+
+export function getAllMatchesForCareer(careerId: string): MatchRecord[] {
+  const all: MatchRecord[] = [];
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key || !key.startsWith(MATCHES_KEY_PREFIX)) continue;
+      const raw = localStorage.getItem(key);
+      if (!raw) continue;
+      const records = JSON.parse(raw) as MatchRecord[];
+      if (!Array.isArray(records)) continue;
+      for (const r of records) {
+        if (r.careerId === careerId) all.push(r);
+      }
+    }
+  } catch {}
+  return all;
+}
+
 const MAX_RECENT_RATINGS = 10;
 
 export function applyMatchToPlayerStats(

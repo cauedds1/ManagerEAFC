@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import type { MatchRecord, PlayerMatchStats } from "@/types/match";
 import { getMatchResult, getMatchResultFull, RESULT_STYLE, LOCATION_ICONS, LOCATION_LABELS, GOAL_TYPE_ICONS, GOAL_TYPE_LABELS } from "@/types/match";
+import { getAllMatchesForCareer } from "@/lib/matchStorage";
 import type { SquadPlayer } from "@/lib/squadCache";
 import { getCachedClubList } from "@/lib/clubListCache";
 import { searchStaticClubs } from "@/lib/staticClubList";
@@ -465,12 +466,26 @@ export function MatchDetailPage({
   season?: string;
   competitions?: string[];
   onMatchUpdated?: (match: MatchRecord) => void;
+  onSelectMatch?: (match: MatchRecord) => void;
   isReadOnly?: boolean;
 }) {
   const [match, setMatch] = useState<MatchRecord>(initialMatch);
   const [selectedPlayer, setSelectedPlayer] = useState<SquadPlayer | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [rivalCrestFlipped, setRivalCrestFlipped] = useState(false);
+  const [showH2H, setShowH2H] = useState(false);
+
+  const h2hMatches = useMemo(() => {
+    if (!careerId) return [];
+    const opponent = match.opponent.toLowerCase().trim();
+    return getAllMatchesForCareer(careerId)
+      .filter((m) => m.id !== match.id && m.opponent.toLowerCase().trim() === opponent)
+      .sort((a, b) => {
+        const aT = a.date ? new Date(a.date + "T12:00:00").getTime() : a.createdAt;
+        const bT = b.date ? new Date(b.date + "T12:00:00").getTime() : b.createdAt;
+        return bT - aT;
+      });
+  }, [careerId, match.id, match.opponent]);
 
   const handleMatchUpdated = (updated: MatchRecord) => {
     setMatch(updated);
@@ -594,7 +609,7 @@ export function MatchDetailPage({
 
   return (
     <div className="animate-fade-up space-y-5">
-      {/* Back + Edit row */}
+      {/* Back + Actions row */}
       <div className="flex items-center justify-between">
         <button
           onClick={onBack}
@@ -605,20 +620,129 @@ export function MatchDetailPage({
           </svg>
           Voltar
         </button>
-        {!isReadOnly && careerId && seasonId && season && (
-          <button
-            onClick={() => setIsEditModalOpen(true)}
-            title="Editar partida"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-white/50 hover:text-white/90 hover:bg-white/08 transition-colors text-sm font-semibold"
-            style={{ border: "1px solid rgba(255,255,255,0.09)" }}
-          >
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487a2.1 2.1 0 1 1 2.97 2.97L8.122 19.167 4 20l.833-4.122 12.03-11.391z" />
-            </svg>
-            Editar
-          </button>
-        )}
+
+        <div className="flex items-center gap-2">
+          {careerId && h2hMatches.length > 0 && (
+            <button
+              onClick={() => setShowH2H(true)}
+              title="Ver histórico de confrontos diretos"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-colors text-sm font-semibold"
+              style={{
+                border: "1px solid rgba(255,255,255,0.09)",
+                color: "rgba(255,255,255,0.55)",
+              }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "rgba(255,255,255,0.9)"; (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.05)"; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "rgba(255,255,255,0.55)"; (e.currentTarget as HTMLButtonElement).style.background = ""; }}
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M7 16V4m0 0L3 8m4-4 4 4M17 8v12m0 0 4-4m-4 4-4-4" />
+              </svg>
+              H2H ({h2hMatches.length})
+            </button>
+          )}
+          {!isReadOnly && careerId && seasonId && season && (
+            <button
+              onClick={() => setIsEditModalOpen(true)}
+              title="Editar partida"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-white/50 hover:text-white/90 hover:bg-white/08 transition-colors text-sm font-semibold"
+              style={{ border: "1px solid rgba(255,255,255,0.09)" }}
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487a2.1 2.1 0 1 1 2.97 2.97L8.122 19.167 4 20l.833-4.122 12.03-11.391z" />
+              </svg>
+              Editar
+            </button>
+          )}
+        </div>
       </div>
+
+      {/* H2H Drawer */}
+      {showH2H && createPortal(
+        <div className="fixed inset-0 z-50 flex items-end justify-center">
+          <div
+            className="absolute inset-0"
+            style={{ background: "rgba(0,0,0,0.72)", backdropFilter: "blur(6px)" }}
+            onClick={() => setShowH2H(false)}
+          />
+          <div
+            className="relative w-full max-w-lg flex flex-col animate-fade-up"
+            style={{
+              background: "rgba(12,17,26,0.99)",
+              border: "1px solid rgba(255,255,255,0.07)",
+              borderBottom: "none",
+              borderRadius: "20px 20px 0 0",
+              maxHeight: "78vh",
+            }}
+          >
+            <div
+              className="flex items-center justify-between px-5 py-4 flex-shrink-0"
+              style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
+            >
+              <div>
+                <p className="text-white font-bold text-base">Confrontos Diretos</p>
+                <p className="text-white/40 text-xs mt-0.5">
+                  vs {match.opponent} — {h2hMatches.length} confronto{h2hMatches.length !== 1 ? "s" : ""}
+                </p>
+              </div>
+              <button
+                onClick={() => setShowH2H(false)}
+                className="text-white/35 hover:text-white/90 transition-colors p-1.5 rounded-lg hover:bg-white/06"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="overflow-y-auto flex-1 p-3 space-y-2 pb-6">
+              {h2hMatches.map((m) => {
+                const r = getMatchResult(m.myScore, m.opponentScore);
+                const resultLabel = r === "vitoria" ? "V" : r === "empate" ? "E" : "D";
+                const resultColor = r === "vitoria" ? "#34d399" : r === "empate" ? "#fbbf24" : "#f87171";
+                const resultBg = r === "vitoria" ? "rgba(52,211,153,0.13)" : r === "empate" ? "rgba(251,191,36,0.13)" : "rgba(248,113,113,0.13)";
+                const dateFormatted = m.date
+                  ? new Date(m.date + "T12:00:00").toLocaleDateString("pt-BR", {
+                      day: "2-digit",
+                      month: "2-digit",
+                      year: "numeric",
+                    })
+                  : "—";
+                const competition = [m.tournament, m.stage].filter(Boolean).join(" • ");
+                return (
+                  <button
+                    key={m.id}
+                    onClick={() => { setShowH2H(false); onSelectMatch?.(m); }}
+                    className="w-full text-left flex items-center gap-3 px-3 py-3 rounded-xl transition-colors hover:bg-white/05 active:scale-[0.99]"
+                    style={{ border: "1px solid rgba(255,255,255,0.055)" }}
+                  >
+                    <div
+                      className="w-8 h-8 rounded-lg flex-shrink-0 flex items-center justify-center font-bold text-sm"
+                      style={{ background: resultBg, color: resultColor, border: `1px solid ${resultColor}28` }}
+                    >
+                      {resultLabel}
+                    </div>
+                    <div
+                      className="text-white font-bold text-base w-10 text-center flex-shrink-0 tabular-nums"
+                    >
+                      {m.myScore}–{m.opponentScore}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-white/75 text-sm font-medium">{dateFormatted}</p>
+                      {competition && (
+                        <p className="text-white/35 text-xs truncate mt-0.5">{competition}</p>
+                      )}
+                    </div>
+                    <svg className="w-4 h-4 text-white/22 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )}
 
       {isEditModalOpen && careerId && seasonId && season && (
         <RegistrarPartidaModal
