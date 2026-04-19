@@ -488,6 +488,18 @@ export function MatchDetailPage({
       });
   }, [careerId, match.id, match.opponent]);
 
+  const h2hStats = useMemo(() => {
+    let wins = 0, draws = 0, losses = 0, goalsFor = 0, goalsAgainst = 0;
+    for (const m of h2hMatches) {
+      goalsFor += m.myScore;
+      goalsAgainst += m.opponentScore;
+      if (m.myScore > m.opponentScore) wins++;
+      else if (m.myScore === m.opponentScore) draws++;
+      else losses++;
+    }
+    return { wins, draws, losses, goalsFor, goalsAgainst };
+  }, [h2hMatches]);
+
   const handleMatchUpdated = (updated: MatchRecord) => {
     setMatch(updated);
     onMatchUpdated?.(updated);
@@ -684,6 +696,35 @@ export function MatchDetailPage({
                 <p className="text-white/40 text-xs mt-0.5">
                   vs {match.opponent} — {h2hMatches.length} confronto{h2hMatches.length !== 1 ? "s" : ""}
                 </p>
+                {h2hMatches.length > 0 && (
+                  <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                    <span
+                      className="text-xs font-bold px-2 py-0.5 rounded-md tabular-nums"
+                      style={{ background: "rgba(52,211,153,0.15)", color: "#34d399" }}
+                    >
+                      {h2hStats.wins}V
+                    </span>
+                    <span
+                      className="text-xs font-bold px-2 py-0.5 rounded-md tabular-nums"
+                      style={{ background: "rgba(251,191,36,0.15)", color: "#fbbf24" }}
+                    >
+                      {h2hStats.draws}E
+                    </span>
+                    <span
+                      className="text-xs font-bold px-2 py-0.5 rounded-md tabular-nums"
+                      style={{ background: "rgba(248,113,113,0.15)", color: "#f87171" }}
+                    >
+                      {h2hStats.losses}D
+                    </span>
+                    <span className="text-white/20 text-xs mx-0.5">·</span>
+                    <span
+                      className="text-xs font-semibold px-2 py-0.5 rounded-md tabular-nums"
+                      style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.55)" }}
+                    >
+                      ⚽ {h2hStats.goalsFor} / {h2hStats.goalsAgainst}
+                    </span>
+                  </div>
+                )}
               </div>
               <button
                 onClick={() => setShowH2H(false)}
