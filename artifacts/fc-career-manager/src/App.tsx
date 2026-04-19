@@ -20,6 +20,7 @@ import {
   ApiRateLimitError,
 } from "@/lib/clubListCache";
 import { listCareers, saveCareer, migrateFromLegacy, updateCareerSeason } from "@/lib/careerStorage";
+import { sessionClear } from "@/lib/sessionStore";
 
 const AUTH_TOKEN_KEY = "fc_auth_token";
 const AUTH_USER_KEY = "fc_auth_user";
@@ -234,6 +235,7 @@ export default function App() {
   const handleLogout = useCallback(() => {
     localStorage.removeItem(AUTH_TOKEN_KEY);
     localStorage.removeItem(AUTH_USER_KEY);
+    sessionClear();
     setAuthUser(null);
     setActiveCareer(null);
     resetTheme();

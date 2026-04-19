@@ -5,6 +5,7 @@ import type {
   PendingNotification,
 } from "@/types/diretoria";
 import { putCareerData } from "@/lib/apiStorage";
+import { sessionGet, sessionSet, sessionDel } from "@/lib/sessionStore";
 
 const membersKey = (careerId: string) => `fc-diretoria-members-${careerId}`;
 const convKey = (careerId: string, memberId: string) =>
@@ -13,18 +14,11 @@ const meetingsKey = (careerId: string) => `fc-diretoria-meetings-${careerId}`;
 const notifKey = (careerId: string) => `fc-diretoria-notifications-${careerId}`;
 
 export function getMembers(careerId: string): BoardMember[] {
-  try {
-    const raw = localStorage.getItem(membersKey(careerId));
-    return raw ? (JSON.parse(raw) as BoardMember[]) : [];
-  } catch {
-    return [];
-  }
+  return sessionGet<BoardMember[]>(membersKey(careerId)) ?? [];
 }
 
 export function saveMembers(careerId: string, members: BoardMember[]): void {
-  try {
-    localStorage.setItem(membersKey(careerId), JSON.stringify(members));
-  } catch {}
+  sessionSet(membersKey(careerId), members);
   void putCareerData(careerId, "diretoria_members", members);
 }
 
@@ -50,9 +44,7 @@ export function updateMember(
 export function removeMember(careerId: string, memberId: string): void {
   const members = getMembers(careerId).filter((m) => m.id !== memberId);
   saveMembers(careerId, members);
-  try {
-    localStorage.removeItem(convKey(careerId, memberId));
-  } catch {}
+  sessionDel(convKey(careerId, memberId));
   void putCareerData(careerId, `conv_${memberId}`, null);
 }
 
@@ -60,12 +52,7 @@ export function getConversation(
   careerId: string,
   memberId: string,
 ): DiretoriaMessage[] {
-  try {
-    const raw = localStorage.getItem(convKey(careerId, memberId));
-    return raw ? (JSON.parse(raw) as DiretoriaMessage[]) : [];
-  } catch {
-    return [];
-  }
+  return sessionGet<DiretoriaMessage[]>(convKey(careerId, memberId)) ?? [];
 }
 
 export function saveConversation(
@@ -73,19 +60,12 @@ export function saveConversation(
   memberId: string,
   messages: DiretoriaMessage[],
 ): void {
-  try {
-    localStorage.setItem(convKey(careerId, memberId), JSON.stringify(messages));
-  } catch {}
+  sessionSet(convKey(careerId, memberId), messages);
   void putCareerData(careerId, `conv_${memberId}`, messages);
 }
 
 export function getMeetings(careerId: string): MeetingRecord[] {
-  try {
-    const raw = localStorage.getItem(meetingsKey(careerId));
-    return raw ? (JSON.parse(raw) as MeetingRecord[]) : [];
-  } catch {
-    return [];
-  }
+  return sessionGet<MeetingRecord[]>(meetingsKey(careerId)) ?? [];
 }
 
 export function saveMeeting(careerId: string, meeting: MeetingRecord): void {
@@ -96,28 +76,19 @@ export function saveMeeting(careerId: string, meeting: MeetingRecord): void {
   } else {
     meetings.unshift(meeting);
   }
-  try {
-    localStorage.setItem(meetingsKey(careerId), JSON.stringify(meetings));
-  } catch {}
+  sessionSet(meetingsKey(careerId), meetings);
   void putCareerData(careerId, "diretoria_meetings", meetings);
 }
 
 export function getNotifications(careerId: string): PendingNotification[] {
-  try {
-    const raw = localStorage.getItem(notifKey(careerId));
-    return raw ? (JSON.parse(raw) as PendingNotification[]) : [];
-  } catch {
-    return [];
-  }
+  return sessionGet<PendingNotification[]>(notifKey(careerId)) ?? [];
 }
 
 export function saveNotifications(
   careerId: string,
   notifs: PendingNotification[],
 ): void {
-  try {
-    localStorage.setItem(notifKey(careerId), JSON.stringify(notifs));
-  } catch {}
+  sessionSet(notifKey(careerId), notifs);
   void putCareerData(careerId, "diretoria_notifications", notifs);
 }
 

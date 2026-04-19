@@ -1,5 +1,6 @@
 import type { SquadPlayer } from "@/lib/squadCache";
 import { putCareerData } from "@/lib/apiStorage";
+import { sessionGet, sessionSet } from "@/lib/sessionStore";
 
 function hiddenKey(careerId: string): string {
   return `fc-career-manager-hidden-players-${careerId}`;
@@ -10,19 +11,11 @@ function formerKey(careerId: string): string {
 }
 
 export function getFormerPlayers(careerId: string): SquadPlayer[] {
-  try {
-    const raw = localStorage.getItem(formerKey(careerId));
-    if (!raw) return [];
-    return JSON.parse(raw) as SquadPlayer[];
-  } catch {
-    return [];
-  }
+  return sessionGet<SquadPlayer[]>(formerKey(careerId)) ?? [];
 }
 
 export function saveFormerPlayers(careerId: string, players: SquadPlayer[]): void {
-  try {
-    localStorage.setItem(formerKey(careerId), JSON.stringify(players));
-  } catch {}
+  sessionSet(formerKey(careerId), players);
   void putCareerData(careerId, "formerPlayers", players);
 }
 
@@ -36,22 +29,14 @@ export function addFormerPlayer(careerId: string, player: SquadPlayer): void {
 }
 
 export function getHiddenPlayerIds(careerId: string): number[] {
-  try {
-    const raw = localStorage.getItem(hiddenKey(careerId));
-    if (!raw) return [];
-    return JSON.parse(raw) as number[];
-  } catch {
-    return [];
-  }
+  return sessionGet<number[]>(hiddenKey(careerId)) ?? [];
 }
 
 export function addHiddenPlayerId(careerId: string, id: number): void {
   const list = getHiddenPlayerIds(careerId);
   if (!list.includes(id)) {
     list.push(id);
-    try {
-      localStorage.setItem(hiddenKey(careerId), JSON.stringify(list));
-    } catch {}
+    sessionSet(hiddenKey(careerId), list);
     void putCareerData(careerId, "hiddenPlayerIds", list);
   }
 }
@@ -61,19 +46,11 @@ function key(careerId: string): string {
 }
 
 export function getCustomPlayers(careerId: string): SquadPlayer[] {
-  try {
-    const raw = localStorage.getItem(key(careerId));
-    if (!raw) return [];
-    return JSON.parse(raw) as SquadPlayer[];
-  } catch {
-    return [];
-  }
+  return sessionGet<SquadPlayer[]>(key(careerId)) ?? [];
 }
 
 export function saveCustomPlayers(careerId: string, players: SquadPlayer[]): void {
-  try {
-    localStorage.setItem(key(careerId), JSON.stringify(players));
-  } catch {}
+  sessionSet(key(careerId), players);
   void putCareerData(careerId, "customPlayers", players);
 }
 

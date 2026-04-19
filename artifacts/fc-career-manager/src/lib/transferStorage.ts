@@ -1,24 +1,17 @@
 import type { TransferRecord } from "@/types/transfer";
 import { putSeasonData } from "@/lib/apiStorage";
+import { sessionGet, sessionSet } from "@/lib/sessionStore";
 
 function transfersKey(seasonId: string): string {
   return `fc-career-manager-transfers-${seasonId}`;
 }
 
 export function getTransfers(seasonId: string): TransferRecord[] {
-  try {
-    const raw = localStorage.getItem(transfersKey(seasonId));
-    if (!raw) return [];
-    return JSON.parse(raw) as TransferRecord[];
-  } catch {
-    return [];
-  }
+  return sessionGet<TransferRecord[]>(transfersKey(seasonId)) ?? [];
 }
 
 export function saveTransfers(seasonId: string, list: TransferRecord[]): void {
-  try {
-    localStorage.setItem(transfersKey(seasonId), JSON.stringify(list));
-  } catch {}
+  sessionSet(transfersKey(seasonId), list);
   void putSeasonData(seasonId, "transfers", list);
 }
 

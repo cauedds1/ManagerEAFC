@@ -1,5 +1,6 @@
 import type { TransferRecord } from "@/types/transfer";
 import { putSeasonData } from "@/lib/apiStorage";
+import { sessionGet, sessionSet } from "@/lib/sessionStore";
 
 export interface FinanceiroSettings {
   transferBudget: number;
@@ -15,20 +16,12 @@ const DEFAULT_SETTINGS: Omit<FinanceiroSettings, "updatedAt"> = {
 };
 
 export function getFinanceiroSettings(seasonId: string): FinanceiroSettings {
-  try {
-    const raw = localStorage.getItem(key(seasonId));
-    if (!raw) return { ...DEFAULT_SETTINGS, updatedAt: 0 };
-    return JSON.parse(raw) as FinanceiroSettings;
-  } catch {
-    return { ...DEFAULT_SETTINGS, updatedAt: 0 };
-  }
+  return sessionGet<FinanceiroSettings>(key(seasonId)) ?? { ...DEFAULT_SETTINGS, updatedAt: 0 };
 }
 
 export function saveFinanceiroSettings(seasonId: string, settings: FinanceiroSettings): void {
   const withTs = { ...settings, updatedAt: Date.now() };
-  try {
-    localStorage.setItem(key(seasonId), JSON.stringify(withTs));
-  } catch {}
+  sessionSet(key(seasonId), withTs);
   void putSeasonData(seasonId, "finances", withTs);
 }
 

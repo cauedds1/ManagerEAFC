@@ -1,4 +1,5 @@
 import { putSeasonData } from "@/lib/apiStorage";
+import { sessionGet, sessionSet } from "@/lib/sessionStore";
 
 const KEY = (seasonId: string) => `fc-injuries-${seasonId}`;
 
@@ -15,18 +16,11 @@ export interface InjuryRecord {
 }
 
 export function getInjuries(seasonId: string): InjuryRecord[] {
-  try {
-    const raw = localStorage.getItem(KEY(seasonId));
-    return raw ? (JSON.parse(raw) as InjuryRecord[]) : [];
-  } catch {
-    return [];
-  }
+  return sessionGet<InjuryRecord[]>(KEY(seasonId)) ?? [];
 }
 
 export function saveInjuries(seasonId: string, records: InjuryRecord[]): void {
-  try {
-    localStorage.setItem(KEY(seasonId), JSON.stringify(records));
-  } catch {}
+  sessionSet(KEY(seasonId), records);
   void putSeasonData(seasonId, "injuries", records);
 }
 

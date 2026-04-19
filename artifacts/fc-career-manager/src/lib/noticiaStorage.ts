@@ -1,25 +1,18 @@
 import type { NewsPost } from "@/types/noticias";
 import type { Career } from "@/types/career";
 import { putSeasonData } from "@/lib/apiStorage";
+import { sessionGet, sessionSet, sessionDel } from "@/lib/sessionStore";
 
 function postsKey(seasonId: string): string {
   return `fc-career-noticias-${seasonId}`;
 }
 
 export function getPosts(seasonId: string): NewsPost[] {
-  try {
-    const raw = localStorage.getItem(postsKey(seasonId));
-    if (!raw) return [];
-    return JSON.parse(raw) as NewsPost[];
-  } catch {
-    return [];
-  }
+  return sessionGet<NewsPost[]>(postsKey(seasonId)) ?? [];
 }
 
 export function savePosts(seasonId: string, posts: NewsPost[]): void {
-  try {
-    localStorage.setItem(postsKey(seasonId), JSON.stringify(posts));
-  } catch {}
+  sessionSet(postsKey(seasonId), posts);
   void putSeasonData(seasonId, "news", posts);
 }
 
@@ -43,9 +36,7 @@ export function generateCommentId(): string {
 }
 
 export function clearPosts(seasonId: string): void {
-  try {
-    localStorage.removeItem(postsKey(seasonId));
-  } catch {}
+  sessionDel(postsKey(seasonId));
 }
 
 export function updatePost(seasonId: string, postId: string, updates: Partial<NewsPost>): void {

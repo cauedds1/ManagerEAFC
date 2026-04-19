@@ -39,7 +39,7 @@ This is a pnpm monorepo with the following packages:
 JWT-based authentication (email + password). No third-party provider needed.
 - Backend: bcryptjs (password hashing) + jsonwebtoken (JWT signing)
 - Token stored in `localStorage` under key `fc_auth_token`
-- All `/api/careers*` and `/api/seasons*` routes require `Authorization: Bearer <token>` header
+- All `/api/careers*`, `/api/seasons*`, `/api/data/season/*`, `/api/data/career/*` routes require `Authorization: Bearer <token>` header
 - First user to register claims all orphaned careers (user_id=null) — migration-safe for existing data
 - Routes: `POST /api/auth/register`, `POST /api/auth/login`, `GET /api/auth/me`
 
@@ -47,6 +47,23 @@ JWT-based authentication (email + password). No third-party provider needed.
 - `careers.user_id` column (nullable) links careers to users
 - GET /api/careers returns only careers where `user_id = :me` OR `user_id IS NULL`
 - POST /api/careers sets `user_id` from JWT payload
+- `/api/data/career/:id/*` and `/api/data/season/:id/*` verify that the career belongs to the authenticated user (or is orphaned)
+
+## Data Security Architecture
+
+Game data is stored in PostgreSQL via `career_data` and `season_data` key-value tables.
+
+### In-memory session store (`sessionStore.ts`)
+- All game data is read from a module-level in-memory Map (not localStorage)
+- localStorage cannot be tampered via browser console to affect game data
+- On session start (`syncSeasonFromDb` / `syncCareerFromDb`): data is loaded from PostgreSQL → written to sessionStore
+- On mutations: data is written to sessionStore + async `PUT /api/data/*/` call to PostgreSQL
+- On logout: `sessionClear()` wipes all in-memory data
+- Momentos (diary photos) and UI state (cooldowns, pending meetings, auto-news handled events) remain in localStorage since they are cosmetic/ephemeral
+
+### What's stored in DB (both season_data and career_data)
+Season-level: matches, player_stats, transfers, league_position, finances, news, injuries, rivals, rivalsLocked, fan_mood
+Career-level: overrides, lineup, benchOrder, formation, diretoria_members, diretoria_meetings, diretoria_notifications, conv_*, trophies, comp_results, customPlayers, formerPlayers, hiddenPlayerIds
 
 ## Required Environment Variables
 

@@ -1,3 +1,6 @@
+import { putCareerData } from "@/lib/apiStorage";
+import { sessionGet, sessionSet } from "@/lib/sessionStore";
+
 export interface BracketMatch {
   id: string;
   homeTeam: string;
@@ -36,21 +39,18 @@ function storageKey(careerId: string): string {
 }
 
 export function getCompetitionResults(careerId: string): CompetitionResult[] {
-  try {
-    const raw = localStorage.getItem(storageKey(careerId));
-    if (!raw) return [];
-    return JSON.parse(raw) as CompetitionResult[];
-  } catch {
-    return [];
-  }
+  return sessionGet<CompetitionResult[]>(storageKey(careerId)) ?? [];
+}
+
+function _save(careerId: string, list: CompetitionResult[]): void {
+  sessionSet(storageKey(careerId), list);
+  void putCareerData(careerId, "comp_results", list);
 }
 
 export function addCompetitionResult(careerId: string, result: CompetitionResult): void {
   const list = getCompetitionResults(careerId);
   list.push(result);
-  try {
-    localStorage.setItem(storageKey(careerId), JSON.stringify(list));
-  } catch {}
+  _save(careerId, list);
 }
 
 export function updateCompetitionResult(careerId: string, updated: CompetitionResult): void {
@@ -58,16 +58,12 @@ export function updateCompetitionResult(careerId: string, updated: CompetitionRe
   const idx = list.findIndex((r) => r.id === updated.id);
   if (idx === -1) return;
   list[idx] = updated;
-  try {
-    localStorage.setItem(storageKey(careerId), JSON.stringify(list));
-  } catch {}
+  _save(careerId, list);
 }
 
 export function deleteCompetitionResult(careerId: string, resultId: string): void {
   const list = getCompetitionResults(careerId).filter((r) => r.id !== resultId);
-  try {
-    localStorage.setItem(storageKey(careerId), JSON.stringify(list));
-  } catch {}
+  _save(careerId, list);
 }
 
 export function generateResultId(): string {

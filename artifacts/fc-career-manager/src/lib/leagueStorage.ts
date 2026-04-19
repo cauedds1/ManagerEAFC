@@ -1,4 +1,5 @@
 import { putSeasonData } from "@/lib/apiStorage";
+import { sessionGet, sessionSet } from "@/lib/sessionStore";
 
 export interface LeaguePosition {
   position: number;
@@ -14,18 +15,10 @@ function leagueKey(seasonId: string): string {
 }
 
 export function getLeaguePosition(seasonId: string): LeaguePosition | null {
-  try {
-    const raw = localStorage.getItem(leagueKey(seasonId));
-    if (!raw) return null;
-    return JSON.parse(raw) as LeaguePosition;
-  } catch {
-    return null;
-  }
+  return sessionGet<LeaguePosition>(leagueKey(seasonId));
 }
 
 export function setLeaguePosition(seasonId: string, pos: LeaguePosition): void {
-  try {
-    localStorage.setItem(leagueKey(seasonId), JSON.stringify(pos));
-  } catch {}
+  sessionSet(leagueKey(seasonId), pos);
   void putSeasonData(seasonId, "league_position", pos);
 }

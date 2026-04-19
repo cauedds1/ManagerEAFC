@@ -1,4 +1,5 @@
 import { putSeasonData } from "@/lib/apiStorage";
+import { sessionGet, sessionSet } from "@/lib/sessionStore";
 
 const DEFAULT_SCORE = 50;
 const fanMoodKey = (seasonId: string) => `fc-fan-mood-${seasonId}`;
@@ -19,21 +20,15 @@ export function getFanMoodLabel(score: number): { label: string; emoji: string; 
 }
 
 export function getFanMood(seasonId: string): number {
-  try {
-    const raw = localStorage.getItem(fanMoodKey(seasonId));
-    if (raw === null) return DEFAULT_SCORE;
-    const v = Number(raw);
-    return isNaN(v) ? DEFAULT_SCORE : Math.max(0, Math.min(100, v));
-  } catch {
-    return DEFAULT_SCORE;
-  }
+  const raw = sessionGet<string | number>(fanMoodKey(seasonId));
+  if (raw === null) return DEFAULT_SCORE;
+  const v = Number(raw);
+  return isNaN(v) ? DEFAULT_SCORE : Math.max(0, Math.min(100, v));
 }
 
 export async function setFanMood(seasonId: string, score: number): Promise<void> {
   const clamped = Math.max(0, Math.min(100, Math.round(score)));
-  try {
-    localStorage.setItem(fanMoodKey(seasonId), String(clamped));
-  } catch {}
+  sessionSet(fanMoodKey(seasonId), clamped);
   await putSeasonData(seasonId, "fan_mood", clamped);
 }
 
@@ -71,9 +66,7 @@ export function computeFanMoodDelta(
 }
 
 export function hydrateFanMoodCache(seasonId: string, data: Record<string, unknown>): void {
-  try {
-    if (typeof data["fan_mood"] === "number") {
-      localStorage.setItem(fanMoodKey(seasonId), String(data["fan_mood"]));
-    }
-  } catch {}
+  if (typeof data["fan_mood"] === "number") {
+    sessionSet(fanMoodKey(seasonId), data["fan_mood"]);
+  }
 }

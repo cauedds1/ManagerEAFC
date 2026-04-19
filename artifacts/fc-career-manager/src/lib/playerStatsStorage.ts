@@ -1,5 +1,6 @@
 import type { PlayerSeasonStats, PlayerOverride } from "@/types/playerStats";
 import { putSeasonData, putCareerData } from "@/lib/apiStorage";
+import { sessionGet, sessionSet } from "@/lib/sessionStore";
 
 function statsKey(seasonId: string): string {
   return `fc-career-manager-stats-${seasonId}`;
@@ -28,13 +29,7 @@ export function defaultStats(playerId: number): PlayerSeasonStats {
 }
 
 export function getAllPlayerStats(seasonId: string): Record<number, PlayerSeasonStats> {
-  try {
-    const raw = localStorage.getItem(statsKey(seasonId));
-    if (!raw) return {};
-    return JSON.parse(raw) as Record<number, PlayerSeasonStats>;
-  } catch {
-    return {};
-  }
+  return sessionGet<Record<number, PlayerSeasonStats>>(statsKey(seasonId)) ?? {};
 }
 
 export function getPlayerStats(seasonId: string, playerId: number): PlayerSeasonStats {
@@ -49,9 +44,7 @@ export function setPlayerStats(
 ): void {
   const all = getAllPlayerStats(seasonId);
   all[playerId] = stats;
-  try {
-    localStorage.setItem(statsKey(seasonId), JSON.stringify(all));
-  } catch {}
+  sessionSet(statsKey(seasonId), all);
   if (syncDb) {
     void putSeasonData(seasonId, "player_stats", all);
   }
@@ -102,20 +95,12 @@ export function copyPlayerMoodsToNewSeason(fromSeasonId: string, toSeasonId: str
       fanMoral: stats.fanMoral,
     };
   }
-  try {
-    localStorage.setItem(statsKey(toSeasonId), JSON.stringify(toStats));
-  } catch {}
+  sessionSet(statsKey(toSeasonId), toStats);
   void putSeasonData(toSeasonId, "player_stats", toStats);
 }
 
 export function getAllPlayerOverrides(careerId: string): Record<number, PlayerOverride> {
-  try {
-    const raw = localStorage.getItem(overridesKey(careerId));
-    if (!raw) return {};
-    return JSON.parse(raw) as Record<number, PlayerOverride>;
-  } catch {
-    return {};
-  }
+  return sessionGet<Record<number, PlayerOverride>>(overridesKey(careerId)) ?? {};
 }
 
 export function setPlayerOverride(
@@ -142,8 +127,6 @@ export function setPlayerOverride(
     ovrUpdatedAt: ovrIsChanging ? now : existing.ovrUpdatedAt,
     ovrHistory: ovrHistory.length > 0 ? ovrHistory : existing.ovrHistory,
   };
-  try {
-    localStorage.setItem(overridesKey(careerId), JSON.stringify(all));
-  } catch {}
+  sessionSet(overridesKey(careerId), all);
   void putCareerData(careerId, "overrides", all);
 }

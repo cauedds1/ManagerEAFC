@@ -2,27 +2,20 @@ import type { MatchRecord, PlayerMatchStats } from "@/types/match";
 import { getPlayerStats, setPlayerStats, syncAllPlayerStats } from "@/lib/playerStatsStorage";
 import type { PlayerSeasonStats } from "@/types/playerStats";
 import { putSeasonData } from "@/lib/apiStorage";
+import { sessionGet, sessionSet, sessionKeys } from "@/lib/sessionStore";
 
 function matchesKey(seasonId: string): string {
   return `fc-career-manager-matches-${seasonId}`;
 }
 
 export function getMatches(seasonId: string): MatchRecord[] {
-  try {
-    const raw = localStorage.getItem(matchesKey(seasonId));
-    if (!raw) return [];
-    return JSON.parse(raw) as MatchRecord[];
-  } catch {
-    return [];
-  }
+  return sessionGet<MatchRecord[]>(matchesKey(seasonId)) ?? [];
 }
 
 export function addMatch(seasonId: string, match: MatchRecord): void {
   const list = getMatches(seasonId);
   list.push(match);
-  try {
-    localStorage.setItem(matchesKey(seasonId), JSON.stringify(list));
-  } catch {}
+  sessionSet(matchesKey(seasonId), list);
   void putSeasonData(seasonId, "matches", list);
 }
 
@@ -31,9 +24,7 @@ export function updateMatch(seasonId: string, updated: MatchRecord): void {
   const idx = list.findIndex((m) => m.id === updated.id);
   if (idx === -1) return;
   list[idx] = updated;
-  try {
-    localStorage.setItem(matchesKey(seasonId), JSON.stringify(list));
-  } catch {}
+  sessionSet(matchesKey(seasonId), list);
   void putSeasonData(seasonId, "matches", list);
 }
 
@@ -49,22 +40,12 @@ const MATCHES_KEY_PREFIX = "fc-career-manager-matches-";
 
 export function getAllMatchesForCareer(careerId: string): MatchRecord[] {
   const all: MatchRecord[] = [];
-  const keys: string[] = [];
-  for (let i = 0; i < localStorage.length; i++) {
-    const key = localStorage.key(i);
-    if (key && key.startsWith(MATCHES_KEY_PREFIX)) keys.push(key);
-  }
-  for (const key of keys) {
-    try {
-      const raw = localStorage.getItem(key);
-      if (!raw) continue;
-      const records = JSON.parse(raw) as MatchRecord[];
-      if (!Array.isArray(records)) continue;
-      for (const r of records) {
-        if (!r.careerId || r.careerId === careerId) all.push(r);
-      }
-    } catch {
-      // chave com JSON inválido — ignora e continua
+  for (const key of sessionKeys()) {
+    if (!key.startsWith(MATCHES_KEY_PREFIX)) continue;
+    const records = sessionGet<MatchRecord[]>(key);
+    if (!Array.isArray(records)) continue;
+    for (const r of records) {
+      if (!r.careerId || r.careerId === careerId) all.push(r);
     }
   }
   return all;
