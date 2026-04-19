@@ -3,6 +3,9 @@ import barcelonaImg from "@assets/image_1776617843810.png";
 import cercleImg from "@assets/image_1776617935759.png";
 import watfordImg from "@assets/image_1776617960332.png";
 import mancityImg from "@assets/image_1776618081358.png";
+import squadImg from "@assets/image_1775527949802.png";
+import matchImg from "@assets/image_1775621037348.png";
+import statsImg from "@assets/image_1776616401887.png";
 
 interface LandingPageProps {
   onStart: () => void;
@@ -314,7 +317,7 @@ export function LandingPage({ onStart, onLogin }: LandingPageProps) {
             </h2>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {FEATURES.map((f) => (
               <div key={f.title}
                 className="group p-5 rounded-2xl transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1 cursor-default"
@@ -325,6 +328,52 @@ export function LandingPage({ onStart, onLogin }: LandingPageProps) {
                 </div>
                 <h3 className="text-white font-bold text-sm mb-1.5">{f.title}</h3>
                 <p className="text-white/40 text-xs leading-relaxed">{f.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Screenshots Section */}
+      <section className="px-6 md:px-10 py-16">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-12">
+            <p className="text-xs font-bold uppercase tracking-widest mb-3 text-violet-400">O app por dentro</p>
+            <h2 className="font-black text-white text-2xl md:text-3xl" style={{ letterSpacing: "-0.02em" }}>
+              Cada detalhe da sua carreira
+            </h2>
+            <p className="text-white/40 text-sm mt-3 max-w-md mx-auto leading-relaxed">
+              Do elenco ao placar final — tudo registrado em uma interface feita para o Career Mode.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            {[
+              { img: squadImg, label: "Gestão de elenco", desc: "Jogadores, posições e valores de mercado" },
+              { img: matchImg, label: "Registro de partidas", desc: "Gols, cartões e estatísticas por jogo" },
+              { img: statsImg, label: "Estatísticas detalhadas", desc: "Performance individual por temporada" },
+            ].map(({ img, label, desc }) => (
+              <div key={label} className="rounded-2xl overflow-hidden"
+                style={{ background: "#0B0714", border: "1px solid rgba(255,255,255,0.07)", boxShadow: "0 16px 48px rgba(0,0,0,0.5)" }}>
+                {/* Mini browser chrome */}
+                <div className="flex items-center gap-1.5 px-3 py-2.5"
+                  style={{ background: "rgba(255,255,255,0.04)", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                  <span className="w-2.5 h-2.5 rounded-full" style={{ background: "rgba(255,255,255,0.1)" }} />
+                  <span className="w-2.5 h-2.5 rounded-full" style={{ background: "rgba(255,255,255,0.1)" }} />
+                  <span className="w-2.5 h-2.5 rounded-full" style={{ background: "rgba(255,255,255,0.1)" }} />
+                  <div className="flex-1 ml-2 h-4 rounded"
+                    style={{ background: "rgba(255,255,255,0.04)" }} />
+                </div>
+                {/* Screenshot */}
+                <div className="relative overflow-hidden" style={{ aspectRatio: "16/9" }}>
+                  <img src={img} alt={label} className="w-full h-full object-cover object-top" />
+                  <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, transparent 70%, rgba(11,7,20,0.8) 100%)" }} />
+                </div>
+                {/* Caption */}
+                <div className="px-4 py-3">
+                  <p className="text-white text-sm font-semibold">{label}</p>
+                  <p className="text-white/35 text-xs mt-0.5">{desc}</p>
+                </div>
               </div>
             ))}
           </div>
