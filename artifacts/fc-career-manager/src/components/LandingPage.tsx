@@ -193,7 +193,7 @@ function HeroMockup() {
 }
 
 /* ─── Stat Counter ───────────────────────────────────────── */
-function StatCounter({ target, suffix = "", label }: { target: number; suffix?: string; label: string }) {
+function StatCounter({ target, suffix = "", label, decimals = 0 }: { target: number; suffix?: string; label: string; decimals?: number }) {
   const [count, setCount] = useState(0);
   const ref = useRef<HTMLDivElement>(null);
   const started = useRef(false);
@@ -209,7 +209,8 @@ function StatCounter({ target, suffix = "", label }: { target: number; suffix?: 
           if (!startTime) startTime = ts;
           const progress = Math.min((ts - startTime) / duration, 1);
           const eased = 1 - Math.pow(1 - progress, 3);
-          setCount(Math.round(eased * target));
+          const raw = eased * target;
+          setCount(decimals > 0 ? Math.round(raw * 10 ** decimals) / 10 ** decimals : Math.round(raw));
           if (progress < 1) requestAnimationFrame(animate);
         };
         requestAnimationFrame(animate);
@@ -217,12 +218,12 @@ function StatCounter({ target, suffix = "", label }: { target: number; suffix?: 
     }, { threshold: 0.5 });
     obs.observe(el);
     return () => obs.disconnect();
-  }, [target]);
+  }, [target, decimals]);
 
   return (
     <div ref={ref} className="text-center">
       <div className="font-bebas font-dm" style={{ fontSize: "clamp(2.5rem,5vw,4rem)", color: "#f0f0ff", lineHeight: 1, letterSpacing: "0.02em" }}>
-        <span className="font-mono-j">{count.toLocaleString("pt-BR")}</span>
+        <span className="font-mono-j">{decimals > 0 ? count.toFixed(decimals) : count.toLocaleString("pt-BR")}</span>
         <span style={{ color: "#7c5cfc" }}>{suffix}</span>
       </div>
       <div className="font-dm" style={{ color: "#8888aa", fontSize: 13, marginTop: 6, textTransform: "uppercase", letterSpacing: "0.1em" }}>{label}</div>
@@ -333,7 +334,7 @@ export function LandingPage({ onStart, onLogin }: LandingPageProps) {
           setAiTextIdx(prev => (prev + 1) % AI_TEXTS.length);
         }, 3200);
       }
-    }, 30);
+    }, 40);
     return () => clearInterval(interval);
   }, [aiTextIdx]);
 
@@ -341,7 +342,7 @@ export function LandingPage({ onStart, onLogin }: LandingPageProps) {
   const switchClub = (idx: number) => {
     if (idx === activeClub) return;
     setImgVisible(false);
-    setTimeout(() => { setActiveClub(idx); setImgVisible(true); }, 220);
+    setTimeout(() => { setActiveClub(idx); setImgVisible(true); }, 200);
   };
 
   const resultColor = (r: string) => r === "V" ? "#00e5a0" : r === "D" ? "#ef4444" : "#555577";
@@ -454,12 +455,7 @@ export function LandingPage({ onStart, onLogin }: LandingPageProps) {
           <StatCounter target={12000} suffix="+" label="Técnicos ativos" />
           <StatCounter target={340000} suffix="+" label="Partidas registradas" />
           <StatCounter target={89} label="Países" />
-          <div className="text-center">
-            <div className="font-bebas" style={{ fontSize: "clamp(2.5rem,5vw,4rem)", color: "#f0f0ff", lineHeight: 1 }}>
-              <span className="font-mono-j">4.8</span><span style={{ color: "#7c5cfc" }}>★</span>
-            </div>
-            <div className="font-dm" style={{ color: "#8888aa", fontSize: 13, marginTop: 6, textTransform: "uppercase", letterSpacing: "0.1em" }}>Avaliação</div>
-          </div>
+          <StatCounter target={4.8} suffix="★" label="Avaliação" decimals={1} />
         </div>
       </section>
 
@@ -601,7 +597,7 @@ export function LandingPage({ onStart, onLogin }: LandingPageProps) {
               <div style={{ position: "relative", aspectRatio: "16/8.5", overflow: "hidden", background: club.bg }}>
                 {CLUBS.map((c, i) => (
                   <img key={c.id} src={c.img} alt={`Tema ${c.name}`}
-                    style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", objectPosition: "top", transition: "opacity 0.35s ease, transform 0.35s ease", opacity: i === activeClub && imgVisible ? 1 : 0, transform: i === activeClub && imgVisible ? "scale(1)" : "scale(1.03)" }} />
+                    style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", objectPosition: "top", transition: "opacity 0.3s ease, transform 0.3s ease", opacity: i === activeClub && imgVisible ? 1 : 0, transform: i === activeClub && imgVisible ? "scale(1)" : "scale(1.03)" }} />
                 ))}
                 {/* Hover overlay */}
                 <div style={{ position: "absolute", inset: 0, background: `linear-gradient(to top, rgba(${club.accentRgb},0.06) 0%, transparent 40%)`, transition: "all 0.5s", pointerEvents: "none" }} />
