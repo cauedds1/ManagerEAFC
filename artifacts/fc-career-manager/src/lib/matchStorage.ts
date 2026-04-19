@@ -49,10 +49,13 @@ const MATCHES_KEY_PREFIX = "fc-career-manager-matches-";
 
 export function getAllMatchesForCareer(careerId: string): MatchRecord[] {
   const all: MatchRecord[] = [];
-  try {
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (!key || !key.startsWith(MATCHES_KEY_PREFIX)) continue;
+  const keys: string[] = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && key.startsWith(MATCHES_KEY_PREFIX)) keys.push(key);
+  }
+  for (const key of keys) {
+    try {
       const raw = localStorage.getItem(key);
       if (!raw) continue;
       const records = JSON.parse(raw) as MatchRecord[];
@@ -60,8 +63,10 @@ export function getAllMatchesForCareer(careerId: string): MatchRecord[] {
       for (const r of records) {
         if (r.careerId === careerId) all.push(r);
       }
+    } catch {
+      // chave com JSON inválido — ignora e continua
     }
-  } catch {}
+  }
   return all;
 }
 
