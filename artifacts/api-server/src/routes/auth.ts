@@ -29,14 +29,20 @@ router.post("/auth/register", async (req, res) => {
       passwordHash,
       name: name.trim(),
       createdAt: Date.now(),
+      plan: "free",
+      aiUsageCount: 0,
+      aiUsageResetDate: "",
     }).returning();
 
     await db.update(careersTable)
       .set({ userId: user.id })
       .where(isNull(careersTable.userId));
 
-    const token = signToken({ id: user.id, email: user.email, name: user.name });
-    return res.status(201).json({ token, user: { id: user.id, email: user.email, name: user.name } });
+    const token = signToken({ id: user.id, email: user.email, name: user.name, plan: user.plan });
+    return res.status(201).json({
+      token,
+      user: { id: user.id, email: user.email, name: user.name, plan: user.plan },
+    });
   } catch (err) {
     console.error("POST /auth/register error:", err);
     return res.status(500).json({ error: "Erro interno do servidor" });
@@ -61,8 +67,11 @@ router.post("/auth/login", async (req, res) => {
       return res.status(401).json({ error: "E-mail ou senha incorretos" });
     }
 
-    const token = signToken({ id: user.id, email: user.email, name: user.name });
-    return res.json({ token, user: { id: user.id, email: user.email, name: user.name } });
+    const token = signToken({ id: user.id, email: user.email, name: user.name, plan: user.plan });
+    return res.json({
+      token,
+      user: { id: user.id, email: user.email, name: user.name, plan: user.plan },
+    });
   } catch (err) {
     console.error("POST /auth/login error:", err);
     return res.status(500).json({ error: "Erro interno do servidor" });

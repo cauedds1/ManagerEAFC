@@ -87,6 +87,9 @@ export const usersTable = pgTable("users", {
   passwordHash: text("password_hash").notNull(),
   name: text("name").notNull(),
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
+  plan: text("plan").notNull().default("free"),
+  aiUsageCount: integer("ai_usage_count").notNull().default(0),
+  aiUsageResetDate: text("ai_usage_reset_date").notNull().default(""),
 });
 
 export const customPortalsTable = pgTable("custom_portals", {

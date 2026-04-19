@@ -67,6 +67,66 @@ async function callOpenAI(
   return (completion as OpenAI.Chat.Completions.ChatCompletion).choices[0]?.message?.content ?? "";
 }
 
+export async function callNewsWithPlan(
+  plan: string,
+  systemPrompt: string,
+  userPrompt: string,
+  maxTokens = 4096,
+): Promise<string> {
+  if (plan === "ultra") {
+    const serverClient = getServerOpenAIClient();
+    if (serverClient) {
+      try {
+        return await callOpenAI(serverClient, systemPrompt, userPrompt, maxTokens, "gpt-4o");
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.warn("[aiProvider] GPT-4o falhou para Ultra, usando Gemini fallback:", msg);
+      }
+    }
+  }
+
+  try {
+    return await callGemini(systemPrompt, userPrompt);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn("[aiProvider] Gemini falhou, usando OpenAI fallback:", msg);
+  }
+
+  const serverClient = getServerOpenAIClient();
+  if (serverClient) {
+    return callOpenAI(serverClient, systemPrompt, userPrompt, maxTokens, "gpt-4o-mini");
+  }
+
+  throw new Error("Nenhum provedor de IA disponível");
+}
+
+export async function callDiretoriaWithPlan(
+  plan: string,
+  systemPrompt: string,
+  userPrompt: string,
+  maxTokens = 1024,
+): Promise<string> {
+  if (plan === "ultra") {
+    const serverClient = getServerOpenAIClient();
+    if (serverClient) {
+      try {
+        return await callOpenAI(serverClient, systemPrompt, userPrompt, maxTokens, "gpt-4o");
+      } catch {}
+    }
+  }
+
+  try {
+    return await callGemini(systemPrompt, userPrompt);
+  } catch {}
+
+  const serverClient = getServerOpenAIClient();
+  if (serverClient) {
+    return callOpenAI(serverClient, systemPrompt, userPrompt, maxTokens, "gpt-4o-mini");
+  }
+
+  throw new Error("Nenhum provedor de IA disponível");
+}
+
 export async function callNewsCompletion(
   client: OpenAI,
   usingUserKey: boolean,

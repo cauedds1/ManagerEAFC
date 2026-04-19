@@ -1,7 +1,11 @@
 import { Router } from "express";
 import OpenAI from "openai";
 import { openai as defaultOpenai } from "@workspace/integrations-openai-ai-server";
-import { callNewsCompletion } from "../lib/aiProvider";
+import { callNewsCompletion, callNewsWithPlan } from "../lib/aiProvider";
+import { requireAuth, type AuthRequest } from "../middleware/auth";
+import { db, usersTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
+import { getPlanLimits, getTodayDateString } from "../lib/planLimits";
 
 const router = Router();
 
@@ -255,7 +259,25 @@ function buildClassicoSection(clubName: string, rivalName: string, isLoss: boole
   return section;
 }
 
-router.post("/noticias/generate", async (req, res) => {
+router.post("/noticias/generate", requireAuth, async (req: AuthRequest, res) => {
+  const userId = req.user!.id;
+  const [dbUser] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+  if (!dbUser) { res.status(401).json({ error: "Usuário não encontrado" }); return; }
+
+  const limits = getPlanLimits(dbUser.plan);
+  const today = getTodayDateString();
+  let usageCount = dbUser.aiUsageCount;
+  if (dbUser.aiUsageResetDate !== today) {
+    await db.update(usersTable).set({ aiUsageCount: 0, aiUsageResetDate: today }).where(eq(usersTable.id, userId));
+    usageCount = 0;
+  }
+  if (limits.aiGenerationsPerDay !== Infinity && usageCount >= limits.aiGenerationsPerDay) {
+    res.status(403).json({ error: `Limite de ${limits.aiGenerationsPerDay} gerações por dia atingido`, code: "PLAN_LIMIT_REACHED", plan: dbUser.plan, limit: limits.aiGenerationsPerDay });
+    return;
+  }
+
+  const userPlan = dbUser.plan;
+
   const {
     description, clubName, season, source, category,
     playersContext, squadOvrContext, teamFormContext, startingXIContext, historicalContext, recentPostsContext, customPortal,
@@ -267,9 +289,6 @@ router.post("/noticias/generate", async (req, res) => {
     res.status(400).json({ error: "description é obrigatório" });
     return;
   }
-
-  const userKey = (req.headers["x-openai-key"] as string | undefined) ?? "";
-  const { client, usingUserKey } = getClient(userKey);
 
   const slug = clubName.toLowerCase().replace(/\s+/g, "").replace(/[^a-z0-9]/g, "");
   const shortClub = clubName.split(" ").slice(0, 2).join(" ");
@@ -471,7 +490,7 @@ REGRAS DE REPLIES — OBRIGATÓRIO:
 - NUNCA gere replies genéricos como "concordo" ou "verdade" sozinhos — sempre adicione personalidade e contexto`;
 
   try {
-    const raw = await callNewsCompletion(client, usingUserKey, systemPrompt, userPrompt, 4096);
+    const raw = await callNewsWithPlan(userPlan, systemPrompt, userPrompt, 4096);
 
     let parsed: Record<string, unknown>;
     try {
@@ -496,7 +515,11 @@ REGRAS DE REPLIES — OBRIGATÓRIO:
       ...(isCustomPortal ? { customPortalId: customPortal.id } : {}),
     };
 
-    res.json(post);
+    if (limits.aiGenerationsPerDay !== Infinity) {
+      await db.update(usersTable).set({ aiUsageCount: usageCount + 1 }).where(eq(usersTable.id, userId));
+    }
+
+    res.json({ ...post, aiUsageCount: usageCount + 1, aiUsageLimit: limits.aiGenerationsPerDay });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     res.status(500).json({ error: "Erro ao gerar notícia com IA", details: msg });
@@ -643,7 +666,19 @@ interface GenerateRumorBody {
   currentCompetitions?: string[];
 }
 
-router.post("/noticias/generate-rumor", async (req, res) => {
+router.post("/noticias/generate-rumor", requireAuth, async (req: AuthRequest, res) => {
+  const userId = req.user!.id;
+  const [dbUser] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+  if (!dbUser) { res.status(401).json({ error: "Usuário não encontrado" }); return; }
+
+  const limits = getPlanLimits(dbUser.plan);
+  if (!limits.rumorsEnabled) {
+    res.status(403).json({ error: "Rumores de transferência estão disponíveis apenas no Plano Ultra", code: "PLAN_UPGRADE_REQUIRED", requiredPlan: "ultra" });
+    return;
+  }
+
+  const userPlan = dbUser.plan;
+
   const {
     clubName, season, clubLeague, clubDescription, projeto,
     playersContext, squadPositionNeeds, customPortal, fanMoodScore, fanMoodLabel, currentCompetitions,
@@ -653,9 +688,6 @@ router.post("/noticias/generate-rumor", async (req, res) => {
     res.status(400).json({ error: "clubName é obrigatório" });
     return;
   }
-
-  const userKey = (req.headers["x-openai-key"] as string | undefined) ?? "";
-  const { client, usingUserKey } = getClient(userKey);
 
   const shortClub = clubName.split(" ").slice(0, 2).join(" ");
   const uniqueSeed = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -891,7 +923,7 @@ REGRAS DE REPLIES:
 - NUNCA gere replies genéricos — sempre adicione personalidade e contexto`;
 
   try {
-    const raw = await callNewsCompletion(client, usingUserKey, systemPrompt, userPrompt, 3072);
+    const raw = await callNewsWithPlan(userPlan, systemPrompt, userPrompt, 3072);
 
     let parsed: Record<string, unknown>;
     try {

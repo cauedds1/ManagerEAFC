@@ -7,6 +7,7 @@ export interface AuthUser {
   id: number;
   email: string;
   name: string;
+  plan: string;
 }
 
 export interface AuthRequest extends Request {
@@ -23,7 +24,7 @@ export function requireAuth(req: AuthRequest, res: Response, next: NextFunction)
   const token = header.slice(7);
   try {
     const payload = jwt.verify(token, JWT_SECRET) as AuthUser & { iat?: number; exp?: number };
-    req.user = { id: payload.id, email: payload.email, name: payload.name };
+    req.user = { id: payload.id, email: payload.email, name: payload.name, plan: payload.plan ?? "free" };
     next();
   } catch {
     res.status(401).json({ error: "Token inválido ou expirado" });

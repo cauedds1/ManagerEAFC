@@ -1,0 +1,3 @@
+ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "plan" text NOT NULL DEFAULT 'free';
+ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "ai_usage_count" integer NOT NULL DEFAULT 0;
+ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "ai_usage_reset_date" text NOT NULL DEFAULT '';

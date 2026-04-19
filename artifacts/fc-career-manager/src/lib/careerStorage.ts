@@ -47,6 +47,22 @@ export function listCareers(): Career[] {
   }
 }
 
+export class AuthExpiredError extends Error {
+  constructor() { super("AUTH_EXPIRED"); }
+}
+
+export async function fetchCareersFromApi(): Promise<Career[]> {
+  const token = localStorage.getItem(AUTH_TOKEN_KEY);
+  if (!token) return listCareers();
+  const res = await fetch("/api/careers", { headers: getAuthHeaders() });
+  if (res.status === 401) throw new AuthExpiredError();
+  if (!res.ok) return listCareers();
+  const data = await res.json() as Career[];
+  if (!Array.isArray(data)) return listCareers();
+  try { localStorage.setItem(CAREERS_KEY, JSON.stringify(data)); } catch {}
+  return data;
+}
+
 export function saveCareer(career: Career): void {
   const careers = listCareers();
   const idx = careers.findIndex((c) => c.id === career.id);

@@ -19,7 +19,7 @@ import {
   clearClubCache,
   ApiRateLimitError,
 } from "@/lib/clubListCache";
-import { listCareers, saveCareer, migrateFromLegacy, updateCareerSeason } from "@/lib/careerStorage";
+import { listCareers, saveCareer, migrateFromLegacy, updateCareerSeason, fetchCareersFromApi, AuthExpiredError } from "@/lib/careerStorage";
 import { sessionClear } from "@/lib/sessionStore";
 
 const AUTH_TOKEN_KEY = "fc_auth_token";
@@ -225,64 +225,87 @@ export default function App() {
     setView("landing");
   }, []);
 
-  const handleAuthSuccess = useCallback((token: string, user: AuthUser) => {
+  const handleAuthSuccess = useCallback(async (token: string, user: AuthUser) => {
     localStorage.setItem(AUTH_TOKEN_KEY, token);
     localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user));
     setAuthUser(user);
-    handleLandingStart();
-  }, [handleLandingStart]);
-
-  const handleLogout = useCallback(() => {
-    localStorage.removeItem(AUTH_TOKEN_KEY);
-    localStorage.removeItem(AUTH_USER_KEY);
-    sessionClear();
-    setAuthUser(null);
-    setActiveCareer(null);
-    resetTheme();
-    setView("landing");
-  }, []);
-
-  useEffect(() => {
-    migrateFromLegacy();
-    const loadedCareers = listCareers();
-    setCareers(loadedCareers);
-    const hasCareers = loadedCareers.length > 0;
-
-    const storedUser = localStorage.getItem(AUTH_USER_KEY);
-    if (storedUser) {
-      try { setAuthUser(JSON.parse(storedUser) as AuthUser); } catch {}
-    }
-
-    const isLoggedIn = Boolean(localStorage.getItem(AUTH_TOKEN_KEY));
-
-    if (!isLoggedIn) {
-      setView("landing");
-      return;
-    }
-
+    const fetched = await fetchCareersFromApi();
+    setCareers(fetched);
+    const hasCareers = fetched.length > 0;
     const localCached = getCachedClubList();
     if (localCached && localCached.length > 0) {
       setAllClubs(localCached);
       resolveViewAfterClubs(hasCareers);
       return;
     }
+    doFetchClubs(() => resolveViewAfterClubs(hasCareers));
+  }, [doFetchClubs, resolveViewAfterClubs]);
 
-    getDbClubs()
-      .then((dbClubs) => {
-        if (dbClubs && dbClubs.length > 0) {
-          setAllClubs(dbClubs);
-          try {
-            localStorage.setItem(CACHE_KEY, JSON.stringify({ clubs: dbClubs, cachedAt: Date.now() }));
-          } catch {}
-          resolveViewAfterClubs(hasCareers);
-          return;
-        }
+  const handleLogout = useCallback(() => {
+    localStorage.removeItem(AUTH_TOKEN_KEY);
+    localStorage.removeItem(AUTH_USER_KEY);
+    localStorage.removeItem("fc-career-manager-careers");
+    localStorage.removeItem("fc-career-manager-synced-ids");
+    sessionClear();
+    setAuthUser(null);
+    setActiveCareer(null);
+    setCareers([]);
+    resetTheme();
+    setView("landing");
+  }, []);
 
-        startFetching(hasCareers);
-      })
-      .catch(() => {
-        startFetching(hasCareers);
-      });
+  useEffect(() => {
+    migrateFromLegacy();
+
+    const storedUser = localStorage.getItem(AUTH_USER_KEY);
+    if (storedUser) {
+      try { setAuthUser(JSON.parse(storedUser) as AuthUser); } catch {}
+    }
+
+    const token = localStorage.getItem(AUTH_TOKEN_KEY);
+    if (!token) {
+      const localCareers = listCareers();
+      setCareers(localCareers);
+      setView("landing");
+      return;
+    }
+
+    fetchCareersFromApi().then((fetchedCareers) => {
+      setCareers(fetchedCareers);
+      const hasCareers = fetchedCareers.length > 0;
+
+      const localCached = getCachedClubList();
+      if (localCached && localCached.length > 0) {
+        setAllClubs(localCached);
+        resolveViewAfterClubs(hasCareers);
+        return;
+      }
+
+      getDbClubs()
+        .then((dbClubs) => {
+          if (dbClubs && dbClubs.length > 0) {
+            setAllClubs(dbClubs);
+            try {
+              localStorage.setItem(CACHE_KEY, JSON.stringify({ clubs: dbClubs, cachedAt: Date.now() }));
+            } catch {}
+            resolveViewAfterClubs(hasCareers);
+            return;
+          }
+          startFetching(hasCareers);
+        })
+        .catch(() => {
+          startFetching(hasCareers);
+        });
+    }).catch((err: unknown) => {
+      if (err instanceof AuthExpiredError) {
+        localStorage.removeItem(AUTH_TOKEN_KEY);
+        localStorage.removeItem(AUTH_USER_KEY);
+        setAuthUser(null);
+      }
+      const localCareers = listCareers();
+      setCareers(localCareers);
+      setView("landing");
+    });
   }, [startFetching, resolveViewAfterClubs]);
 
   const enterCareer = useCallback(async (career: Career) => {
