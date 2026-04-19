@@ -128,5 +128,6 @@ export function setPlayerOverride(
     ovrHistory: ovrHistory.length > 0 ? ovrHistory : existing.ovrHistory,
   };
   sessionSet(overridesKey(careerId), all);
+  try { localStorage.setItem(overridesKey(careerId), JSON.stringify(all)); } catch {}
   void putCareerData(careerId, "overrides", all);
 }
