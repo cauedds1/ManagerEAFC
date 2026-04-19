@@ -410,22 +410,26 @@ function MatchCard({
           onClick={(e) => e.stopPropagation()}
         >
           {/* Left team scorers */}
-          <div className="flex flex-col gap-1 items-start overflow-hidden">
+          <div className="flex flex-col gap-1 items-start min-w-0">
             {leftScorers.length > 0 ? leftScorers.map((g, i) => (
-              <span key={i} className="flex items-baseline gap-1 text-[10px] leading-tight whitespace-nowrap" style={{ color: leftThemed ? "rgba(var(--club-primary-rgb),0.9)" : "rgba(255,255,255,0.55)" }}>
-                <span>⚽</span>
-                <span className="truncate max-w-[80px]">{g.name}</span>
+              <span key={i} className="flex items-baseline justify-between gap-2 text-[10px] leading-tight w-full" style={{ color: leftThemed ? "rgba(var(--club-primary-rgb),0.9)" : "rgba(255,255,255,0.55)" }}>
+                <span className="flex items-baseline gap-1 min-w-0">
+                  <span>⚽</span>
+                  <span>{g.name}</span>
+                </span>
                 <span className="shrink-0">{g.minute}&apos;</span>
               </span>
             )) : <span className="text-[10px] text-white/15">—</span>}
           </div>
           {/* Right team scorers */}
-          <div className="flex flex-col gap-1 items-end overflow-hidden">
+          <div className="flex flex-col gap-1 items-end min-w-0">
             {rightScorers.length > 0 ? rightScorers.map((g, i) => (
-              <span key={i} className="flex items-baseline gap-1 text-[10px] leading-tight whitespace-nowrap" style={{ color: rightThemed ? "rgba(var(--club-primary-rgb),0.9)" : "rgba(255,255,255,0.40)" }}>
+              <span key={i} className="flex items-baseline justify-between gap-2 text-[10px] leading-tight w-full" style={{ color: rightThemed ? "rgba(var(--club-primary-rgb),0.9)" : "rgba(255,255,255,0.40)" }}>
                 <span className="shrink-0">{g.minute}&apos;</span>
-                <span className="truncate max-w-[80px]">{g.name}</span>
-                <span>⚽</span>
+                <span className="flex items-baseline gap-1 min-w-0">
+                  <span>{g.name}</span>
+                  <span>⚽</span>
+                </span>
               </span>
             )) : <span className="text-[10px] text-white/15">—</span>}
           </div>
