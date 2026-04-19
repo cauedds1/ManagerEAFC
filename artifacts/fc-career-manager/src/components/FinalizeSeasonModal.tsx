@@ -41,7 +41,11 @@ export function FinalizeSeasonModal({ seasonId, seasonLabel, onFinalize, onCance
         goalsAgainst: goalsAgainst.trim() !== "" ? Number(goalsAgainst) : undefined,
       };
 
-      await finalizeSeasonApi(seasonId);
+      const ok = await finalizeSeasonApi(seasonId);
+      if (!ok) {
+        setApiError("Não foi possível finalizar a temporada. Verifique a conexão e tente novamente.");
+        return;
+      }
 
       setSeasonSummary(seasonId, {
         seasonId,
