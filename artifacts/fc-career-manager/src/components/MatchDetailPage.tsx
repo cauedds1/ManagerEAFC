@@ -981,21 +981,23 @@ export function MatchDetailPage({
               return (
                 <div className="flex gap-3 mt-1.5 w-full">
                   {/* Left team goals — right-aligned */}
-                  <div className="flex-1 flex flex-col items-end gap-0.5 overflow-hidden">
+                  <div className="flex-1 flex flex-col items-end gap-0.5 min-w-0">
                     {leftGoals.map((g, i) => (
-                      <span key={i} className="text-[10px] text-white/50 text-right leading-tight whitespace-nowrap">
-                        {g.name} {g.minute}&apos;{g.isPenalty ? " (P)" : ""}
-                      </span>
+                      <div key={i} className="flex items-baseline gap-1 text-[10px] text-white/50 leading-tight w-full justify-end">
+                        <span className="truncate min-w-0">{g.name}</span>
+                        <span className="shrink-0">{g.minute}&apos;{g.isPenalty ? " (P)" : ""}</span>
+                      </div>
                     ))}
                   </div>
                   {/* Thin vertical divider */}
                   <div className="w-px self-stretch bg-white/10 flex-shrink-0" />
                   {/* Right team goals — left-aligned */}
-                  <div className="flex-1 flex flex-col items-start gap-0.5 overflow-hidden">
+                  <div className="flex-1 flex flex-col items-start gap-0.5 min-w-0">
                     {rightGoals.map((g, i) => (
-                      <span key={i} className="text-[10px] text-white/50 text-left leading-tight whitespace-nowrap">
-                        {g.name} {g.minute}&apos;{g.isPenalty ? " (P)" : ""}
-                      </span>
+                      <div key={i} className="flex items-baseline gap-1 text-[10px] text-white/50 leading-tight w-full justify-start">
+                        <span className="truncate min-w-0">{g.name}</span>
+                        <span className="shrink-0">{g.minute}&apos;{g.isPenalty ? " (P)" : ""}</span>
+                      </div>
                     ))}
                   </div>
                 </div>
