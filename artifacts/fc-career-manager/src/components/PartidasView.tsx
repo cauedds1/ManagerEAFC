@@ -410,18 +410,22 @@ function MatchCard({
           onClick={(e) => e.stopPropagation()}
         >
           {/* Left team scorers */}
-          <div className="flex flex-col gap-1 items-start">
+          <div className="flex flex-col gap-1 items-start overflow-hidden">
             {leftScorers.length > 0 ? leftScorers.map((g, i) => (
-              <span key={i} className="text-[10px] leading-tight" style={{ color: leftThemed ? "rgba(var(--club-primary-rgb),0.9)" : "rgba(255,255,255,0.55)" }}>
-                ⚽ {g.name} {g.minute}&apos;
+              <span key={i} className="flex items-baseline gap-1 text-[10px] leading-tight whitespace-nowrap" style={{ color: leftThemed ? "rgba(var(--club-primary-rgb),0.9)" : "rgba(255,255,255,0.55)" }}>
+                <span>⚽</span>
+                <span className="truncate max-w-[80px]">{g.name}</span>
+                <span className="shrink-0">{g.minute}&apos;</span>
               </span>
             )) : <span className="text-[10px] text-white/15">—</span>}
           </div>
           {/* Right team scorers */}
-          <div className="flex flex-col gap-1 items-end">
+          <div className="flex flex-col gap-1 items-end overflow-hidden">
             {rightScorers.length > 0 ? rightScorers.map((g, i) => (
-              <span key={i} className="text-[10px] leading-tight" style={{ color: rightThemed ? "rgba(var(--club-primary-rgb),0.9)" : "rgba(255,255,255,0.40)" }}>
-                {g.minute}&apos; {g.name} ⚽
+              <span key={i} className="flex items-baseline gap-1 text-[10px] leading-tight whitespace-nowrap" style={{ color: rightThemed ? "rgba(var(--club-primary-rgb),0.9)" : "rgba(255,255,255,0.40)" }}>
+                <span className="shrink-0">{g.minute}&apos;</span>
+                <span className="truncate max-w-[80px]">{g.name}</span>
+                <span>⚽</span>
               </span>
             )) : <span className="text-[10px] text-white/15">—</span>}
           </div>
