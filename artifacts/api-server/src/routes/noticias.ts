@@ -32,6 +32,7 @@ interface GenerateNoticiaBody {
   playersContext?: string;
   squadOvrContext?: string;
   teamFormContext?: string;
+  startingXIContext?: string;
   historicalContext?: string;
   recentPostsContext?: RecentPostSummary[];
   customPortal?: CustomPortalPayload;
@@ -252,7 +253,7 @@ function buildClassicoSection(clubName: string, rivalName: string, isLoss: boole
 router.post("/noticias/generate", async (req, res) => {
   const {
     description, clubName, season, source, category,
-    playersContext, squadOvrContext, teamFormContext, historicalContext, recentPostsContext, customPortal,
+    playersContext, squadOvrContext, teamFormContext, startingXIContext, historicalContext, recentPostsContext, customPortal,
     clubLeague, clubTitles, clubDescription, projeto, isClassico, rivalName, fanMoodScore, fanMoodLabel,
     matchPlayerContext, attachedMatchContext,
   } = req.body as GenerateNoticiaBody;
@@ -297,6 +298,10 @@ router.post("/noticias/generate", async (req, res) => {
 
   const teamFormSection = teamFormContext?.trim()
     ? `\n\nSEQUÊNCIA RECENTE DO TIME:\n${teamFormContext.trim()}\n\nCOMO USAR A SEQUÊNCIA:\n- Use seu conhecimento de futebol para avaliar a força de cada adversário pelo nome.\n- Se o time acabou de bater ou empatar com adversários considerados mais fortes, isso é contexto positivo — cobranças individuais devem ser moderadas ou ausentes.\n- Se o time enfrenta adversários acessíveis para o seu nível (elenco OVR x liga x adversário) e não está performando bem, aí cobranças individuais fazem sentido.\n- Uma sequência de vitórias sólidas, especialmente contra adversários difíceis, indica saúde coletiva — a narrativa deve refletir isso.\n- Não copie os dados brutos — interprete a sequência com olhar de jornalista esportivo que conhece futebol.`
+    : "";
+
+  const startingXISection = startingXIContext?.trim()
+    ? `\n\n${startingXIContext.trim()}`
     : "";
 
   const historicalSection = historicalContext?.trim()
@@ -387,7 +392,7 @@ Use linguagem informal, autêntica, com gírias brasileiras do futebol. Seja cri
 O time é ${clubName}${season ? ` (temporada ${season})` : ""}.
 O portal que publica é ${portalName} (${portalHandle}).
 Semente de unicidade: ${uniqueSeed} — use ela para garantir que este post seja diferente de qualquer outro.
-REGRA ABSOLUTA: NUNCA mencione números de OVR, overall, ratings ou diferenças numéricas de atributos em nenhuma parte do texto gerado (título, legenda, comentários, replies). Em vez disso, use apenas termos qualitativos naturais como "estrela do elenco", "acima da média", "jogador de alto nível", "craque do time", "peça importante", "abaixo da média do elenco", "reforço de qualidade", etc. Os dados numéricos existem apenas para a sua calibração interna — não os exponha no texto.${prestigeSection}${playersSection}${squadOvrSection}${teamFormSection}${historicalSection}${attachedMatchSection}${matchPlayerSection}${recentPostsSection}${fanMoodSection}${positiveMomentumRecalibrationSection}${crisisReactionSection}${penaltySection}${classicoSection}${customPortalSection}${globalPortalSection}`;
+REGRA ABSOLUTA: NUNCA mencione números de OVR, overall, ratings ou diferenças numéricas de atributos em nenhuma parte do texto gerado (título, legenda, comentários, replies). Em vez disso, use apenas termos qualitativos naturais como "estrela do elenco", "acima da média", "jogador de alto nível", "craque do time", "peça importante", "abaixo da média do elenco", "reforço de qualidade", etc. Os dados numéricos existem apenas para a sua calibração interna — não os exponha no texto.${prestigeSection}${playersSection}${squadOvrSection}${teamFormSection}${startingXISection}${historicalSection}${attachedMatchSection}${matchPlayerSection}${recentPostsSection}${fanMoodSection}${positiveMomentumRecalibrationSection}${crisisReactionSection}${penaltySection}${classicoSection}${customPortalSection}${globalPortalSection}`;
 
   const commentPersonalitiesRule = isGlobalPortal
     ? `AUDIÊNCIA DOS COMENTÁRIOS — portal global com seguidores de TODO o mundo e de VÁRIOS clubes:

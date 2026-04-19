@@ -1,6 +1,7 @@
 import type { SquadPlayer } from "@/lib/squadCache";
 import { getAllPlayerStats, getAllPlayerOverrides } from "@/lib/playerStatsStorage";
-import type { FanMoral, Mood, PlayerOverride } from "@/types/playerStats";
+import type { FanMoral, Mood, PlayerOverride, PlayerSeasonStats } from "@/types/playerStats";
+import type { MatchRecord } from "@/types/match";
 
 function avgRatings(ratings: number[]): number {
   if (ratings.length === 0) return 6.5;
@@ -221,6 +222,123 @@ export function buildSquadOvrContext(
     `Destaques do elenco por OVR:`,
     ...top3,
   ];
+
+  return lines.join("\n");
+}
+
+function recentAvgRating(stats: PlayerSeasonStats | undefined, last = 5): number | null {
+  if (!stats?.recentRatings?.length) return null;
+  const slice = stats.recentRatings.slice(-last);
+  return Math.round((slice.reduce((a, b) => a + b, 0) / slice.length) * 10) / 10;
+}
+
+export function buildStartingXIContext(
+  allMatches: MatchRecord[],
+  currentMatch: MatchRecord,
+  allPlayers: SquadPlayer[],
+  seasonStats: Record<number, PlayerSeasonStats>,
+  allOverrides: Record<number, PlayerOverride>,
+): string {
+  const sorted = [...allMatches].sort((a, b) => a.createdAt - b.createdAt);
+  const prevMatches = sorted.filter((m) => m.id !== currentMatch.id).slice(-7);
+
+  if (prevMatches.length < 3) return "";
+
+  const squadAvg = calcSquadAvgOvr(allPlayers, allOverrides);
+  const total = prevMatches.length;
+  const threshold = Math.ceil(total * 0.5);
+
+  const startCount: Record<number, number> = {};
+  for (const m of prevMatches) {
+    for (const id of m.starterIds) {
+      startCount[id] = (startCount[id] ?? 0) + 1;
+    }
+  }
+
+  const regularStarters = allPlayers
+    .filter((p) => (startCount[p.id] ?? 0) >= threshold)
+    .sort((a, b) => (startCount[b.id] ?? 0) - (startCount[a.id] ?? 0));
+
+  if (regularStarters.length < 5) return "";
+
+  const currentStarterSet = new Set(currentMatch.starterIds);
+  const currentSubSet = new Set(currentMatch.subIds);
+
+  const lines: string[] = [];
+
+  lines.push(`TIME TITULAR HABITUAL (baseado nas últimas ${total} partidas):`);
+  for (const p of regularStarters.slice(0, 14)) {
+    const stats = seasonStats[p.id];
+    const ovr = allOverrides[p.id]?.overall;
+    const ovrLabel = ovr != null && squadAvg != null ? ` | OVR: ${relativeOvrLabel(ovr, squadAvg)}` : "";
+    const avgR = recentAvgRating(stats);
+    const ratingStr = avgR != null ? ` | nota média ${avgR}` : "";
+    const goalsAssists = stats ? ` | ${stats.goals ?? 0}G ${stats.assists ?? 0}A` : "";
+    const pos = p.positionPtBr ?? p.position ?? "";
+    const starts = startCount[p.id] ?? 0;
+    lines.push(`  • ${p.name} (${pos}) — titular em ${starts}/${total}${ovrLabel}${ratingStr}${goalsAssists}`);
+  }
+
+  const droppedEntirely: SquadPlayer[] = [];
+  const droppedToBench: SquadPlayer[] = [];
+  const newStarters: SquadPlayer[] = [];
+
+  for (const p of regularStarters) {
+    const inStarters = currentStarterSet.has(p.id);
+    const inSubs = currentSubSet.has(p.id);
+    if (!inStarters && !inSubs) droppedEntirely.push(p);
+    else if (!inStarters && inSubs) droppedToBench.push(p);
+  }
+
+  for (const id of currentMatch.starterIds) {
+    const p = allPlayers.find((pl) => pl.id === id);
+    if (p && (startCount[p.id] ?? 0) < threshold) newStarters.push(p);
+  }
+
+  const hasChanges = droppedEntirely.length > 0 || droppedToBench.length > 0 || newStarters.length > 0;
+
+  if (hasChanges) {
+    lines.push("\nMUDANÇAS NA ESCALAÇÃO DESTA PARTIDA:");
+
+    for (const p of droppedEntirely) {
+      const stats = seasonStats[p.id];
+      const ovr = allOverrides[p.id]?.overall;
+      const ovrLabel = ovr != null && squadAvg != null ? ` | OVR: ${relativeOvrLabel(ovr, squadAvg)}` : "";
+      const avgR = recentAvgRating(stats);
+      const ratingStr = avgR != null ? ` | nota média recente: ${avgR}` : "";
+      const goalsAssists = stats ? ` | ${stats.goals ?? 0}G ${stats.assists ?? 0}A na temporada` : "";
+      const pos = p.positionPtBr ?? p.position ?? "";
+      lines.push(`  ⛔ ${p.name} (${pos}) — era titular habitual (${startCount[p.id] ?? 0}/${total}) mas NÃO FOI RELACIONADO para esta partida${ovrLabel}${ratingStr}${goalsAssists}`);
+    }
+
+    for (const p of droppedToBench) {
+      const stats = seasonStats[p.id];
+      const ovr = allOverrides[p.id]?.overall;
+      const ovrLabel = ovr != null && squadAvg != null ? ` | OVR: ${relativeOvrLabel(ovr, squadAvg)}` : "";
+      const avgR = recentAvgRating(stats);
+      const ratingStr = avgR != null ? ` | nota média recente: ${avgR}` : "";
+      const goalsAssists = stats ? ` | ${stats.goals ?? 0}G ${stats.assists ?? 0}A na temporada` : "";
+      const pos = p.positionPtBr ?? p.position ?? "";
+      lines.push(`  ⬇️ ${p.name} (${pos}) — era titular habitual (${startCount[p.id] ?? 0}/${total}) mas vai ao BANCO nesta partida${ovrLabel}${ratingStr}${goalsAssists}`);
+    }
+
+    for (const p of newStarters) {
+      const stats = seasonStats[p.id];
+      const ovr = allOverrides[p.id]?.overall;
+      const ovrLabel = ovr != null && squadAvg != null ? ` | OVR: ${relativeOvrLabel(ovr, squadAvg)}` : "";
+      const prevStarts = startCount[p.id] ?? 0;
+      const prevStr = prevStarts === 0 ? "nunca tinha sido titular nas últimas partidas" : `titular apenas ${prevStarts}/${total} vezes anteriores`;
+      const pos = p.positionPtBr ?? p.position ?? "";
+      const goalsAssists = stats ? ` | ${stats.goals ?? 0}G ${stats.assists ?? 0}A` : "";
+      lines.push(`  ⬆️ ${p.name} (${pos}) — ${prevStr}, entra como TITULAR nesta partida${ovrLabel}${goalsAssists}`);
+    }
+  }
+
+  lines.push("\nCOMO USAR ESTE CONTEXTO:");
+  lines.push("  - Os jogadores listados em TITULARES HABITUAIS são conhecidos como o esqueleto do time — a mídia e a torcida sabem quem são eles e têm expectativas sobre suas atuações.");
+  lines.push("  - Quando um TITULAR HABITUAL vai ao banco ou não é relacionado, isso é notícia — a reação depende da qualidade do jogador: estrela rebaixada ao banco gera polêmica e cobrança; jogador em má fase rebaixado gera apoio à decisão do técnico.");
+  lines.push("  - Quando um jogador que raramente titular começa: a torcida fica curiosa e animada se for promessa, ou preocupada se for uma surpresa sem justificativa.");
+  lines.push("  - Use este contexto para criar comentários e reações naturais da torcida/mídia — não copie os dados brutos, interprete-os com linguagem de torcedor e jornalista esportivo.");
 
   return lines.join("\n");
 }

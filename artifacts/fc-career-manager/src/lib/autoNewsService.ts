@@ -10,7 +10,7 @@ import { wasEventHandled, markEventHandled } from "@/lib/autoNewsStorage";
 import { getAllPlayerStats, getAllPlayerOverrides } from "@/lib/playerStatsStorage";
 import { fetchPortals } from "@/lib/customPortalStorage";
 import { getPosts, addPost, updatePost, generatePostId, generateCommentId } from "@/lib/noticiaStorage";
-import { buildPlayerPerformanceContext, buildPlayerContextString, buildSquadOvrContext } from "@/lib/playerContext";
+import { buildPlayerPerformanceContext, buildPlayerContextString, buildSquadOvrContext, buildStartingXIContext } from "@/lib/playerContext";
 import { getOpenAIKey } from "@/lib/openaiKeyStorage";
 
 const FC_NEWS_IMAGE_UPDATED_EVENT = "fc-news-image-updated";
@@ -165,6 +165,7 @@ export async function runAutoNews(
       allMatches,
       seasonPlayerStats,
       allPlayers,
+      allOverrides,
       leaguePosition,
       clubName,
       season,
@@ -183,6 +184,7 @@ export async function runAutoNews(
 
     const squadOvrContext = buildSquadOvrContext(allPlayers, allOverrides);
     const teamFormContext = buildTeamFormContext(allMatches, newMatch);
+    const startingXIContext = buildStartingXIContext(allMatches, newMatch, allPlayers, seasonPlayerStats, allOverrides);
 
     const recentPosts = getPosts(seasonId)
       .slice(0, 6)
@@ -220,6 +222,7 @@ export async function runAutoNews(
           playersContext: playerContextStr || undefined,
           squadOvrContext: squadOvrContext || undefined,
           teamFormContext: teamFormContext || undefined,
+          startingXIContext: startingXIContext || undefined,
           recentPostsContext: recentPosts.length > 0 ? recentPosts : undefined,
           isClassico: event.isClassico || undefined,
           rivalName: event.rivalName || undefined,

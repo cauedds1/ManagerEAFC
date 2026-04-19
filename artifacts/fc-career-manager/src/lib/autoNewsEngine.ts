@@ -1,5 +1,5 @@
 import type { MatchRecord } from "@/types/match";
-import type { PlayerSeasonStats } from "@/types/playerStats";
+import type { PlayerSeasonStats, PlayerOverride } from "@/types/playerStats";
 import type { NewsSource, NewsCategory } from "@/types/noticias";
 import type { LeaguePosition } from "@/lib/leagueStorage";
 import type { SquadPlayer } from "@/lib/squadCache";
@@ -32,6 +32,7 @@ interface EngineInput {
   allMatches: MatchRecord[];
   seasonPlayerStats: Record<number, PlayerSeasonStats>;
   allPlayers: SquadPlayer[];
+  allOverrides: Record<number, PlayerOverride>;
   leaguePosition: LeaguePosition | null;
   clubName: string;
   season: string;
@@ -780,6 +781,97 @@ export function detectMatchEvents(input: EngineInput): DetectedEvent[] {
           imagePromptContext: { eventType: "marco_time_gols", milestone: ms },
         } : {}),
       });
+    }
+  }
+
+  /* ── Mudanças de escalação notáveis (titular habitual fora da equipe) ── */
+  {
+    const sorted2 = sortedByDate(allMatches);
+    const prevMatches = sorted2.filter((m) => m.id !== newMatch.id).slice(-7);
+    if (prevMatches.length >= 3) {
+      const total = prevMatches.length;
+      const threshold = Math.ceil(total * 0.5);
+      const startCount: Record<number, number> = {};
+      for (const m of prevMatches) {
+        for (const id of m.starterIds) {
+          startCount[id] = (startCount[id] ?? 0) + 1;
+        }
+      }
+      const allOvrs = allPlayers
+        .map((p) => allOverrides[p.id]?.overall)
+        .filter((o): o is number => o != null && o > 0);
+      const squadAvg = allOvrs.length > 0
+        ? allOvrs.reduce((a, b) => a + b, 0) / allOvrs.length
+        : null;
+
+      const currentStarterSet = new Set(newMatch.starterIds);
+      const currentSubSet = new Set(newMatch.subIds);
+
+      const regularStarters = allPlayers.filter(
+        (p) => (startCount[p.id] ?? 0) >= threshold,
+      );
+
+      let starDropped = 0;
+      for (const p of regularStarters) {
+        if (starDropped >= 2) break;
+        const inStarters = currentStarterSet.has(p.id);
+        const inSubs = currentSubSet.has(p.id);
+        const isDropped = !inStarters;
+        if (!isDropped) continue;
+
+        const stats = seasonPlayerStats[p.id];
+        const ovr = allOverrides[p.id]?.overall;
+        const ovrDiff = ovr != null && squadAvg != null ? ovr - squadAvg : null;
+
+        const isStarQuality = ovrDiff != null && ovrDiff >= 3;
+        const hasGoodStats = (stats?.goals ?? 0) + (stats?.assists ?? 0) >= 5;
+        const isIdolo = stats?.fanMoral === "idolo";
+        const isContested = stats?.fanMoral === "vaiado" || stats?.fanMoral === "contestado";
+        const recentRatings = stats?.recentRatings?.slice(-5) ?? [];
+        const recentAvg = recentRatings.length > 0
+          ? recentRatings.reduce((a, b) => a + b, 0) / recentRatings.length
+          : null;
+        const poorForm = recentAvg != null && recentAvg < 6.5;
+
+        const isNotable = isStarQuality || hasGoodStats || isIdolo || isContested;
+        if (!isNotable) continue;
+
+        const pos = p.positionPtBr ?? p.position ?? "Jogador";
+        const shortName = p.name.split(" ").slice(0, 2).join(" ");
+        const starts = startCount[p.id] ?? 0;
+        const wasStartingStr = `era titular habitual (${starts} das últimas ${total} partidas)`;
+        const droppedWhere = !inSubs ? "foi cortado da lista de relacionados" : "foi para o banco de reservas";
+        const statsStr = stats ? `(${stats.goals ?? 0} gols, ${stats.assists ?? 0} assistências na temporada)` : "";
+        const formStr = poorForm
+          ? `A forma recente do jogador não estava sendo boa (nota média ${recentAvg?.toFixed(1)}) — é possível que a decisão seja técnica.`
+          : `O jogador vinha jogando bem (nota média ${recentAvg?.toFixed(1) ?? "acima de 7"}).`;
+
+        const qualityDesc = isStarQuality
+          ? "um dos jogadores mais qualificados do elenco"
+          : hasGoodStats
+          ? "um dos jogadores mais produtivos do time"
+          : isIdolo
+          ? "um ídolo da torcida"
+          : "um jogador que gerava polêmica entre os torcedores";
+
+        const priority = isStarQuality && !poorForm ? 1 : 2;
+        const source: NewsSource = isStarQuality ? "lancenet" : "fanpage";
+        const category: NewsCategory = "polêmica";
+
+        events.push({
+          key: `dropped-${p.id}-${newMatch.id}`,
+          type: "titular_dropado",
+          title: isStarQuality && !poorForm
+            ? `Surpresa! ${shortName} fica fora do time contra ${newMatch.opponent}`
+            : `${shortName} ${!inSubs ? "fora da lista" : "vai ao banco"} contra ${newMatch.opponent}`,
+          aiDescription: `CONTEXTO DE ESCALAÇÃO — ASSUNTO QUENTE: ${shortName} (${pos}), ${qualityDesc}, ${wasStartingStr}, ${droppedWhere} para a partida contra ${newMatch.opponent} ${statsStr}. ${formStr} ${isIdolo ? "A torcida tem uma relação especial com este jogador." : ""} ${isContested ? "O jogador já gerava divisão de opiniões entre os torcedores." : ""} Gere uma notícia e comentários de torcedores reagindo a esta decisão do técnico. ${poorForm || isContested ? "A maioria dos comentários deve apoiar a decisão ou ser dividida." : "A maioria dos comentários deve ser de surpresa, questionamento e cobrança."} Use linguagem de redes sociais de torcedores brasileiros.`,
+          source,
+          category,
+          priority,
+        });
+
+        starDropped++;
+      }
     }
   }
 
