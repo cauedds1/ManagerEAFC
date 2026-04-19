@@ -33,8 +33,8 @@ const CLUBS = [
     name: "Watford",
     league: "Championship",
     img: watfordImg,
-    accent: "#EDBB00",
-    accentRgb: "237,187,0",
+    accent: "#fbee23",
+    accentRgb: "251,238,35",
     textDark: true,
   },
   {
@@ -225,9 +225,9 @@ export function LandingPage({ onStart, onLogin }: LandingPageProps) {
                   onClick={() => setActiveClub(i)}
                   className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 hover:scale-105 active:scale-95"
                   style={isActive ? {
-                    background: `rgba(${c.accentRgb},0.18)`,
+                    background: c.textDark ? `rgba(${c.accentRgb},0.85)` : `rgba(${c.accentRgb},0.18)`,
                     border: `1px solid rgba(${c.accentRgb},0.45)`,
-                    color: c.accent,
+                    color: c.textDark ? "#111" : c.accent,
                     boxShadow: `0 0 16px rgba(${c.accentRgb},0.15)`,
                   } : {
                     background: "rgba(255,255,255,0.04)",
