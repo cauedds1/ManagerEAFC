@@ -1,0 +1,246 @@
+CONTEXTO DO PRODUTO
+FC Career Manager é uma aplicação web para gerenciar o modo carreira do EA Sports FC (antigo FIFA). É uma plataforma para jogadores que querem viver a experiência de forma imersiva, com dados reais, histórico detalhado e uma camada de narrativa gerada por IA. É gratuita para começar.
+MISSÃO DO PROMPT
+Crie uma landing page completa em HTML/CSS/JS puro (arquivo único), altamente otimizada para conversão, visualmente extraordinária, com animações envolventes mas elegantes. A página deve fazer o visitante sentir que está entrando em algo especial — não um app genérico, mas uma experiência de futebol de outro nível.
+
+IDENTIDADE VISUAL
+Paleta de cores:
+
+Fundo base: #09090f (quase preto com tom azul profundo)
+Superfícies: #0f0f1a, #14141f, #1a1a28
+Accent primário: #7c5cfc (roxo vibrante)
+Accent secundário: #3d9cf5 (azul elétrico)
+Accent terciário: #00e5a0 (verde neon suave — para highlights de estatísticas)
+Texto primário: #f0f0ff
+Texto secundário: #8888aa
+Bordas sutis: rgba(124, 92, 252, 0.15)
+
+Tipografia:
+
+Títulos: fonte 'Bebas Neue' (Google Fonts) — impacto, esportivo
+Subtítulos/UI: fonte 'DM Sans' (Google Fonts) — moderno, legível
+Dados/números: fonte 'JetBrains Mono' (Google Fonts) — técnico, preciso
+
+Estética geral: dark luxo esportivo. Pensa num dashboard da Premier League se fosse feito pela Apple. Atmosférico, denso, premium. Não é brilhante nem colorido demais — é sofisticado e sombrio com detalhes que brilham.
+
+ESTRUTURA DA PÁGINA
+1. NAVBAR (fixa, com blur)
+
+Logo: ícone de troféu SVG + "FC Career Manager" em DM Sans
+Links: Funcionalidades, IA, Clube, Preços (scroll suave)
+Botão CTA: "Entrar no jogo" — roxo sólido com glow sutil
+Ao rolar: navbar fica com backdrop-filter: blur(20px) + borda inferior fina roxa
+
+
+2. HERO SECTION
+Layout: fullscreen (100vh), centralizado vertical e horizontal
+Efeito de fundo: grid de linhas finas (como um campo de futebol visto de cima, abstrato) animado lentamente com CSS — linhas brancas em opacity: 0.03, com animação backgroundPosition movendo diagonal para criar sensação de profundidade. Adicionar partículas de luz flutuando lentamente (pontos brancos em opacity: 0.4, 20-30 pontos, movendo com @keyframes float aleatório).
+Badge topo: pílula com borda roxa animada (border-gradient rotacionando) + texto "● CAREER MODE REIMAGINADO"
+Headline:
+Sua carreira.
+Sua história.
+Seus dados.
+Cada linha entra com animation: slideUp com delay escalonado (0ms, 150ms, 300ms). "Seus dados." em gradiente roxo→azul.
+Subtítulo: "Registre partidas, acompanhe estatísticas, leia notícias geradas por IA e gerencie seu clube com a imersão que o modo carreira merece." — aparece após 500ms com fade
+CTAs:
+
+Botão 1: "Criar carreira grátis" — roxo sólido, grande, com hover que escala 1.03 e aumenta o glow
+Botão 2: "Ver demonstração" — outline translúcido com ícone play ▶
+
+Elemento visual direita/abaixo: mockup flutuante de um mini-dashboard — mostrando o header "Barcelona · LaLiga" com fundo vinho escuro, abaixo um card de partida "Atlético 0 × 3 Barcelona" com borda verde de vitória. Animado com translateY(-8px) pulsando suavemente. Ao lado, pequenos cards de stats: "40 partidas", "2026/27", "34 jogadores" aparecendo em cascade. Este mockup sugere o tema por clube sem explicar ainda — o visitante vai querer entender como funciona.
+
+3. SEÇÃO SOCIAL PROOF / STATS
+Layout: faixa horizontal com fundo #0f0f1a, borda superior/inferior em gradiente roxo
+4 números grandes em Bebas Neue:
+
+12.000+ Técnicos ativos
+340.000+ Partidas registradas
+89 Países
+4.8★ Avaliação
+
+Cada número tem um contador animado que incrementa quando entra na viewport (IntersectionObserver + requestAnimationFrame).
+
+4. SEÇÃO FUNCIONALIDADES (Features)
+Título: "Tudo que um técnico de verdade precisa"
+Layout: grid de 6 cards (2×3 em desktop, 1 coluna mobile)
+Cada card tem:
+
+Ícone SVG temático (não emoji)
+Título da feature
+Descrição curta
+Hover: card levanta com translateY(-4px) + borda roxa acende + background vai de #14141f para #1a1a28
+
+As 6 features:
+
+🏟️ Elenco Tático — "Visualize seu time em campo com drag-and-drop. Formações reais, posições precisas."
+📊 Estatísticas Completas — "Cada gol, assistência e cartão registrado. Histórico completo por temporada e jogador."
+🤖 Notícias por IA — "A imprensa virtual cobre cada partida. Hat-tricks viram manchetes. Viradas se tornam lendas."
+💰 Gestão Financeira — "Controle transferências, salários e orçamento como um diretor esportivo de verdade."
+🏆 Armário de Troféus — "Cada conquista preservada com imagens reais de competições do mundo inteiro."
+🎨 Tema do Clube — "O app se transforma com as cores do seu escudo. Cada carreira tem sua identidade."
+
+
+5. SEÇÃO IA (destaque especial)
+Background: mais escuro, #06060e, com efeito de "scan line" horizontal suave (linhas finas passando como num radar)
+Layout: lado a lado — texto esquerda, mockup direita
+Título: "A imprensa que sua carreira merece" (Bebas Neue grande)
+Mockup: simular uma "notícia gerada por IA" — card estilizado de jornal digital com:
+
+Headline: "VIRADA ÉPICA: TÉCNICO [NOME] TRANSFORMA DERROTA EM TRIUNFO NOS ACRÉSCIMOS"
+Subtítulo gerado
+Parágrafo de exemplo
+Tag "Gerado por IA" com ícone sparkle
+Animação de "typing" no texto — como se estivesse sendo escrito em tempo real
+
+Features listadas com ícones:
+
+Notícias automáticas baseadas em eventos reais da sua carreira
+Reuniões com a diretoria que cobram metas e comentam o desempenho
+Medidor de humor da torcida influenciando a narrativa
+Tom muda conforme você vence ou perde — dramático, irônico, épico
+
+
+6. SEÇÃO CLUBE E TEMA (SEÇÃO ESTRELA — MÁXIMA ATENÇÃO)
+Título: "O app se transforma com o seu clube"
+Subtítulo: "Cada carreira tem sua identidade. Cores, atmosfera e tema gerados automaticamente a partir do escudo."
+Esta é a seção mais impactante visualmente. Ela DEVE ser o momento WOW da landing.
+Layout: fullwidth. Título centralizado acima. Abaixo: 4 botões/tabs de clube lado a lado. Abaixo dos botões: um mockup grande do dashboard do app — que muda completamente ao trocar de clube, com transição suave (transition: all 0.5s ease).
+Os 4 clubes e seus temas EXATOS (baseados no sistema real):
+ClubeCor fundoCor accentCor tab ativaBadge corBarcelona#1a0a12 (vinho escuro)#c8102e (vermelho)underline vermelhoazul/grenáCercle Brugge#071a0e (verde floresta)#00b050 (verde)underline verdeverdeWatford#1a1500 (amarelo escuro)#fbee23 / #e8a000 (dourado)underline amareloamarelo/pretoManchester City#060d1a (azul marinho)#6cabdd (azul City)underline azulazul claro
+O mockup de cada clube deve simular fielmente o dashboard real, incluindo:
+
+Header com: escudo (SVG simples da cor do clube) + nome do clube + liga + badge "Animada/Neutra/Eufórica" + "Temp: 2026/27"
+Tabs de navegação: Painel · Partidas · Clube · Transferências · Notícias · Diretoria · Momentos — com tab "Painel" ativa na cor accent do clube
+4 cards de stats: Partidas / Temporada / Elenco / Transferências — com bordas e ícones na cor do clube
+2-3 cards de "Últimas Partidas" — com borda superior na cor do resultado (verde=vitória, vermelho=derrota, cinza=empate), nome da competição, placar, nomes dos clubes
+O FUNDO INTEIRO do mockup muda para a cor do clube — não é só um detalhe, é a atmosfera toda
+
+Animação de troca:
+javascript// Ao clicar num clube:
+// 1. mockup faz fadeOut (opacity 0, translateY 8px) em 200ms
+// 2. variáveis CSS são atualizadas
+// 3. mockup faz fadeIn (opacity 1, translateY 0) em 300ms
+// 4. botão ativo fica com borda na cor accent do clube selecionado
+Texto abaixo do mockup: "Funciona automaticamente com qualquer um dos 700+ clubes do banco de dados global. Basta escolher — o app faz o resto."
+NOTA PARA O DESENVOLVEDOR: Esta seção demonstra a feature mais diferenciada do produto. O mockup não precisa ser pixel-perfect, mas precisa transmitir claramente que o AMBIENTE INTEIRO muda — fundo, cores de destaque, abas, cards. Cada clube deve parecer um produto diferente.
+
+7. SEÇÃO COMO FUNCIONA (Steps)
+Layout: linha do tempo horizontal com 4 passos conectados
+
+Crie seu perfil — foto, clube, temporada inicial
+Monte seu elenco — importe ou cadastre jogadores
+Registre as partidas — placar, gols, destaques
+Acompanhe sua história — stats, notícias, troféus
+
+Cada passo com número grande em Bebas Neue + ícone + descrição. Linha conectora entre os steps que se "preenche" conforme o scroll (CSS clip-path animado com IntersectionObserver).
+
+8. SEÇÃO DEPOIMENTOS
+Layout: 3 cards em grid
+Depoimentos fictícios mas realistas:
+
+"Finalmente um app que trata o modo carreira com seriedade. As notícias geradas por IA são incríveis." — @carreira_fc
+"Estou na temporada 6 com o Grêmio e tenho histórico de cada transferência. Isso mudou minha experiência." — @tecnico_virtual
+"O tema muda de acordo com o clube. Quando fui pro Barcelona, virou azul e grená automaticamente. Detalhe incrível." — @modocarreira_br
+
+Cada card: foto de avatar (iniciais coloridas), nome, handle, texto, estrelas ★★★★★
+
+9. CTA FINAL
+Fullscreen section com background especial: gradiente de #09090f para #0d0820 com uma silhueta abstrata de estádio em SVG (linhas finas, opacity: 0.08) no fundo
+Título grande Bebas Neue: "Pronto para escrever sua história?"
+Subtítulo: "Mais de 12.000 técnicos já começaram. Grátis para sempre no plano base."
+Botão único grande: "Criar minha carreira agora" — roxo sólido, padding generoso, letra espaçada, glow roxo no hover
+Sem formulário. Sem fricção. Só o botão.
+
+10. FOOTER
+
+Logo
+Links: Termos, Privacidade, Contato
+"© 2025 FC Career Manager. Não afiliado à EA Sports."
+Redes sociais (ícones SVG: Twitter/X, Instagram, Discord)
+
+
+ANIMAÇÕES E INTERAÇÕES — DETALHAMENTO
+Animações de entrada (scroll-triggered)
+Usar IntersectionObserver para detectar quando elementos entram na viewport. Ao entrar:
+
+Cards: opacity: 0 → 1 + translateY(20px → 0) com transition: 0.6s ease
+Títulos de seção: opacity: 0 → 1 + translateX(-20px → 0)
+Usar delay escalonado para grupos de cards (0ms, 100ms, 200ms, etc.)
+
+Efeito parallax suave
+O fundo do hero (grid/partículas) move a uma velocidade diferente do conteúdo ao rolar. Implementar com window.addEventListener('scroll', ...) atualizando transform: translateY() do background.
+Cursor personalizado
+Substituir o cursor padrão por:
+
+Círculo pequeno (12px) que segue o mouse com transition: 0.1s
+Segundo círculo maior (40px) que segue com delay maior (transition: 0.3s)
+Ao hover em botões: ambos os círculos aumentam e ficam roxos
+
+Hover nos cards de feature
+css.feature-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(124, 92, 252, 0.4);
+  background: #1a1a28;
+  box-shadow: 0 20px 60px rgba(124, 92, 252, 0.1);
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+Efeito "glow" nos botões principais
+css.btn-primary:hover {
+  box-shadow: 0 0 30px rgba(124, 92, 252, 0.5), 0 0 60px rgba(124, 92, 252, 0.2);
+  transform: translateY(-2px) scale(1.02);
+}
+Badge animado (hero)
+Borda do badge rotaciona com gradient:
+css@keyframes rotateBorder {
+  from { --angle: 0deg; }
+  to { --angle: 360deg; }
+}
+Usar conic-gradient com CSS custom property animada.
+Typing effect na seção de IA
+O texto da notícia gerada aparece caractere por caractere com setInterval. Cursor piscante no final. Após terminar, pausa 3s e recomeça com texto diferente (array de 3 notícias rotacionando).
+Contador animado (stats)
+javascriptfunction animateCounter(el, target, duration) {
+  let start = 0;
+  const step = target / (duration / 16);
+  const timer = setInterval(() => {
+    start += step;
+    if (start >= target) { start = target; clearInterval(timer); }
+    el.textContent = Math.floor(start).toLocaleString('pt-BR') + (el.dataset.suffix || '');
+  }, 16);
+}
+
+REQUISITOS TÉCNICOS
+
+Arquivo único HTML — todo CSS e JS inline
+Google Fonts: importar Bebas Neue, DM Sans, JetBrains Mono
+Zero dependências externas de JS — tudo vanilla
+Mobile-first responsivo — breakpoints: 768px (tablet), 1024px (desktop)
+Performance: usar will-change: transform apenas em elementos animados, requestAnimationFrame para animações JS
+Scroll suave: scroll-behavior: smooth no HTML
+Todos os links CTA apontam para # (placeholder) com event.preventDefault()
+
+
+TOM DE COPY
+
+Direto, confiante, esportivo — não corporativo
+Segunda pessoa ("sua carreira", "seu clube")
+Verbos de ação e conquista
+Evitar: "solução", "plataforma inovadora", "ecossistema" — linguagem de startup genérica
+Usar: "jogo", "história", "técnico", "conquista", "temporada"
+PT-BR brasileiro, não lusitano
+
+
+O QUE EVITAR
+
+❌ Backgrounds brancos ou claros
+❌ Gradientes roxo-rosa genéricos de IA
+❌ Cards com sombra exagerada tipo Material Design
+❌ Fontes Inter, Roboto, Arial
+❌ Ícones emoji como substituto de SVG
+❌ Animações de loading desnecessárias
+❌ Pop-ups, modais ou banners de cookie no hero
+❌ Muito texto em qualquer seção — cada seção tem 1 mensagem central
+
+
+RESULTADO ESPERADO
+Uma landing page que quando alguém vê pela primeira vez pensa: "Isso parece o site de um produto sério, não de um projeto amador." Que convence pela qualidade visual antes mesmo de ler o conteúdo. Que tem personalidade — é claramente sobre futebol, sobre dados, sobre imersão. Uma landing que faz querer clicar em "Criar carreira grátis" porque dá vontade de fazer parte daquilo.
