@@ -37,6 +37,9 @@ interface NoticiasViewProps {
   pastSeasons?: Season[];
   isReadOnly?: boolean;
   onGenerateBackground: (params: BgGenParams) => void;
+  userPlan?: "free" | "pro" | "ultra";
+  aiUsageToday?: number;
+  aiUsageLimit?: number;
 }
 
 const NEGATIVE_KEYWORDS = [
@@ -304,6 +307,8 @@ function AddPostModal({
   onClose,
   onSave,
   onGenerateBackground,
+  aiUsageToday,
+  aiUsageLimit,
 }: {
   career: Career;
   playerContextStr?: string;
@@ -320,6 +325,8 @@ function AddPostModal({
   onClose: () => void;
   onSave: (post: NewsPost) => void;
   onGenerateBackground: (params: BgGenParams) => void;
+  aiUsageToday?: number;
+  aiUsageLimit?: number;
 }) {
   const [mode, setMode] = useState<AddMode>("auto");
 
@@ -736,7 +743,38 @@ function AddPostModal({
                 )}
               </div>
 
+              {/* AI usage counter */}
+              {aiUsageLimit !== undefined && aiUsageLimit !== Infinity && (
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} style={{ color: "var(--club-primary)" }}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                    </svg>
+                    <span className="text-white/40 text-xs">IA hoje</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="h-1.5 w-24 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.08)" }}>
+                      <div
+                        className="h-full rounded-full transition-all duration-500"
+                        style={{
+                          width: `${Math.min(100, ((aiUsageToday ?? 0) / aiUsageLimit) * 100)}%`,
+                          background: (aiUsageToday ?? 0) >= aiUsageLimit ? "#f87171" : "var(--club-primary)",
+                        }}
+                      />
+                    </div>
+                    <span className="text-xs font-semibold" style={{ color: (aiUsageToday ?? 0) >= aiUsageLimit ? "#f87171" : "rgba(255,255,255,0.5)" }}>
+                      {aiUsageToday ?? 0}/{aiUsageLimit}
+                    </span>
+                  </div>
+                </div>
+              )}
+
               {/* Generate button */}
+              {aiUsageLimit !== undefined && (aiUsageToday ?? 0) >= aiUsageLimit ? (
+                <div className="w-full py-3 rounded-xl text-xs font-semibold text-center" style={{ background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.2)", color: "#f87171" }}>
+                  Limite diário atingido · Disponível amanhã
+                </div>
+              ) : (
               <button
                 onClick={handleBgGenerate}
                 disabled={!aiDesc.trim() || isUploadingImage}
@@ -748,6 +786,7 @@ function AddPostModal({
                 </svg>
                 {isUploadingImage ? "Aguardando foto..." : "Gerar com IA"}
               </button>
+              )}
             </div>
           ) : (
             <div className="p-5 flex flex-col gap-4">
@@ -915,7 +954,7 @@ const SOURCE_SIDEBAR_COLOR: Record<string, { color: string; bg: string }> = {
 const CUSTOM_SIDEBAR_COLOR = { color: "#a78bfa", bg: "rgba(167,139,250,0.15)" };
 
 
-export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matches = [], pastSeasons = [], isReadOnly, onGenerateBackground }: NoticiasViewProps) {
+export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matches = [], pastSeasons = [], isReadOnly, onGenerateBackground, aiUsageToday, aiUsageLimit }: NoticiasViewProps) {
   const [posts, setPosts] = useState<NewsPost[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [filterSource, setFilterSource] = useState<string>("all");
@@ -1809,6 +1848,8 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
         onClose={() => setShowAddModal(false)}
         onSave={handleSavePost}
         onGenerateBackground={onGenerateBackground}
+        aiUsageToday={aiUsageToday}
+        aiUsageLimit={aiUsageLimit}
       />,
       document.body
     )}

@@ -29,6 +29,7 @@ interface AuthUser {
   id: number;
   email: string;
   name: string;
+  plan?: "free" | "pro" | "ultra";
 }
 
 type AppView =
@@ -448,6 +449,7 @@ export default function App() {
           onCreateNew={handleCreateNew}
           onCareersChange={handleCareersChange}
           onLogout={handleLogout}
+          userPlan={authUser?.plan ?? "free"}
         />
       );
     }
@@ -484,6 +486,7 @@ export default function App() {
         onCreateNew={handleCreateNew}
         onCareersChange={handleCareersChange}
         onLogout={handleLogout}
+        userPlan={authUser?.plan ?? "free"}
       />
     );
   };

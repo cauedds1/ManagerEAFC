@@ -37,6 +37,8 @@ import type { SquadPlayer } from "@/lib/squadCache";
 import { buildPlayerPerformanceContext, buildSquadOvrContext, buildPlayerContextString, playerDisplayName } from "@/lib/playerContext";
 import { getAllPlayerOverrides } from "@/lib/playerStatsStorage";
 import { getFinanceiroSettings, computeFinancialSnapshot } from "@/lib/financeiroStorage";
+import { getUserPlan, getPlanLimits } from "@/lib/userPlan";
+import { UpgradePrompt } from "@/components/UpgradePrompt";
 
 interface DiretoriaViewProps {
   career: Career;
@@ -46,6 +48,7 @@ interface DiretoriaViewProps {
   allPlayers?: SquadPlayer[];
   effectiveLeague?: string;
   currentCompetitions?: string[];
+  userPlan?: "free" | "pro" | "ultra";
 }
 
 interface TransferSuggestion {
@@ -408,7 +411,10 @@ function CreateMemberModal({ career, membersCount, onClose, onCreated, effective
   );
 }
 
-export function DiretoriaView({ career, matches, transfers, squadSize, allPlayers = [], effectiveLeague, currentCompetitions = [] }: DiretoriaViewProps) {
+export function DiretoriaView({ career, matches, transfers, squadSize, allPlayers = [], effectiveLeague, currentCompetitions = [], userPlan }: DiretoriaViewProps) {
+  const resolvedPlan = userPlan ?? getUserPlan();
+  const planLimits = getPlanLimits(resolvedPlan);
+
   const [members, setMembers] = useState<BoardMember[]>([]);
   const [conversations, setConversations] = useState<Record<string, DiretoriaMessage[]>>({});
   const [notifications, setNotifications] = useState<PendingNotification[]>([]);
@@ -900,6 +906,17 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
           />
         )}
       </div>
+    );
+  }
+
+  if (!planLimits.diretoriaEnabled) {
+    return (
+      <UpgradePrompt
+        currentPlan={resolvedPlan}
+        requiredPlan="pro"
+        featureName="Diretoria"
+        description="Converse com os diretores do clube, receba alertas sobre desempenho da equipe e negocie reforços. Disponível a partir do plano Pro."
+      />
     );
   }
 

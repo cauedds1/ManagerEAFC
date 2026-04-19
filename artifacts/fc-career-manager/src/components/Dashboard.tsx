@@ -51,6 +51,7 @@ import { getFinanceiroSettings, computeFinancialSnapshot } from "@/lib/financeir
 import { getFormerPlayers, addFormerPlayer } from "@/lib/customPlayersStorage";
 import { buildPlayerPerformanceContext, buildSquadOvrContext } from "@/lib/playerContext";
 import { getAiHeaders } from "@/lib/apiStorage";
+import { getUserPlan } from "@/lib/userPlan";
 import {
   countUnreadDiretoria,
   countUnreadNoticias,
@@ -191,6 +192,7 @@ function CoachAvatar({ career }: { career: Career }) {
 }
 
 export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub, onReloadClubs, onDeleteCareer }: DashboardProps) {
+  const userPlan = getUserPlan();
   const teamId = career.clubId > 0 ? career.clubId : 0;
 
   const logoUrl = useClubLogo(career);
@@ -312,6 +314,8 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
   const [bgGenStatus, setBgGenStatus] = useState<BgGenStatus>("idle");
   const [bgGenLabel, setBgGenLabel] = useState("");
   const bgGenTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [aiUsageToday, setAiUsageToday] = useState<number | undefined>(undefined);
+  const [aiUsageLimit, setAiUsageLimit] = useState<number | undefined>(undefined);
 
   useEffect(() => {
     return () => { if (bgGenTimerRef.current) clearTimeout(bgGenTimerRef.current); };
@@ -377,7 +381,9 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
         return;
       }
 
-      const data = (await res.json()) as AiPreview;
+      const data = (await res.json()) as AiPreview & { aiUsageToday?: number; aiUsageLimit?: number };
+      if (typeof data.aiUsageToday === "number") setAiUsageToday(data.aiUsageToday);
+      if (typeof data.aiUsageLimit === "number") setAiUsageLimit(data.aiUsageLimit);
 
       const post: NewsPost = {
         id: generatePostId(),
@@ -1220,6 +1226,9 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
                 pastSeasons={seasons.filter((s) => !s.isActive)}
                 isReadOnly={isReadOnly}
                 onGenerateBackground={handleNoticiaGenerateBackground}
+                userPlan={userPlan}
+                aiUsageToday={aiUsageToday}
+                aiUsageLimit={aiUsageLimit}
               />
             )}
             {activeTab === "diretoria" && (
@@ -1231,6 +1240,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
                 allPlayers={allPlayersWithFormer}
                 effectiveLeague={effectiveLeague}
                 currentCompetitions={currentCompetitions}
+                userPlan={userPlan}
               />
             )}
             {activeTab === "momentos" && (
@@ -1246,6 +1256,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
                 careerId={career.id}
                 seasonId={activeSeasonId}
                 onDeleteCareer={onDeleteCareer ? () => { deleteCareer(career.id); onDeleteCareer(); } : undefined}
+                userPlan={userPlan}
               />
             )}
           </div>

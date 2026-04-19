@@ -672,6 +672,94 @@ export function LandingPage({ onStart, onLogin }: LandingPageProps) {
         </div>
       </section>
 
+      {/* ════════════════ PRICING ════════════════ */}
+      <section style={{ position: "relative", background: "#07070e", padding: "100px 40px" }}>
+        <div style={{ maxWidth: 1080, margin: "0 auto" }}>
+          <div style={{ textAlign: "center", marginBottom: 56 }}>
+            <p className="lp-reveal" style={{ color: "#7c5cfc", fontSize: 11, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", marginBottom: 14 }}>Planos</p>
+            <h2 className="font-bebas lp-reveal lp-delay-1" style={{ fontSize: "clamp(2.4rem,5vw,4rem)", color: "#f0f0ff", lineHeight: 1, marginBottom: 12 }}>
+              Grátis para começar.<br />Poderoso para crescer.
+            </h2>
+            <p className="lp-reveal lp-delay-2" style={{ color: "#8888aa", fontSize: 15, maxWidth: 480, margin: "0 auto" }}>
+              Sem cartão de crédito. Comece no Free e faça upgrade quando quiser.
+            </p>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 20 }} className="lp-reveal lp-delay-3">
+            {/* Free */}
+            <div style={{ borderRadius: 20, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", padding: "28px 24px", display: "flex", flexDirection: "column", gap: 20 }}>
+              <div>
+                <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 8 }}>Free</p>
+                <p style={{ color: "#f0f0ff", fontSize: 36, fontWeight: 900, lineHeight: 1 }}>R$0 <span style={{ fontSize: 14, color: "rgba(255,255,255,0.3)", fontWeight: 400 }}>/mês</span></p>
+                <p style={{ color: "rgba(255,255,255,0.3)", fontSize: 12, marginTop: 6 }}>Para sempre grátis</p>
+              </div>
+              <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 10 }}>
+                {[
+                  "1 carreira",
+                  "3 gerações de IA por dia",
+                  "Notícias manuais ilimitadas",
+                  "Partidas e transferências",
+                  "Estatísticas de jogadores",
+                ].map(f => (
+                  <li key={f} style={{ display: "flex", alignItems: "center", gap: 10, color: "rgba(255,255,255,0.55)", fontSize: 13 }}>
+                    <svg viewBox="0 0 20 20" fill="currentColor" style={{ width: 16, height: 16, flexShrink: 0, color: "#34d399" }}><path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" /></svg>
+                    {f}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Pro */}
+            <div style={{ borderRadius: 20, background: "linear-gradient(160deg,rgba(124,92,252,0.12) 0%,rgba(91,63,209,0.08) 100%)", border: "1px solid rgba(124,92,252,0.3)", padding: "28px 24px", display: "flex", flexDirection: "column", gap: 20, position: "relative", overflow: "hidden" }}>
+              <div style={{ position: "absolute", top: 16, right: 16, background: "rgba(124,92,252,0.2)", border: "1px solid rgba(124,92,252,0.4)", borderRadius: 8, padding: "3px 8px", fontSize: 10, fontWeight: 700, color: "#a78bfa", textTransform: "uppercase", letterSpacing: "0.08em" }}>Popular</div>
+              <div>
+                <p style={{ color: "#7c5cfc", fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 8 }}>Pro</p>
+                <p style={{ color: "#f0f0ff", fontSize: 36, fontWeight: 900, lineHeight: 1 }}>R$19 <span style={{ fontSize: 14, color: "rgba(255,255,255,0.3)", fontWeight: 400 }}>/mês</span></p>
+                <p style={{ color: "rgba(255,255,255,0.3)", fontSize: 12, marginTop: 6 }}>Para o técnico dedicado</p>
+              </div>
+              <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 10 }}>
+                {[
+                  "Até 5 carreiras simultâneas",
+                  "20 gerações de IA por dia",
+                  "Diretoria ativada",
+                  "Até 4 diretores personalizados",
+                  "Tudo do Free",
+                ].map(f => (
+                  <li key={f} style={{ display: "flex", alignItems: "center", gap: 10, color: "rgba(255,255,255,0.55)", fontSize: 13 }}>
+                    <svg viewBox="0 0 20 20" fill="currentColor" style={{ width: 16, height: 16, flexShrink: 0, color: "#7c5cfc" }}><path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" /></svg>
+                    {f}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Ultra */}
+            <div style={{ borderRadius: 20, background: "linear-gradient(160deg,rgba(245,158,11,0.1) 0%,rgba(220,130,0,0.06) 100%)", border: "1px solid rgba(245,158,11,0.3)", padding: "28px 24px", display: "flex", flexDirection: "column", gap: 20 }}>
+              <div>
+                <p style={{ color: "#f59e0b", fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 8 }}>Ultra</p>
+                <p style={{ color: "#f0f0ff", fontSize: 36, fontWeight: 900, lineHeight: 1 }}>R$49 <span style={{ fontSize: 14, color: "rgba(255,255,255,0.3)", fontWeight: 400 }}>/mês</span></p>
+                <p style={{ color: "rgba(255,255,255,0.3)", fontSize: 12, marginTop: 6 }}>Para o gerente perfeito</p>
+              </div>
+              <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 10 }}>
+                {[
+                  "Carreiras ilimitadas",
+                  "IA ilimitada · GPT-4o",
+                  "Portais de notícias personalizados",
+                  "Notícias automáticas pós-partida",
+                  "Rumores e vazamentos de mercado",
+                  "Tudo do Pro",
+                ].map(f => (
+                  <li key={f} style={{ display: "flex", alignItems: "center", gap: 10, color: "rgba(255,255,255,0.55)", fontSize: 13 }}>
+                    <svg viewBox="0 0 20 20" fill="currentColor" style={{ width: 16, height: 16, flexShrink: 0, color: "#f59e0b" }}><path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" /></svg>
+                    {f}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ════════════════ CTA FINAL ════════════════ */}
       <section style={{ position: "relative", overflow: "hidden", background: "linear-gradient(160deg,#09090f 0%,#0d0820 100%)", minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "80px 40px", textAlign: "center" }}>
         {/* Stadium SVG silhouette */}
