@@ -540,18 +540,15 @@ export function LandingPage({ onStart, onLogin }: LandingPageProps) {
       </section>
 
       {/* ════════════════ CLUB THEMES (STAR) ════════════════ */}
-      <section id="clube" style={{ background: club.bg, transition: "background-color 0.6s ease", padding: "100px 0 80px" }}>
+      <section id="clube" style={{ background: club.bg, transition: "background-color 0.6s ease", padding: "60px 0 48px" }}>
         <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 40px" }}>
-          <div className="text-center lp-reveal" style={{ marginBottom: 52 }}>
-            <p style={{ color: club.accent, fontSize: 11, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", marginBottom: 14, transition: "color 0.5s" }}>Personalização</p>
-            <h2 className="font-bebas" style={{ fontSize: "clamp(2.5rem,5vw,4rem)", color: "#f0f0ff" }}>O app se transforma com o seu clube</h2>
-            <p style={{ color: "#8888aa", fontSize: 15, maxWidth: 520, margin: "12px auto 0", lineHeight: 1.7 }}>
-              Cores, atmosfera e tema gerados automaticamente a partir do escudo. Funciona com 700+ clubes do banco de dados global.
-            </p>
+          <div className="text-center lp-reveal" style={{ marginBottom: 28 }}>
+            <p style={{ color: club.accent, fontSize: 11, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", marginBottom: 10, transition: "color 0.5s" }}>Personalização</p>
+            <h2 className="font-bebas" style={{ fontSize: "clamp(2rem,4vw,3.2rem)", color: "#f0f0ff", lineHeight: 1 }}>O app se transforma com o seu clube</h2>
           </div>
 
           {/* Club tabs */}
-          <div style={{ display: "flex", justifyContent: "center", gap: 12, marginBottom: 44, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", justifyContent: "center", gap: 10, marginBottom: 24, flexWrap: "wrap" }}>
             {CLUBS.map((c, i) => {
               const isActive = i === activeClub;
               return (
@@ -572,7 +569,7 @@ export function LandingPage({ onStart, onLogin }: LandingPageProps) {
           </div>
 
           {/* Screenshot with glow border */}
-          <div style={{ position: "relative", maxWidth: 1000, margin: "0 auto" }}>
+          <div style={{ position: "relative", maxWidth: 880, margin: "0 auto" }}>
             {/* Hover scale wrapper */}
             <div
               style={{ transition: "transform 0.4s cubic-bezier(0.34,1.56,0.64,1)" }}
@@ -593,12 +590,14 @@ export function LandingPage({ onStart, onLogin }: LandingPageProps) {
                   <span style={{ color: club.accent, fontSize: 11, fontWeight: 600, transition: "color 0.5s" }}>{club.league}</span>
                 </div>
               </div>
-              {/* Screenshot image */}
-              <div style={{ position: "relative", aspectRatio: "16/8.5", overflow: "hidden", background: club.bg }}>
-                {CLUBS.map((c, i) => (
-                  <img key={c.id} src={c.img} alt={`Tema ${c.name}`}
-                    style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", objectPosition: "top", transition: "opacity 0.3s ease, transform 0.3s ease", opacity: i === activeClub && imgVisible ? 1 : 0, transform: i === activeClub && imgVisible ? "scale(1)" : "scale(1.03)" }} />
-                ))}
+              {/* Screenshot image — natural proportions, no crop */}
+              <div style={{ position: "relative", lineHeight: 0, background: club.bg }}>
+                <img
+                  key={activeClub}
+                  src={club.img}
+                  alt={`Tema ${club.name}`}
+                  style={{ width: "100%", height: "auto", display: "block", opacity: imgVisible ? 1 : 0, transition: "opacity 0.3s ease" }}
+                />
                 {/* Hover overlay */}
                 <div style={{ position: "absolute", inset: 0, background: `linear-gradient(to top, rgba(${club.accentRgb},0.06) 0%, transparent 40%)`, transition: "all 0.5s", pointerEvents: "none" }} />
               </div>
@@ -614,7 +613,7 @@ export function LandingPage({ onStart, onLogin }: LandingPageProps) {
             </div> {/* end hover scale wrapper */}
 
             {/* Color swatches */}
-            <div style={{ display: "flex", justifyContent: "center", gap: 14, marginTop: 28 }}>
+            <div style={{ display: "flex", justifyContent: "center", gap: 14, marginTop: 20 }}>
               {CLUBS.map((c, i) => (
                 <button key={c.id} onClick={() => switchClub(i)}
                   style={{ width: 14, height: 14, borderRadius: "50%", background: c.accent, cursor: "none", border: i === activeClub ? `2px solid ${c.accent}` : "2px solid transparent", outline: i === activeClub ? `3px solid rgba(${c.accentRgb},0.35)` : "none", transform: i === activeClub ? "scale(1.4)" : "scale(1)", transition: "all 0.3s", boxShadow: i === activeClub ? `0 0 16px rgba(${c.accentRgb},0.7)` : "none" }}
