@@ -1022,7 +1022,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
                       title={`Humor da torcida: ${moodInfo.label} (${fanMoodScore}/100)`}
                     >
                       <span>{moodInfo.emoji}</span>
-                      <span className="hidden sm:inline">{moodInfo.label}</span>
+                      <span>{moodInfo.label}</span>
                     </div>
                   );
                 })()}

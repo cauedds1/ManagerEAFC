@@ -1642,7 +1642,7 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
 
         {/* Sidebar — only on lg+ when there are posts */}
         {posts.length > 0 && (
-          <div className="hidden lg:flex flex-col gap-4 w-64 flex-shrink-0">
+          <div className="flex flex-col gap-4 w-64 flex-shrink-0">
 
             {/* Por fonte */}
             <div
