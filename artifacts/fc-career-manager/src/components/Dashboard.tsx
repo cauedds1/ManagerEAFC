@@ -5,6 +5,7 @@ import {
   getSquad,
   clearSquadCache,
   ageSquadInCache,
+  getAllCachedPlayers,
   type SquadResult,
   type SquadPlayer,
   PT_BR_TO_POSITION,
@@ -440,6 +441,17 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     }
   }, [career.id, activeSeasonId]);
 
+  const cachedPhotoMap = useMemo(() => {
+    const map = new Map<number, string>();
+    for (const p of getAllCachedPlayers()) {
+      if (p.photo) map.set(p.id, p.photo);
+    }
+    for (const t of transfers) {
+      if (t.playerPhoto && t.playerId) map.set(t.playerId, t.playerPhoto);
+    }
+    return map;
+  }, [transfers]);
+
   const transferredPlayers: SquadPlayer[] = transfers.map((t) => {
     const pos = migratePositionOverride(t.playerPositionPtBr) ?? "MID";
     return {
@@ -448,7 +460,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
       age: t.playerAge,
       position: PT_BR_TO_POSITION[pos] ?? "Midfielder",
       positionPtBr: pos,
-      photo: t.playerPhoto ?? "",
+      photo: t.playerPhoto || cachedPhotoMap.get(t.playerId) || "",
       number: overrides[t.playerId]?.shirtNumber ?? t.shirtNumber,
     };
   });
@@ -460,6 +472,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
       : undefined;
     return {
       ...p,
+      photo: p.photo || cachedPhotoMap.get(p.id) || "",
       name: ovr?.nameOverride ?? p.name,
       number: ovr?.shirtNumber ?? p.number,
       ...(posOvr ? { positionPtBr: posOvr, position: PT_BR_TO_POSITION[posOvr] ?? p.position } : {}),
