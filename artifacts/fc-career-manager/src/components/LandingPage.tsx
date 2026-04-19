@@ -376,73 +376,63 @@ export function LandingPage({ onStart, onLogin }: LandingPageProps) {
       </nav>
 
       {/* ════════════════ HERO ════════════════ */}
-      <section style={{ position: "relative", minHeight: "100vh", display: "flex", alignItems: "center", overflow: "hidden", padding: "80px 40px" }}>
+      <section style={{ position: "relative", minHeight: "100vh", display: "flex", alignItems: "center", overflow: "hidden", padding: "0 40px" }}>
         {/* Animated field grid bg */}
         <div ref={heroGridRef} style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px)", backgroundSize: "60px 60px", animation: "heroGridMove 12s linear infinite", willChange: "transform" }} />
-        {/* Radial glow */}
-        <div style={{ position: "absolute", top: "30%", left: "30%", width: 500, height: 500, background: "radial-gradient(circle, rgba(124,92,252,0.12) 0%, transparent 70%)", transform: "translate(-50%,-50%)", pointerEvents: "none" }} />
-        <div style={{ position: "absolute", top: "60%", right: "10%", width: 400, height: 400, background: "radial-gradient(circle, rgba(61,156,245,0.08) 0%, transparent 70%)", pointerEvents: "none" }} />
+        {/* Radial glow — centrado */}
+        <div style={{ position: "absolute", top: "50%", left: "50%", width: 700, height: 700, background: "radial-gradient(circle, rgba(124,92,252,0.10) 0%, transparent 70%)", transform: "translate(-50%,-50%)", pointerEvents: "none" }} />
+        <div style={{ position: "absolute", top: "20%", right: "15%", width: 300, height: 300, background: "radial-gradient(circle, rgba(61,156,245,0.06) 0%, transparent 70%)", pointerEvents: "none" }} />
 
         {/* Particles */}
         {PARTICLES.map(p => (
           <div key={p.id} style={{ position: "absolute", left: p.left, top: p.top, width: p.size, height: p.size, borderRadius: "50%", background: "#fff", opacity: 0.3, animation: `particleFloat ${p.duration} ${p.delay} ease-in-out infinite`, pointerEvents: "none" }} />
         ))}
 
-        {/* Hero content */}
-        <div style={{ position: "relative", zIndex: 1, display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", maxWidth: 1200, margin: "0 auto", gap: 60 }}>
-          {/* Left */}
-          <div style={{ flex: 1 }}>
-            {/* Badge */}
-            <div style={{ display: "inline-flex", marginBottom: 36, position: "relative", padding: 1.5, borderRadius: 100, overflow: "hidden" }}>
-              <div style={{ position: "absolute", width: "300%", height: "300%", top: "-100%", left: "-100%", background: "conic-gradient(from 0deg, #7c5cfc, #3d9cf5, #00e5a0, #7c5cfc)", animation: "rotateBadge 3s linear infinite", transformOrigin: "center" }} />
-              <div style={{ position: "relative", background: "#0f0f1a", borderRadius: 100, padding: "7px 22px", display: "flex", alignItems: "center", gap: 8, zIndex: 1 }}>
-                <span style={{ width: 6, height: 6, borderRadius: 3, background: "#7c5cfc", display: "inline-block" }} />
-                <span style={{ color: "#a0a0cc", fontSize: 11, letterSpacing: "0.15em", fontWeight: 600 }}>CAREER MODE REIMAGINADO</span>
-              </div>
-            </div>
-
-            {/* Headline */}
-            <div className="font-bebas" style={{ lineHeight: 0.9, marginBottom: 28 }}>
-              <div style={{ fontSize: "clamp(3.5rem,7vw,6.5rem)", color: "#f0f0ff", animation: "landingSlideUp 0.9s ease 0.1s both" }}>Sua carreira.</div>
-              <div style={{ fontSize: "clamp(3.5rem,7vw,6.5rem)", color: "#f0f0ff", animation: "landingSlideUp 0.9s ease 0.25s both" }}>Sua história.</div>
-              <div style={{ fontSize: "clamp(3.5rem,7vw,6.5rem)", background: "linear-gradient(135deg,#7c5cfc,#3d9cf5)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", animation: "landingSlideUp 0.9s ease 0.4s both" }}>Seus dados.</div>
-            </div>
-
-            {/* Subtitle */}
-            <p style={{ color: "#8888aa", fontSize: 16, lineHeight: 1.7, maxWidth: 500, marginBottom: 40, animation: "landingFadeIn 1s ease 0.6s both" }}>
-              Registre partidas, acompanhe estatísticas, leia notícias geradas por IA e gerencie seu clube com a imersão que o modo carreira merece.
-            </p>
-
-            {/* CTAs */}
-            <div style={{ display: "flex", gap: 14, flexWrap: "wrap", animation: "landingFadeIn 1s ease 0.8s both" }}>
-              <button onClick={onStart} style={{ background: "linear-gradient(135deg,#7c5cfc,#5b3fd1)", color: "#fff", border: "none", borderRadius: 14, padding: "16px 36px", fontSize: 15, fontWeight: 700, cursor: "none", boxShadow: "0 8px 32px rgba(124,92,252,0.4)", transition: "all 0.25s" }}
-                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 40px rgba(124,92,252,0.7), 0 8px 32px rgba(124,92,252,0.5)"; (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-3px) scale(1.03)"; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 8px 32px rgba(124,92,252,0.4)"; (e.currentTarget as HTMLButtonElement).style.transform = "none"; }}>
-                Criar carreira grátis
-              </button>
-              <button onClick={onLogin} style={{ background: "rgba(255,255,255,0.05)", color: "#c0c0e0", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 14, padding: "16px 32px", fontSize: 15, fontWeight: 600, cursor: "none", display: "flex", alignItems: "center", gap: 10, transition: "all 0.25s" }}
-                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(124,92,252,0.4)"; (e.currentTarget as HTMLButtonElement).style.background = "rgba(124,92,252,0.08)"; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,255,255,0.12)"; (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.05)"; }}>
-                <span>▶</span> Ver demonstração
-              </button>
-            </div>
-
-            {/* Mini stat pills */}
-            <div style={{ display: "flex", gap: 16, marginTop: 36, animation: "landingFadeIn 1s ease 1s both" }}>
-              {[{ v: "12k+", l: "Técnicos" }, { v: "340k+", l: "Partidas" }, { v: "700+", l: "Clubes" }].map(s => (
-                <div key={s.l} style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: "8px 16px", textAlign: "center" }}>
-                  <div className="font-mono-j" style={{ color: "#7c5cfc", fontWeight: 700, fontSize: 15 }}>{s.v}</div>
-                  <div style={{ color: "#555577", fontSize: 10 }}>{s.l}</div>
-                </div>
-              ))}
+        {/* Hero content — centralizado */}
+        <div style={{ position: "relative", zIndex: 1, width: "100%", maxWidth: 780, margin: "0 auto", textAlign: "center" }}>
+          {/* Badge */}
+          <div style={{ display: "inline-flex", marginBottom: 28, position: "relative", padding: 1.5, borderRadius: 100, overflow: "hidden" }}>
+            <div style={{ position: "absolute", width: "300%", height: "300%", top: "-100%", left: "-100%", background: "conic-gradient(from 0deg, #7c5cfc, #3d9cf5, #00e5a0, #7c5cfc)", animation: "rotateBadge 3s linear infinite", transformOrigin: "center" }} />
+            <div style={{ position: "relative", background: "#0f0f1a", borderRadius: 100, padding: "7px 22px", display: "flex", alignItems: "center", gap: 8, zIndex: 1 }}>
+              <span style={{ width: 6, height: 6, borderRadius: 3, background: "#7c5cfc", display: "inline-block" }} />
+              <span style={{ color: "#a0a0cc", fontSize: 11, letterSpacing: "0.15em", fontWeight: 600 }}>CAREER MODE REIMAGINADO</span>
             </div>
           </div>
 
-          {/* Right: floating mockup */}
-          <div style={{ flex: "0 0 auto", display: "none" }} className="lg-mockup">
-            <div style={{ animation: "floatMockup 6s ease-in-out infinite", willChange: "transform", width: 380 }}>
-              <HeroMockup />
-            </div>
+          {/* Headline */}
+          <div className="font-bebas" style={{ lineHeight: 0.92, marginBottom: 20 }}>
+            <div style={{ fontSize: "clamp(2.8rem,5.5vw,4.8rem)", color: "#f0f0ff", animation: "landingSlideUp 0.9s ease 0.1s both" }}>Sua carreira.</div>
+            <div style={{ fontSize: "clamp(2.8rem,5.5vw,4.8rem)", color: "#f0f0ff", animation: "landingSlideUp 0.9s ease 0.25s both" }}>Sua história.</div>
+            <div style={{ fontSize: "clamp(2.8rem,5.5vw,4.8rem)", background: "linear-gradient(135deg,#7c5cfc,#3d9cf5)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", animation: "landingSlideUp 0.9s ease 0.4s both" }}>Seus dados.</div>
+          </div>
+
+          {/* Subtitle */}
+          <p style={{ color: "#8888aa", fontSize: 16, lineHeight: 1.7, maxWidth: 520, margin: "0 auto 32px", animation: "landingFadeIn 1s ease 0.6s both" }}>
+            Registre partidas, acompanhe estatísticas, leia notícias geradas por IA e gerencie seu clube com a imersão que o modo carreira merece.
+          </p>
+
+          {/* CTAs */}
+          <div style={{ display: "flex", gap: 14, flexWrap: "wrap", justifyContent: "center", marginBottom: 32, animation: "landingFadeIn 1s ease 0.8s both" }}>
+            <button onClick={onStart} style={{ background: "linear-gradient(135deg,#7c5cfc,#5b3fd1)", color: "#fff", border: "none", borderRadius: 14, padding: "15px 36px", fontSize: 15, fontWeight: 700, cursor: "none", boxShadow: "0 8px 32px rgba(124,92,252,0.4)", transition: "all 0.25s" }}
+              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 40px rgba(124,92,252,0.7), 0 8px 32px rgba(124,92,252,0.5)"; (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-3px) scale(1.03)"; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 8px 32px rgba(124,92,252,0.4)"; (e.currentTarget as HTMLButtonElement).style.transform = "none"; }}>
+              Criar carreira grátis
+            </button>
+            <button onClick={onLogin} style={{ background: "rgba(255,255,255,0.05)", color: "#c0c0e0", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 14, padding: "15px 32px", fontSize: 15, fontWeight: 600, cursor: "none", display: "flex", alignItems: "center", gap: 10, transition: "all 0.25s" }}
+              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(124,92,252,0.4)"; (e.currentTarget as HTMLButtonElement).style.background = "rgba(124,92,252,0.08)"; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,255,255,0.12)"; (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.05)"; }}>
+              <span>▶</span> Ver demonstração
+            </button>
+          </div>
+
+          {/* Mini stat pills */}
+          <div style={{ display: "flex", gap: 12, justifyContent: "center", animation: "landingFadeIn 1s ease 1s both" }}>
+            {[{ v: "12k+", l: "Técnicos" }, { v: "340k+", l: "Partidas" }, { v: "700+", l: "Clubes" }].map(s => (
+              <div key={s.l} style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: "8px 18px", textAlign: "center" }}>
+                <div className="font-mono-j" style={{ color: "#7c5cfc", fontWeight: 700, fontSize: 15 }}>{s.v}</div>
+                <div style={{ color: "#555577", fontSize: 10 }}>{s.l}</div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
