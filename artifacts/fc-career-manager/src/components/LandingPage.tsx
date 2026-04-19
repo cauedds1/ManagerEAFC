@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef } from "react";
 import barcelonaImg from "@assets/image_1776619244345.png";
 import cercleImg    from "@assets/image_1776619246601.png";
 import watfordImg   from "@assets/image_1776619248678.png";
@@ -347,7 +347,7 @@ export function LandingPage({ onStart, onLogin }: LandingPageProps) {
   const resultColor = (r: string) => r === "V" ? "#00e5a0" : r === "D" ? "#ef4444" : "#555577";
 
   return (
-    <div ref={containerRef} className="font-dm" style={{ background: "#09090f", minHeight: "100%", overflowY: "auto", overflowX: "hidden", scrollBehavior: "smooth", cursor: "none" }}>
+    <div ref={containerRef} className="font-dm" style={{ background: "#09090f", height: "100%", overflowY: "auto", overflowX: "hidden", scrollBehavior: "smooth", cursor: "none" }}>
 
       {/* ── Custom cursors ─── */}
       <div ref={cursor1Ref} className="lp-cursor-dot" />
@@ -362,8 +362,13 @@ export function LandingPage({ onStart, onLogin }: LandingPageProps) {
           <span style={{ color: "#f0f0ff", fontWeight: 700, fontSize: 15, letterSpacing: "-0.01em" }}>FC Career Manager</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 32 }}>
-          {["Funcionalidades", "IA", "Clube", "Como funciona"].map(l => (
-            <a key={l} href="#" onClick={e => e.preventDefault()} style={{ color: "#8888aa", fontSize: 13, textDecoration: "none", transition: "color 0.2s" }} onMouseEnter={e => (e.currentTarget.style.color = "#f0f0ff")} onMouseLeave={e => (e.currentTarget.style.color = "#8888aa")} className="hidden md:block">{l}</a>
+          {[
+            { label: "Funcionalidades", href: "#features" },
+            { label: "IA", href: "#ia" },
+            { label: "Clube", href: "#clube" },
+            { label: "Como funciona", href: "#como-funciona" },
+          ].map(({ label, href }) => (
+            <a key={label} href={href} onClick={e => { e.preventDefault(); const id = href.slice(1); const el = containerRef.current?.querySelector(`#${id}`); el?.scrollIntoView({ behavior: "smooth" }); }} style={{ color: "#8888aa", fontSize: 13, textDecoration: "none", transition: "color 0.2s" }} onMouseEnter={e => (e.currentTarget.style.color = "#f0f0ff")} onMouseLeave={e => (e.currentTarget.style.color = "#8888aa")} className="hidden md:block">{label}</a>
           ))}
           <button onClick={onLogin} style={{ background: "linear-gradient(135deg,#7c5cfc,#5b3fd1)", color: "#fff", border: "none", borderRadius: 10, padding: "9px 20px", fontSize: 13, fontWeight: 600, cursor: "none", transition: "all 0.25s", boxShadow: "0 4px 20px rgba(124,92,252,0.3)" }} onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 30px rgba(124,92,252,0.6), 0 4px 20px rgba(124,92,252,0.4)"; (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-1px) scale(1.03)"; }} onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 4px 20px rgba(124,92,252,0.3)"; (e.currentTarget as HTMLButtonElement).style.transform = "none"; }}>
             Entrar no jogo
@@ -445,7 +450,7 @@ export function LandingPage({ onStart, onLogin }: LandingPageProps) {
 
       {/* ════════════════ STATS BAR ════════════════ */}
       <section style={{ background: "#0f0f1a", borderTop: "1px solid rgba(124,92,252,0.15)", borderBottom: "1px solid rgba(124,92,252,0.15)", padding: "52px 40px" }}>
-        <div style={{ maxWidth: 1000, margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 40 }}>
+        <div className="lp-stats-grid" style={{ maxWidth: 1000, margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 40 }}>
           <StatCounter target={12000} suffix="+" label="Técnicos ativos" />
           <StatCounter target={340000} suffix="+" label="Partidas registradas" />
           <StatCounter target={89} label="Países" />
@@ -459,7 +464,7 @@ export function LandingPage({ onStart, onLogin }: LandingPageProps) {
       </section>
 
       {/* ════════════════ FEATURES ════════════════ */}
-      <section style={{ padding: "100px 40px", maxWidth: 1200, margin: "0 auto" }}>
+      <section id="features" style={{ padding: "100px 40px", maxWidth: 1200, margin: "0 auto" }}>
         <div className="text-center lp-reveal" style={{ marginBottom: 64 }}>
           <p style={{ color: "#7c5cfc", fontSize: 11, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", marginBottom: 14 }}>Funcionalidades</p>
           <h2 className="font-bebas" style={{ fontSize: "clamp(2.5rem,5vw,4rem)", color: "#f0f0ff" }}>Tudo que um técnico de verdade precisa</h2>
@@ -479,12 +484,12 @@ export function LandingPage({ onStart, onLogin }: LandingPageProps) {
       </section>
 
       {/* ════════════════ AI SECTION ════════════════ */}
-      <section style={{ background: "#06060e", position: "relative", overflow: "hidden", padding: "100px 40px" }}>
+      <section id="ia" style={{ background: "#06060e", position: "relative", overflow: "hidden", padding: "100px 40px" }}>
         {/* Scan lines */}
         {[0, 1, 2].map(i => (
           <div key={i} style={{ position: "absolute", left: 0, right: 0, height: 1, background: "linear-gradient(90deg,transparent,rgba(61,156,245,0.15),transparent)", animation: `scanLine ${8 + i * 3}s ${i * 3}s linear infinite`, pointerEvents: "none" }} />
         ))}
-        <div style={{ maxWidth: 1200, margin: "0 auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 80, alignItems: "center" }}>
+        <div className="lp-ai-grid" style={{ maxWidth: 1200, margin: "0 auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 80, alignItems: "center" }}>
           {/* Left text */}
           <div className="lp-reveal-left">
             <p style={{ color: "#3d9cf5", fontSize: 11, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", marginBottom: 14 }}>Inteligência Artificial</p>
@@ -539,7 +544,7 @@ export function LandingPage({ onStart, onLogin }: LandingPageProps) {
       </section>
 
       {/* ════════════════ CLUB THEMES (STAR) ════════════════ */}
-      <section style={{ background: club.bg, transition: "background-color 0.6s ease", padding: "100px 0 80px" }}>
+      <section id="clube" style={{ background: club.bg, transition: "background-color 0.6s ease", padding: "100px 0 80px" }}>
         <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 40px" }}>
           <div className="text-center lp-reveal" style={{ marginBottom: 52 }}>
             <p style={{ color: club.accent, fontSize: 11, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", marginBottom: 14, transition: "color 0.5s" }}>Personalização</p>
@@ -572,8 +577,13 @@ export function LandingPage({ onStart, onLogin }: LandingPageProps) {
 
           {/* Screenshot with glow border */}
           <div style={{ position: "relative", maxWidth: 1000, margin: "0 auto" }}>
+            {/* Hover scale wrapper */}
+            <div
+              style={{ transition: "transform 0.4s cubic-bezier(0.34,1.56,0.64,1)" }}
+              onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.transform = "scale(1.02)"; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.transform = "scale(1)"; }}>
             {/* Outer glow wrapper */}
-            <div style={{ borderRadius: 20, overflow: "hidden", animation: club.glowAnim, transition: "animation 0.5s" }}>
+            <div style={{ borderRadius: 20, overflow: "hidden", animation: club.glowAnim, transition: "box-shadow 0.5s" }}>
               {/* Browser chrome */}
               <div style={{ background: "#0a0a0a", padding: "10px 16px", display: "flex", alignItems: "center", gap: 8, borderBottom: `1px solid rgba(${club.accentRgb},0.15)` }}>
                 <span style={{ width: 12, height: 12, borderRadius: "50%", background: "#2a2a2a" }} />
@@ -605,6 +615,7 @@ export function LandingPage({ onStart, onLogin }: LandingPageProps) {
                 </div>
               </div>
             </div>
+            </div> {/* end hover scale wrapper */}
 
             {/* Color swatches */}
             <div style={{ display: "flex", justifyContent: "center", gap: 14, marginTop: 28 }}>
@@ -619,7 +630,7 @@ export function LandingPage({ onStart, onLogin }: LandingPageProps) {
       </section>
 
       {/* ════════════════ HOW IT WORKS ════════════════ */}
-      <section style={{ padding: "100px 40px", background: "#09090f" }}>
+      <section id="como-funciona" style={{ padding: "100px 40px", background: "#09090f" }}>
         <div style={{ maxWidth: 1000, margin: "0 auto" }}>
           <div className="text-center lp-reveal" style={{ marginBottom: 64 }}>
             <p style={{ color: "#7c5cfc", fontSize: 11, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", marginBottom: 14 }}>Como funciona</p>
@@ -631,7 +642,7 @@ export function LandingPage({ onStart, onLogin }: LandingPageProps) {
             <div style={{ position: "absolute", top: 32, left: "12.5%", right: "12.5%", height: 1, background: "rgba(255,255,255,0.06)", overflow: "hidden", display: "flex" }}>
               <div ref={stepLineRef} style={{ height: "100%", background: "linear-gradient(90deg,#7c5cfc,#3d9cf5)", width: "0%", transition: "width 0s" }} />
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 20, position: "relative" }}>
+            <div className="lp-steps-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 20, position: "relative" }}>
               {STEPS.map((step, i) => (
                 <div key={step.n} className={`lp-reveal lp-delay-${i + 1}`} style={{ textAlign: "center", padding: "0 16px" }}>
                   <div style={{ width: 64, height: 64, borderRadius: "50%", background: "#0f0f1a", border: "1px solid rgba(124,92,252,0.25)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 24px", position: "relative", boxShadow: "0 0 24px rgba(124,92,252,0.1)" }}>
@@ -653,7 +664,7 @@ export function LandingPage({ onStart, onLogin }: LandingPageProps) {
           <div className="text-center lp-reveal" style={{ marginBottom: 56 }}>
             <h2 className="font-bebas" style={{ fontSize: "clamp(2rem,4vw,3.2rem)", color: "#f0f0ff" }}>O que a comunidade diz</h2>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 20 }}>
+          <div className="lp-testimonials-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 20 }}>
             {TESTIMONIALS.map((t, i) => (
               <div key={t.handle} className={`lp-reveal lp-delay-${i + 1}`}
                 style={{ background: "#14141f", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, padding: "28px 28px", transition: "all 0.3s" }}
@@ -677,7 +688,7 @@ export function LandingPage({ onStart, onLogin }: LandingPageProps) {
       </section>
 
       {/* ════════════════ CTA FINAL ════════════════ */}
-      <section style={{ position: "relative", overflow: "hidden", background: "linear-gradient(160deg,#09090f 0%,#0d0820 100%)", padding: "120px 40px", textAlign: "center" }}>
+      <section style={{ position: "relative", overflow: "hidden", background: "linear-gradient(160deg,#09090f 0%,#0d0820 100%)", minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "80px 40px", textAlign: "center" }}>
         {/* Stadium SVG silhouette */}
         <svg viewBox="0 0 1200 400" style={{ position: "absolute", bottom: 0, left: 0, right: 0, width: "100%", opacity: 0.06, pointerEvents: "none" }} fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M0 400 L0 280 Q100 220 200 240 Q300 260 400 200 Q500 140 600 130 Q700 140 800 200 Q900 260 1000 240 Q1100 220 1200 280 L1200 400 Z" fill="white"/>
