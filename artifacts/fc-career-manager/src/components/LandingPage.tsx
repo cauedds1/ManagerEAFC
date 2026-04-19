@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from "react";
-import barcelonaImg from "@assets/image_1776619244345.png";
-import cercleImg    from "@assets/image_1776619246601.png";
-import watfordImg   from "@assets/image_1776619248678.png";
-import mancityImg   from "@assets/image_1776619250259.png";
+import barcelonaImg from "../assets/image_1776619244345.png";
+import cercleImg    from "../assets/image_1776619246601.png";
+import watfordImg   from "../assets/image_1776619248678.png";
+import mancityImg   from "../assets/image_1776619250259.png";
 
 /* ─── Types ─────────────────────────────────────────────── */
 interface LandingPageProps { onStart: () => void; onLogin: () => void; }

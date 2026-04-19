@@ -1,0 +1,31 @@
+builder
+RUN BASE_PATH=/ pnpm --filter @workspace/fc-career-manager run build
+2s
+> @workspace/fc-career-manager@0.0.0 build /app/artifacts/fc-career-manager
+> vite build --config vite.config.ts
+vite v7.3.1 building client environment for production...
+transforming...
+✓ 52 modules transformed.
+✗ Build failed in 964ms
+error during build:
+[vite:asset] Could not load /app/attached_assets/image_1776619244345.png (imported by src/components/LandingPage.tsx): ENOENT: no such file or directory, open '/app/attached_assets/image_1776619244345.png'
+
+    at async open (node:internal/fs/promises:639:25)
+    at async Object.readFile (node:internal/fs/promises:1249:14)
+    at async fileToBuiltUrl (file:///app/node_modules/.pnpm/vite@7.3.1_@types+node@25.3.5_jiti@2.6.1_lightningcss@1.31.1_tsx@4.21.0_yaml@2.8.2/node_modules/vite/dist/node/chunks/config.js:8777:18)
+    at async Object.handler (file:///app/node_modules/.pnpm/vite@7.3.1_@types+node@25.3.5_jiti@2.6.1_lightningcss@1.31.1_tsx@4.21.0_yaml@2.8.2/node_modules/vite/dist/node/chunks/config.js:8671:17)
+    at async PluginDriver.hookFirstAndGetPlugin (file:///app/node_modules/.pnpm/rollup@4.59.0/node_modules/rollup/dist/es/shared/node-entry.js:22453:28)
+    at async file:///app/node_modules/.pnpm/rollup@4.59.0/node_modules/rollup/dist/es/shared/node-entry.js:21445:33
+    at async Queue.work (file:///app/node_modules/.pnpm/rollup@4.59.0/node_modules/rollup/dist/es/shared/node-entry.js:22681:32)
+/app/artifacts/fc-career-manager:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @workspace/fc-career-manager@0.0.0 build: `vite build --config vite.config.ts`
+Exit status 1
+Dockerfile:14
+-------------------
+12 |     RUN pnpm install --frozen-lockfile
+13 |
+14 | >>> RUN BASE_PATH=/ pnpm --filter @workspace/fc-career-manager run build
+15 |
+16 |     RUN mkdir -p artifacts/api-server/public && \
+-------------------
+ERROR: failed to build: failed to solve: process "/bin/sh -c BASE_PATH=/ pnpm --filter @workspace/fc-career-manager run build" did not complete successfully: exit code: 1
