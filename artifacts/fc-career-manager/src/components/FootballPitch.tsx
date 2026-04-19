@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { SquadPlayer, PositionPtBr, FormationGroup, FORMATION_GROUP } from "@/lib/squadCache";
 import { FormationKey, getFormationPositions, DEFAULT_FORMATION } from "@/lib/formations";
 
@@ -104,6 +104,15 @@ function PlayerCircle({
   const label = player.number != null ? String(player.number) : getInitials(player.name);
   const showPhoto = Boolean(player.photo) && photoLoaded;
 
+  useEffect(() => {
+    if (!player.photo) return;
+    setPhotoLoaded(false);
+    const img = new window.Image();
+    img.onload = () => setPhotoLoaded(true);
+    img.onerror = () => setPhotoLoaded(false);
+    img.src = player.photo;
+  }, [player.photo]);
+
   const displayName = (() => {
     const parts = player.name.trim().split(" ");
     return parts.length > 1 ? parts[parts.length - 1] : player.name;
@@ -114,19 +123,6 @@ function PlayerCircle({
       onClick={onClick ? () => onClick(player) : undefined}
       style={{ cursor: onClick ? "pointer" : "default" }}
     >
-      {/* Hidden HTML img to pre-load and detect photo availability */}
-      {player.photo && (
-        <foreignObject x={-9999} y={-9999} width={1} height={1}>
-          <img
-            src={player.photo}
-            alt=""
-            onLoad={() => setPhotoLoaded(true)}
-            onError={() => setPhotoLoaded(false)}
-            style={{ width: 1, height: 1 }}
-          />
-        </foreignObject>
-      )}
-
       <defs>
         <clipPath id={clipId}>
           <circle cx={x} cy={y} r={radius - 1} />

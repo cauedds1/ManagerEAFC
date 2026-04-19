@@ -465,7 +465,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
       age: t.playerAge,
       position: PT_BR_TO_POSITION[pos] ?? "Midfielder",
       positionPtBr: pos,
-      photo: t.playerPhoto || cachedPhotoMap.get(t.playerId) || "",
+      photo: overrides[t.playerId]?.photoOverride || t.playerPhoto || cachedPhotoMap.get(t.playerId) || "",
       number: overrides[t.playerId]?.shirtNumber ?? t.shirtNumber,
     };
   });
@@ -477,7 +477,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
       : undefined;
     return {
       ...p,
-      photo: p.photo || cachedPhotoMap.get(p.id) || "",
+      photo: ovr?.photoOverride || p.photo || cachedPhotoMap.get(p.id) || "",
       name: ovr?.nameOverride ?? p.name,
       number: ovr?.shirtNumber ?? p.number,
       ...(posOvr ? { positionPtBr: posOvr, position: PT_BR_TO_POSITION[posOvr] ?? p.position } : {}),
