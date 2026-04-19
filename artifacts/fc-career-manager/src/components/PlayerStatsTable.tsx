@@ -26,6 +26,7 @@ interface DerivedStats {
   totalSaves: number;
   totalPenaltiesSaved: number;
   totalGoalsAgainst: number;
+  totalMotm: number;
 }
 
 interface Row {
@@ -40,7 +41,7 @@ interface Row {
 type FilterTab = "ataque" | "intermediario" | "defesa" | "goleiro";
 
 type SortCol =
-  | "name" | "number" | "pos" | "total" | "starter" | "rating"
+  | "name" | "number" | "pos" | "total" | "starter" | "rating" | "motm"
   | "goals" | "assists" | "ga" | "hat" | "penScored" | "penMissed"
   | "shots" | "shotAcc"
   | "passes" | "passAcc" | "keyPasses" | "dribbles"
@@ -61,6 +62,7 @@ const LEGEND_COMMON: { sigla: string; desc: string }[] = [
   { sigla: "J",    desc: "Jogos totais" },
   { sigla: "S11",  desc: "Jogos como titular (Started 11)" },
   { sigla: "Nota", desc: "Nota média por jogo" },
+  { sigla: "MOTM", desc: "Man of the Match — vezes eleito melhor em campo" },
 ];
 
 const LEGEND_BY_TAB: Record<FilterTab, { sigla: string; desc: string }[]> = {
@@ -211,6 +213,7 @@ export function PlayerStatsTable({ careerId, seasonId, allPlayers, statsOverride
       let ratingSum = 0; let ratingCount = 0;
       let hatTricks = 0;
       let totalPenScored = 0;
+      let totalMotm = 0;
       let totalShots = 0;
       let shotAccSum = 0; let shotAccCount = 0;
       let totalPasses = 0;
@@ -227,6 +230,8 @@ export function PlayerStatsTable({ careerId, seasonId, allPlayers, statsOverride
         const ps = m.playerStats[p.id];
         const isInMatch = m.starterIds.includes(p.id) || m.subIds.includes(p.id);
         if (!isInMatch) continue;
+
+        if (m.motmPlayerId === p.id) totalMotm++;
 
         if (ps) {
           if (ps.rating > 0) { ratingSum += ps.rating; ratingCount++; }
@@ -257,6 +262,7 @@ export function PlayerStatsTable({ careerId, seasonId, allPlayers, statsOverride
         avgRating: ratingCount > 0 ? ratingSum / ratingCount : null,
         hatTricks,
         totalPenScored,
+        totalMotm,
         totalShots,
         shotAccuracy: shotAccCount > 0 ? shotAccSum / shotAccCount : null,
         totalPasses,
@@ -287,7 +293,7 @@ export function PlayerStatsTable({ careerId, seasonId, allPlayers, statsOverride
           player: p,
           stats: rawStats[p.id],
           derived: derivedMap[p.id] ?? {
-            avgRating: null, hatTricks: 0, totalPenScored: 0,
+            avgRating: null, hatTricks: 0, totalPenScored: 0, totalMotm: 0,
             totalShots: 0, shotAccuracy: null,
             totalPasses: 0, passAccuracy: null,
             totalKeyPasses: 0, totalDribblesCompleted: 0, totalBallRecoveries: 0,
@@ -331,6 +337,7 @@ export function PlayerStatsTable({ careerId, seasonId, allPlayers, statsOverride
         case "total":       diff = tA - tB; break;
         case "starter":     diff = a.stats.matchesAsStarter - b.stats.matchesAsStarter; break;
         case "rating":      diff = (a.derived.avgRating ?? 0) - (b.derived.avgRating ?? 0); break;
+        case "motm":        diff = a.derived.totalMotm - b.derived.totalMotm; break;
         case "goals":       diff = a.stats.goals - b.stats.goals; break;
         case "assists":     diff = a.stats.assists - b.stats.assists; break;
         case "ga":          diff = (a.stats.goals + a.stats.assists) - (b.stats.goals + b.stats.assists); break;
@@ -383,6 +390,7 @@ export function PlayerStatsTable({ careerId, seasonId, allPlayers, statsOverride
       <Th label="J"      col="total"   {...th} title="Jogos totais" />
       <Th label="S11"    col="starter" {...th} title="Jogos como titular (Started 11)" />
       <Th label="Nota"   col="rating"  {...th} title="Nota média" />
+      <Th label="MOTM"   col="motm"    {...th} title="Man of the Match — vezes eleito melhor em campo" accent="#fbbf24" />
     </>
   );
 
@@ -558,6 +566,11 @@ export function PlayerStatsTable({ careerId, seasonId, allPlayers, statsOverride
                   <td className="px-2 py-2.5 text-center text-white/70 text-xs tabular-nums">{totalGames}</td>
                   <td className="px-2 py-2.5 text-center text-white/50 text-xs tabular-nums">{stats.matchesAsStarter}</td>
                   <td className="px-2 py-2.5 text-center"><RatingCell value={derived.avgRating} /></td>
+                  <td className="px-2 py-2.5 text-center">
+                    {derived.totalMotm > 0
+                      ? <span className="font-bold tabular-nums text-xs" style={{ color: "#fbbf24" }}>⭐ {derived.totalMotm}</span>
+                      : <span className="text-white/20">—</span>}
+                  </td>
                 </>
               );
 
