@@ -519,7 +519,7 @@ REGRAS DE REPLIES — OBRIGATÓRIO:
       await db.update(usersTable).set({ aiUsageCount: usageCount + 1 }).where(eq(usersTable.id, userId));
     }
 
-    res.json({ ...post, aiUsageCount: usageCount + 1, aiUsageLimit: limits.aiGenerationsPerDay });
+    res.json({ ...post, aiUsageToday: usageCount + 1, aiUsageLimit: limits.aiGenerationsPerDay });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     res.status(500).json({ error: "Erro ao gerar notícia com IA", details: msg });
