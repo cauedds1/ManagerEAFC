@@ -210,15 +210,18 @@ export function SeasonSelectModal({
                               color: "var(--club-primary)",
                             }}
                           >
-                            Atual
+                            {isFinalized ? "🏁 Finalizada" : "Atual"}
                           </span>
                         ) : (
                           <button
                             onClick={() => onSelect(season)}
-                            className="text-xs text-white/25 px-2 py-0.5 rounded-full hover:text-white/60 transition-colors"
-                            style={{ background: "rgba(255,255,255,0.04)" }}
+                            className="text-xs font-semibold px-2 py-0.5 rounded-full hover:opacity-80 transition-opacity"
+                            style={isFinalized
+                              ? { background: "rgba(var(--club-primary-rgb),0.15)", color: "var(--club-primary)" }
+                              : { background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.25)" }
+                            }
                           >
-                            Ver
+                            {isFinalized ? "Ver Resumo" : "Ver"}
                           </button>
                         )}
                       </div>

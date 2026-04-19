@@ -21,26 +21,27 @@ export function FinalizeSeasonModal({ seasonId, seasonLabel, onFinalize, onCance
   const [losses, setLosses] = useState(existing?.losses ?? 0);
   const [goalsFor, setGoalsFor] = useState<string>("");
   const [goalsAgainst, setGoalsAgainst] = useState<string>("");
-  const [includeLeague, setIncludeLeague] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
 
   const points = wins * 3 + draws;
 
   const handleFinalize = async () => {
+    setApiError(null);
     setSaving(true);
     try {
-      const league: SeasonSummaryLeague | undefined = includeLeague
-        ? {
-            position,
-            totalTeams,
-            wins,
-            draws,
-            losses,
-            points,
-            goalsFor: goalsFor.trim() !== "" ? Number(goalsFor) : undefined,
-            goalsAgainst: goalsAgainst.trim() !== "" ? Number(goalsAgainst) : undefined,
-          }
-        : undefined;
+      const league: SeasonSummaryLeague = {
+        position,
+        totalTeams,
+        wins,
+        draws,
+        losses,
+        points,
+        goalsFor: goalsFor.trim() !== "" ? Number(goalsFor) : undefined,
+        goalsAgainst: goalsAgainst.trim() !== "" ? Number(goalsAgainst) : undefined,
+      };
+
+      await finalizeSeasonApi(seasonId);
 
       setSeasonSummary(seasonId, {
         seasonId,
@@ -49,8 +50,9 @@ export function FinalizeSeasonModal({ seasonId, seasonLabel, onFinalize, onCance
         finalizedAt: Date.now(),
       });
 
-      await finalizeSeasonApi(seasonId);
       onFinalize();
+    } catch {
+      setApiError("Não foi possível finalizar a temporada. Tente novamente.");
     } finally {
       setSaving(false);
     }
@@ -148,52 +150,44 @@ export function FinalizeSeasonModal({ seasonId, seasonLabel, onFinalize, onCance
             </span>
           </div>
 
-          <div className="flex items-center justify-between">
+          <div>
             <span className="text-white/70 text-sm font-semibold">Desempenho na liga</span>
-            <button
-              onClick={() => setIncludeLeague((v) => !v)}
-              className="flex items-center gap-1.5 text-xs font-semibold transition-colors"
-              style={{ color: includeLeague ? "var(--club-primary)" : "rgba(255,255,255,0.25)" }}
-            >
-              <div
-                className="w-8 h-4 rounded-full transition-all relative"
-                style={{ background: includeLeague ? "var(--club-primary)" : "rgba(255,255,255,0.1)" }}
-              >
-                <div
-                  className="absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all"
-                  style={{ left: includeLeague ? "calc(100% - 14px)" : "2px" }}
-                />
-              </div>
-              {includeLeague ? "Incluir" : "Pular"}
-            </button>
+            <p className="text-white/30 text-xs mt-0.5">Posição obrigatória — W/E/D e gols são opcionais</p>
           </div>
 
-          {includeLeague && (
-            <div className="flex flex-col gap-4">
-              <div className="grid grid-cols-2 gap-3">
-                {numInput("Posição final", position, setPosition, 1, 40)}
-                {numInput("Nº de times", totalTeams, setTotalTeams, 2, 40)}
-              </div>
-              <div className="grid grid-cols-3 gap-3">
-                {numInput("Vitórias", wins, setWins, 0, 99)}
-                {numInput("Empates", draws, setDraws, 0, 99)}
-                {numInput("Derrotas", losses, setLosses, 0, 99)}
-              </div>
-              <div
-                className="flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs"
-                style={{ background: "rgba(var(--club-primary-rgb),0.08)", border: "1px solid rgba(var(--club-primary-rgb),0.15)" }}
-              >
-                <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} style={{ color: "var(--club-primary)" }}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01" />
-                </svg>
-                <span style={{ color: "var(--club-primary)" }}>
-                  Pontos calculados automaticamente: <strong>{points} pts</strong>
-                </span>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                {optNumInput("Gols feitos", goalsFor, setGoalsFor, "ex: 68")}
-                {optNumInput("Gols sofridos", goalsAgainst, setGoalsAgainst, "ex: 32")}
-              </div>
+          <div className="flex flex-col gap-4">
+            <div className="grid grid-cols-2 gap-3">
+              {numInput("Posição final", position, setPosition, 1, 40)}
+              {numInput("Nº de times", totalTeams, setTotalTeams, 2, 40)}
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              {numInput("Vitórias", wins, setWins, 0, 99)}
+              {numInput("Empates", draws, setDraws, 0, 99)}
+              {numInput("Derrotas", losses, setLosses, 0, 99)}
+            </div>
+            <div
+              className="flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs"
+              style={{ background: "rgba(var(--club-primary-rgb),0.08)", border: "1px solid rgba(var(--club-primary-rgb),0.15)" }}
+            >
+              <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} style={{ color: "var(--club-primary)" }}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01" />
+              </svg>
+              <span style={{ color: "var(--club-primary)" }}>
+                Pontos calculados automaticamente: <strong>{points} pts</strong>
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {optNumInput("Gols feitos", goalsFor, setGoalsFor, "ex: 68")}
+              {optNumInput("Gols sofridos", goalsAgainst, setGoalsAgainst, "ex: 32")}
+            </div>
+          </div>
+
+          {apiError && (
+            <div
+              className="px-4 py-3 rounded-xl text-xs text-red-300"
+              style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)" }}
+            >
+              {apiError}
             </div>
           )}
         </div>

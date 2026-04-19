@@ -275,6 +275,13 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
       setTransfers(getTransfers(effectiveSeasonId));
       setMatches(getMatches(effectiveSeasonId));
       setOverrides(getAllPlayerOverrides(career.id));
+
+      // Default to "resumo" tab if the active season is already finalized
+      const activeSeason = loaded.find((s) => s.id === effectiveSeasonId);
+      if (activeSeason?.finalized) {
+        setActiveTab("resumo");
+      }
+
       setDbSynced(true);
     })();
   }, [career.id]);
