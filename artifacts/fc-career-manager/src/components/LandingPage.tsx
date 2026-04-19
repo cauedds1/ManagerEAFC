@@ -693,7 +693,7 @@ export function LandingPage({ onStart, onLogin }: LandingPageProps) {
                 <p style={{ color: "#f0f0ff", fontSize: 36, fontWeight: 900, lineHeight: 1 }}>R$0 <span style={{ fontSize: 14, color: "rgba(255,255,255,0.3)", fontWeight: 400 }}>/mês</span></p>
                 <p style={{ color: "rgba(255,255,255,0.3)", fontSize: 12, marginTop: 6 }}>Para sempre grátis</p>
               </div>
-              <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 10 }}>
+              <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 10, flex: 1 }}>
                 {[
                   "1 carreira",
                   "3 gerações de IA por dia",
@@ -707,6 +707,14 @@ export function LandingPage({ onStart, onLogin }: LandingPageProps) {
                   </li>
                 ))}
               </ul>
+              <button
+                onClick={onStart}
+                style={{ width: "100%", padding: "12px 0", borderRadius: 12, fontWeight: 700, fontSize: 14, color: "rgba(255,255,255,0.8)", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", cursor: "pointer", transition: "all 0.2s" }}
+                onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.11)"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.07)"; }}
+              >
+                Começar grátis
+              </button>
             </div>
 
             {/* Pro */}
@@ -717,7 +725,7 @@ export function LandingPage({ onStart, onLogin }: LandingPageProps) {
                 <p style={{ color: "#f0f0ff", fontSize: 36, fontWeight: 900, lineHeight: 1 }}>R$19 <span style={{ fontSize: 14, color: "rgba(255,255,255,0.3)", fontWeight: 400 }}>/mês</span></p>
                 <p style={{ color: "rgba(255,255,255,0.3)", fontSize: 12, marginTop: 6 }}>Para o técnico dedicado</p>
               </div>
-              <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 10 }}>
+              <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 10, flex: 1 }}>
                 {[
                   "Até 5 carreiras simultâneas",
                   "20 gerações de IA por dia",
@@ -731,6 +739,14 @@ export function LandingPage({ onStart, onLogin }: LandingPageProps) {
                   </li>
                 ))}
               </ul>
+              <button
+                onClick={() => window.open("mailto:contato@fccareerapp.com?subject=Upgrade%20Pro", "_blank")}
+                style={{ width: "100%", padding: "12px 0", borderRadius: 12, fontWeight: 700, fontSize: 14, color: "#fff", background: "linear-gradient(135deg,rgba(124,92,252,0.9),rgba(91,63,209,0.8))", border: "none", cursor: "pointer", boxShadow: "0 4px 20px rgba(124,92,252,0.35)", transition: "all 0.2s" }}
+                onMouseEnter={e => { e.currentTarget.style.opacity = "0.9"; }}
+                onMouseLeave={e => { e.currentTarget.style.opacity = "1"; }}
+              >
+                Fazer upgrade para Pro →
+              </button>
             </div>
 
             {/* Ultra */}
@@ -740,7 +756,7 @@ export function LandingPage({ onStart, onLogin }: LandingPageProps) {
                 <p style={{ color: "#f0f0ff", fontSize: 36, fontWeight: 900, lineHeight: 1 }}>R$49 <span style={{ fontSize: 14, color: "rgba(255,255,255,0.3)", fontWeight: 400 }}>/mês</span></p>
                 <p style={{ color: "rgba(255,255,255,0.3)", fontSize: 12, marginTop: 6 }}>Para o gerente perfeito</p>
               </div>
-              <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 10 }}>
+              <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 10, flex: 1 }}>
                 {[
                   "Carreiras ilimitadas",
                   "IA ilimitada · GPT-4o",
@@ -755,6 +771,14 @@ export function LandingPage({ onStart, onLogin }: LandingPageProps) {
                   </li>
                 ))}
               </ul>
+              <button
+                onClick={() => window.open("mailto:contato@fccareerapp.com?subject=Upgrade%20Ultra", "_blank")}
+                style={{ width: "100%", padding: "12px 0", borderRadius: 12, fontWeight: 700, fontSize: 14, color: "#fff", background: "linear-gradient(135deg,rgba(245,158,11,0.85),rgba(220,130,0,0.75))", border: "none", cursor: "pointer", boxShadow: "0 4px 20px rgba(245,158,11,0.3)", transition: "all 0.2s" }}
+                onMouseEnter={e => { e.currentTarget.style.opacity = "0.9"; }}
+                onMouseLeave={e => { e.currentTarget.style.opacity = "1"; }}
+              >
+                Fazer upgrade para Ultra →
+              </button>
             </div>
           </div>
         </div>

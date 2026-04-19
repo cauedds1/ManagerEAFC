@@ -5,6 +5,7 @@ import { getClubColors, ClubColors } from "@/lib/clubColors";
 import { APIFOOTBALL_TO_FC26_NAME } from "@/lib/footballApiMap";
 import { hexToRgb, SYSTEM_COLORS } from "@/lib/themeManager";
 import { getUserPlan, getPlanLimits, getPlanLabel, type Plan } from "@/lib/userPlan";
+import { UpgradePrompt } from "@/components/UpgradePrompt";
 
 interface CareerSelectionProps {
   careers: Career[];
@@ -258,17 +259,13 @@ export function CareerSelection({ careers, onSelectCareer, onCreateNew, onCareer
 
         <div className="relative flex flex-col gap-2">
           {atCareerLimit ? (
-            <div className="w-full rounded-xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
-              <div className="flex items-center gap-2.5 px-4 py-3" style={{ background: "rgba(255,255,255,0.03)" }}>
-                <svg className="w-4 h-4 flex-shrink-0 text-white/30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
-                </svg>
-                <div className="flex-1 min-w-0">
-                  <p className="text-white/50 text-xs font-semibold">Limite atingido ({careers.length}/{planLimits.maxCareers})</p>
-                  <p className="text-white/25 text-[10px] mt-0.5">Plano {getPlanLabel(resolvedPlan)} · Faça upgrade para mais</p>
-                </div>
-              </div>
-            </div>
+            <UpgradePrompt
+              currentPlan={resolvedPlan}
+              requiredPlan={resolvedPlan === "free" ? "pro" : "ultra"}
+              featureName={`Nova Carreira (${careers.length}/${planLimits.maxCareers})`}
+              description={`Você atingiu o limite de carreiras do plano ${getPlanLabel(resolvedPlan)}. Faça upgrade para criar mais.`}
+              compact
+            />
           ) : (
           <button
             onClick={onCreateNew}

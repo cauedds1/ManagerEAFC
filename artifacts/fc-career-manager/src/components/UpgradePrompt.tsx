@@ -6,9 +6,38 @@ interface UpgradePromptProps {
   featureName: string;
   description?: string;
   compact?: boolean;
+  onUpgrade?: () => void;
 }
 
-export function UpgradePrompt({ currentPlan, requiredPlan, featureName, description, compact = false }: UpgradePromptProps) {
+function UpgradeButton({ accentColor, accentRgb, requiredLabel, onUpgrade }: {
+  accentColor: string;
+  accentRgb: string;
+  requiredLabel: string;
+  onUpgrade?: () => void;
+}) {
+  const handleClick = () => {
+    if (onUpgrade) { onUpgrade(); return; }
+    window.open("mailto:contato@fccareerapp.com?subject=Upgrade%20para%20" + requiredLabel, "_blank");
+  };
+  return (
+    <button
+      onClick={handleClick}
+      className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 hover:opacity-90 active:scale-[0.97]"
+      style={{
+        background: `linear-gradient(135deg, rgba(${accentRgb},0.9), rgba(${accentRgb},0.7))`,
+        color: "#fff",
+        boxShadow: `0 4px 20px rgba(${accentRgb},0.35)`,
+      }}
+    >
+      Fazer upgrade para {requiredLabel}
+      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+      </svg>
+    </button>
+  );
+}
+
+export function UpgradePrompt({ currentPlan, requiredPlan, featureName, description, compact = false, onUpgrade }: UpgradePromptProps) {
   const requiredLabel = getPlanLabel(requiredPlan);
   const accentColor = requiredPlan === "ultra" ? "#f59e0b" : "#7c5cfc";
   const accentRgb = requiredPlan === "ultra" ? "245,158,11" : "124,92,252";
@@ -34,12 +63,16 @@ export function UpgradePrompt({ currentPlan, requiredPlan, featureName, descript
           <p className="text-white/80 text-sm font-semibold leading-tight">{featureName}</p>
           <p className="text-white/35 text-xs mt-0.5">Disponível no plano <span style={{ color: accentColor }} className="font-bold">{requiredLabel}</span></p>
         </div>
-        <span
-          className="text-xs font-bold px-2.5 py-1 rounded-lg flex-shrink-0"
-          style={{ background: `rgba(${accentRgb},0.15)`, color: accentColor }}
+        <button
+          onClick={() => {
+            if (onUpgrade) { onUpgrade(); return; }
+            window.open("mailto:contato@fccareerapp.com?subject=Upgrade%20para%20" + requiredLabel, "_blank");
+          }}
+          className="text-xs font-bold px-2.5 py-1.5 rounded-lg flex-shrink-0 transition-all duration-150 hover:opacity-80 active:scale-95"
+          style={{ background: `rgba(${accentRgb},0.2)`, color: accentColor, border: `1px solid rgba(${accentRgb},0.3)` }}
         >
-          {requiredLabel}
-        </span>
+          Upgrade →
+        </button>
       </div>
     );
   }
@@ -71,6 +104,8 @@ export function UpgradePrompt({ currentPlan, requiredPlan, featureName, descript
           {description ?? `Esta funcionalidade está disponível a partir do plano ${requiredLabel}.`}
         </p>
       </div>
+
+      <UpgradeButton accentColor={accentColor} accentRgb={accentRgb} requiredLabel={requiredLabel} onUpgrade={onUpgrade} />
 
       <div
         className="rounded-2xl px-5 py-4 text-left w-full max-w-sm"

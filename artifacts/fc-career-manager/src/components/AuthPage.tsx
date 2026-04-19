@@ -2,7 +2,7 @@ import { useState } from "react";
 
 interface AuthPageProps {
   onBack: () => void;
-  onAuthSuccess: (token: string, user: { id: number; email: string; name: string }) => void;
+  onAuthSuccess: (token: string, user: { id: number; email: string; name: string; plan?: "free" | "pro" | "ultra" }) => void;
 }
 
 const API_BASE = "/api";
@@ -40,7 +40,7 @@ export function AuthPage({ onBack, onAuthSuccess }: AuthPageProps) {
         body: JSON.stringify(body),
       });
 
-      const data = (await res.json()) as { token?: string; user?: { id: number; email: string; name: string }; error?: string };
+      const data = (await res.json()) as { token?: string; user?: { id: number; email: string; name: string; plan?: "free" | "pro" | "ultra" }; error?: string };
 
       if (!res.ok) {
         setError(data.error ?? "Ocorreu um erro. Tente novamente.");
