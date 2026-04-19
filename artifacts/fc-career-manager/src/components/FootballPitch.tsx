@@ -140,7 +140,7 @@ function PlayerCircle({
       )}
 
       <circle cx={x} cy={y} r={radius + 4} fill={colors.fill} opacity={highlighted ? 0.35 : 0.2} />
-      <circle cx={x} cy={y} r={radius} fill={colors.fill} stroke={highlighted ? "white" : colors.stroke} strokeWidth={highlighted ? 2.5 : 1.5} />
+      <circle cx={x} cy={y} r={radius} fill={showPhoto ? "white" : colors.fill} stroke={highlighted ? "white" : colors.stroke} strokeWidth={highlighted ? 2.5 : 1.5} />
 
       {showPhoto ? (
         <>
