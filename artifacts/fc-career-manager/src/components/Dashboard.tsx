@@ -428,7 +428,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
       setBgGenStatus("error");
       bgGenTimerRef.current = setTimeout(() => setBgGenStatus("idle"), 5000);
     }
-  }, [career, fanMoodScore]);
+  }, [career, fanMoodScore, seasons, activeSeasonId]);
 
   const handleTabChange = useCallback((tab: CareerTab) => {
     setActiveTab(tab);
@@ -771,7 +771,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
       }
     } catch {
     }
-  }, [career.id, career.clubName, career.clubLeague, career.season, career.coach.name, career.projeto, activeSeasonId, transfers, addToast, handleNewPost]);
+  }, [career.id, career.clubName, career.clubLeague, career.season, career.coach.name, career.projeto, activeSeasonId, seasons, transfers, addToast, handleNewPost]);
 
   const handleMatchUpdated = useCallback((match: MatchRecord) => {
     setMatches((prev) => prev.map((m) => m.id === match.id ? match : m));

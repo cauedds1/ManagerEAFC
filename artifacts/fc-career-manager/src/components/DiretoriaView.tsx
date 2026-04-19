@@ -182,9 +182,10 @@ interface CreateMemberModalProps {
   membersCount: number;
   onClose: () => void;
   onCreated: (member: BoardMember) => void;
+  effectiveLeague?: string;
 }
 
-function CreateMemberModal({ career, membersCount, onClose, onCreated }: CreateMemberModalProps) {
+function CreateMemberModal({ career, membersCount, onClose, onCreated, effectiveLeague }: CreateMemberModalProps) {
   const [mode, setMode] = useState<"manual" | "auto">("auto");
   const [role, setRole] = useState<BoardRole>("presidente");
   const [roleLabel, setRoleLabel] = useState("Presidente");
@@ -893,6 +894,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
           <CreateMemberModal
             career={career}
             membersCount={0}
+            effectiveLeague={effectiveLeague}
             onClose={() => setShowCreateModal(false)}
             onCreated={handleMemberCreated}
           />
@@ -1529,6 +1531,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
         <CreateMemberModal
           career={career}
           membersCount={members.length}
+          effectiveLeague={effectiveLeague}
           onClose={() => setShowCreateModal(false)}
           onCreated={handleMemberCreated}
         />
