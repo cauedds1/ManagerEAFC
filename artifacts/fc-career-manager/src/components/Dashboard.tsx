@@ -23,7 +23,7 @@ import type { MatchRecord } from "@/types/match";
 import { runPerformanceEngine } from "@/lib/playerPerformanceEngine";
 import { copyPlayerMoodsToNewSeason } from "@/lib/playerStatsStorage";
 import { getLeaguePosition } from "@/lib/leagueStorage";
-import { runAutoNews, runRumorNews } from "@/lib/autoNewsService";
+import { runAutoNews, runRumorNews, runPromotionRelegationNews, leagueTierLevel } from "@/lib/autoNewsService";
 import type { NewsPost, NewsSource, NewsCategory } from "@/types/noticias";
 import { PainelView } from "./PainelView";
 import { ClubeView } from "./ClubeView";
@@ -862,6 +862,10 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
       setSquad((prev) =>
         prev ? { ...prev, players: prev.players.map((p) => ({ ...p, age: p.age + 1 })) } : prev
       );
+
+      const oldLeague = seasons.find((s) => s.id === activeSeasonId)?.competitions?.[0] ?? career.clubLeague ?? "";
+      const newLeague = competitions[0] ?? "";
+
       const newSeason = await createSeason(career.id, label, competitions, true, newId);
       if (newSeason) {
         await activateSeason(newSeason.id);
@@ -873,11 +877,27 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
         setMatches([]);
         setShowNewSeasonWizard(false);
         setShowSeasonModal(false);
+
+        if (oldLeague && newLeague && oldLeague !== newLeague && leagueTierLevel(oldLeague) !== leagueTierLevel(newLeague)) {
+          setTimeout(() => {
+            void runPromotionRelegationNews({
+              careerId: career.id,
+              newSeasonId: newSeason.id,
+              newSeasonLabel: label,
+              clubName: career.clubName,
+              clubDescription: career.clubDescription,
+              projeto: career.projeto,
+              oldLeague,
+              newLeague,
+              onNewPost: handleNewPost,
+            });
+          }, 2000);
+        }
       }
     } finally {
       setCreatingNewSeason(false);
     }
-  }, [activeSeasonId, career.id, career.clubName, teamId, loadSeasons, onSeasonChange]);
+  }, [activeSeasonId, career.id, career.clubName, career.clubLeague, career.clubDescription, career.projeto, seasons, teamId, loadSeasons, onSeasonChange, handleNewPost]);
 
   const activeSeason = seasons.find((s) => s.id === activeSeasonId);
   const displayLabel = activeSeason?.label ?? activeSeasonLabel;

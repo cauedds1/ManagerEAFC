@@ -264,6 +264,121 @@ export async function runAutoNews(
   }
 }
 
+export function leagueTierLevel(league: string): number {
+  const l = league.toLowerCase();
+  if (
+    l.includes("série d") || l.includes("serie d") ||
+    l.includes("quarta") ||
+    l.includes("league two") || l.includes("league 2") ||
+    l.includes("4. liga") || l.includes("cuarta")
+  ) return 4;
+  if (
+    l.includes("série c") || l.includes("serie c") ||
+    l.includes("terceira") ||
+    l.includes("league one") || l.includes("league 1") ||
+    l.includes("3. liga") || l.includes("tercera")
+  ) return 3;
+  if (
+    l.includes("série b") || l.includes("serie b") ||
+    l.includes("segunda") || l.includes("2ª divisão") || l.includes("2a divisao") ||
+    l.includes("championship") ||
+    l.includes("2. bundesliga") || l.includes("2.bundesliga") ||
+    l.includes("ligue 2") ||
+    l.includes("serie b") ||
+    l.includes("segunda división") || l.includes("segunda division") || l.includes("laliga 2") || l.includes("la liga 2") ||
+    l.includes("eredivisie") === false && l.includes("eerste divisie") ||
+    l.includes("segunda liga") ||
+    l.includes("promotion league") ||
+    l.includes("super lig b") ||
+    l.includes("tff 1")
+  ) return 2;
+  return 1;
+}
+
+export interface PromotionRelegationContext {
+  careerId: string;
+  newSeasonId: string;
+  newSeasonLabel: string;
+  clubName: string;
+  clubDescription?: string;
+  projeto?: string;
+  oldLeague: string;
+  newLeague: string;
+  onNewPost?: (post: NewsPost) => void;
+}
+
+export async function runPromotionRelegationNews(ctx: PromotionRelegationContext): Promise<void> {
+  const { careerId, newSeasonId, newSeasonLabel, clubName, clubDescription, projeto, oldLeague, newLeague, onNewPost } = ctx;
+
+  const oldTier = leagueTierLevel(oldLeague);
+  const newTier = leagueTierLevel(newLeague);
+
+  if (oldTier === newTier) return;
+
+  const isPromotion = newTier < oldTier;
+
+  const description = isPromotion
+    ? `O clube ${clubName} foi PROMOVIDO de "${oldLeague}" para "${newLeague}"! Uma conquista histórica que leva o clube a uma divisão superior na temporada ${newSeasonLabel}. Gere uma notícia especial de destaque celebrando essa promoção de divisão com muito entusiasmo.`
+    : `O clube ${clubName} foi REBAIXADO de "${oldLeague}" para "${newLeague}". Uma temporada decepcionante que resultou na queda de divisão; o clube disputará "${newLeague}" na temporada ${newSeasonLabel}. Gere uma notícia especial anunciando esse rebaixamento com tom dramático e análise das consequências.`;
+
+  try {
+    const openaiKey = getOpenAIKey();
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (openaiKey) headers["x-openai-key"] = openaiKey;
+
+    const body: Record<string, unknown> = {
+      description,
+      clubName,
+      season: newSeasonLabel,
+      category: "conquista",
+      clubLeague: newLeague,
+      clubDescription: clubDescription || undefined,
+      projeto: projeto || undefined,
+    };
+
+    const res = await fetch("/api/noticias/generate", {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) return;
+
+    const data = (await res.json()) as AiResult;
+
+    const post: NewsPost = {
+      id: generatePostId(),
+      careerId,
+      source: (data.source as NewsPost["source"]) ?? "espn",
+      sourceHandle: data.sourceHandle,
+      sourceName: data.sourceName,
+      title: isPromotion
+        ? `PROMOÇÃO: ${clubName} sobe para ${newLeague}!`
+        : `REBAIXAMENTO: ${clubName} cai para ${newLeague}`,
+      content: data.content,
+      likes: data.likes ?? 0,
+      commentsCount: data.commentsCount ?? 0,
+      sharesCount: data.sharesCount ?? 0,
+      comments: (data.comments ?? []).map((c) => ({
+        id: generateCommentId(),
+        username: c.username,
+        displayName: c.displayName,
+        content: c.content,
+        likes: c.likes ?? 0,
+        personality: c.personality as NewsPost["comments"][number]["personality"],
+        replies: [],
+        createdAt: Date.now(),
+      })),
+      category: (data.category as NewsPost["category"]) ?? "conquista",
+      createdAt: Date.now(),
+    };
+
+    addPost(newSeasonId, post);
+    if (onNewPost) onNewPost(post);
+  } catch {
+  }
+}
+
 export async function runRumorNews(ctx: RumorContext): Promise<void> {
   const { careerId, seasonId, season, clubName, clubLeague, currentCompetitions, clubDescription, projeto, allMatches, allPlayers, customPortals, fanMoodScore, fanMoodLabel, onNewPost } = ctx;
 
