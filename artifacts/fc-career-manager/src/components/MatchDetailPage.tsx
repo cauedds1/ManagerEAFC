@@ -454,6 +454,7 @@ export function MatchDetailPage({
   season,
   competitions,
   onMatchUpdated,
+  onSelectMatch,
   isReadOnly,
 }: {
   match: MatchRecord;
@@ -637,7 +638,7 @@ export function MatchDetailPage({
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M7 16V4m0 0L3 8m4-4 4 4M17 8v12m0 0 4-4m-4 4-4-4" />
               </svg>
-              H2H ({h2hMatches.length})
+              Confrontos Diretos ({h2hMatches.length})
             </button>
           )}
           {!isReadOnly && careerId && seasonId && season && (
@@ -695,6 +696,14 @@ export function MatchDetailPage({
             </div>
 
             <div className="overflow-y-auto flex-1 p-3 space-y-2 pb-6">
+              {h2hMatches.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-12 text-center gap-3">
+                  <svg className="w-10 h-10 text-white/15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2z" />
+                  </svg>
+                  <p className="text-white/30 text-sm">Nenhum confronto anterior registrado.</p>
+                </div>
+              )}
               {h2hMatches.map((m) => {
                 const r = getMatchResult(m.myScore, m.opponentScore);
                 const resultLabel = r === "vitoria" ? "V" : r === "empate" ? "E" : "D";
