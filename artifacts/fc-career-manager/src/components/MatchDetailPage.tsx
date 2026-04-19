@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
-import type { MatchRecord, PlayerMatchStats } from "@/types/match";
+import type { MatchRecord, PlayerMatchStats, GoalEntry } from "@/types/match";
 import { getMatchResult, getMatchResultFull, RESULT_STYLE, LOCATION_ICONS, LOCATION_LABELS, GOAL_TYPE_ICONS, GOAL_TYPE_LABELS } from "@/types/match";
 import { getAllMatchesForCareer } from "@/lib/matchStorage";
 import type { SquadPlayer } from "@/lib/squadCache";
@@ -584,25 +584,19 @@ export function MatchDetailPage({
   const myPoss = match.matchStats.possessionPct;
   const oppPoss = myPoss > 0 ? 100 - myPoss : 0;
 
-  const goalsByPlayer: { player: SquadPlayer; minutes: number[] }[] = [];
+  const goalsByPlayer: { player: SquadPlayer; goals: GoalEntry[] }[] = [];
   for (const pid of match.starterIds) {
     const stats = match.playerStats[pid];
     const player = allPlayers.find((p) => p.id === pid);
     if (stats && player && stats.goals.length > 0) {
-      goalsByPlayer.push({
-        player,
-        minutes: stats.goals.map((g) => g.minute),
-      });
+      goalsByPlayer.push({ player, goals: stats.goals });
     }
   }
   for (const pid of match.subIds) {
     const stats = match.playerStats[pid];
     const player = allPlayers.find((p) => p.id === pid);
     if (stats && player && stats.goals.length > 0) {
-      goalsByPlayer.push({
-        player,
-        minutes: stats.goals.map((g) => g.minute),
-      });
+      goalsByPlayer.push({ player, goals: stats.goals });
     }
   }
 
@@ -970,10 +964,16 @@ export function MatchDetailPage({
             {/* Goal scorers — two-column layout */}
             {(goalsByPlayer.length > 0 || (match.opponentGoals?.length ?? 0) > 0) && (() => {
               const myGoalEntries = goalsByPlayer
-                .flatMap((entry) => entry.minutes.map((m) => ({ name: lastName(entry.player.name), minute: m })))
+                .flatMap((entry) =>
+                  entry.goals.map((g) => ({
+                    name: lastName(entry.player.name),
+                    minute: g.minute,
+                    isPenalty: g.goalType === "penalti",
+                  }))
+                )
                 .sort((a, b) => a.minute - b.minute);
               const oppGoalEntries = (match.opponentGoals ?? [])
-                .map((g) => ({ name: g.playerName ? lastName(g.playerName) : match.opponent.split(" ")[0], minute: g.minute }))
+                .map((g) => ({ name: g.playerName ? lastName(g.playerName) : match.opponent.split(" ")[0], minute: g.minute, isPenalty: false }))
                 .sort((a, b) => a.minute - b.minute);
               const leftGoals = isHome ? myGoalEntries : oppGoalEntries;
               const rightGoals = isHome ? oppGoalEntries : myGoalEntries;
@@ -983,7 +983,7 @@ export function MatchDetailPage({
                   <div className="flex-1 flex flex-col items-end gap-0.5">
                     {leftGoals.map((g, i) => (
                       <span key={i} className="text-[10px] text-white/50 text-right leading-tight">
-                        {g.name} {g.minute}&apos; ⚽
+                        {g.name} {g.minute}&apos;{g.isPenalty ? " (P)" : ""}
                       </span>
                     ))}
                   </div>
@@ -993,7 +993,7 @@ export function MatchDetailPage({
                   <div className="flex-1 flex flex-col items-start gap-0.5">
                     {rightGoals.map((g, i) => (
                       <span key={i} className="text-[10px] text-white/50 text-left leading-tight">
-                        ⚽ {g.name} {g.minute}&apos;
+                        {g.name} {g.minute}&apos;{g.isPenalty ? " (P)" : ""}
                       </span>
                     ))}
                   </div>
