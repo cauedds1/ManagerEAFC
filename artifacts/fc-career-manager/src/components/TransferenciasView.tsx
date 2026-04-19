@@ -569,6 +569,14 @@ interface FormData {
   toClub: string;
   toClubLogo: string;
   resolvedPlayerId: number | null;
+  tradeEnabled: boolean;
+  tradePlayerName: string;
+  tradePlayerPhoto: string;
+  tradePlayerId: number | null;
+  tradePlayerAge: string;
+  tradePlayerPosition: PositionPtBr;
+  tradePlayerOverall: string;
+  tradePlayerMode: "search" | "create";
 }
 
 const DEFAULT_FORM: FormData = {
@@ -592,6 +600,14 @@ const DEFAULT_FORM: FormData = {
   toClub: "",
   toClubLogo: "",
   resolvedPlayerId: null,
+  tradeEnabled: false,
+  tradePlayerName: "",
+  tradePlayerPhoto: "",
+  tradePlayerId: null,
+  tradePlayerAge: "",
+  tradePlayerPosition: "ATA",
+  tradePlayerOverall: "",
+  tradePlayerMode: "search",
 };
 
 interface TransferenciasViewProps {
@@ -605,6 +621,7 @@ interface TransferenciasViewProps {
   onTransferAdded: (transfer: TransferRecord) => void;
   onTransferUpdated?: (id: string, changes: Partial<TransferRecord>) => void;
   onHighValueSigning?: (playerName: string, ovr: number, position: string, fromClub?: string, deltaVsAvg?: number) => void;
+  onPlayerLeftInTrade?: (player: SquadPlayer) => void;
   isReadOnly?: boolean;
 }
 
@@ -619,6 +636,7 @@ export function TransferenciasView({
   onTransferAdded,
   onTransferUpdated,
   onHighValueSigning,
+  onPlayerLeftInTrade,
   isReadOnly,
 }: TransferenciasViewProps) {
   const [showForm, setShowForm] = useState(false);
@@ -714,6 +732,68 @@ export function TransferenciasView({
     };
 
     onTransferAdded(transfer);
+
+    if (form.tradeEnabled && form.tradePlayerName.trim().length >= 2) {
+      if (isEntrada) {
+        const tradedPlayer = allPlayers.find((p) => p.id === form.tradePlayerId) ??
+          allPlayers.find((p) => p.name.toLowerCase() === form.tradePlayerName.trim().toLowerCase());
+        const tradeTransfer: TransferRecord = {
+          id: generateTransferId(),
+          careerId,
+          season,
+          playerId: form.tradePlayerId ?? tradedPlayer?.id ?? generatePlayerId(),
+          playerName: form.tradePlayerName.trim(),
+          playerPhoto: form.tradePlayerPhoto.trim(),
+          playerPositionPtBr: form.tradePlayerPosition,
+          playerAge: parseInt(form.tradePlayerAge, 10) || 0,
+          fee: 0,
+          salary: 0,
+          contractYears: 0,
+          role: "esporadico",
+          type: "venda",
+          toClub: form.fromClub.trim() || undefined,
+          toClubLogo: form.fromClubLogo.trim() || undefined,
+          loanEnded: false,
+          transferredAt: Date.now() + 1,
+        };
+        onTransferAdded(tradeTransfer);
+        if (tradedPlayer) {
+          onPlayerLeftInTrade?.(tradedPlayer);
+        }
+      } else if (isVenda) {
+        const tradePlayerId = form.tradePlayerId ?? generatePlayerId();
+        setPlayerStats(seasonId, tradePlayerId, defaultStats(tradePlayerId));
+        const tradeOvrVal = parseInt(form.tradePlayerOverall, 10);
+        const tradeOvr = !isNaN(tradeOvrVal) && form.tradePlayerOverall.trim()
+          ? Math.max(1, Math.min(99, tradeOvrVal))
+          : undefined;
+        if (tradeOvr != null) {
+          setPlayerOverride(careerId, tradePlayerId, { overall: tradeOvr });
+        }
+        const tradeTransfer: TransferRecord = {
+          id: generateTransferId(),
+          careerId,
+          season,
+          playerId: tradePlayerId,
+          playerName: form.tradePlayerName.trim(),
+          playerPhoto: form.tradePlayerPhoto.trim(),
+          playerPositionPtBr: form.tradePlayerPosition,
+          playerAge: parseInt(form.tradePlayerAge, 10) || 0,
+          fee: 0,
+          salary: 0,
+          contractYears: 1,
+          role: "importante",
+          type: "compra",
+          fromClub: form.toClub.trim() || undefined,
+          fromClubLogo: form.toClubLogo.trim() || undefined,
+          loanEnded: false,
+          playerOverall: tradeOvr,
+          transferredAt: Date.now() + 1,
+        };
+        onTransferAdded(tradeTransfer);
+      }
+    }
+
     setForm(DEFAULT_FORM);
     setShowForm(false);
     setSubmitting(false);
@@ -1177,6 +1257,184 @@ export function TransferenciasView({
                       );
                     })}
                   </div>
+                </div>
+              )}
+
+              {!isEmprestimoForm && (
+                <div
+                  className="rounded-2xl overflow-hidden"
+                  style={{ border: "1px solid rgba(255,255,255,0.07)" }}
+                >
+                  <button
+                    type="button"
+                    className="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold transition-all"
+                    style={{
+                      background: form.tradeEnabled ? "rgba(251,146,60,0.1)" : "rgba(255,255,255,0.03)",
+                      color: form.tradeEnabled ? "#fb923c" : "rgba(255,255,255,0.4)",
+                    }}
+                    onClick={() => setForm((f) => ({
+                      ...f,
+                      tradeEnabled: !f.tradeEnabled,
+                      tradePlayerName: "",
+                      tradePlayerPhoto: "",
+                      tradePlayerId: null,
+                      tradePlayerAge: "",
+                      tradePlayerPosition: "ATA",
+                      tradePlayerOverall: "",
+                      tradePlayerMode: "search",
+                    }))}
+                  >
+                    <span className="flex items-center gap-2">
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                      </svg>
+                      {isVendaForm ? "Receber jogador no negócio" : "Incluir jogador no negócio"}
+                    </span>
+                    <svg
+                      className="w-4 h-4 transition-transform"
+                      style={{ transform: form.tradeEnabled ? "rotate(180deg)" : "rotate(0deg)" }}
+                      fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+
+                  {form.tradeEnabled && (
+                    <div className="px-4 pb-4 pt-3 flex flex-col gap-3" style={{ background: "rgba(255,255,255,0.02)" }}>
+                      {!isVendaForm ? (
+                        <>
+                          <p className="text-xs text-white/30">Selecione um jogador do seu elenco que sairá como parte desta negociação. Ele será movido para ex-jogadores automaticamente.</p>
+                          {form.tradePlayerName ? (
+                            <div
+                              className="flex items-center gap-3 p-3 rounded-xl"
+                              style={{ background: "rgba(251,146,60,0.1)", border: "1px solid rgba(251,146,60,0.25)" }}
+                            >
+                              {form.tradePlayerPhoto ? (
+                                <img src={form.tradePlayerPhoto} alt={form.tradePlayerName} className="w-9 h-9 rounded-lg object-cover" />
+                              ) : (
+                                <div className="w-9 h-9 rounded-lg flex items-center justify-center text-sm font-bold" style={{ background: "rgba(251,146,60,0.2)", color: "#fb923c" }}>
+                                  {form.tradePlayerName.charAt(0)}
+                                </div>
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <p className="text-white text-sm font-bold truncate">{form.tradePlayerName}</p>
+                                <p className="text-white/40 text-xs">{form.tradePlayerPosition} · {form.tradePlayerAge ? `${form.tradePlayerAge} anos` : "—"}</p>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => setForm((f) => ({ ...f, tradePlayerName: "", tradePlayerPhoto: "", tradePlayerId: null, tradePlayerAge: "", tradePlayerPosition: "ATA" }))}
+                                className="w-7 h-7 rounded-lg flex items-center justify-center text-white/40 hover:text-white/80 hover:bg-white/10 transition-all"
+                              >
+                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                              </button>
+                            </div>
+                          ) : (
+                            <PlayerAutocomplete
+                              value={form.tradePlayerName}
+                              photo={form.tradePlayerPhoto}
+                              allPlayers={allPlayers}
+                              onChange={(v) => set("tradePlayerName", v)}
+                              onSelect={(p) => setForm((f) => ({
+                                ...f,
+                                tradePlayerName: p.name,
+                                tradePlayerPhoto: p.photo,
+                                tradePlayerId: p.id,
+                                tradePlayerAge: p.age ? String(p.age) : "",
+                                tradePlayerPosition: p.position,
+                              }))}
+                              localOnly={true}
+                            />
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-xs text-white/30">Registre o jogador que o outro clube enviará como parte desta negociação. Ele será adicionado ao seu elenco.</p>
+                          <div className="flex rounded-lg overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.1)", alignSelf: "flex-start" }}>
+                            {(["search", "create"] as const).map((mode) => (
+                              <button
+                                key={mode}
+                                type="button"
+                                onClick={() => setForm((f) => ({ ...f, tradePlayerMode: mode, tradePlayerName: "", tradePlayerPhoto: "", tradePlayerId: null }))}
+                                className="px-2.5 py-1 text-[11px] font-semibold transition-all"
+                                style={{
+                                  background: form.tradePlayerMode === mode ? "rgba(251,146,60,0.2)" : "rgba(255,255,255,0.04)",
+                                  color: form.tradePlayerMode === mode ? "#fb923c" : "rgba(255,255,255,0.35)",
+                                }}
+                              >
+                                {mode === "search" ? "🔍 Buscar" : "✏️ Criar"}
+                              </button>
+                            ))}
+                          </div>
+                          {form.tradePlayerMode === "search" ? (
+                            <PlayerAutocomplete
+                              value={form.tradePlayerName}
+                              photo={form.tradePlayerPhoto}
+                              allPlayers={[]}
+                              onChange={(v) => set("tradePlayerName", v)}
+                              onSelect={(p) => setForm((f) => ({
+                                ...f,
+                                tradePlayerName: p.name,
+                                tradePlayerPhoto: p.photo,
+                                tradePlayerId: p.id,
+                                tradePlayerAge: p.age ? String(p.age) : "",
+                                tradePlayerPosition: p.position,
+                              }))}
+                              localOnly={false}
+                            />
+                          ) : (
+                            <input
+                              type="text"
+                              className={inputClass}
+                              value={form.tradePlayerName}
+                              onChange={(e) => set("tradePlayerName", e.target.value)}
+                              placeholder="Nome completo do jogador"
+                            />
+                          )}
+                          <div className="grid grid-cols-3 gap-2">
+                            <div>
+                              <label className={labelClass}>Posição</label>
+                              <select
+                                className={`${inputClass} cursor-pointer`}
+                                style={{ appearance: "none" }}
+                                value={form.tradePlayerPosition}
+                                onChange={(e) => set("tradePlayerPosition", e.target.value as PositionPtBr)}
+                              >
+                                {ALL_POSITIONS.map((p) => (
+                                  <option key={p} value={p} style={{ background: "#1a1030" }}>{p}</option>
+                                ))}
+                              </select>
+                            </div>
+                            <div>
+                              <label className={labelClass}>Idade</label>
+                              <input
+                                type="number"
+                                className={inputClass}
+                                value={form.tradePlayerAge}
+                                onChange={(e) => set("tradePlayerAge", e.target.value)}
+                                placeholder="Ex: 24"
+                                min={14}
+                                max={50}
+                              />
+                            </div>
+                            <div>
+                              <label className={labelClass}>OVR</label>
+                              <input
+                                type="number"
+                                className={inputClass}
+                                value={form.tradePlayerOverall}
+                                onChange={(e) => set("tradePlayerOverall", e.target.value)}
+                                placeholder="Ex: 80"
+                                min={1}
+                                max={99}
+                              />
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
 

@@ -48,7 +48,7 @@ import {
   generateMessageId,
 } from "@/lib/diretoriaStorage";
 import { getFinanceiroSettings, computeFinancialSnapshot } from "@/lib/financeiroStorage";
-import { getFormerPlayers } from "@/lib/customPlayersStorage";
+import { getFormerPlayers, addFormerPlayer } from "@/lib/customPlayersStorage";
 import { buildPlayerPerformanceContext, buildSquadOvrContext } from "@/lib/playerContext";
 import { getOpenAIKey } from "@/lib/openaiKeyStorage";
 import {
@@ -517,6 +517,11 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
   );
 
   const handlePlayerRemoved = useCallback(() => {
+    setFormerPlayers(getFormerPlayers(career.id));
+  }, [career.id]);
+
+  const handlePlayerLeftInTrade = useCallback((player: SquadPlayer) => {
+    addFormerPlayer(career.id, player);
     setFormerPlayers(getFormerPlayers(career.id));
   }, [career.id]);
 
@@ -1209,6 +1214,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
                 onTransferAdded={handleTransferAdded}
                 onTransferUpdated={handleTransferUpdated}
                 onHighValueSigning={handleHighValueSigning}
+                onPlayerLeftInTrade={handlePlayerLeftInTrade}
                 isReadOnly={isReadOnly}
               />
             )}
