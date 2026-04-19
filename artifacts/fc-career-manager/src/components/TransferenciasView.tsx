@@ -733,15 +733,21 @@ export function TransferenciasView({
 
     onTransferAdded(transfer);
 
-    if (form.tradeEnabled && form.tradePlayerName.trim().length >= 2) {
+    const tradeIsValid = form.tradeEnabled && form.tradePlayerName.trim().length >= 2 &&
+      (isEntrada
+        ? form.tradePlayerId !== null
+        : isVenda
+          ? (form.tradePlayerMode === "create" || form.tradePlayerId !== null)
+          : false);
+
+    if (tradeIsValid) {
       if (isEntrada) {
-        const tradedPlayer = allPlayers.find((p) => p.id === form.tradePlayerId) ??
-          allPlayers.find((p) => p.name.toLowerCase() === form.tradePlayerName.trim().toLowerCase());
+        const tradedPlayer = allPlayers.find((p) => p.id === form.tradePlayerId);
         const tradeTransfer: TransferRecord = {
           id: generateTransferId(),
           careerId,
           season,
-          playerId: form.tradePlayerId ?? tradedPlayer?.id ?? generatePlayerId(),
+          playerId: form.tradePlayerId!,
           playerName: form.tradePlayerName.trim(),
           playerPhoto: form.tradePlayerPhoto.trim(),
           playerPositionPtBr: form.tradePlayerPosition,
@@ -1371,7 +1377,7 @@ export function TransferenciasView({
                             <PlayerAutocomplete
                               value={form.tradePlayerName}
                               photo={form.tradePlayerPhoto}
-                              allPlayers={[]}
+                              allPlayers={allPlayers}
                               onChange={(v) => set("tradePlayerName", v)}
                               onSelect={(p) => setForm((f) => ({
                                 ...f,
