@@ -97,14 +97,12 @@ function PlayerCircle({
   highlighted?: boolean;
 }) {
   const rating = player.rating ?? 0;
-  const [photoState, setPhotoState] = useState<"idle" | "loaded" | "error">(
-    player.photo ? "idle" : "error"
-  );
+  const [photoLoaded, setPhotoLoaded] = useState(false);
   const colors = POS_COLOR[player.positionPtBr] ?? POS_COLOR.MID;
   const radius = 20;
   const clipId = `clip-p-${player.id}`;
-  const showPhoto = Boolean(player.photo) && photoState !== "error";
   const label = player.number != null ? String(player.number) : getInitials(player.name);
+  const showPhoto = Boolean(player.photo) && photoLoaded;
 
   const displayName = (() => {
     const parts = player.name.trim().split(" ");
@@ -116,6 +114,19 @@ function PlayerCircle({
       onClick={onClick ? () => onClick(player) : undefined}
       style={{ cursor: onClick ? "pointer" : "default" }}
     >
+      {/* Hidden HTML img to pre-load and detect photo availability */}
+      {player.photo && (
+        <foreignObject x={-9999} y={-9999} width={1} height={1}>
+          <img
+            src={player.photo}
+            alt=""
+            onLoad={() => setPhotoLoaded(true)}
+            onError={() => setPhotoLoaded(false)}
+            style={{ width: 1, height: 1 }}
+          />
+        </foreignObject>
+      )}
+
       <defs>
         <clipPath id={clipId}>
           <circle cx={x} cy={y} r={radius - 1} />
@@ -145,31 +156,19 @@ function PlayerCircle({
             height={radius * 2}
             clipPath={`url(#${clipId})`}
             preserveAspectRatio="xMidYMid slice"
-            style={{ opacity: photoState === "loaded" ? 1 : 0, transition: "opacity 0.25s ease" }}
-            onLoad={() => setPhotoState("loaded")}
-            onError={() => setPhotoState("error")}
           />
           <circle cx={x} cy={y} r={radius} fill="none" stroke={highlighted ? "white" : colors.stroke} strokeWidth={highlighted ? 2.5 : 1.5} />
-          {photoState === "loaded" && (
-            <>
-              <rect
-                x={x - 11} y={y + radius - 9} width={22} height={11} rx={4}
-                fill={rating > 0 ? ratingFill(rating) : colors.fill}
-                stroke={rating > 0 ? ratingFill(rating) : colors.stroke}
-                strokeWidth={0.8} opacity={0.95}
-              />
-              <text x={x} y={y + radius - 2} textAnchor="middle" dominantBaseline="middle"
-                fill={rating > 0 ? ratingText(rating) : colors.text}
-                fontSize={7} fontWeight="900" fontFamily="Inter, sans-serif">
-                {rating > 0 ? rating.toFixed(1) : player.positionPtBr}
-              </text>
-            </>
-          )}
-          {photoState === "idle" && (
-            <text x={x} y={y + 1} textAnchor="middle" dominantBaseline="middle" fill={colors.text} fontSize={label.length > 2 ? 9 : 11} fontWeight="800" fontFamily="Inter, sans-serif">
-              {label}
-            </text>
-          )}
+          <rect
+            x={x - 11} y={y + radius - 9} width={22} height={11} rx={4}
+            fill={rating > 0 ? ratingFill(rating) : colors.fill}
+            stroke={rating > 0 ? ratingFill(rating) : colors.stroke}
+            strokeWidth={0.8} opacity={0.95}
+          />
+          <text x={x} y={y + radius - 2} textAnchor="middle" dominantBaseline="middle"
+            fill={rating > 0 ? ratingText(rating) : colors.text}
+            fontSize={7} fontWeight="900" fontFamily="Inter, sans-serif">
+            {rating > 0 ? rating.toFixed(1) : player.positionPtBr}
+          </text>
         </>
       ) : (
         <>
