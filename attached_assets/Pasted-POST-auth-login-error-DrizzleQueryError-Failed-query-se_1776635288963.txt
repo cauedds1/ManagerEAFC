@@ -1,0 +1,70 @@
+POST /auth/login error: _DrizzleQueryError: Failed query: select "id", "email", "password_hash", "name", "created_at", "plan", "ai_usage_count", "ai_usage_reset_date" from "users" where "users"."email" = $1 limit $2
+params: cauedalberto2@gmail.com,1
+    at NodePgPreparedQuery.queryWithCache (/node_modules/.pnpm/drizzle-orm@0.45.1_@types+pg@8.18.0_pg@8.20.0/node_modules/src/pg-core/session.ts:73:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async <anonymous> (/node_modules/.pnpm/drizzle-orm@0.45.1_@types+pg@8.18.0_pg@8.20.0/node_modules/src/node-postgres/session.ts:154:19)
+    at async <anonymous> (/app/src/routes/auth.ts:60:20) {
+  query: 'select "id", "email", "password_hash", "name", "created_at", "plan", "ai_usage_count", "ai_usage_reset_date" from "users" where "users"."email" = $1 limit $2',
+  params: [ 'cauedalberto2@gmail.com', 1 ],
+  cause: error: column "plan" does not exist
+      at <anonymous> (/node_modules/.pnpm/pg-pool@3.13.0_pg@8.20.0/node_modules/pg-pool/index.js:45:11)
+      at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+      at async <anonymous> (/node_modules/.pnpm/drizzle-orm@0.45.1_@types+pg@8.18.0_pg@8.20.0/node_modules/src/node-postgres/session.ts:161:13)
+      at async NodePgPreparedQuery.queryWithCache (/node_modules/.pnpm/drizzle-orm@0.45.1_@types+pg@8.18.0_pg@8.20.0/node_modules/src/pg-core/session.ts:71:12)
+      at async <anonymous> (/node_modules/.pnpm/drizzle-orm@0.45.1_@types+pg@8.18.0_pg@8.20.0/node_modules/src/node-postgres/session.ts:154:19)
+    routine: 'errorMissingColumn'
+  }
+}
+request errored
+      at async <anonymous> (/app/src/routes/auth.ts:60:20) {
+    length: 104,
+    severity: 'ERROR',
+    code: '42703',
+    detail: undefined,
+    hint: undefined,
+    position: '62',
+    internalPosition: undefined,
+    internalQuery: undefined,
+    where: undefined,
+    schema: undefined,
+    table: undefined,
+    column: undefined,
+    dataType: undefined,
+    constraint: undefined,
+    file: 'parse_relation.c',
+    line: '3822',
+POST /auth/login error: _DrizzleQueryError: Failed query: select "id", "email", "password_hash", "name", "created_at", "plan", "ai_usage_count", "ai_usage_reset_date" from "users" where "users"."email" = $1 limit $2
+params: cauedalberto2@gmail.com,1
+    at NodePgPreparedQuery.queryWithCache (/node_modules/.pnpm/drizzle-orm@0.45.1_@types+pg@8.18.0_pg@8.20.0/node_modules/src/pg-core/session.ts:73:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async <anonymous> (/node_modules/.pnpm/drizzle-orm@0.45.1_@types+pg@8.18.0_pg@8.20.0/node_modules/src/node-postgres/session.ts:154:19)
+    at async <anonymous> (/app/src/routes/auth.ts:60:20) {
+  query: 'select "id", "email", "password_hash", "name", "created_at", "plan", "ai_usage_count", "ai_usage_reset_date" from "users" where "users"."email" = $1 limit $2',
+  params: [ 'cauedalberto2@gmail.com', 1 ],
+  cause: error: column "plan" does not exist
+      at <anonymous> (/node_modules/.pnpm/pg-pool@3.13.0_pg@8.20.0/node_modules/pg-pool/index.js:45:11)
+      at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+      at async <anonymous> (/node_modules/.pnpm/drizzle-orm@0.45.1_@types+pg@8.18.0_pg@8.20.0/node_modules/src/node-postgres/session.ts:161:13)
+      at async NodePgPreparedQuery.queryWithCache (/node_modules/.pnpm/drizzle-orm@0.45.1_@types+pg@8.18.0_pg@8.20.0/node_modules/src/pg-core/session.ts:71:12)
+      at async <anonymous> (/node_modules/.pnpm/drizzle-orm@0.45.1_@types+pg@8.18.0_pg@8.20.0/node_modules/src/node-postgres/session.ts:154:19)
+request errored
+      at async <anonymous> (/app/src/routes/auth.ts:60:20) {
+    length: 104,
+    severity: 'ERROR',
+    code: '42703',
+    detail: undefined,
+    hint: undefined,
+    position: '62',
+    internalPosition: undefined,
+    internalQuery: undefined,
+    where: undefined,
+    schema: undefined,
+    table: undefined,
+    column: undefined,
+    dataType: undefined,
+    constraint: undefined,
+    file: 'parse_relation.c',
+    line: '3822',
+    routine: 'errorMissingColumn'
+  }
+}
