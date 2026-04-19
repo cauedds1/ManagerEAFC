@@ -174,9 +174,10 @@ interface Props {
   allPlayers: SquadPlayer[];
   statsOverride?: Record<number, PlayerSeasonStats>;
   matchesOverride?: ReturnType<typeof getMatches>;
+  formerPlayerIds?: Set<number>;
 }
 
-export function PlayerStatsTable({ careerId, seasonId, allPlayers, statsOverride, matchesOverride }: Props) {
+export function PlayerStatsTable({ careerId, seasonId, allPlayers, statsOverride, matchesOverride, formerPlayerIds }: Props) {
   const [filter, setFilter] = useState<FilterTab>("ataque");
   const [sortCol, setSortCol] = useState<SortCol>("goals");
   const [asc, setAsc] = useState(false);
@@ -510,6 +511,7 @@ export function PlayerStatsTable({ careerId, seasonId, allPlayers, statsOverride
               const posStyle = POS_STYLE[displayPos] ?? { bg: "rgba(148,163,184,0.12)", color: "#94a3b8" };
               const totalGames = stats.matchesAsStarter + stats.matchesAsSubstitute;
               const ga = stats.goals + stats.assists;
+              const isFormer = formerPlayerIds?.has(player.id) ?? false;
 
               const rowBg = i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.015)";
 
@@ -521,7 +523,12 @@ export function PlayerStatsTable({ careerId, seasonId, allPlayers, statsOverride
                   <td className="px-2 py-2.5">
                     <div className="flex items-center gap-2.5">
                       <PlayerPhoto src={player.photo} name={player.name} />
-                      <span className="text-white/80 font-medium text-xs truncate max-w-[130px]">{player.name}</span>
+                      <div className="flex flex-col gap-0.5 min-w-0">
+                        <span className={`font-medium text-xs truncate max-w-[130px] ${isFormer ? "text-white/45" : "text-white/80"}`}>{player.name}</span>
+                        {isFormer && (
+                          <span className="text-[9px] font-bold uppercase tracking-wider" style={{ color: "rgba(251,146,60,0.6)" }}>saiu do elenco</span>
+                        )}
+                      </div>
                     </div>
                   </td>
                   <td className="px-2 py-2.5 text-center">
@@ -538,7 +545,7 @@ export function PlayerStatsTable({ careerId, seasonId, allPlayers, statsOverride
               return (
                 <tr
                   key={player.id}
-                  style={{ borderBottom: "1px solid rgba(255,255,255,0.04)", background: rowBg }}
+                  style={{ borderBottom: "1px solid rgba(255,255,255,0.04)", background: rowBg, opacity: isFormer ? 0.6 : 1 }}
                 >
                   {filter === "ataque" && (
                     <>

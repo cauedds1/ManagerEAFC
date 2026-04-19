@@ -84,6 +84,11 @@ export function ClubeView({
   isReadOnly,
 }: ClubeViewProps) {
   const statsPlayers = historicalPlayers ?? allPlayers;
+  const currentPlayerIds = useMemo(() => new Set(allPlayers.map((p) => p.id)), [allPlayers]);
+  const formerPlayerIds = useMemo(() => {
+    if (!historicalPlayers) return undefined;
+    return new Set(historicalPlayers.filter((p) => !currentPlayerIds.has(p.id)).map((p) => p.id));
+  }, [historicalPlayers, currentPlayerIds]);
   const [sub, setSub] = useState<ClubeSubTab>("elenco");
   const [statsMini, setStatsMini] = useState<StatsMiniTab>("jogadores");
   const [seqScope, setSeqScope] = useState<SeqScope>("atual");
@@ -194,6 +199,7 @@ export function ClubeView({
                   allPlayers={statsPlayers}
                   statsOverride={statsScope === "todas" && hasMultipleSeasons ? allStatsOverride : undefined}
                   matchesOverride={statsScope === "todas" && hasMultipleSeasons ? allSeasonMatches : undefined}
+                  formerPlayerIds={formerPlayerIds}
                 />
               </div>
             )}
