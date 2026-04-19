@@ -480,7 +480,7 @@ export function MatchDetailPage({
     if (!careerId) return [];
     const opponent = match.opponent.toLowerCase().trim();
     return getAllMatchesForCareer(careerId)
-      .filter((m) => m.id !== match.id && m.opponent.toLowerCase().trim() === opponent)
+      .filter((m) => m.opponent.toLowerCase().trim() === opponent)
       .sort((a, b) => {
         const aT = a.date ? new Date(a.date + "T12:00:00").getTime() : a.createdAt;
         const bT = b.date ? new Date(b.date + "T12:00:00").getTime() : b.createdAt;
