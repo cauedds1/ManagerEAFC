@@ -61,7 +61,7 @@ export function getAllMatchesForCareer(careerId: string): MatchRecord[] {
       const records = JSON.parse(raw) as MatchRecord[];
       if (!Array.isArray(records)) continue;
       for (const r of records) {
-        if (r.careerId === careerId) all.push(r);
+        if (!r.careerId || r.careerId === careerId) all.push(r);
       }
     } catch {
       // chave com JSON inválido — ignora e continua
