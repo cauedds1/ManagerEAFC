@@ -18,6 +18,13 @@ export interface PortalPhotos {
 
 export const PORTAL_PHOTOS_EVENT = "fc-portal-photos-updated";
 
+const BASE = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
+
+export const PORTAL_DEFAULT_PHOTOS: Partial<PortalPhotos> = {
+  tnt:  `${BASE}/portals/tnt-sports.jpg`,
+  espn: `${BASE}/portals/espn.jpg`,
+};
+
 export async function fetchPortalPhotos(careerId: string): Promise<PortalPhotos> {
   try {
     const res = await fetch(`/api/data/career/${encodeURIComponent(careerId)}`, {

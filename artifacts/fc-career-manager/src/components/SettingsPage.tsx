@@ -51,9 +51,9 @@ interface ReenrichProgress {
   message: string;
 }
 
-const PORTAL_META: { source: PortalSource; label: string; color: string; bgColor: string }[] = [
-  { source: "tnt",     label: "TNT Sports",      color: "#E8002D",              bgColor: "rgba(232,0,45,0.15)" },
-  { source: "espn",    label: "ESPN",             color: "#E67E22",              bgColor: "rgba(230,126,34,0.15)" },
+const PORTAL_META: { source: PortalSource; label: string; color: string; bgColor: string; defaultPhoto?: string }[] = [
+  { source: "tnt",     label: "TNT Sports",      color: "#E8002D",              bgColor: "rgba(232,0,45,0.15)",               defaultPhoto: "/portals/tnt-sports.jpg" },
+  { source: "espn",    label: "ESPN",             color: "#E67E22",              bgColor: "rgba(230,126,34,0.15)",             defaultPhoto: "/portals/espn.jpg" },
   { source: "fanpage", label: "FanPage do Clube", color: "var(--club-primary)",  bgColor: "rgba(var(--club-primary-rgb),0.15)" },
 ];
 
@@ -821,8 +821,9 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
         subtitle="Cole a URL de uma imagem (JPG, PNG, WebP) e clique em Confirmar para salvar."
       >
         <div className="space-y-3">
-          {PORTAL_META.map(({ source, label, color, bgColor }) => {
+          {PORTAL_META.map(({ source, label, color, bgColor, defaultPhoto }) => {
             const photo = portalPhotos[source];
+            const displayPhoto = photo || defaultPhoto;
             const draft = draftUrls[source];
             const isSaving = savingPortal === source;
             const isSaved = savedPortal === source;
@@ -836,17 +837,17 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
                 <div className="flex items-center gap-4">
                   <div
                     className="flex-shrink-0 rounded-full overflow-hidden flex items-center justify-center font-black"
-                    style={{ width: 52, height: 52, background: photo ? "transparent" : bgColor, border: `2.5px solid ${color}`, color, fontSize: 20 }}
+                    style={{ width: 52, height: 52, background: displayPhoto ? "transparent" : bgColor, border: `2.5px solid ${color}`, color, fontSize: 20 }}
                   >
-                    {photo
-                      ? <img src={photo} alt={label} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                    {displayPhoto
+                      ? <img src={displayPhoto} alt={label} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
                       : label.charAt(0).toUpperCase()
                     }
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-white font-semibold text-sm">{label}</p>
-                    <p className="text-xs mt-0.5" style={{ color: isSaved ? "#34d399" : photo ? "#34d399" : "rgba(255,255,255,0.3)" }}>
-                      {isSaved ? "Foto salva com sucesso!" : photo ? "Foto personalizada ativa" : "Usando inicial do nome"}
+                    <p className="text-xs mt-0.5" style={{ color: isSaved ? "#34d399" : photo ? "#34d399" : defaultPhoto ? "rgba(255,255,255,0.45)" : "rgba(255,255,255,0.3)" }}>
+                      {isSaved ? "Foto salva com sucesso!" : photo ? "Foto personalizada ativa" : defaultPhoto ? "Usando logo padrão" : "Usando inicial do nome"}
                     </p>
                   </div>
                   {photo && (

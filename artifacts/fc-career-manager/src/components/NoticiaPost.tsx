@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import type { NewsPost, NewsComment, NewsSource } from "@/types/noticias";
 import type { PortalPhotos } from "@/lib/portalPhotosStorage";
+import { PORTAL_DEFAULT_PHOTOS } from "@/lib/portalPhotosStorage";
 import type { CustomPortal } from "@/lib/customPortalStorage";
 import { getCommentAvatarUrl } from "@/lib/commentAvatar";
 
@@ -301,7 +302,7 @@ export function NoticiaPost({ post, portalPhotos, customPortals, onUpdateImage, 
 
   const postPhotoUrl = post.source === "custom"
     ? customPortal?.photo
-    : portalPhotos?.[post.source as keyof PortalPhotos];
+    : (portalPhotos?.[post.source as keyof PortalPhotos] || PORTAL_DEFAULT_PHOTOS[post.source as keyof PortalPhotos]);
 
   const displayImageUrl = localImageUrl ?? post.imageUrl ?? null;
   const hasEditActions = !!onUpdateImage || !!onDelete || !!onRefresh;
