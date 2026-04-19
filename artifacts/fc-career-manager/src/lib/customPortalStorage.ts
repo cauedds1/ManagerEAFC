@@ -40,9 +40,20 @@ export interface CustomPortal {
 export const CUSTOM_PORTALS_EVENT = "fc-custom-portals-changed";
 const MAX_PORTALS = 3;
 
+const AUTH_TOKEN_KEY = "fc_auth_token";
+
+function getAuthHeaders(): HeadersInit {
+  const token = localStorage.getItem(AUTH_TOKEN_KEY);
+  return token
+    ? { "Content-Type": "application/json", Authorization: `Bearer ${token}` }
+    : { "Content-Type": "application/json" };
+}
+
 export async function fetchPortals(careerId: string): Promise<CustomPortal[]> {
   try {
-    const res = await fetch(`/api/careers/${encodeURIComponent(careerId)}/portals`);
+    const res = await fetch(`/api/careers/${encodeURIComponent(careerId)}/portals`, {
+      headers: getAuthHeaders(),
+    });
     if (!res.ok) return [];
     return (await res.json()) as CustomPortal[];
   } catch {
@@ -57,7 +68,7 @@ export async function createPortal(
   try {
     const res = await fetch(`/api/careers/${encodeURIComponent(careerId)}/portals`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: getAuthHeaders(),
       body: JSON.stringify(data),
     });
     if (!res.ok) return null;
@@ -75,7 +86,7 @@ export async function updatePortal(
   try {
     await fetch(`/api/careers/${encodeURIComponent(careerId)}/portals/${encodeURIComponent(id)}`, {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      headers: getAuthHeaders(),
       body: JSON.stringify(updates),
     });
   } catch {
@@ -86,6 +97,7 @@ export async function deletePortal(careerId: string, id: string): Promise<void> 
   try {
     await fetch(`/api/careers/${encodeURIComponent(careerId)}/portals/${encodeURIComponent(id)}`, {
       method: "DELETE",
+      headers: getAuthHeaders(),
     });
   } catch {
   }

@@ -1,8 +1,17 @@
 import type { Season } from "@/types/career";
 
+const AUTH_TOKEN_KEY = "fc_auth_token";
+
+function getAuthHeaders(): HeadersInit {
+  const token = localStorage.getItem(AUTH_TOKEN_KEY);
+  return token
+    ? { "Content-Type": "application/json", Authorization: `Bearer ${token}` }
+    : { "Content-Type": "application/json" };
+}
+
 export async function getSeasons(careerId: string): Promise<Season[]> {
   try {
-    const res = await fetch(`/api/careers/${careerId}/seasons`);
+    const res = await fetch(`/api/careers/${careerId}/seasons`, { headers: getAuthHeaders() });
     if (!res.ok) return [];
     return (await res.json()) as Season[];
   } catch {
@@ -20,7 +29,7 @@ export async function createSeason(
   try {
     const res = await fetch(`/api/careers/${careerId}/seasons`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: getAuthHeaders(),
       body: JSON.stringify({ label, competitions, isActive, id }),
     });
     if (!res.ok) return null;
@@ -40,7 +49,10 @@ export async function createSeason(
 
 export async function activateSeason(seasonId: string): Promise<boolean> {
   try {
-    const res = await fetch(`/api/seasons/${seasonId}/activate`, { method: "PUT" });
+    const res = await fetch(`/api/seasons/${seasonId}/activate`, {
+      method: "PUT",
+      headers: getAuthHeaders(),
+    });
     return res.ok;
   } catch {
     return false;
@@ -67,7 +79,7 @@ export async function updateSeasonLabel(seasonId: string, label: string): Promis
   try {
     const res = await fetch(`/api/seasons/${seasonId}/label`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      headers: getAuthHeaders(),
       body: JSON.stringify({ label }),
     });
     return res.ok;
