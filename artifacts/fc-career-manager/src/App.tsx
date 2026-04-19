@@ -5,6 +5,8 @@ import { CareerSelection } from "@/components/CareerSelection";
 import { CreateCareerWizard } from "@/components/CreateCareerWizard";
 import { Dashboard } from "@/components/Dashboard";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
+import { LandingPage } from "@/components/LandingPage";
+import { AuthPage } from "@/components/AuthPage";
 import { applyTheme, resetTheme, extractColorsFromImage } from "@/lib/themeManager";
 import { getClubColors } from "@/lib/clubColors";
 import { APIFOOTBALL_TO_FC26_NAME } from "@/lib/footballApiMap";
@@ -21,6 +23,8 @@ import { listCareers, saveCareer, migrateFromLegacy, updateCareerSeason } from "
 
 type AppView =
   | "init"
+  | "landing"
+  | "auth"
   | "loading-clubs"
   | "fetch-error"
   | "squad-loading"
@@ -190,11 +194,40 @@ export default function App() {
     doFetchClubs(() => resolveViewAfterClubs(hasCareers));
   }, [doFetchClubs, resolveViewAfterClubs]);
 
+  const handleLandingStart = useCallback(() => {
+    const loadedCareers = listCareers();
+    const hasCareers = loadedCareers.length > 0;
+    const localCached = getCachedClubList();
+    if (localCached && localCached.length > 0) {
+      setAllClubs(localCached);
+      resolveViewAfterClubs(hasCareers);
+      return;
+    }
+    doFetchClubs(() => resolveViewAfterClubs(hasCareers));
+  }, [doFetchClubs, resolveViewAfterClubs]);
+
+  const handleLandingLogin = useCallback(() => {
+    setView("auth");
+  }, []);
+
+  const handleAuthBack = useCallback(() => {
+    setView("landing");
+  }, []);
+
+  const handleAuthContinue = useCallback(() => {
+    handleLandingStart();
+  }, [handleLandingStart]);
+
   useEffect(() => {
     migrateFromLegacy();
     const loadedCareers = listCareers();
     setCareers(loadedCareers);
     const hasCareers = loadedCareers.length > 0;
+
+    if (!hasCareers) {
+      setView("landing");
+      return;
+    }
 
     const localCached = getCachedClubList();
     if (localCached && localCached.length > 0) {
@@ -326,6 +359,14 @@ export default function App() {
           <div className="w-8 h-8 rounded-full border-2 animate-spin" style={{ borderColor: "var(--club-primary)", borderTopColor: "transparent" }} />
         </div>
       );
+    }
+
+    if (view === "landing") {
+      return <LandingPage onStart={handleLandingStart} onLogin={handleLandingLogin} />;
+    }
+
+    if (view === "auth") {
+      return <AuthPage onBack={handleAuthBack} onContinue={handleAuthContinue} />;
     }
 
     if (view === "loading-clubs") {
