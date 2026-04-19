@@ -522,7 +522,7 @@ export function PlayerStatsTable({ careerId, seasonId, allPlayers, statsOverride
                   </td>
                   <td className="px-2 py-2.5">
                     <div className="flex items-center gap-2.5">
-                      <PlayerPhoto src={player.photo} name={player.name} />
+                      <PlayerPhoto src={overrides[player.id]?.photoOverride ?? player.photo} name={player.name} />
                       <div className="flex flex-col gap-0.5 min-w-0">
                         <span className={`font-medium text-xs truncate max-w-[130px] ${isFormer ? "text-white/45" : "text-white/80"}`}>{player.name}</span>
                         {isFormer && (

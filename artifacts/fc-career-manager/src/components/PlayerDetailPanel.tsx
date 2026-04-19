@@ -126,12 +126,15 @@ export function PlayerDetailPanel({
   const displayNumber   = override?.shirtNumber ?? player.number;
   const displayOverall  = override?.overall;
   const displayPosition = (migratePositionOverride(override?.positionOverride) ?? player.positionPtBr) as PositionPtBr;
+  const displayPhoto    = override?.photoOverride ?? player.photo;
 
   const [editName,     setEditName]     = useState(displayName);
   const [editNumber,   setEditNumber]   = useState(String(displayNumber ?? ""));
   const [editOverall,  setEditOverall]  = useState(String(displayOverall ?? ""));
   const [editSalary,   setEditSalary]   = useState(String(override?.salary ?? ""));
   const [editPosition, setEditPosition] = useState<PositionPtBr>(displayPosition);
+  const [editPhoto,    setEditPhoto]    = useState(override?.photoOverride ?? "");
+  const [photoPreviewErr, setPhotoPreviewErr] = useState(false);
 
   const pos      = POS_STYLE[displayPosition] ?? POS_STYLE.MID;
   const moodStyle = MOOD_COLORS[stats.mood];
@@ -143,6 +146,7 @@ export function PlayerDetailPanel({
     const salaryVal  = parseInt(editSalary, 10);
     setPlayerOverride(careerId, player.id, {
       nameOverride:     editName.trim() || undefined,
+      photoOverride:    editPhoto.trim() || undefined,
       shirtNumber:      !isNaN(numberVal)  && editNumber.trim()  ? numberVal                              : undefined,
       overall:          !isNaN(overallVal) && editOverall.trim() ? Math.max(1, Math.min(99, overallVal))  : undefined,
       salary:           !isNaN(salaryVal)  && editSalary.trim()  ? Math.max(0, salaryVal)                 : undefined,
@@ -158,6 +162,8 @@ export function PlayerDetailPanel({
     setEditOverall(String(displayOverall ?? ""));
     setEditSalary(String(override?.salary ?? ""));
     setEditPosition(displayPosition);
+    setEditPhoto(override?.photoOverride ?? "");
+    setPhotoPreviewErr(false);
     setTab("stats");
   };
 
@@ -190,7 +196,7 @@ export function PlayerDetailPanel({
           style={{ borderBottom: "1px solid var(--surface-border)" }}
         >
           <div className="flex items-center gap-4 min-w-0">
-            <PlayerPhoto src={player.photo} name={displayName} size={72} />
+            <PlayerPhoto src={displayPhoto} name={displayName} size={72} />
             <div className="flex-1 min-w-0">
               <h2 className="text-white text-lg font-black leading-tight truncate">{displayName}</h2>
               <p className="text-white/40 text-sm mt-0.5">
@@ -249,6 +255,8 @@ export function PlayerDetailPanel({
                   setEditOverall(String(displayOverall ?? ""));
                   setEditSalary(String(override?.salary ?? ""));
                   setEditPosition(displayPosition);
+                  setEditPhoto(override?.photoOverride ?? "");
+                  setPhotoPreviewErr(false);
                 }
                 setTab(key);
               }}
@@ -423,6 +431,57 @@ export function PlayerDetailPanel({
                   onChange={setEditName}
                   placeholder={player.name}
                 />
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-white/40 text-xs font-semibold tracking-wide uppercase">Foto do jogador</label>
+                  <div className="flex gap-3 items-start">
+                    <div
+                      className="flex-shrink-0 rounded-xl overflow-hidden flex items-center justify-center"
+                      style={{ width: 52, height: 52, background: "rgba(var(--club-primary-rgb),0.1)", border: "2px solid rgba(var(--club-primary-rgb),0.2)" }}
+                    >
+                      {editPhoto.trim() && !photoPreviewErr ? (
+                        <img
+                          src={editPhoto.trim()}
+                          alt="preview"
+                          className="w-full h-full object-cover"
+                          onError={() => setPhotoPreviewErr(true)}
+                          onLoad={() => setPhotoPreviewErr(false)}
+                        />
+                      ) : (
+                        <span className="text-white/30 font-black text-base">
+                          {displayName.trim().split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase()}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex-1 flex flex-col gap-1.5">
+                      <input
+                        type="url"
+                        value={editPhoto}
+                        onChange={(e) => { setEditPhoto(e.target.value); setPhotoPreviewErr(false); }}
+                        placeholder="https://... (URL da foto)"
+                        className="w-full px-3 py-2.5 rounded-xl text-white text-sm font-semibold focus:outline-none transition-colors"
+                        style={{
+                          background: "rgba(255,255,255,0.05)",
+                          border: "1px solid rgba(255,255,255,0.09)",
+                        }}
+                        onFocus={(e) => { e.currentTarget.style.border = "1px solid rgba(var(--club-primary-rgb),0.5)"; }}
+                        onBlur={(e) => { e.currentTarget.style.border = "1px solid rgba(255,255,255,0.09)"; }}
+                      />
+                      {photoPreviewErr && editPhoto.trim() && (
+                        <p className="text-[11px] text-red-400/70">URL inválida ou imagem não carregou</p>
+                      )}
+                      {editPhoto.trim() && !photoPreviewErr && (
+                        <button
+                          type="button"
+                          onClick={() => { setEditPhoto(""); setPhotoPreviewErr(false); }}
+                          className="self-start text-[11px] text-white/30 hover:text-white/60 transition-colors"
+                        >
+                          Remover foto
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
 
                 <div className="grid grid-cols-3 gap-3">
                   <LabeledInput

@@ -149,6 +149,7 @@ function PlayerRow({
   const displayNumber = ov?.shirtNumber ?? player.number;
   const displayOverall = ov?.overall;
   const displayPos = migratePositionOverride(ov?.positionOverride) ?? player.positionPtBr;
+  const displayPhoto = ov?.photoOverride ?? player.photo;
   const pos = POS_STYLE[displayPos] ?? POS_STYLE.MID;
 
   return (
@@ -165,7 +166,7 @@ function PlayerRow({
         cursor: "pointer",
       }}
     >
-      <PlayerPhoto src={player.photo} name={displayName} />
+      <PlayerPhoto src={displayPhoto} name={displayName} />
       <div className="flex-1 min-w-0">
         <p className="text-white text-sm font-semibold leading-tight truncate">{displayName}</p>
         <p className="text-white/30 text-xs mt-0.5">{player.age > 0 ? `${player.age} anos` : ""}</p>

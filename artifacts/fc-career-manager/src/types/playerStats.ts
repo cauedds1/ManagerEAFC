@@ -74,6 +74,7 @@ export interface OvrHistoryEntry {
 export interface PlayerOverride {
   playerId: number;
   nameOverride?: string;
+  photoOverride?: string;
   shirtNumber?: number;
   overall?: number;
   ovrUpdatedAt?: number;
