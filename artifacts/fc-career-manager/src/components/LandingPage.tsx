@@ -267,7 +267,7 @@ function getLiveCoaches(): number {
   const now = Date.now();
   const s1 = Math.sin(now / 200000);
   const s2 = Math.cos(now / 80000);
-  return 12847 + Math.round(s1 * 182 + s2 * 90);
+  return 12675 + Math.round(s1 * 200 + s2 * 75);
 }
 
 /* ─── SplitFlap component ────────────────────────────────── */
@@ -715,8 +715,7 @@ export function LandingPage({ onStart, onLogin, onStartWithPlan }: LandingPagePr
   const cursor2Ref    = useRef<HTMLDivElement>(null);
   const navbarRef     = useRef<HTMLDivElement>(null);
   const stepLineRef   = useRef<HTMLDivElement>(null);
-  const audioCtxRef   = useRef<AudioContext | null>(null);
-  const crowdGainRef  = useRef<GainNode | null>(null);
+  const audioRef      = useRef<HTMLAudioElement | null>(null);
 
   const [activeClub, setActiveClub]           = useState(0);
   const [isMobile, setIsMobile]               = useState(() => typeof window !== "undefined" && window.innerWidth < 900);
@@ -852,66 +851,42 @@ export function LandingPage({ onStart, onLogin, onStartWithPlan }: LandingPagePr
     return () => clearInterval(interval);
   }, [aiTextIdx]);
 
-  /* ── Club color picker ─── */
+  /* ── Club color picker (400ms debounce) ─── */
   useEffect(() => {
     if (!customClubInput.trim()) { setCustomClub(null); setCustomClubName(""); setClubNotFound(false); return; }
-    const key = customClubInput.trim().toLowerCase();
-    const match = CLUBS_DB[key];
-    if (match) {
-      setCustomClub(match);
-      setCustomClubName(customClubInput.trim());
-      setClubNotFound(false);
-    } else {
-      setCustomClub(null);
-      setCustomClubName("");
-      setClubNotFound(true);
-    }
+    const timer = setTimeout(() => {
+      const key = customClubInput.trim().toLowerCase();
+      const match = CLUBS_DB[key];
+      if (match) {
+        setCustomClub(match);
+        setCustomClubName(customClubInput.trim());
+        setClubNotFound(false);
+      } else {
+        setCustomClub(null);
+        setCustomClubName("");
+        setClubNotFound(true);
+      }
+    }, 400);
+    return () => clearTimeout(timer);
   }, [customClubInput]);
 
-  /* ── Sound toggle (Web Audio — no file dependency) ─── */
+  /* ── Sound toggle ─── */
   const toggleSound = useCallback(() => {
+    if (!audioRef.current) {
+      const a = new Audio("/sounds/crowd.mp3");
+      a.loop   = true;
+      a.volume = 0.12;
+      audioRef.current = a;
+    }
     if (!soundOn) {
-      try {
-        let ctx = audioCtxRef.current;
-        if (!ctx) {
-          ctx = new AudioContext();
-          audioCtxRef.current = ctx;
-          const rate = ctx.sampleRate;
-          const dur  = 4;
-          const buf  = ctx.createBuffer(2, rate * dur, rate);
-          for (let ch = 0; ch < 2; ch++) {
-            const d = buf.getChannelData(ch);
-            for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
-          }
-          const lpf = ctx.createBiquadFilter();
-          lpf.type = "lowpass"; lpf.frequency.value = 700; lpf.Q.value = 0.7;
-          const hpf = ctx.createBiquadFilter();
-          hpf.type = "highpass"; hpf.frequency.value = 80;
-          const gain = ctx.createGain();
-          gain.gain.value = 0;
-          crowdGainRef.current = gain;
-          const src = ctx.createBufferSource();
-          src.buffer = buf; src.loop = true;
-          src.connect(lpf); lpf.connect(hpf); hpf.connect(gain); gain.connect(ctx.destination);
-          src.start();
-        } else {
-          ctx.resume();
-        }
-        if (crowdGainRef.current && audioCtxRef.current) {
-          crowdGainRef.current.gain.setTargetAtTime(0.07, audioCtxRef.current.currentTime, 0.4);
-        }
-        setSoundOn(true);
-      } catch { /* AudioContext blocked by browser policy */ }
+      audioRef.current.play().then(() => setSoundOn(true)).catch(() => {});
     } else {
-      if (crowdGainRef.current && audioCtxRef.current) {
-        crowdGainRef.current.gain.setTargetAtTime(0, audioCtxRef.current.currentTime, 0.3);
-        setTimeout(() => audioCtxRef.current?.suspend().catch(() => {}), 600);
-      }
+      audioRef.current.pause();
       setSoundOn(false);
     }
   }, [soundOn]);
 
-  useEffect(() => () => { audioCtxRef.current?.close().catch(() => {}); }, []);
+  useEffect(() => () => { audioRef.current?.pause(); }, []);
 
   /* ── Generate news ─── */
   const generateNews = () => {
@@ -947,14 +922,18 @@ export function LandingPage({ onStart, onLogin, onStartWithPlan }: LandingPagePr
   const activeF = FEATURES_EXPLORER[Math.max(0, activeFeature)];
 
   return (
-    <div ref={containerRef} className="font-dm" style={{ background: "#09090f", height: "100%", overflowY: "auto", overflowX: "hidden", scrollBehavior: "smooth", cursor: "none" }}>
+    <div ref={containerRef} className="font-dm" style={{ background: "#09090f", height: "100%", overflowY: "auto", overflowX: "hidden", scrollBehavior: "smooth", cursor: isMobile ? "auto" : "none" }}>
 
-      {/* ── Custom cursors ─── */}
-      <div ref={cursor1Ref} className="lp-cursor-dot" style={{ transform: "translate(-99px,-99px)" }}>
-        <span className="lp-ball-icon">⚽</span>
-        <span className="lp-ball-default" />
-      </div>
-      <div ref={cursor2Ref} className="lp-cursor-ring" style={{ transform: "translate(-99px,-99px)" }} />
+      {/* ── Custom cursors (desktop only) ─── */}
+      {!isMobile && (
+        <>
+          <div ref={cursor1Ref} className="lp-cursor-dot" style={{ transform: "translate(-99px,-99px)" }}>
+            <span className="lp-ball-icon">⚽</span>
+            <span className="lp-ball-default" />
+          </div>
+          <div ref={cursor2Ref} className="lp-cursor-ring" style={{ transform: "translate(-99px,-99px)" }} />
+        </>
+      )}
 
       {/* ── Sound button (fixed) ─── */}
       <button
@@ -1136,7 +1115,7 @@ export function LandingPage({ onStart, onLogin, onStartWithPlan }: LandingPagePr
               </div>
 
               {/* Content panel */}
-              <div style={{ flex: 1, padding: "36px 40px", background: FEATURE_PANEL_BG[activeF.colorType], transition: "background 0.6s ease", display: "flex", gap: 40, alignItems: "flex-start", overflow: "hidden" }}>
+              <div style={{ flex: 1, padding: "36px 40px", background: "transparent", display: "flex", gap: 40, alignItems: "flex-start", overflow: "hidden" }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
                     <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: activeF.accentColor }}>
