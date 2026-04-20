@@ -74,68 +74,6 @@ export function AuthPage({ onBack, onAuthSuccess }: AuthPageProps) {
     resetSignup();
   };
 
-  const handleSubmit = async () => {
-    setError("");
-    if (!email.trim() || !password) { setError("Preencha e-mail e senha."); return; }
-    if (!isLogin && !name.trim()) { setError("Informe seu nome."); return; }
-
-    setLoading(true);
-    try {
-      const endpoint = isLogin ? `${API_BASE}/auth/login` : `${API_BASE}/auth/register`;
-      const body: Record<string, string> = { email: email.trim(), password };
-      if (!isLogin) body.name = name.trim();
-
-      const res = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-
-      const data = await res.json() as {
-        token?: string;
-        user?: { id: number; email: string; name: string; plan?: Plan };
-        error?: string;
-      };
-
-      if (!res.ok) { setError(data.error ?? "Ocorreu um erro. Tente novamente."); return; }
-      if (!data.token || !data.user) { setError("Resposta inválida do servidor."); return; }
-
-      localStorage.setItem("fc_auth_token", data.token);
-      localStorage.setItem("fc_auth_user", JSON.stringify(data.user));
-
-      if (!isLogin && selectedPlan !== "free") {
-        setRedirecting(true);
-        try {
-          const checkoutRes = await fetch(`${API_BASE}/stripe/checkout`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${data.token}`,
-            },
-            body: JSON.stringify({ priceId: "__pending__" }),
-          });
-
-          if (checkoutRes.ok) {
-            const checkoutData = await checkoutRes.json() as { url?: string; error?: string };
-            if (checkoutData.url) {
-              window.location.href = checkoutData.url;
-              return;
-            }
-          }
-        } catch {
-          // If checkout fails, continue normally
-        }
-        setRedirecting(false);
-      }
-
-      onAuthSuccess(data.token, data.user);
-    } catch {
-      setError("Não foi possível conectar ao servidor.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handlePaidSignup = async (plan: Plan, token: string, user: { id: number; email: string; name: string; plan?: Plan }) => {
     setRedirecting(true);
     try {

@@ -9,6 +9,18 @@ const VALID_PLAN_TIERS: Record<string, "pro" | "ultra"> = {
   ultra: "ultra",
 };
 
+async function getPlanTierFromPriceId(priceId: string): Promise<"pro" | "ultra" | null> {
+  const stripe = await getUncachableStripeClient();
+  const price = await stripe.prices.retrieve(priceId, { expand: ["product"] });
+  const product = price.product as Stripe.Product;
+  const planTier = product.metadata?.planTier;
+  if (!planTier || !VALID_PLAN_TIERS[planTier]) {
+    logger.warn({ priceId, planTier }, "Price has no valid planTier metadata");
+    return null;
+  }
+  return VALID_PLAN_TIERS[planTier];
+}
+
 export async function handleStripeEvent(event: Stripe.Event): Promise<void> {
   try {
     switch (event.type) {
@@ -17,15 +29,28 @@ export async function handleStripeEvent(event: Stripe.Event): Promise<void> {
         if (session.mode !== "subscription") break;
 
         const userId = session.metadata?.userId;
-        const planTier = session.metadata?.planTier;
         const stripeCustomerId = typeof session.customer === "string" ? session.customer : null;
 
-        if (!userId || !planTier) {
-          logger.warn({ sessionId: session.id }, "checkout.session.completed missing userId or planTier metadata");
+        if (!userId) {
+          logger.warn({ sessionId: session.id }, "checkout.session.completed missing userId metadata");
           break;
         }
 
-        const plan = VALID_PLAN_TIERS[planTier] ?? "pro";
+        const stripe = await getUncachableStripeClient();
+        const lineItems = await stripe.checkout.sessions.listLineItems(session.id, { limit: 1 });
+        const priceId = lineItems.data?.[0]?.price?.id ?? null;
+
+        let plan: "pro" | "ultra" | null = null;
+
+        if (priceId) {
+          plan = await getPlanTierFromPriceId(priceId);
+        }
+
+        if (!plan) {
+          logger.warn({ sessionId: session.id, priceId }, "checkout.session.completed: could not resolve planTier from price_id");
+          break;
+        }
+
         await db
           .update(usersTable)
           .set({
@@ -48,16 +73,12 @@ export async function handleStripeEvent(event: Stripe.Event): Promise<void> {
         const priceId = subscription.items?.data?.[0]?.price?.id;
         if (!priceId) break;
 
-        const stripe = await getUncachableStripeClient();
-        const price = await stripe.prices.retrieve(priceId, { expand: ["product"] });
-        const product = price.product as Stripe.Product;
-        const planTier = product.metadata?.planTier;
-        if (!planTier) break;
+        const plan = await getPlanTierFromPriceId(priceId);
+        if (!plan) break;
 
-        const plan = VALID_PLAN_TIERS[planTier] ?? "pro";
         await db
           .update(usersTable)
-          .set({ plan })
+          .set({ plan, stripeCustomerId: customerId })
           .where(eq(usersTable.stripeCustomerId, customerId));
 
         logger.info({ customerId, plan }, "Plan updated via customer.subscription.updated");

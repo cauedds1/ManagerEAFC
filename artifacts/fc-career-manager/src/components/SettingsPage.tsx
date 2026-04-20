@@ -342,6 +342,30 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
   const [portalLoading, setPortalLoading] = useState(false);
   const [portalError, setPortalError] = useState("");
 
+  const [subscription, setSubscription] = useState<{
+    status: string;
+    current_period_end: string | null;
+    cancel_at_period_end: boolean;
+    product_name: string | null;
+  } | null>(null);
+  const [subLoading, setSubLoading] = useState(false);
+
+  useEffect(() => {
+    if (resolvedPlan === "free") return;
+    const token = localStorage.getItem(AUTH_TOKEN_KEY);
+    if (!token) return;
+    setSubLoading(true);
+    fetch(`${API_BASE}/stripe/subscription`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => r.json())
+      .then((d: { subscription?: typeof subscription }) => {
+        setSubscription(d.subscription ?? null);
+      })
+      .catch(() => {})
+      .finally(() => setSubLoading(false));
+  }, [resolvedPlan]);
+
   const handleOpenPortal = useCallback(async () => {
     setPortalError("");
     setPortalLoading(true);
@@ -965,31 +989,65 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
           </div>
 
           {resolvedPlan !== "free" && (
-            <div className="flex flex-col gap-1.5">
-              <button
-                onClick={handleOpenPortal}
-                disabled={portalLoading}
-                className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 hover:opacity-80 active:scale-[0.98] disabled:opacity-50"
-                style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.7)" }}
-              >
-                {portalLoading ? (
-                  <>
-                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
-                    Abrindo portal...
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" />
-                    </svg>
-                    Gerenciar assinatura
-                  </>
-                )}
-              </button>
-              {portalError && <p className="text-red-400 text-xs text-center">{portalError}</p>}
+            <div className="flex flex-col gap-2">
+              {subLoading && (
+                <div className="flex items-center gap-2 text-white/30 text-xs px-1">
+                  <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  Carregando dados da assinatura...
+                </div>
+              )}
+              {!subLoading && subscription && (
+                <div className="rounded-xl px-4 py-3 flex flex-col gap-1" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                  {subscription.product_name && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-white/40 text-xs">Plano ativo</span>
+                      <span className="text-white/80 text-xs font-semibold">{subscription.product_name}</span>
+                    </div>
+                  )}
+                  {subscription.current_period_end && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-white/40 text-xs">
+                        {subscription.cancel_at_period_end ? "Cancela em" : "Renova em"}
+                      </span>
+                      <span className={`text-xs font-semibold ${subscription.cancel_at_period_end ? "text-amber-400" : "text-white/80"}`}>
+                        {new Date(subscription.current_period_end).toLocaleDateString("pt-BR")}
+                      </span>
+                    </div>
+                  )}
+                  {subscription.cancel_at_period_end && (
+                    <p className="text-amber-400/70 text-xs mt-0.5">Sua assinatura não será renovada automaticamente.</p>
+                  )}
+                </div>
+              )}
+              <div className="flex flex-col gap-1.5">
+                <button
+                  onClick={handleOpenPortal}
+                  disabled={portalLoading}
+                  className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 hover:opacity-80 active:scale-[0.98] disabled:opacity-50"
+                  style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.7)" }}
+                >
+                  {portalLoading ? (
+                    <>
+                      <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                      Abrindo portal...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" />
+                      </svg>
+                      Gerenciar assinatura
+                    </>
+                  )}
+                </button>
+                {portalError && <p className="text-red-400 text-xs text-center">{portalError}</p>}
+              </div>
             </div>
           )}
         </div>

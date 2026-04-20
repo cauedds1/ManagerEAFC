@@ -13,11 +13,13 @@ const FRONTEND_URL = process.env.FRONTEND_URL ?? (
     : "http://localhost:3000"
 );
 
+const ALLOWED_PLAN_TIERS = new Set(["pro", "ultra"]);
+
 router.post("/stripe/checkout", requireAuth, async (req: AuthRequest, res) => {
   try {
     const { priceId } = req.body as { priceId?: string };
-    if (!priceId) {
-      return res.status(400).json({ error: "priceId é obrigatório" });
+    if (!priceId || typeof priceId !== "string" || !priceId.startsWith("price_")) {
+      return res.status(400).json({ error: "priceId inválido" });
     }
 
     const [user] = await db
@@ -32,9 +34,27 @@ router.post("/stripe/checkout", requireAuth, async (req: AuthRequest, res) => {
 
     const stripe = await getUncachableStripeClient();
 
-    const price = await stripe.prices.retrieve(priceId, { expand: ["product"] });
+    let price: Stripe.Price;
+    try {
+      price = await stripe.prices.retrieve(priceId, { expand: ["product"] });
+    } catch {
+      return res.status(400).json({ error: "Preço não encontrado no Stripe" });
+    }
+
     const product = price.product as Stripe.Product;
-    const planTier = product.metadata?.planTier ?? "pro";
+    const planTier = product.metadata?.planTier;
+
+    if (!planTier || !ALLOWED_PLAN_TIERS.has(planTier)) {
+      return res.status(400).json({ error: "Este preço não corresponde a um plano válido" });
+    }
+
+    if (!price.active) {
+      return res.status(400).json({ error: "Este preço não está mais disponível" });
+    }
+
+    if (price.currency !== "brl" || price.type !== "recurring") {
+      return res.status(400).json({ error: "Preço inválido para assinatura BRL" });
+    }
 
     let customerId = user.stripeCustomerId;
     if (!customerId) {
@@ -59,7 +79,6 @@ router.post("/stripe/checkout", requireAuth, async (req: AuthRequest, res) => {
       cancel_url: `${FRONTEND_URL}/?checkout=cancel`,
       metadata: {
         userId: String(user.id),
-        planTier,
       },
     });
 
