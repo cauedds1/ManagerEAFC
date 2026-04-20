@@ -124,7 +124,7 @@ function AuthInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
     <input
       {...props}
       style={{ ...INPUT_STYLE, ...props.style }}
-      onFocus={e => { e.currentTarget.style.borderColor = "rgba(124,92,252,0.5)"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(124,92,252,0.1)"; props.onFocus?.(e); }}
+      onFocus={e => { e.currentTarget.style.borderColor = "rgba(245,158,11,0.55)"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(124,92,252,0.12), 0 0 0 1px rgba(245,158,11,0.18)"; props.onFocus?.(e); }}
       onBlur={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; e.currentTarget.style.boxShadow = "none"; props.onBlur?.(e); }}
     />
   );
