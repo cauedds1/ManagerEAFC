@@ -1,3 +1,63 @@
-<svg width="180" height="180" viewBox="0 0 180 180" fill="none" xmlns="http://www.w3.org/2000/svg">
-<rect width="180" height="180" rx="36" fill="#FF3C00"/>
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#1a0f3a"/>
+      <stop offset="100%" stop-color="#0d0820"/>
+    </linearGradient>
+    <linearGradient id="pitch" x1="0" y1="0" x2="0" y2="340" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#1e6b3c"/>
+      <stop offset="100%" stop-color="#155230"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="256" y1="86" x2="256" y2="426" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#7c5cfc" stop-opacity="0.5"/>
+      <stop offset="100%" stop-color="#5b3fd1" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="roundclip">
+      <rect width="512" height="512" rx="110" ry="110"/>
+    </clipPath>
+  </defs>
+
+  <!-- Background -->
+  <rect width="512" height="512" rx="110" fill="url(#bg)"/>
+
+  <!-- Pitch -->
+  <g clip-path="url(#roundclip)">
+    <rect x="86" y="86" width="340" height="340" rx="12" fill="url(#pitch)"/>
+
+    <!-- Pitch lines -->
+    <!-- Border -->
+    <rect x="86" y="86" width="340" height="340" rx="12" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="6"/>
+
+    <!-- Center line (horizontal) -->
+    <line x1="86" y1="256" x2="426" y2="256" stroke="rgba(255,255,255,0.35)" stroke-width="5"/>
+
+    <!-- Center circle -->
+    <circle cx="256" cy="256" r="60" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="5"/>
+
+    <!-- Center dot -->
+    <circle cx="256" cy="256" r="7" fill="rgba(255,255,255,0.6)"/>
+
+    <!-- Top penalty area -->
+    <rect x="161" y="86" width="190" height="72" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="4"/>
+    <!-- Top goal area -->
+    <rect x="204" y="86" width="104" height="32" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="4"/>
+
+    <!-- Bottom penalty area -->
+    <rect x="161" y="354" width="190" height="72" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="4"/>
+    <!-- Bottom goal area -->
+    <rect x="204" y="394" width="104" height="32" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="4"/>
+
+    <!-- Penalty spots -->
+    <circle cx="256" cy="142" r="5" fill="rgba(255,255,255,0.45)"/>
+    <circle cx="256" cy="370" r="5" fill="rgba(255,255,255,0.45)"/>
+
+    <!-- Purple glow overlay -->
+    <rect x="86" y="86" width="340" height="340" rx="12" fill="url(#glow)"/>
+  </g>
+
+  <!-- Purple border glow -->
+  <rect x="86" y="86" width="340" height="340" rx="12" fill="none" stroke="rgba(124,92,252,0.4)" stroke-width="3"/>
+
+  <!-- Outer rounded border subtle -->
+  <rect x="3" y="3" width="506" height="506" rx="108" fill="none" stroke="rgba(124,92,252,0.2)" stroke-width="6"/>
 </svg>
