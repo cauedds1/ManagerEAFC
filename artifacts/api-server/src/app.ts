@@ -5,6 +5,9 @@ import path from "path";
 import { existsSync } from "fs";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import { WebhookHandlers } from "./lib/webhookHandlers";
+import { handleStripeEvent } from "./lib/stripeWebhook";
+import type Stripe from "stripe";
 
 const app: Express = express();
 
@@ -28,6 +31,38 @@ app.use(
   }),
 );
 app.use(cors());
+
+app.post(
+  "/api/stripe/webhook",
+  express.raw({ type: "application/json" }),
+  async (req, res) => {
+    const signature = req.headers["stripe-signature"];
+    if (!signature) {
+      return res.status(400).json({ error: "Missing stripe-signature" });
+    }
+
+    const sig = Array.isArray(signature) ? signature[0] : signature;
+
+    if (!Buffer.isBuffer(req.body)) {
+      logger.error("Webhook body is not a Buffer — express.json() ran before webhook route");
+      return res.status(500).json({ error: "Webhook processing error" });
+    }
+
+    try {
+      await WebhookHandlers.processWebhook(req.body as Buffer, sig);
+
+      const event = JSON.parse(req.body.toString()) as Stripe.Event;
+      await handleStripeEvent(event);
+
+      return res.status(200).json({ received: true });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      logger.error({ err }, "Stripe webhook error");
+      return res.status(400).json({ error: msg });
+    }
+  }
+);
+
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 

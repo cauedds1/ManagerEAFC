@@ -12,10 +12,12 @@ import careersRouter from "./careers";
 import gamedataRouter from "./gamedata";
 import portalsRouter from "./portals";
 import authRouter from "./auth";
+import stripeRouter from "./stripe";
 
 const router: IRouter = Router();
 
 router.use(authRouter);
+router.use(stripeRouter);
 router.use(healthRouter);
 router.use(clubsRouter);
 router.use(squadRouter);

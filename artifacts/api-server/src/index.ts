@@ -2,6 +2,8 @@ import app from "./app";
 import { logger } from "./lib/logger";
 import { db, runMigrations, squadPlayersTable } from "@workspace/db";
 import { ne, inArray, sql, like } from "drizzle-orm";
+import { getStripeSync } from "./lib/stripeClient";
+import { runMigrations as runStripeMigrations } from "stripe-replit-sync";
 
 const rawPort = process.env["PORT"];
 
@@ -28,6 +30,38 @@ async function applyMigrations() {
   } catch (err) {
     logger.error({ err }, "Database migration failed — aborting startup");
     process.exit(1);
+  }
+}
+
+async function initStripe() {
+  const databaseUrl = process.env.DATABASE_URL;
+  if (!databaseUrl) {
+    logger.warn("DATABASE_URL not set — skipping Stripe initialization");
+    return;
+  }
+
+  try {
+    logger.info("Initializing Stripe schema...");
+    await runStripeMigrations({ databaseUrl, schema: "stripe" });
+    logger.info("Stripe schema ready");
+
+    const stripeSync = await getStripeSync();
+
+    const webhookBaseUrl = process.env.REPLIT_DOMAINS
+      ? `https://${process.env.REPLIT_DOMAINS.split(",")[0]}`
+      : null;
+
+    if (webhookBaseUrl) {
+      logger.info({ webhookBaseUrl }, "Setting up managed Stripe webhook...");
+      await stripeSync.findOrCreateManagedWebhook(`${webhookBaseUrl}/api/stripe/webhook`);
+      logger.info("Stripe webhook configured");
+    }
+
+    stripeSync.syncBackfill()
+      .then(() => logger.info("Stripe data backfill complete"))
+      .catch((err) => logger.warn({ err }, "Stripe backfill error (non-fatal)"));
+  } catch (err) {
+    logger.warn({ err }, "Stripe initialization failed (non-fatal) — check Stripe integration is connected");
   }
 }
 
@@ -99,6 +133,7 @@ applyMigrations()
   .then(purgeInvalidSquadRows)
   .then(migratePositionGroups)
   .then(clearCardPhotos)
+  .then(initStripe)
   .then(() => {
     app.listen(port, (err) => {
       if (err) {

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { clearClubCache } from "@/lib/clubListCache";
 import {
   fetchPortalPhotos,
@@ -332,9 +332,37 @@ function CustomPortalModal({
   );
 }
 
+const API_BASE = "/api";
+const AUTH_TOKEN_KEY = "fc_auth_token";
+
 export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer, userPlan }: SettingsPageProps) {
   const resolvedPlan = userPlan ?? getUserPlan();
   const planLimits = getPlanLimits(resolvedPlan);
+
+  const [portalLoading, setPortalLoading] = useState(false);
+  const [portalError, setPortalError] = useState("");
+
+  const handleOpenPortal = useCallback(async () => {
+    setPortalError("");
+    setPortalLoading(true);
+    try {
+      const token = localStorage.getItem(AUTH_TOKEN_KEY);
+      const res = await fetch(`${API_BASE}/stripe/portal`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      });
+      if (!res.ok) {
+        const d = await res.json() as { error?: string };
+        throw new Error(d.error ?? "Erro ao abrir portal");
+      }
+      const { url } = await res.json() as { url?: string };
+      if (url) { window.location.href = url; }
+    } catch (e) {
+      setPortalError(e instanceof Error ? e.message : "Erro inesperado.");
+    } finally {
+      setPortalLoading(false);
+    }
+  }, []);
   const [section, setSection] = useState<Section>("temporada");
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [soundEnabled, setSoundEnabledState] = useState(() => isSoundEnabled());
@@ -935,6 +963,35 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
               </div>
             ))}
           </div>
+
+          {resolvedPlan !== "free" && (
+            <div className="flex flex-col gap-1.5">
+              <button
+                onClick={handleOpenPortal}
+                disabled={portalLoading}
+                className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 hover:opacity-80 active:scale-[0.98] disabled:opacity-50"
+                style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.7)" }}
+              >
+                {portalLoading ? (
+                  <>
+                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    Abrindo portal...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" />
+                    </svg>
+                    Gerenciar assinatura
+                  </>
+                )}
+              </button>
+              {portalError && <p className="text-red-400 text-xs text-center">{portalError}</p>}
+            </div>
+          )}
         </div>
       </SectionCard>
 

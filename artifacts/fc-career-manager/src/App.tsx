@@ -24,6 +24,7 @@ import { sessionClear } from "@/lib/sessionStore";
 
 const AUTH_TOKEN_KEY = "fc_auth_token";
 const AUTH_USER_KEY = "fc_auth_user";
+const API_BASE = "/api";
 
 interface AuthUser {
   id: number;
@@ -150,6 +151,8 @@ export default function App() {
   const [wizardMode, setWizardMode] = useState<WizardMode>("new");
   const [progress, setProgress] = useState<LoadingProgress>({ loaded: 0, total: 0, leagueName: "" });
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
+  const [checkoutPending, setCheckoutPending] = useState(false);
+  const [checkoutConfirmed, setCheckoutConfirmed] = useState(false);
 
   useEffect(() => {
     resetTheme();
@@ -253,6 +256,52 @@ export default function App() {
     setCareers([]);
     resetTheme();
     setView("landing");
+  }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("checkout") === "success") {
+      window.history.replaceState({}, "", window.location.pathname);
+      const token = localStorage.getItem(AUTH_TOKEN_KEY);
+      if (token) {
+        setCheckoutPending(true);
+        const start = Date.now();
+        const TIMEOUT_MS = 120_000;
+        const INTERVAL_MS = 3_000;
+
+        const poll = setInterval(async () => {
+          if (Date.now() - start > TIMEOUT_MS) {
+            clearInterval(poll);
+            setCheckoutPending(false);
+            return;
+          }
+          try {
+            const res = await fetch(`${API_BASE}/auth/me`, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            if (!res.ok) return;
+            const data = await res.json() as { user?: { plan?: string } };
+            if (data.user?.plan && data.user.plan !== "free") {
+              clearInterval(poll);
+              const stored = localStorage.getItem(AUTH_USER_KEY);
+              if (stored) {
+                try {
+                  const parsed = JSON.parse(stored) as AuthUser;
+                  const updated = { ...parsed, plan: data.user.plan as AuthUser["plan"] };
+                  localStorage.setItem(AUTH_USER_KEY, JSON.stringify(updated));
+                  setAuthUser(updated);
+                } catch {}
+              }
+              setCheckoutPending(false);
+              setCheckoutConfirmed(true);
+              setTimeout(() => setCheckoutConfirmed(false), 4000);
+            }
+          } catch {}
+        }, INTERVAL_MS);
+
+        return () => clearInterval(poll);
+      }
+    }
   }, []);
 
   useEffect(() => {
@@ -497,6 +546,36 @@ export default function App() {
       <div className="relative h-full overflow-hidden">
         {renderView()}
       </div>
+
+      {checkoutPending && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center"
+          style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(8px)" }}>
+          <div className="text-center px-6 py-10 rounded-3xl max-w-xs w-full mx-4"
+            style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}>
+            <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-5"
+              style={{ background: "rgba(139,92,246,0.15)", border: "1px solid rgba(139,92,246,0.3)" }}>
+              <svg className="w-8 h-8 animate-spin" fill="none" viewBox="0 0 24 24"
+                style={{ color: "#a78bfa" }}>
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+            </div>
+            <h2 className="text-white font-black text-lg mb-2">Confirmando pagamento...</h2>
+            <p className="text-white/40 text-sm leading-relaxed">Estamos aguardando a confirmação do Stripe. Isso pode levar alguns segundos.</p>
+          </div>
+        </div>
+      )}
+
+      {checkoutConfirmed && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-2xl flex items-center gap-3 shadow-lg"
+          style={{ background: "rgba(16,185,129,0.15)", border: "1px solid rgba(16,185,129,0.4)", backdropFilter: "blur(8px)" }}>
+          <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
+            style={{ color: "#34d399" }}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+          </svg>
+          <span className="text-white font-bold text-sm">Plano ativado com sucesso!</span>
+        </div>
+      )}
     </>
   );
 }

@@ -91,6 +91,7 @@ export const usersTable = pgTable("users", {
   plan: text("plan").notNull().default("free"),
   aiUsageCount: integer("ai_usage_count").notNull().default(0),
   aiUsageResetDate: text("ai_usage_reset_date").notNull().default(""),
+  stripeCustomerId: text("stripe_customer_id"),
 });
 
 export const customPortalsTable = pgTable("custom_portals", {

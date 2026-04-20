@@ -78,8 +78,23 @@ router.post("/auth/login", async (req, res) => {
   }
 });
 
-router.get("/auth/me", requireAuth, (req: AuthRequest, res) => {
-  return res.json({ user: req.user });
+router.get("/auth/me", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const [freshUser] = await db
+      .select({ id: usersTable.id, email: usersTable.email, name: usersTable.name, plan: usersTable.plan })
+      .from(usersTable)
+      .where(eq(usersTable.id, req.user!.id))
+      .limit(1);
+
+    if (!freshUser) {
+      return res.status(404).json({ error: "Usuário não encontrado" });
+    }
+
+    return res.json({ user: freshUser });
+  } catch (err) {
+    console.error("GET /auth/me error:", err);
+    return res.json({ user: req.user });
+  }
 });
 
 export default router;
