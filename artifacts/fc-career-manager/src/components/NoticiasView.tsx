@@ -778,7 +778,25 @@ function AddPostModal({
                     Limite diário atingido · Reinicia à meia-noite
                   </div>
                   <button
-                    onClick={() => window.open("mailto:contato@fccareerapp.com?subject=Upgrade%20de%20plano", "_blank")}
+                    onClick={async () => {
+                      const token = localStorage.getItem("fc_auth_token");
+                      if (!token) return;
+                      try {
+                        const priceRes = await fetch("/api/stripe/products-with-plan", { headers: { Authorization: `Bearer ${token}` } });
+                        if (!priceRes.ok) return;
+                        const prices = await priceRes.json() as Array<{ planTier: string; priceId: string }>;
+                        const match = prices.find(p => p.planTier === "pro");
+                        if (!match?.priceId) return;
+                        const checkoutRes = await fetch("/api/stripe/checkout", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                          body: JSON.stringify({ priceId: match.priceId }),
+                        });
+                        if (!checkoutRes.ok) return;
+                        const { url } = await checkoutRes.json() as { url?: string };
+                        if (url) window.location.href = url;
+                      } catch {}
+                    }}
                     className="w-full py-2.5 rounded-xl text-xs font-bold transition-all duration-200 hover:opacity-90 active:scale-[0.98] flex items-center justify-center gap-2"
                     style={{ background: "rgba(124,92,252,0.12)", border: "1px solid rgba(124,92,252,0.25)", color: "#a78bfa" }}
                   >

@@ -5,7 +5,7 @@ import watfordImg   from "../assets/image_1776619248678.png";
 import mancityImg   from "../assets/image_1776619250259.png";
 
 /* ─── Types ─────────────────────────────────────────────── */
-interface LandingPageProps { onStart: () => void; onLogin: () => void; }
+interface LandingPageProps { onStart: () => void; onLogin: () => void; onStartWithPlan: (plan: "pro" | "ultra") => void; }
 
 /* ─── Club data ──────────────────────────────────────────── */
 const CLUBS = [
@@ -232,7 +232,7 @@ function StatCounter({ target, suffix = "", label, decimals = 0 }: { target: num
 }
 
 /* ─── Main component ─────────────────────────────────────── */
-export function LandingPage({ onStart, onLogin }: LandingPageProps) {
+export function LandingPage({ onStart, onLogin, onStartWithPlan }: LandingPageProps) {
   const containerRef  = useRef<HTMLDivElement>(null);
   const cursor1Ref    = useRef<HTMLDivElement>(null);
   const cursor2Ref    = useRef<HTMLDivElement>(null);
@@ -722,7 +722,7 @@ export function LandingPage({ onStart, onLogin }: LandingPageProps) {
               <div style={{ position: "absolute", top: 16, right: 16, background: "rgba(124,92,252,0.2)", border: "1px solid rgba(124,92,252,0.4)", borderRadius: 8, padding: "3px 8px", fontSize: 10, fontWeight: 700, color: "#a78bfa", textTransform: "uppercase", letterSpacing: "0.08em" }}>Popular</div>
               <div>
                 <p style={{ color: "#7c5cfc", fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 8 }}>Pro</p>
-                <p style={{ color: "#f0f0ff", fontSize: 36, fontWeight: 900, lineHeight: 1 }}>R$19 <span style={{ fontSize: 14, color: "rgba(255,255,255,0.3)", fontWeight: 400 }}>/mês</span></p>
+                <p style={{ color: "#f0f0ff", fontSize: 36, fontWeight: 900, lineHeight: 1 }}>R$14,90 <span style={{ fontSize: 14, color: "rgba(255,255,255,0.3)", fontWeight: 400 }}>/mês</span></p>
                 <p style={{ color: "rgba(255,255,255,0.3)", fontSize: 12, marginTop: 6 }}>Para o técnico dedicado</p>
               </div>
               <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 10, flex: 1 }}>
@@ -740,12 +740,12 @@ export function LandingPage({ onStart, onLogin }: LandingPageProps) {
                 ))}
               </ul>
               <button
-                onClick={() => window.open("mailto:contato@fccareerapp.com?subject=Upgrade%20Pro", "_blank")}
+                onClick={() => onStartWithPlan("pro")}
                 style={{ width: "100%", padding: "12px 0", borderRadius: 12, fontWeight: 700, fontSize: 14, color: "#fff", background: "linear-gradient(135deg,rgba(124,92,252,0.9),rgba(91,63,209,0.8))", border: "none", cursor: "pointer", boxShadow: "0 4px 20px rgba(124,92,252,0.35)", transition: "all 0.2s" }}
                 onMouseEnter={e => { e.currentTarget.style.opacity = "0.9"; }}
                 onMouseLeave={e => { e.currentTarget.style.opacity = "1"; }}
               >
-                Fazer upgrade para Pro →
+                Começar com Pro →
               </button>
             </div>
 
@@ -753,7 +753,7 @@ export function LandingPage({ onStart, onLogin }: LandingPageProps) {
             <div style={{ borderRadius: 20, background: "linear-gradient(160deg,rgba(245,158,11,0.1) 0%,rgba(220,130,0,0.06) 100%)", border: "1px solid rgba(245,158,11,0.3)", padding: "28px 24px", display: "flex", flexDirection: "column", gap: 20 }}>
               <div>
                 <p style={{ color: "#f59e0b", fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 8 }}>Ultra</p>
-                <p style={{ color: "#f0f0ff", fontSize: 36, fontWeight: 900, lineHeight: 1 }}>R$49 <span style={{ fontSize: 14, color: "rgba(255,255,255,0.3)", fontWeight: 400 }}>/mês</span></p>
+                <p style={{ color: "#f0f0ff", fontSize: 36, fontWeight: 900, lineHeight: 1 }}>R$39,90 <span style={{ fontSize: 14, color: "rgba(255,255,255,0.3)", fontWeight: 400 }}>/mês</span></p>
                 <p style={{ color: "rgba(255,255,255,0.3)", fontSize: 12, marginTop: 6 }}>Para o gerente perfeito</p>
               </div>
               <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 10, flex: 1 }}>
@@ -772,12 +772,12 @@ export function LandingPage({ onStart, onLogin }: LandingPageProps) {
                 ))}
               </ul>
               <button
-                onClick={() => window.open("mailto:contato@fccareerapp.com?subject=Upgrade%20Ultra", "_blank")}
+                onClick={() => onStartWithPlan("ultra")}
                 style={{ width: "100%", padding: "12px 0", borderRadius: 12, fontWeight: 700, fontSize: 14, color: "#fff", background: "linear-gradient(135deg,rgba(245,158,11,0.85),rgba(220,130,0,0.75))", border: "none", cursor: "pointer", boxShadow: "0 4px 20px rgba(245,158,11,0.3)", transition: "all 0.2s" }}
                 onMouseEnter={e => { e.currentTarget.style.opacity = "0.9"; }}
                 onMouseLeave={e => { e.currentTarget.style.opacity = "1"; }}
               >
-                Fazer upgrade para Ultra →
+                Começar com Ultra →
               </button>
             </div>
           </div>

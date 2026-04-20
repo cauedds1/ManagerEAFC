@@ -5,6 +5,7 @@ type Plan = "free" | "pro" | "ultra";
 interface AuthPageProps {
   onBack: () => void;
   onAuthSuccess: (token: string, user: { id: number; email: string; name: string; plan?: Plan }) => void;
+  initialPlan?: Plan;
 }
 
 const API_BASE = "/api";
@@ -47,10 +48,10 @@ const PLAN_CARDS: Array<{
   },
 ];
 
-export function AuthPage({ onBack, onAuthSuccess }: AuthPageProps) {
+export function AuthPage({ onBack, onAuthSuccess, initialPlan }: AuthPageProps) {
   const [mode, setMode] = useState<"login" | "signup">("login");
-  const [signupStep, setSignupStep] = useState<"plan" | "form">("plan");
-  const [selectedPlan, setSelectedPlan] = useState<Plan>("free");
+  const [signupStep, setSignupStep] = useState<"plan" | "form">(initialPlan && initialPlan !== "free" ? "form" : "plan");
+  const [selectedPlan, setSelectedPlan] = useState<Plan>(initialPlan ?? "free");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

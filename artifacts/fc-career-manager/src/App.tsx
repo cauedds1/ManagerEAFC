@@ -151,6 +151,7 @@ export default function App() {
   const [wizardMode, setWizardMode] = useState<WizardMode>("new");
   const [progress, setProgress] = useState<LoadingProgress>({ loaded: 0, total: 0, leagueName: "" });
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
+  const [authInitialPlan, setAuthInitialPlan] = useState<"free" | "pro" | "ultra">("free");
   const [checkoutPending, setCheckoutPending] = useState(false);
   const [checkoutConfirmed, setCheckoutConfirmed] = useState(false);
 
@@ -222,6 +223,12 @@ export default function App() {
   }, [doFetchClubs, resolveViewAfterClubs]);
 
   const handleLandingLogin = useCallback(() => {
+    setAuthInitialPlan("free");
+    setView("auth");
+  }, []);
+
+  const handleLandingStartWithPlan = useCallback((plan: "pro" | "ultra") => {
+    setAuthInitialPlan(plan);
     setView("auth");
   }, []);
 
@@ -466,11 +473,11 @@ export default function App() {
     }
 
     if (view === "landing") {
-      return <LandingPage onStart={handleLandingStart} onLogin={handleLandingLogin} />;
+      return <LandingPage onStart={handleLandingStart} onLogin={handleLandingLogin} onStartWithPlan={handleLandingStartWithPlan} />;
     }
 
     if (view === "auth") {
-      return <AuthPage onBack={handleAuthBack} onAuthSuccess={handleAuthSuccess} />;
+      return <AuthPage onBack={handleAuthBack} onAuthSuccess={handleAuthSuccess} initialPlan={authInitialPlan} />;
     }
 
     if (view === "loading-clubs") {
