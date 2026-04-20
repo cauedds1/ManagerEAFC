@@ -500,6 +500,32 @@ option {
   50%       { opacity: 0.5; transform: scale(0.85); }
 }
 
+/* Entrada da tela de auth */
+@keyframes authFormEnter {
+  from { opacity: 0; transform: translateX(-32px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes authShowcaseEnter {
+  from { opacity: 0; transform: translateX(32px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* Transição entre modos (login ↔ plano ↔ formulário) */
+@keyframes authContentIn {
+  from { opacity: 0; transform: translateY(18px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+
+@keyframes authContentOut {
+  from { opacity: 1; transform: translateY(0)     scale(1); }
+  to   { opacity: 0; transform: translateY(-14px) scale(0.98); }
+}
+
+.auth-content-enter {
+  animation: authContentIn 0.32s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+}
+
 @media (max-width: 767px) {
   .auth-showcase { display: none !important; }
   .auth-form-col { max-width: 100% !important; border-right: none !important; padding: 40px 28px !important; }

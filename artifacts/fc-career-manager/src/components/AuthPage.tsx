@@ -295,13 +295,15 @@ export function AuthPage({ onBack, onAuthSuccess, initialPlan }: AuthPageProps) 
     );
   }
 
+  const contentKey = `${mode}-${signupStep}`;
+
   /* ─── MAIN SPLIT-SCREEN LAYOUT ─── */
   return (
     <div style={{ display: "flex", height: "100%", background: "#09090f", fontFamily: "DM Sans, sans-serif", position: "relative", overflow: "hidden" }}>
       <FieldLines />
 
       {/* ════ LEFT: FORM COLUMN ════ */}
-      <div className="auth-form-col" style={{ position: "relative", zIndex: 1, width: "100%", maxWidth: 480, flexShrink: 0, display: "flex", flexDirection: "column", justifyContent: "center", padding: "40px 48px", overflowY: "auto", borderRight: "1px solid rgba(255,255,255,0.05)" }}>
+      <div className="auth-form-col" style={{ position: "relative", zIndex: 1, width: "100%", maxWidth: 480, flexShrink: 0, display: "flex", flexDirection: "column", justifyContent: "center", padding: "40px 48px", overflowY: "auto", borderRight: "1px solid rgba(255,255,255,0.05)", animation: "authFormEnter 0.45s cubic-bezier(0.25,0.46,0.45,0.94) both" }}>
 
         {/* Back button */}
         <button
@@ -314,6 +316,9 @@ export function AuthPage({ onBack, onAuthSuccess, initialPlan }: AuthPageProps) 
           </svg>
           Voltar
         </button>
+
+        {/* ── FORM CONTENT (animated on mode switch) ── */}
+        <div key={contentKey} className="auth-content-enter">
 
         {/* ── LOGIN ── */}
         {isLogin && (
@@ -439,10 +444,12 @@ export function AuthPage({ onBack, onAuthSuccess, initialPlan }: AuthPageProps) 
             </p>
           </div>
         )}
+
+        </div>{/* end animated content wrapper */}
       </div>
 
       {/* ════ RIGHT: SHOWCASE COLUMN (desktop only) ════ */}
-      <div className="auth-showcase" style={{ flex: 1, position: "relative", zIndex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 48px", gap: 32 }}>
+      <div className="auth-showcase" style={{ flex: 1, position: "relative", zIndex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 48px", gap: 32, animation: "authShowcaseEnter 0.55s cubic-bezier(0.25,0.46,0.45,0.94) 0.1s both" }}>
         <div style={{ background: "radial-gradient(ellipse 600px 500px at 50% 50%, rgba(124,92,252,0.1) 0%, transparent 70%)", position: "absolute", inset: 0, pointerEvents: "none" }} />
 
         <div style={{ position: "relative", zIndex: 1, textAlign: "center", maxWidth: 400 }}>
