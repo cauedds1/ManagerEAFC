@@ -58,7 +58,12 @@ function AiNewsCard() {
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <span style={{ fontFamily: "Bebas Neue, sans-serif", fontSize: 16, letterSpacing: "0.18em", color: "#f0f0ff" }}>FC PRESS</span>
           <span style={{ width: 1, height: 14, background: "rgba(255,255,255,0.12)", display: "inline-block" }} />
-          <span style={{ fontSize: 10, color: "#7c5cfc", fontWeight: 700, letterSpacing: "0.1em" }}>IA</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <svg viewBox="0 0 16 16" fill="#7c5cfc" style={{ width: 11, height: 11 }}>
+              <path d="M8 0l1.6 4.8H14l-3.6 2.6 1.4 4.6L8 9.4l-3.8 2.6 1.4-4.6L2 4.8h4.4z" />
+            </svg>
+            <span style={{ fontSize: 10, color: "#7c5cfc", fontWeight: 700, letterSpacing: "0.1em" }}>IA</span>
+          </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(0,229,160,0.08)", border: "1px solid rgba(0,229,160,0.2)", borderRadius: 100, padding: "4px 10px" }}>
           <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#00e5a0", boxShadow: "0 0 6px #00e5a0", animation: "pulse 2s ease-in-out infinite", display: "inline-block", flexShrink: 0 }} />
@@ -447,10 +452,7 @@ export function AuthPage({ onBack, onAuthSuccess, initialPlan }: AuthPageProps) 
           {/* Masthead logo */}
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 32 }}>
             <img src="/logo.png" alt="FC Career Manager" style={{ width: 48, height: 48, objectFit: "contain", filter: "drop-shadow(0 2px 12px rgba(124,92,252,0.4))" }} />
-            <div>
-              <p style={{ color: "#7c5cfc", fontSize: 10, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", margin: 0 }}>FC Career Manager</p>
-              <p style={{ color: "#333355", fontSize: 11, margin: 0, marginTop: 2 }}>A sua carreira. A sua história.</p>
-            </div>
+            <p style={{ color: "#7c5cfc", fontSize: 10, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", margin: 0 }}>FC Career Manager</p>
           </div>
 
           {/* News card */}
