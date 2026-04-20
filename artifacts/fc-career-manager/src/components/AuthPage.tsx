@@ -26,7 +26,7 @@ const PLAN_CARDS: Array<{
     period: "para sempre",
     accentRgb: "255,255,255",
     accentColor: "rgba(255,255,255,0.6)",
-    features: ["1 carreira", "3 gerações de IA por dia", "Partidas e transferências ilimitadas"],
+    features: ["1 carreira ativa", "3 gerações de IA por dia", "Partidas ilimitadas", "Sem diretoria"],
   },
   {
     plan: "pro",
@@ -35,7 +35,7 @@ const PLAN_CARDS: Array<{
     period: "por mês",
     accentRgb: "124,92,252",
     accentColor: "#7c5cfc",
-    features: ["Até 5 carreiras", "20 gerações de IA por dia", "Diretoria completa", "Modelos personalizados"],
+    features: ["Até 5 carreiras ativas", "20 gerações de IA por dia", "Diretoria com até 4 membros", "Modelo Gemini Flash"],
   },
   {
     plan: "ultra",
@@ -44,7 +44,7 @@ const PLAN_CARDS: Array<{
     period: "por mês",
     accentRgb: "245,158,11",
     accentColor: "#f59e0b",
-    features: ["Carreiras ilimitadas", "IA ilimitada (GPT-4o)", "Notícias automáticas", "Portais personalizados"],
+    features: ["Carreiras ilimitadas", "IA ilimitada com GPT-4o", "Notícias automáticas", "Boatos no vestiário", "Até 3 portais personalizados"],
   },
 ];
 
