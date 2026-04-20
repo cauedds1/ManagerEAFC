@@ -5,6 +5,7 @@ import {
   getSquad,
   clearSquadCache,
   ageSquadInCache,
+  consolidateSquadForNewSeason,
   getAllCachedPlayers,
   type SquadResult,
   type SquadPlayer,
@@ -937,10 +938,16 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     try {
       const newId = generateSeasonId();
       copyPlayerMoodsToNewSeason(activeSeasonId, newId);
+      // Consolidate the effective squad (sold players removed, bought players added)
+      // into the cache BEFORE clearing transfers, so the next season inherits the
+      // exact same squad that ended the previous one.
+      consolidateSquadForNewSeason(teamId, career.clubName, allPlayers);
       ageSquadInCache(teamId, career.clubName);
-      setSquad((prev) =>
-        prev ? { ...prev, players: prev.players.map((p) => ({ ...p, age: p.age + 1 })) } : prev
-      );
+      setSquad((prev) => ({
+        players: allPlayers.map((p) => ({ ...p, age: p.age + 1 })),
+        source: prev?.source ?? "api-football",
+        cachedAt: Date.now(),
+      }));
 
       const oldLeague = seasons.find((s) => s.id === activeSeasonId)?.competitions?.[0] ?? career.clubLeague ?? "";
       const newLeague = competitions[0] ?? "";
@@ -977,7 +984,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     } finally {
       setCreatingNewSeason(false);
     }
-  }, [activeSeasonId, career.id, career.clubName, career.clubLeague, career.clubDescription, career.projeto, seasons, teamId, loadSeasons, onSeasonChange, handleNewPost]);
+  }, [activeSeasonId, allPlayers, career.id, career.clubName, career.clubLeague, career.clubDescription, career.projeto, seasons, teamId, loadSeasons, onSeasonChange, handleNewPost]);
 
   const activeSeason = seasons.find((s) => s.id === activeSeasonId);
   const displayLabel = activeSeason?.label ?? activeSeasonLabel;

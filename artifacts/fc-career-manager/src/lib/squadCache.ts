@@ -204,6 +204,35 @@ export function ageSquadInCache(teamId: number, clubName: string): void {
 }
 
 /**
+ * Consolidates the effective squad (as it stands at season end) into the
+ * localStorage cache so the next season starts with the exact same players.
+ *
+ * This must be called BEFORE clearing the transfers list on a new season,
+ * passing the already-computed `allPlayers` list from the Dashboard.
+ * Sold / loaned-out players will have already been excluded from that list.
+ */
+export function consolidateSquadForNewSeason(
+  teamId: number,
+  clubName: string,
+  effectivePlayers: SquadPlayer[],
+): void {
+  try {
+    const key = getCacheKey(teamId, clubName);
+    const raw = localStorage.getItem(key);
+    const source: SquadSource = raw
+      ? ((JSON.parse(raw) as SquadResult).source ?? "api-football")
+      : "api-football";
+
+    const consolidated: SquadResult = {
+      players: sortSquad(reNormalizePlayers(effectivePlayers)),
+      source,
+      cachedAt: Date.now(),
+    };
+    localStorage.setItem(key, JSON.stringify(consolidated));
+  } catch {}
+}
+
+/**
  * Returns all players from every squad cached in localStorage,
  * deduplicated by player ID and sorted by name.
  */
