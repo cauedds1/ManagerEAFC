@@ -575,6 +575,41 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     ];
   }, [allPlayers, formerPlayers]);
 
+  // Transfers from ALL seasons — used to reconstruct player data for historical views.
+  const allCareerTransfers = useMemo(
+    () => seasons.flatMap((s) => getTransfers(s.id)),
+    [seasons],
+  );
+
+  // The most comprehensive possible player list for the career:
+  // current squad + explicitly tracked former players + every player found in
+  // any transfer record across ALL seasons + all squad-cache snapshots.
+  // Used for match detail and finalized-season views so sold/former players
+  // never disappear from historical data.
+  const allTimeCareerPlayers = useMemo(() => {
+    const map = new Map<number, SquadPlayer>(allPlayersWithFormer.map((p) => [p.id, p]));
+    // Squad cache (all teams/clubs ever stored in localStorage)
+    for (const p of getAllCachedPlayers()) {
+      if (!map.has(p.id)) map.set(p.id, p);
+    }
+    // Every player who appeared in any transfer record across all seasons
+    for (const t of allCareerTransfers) {
+      if (!map.has(t.playerId)) {
+        const pos = migratePositionOverride(t.playerPositionPtBr) ?? "MID";
+        map.set(t.playerId, {
+          id: t.playerId,
+          name: t.playerName,
+          age: t.playerAge,
+          position: PT_BR_TO_POSITION[pos] ?? "Midfielder",
+          positionPtBr: pos,
+          photo: t.playerPhoto ?? "",
+          number: t.shirtNumber,
+        });
+      }
+    }
+    return Array.from(map.values());
+  }, [allPlayersWithFormer, allCareerTransfers]);
+
   // For the elenco (squad) display in historical (read-only) seasons, include former
   // players who were NOT sold/loaned out in that specific season — they were still
   // squad members during that season.
@@ -596,25 +631,9 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     if (!seasonFinalized) return null;
     const stats = getAllPlayerStats(activeSeasonId);
 
-    // Primary source: allPlayersWithFormer
-    const playerMap = new Map(allPlayersWithFormer.map((p) => [p.id, p]));
-
-    // Fallback: reconstruct sold/loaned players from transfer records (they have
-    // full player info: name, photo, position, age) — covers cases where the
-    // player was not yet in the formerPlayers list (legacy data).
-    for (const t of transfers) {
-      if (!playerMap.has(t.playerId)) {
-        playerMap.set(t.playerId, {
-          id: t.playerId,
-          name: t.playerName,
-          age: t.playerAge,
-          position: PT_BR_TO_POSITION[t.playerPositionPtBr] ?? "Midfielder",
-          positionPtBr: t.playerPositionPtBr,
-          photo: t.playerPhoto ?? "",
-          number: t.shirtNumber,
-        });
-      }
-    }
+    // Use the most comprehensive player map available so players who left the
+    // club (even without going through explicit transfer flow) still appear.
+    const playerMap = new Map(allTimeCareerPlayers.map((p) => [p.id, p]));
 
     const players = Object.entries(stats)
       .filter(([, s]) => s.totalMinutes >= 1)
@@ -622,7 +641,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
       .filter((p): p is SquadPlayer => p != null);
     const leftIds = new Set(players.filter((p) => removedIds.has(p.id)).map((p) => p.id));
     return { finalizedPlayers: players, finalizedLeftIds: leftIds, finalizedSeasonStats: stats };
-  }, [seasons, activeSeasonId, allPlayersWithFormer, removedIds, transfers]);
+  }, [seasons, activeSeasonId, allTimeCareerPlayers, removedIds]);
 
   const handleWindowToggle = useCallback(() => {
     if (transferWindow.open) {
@@ -1351,7 +1370,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
             squadLoading={squadLoading}
             squadError={squadError}
             allPlayers={elencoPlayers}
-            historicalPlayers={allPlayersWithFormer}
+            historicalPlayers={allTimeCareerPlayers}
             transfers={transfers}
             onRefresh={handleRefreshSquad}
             onOpenSettings={() => setActiveTab("configuracoes")}
@@ -1373,7 +1392,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
                 seasonId={activeSeasonId}
                 seasonLabel={displayLabel}
                 career={career}
-                allPlayers={allPlayersWithFormer}
+                allPlayers={allTimeCareerPlayers}
                 clubLogoUrl={logoUrl}
               />
             )}
@@ -1383,7 +1402,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
                 seasonId={activeSeasonId}
                 clubName={career.clubName}
                 clubLogoUrl={logoUrl}
-                allPlayers={allPlayersWithFormer}
+                allPlayers={allTimeCareerPlayers}
                 season={displayLabel}
                 matches={matches}
                 transferCount={transfers.length}
@@ -1399,7 +1418,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
                 clubName={career.clubName}
                 clubLogoUrl={logoUrl}
                 matches={matches}
-                allPlayers={allPlayersWithFormer}
+                allPlayers={allTimeCareerPlayers}
                 onMatchAdded={handleMatchAdded}
                 onMatchUpdated={handleMatchUpdated}
                 competitions={activeSeason?.competitions ?? career.competitions}
@@ -1429,7 +1448,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
               <NoticiasView
                 career={career}
                 seasonId={activeSeasonId}
-                allPlayers={allPlayersWithFormer}
+                allPlayers={allTimeCareerPlayers}
                 matches={matches}
                 pastSeasons={seasons.filter((s) => !s.isActive)}
                 isReadOnly={isReadOnly}
@@ -1445,7 +1464,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
                 matches={matches}
                 transfers={transfers}
                 squadSize={allPlayers.length}
-                allPlayers={allPlayersWithFormer}
+                allPlayers={allTimeCareerPlayers}
                 effectiveLeague={effectiveLeague}
                 currentCompetitions={currentCompetitions}
                 userPlan={userPlan}
