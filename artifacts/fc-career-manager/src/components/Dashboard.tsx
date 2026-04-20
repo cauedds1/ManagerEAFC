@@ -23,7 +23,7 @@ import type { TransferRecord } from "@/types/transfer";
 import { getMatches } from "@/lib/matchStorage";
 import type { MatchRecord } from "@/types/match";
 import { runPerformanceEngine } from "@/lib/playerPerformanceEngine";
-import { copyPlayerMoodsToNewSeason } from "@/lib/playerStatsStorage";
+import { copyPlayerMoodsToNewSeason, getAllPlayerStats } from "@/lib/playerStatsStorage";
 import { getLeaguePosition } from "@/lib/leagueStorage";
 import { runAutoNews, runRumorNews, runPromotionRelegationNews, leagueTierLevel } from "@/lib/autoNewsService";
 import type { NewsPost, NewsSource, NewsCategory } from "@/types/noticias";
@@ -588,6 +588,21 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
       ),
     ];
   }, [allPlayers, formerPlayers, removedIds, removedNames, isReadOnly]);
+
+  // For finalized seasons: build the list of players who played ≥ 1 minute,
+  // with the ones who left the club flagged for dimmed display.
+  const finalizedSquadData = useMemo(() => {
+    const seasonFinalized = !!seasons.find((s) => s.id === activeSeasonId)?.finalized;
+    if (!seasonFinalized) return null;
+    const stats = getAllPlayerStats(activeSeasonId);
+    const playerMap = new Map(allPlayersWithFormer.map((p) => [p.id, p]));
+    const players = Object.entries(stats)
+      .filter(([, s]) => s.totalMinutes >= 1)
+      .map(([id]) => playerMap.get(Number(id)))
+      .filter((p): p is SquadPlayer => p != null);
+    const leftIds = new Set(players.filter((p) => removedIds.has(p.id)).map((p) => p.id));
+    return { finalizedPlayers: players, finalizedLeftIds: leftIds, finalizedSeasonStats: stats };
+  }, [seasons, activeSeasonId, allPlayersWithFormer, removedIds]);
 
   const handleWindowToggle = useCallback(() => {
     if (transferWindow.open) {
@@ -1312,6 +1327,10 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
             onPlayerRemoved={handlePlayerRemoved}
             onImportSquad={handleImportSquad}
             isReadOnly={isReadOnly}
+            isFinalized={isFinalized}
+            finalizedPlayers={finalizedSquadData?.finalizedPlayers}
+            finalizedLeftIds={finalizedSquadData?.finalizedLeftIds}
+            finalizedSeasonStats={finalizedSquadData?.finalizedSeasonStats}
           />
         )}
         {activeTab !== "clube" && (

@@ -138,11 +138,13 @@ function PlayerRow({
   overrides,
   selected,
   onClick,
+  dimmed,
 }: {
   player: SquadPlayer;
   overrides: Record<number, PlayerOverride>;
   selected?: boolean;
   onClick: (player: SquadPlayer) => void;
+  dimmed?: boolean;
 }) {
   const ov = overrides[player.id];
   const displayName = ov?.nameOverride ?? player.name;
@@ -164,6 +166,8 @@ function PlayerRow({
           ? "1px solid rgba(var(--club-primary-rgb),0.35)"
           : "1px solid rgba(255,255,255,0.06)",
         cursor: "pointer",
+        opacity: dimmed ? 0.4 : 1,
+        filter: dimmed ? "grayscale(0.5)" : undefined,
       }}
     >
       <PlayerPhoto src={displayPhoto} name={displayName} />
@@ -206,6 +210,10 @@ interface ElencoViewProps {
   onOverridesUpdated?: () => void;
   onPlayerRemoved?: () => void;
   onImportSquad?: (players: SquadPlayer[]) => void;
+  isFinalized?: boolean;
+  finalizedPlayers?: SquadPlayer[];
+  finalizedLeftIds?: Set<number>;
+  finalizedSeasonStats?: Record<number, { matchesAsStarter: number; totalMinutes: number }>;
 }
 
 export function ElencoView({
@@ -219,6 +227,10 @@ export function ElencoView({
   onOverridesUpdated,
   onPlayerRemoved,
   onImportSquad,
+  isFinalized,
+  finalizedPlayers,
+  finalizedLeftIds,
+  finalizedSeasonStats,
 }: ElencoViewProps) {
   const [tab, setTab] = useState<SquadTab>("pitch");
   const [pendingSwap, setPendingSwap] = useState<SquadPlayer | null>(null);
@@ -405,6 +417,10 @@ export function ElencoView({
   }, [careerId, starterIds, bench]);
 
   const handlePlayerClick = useCallback((player: SquadPlayer) => {
+    if (isFinalized) {
+      setDetailPlayer(player);
+      return;
+    }
     if (pendingSwap === null) {
       setPendingSwap(player);
     } else if (pendingSwap.id === player.id) {
@@ -414,7 +430,7 @@ export function ElencoView({
       swapPlayers(pendingSwap.id, player.id);
       setPendingSwap(null);
     }
-  }, [pendingSwap, swapPlayers]);
+  }, [isFinalized, pendingSwap, swapPlayers]);
 
   const sourceLabel = squad
     ? squad.source === "api-football"
@@ -651,6 +667,59 @@ export function ElencoView({
             </button>
           </div>
         </div>
+      ) : isFinalized && finalizedPlayers && finalizedPlayers.length > 0 ? (
+        (() => {
+          const stats = finalizedSeasonStats ?? {};
+          const finalStarters = finalizedPlayers.filter(p => (stats[p.id]?.matchesAsStarter ?? 0) > 0);
+          const finalNonStarters = finalizedPlayers.filter(p => (stats[p.id]?.matchesAsStarter ?? 0) === 0);
+          const finalStarterIds = pickBestEleven(finalStarters);
+          return (
+            <div className="px-4 sm:px-6 pb-8">
+              <div className="mb-3 flex items-center gap-2">
+                <span className="text-white/20 text-xs font-semibold tracking-widest uppercase">Temporada finalizada</span>
+                <span className="text-white/15 text-xs">· jogadores que atuaram nessa temporada</span>
+                {finalizedLeftIds && finalizedLeftIds.size > 0 && (
+                  <span className="text-white/15 text-xs">· <span style={{ color: "rgba(255,255,255,0.3)" }}>{finalizedLeftIds.size} saíram do clube</span></span>
+                )}
+              </div>
+              <div className="flex flex-col lg:flex-row gap-6 items-start">
+                <div className="w-full lg:w-[420px] flex-shrink-0">
+                  <FootballPitch
+                    players={finalizedPlayers}
+                    starterIds={finalStarterIds}
+                    className="w-full"
+                    onPlayerClick={handlePlayerClick}
+                    formation={formation}
+                    dimmedPlayerIds={finalizedLeftIds}
+                  />
+                </div>
+                <div className="flex-1 min-w-0 w-full">
+                  {finalNonStarters.length > 0 && (
+                    <div className="flex flex-col gap-1">
+                      <p className="text-white/25 text-xs font-semibold tracking-widest uppercase mb-2">
+                        Outros que atuaram ({finalNonStarters.length})
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                        {finalNonStarters.map(player => (
+                          <PlayerRow
+                            key={player.id}
+                            player={player}
+                            overrides={overrides}
+                            onClick={handlePlayerClick}
+                            dimmed={finalizedLeftIds?.has(player.id)}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {finalNonStarters.length === 0 && (
+                    <p className="text-white/20 text-xs text-center py-4">Todos os jogadores foram titulares em pelo menos uma partida</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })()
       ) : tab === "pitch" ? (
         <div className="px-4 sm:px-6 pb-8">
           {/* Header row: titulares count + swap hint */}

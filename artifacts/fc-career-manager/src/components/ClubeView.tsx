@@ -43,6 +43,10 @@ interface ClubeViewProps {
   onPlayerRemoved?: () => void;
   onImportSquad?: (players: SquadPlayer[]) => void;
   isReadOnly?: boolean;
+  isFinalized?: boolean;
+  finalizedPlayers?: SquadPlayer[];
+  finalizedLeftIds?: Set<number>;
+  finalizedSeasonStats?: Record<number, { matchesAsStarter: number; totalMinutes: number }>;
 }
 
 type SeqScope = "atual" | "todas";
@@ -84,6 +88,10 @@ export function ClubeView({
   onPlayerRemoved,
   onImportSquad,
   isReadOnly,
+  isFinalized,
+  finalizedPlayers,
+  finalizedLeftIds,
+  finalizedSeasonStats,
 }: ClubeViewProps) {
   const statsPlayers = historicalPlayers ?? allPlayers;
   const currentPlayerIds = useMemo(() => new Set(allPlayers.map((p) => p.id)), [allPlayers]);
@@ -160,6 +168,10 @@ export function ClubeView({
             onOverridesUpdated={onOverridesUpdated}
             onPlayerRemoved={onPlayerRemoved}
             onImportSquad={onImportSquad}
+            isFinalized={isFinalized}
+            finalizedPlayers={finalizedPlayers}
+            finalizedLeftIds={finalizedLeftIds}
+            finalizedSeasonStats={finalizedSeasonStats}
           />
         )}
 

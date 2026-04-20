@@ -88,13 +88,14 @@ export function pickBestElevenIds(players: { id: number; positionPtBr: PositionP
 }
 
 function PlayerCircle({
-  x, y, player, onClick, highlighted,
+  x, y, player, onClick, highlighted, dimmed,
 }: {
   x: number;
   y: number;
   player: PitchPlayerData;
   onClick?: (player: PitchPlayerData) => void;
   highlighted?: boolean;
+  dimmed?: boolean;
 }) {
   const rating = player.rating ?? 0;
   const [photoLoaded, setPhotoLoaded] = useState(false);
@@ -121,7 +122,7 @@ function PlayerCircle({
   return (
     <g
       onClick={onClick ? () => onClick(player) : undefined}
-      style={{ cursor: onClick ? "pointer" : "default" }}
+      style={{ cursor: onClick ? "pointer" : "default", opacity: dimmed ? 0.38 : 1, filter: dimmed ? "grayscale(0.6)" : undefined }}
     >
       <defs>
         <clipPath id={clipId}>
@@ -212,6 +213,7 @@ interface FootballPitchProps {
   highlightedPlayerId?: number;
   formation?: FormationKey;
   ratings?: Record<number, number>;
+  dimmedPlayerIds?: Set<number>;
 }
 
 export function FootballPitch({
@@ -223,6 +225,7 @@ export function FootballPitch({
   highlightedPlayerId,
   formation = DEFAULT_FORMATION,
   ratings,
+  dimmedPlayerIds,
 }: FootballPitchProps) {
   const positions = getFormationPositions(formation);
   const orderedIds = externalStarters ?? (players.length > 0 ? pickBestEleven(players) : []);
@@ -308,6 +311,7 @@ export function FootballPitch({
                 player={player}
                 onClick={handlePlayerClick}
                 highlighted={highlightedPlayerId === player.id}
+                dimmed={dimmedPlayerIds?.has(player.id)}
               />
             );
           })}
