@@ -3,7 +3,6 @@ import { logger } from "./lib/logger";
 import { db, runMigrations, squadPlayersTable } from "@workspace/db";
 import { ne, inArray, sql, like } from "drizzle-orm";
 import { getStripeSync } from "./lib/stripeClient";
-import { runMigrations as runStripeMigrations } from "stripe-replit-sync";
 
 const rawPort = process.env["PORT"];
 
@@ -42,7 +41,8 @@ async function initStripe() {
 
   try {
     logger.info("Initializing Stripe schema...");
-    await runStripeMigrations({ databaseUrl, schema: "stripe" });
+    const { runMigrations: runStripeMigrations } = await import("stripe-replit-sync");
+    await runStripeMigrations({ databaseUrl });
     logger.info("Stripe schema ready");
 
     const stripeSync = await getStripeSync();
