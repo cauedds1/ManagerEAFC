@@ -39,29 +39,39 @@ async function initStripe() {
     return;
   }
 
-  try {
-    logger.info("Initializing Stripe schema...");
-    const { runMigrations: runStripeMigrations } = await import("stripe-replit-sync");
-    await runStripeMigrations({ databaseUrl });
-    logger.info("Stripe schema ready");
+  const isReplit = !!process.env.REPLIT_DOMAINS;
 
-    const stripeSync = await getStripeSync();
+  if (isReplit) {
+    try {
+      logger.info("Initializing Stripe schema (Replit managed)...");
+      const { runMigrations: runStripeMigrations } = await import("stripe-replit-sync");
+      await runStripeMigrations({ databaseUrl });
+      logger.info("Stripe schema ready");
 
-    const webhookBaseUrl = process.env.REPLIT_DOMAINS
-      ? `https://${process.env.REPLIT_DOMAINS.split(",")[0]}`
-      : null;
+      const stripeSync = await getStripeSync();
+      const webhookBaseUrl = `https://${process.env.REPLIT_DOMAINS!.split(",")[0]}`;
 
-    if (webhookBaseUrl) {
       logger.info({ webhookBaseUrl }, "Setting up managed Stripe webhook...");
       await stripeSync.findOrCreateManagedWebhook(`${webhookBaseUrl}/api/stripe/webhook`);
       logger.info("Stripe webhook configured");
-    }
 
-    stripeSync.syncBackfill()
-      .then(() => logger.info("Stripe data backfill complete"))
-      .catch((err) => logger.warn({ err }, "Stripe backfill error (non-fatal)"));
-  } catch (err) {
-    logger.warn({ err }, "Stripe initialization failed (non-fatal) — check Stripe integration is connected");
+      stripeSync.syncBackfill()
+        .then(() => logger.info("Stripe data backfill complete"))
+        .catch((err) => logger.warn({ err }, "Stripe backfill error (non-fatal)"));
+    } catch (err) {
+      logger.warn({ err }, "Stripe initialization failed (non-fatal) — check Stripe integration is connected");
+    }
+    return;
+  }
+
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  if (!webhookSecret) {
+    logger.warn(
+      "STRIPE_WEBHOOK_SECRET not set — webhooks will be rejected. " +
+      "Register your webhook in the Stripe dashboard and add STRIPE_WEBHOOK_SECRET to your environment."
+    );
+  } else {
+    logger.info("Stripe webhook secret configured (standard mode)");
   }
 }
 

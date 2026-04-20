@@ -49,9 +49,18 @@ app.post(
     }
 
     try {
-      await WebhookHandlers.processWebhook(req.body as Buffer, sig);
+      let event: Stripe.Event;
 
-      const event = JSON.parse(req.body.toString()) as Stripe.Event;
+      const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+      if (webhookSecret) {
+        const { getUncachableStripeClient } = await import("./lib/stripeClient");
+        const stripe = await getUncachableStripeClient();
+        event = stripe.webhooks.constructEvent(req.body as Buffer, sig, webhookSecret);
+      } else {
+        await WebhookHandlers.processWebhook(req.body as Buffer, sig);
+        event = JSON.parse(req.body.toString()) as Stripe.Event;
+      }
+
       await handleStripeEvent(event);
 
       return res.status(200).json({ received: true });

@@ -1,0 +1,71 @@
+You reached the start of the range
+Apr 20, 2026, 6:49 PM
+Starting Container
+[migrations] Starting — folder: /app/migrations
+[migrations] Found 6 migration(s) in journal
+[migrations] Already applied: 0000_slippery_ender_wiggin, 0001_great_raider, 0002_users_multitenancy, 0003_plan_tiers, 0004_seasons_finalized, 0005_stripe_customer_id
+[migrations] Skip 0000_slippery_ender_wiggin (already applied)
+[migrations] Skip 0001_great_raider (already applied)
+[migrations] Skip 0002_users_multitenancy (already applied)
+[migrations] Skip 0003_plan_tiers (already applied)
+[migrations] Skip 0004_seasons_finalized (already applied)
+[migrations] Skip 0005_stripe_customer_id (already applied)
+[migrations] All migrations complete ✓
+Database migrations applied
+Purged legacy squad rows on startup
+Initializing Stripe schema...
+Stripe schema ready
+{ autoExpandLists: undefined, stripeApiVersion: undefined } StripeSync initialized
+Server listening
+error: relation "stripe.accounts" does not exist
+    at async StripeSync.getCurrentAccount (/node_modules/.pnpm/stripe-replit-sync@1.0.0_stripe@22.0.2_@types+node@25.3.5_/node_modules/stripe-replit-sync/dist/index.js:632:5)
+    at async StripeSync.syncBackfill (/node_modules/.pnpm/stripe-replit-sync@1.0.0_stripe@22.0.2_@types+node@25.3.5_/node_modules/stripe-replit-sync/dist/index.js:1160:5) {
+  length: 114,
+  severity: 'ERROR',
+  code: '42P01',
+  detail: undefined,
+  hint: undefined,
+  position: '16',
+  internalPosition: undefined,
+    at <anonymous> (/node_modules/.pnpm/pg-pool@3.13.0_pg@8.20.0/node_modules/pg-pool/index.js:45:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+  internalQuery: undefined,
+    at async PostgresClient.getAccountIdByApiKeyHash (/node_modules/.pnpm/stripe-replit-sync@1.0.0_stripe@22.0.2_@types+node@25.3.5_/node_modules/stripe-replit-sync/dist/index.js:239:20)
+  where: undefined,
+    at async StripeSync.getAccountId (/node_modules/.pnpm/stripe-replit-sync@1.0.0_stripe@22.0.2_@types+node@25.3.5_/node_modules/stripe-replit-sync/dist/index.js:583:25)
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '1445',
+  routine: 'parserOpenTable'
+} Failed to lookup account by API key hash, falling back to API
+error: relation "stripe.accounts" does not exist
+    at <anonymous> (/node_modules/.pnpm/pg-pool@3.13.0_pg@8.20.0/node_modules/pg-pool/index.js:45:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async PostgresClient.upsertAccount (/node_modules/.pnpm/stripe-replit-sync@1.0.0_stripe@22.0.2_@types+node@25.3.5_/node_modules/stripe-replit-sync/dist/index.js:206:5)
+    at async StripeSync.upsertAccount (/node_modules/.pnpm/stripe-replit-sync@1.0.0_stripe@22.0.2_@types+node@25.3.5_/node_modules/stripe-replit-sync/dist/index.js:612:7)
+    at async StripeSync.getAccountId (/node_modules/.pnpm/stripe-replit-sync@1.0.0_stripe@22.0.2_@types+node@25.3.5_/node_modules/stripe-replit-sync/dist/index.js:602:5)
+    at async StripeSync.getCurrentAccount (/node_modules/.pnpm/stripe-replit-sync@1.0.0_stripe@22.0.2_@types+node@25.3.5_/node_modules/stripe-replit-sync/dist/index.js:632:5)
+    at async StripeSync.syncBackfill (/node_modules/.pnpm/stripe-replit-sync@1.0.0_stripe@22.0.2_@types+node@25.3.5_/node_modules/stripe-replit-sync/dist/index.js:1160:5) {
+  length: 114,
+  severity: 'ERROR',
+  code: '42P01',
+  detail: undefined,
+  hint: undefined,
+  position: '13',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '1445',
+  routine: 'parserOpenTable'
+} Failed to upsert account to database
+Stripe backfill error (non-fatal)
