@@ -595,14 +595,34 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     const seasonFinalized = !!seasons.find((s) => s.id === activeSeasonId)?.finalized;
     if (!seasonFinalized) return null;
     const stats = getAllPlayerStats(activeSeasonId);
+
+    // Primary source: allPlayersWithFormer
     const playerMap = new Map(allPlayersWithFormer.map((p) => [p.id, p]));
+
+    // Fallback: reconstruct sold/loaned players from transfer records (they have
+    // full player info: name, photo, position, age) — covers cases where the
+    // player was not yet in the formerPlayers list (legacy data).
+    for (const t of transfers) {
+      if (!playerMap.has(t.playerId)) {
+        playerMap.set(t.playerId, {
+          id: t.playerId,
+          name: t.playerName,
+          age: t.playerAge,
+          position: PT_BR_TO_POSITION[t.playerPositionPtBr] ?? "Midfielder",
+          positionPtBr: t.playerPositionPtBr,
+          photo: t.playerPhoto ?? "",
+          number: t.shirtNumber,
+        });
+      }
+    }
+
     const players = Object.entries(stats)
       .filter(([, s]) => s.totalMinutes >= 1)
       .map(([id]) => playerMap.get(Number(id)))
       .filter((p): p is SquadPlayer => p != null);
     const leftIds = new Set(players.filter((p) => removedIds.has(p.id)).map((p) => p.id));
     return { finalizedPlayers: players, finalizedLeftIds: leftIds, finalizedSeasonStats: stats };
-  }, [seasons, activeSeasonId, allPlayersWithFormer, removedIds]);
+  }, [seasons, activeSeasonId, allPlayersWithFormer, removedIds, transfers]);
 
   const handleWindowToggle = useCallback(() => {
     if (transferWindow.open) {
