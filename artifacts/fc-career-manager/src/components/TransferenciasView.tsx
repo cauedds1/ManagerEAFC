@@ -1392,14 +1392,20 @@ export function TransferenciasView({
               {!isEmprestimoForm && (
                 <div
                   className="rounded-2xl overflow-hidden"
-                  style={{ border: "1px solid rgba(255,255,255,0.07)" }}
+                  style={{
+                    border: form.tradeEnabled
+                      ? "1px solid rgba(251,146,60,0.35)"
+                      : "1px solid rgba(251,146,60,0.2)",
+                    background: form.tradeEnabled
+                      ? "rgba(251,146,60,0.06)"
+                      : "rgba(251,146,60,0.04)",
+                  }}
                 >
                   <button
                     type="button"
-                    className="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold transition-all"
+                    className="w-full flex items-center justify-between px-4 py-3.5 text-sm font-bold transition-all"
                     style={{
-                      background: form.tradeEnabled ? "rgba(251,146,60,0.1)" : "rgba(255,255,255,0.03)",
-                      color: form.tradeEnabled ? "#fb923c" : "rgba(255,255,255,0.4)",
+                      color: form.tradeEnabled ? "#fb923c" : "rgba(251,146,60,0.75)",
                     }}
                     onClick={() => setForm((f) => ({
                       ...f,
@@ -1414,14 +1420,19 @@ export function TransferenciasView({
                       tradePlayerMode: "search",
                     }))}
                   >
-                    <span className="flex items-center gap-2">
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <span className="flex items-center gap-2.5">
+                      <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                       </svg>
-                      {isVendaForm ? "Receber jogador no negócio" : "Incluir jogador no negócio"}
+                      <span>
+                        {isVendaForm ? "Receber jogador no negócio" : "Incluir jogador no negócio"}
+                        <span className="block text-[11px] font-normal mt-0.5" style={{ color: "rgba(251,146,60,0.5)" }}>
+                          {isVendaForm ? "Adicionar contrapartida em forma de jogador" : "Enviar um atleta como parte da contratação"}
+                        </span>
+                      </span>
                     </span>
                     <svg
-                      className="w-4 h-4 transition-transform"
+                      className="w-4 h-4 flex-shrink-0 transition-transform"
                       style={{ transform: form.tradeEnabled ? "rotate(180deg)" : "rotate(0deg)" }}
                       fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
                     >
