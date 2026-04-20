@@ -772,7 +772,8 @@ export function LandingPage({ onStart, onLogin, onStartWithPlan }: LandingPagePr
     raf = requestAnimationFrame(tick);
 
     const onOver = (e: MouseEvent) => {
-      const isBall = !!(e.target as Element).closest("[data-cursor='ball']");
+      const target = e.target;
+      const isBall = target instanceof Element && !!target.closest("[data-cursor='ball']");
       if (isBall) {
         cursor1Ref.current?.classList.add("lp-cursor-ball");
         cursor2Ref.current?.classList.add("lp-cursor-ball");
@@ -839,16 +840,17 @@ export function LandingPage({ onStart, onLogin, onStartWithPlan }: LandingPagePr
     const full = text.headline + "\n\n" + text.body;
     setTypedText(""); setTypingDone(false);
     let i = 0;
+    let rotateTimer: ReturnType<typeof setTimeout>;
     const interval = setInterval(() => {
       i++;
       setTypedText(full.slice(0, i));
       if (i >= full.length) {
         clearInterval(interval);
         setTypingDone(true);
-        setTimeout(() => setAiTextIdx(p => (p + 1) % AI_TEXTS.length), 3200);
+        rotateTimer = setTimeout(() => setAiTextIdx(p => (p + 1) % AI_TEXTS.length), 3200);
       }
     }, 38);
-    return () => clearInterval(interval);
+    return () => { clearInterval(interval); clearTimeout(rotateTimer); };
   }, [aiTextIdx]);
 
   /* ── Club color picker (400ms debounce) ─── */
