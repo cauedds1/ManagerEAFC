@@ -715,10 +715,11 @@ export function LandingPage({ onStart, onLogin, onStartWithPlan }: LandingPagePr
   const cursor2Ref    = useRef<HTMLDivElement>(null);
   const navbarRef     = useRef<HTMLDivElement>(null);
   const stepLineRef   = useRef<HTMLDivElement>(null);
-  const audioRef      = useRef<HTMLAudioElement | null>(null);
-  const audioOkRef    = useRef<boolean | null>(null);
+  const audioCtxRef   = useRef<AudioContext | null>(null);
+  const crowdGainRef  = useRef<GainNode | null>(null);
 
   const [activeClub, setActiveClub]           = useState(0);
+  const [isMobile, setIsMobile]               = useState(() => typeof window !== "undefined" && window.innerWidth < 900);
   const [typedText, setTypedText]             = useState("");
   const [typingDone, setTypingDone]           = useState(false);
   const [aiTextIdx, setAiTextIdx]             = useState(0);
@@ -746,6 +747,13 @@ export function LandingPage({ onStart, onLogin, onStartWithPlan }: LandingPagePr
     return () => clearInterval(t);
   }, []);
 
+  /* ── Mobile detection ─── */
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 900);
+    window.addEventListener("resize", onResize, { passive: true });
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
   /* ── Context-aware cursor ─── */
   useEffect(() => {
     const m  = { x: 0, y: 0 };
@@ -765,21 +773,13 @@ export function LandingPage({ onStart, onLogin, onStartWithPlan }: LandingPagePr
     raf = requestAnimationFrame(tick);
 
     const onOver = (e: MouseEvent) => {
-      const el = (e.target as Element).closest("[data-cursor]");
-      const type = el?.getAttribute("data-cursor") ?? "default";
-      if (type === "ball") {
+      const isBall = !!(e.target as Element).closest("[data-cursor='ball']");
+      if (isBall) {
         cursor1Ref.current?.classList.add("lp-cursor-ball");
         cursor2Ref.current?.classList.add("lp-cursor-ball");
-        cursor1Ref.current?.classList.remove("lp-cursor-hover");
-        cursor2Ref.current?.classList.remove("lp-cursor-hover");
-      } else if (type === "hover") {
+      } else {
         cursor1Ref.current?.classList.remove("lp-cursor-ball");
         cursor2Ref.current?.classList.remove("lp-cursor-ball");
-        cursor1Ref.current?.classList.add("lp-cursor-hover");
-        cursor2Ref.current?.classList.add("lp-cursor-hover");
-      } else {
-        cursor1Ref.current?.classList.remove("lp-cursor-ball", "lp-cursor-hover");
-        cursor2Ref.current?.classList.remove("lp-cursor-ball", "lp-cursor-hover");
       }
     };
     window.addEventListener("mouseover", onOver);
@@ -868,25 +868,50 @@ export function LandingPage({ onStart, onLogin, onStartWithPlan }: LandingPagePr
     }
   }, [customClubInput]);
 
-  /* ── Sound toggle ─── */
+  /* ── Sound toggle (Web Audio — no file dependency) ─── */
   const toggleSound = useCallback(() => {
-    if (!audioRef.current) {
-      const a = new Audio("/sounds/crowd.mp3");
-      a.loop   = true;
-      a.volume = 0.12;
-      a.onerror = () => { audioOkRef.current = false; };
-      a.oncanplaythrough = () => { audioOkRef.current = true; };
-      audioRef.current = a;
-    }
     if (!soundOn) {
-      audioRef.current.play().then(() => setSoundOn(true)).catch(() => {});
+      try {
+        let ctx = audioCtxRef.current;
+        if (!ctx) {
+          ctx = new AudioContext();
+          audioCtxRef.current = ctx;
+          const rate = ctx.sampleRate;
+          const dur  = 4;
+          const buf  = ctx.createBuffer(2, rate * dur, rate);
+          for (let ch = 0; ch < 2; ch++) {
+            const d = buf.getChannelData(ch);
+            for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+          }
+          const lpf = ctx.createBiquadFilter();
+          lpf.type = "lowpass"; lpf.frequency.value = 700; lpf.Q.value = 0.7;
+          const hpf = ctx.createBiquadFilter();
+          hpf.type = "highpass"; hpf.frequency.value = 80;
+          const gain = ctx.createGain();
+          gain.gain.value = 0;
+          crowdGainRef.current = gain;
+          const src = ctx.createBufferSource();
+          src.buffer = buf; src.loop = true;
+          src.connect(lpf); lpf.connect(hpf); hpf.connect(gain); gain.connect(ctx.destination);
+          src.start();
+        } else {
+          ctx.resume();
+        }
+        if (crowdGainRef.current && audioCtxRef.current) {
+          crowdGainRef.current.gain.setTargetAtTime(0.07, audioCtxRef.current.currentTime, 0.4);
+        }
+        setSoundOn(true);
+      } catch { /* AudioContext blocked by browser policy */ }
     } else {
-      audioRef.current.pause();
+      if (crowdGainRef.current && audioCtxRef.current) {
+        crowdGainRef.current.gain.setTargetAtTime(0, audioCtxRef.current.currentTime, 0.3);
+        setTimeout(() => audioCtxRef.current?.suspend().catch(() => {}), 600);
+      }
       setSoundOn(false);
     }
   }, [soundOn]);
 
-  useEffect(() => () => { audioRef.current?.pause(); }, []);
+  useEffect(() => () => { audioCtxRef.current?.close().catch(() => {}); }, []);
 
   /* ── Generate news ─── */
   const generateNews = () => {
@@ -919,7 +944,7 @@ export function LandingPage({ onStart, onLogin, onStartWithPlan }: LandingPagePr
     }
   };
 
-  const activeF = FEATURES_EXPLORER[activeFeature];
+  const activeF = FEATURES_EXPLORER[Math.max(0, activeFeature)];
 
   return (
     <div ref={containerRef} className="font-dm" style={{ background: "#09090f", height: "100%", overflowY: "auto", overflowX: "hidden", scrollBehavior: "smooth", cursor: "none" }}>
@@ -1009,7 +1034,7 @@ export function LandingPage({ onStart, onLogin, onStartWithPlan }: LandingPagePr
                 onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 8px 32px rgba(124,92,252,0.45)"; (e.currentTarget as HTMLButtonElement).style.transform = "none"; }}>
                 Iniciar Carreira
               </button>
-              <button data-cursor="hover" onClick={onLogin}
+              <button onClick={onLogin}
                 style={{ background: "rgba(255,255,255,0.04)", color: "#c0c0e0", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 14, padding: "15px 30px", fontSize: 15, fontWeight: 600, cursor: "none", display: "flex", alignItems: "center", gap: 10, transition: "all 0.25s" }}
                 onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(124,92,252,0.45)"; (e.currentTarget as HTMLButtonElement).style.background = "rgba(124,92,252,0.08)"; }}
                 onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,255,255,0.1)"; (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.04)"; }}>
@@ -1059,54 +1084,83 @@ export function LandingPage({ onStart, onLogin, onStartWithPlan }: LandingPagePr
             <h2 className="font-bebas" style={{ fontSize: "clamp(2.5rem,5vw,4rem)", color: "#f0f0ff", lineHeight: 1 }}>Tudo que um técnico de verdade precisa</h2>
           </div>
 
-          <div className="lp-explorer-layout" style={{ display: "flex", gap: 0, border: "1px solid rgba(255,255,255,0.06)", borderRadius: 20, overflow: "hidden", minHeight: 420 }}>
-            {/* Sidebar */}
-            <div className="lp-explorer-sidebar" style={{ width: 200, flexShrink: 0, background: "#0d0d1a", borderRight: "1px solid rgba(255,255,255,0.06)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
-              {FEATURES_EXPLORER.map((f, i) => (
-                <button
-                  key={f.id}
-                  data-cursor="hover"
-                  onClick={() => setActiveFeature(i)}
-                  className={`lp-explorer-sidebar-item${i === activeFeature ? " active" : ""}`}
-                  style={{
-                    padding: "14px 18px", textAlign: "left", border: "none", background: "transparent",
-                    borderLeft: `3px solid ${i === activeFeature ? f.accentColor : "transparent"}`,
-                    cursor: "none", transition: "all 0.2s", display: "flex", alignItems: "center", gap: 10,
-                    color: i === activeFeature ? "#f0f0ff" : "#555577",
-                    backgroundColor: i === activeFeature ? `rgba(${f.colorType === "tactical" ? "124,92,252" : f.colorType === "financial" ? "61,156,245" : f.colorType === "trophies" ? "245,158,11" : "0,229,160"},0.06)` : "transparent",
-                  }}
-                >
-                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: i === activeFeature ? f.accentColor : "rgba(255,255,255,0.15)", flexShrink: 0, transition: "all 0.2s" }} />
-                  <span style={{ fontSize: 12, fontWeight: i === activeFeature ? 600 : 400 }}>{f.label}</span>
-                </button>
-              ))}
+          {isMobile ? (
+            /* ── Mobile: true accordion ── */
+            <div style={{ border: "1px solid rgba(255,255,255,0.06)", borderRadius: 20, overflow: "hidden" }}>
+              {FEATURES_EXPLORER.map((f, i) => {
+                const open = activeFeature === i;
+                const accentRaw = f.colorType === "tactical" ? "124,92,252" : f.colorType === "financial" ? "61,156,245" : f.colorType === "trophies" ? "245,158,11" : "0,229,160";
+                return (
+                  <div key={f.id} style={{ borderBottom: i < FEATURES_EXPLORER.length - 1 ? "1px solid rgba(255,255,255,0.06)" : "none" }}>
+                    <button
+                      onClick={() => setActiveFeature(open ? -1 : i)}
+                      style={{ width: "100%", padding: "16px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", background: open ? `rgba(${accentRaw},0.07)` : "transparent", border: "none", cursor: "pointer", transition: "background 0.25s" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <span style={{ width: 7, height: 7, borderRadius: "50%", background: open ? f.accentColor : "rgba(255,255,255,0.2)", transition: "background 0.2s" }} />
+                        <span style={{ fontSize: 13, fontWeight: open ? 600 : 400, color: open ? "#f0f0ff" : "#666688", transition: "color 0.2s" }}>{f.label}</span>
+                      </div>
+                      <span style={{ color: open ? f.accentColor : "#444466", fontSize: 20, fontWeight: 300, lineHeight: 1, transition: "transform 0.3s, color 0.2s", transform: open ? "rotate(45deg)" : "rotate(0deg)", display: "inline-block" }}>+</span>
+                    </button>
+                    <div style={{ maxHeight: open ? 620 : 0, overflow: "hidden", transition: "max-height 0.45s cubic-bezier(0.4,0,0.2,1)" }}>
+                      <div style={{ padding: "4px 20px 20px" }}>
+                        <p style={{ color: "#8888aa", fontSize: 13, lineHeight: 1.7, marginBottom: 16 }}>{f.desc}</p>
+                        {renderMockup(f.id)}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-
-            {/* Content panel */}
-            <div className="lp-explorer-panel" style={{ flex: 1, padding: "36px 40px", background: FEATURE_PANEL_BG[activeF.colorType], transition: "background 0.6s ease", display: "flex", gap: 40, alignItems: "flex-start", overflow: "hidden" }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: activeF.accentColor }}>
-                    {activeF.label}
-                  </span>
-                </div>
-                <h3 style={{ color: "#f0f0ff", fontWeight: 700, fontSize: 22, marginBottom: 14, lineHeight: 1.3 }}>{activeF.title}</h3>
-                <p style={{ color: "#8888aa", fontSize: 14, lineHeight: 1.75, maxWidth: 340 }}>{activeF.desc}</p>
-
-                {/* Progress dots */}
-                <div style={{ display: "flex", gap: 6, marginTop: 32 }}>
-                  {FEATURES_EXPLORER.map((_, i) => (
-                    <button key={i} data-cursor="hover" onClick={() => setActiveFeature(i)} style={{ width: i === activeFeature ? 20 : 6, height: 6, borderRadius: 3, background: i === activeFeature ? activeF.accentColor : "rgba(255,255,255,0.12)", border: "none", cursor: "none", transition: "all 0.3s", padding: 0 }} />
-                  ))}
-                </div>
+          ) : (
+            /* ── Desktop: sidebar + panel ── */
+            <div style={{ display: "flex", gap: 0, border: "1px solid rgba(255,255,255,0.06)", borderRadius: 20, overflow: "hidden", minHeight: 420 }}>
+              {/* Sidebar */}
+              <div style={{ width: 200, flexShrink: 0, background: "#0d0d1a", borderRight: "1px solid rgba(255,255,255,0.06)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+                {FEATURES_EXPLORER.map((f, i) => (
+                  <button
+                    key={f.id}
+                    onClick={() => setActiveFeature(i)}
+                    className={`lp-explorer-sidebar-item${i === activeFeature ? " active" : ""}`}
+                    style={{
+                      padding: "14px 18px", textAlign: "left", border: "none", background: "transparent",
+                      borderLeft: `3px solid ${i === activeFeature ? f.accentColor : "transparent"}`,
+                      cursor: "none", transition: "all 0.2s", display: "flex", alignItems: "center", gap: 10,
+                      color: i === activeFeature ? "#f0f0ff" : "#555577",
+                      backgroundColor: i === activeFeature ? `rgba(${f.colorType === "tactical" ? "124,92,252" : f.colorType === "financial" ? "61,156,245" : f.colorType === "trophies" ? "245,158,11" : "0,229,160"},0.06)` : "transparent",
+                    }}
+                  >
+                    <span style={{ width: 6, height: 6, borderRadius: "50%", background: i === activeFeature ? f.accentColor : "rgba(255,255,255,0.15)", flexShrink: 0, transition: "all 0.2s" }} />
+                    <span style={{ fontSize: 12, fontWeight: i === activeFeature ? 600 : 400 }}>{f.label}</span>
+                  </button>
+                ))}
               </div>
 
-              {/* Mockup */}
-              <div style={{ width: 300, flexShrink: 0 }}>
-                {renderMockup(activeF.id)}
+              {/* Content panel */}
+              <div style={{ flex: 1, padding: "36px 40px", background: FEATURE_PANEL_BG[activeF.colorType], transition: "background 0.6s ease", display: "flex", gap: 40, alignItems: "flex-start", overflow: "hidden" }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: activeF.accentColor }}>
+                      {activeF.label}
+                    </span>
+                  </div>
+                  <h3 style={{ color: "#f0f0ff", fontWeight: 700, fontSize: 22, marginBottom: 14, lineHeight: 1.3 }}>{activeF.title}</h3>
+                  <p style={{ color: "#8888aa", fontSize: 14, lineHeight: 1.75, maxWidth: 340 }}>{activeF.desc}</p>
+
+                  {/* Progress dots */}
+                  <div style={{ display: "flex", gap: 6, marginTop: 32 }}>
+                    {FEATURES_EXPLORER.map((_, i) => (
+                      <button key={i} onClick={() => setActiveFeature(i)} style={{ width: i === activeFeature ? 20 : 6, height: 6, borderRadius: 3, background: i === activeFeature ? activeF.accentColor : "rgba(255,255,255,0.12)", border: "none", cursor: "none", transition: "all 0.3s", padding: 0 }} />
+                    ))}
+                  </div>
+                </div>
+
+                {/* Mockup */}
+                <div style={{ width: 300, flexShrink: 0 }}>
+                  {renderMockup(activeF.id)}
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       </section>
 
@@ -1123,7 +1177,7 @@ export function LandingPage({ onStart, onLogin, onStartWithPlan }: LandingPagePr
             {CLUBS.map((c, i) => {
               const isActive = i === activeClub && !customClub;
               return (
-                <button key={c.id} data-cursor="hover" onClick={() => { setActiveClub(i); setCustomClub(null); setCustomClubName(""); setCustomClubInput(""); }}
+                <button key={c.id} onClick={() => { setActiveClub(i); setCustomClub(null); setCustomClubName(""); setCustomClubInput(""); }}
                   style={{ padding: "10px 22px", borderRadius: 100, fontSize: 13, fontWeight: 600, cursor: "none", transition: "all 0.3s", background: isActive ? `rgba(${c.accentRgb},0.15)` : "rgba(255,255,255,0.05)", border: isActive ? `1px solid rgba(${c.accentRgb},0.5)` : "1px solid rgba(255,255,255,0.08)", color: isActive ? (c.textDark ? "#111" : c.accent) : "#666688", transform: isActive ? "scale(1.05)" : "scale(1)" }}>
                   <span style={{ display: "inline-block", width: 7, height: 7, borderRadius: "50%", background: c.accent, marginRight: 7, verticalAlign: "middle" }} />
                   {c.name}
@@ -1183,7 +1237,7 @@ export function LandingPage({ onStart, onLogin, onStartWithPlan }: LandingPagePr
             </div>
             <div style={{ display: "flex", justifyContent: "center", gap: 12, marginTop: 20 }}>
               {CLUBS.map((c, i) => (
-                <button key={c.id} data-cursor="hover" onClick={() => { setActiveClub(i); setCustomClub(null); setCustomClubName(""); setCustomClubInput(""); }}
+                <button key={c.id} onClick={() => { setActiveClub(i); setCustomClub(null); setCustomClubName(""); setCustomClubInput(""); }}
                   style={{ width: 12, height: 12, borderRadius: "50%", background: c.accent, cursor: "none", border: i === activeClub && !customClub ? `2px solid ${c.accent}` : "2px solid transparent", outline: i === activeClub && !customClub ? `3px solid rgba(${c.accentRgb},0.35)` : "none", transform: i === activeClub && !customClub ? "scale(1.4)" : "scale(1)", transition: "all 0.3s" }}
                   title={c.name} />
               ))}
@@ -1315,7 +1369,7 @@ export function LandingPage({ onStart, onLogin, onStartWithPlan }: LandingPagePr
               <p style={{ color: "#666688", fontSize: 12, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 12 }}>Grátis para sempre</p>
               <div className="font-bebas" style={{ fontSize: 48, color: "#f0f0ff", lineHeight: 1 }}>R$0</div>
               <p style={{ color: "#555577", fontSize: 13, marginTop: 8, marginBottom: 28 }}>Para quem quer começar</p>
-              <button data-cursor="hover" onClick={onStart} style={{ width: "100%", padding: "12px 0", borderRadius: 12, fontWeight: 700, fontSize: 14, color: "#888", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", cursor: "none", transition: "all 0.2s" }} onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.08)"; (e.currentTarget as HTMLButtonElement).style.color = "#f0f0ff"; }} onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.05)"; (e.currentTarget as HTMLButtonElement).style.color = "#888"; }}>
+              <button onClick={onStart} style={{ width: "100%", padding: "12px 0", borderRadius: 12, fontWeight: 700, fontSize: 14, color: "#888", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", cursor: "none", transition: "all 0.2s" }} onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.08)"; (e.currentTarget as HTMLButtonElement).style.color = "#f0f0ff"; }} onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.05)"; (e.currentTarget as HTMLButtonElement).style.color = "#888"; }}>
                 Começar grátis
               </button>
               <ul style={{ marginTop: 28, listStyle: "none", padding: 0, display: "flex", flexDirection: "column", gap: 12 }}>
@@ -1404,7 +1458,7 @@ export function LandingPage({ onStart, onLogin, onStartWithPlan }: LandingPagePr
               const open = faqOpen === i;
               return (
                 <div key={i} className="lp-reveal" style={{ border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, overflow: "hidden", transition: "border-color 0.3s", borderColor: open ? "rgba(124,92,252,0.25)" : "rgba(255,255,255,0.07)" }}>
-                  <button data-cursor="hover"
+                  <button
                     onClick={() => setFaqOpen(open ? null : i)}
                     style={{ width: "100%", padding: "20px 24px", background: open ? "rgba(124,92,252,0.06)" : "transparent", border: "none", cursor: "none", display: "flex", justifyContent: "space-between", alignItems: "center", transition: "background 0.3s" }}>
                     <span style={{ color: "#f0f0ff", fontSize: 14, fontWeight: 600, textAlign: "left" }}>{item.q}</span>
