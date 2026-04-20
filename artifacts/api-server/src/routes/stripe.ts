@@ -56,14 +56,26 @@ router.post("/stripe/checkout", requireAuth, async (req: AuthRequest, res) => {
       return res.status(400).json({ error: "Preço inválido para assinatura BRL" });
     }
 
+    if (price.recurring?.interval !== "month") {
+      return res.status(400).json({ error: "Apenas assinaturas mensais são aceitas" });
+    }
+
     let customerId = user.stripeCustomerId;
     if (!customerId) {
-      const customer = await stripe.customers.create({
-        email: user.email,
-        name: user.name,
-        metadata: { userId: String(user.id) },
+      const existingCustomers = await stripe.customers.search({
+        query: `email:'${user.email}'`,
+        limit: 1,
       });
-      customerId = customer.id;
+      if (existingCustomers.data.length > 0) {
+        customerId = existingCustomers.data[0].id;
+      } else {
+        const customer = await stripe.customers.create({
+          email: user.email,
+          name: user.name,
+          metadata: { userId: String(user.id) },
+        });
+        customerId = customer.id;
+      }
       await db
         .update(usersTable)
         .set({ stripeCustomerId: customerId })
