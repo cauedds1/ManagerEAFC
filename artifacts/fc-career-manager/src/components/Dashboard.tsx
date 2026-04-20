@@ -52,7 +52,7 @@ import {
   generateMessageId,
 } from "@/lib/diretoriaStorage";
 import { getFinanceiroSettings, computeFinancialSnapshot } from "@/lib/financeiroStorage";
-import { getFormerPlayers, addFormerPlayer } from "@/lib/customPlayersStorage";
+import { getFormerPlayers, addFormerPlayer, saveFormerPlayers } from "@/lib/customPlayersStorage";
 import { buildPlayerPerformanceContext, buildSquadOvrContext } from "@/lib/playerContext";
 import { getAiHeaders } from "@/lib/apiStorage";
 import { getUserPlan } from "@/lib/userPlan";
@@ -962,6 +962,18 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     try {
       const newId = generateSeasonId();
       copyPlayerMoodsToNewSeason(activeSeasonId, newId);
+
+      // Archive every player from the current squad as a "former player" so
+      // they always appear in multi-season historical stats, even if they leave
+      // without going through the explicit transfer flow.
+      const existingFormer = getFormerPlayers(career.id);
+      const existingFormerIds = new Set(existingFormer.map((p) => p.id));
+      const newFormerEntries = allPlayers.filter((p) => !existingFormerIds.has(p.id));
+      if (newFormerEntries.length > 0) {
+        saveFormerPlayers(career.id, [...existingFormer, ...newFormerEntries]);
+        setFormerPlayers(getFormerPlayers(career.id));
+      }
+
       // Consolidate the effective squad (sold players removed, bought players added)
       // into the cache BEFORE clearing transfers, so the next season inherits the
       // exact same squad that ended the previous one.
