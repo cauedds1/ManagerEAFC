@@ -205,6 +205,7 @@ interface ElencoViewProps {
   onOpenSettings: () => void;
   onOverridesUpdated?: () => void;
   onPlayerRemoved?: () => void;
+  onImportSquad?: (players: SquadPlayer[]) => void;
 }
 
 export function ElencoView({
@@ -217,6 +218,7 @@ export function ElencoView({
   onOpenSettings,
   onOverridesUpdated,
   onPlayerRemoved,
+  onImportSquad,
 }: ElencoViewProps) {
   const [tab, setTab] = useState<SquadTab>("pitch");
   const [pendingSwap, setPendingSwap] = useState<SquadPlayer | null>(null);
@@ -229,6 +231,8 @@ export function ElencoView({
   const [hiddenPlayerIds, setHiddenPlayerIds] = useState<number[]>(() => getHiddenPlayerIds(careerId));
   const [showAddPlayer, setShowAddPlayer] = useState(false);
   const [addForm, setAddForm] = useState<AddPlayerForm>(DEFAULT_ADD_FORM);
+  const [importFeedback, setImportFeedback] = useState<"success" | "error" | null>(null);
+  const importInputRef = useRef<HTMLInputElement>(null);
 
   const hiddenSet = useMemo(() => new Set(hiddenPlayerIds), [hiddenPlayerIds]);
 
@@ -418,6 +422,38 @@ export function ElencoView({
       : `EA FC 26 · ${formatDate(squad.cachedAt)}`
     : "";
 
+  const handleExportSquad = useCallback(() => {
+    const data = JSON.stringify({ version: 1, players: mergedPlayers }, null, 2);
+    const blob = new Blob([data], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `elenco-${careerId}-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [mergedPlayers, careerId]);
+
+  const handleImportFile = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !onImportSquad) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const parsed = JSON.parse(ev.target?.result as string) as { version?: number; players?: SquadPlayer[] };
+        const players = parsed?.players;
+        if (!Array.isArray(players) || players.length === 0) throw new Error("invalid");
+        onImportSquad(players);
+        setImportFeedback("success");
+      } catch {
+        setImportFeedback("error");
+      } finally {
+        setTimeout(() => setImportFeedback(null), 3000);
+        if (importInputRef.current) importInputRef.current.value = "";
+      }
+    };
+    reader.readAsText(file);
+  }, [onImportSquad]);
+
   return (
     <div className="animate-fade-up w-full">
       {/* Toolbar */}
@@ -455,6 +491,58 @@ export function ElencoView({
           )}
         </div>
         <div className="flex items-center gap-3">
+          {/* Hidden file input for import */}
+          <input
+            ref={importInputRef}
+            type="file"
+            accept=".json"
+            className="hidden"
+            onChange={handleImportFile}
+          />
+          {/* Export button */}
+          {mergedPlayers.length > 0 && !squadLoading && (
+            <button
+              onClick={handleExportSquad}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all duration-200 hover:opacity-90 active:scale-95"
+              style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.55)", border: "1px solid rgba(255,255,255,0.1)" }}
+              title="Exportar elenco como arquivo JSON"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              Exportar
+            </button>
+          )}
+          {/* Import button */}
+          {onImportSquad && (
+            <button
+              onClick={() => importInputRef.current?.click()}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all duration-200 hover:opacity-90 active:scale-95"
+              style={{
+                background: importFeedback === "success"
+                  ? "rgba(16,185,129,0.15)"
+                  : importFeedback === "error"
+                  ? "rgba(239,68,68,0.15)"
+                  : "rgba(255,255,255,0.06)",
+                color: importFeedback === "success"
+                  ? "#34d399"
+                  : importFeedback === "error"
+                  ? "#f87171"
+                  : "rgba(255,255,255,0.55)",
+                border: importFeedback === "success"
+                  ? "1px solid rgba(16,185,129,0.3)"
+                  : importFeedback === "error"
+                  ? "1px solid rgba(239,68,68,0.3)"
+                  : "1px solid rgba(255,255,255,0.1)",
+              }}
+              title="Importar elenco de arquivo JSON"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l4-4m0 0l4 4m-4-4v12" />
+              </svg>
+              {importFeedback === "success" ? "Importado!" : importFeedback === "error" ? "Erro no arquivo" : "Importar"}
+            </button>
+          )}
           <button
             onClick={() => setShowAddPlayer(true)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all duration-200 hover:opacity-90 active:scale-95"

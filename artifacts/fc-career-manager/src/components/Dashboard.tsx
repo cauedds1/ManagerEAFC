@@ -553,6 +553,15 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     setFormerPlayers(getFormerPlayers(career.id));
   }, [career.id]);
 
+  const handleImportSquad = useCallback((players: SquadPlayer[]) => {
+    consolidateSquadForNewSeason(teamId, career.clubName, players);
+    setSquad({
+      players,
+      source: squad?.source ?? "api-football",
+      cachedAt: Date.now(),
+    });
+  }, [teamId, career.clubName, squad?.source]);
+
   const handlePlayerLeftInTrade = useCallback((player: SquadPlayer) => {
     addFormerPlayer(career.id, player);
     setFormerPlayers(getFormerPlayers(career.id));
@@ -1301,6 +1310,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
             onOpenSettings={() => setActiveTab("configuracoes")}
             onOverridesUpdated={refreshOverrides}
             onPlayerRemoved={handlePlayerRemoved}
+            onImportSquad={handleImportSquad}
             isReadOnly={isReadOnly}
           />
         )}

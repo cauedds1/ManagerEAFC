@@ -41,6 +41,7 @@ interface ClubeViewProps {
   onOpenSettings: () => void;
   onOverridesUpdated?: () => void;
   onPlayerRemoved?: () => void;
+  onImportSquad?: (players: SquadPlayer[]) => void;
   isReadOnly?: boolean;
 }
 
@@ -81,6 +82,7 @@ export function ClubeView({
   onOpenSettings,
   onOverridesUpdated,
   onPlayerRemoved,
+  onImportSquad,
   isReadOnly,
 }: ClubeViewProps) {
   const statsPlayers = historicalPlayers ?? allPlayers;
@@ -157,6 +159,7 @@ export function ClubeView({
             onOpenSettings={onOpenSettings}
             onOverridesUpdated={onOverridesUpdated}
             onPlayerRemoved={onPlayerRemoved}
+            onImportSquad={onImportSquad}
           />
         )}
 
