@@ -489,3 +489,18 @@ option {
   .lp-hero-split { flex-direction: column !important; text-align: center; }
   .lp-hero-ctas { justify-content: center !important; }
 }
+
+/* ── AuthPage split-screen ── */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.5; transform: scale(0.85); }
+}
+
+@media (max-width: 767px) {
+  .auth-showcase { display: none !important; }
+  .auth-form-col { max-width: 100% !important; border-right: none !important; padding: 40px 28px !important; }
+}
