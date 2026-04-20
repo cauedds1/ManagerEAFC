@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
 type Plan = "free" | "pro" | "ultra";
 
@@ -48,58 +48,54 @@ const PLAN_CARDS: Array<{
   },
 ];
 
-/* ── Live coaches counter (mesma fórmula da landing) ── */
-function getLiveCoaches(): number {
-  const now = Date.now();
-  return 12675 + Math.round(Math.sin(now / 200000) * 200 + Math.cos(now / 80000) * 75);
-}
-
-/* ── HeroMockup (reutilizado da landing) ── */
-function HeroMockup() {
-  const matches = [
-    { comp: "La Liga", h: "Atlético", hs: 0, a: "Barcelona", as: 3, r: "V", color: "#00e5a0" },
-    { comp: "La Liga", h: "Barcelona", hs: 2, a: "Elche",    as: 0, r: "V", color: "#00e5a0" },
-    { comp: "UCL",     h: "Barcelona", hs: 3, a: "PSG",      as: 1, r: "V", color: "#00e5a0" },
-  ];
+/* ── AI News Card ── */
+function AiNewsCard() {
   return (
-    <div style={{ background: "#1a0a12", borderRadius: 16, overflow: "hidden", border: "1px solid rgba(200,16,46,0.25)", boxShadow: "0 40px 100px rgba(0,0,0,0.8), 0 0 50px rgba(200,16,46,0.15)", animation: "floatMockup 6s ease-in-out infinite" }}>
-      <div style={{ background: "#220d17", padding: "10px 14px", display: "flex", alignItems: "center", gap: 10, borderBottom: "1px solid rgba(200,16,46,0.15)" }}>
-        <div style={{ width: 26, height: 26, background: "linear-gradient(135deg,#c8102e,#8b0a26)", borderRadius: 5, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={1.5} style={{ width: 14, height: 14 }}><circle cx="12" cy="12" r="9" /><path d="M12 3v18M3 12h18" /></svg>
+    <div style={{ borderRadius: 20, overflow: "hidden", background: "rgba(10,10,20,0.85)", border: "1px solid rgba(124,92,252,0.2)", boxShadow: "0 32px 80px rgba(0,0,0,0.7), 0 0 40px rgba(124,92,252,0.08)", backdropFilter: "blur(12px)" }}>
+
+      {/* ── Masthead ── */}
+      <div style={{ padding: "18px 24px 14px", borderBottom: "1px solid rgba(255,255,255,0.05)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ fontFamily: "Bebas Neue, sans-serif", fontSize: 16, letterSpacing: "0.18em", color: "#f0f0ff" }}>FC PRESS</span>
+          <span style={{ width: 1, height: 14, background: "rgba(255,255,255,0.12)", display: "inline-block" }} />
+          <span style={{ fontSize: 10, color: "#7c5cfc", fontWeight: 700, letterSpacing: "0.1em" }}>IA</span>
         </div>
-        <div>
-          <div style={{ color: "#f0f0ff", fontWeight: 700, fontSize: 12 }}>Barcelona</div>
-          <div style={{ color: "#8888aa", fontSize: 10 }}>La Liga · 2026/27</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(0,229,160,0.08)", border: "1px solid rgba(0,229,160,0.2)", borderRadius: 100, padding: "4px 10px" }}>
+          <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#00e5a0", boxShadow: "0 0 6px #00e5a0", animation: "pulse 2s ease-in-out infinite", display: "inline-block", flexShrink: 0 }} />
+          <span style={{ fontSize: 10, color: "#00e5a0", fontWeight: 600 }}>Gerado agora</span>
         </div>
-        <span style={{ marginLeft: "auto", background: "rgba(200,16,46,0.15)", border: "1px solid rgba(200,16,46,0.3)", color: "#c8102e", borderRadius: 20, padding: "2px 8px", fontSize: 9 }}>● Animada</span>
       </div>
-      <div style={{ display: "flex", gap: 0, padding: "0 14px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-        {["Painel", "Partidas", "Clube", "Notícias", "Diretoria"].map((tab, i) => (
-          <div key={tab} style={{ padding: "7px 10px", fontSize: 9, whiteSpace: "nowrap", color: i === 0 ? "#c8102e" : "#555577", borderBottom: i === 0 ? "2px solid #c8102e" : "2px solid transparent" }}>{tab}</div>
-        ))}
+
+      {/* ── Category + date ── */}
+      <div style={{ padding: "14px 24px 0", display: "flex", alignItems: "center", gap: 8 }}>
+        <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#7c5cfc", background: "rgba(124,92,252,0.1)", border: "1px solid rgba(124,92,252,0.25)", borderRadius: 6, padding: "3px 8px" }}>La Liga</span>
+        <span style={{ color: "#333355", fontSize: 11 }}>·</span>
+        <span style={{ color: "#444466", fontSize: 11 }}>Abr 2026</span>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 5, padding: "10px 12px" }}>
-        {[{ l: "Partidas", v: "18" }, { l: "Pos", v: "1º" }, { l: "Elenco", v: "33" }, { l: "Pontos", v: "51" }].map(c => (
-          <div key={c.l} style={{ background: "rgba(255,255,255,0.04)", borderRadius: 7, padding: "6px 8px", border: "1px solid rgba(200,16,46,0.1)" }}>
-            <div style={{ color: "#555577", fontSize: 8, marginBottom: 2 }}>{c.l}</div>
-            <div style={{ color: "#f0f0ff", fontWeight: 700, fontSize: 13, fontFamily: "JetBrains Mono, monospace" }}>{c.v}</div>
-          </div>
-        ))}
+
+      {/* ── Headline ── */}
+      <div style={{ padding: "12px 24px 0" }}>
+        <h3 style={{ fontFamily: "Bebas Neue, sans-serif", fontSize: "clamp(1.55rem, 2.4vw, 2rem)", lineHeight: 1.1, letterSpacing: "0.02em", margin: 0, color: "#f0f0ff" }}>
+          Barcelona vira nos{" "}
+          <span style={{ color: "#f59e0b" }}>acréscimos</span>
+          {" "}e mantém liderança isolada
+        </h3>
       </div>
-      <div style={{ padding: "0 12px 12px" }}>
-        <div style={{ color: "#444466", fontSize: 8, letterSpacing: "0.1em", marginBottom: 6 }}>ÚLTIMAS PARTIDAS</div>
-        <div style={{ display: "flex", gap: 4 }}>
-          {matches.map((m, i) => (
-            <div key={i} style={{ flex: 1, background: "rgba(255,255,255,0.03)", borderRadius: 6, padding: "5px 6px", borderTop: `2px solid ${m.color}` }}>
-              <div style={{ color: "#444466", fontSize: 7, marginBottom: 3 }}>{m.comp}</div>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <span style={{ color: "#f0f0ff", fontWeight: 700, fontSize: 11, fontFamily: "JetBrains Mono, monospace" }}>{m.hs}</span>
-                <span style={{ color: "#333355", fontSize: 7 }}>–</span>
-                <span style={{ color: "#f0f0ff", fontWeight: 700, fontSize: 11, fontFamily: "JetBrains Mono, monospace" }}>{m.as}</span>
-              </div>
-            </div>
-          ))}
-        </div>
+
+      {/* ── Lead ── */}
+      <div style={{ padding: "12px 24px 20px" }}>
+        <p style={{ color: "#888899", fontSize: 14, lineHeight: 1.65, margin: 0 }}>
+          Em jogo tenso no Camp Nou, o técnico Martínez apostou no sistema 4-3-3 para superar o Atlético de Madrid. Dois gols nos últimos cinco minutos garantiram a virada histórica e abriram oito pontos de vantagem na tabela.
+        </p>
+      </div>
+
+      {/* ── Divider ── */}
+      <div style={{ height: 1, background: "rgba(255,255,255,0.05)", margin: "0 24px" }} />
+
+      {/* ── Footer ── */}
+      <div style={{ padding: "14px 24px", display: "flex", alignItems: "center", gap: 10 }}>
+        <img src="/logo.png" alt="" style={{ width: 20, height: 20, objectFit: "contain", opacity: 0.6, flexShrink: 0 }} />
+        <span style={{ color: "#444466", fontSize: 12 }}>Gerado pela IA do <span style={{ color: "#7c5cfc" }}>FC Career Manager</span> · há 2 min</span>
       </div>
     </div>
   );
@@ -163,14 +159,8 @@ export function AuthPage({ onBack, onAuthSuccess, initialPlan }: AuthPageProps) 
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
-  const [liveCount, setLiveCount] = useState(getLiveCoaches);
 
   const isLogin = mode === "login";
-
-  useEffect(() => {
-    const t = setInterval(() => setLiveCount(getLiveCoaches()), 45000);
-    return () => clearInterval(t);
-  }, []);
 
   const resetSignup = () => {
     setSignupStep("plan");
@@ -449,32 +439,22 @@ export function AuthPage({ onBack, onAuthSuccess, initialPlan }: AuthPageProps) 
       </div>
 
       {/* ════ RIGHT: SHOWCASE COLUMN (desktop only) ════ */}
-      <div className="auth-showcase" style={{ flex: 1, position: "relative", zIndex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 48px", gap: 32, animation: "authShowcaseEnter 0.55s cubic-bezier(0.25,0.46,0.45,0.94) 0.1s both" }}>
-        <div style={{ background: "radial-gradient(ellipse 600px 500px at 50% 50%, rgba(124,92,252,0.1) 0%, transparent 70%)", position: "absolute", inset: 0, pointerEvents: "none" }} />
+      <div className="auth-showcase" style={{ flex: 1, position: "relative", zIndex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "56px 64px", animation: "authShowcaseEnter 0.55s cubic-bezier(0.25,0.46,0.45,0.94) 0.1s both" }}>
+        <div style={{ background: "radial-gradient(ellipse 600px 500px at 50% 50%, rgba(124,92,252,0.09) 0%, transparent 65%)", position: "absolute", inset: 0, pointerEvents: "none" }} />
 
-        <div style={{ position: "relative", zIndex: 1, textAlign: "center", maxWidth: 400 }}>
-          <img src="/logo.png" alt="FC Career Manager" style={{ width: 72, height: 72, objectFit: "contain", marginBottom: 24, filter: "drop-shadow(0 4px 24px rgba(124,92,252,0.5))" }} />
+        <div style={{ position: "relative", zIndex: 1, width: "100%", maxWidth: 420 }}>
 
-          <div style={{ marginBottom: 8 }}>
-            <p style={{ color: "#7c5cfc", fontSize: 11, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", margin: "0 0 10px" }}>FC Career Manager</p>
-            <h2 style={{ color: "#f0f0ff", fontSize: "clamp(1.6rem,2.8vw,2.4rem)", fontFamily: "Bebas Neue, sans-serif", lineHeight: 1.1, margin: "0 0 10px", letterSpacing: "0.02em" }}>
-              Cada partida é<br />um capítulo.<br />
-              <span style={{ color: "#7c5cfc" }}>A história é sua.</span>
-            </h2>
-            <p style={{ color: "#555577", fontSize: 14, lineHeight: 1.6, margin: "0 0 32px" }}>
-              Registre, acompanhe e reviva cada conquista<br />da sua carreira como técnico.
-            </p>
+          {/* Masthead logo */}
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 32 }}>
+            <img src="/logo.png" alt="FC Career Manager" style={{ width: 48, height: 48, objectFit: "contain", filter: "drop-shadow(0 2px 12px rgba(124,92,252,0.4))" }} />
+            <div>
+              <p style={{ color: "#7c5cfc", fontSize: 10, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", margin: 0 }}>FC Career Manager</p>
+              <p style={{ color: "#333355", fontSize: 11, margin: 0, marginTop: 2 }}>A sua carreira. A sua história.</p>
+            </div>
           </div>
 
-          <div style={{ marginBottom: 32 }}>
-            <HeroMockup />
-          </div>
-
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(124,92,252,0.08)", border: "1px solid rgba(124,92,252,0.2)", borderRadius: 100, padding: "8px 18px" }}>
-            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#00e5a0", boxShadow: "0 0 6px #00e5a0", animation: "pulse 2s ease-in-out infinite", display: "inline-block" }} />
-            <span style={{ color: "#7c5cfc", fontWeight: 700, fontSize: 14, fontFamily: "JetBrains Mono, monospace" }}>{liveCount.toLocaleString("pt-BR")}</span>
-            <span style={{ color: "#555577", fontSize: 13 }}>técnicos ativos agora</span>
-          </div>
+          {/* News card */}
+          <AiNewsCard />
         </div>
       </div>
     </div>
