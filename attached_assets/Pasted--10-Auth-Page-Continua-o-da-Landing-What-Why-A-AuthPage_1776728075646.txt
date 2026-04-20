@@ -1,0 +1,35 @@
+#10 - Auth Page — Continuação da Landing
+What & Why
+A AuthPage atual quebra a imersão: o usuário sai da landing épica e cai num formulário centralizado genérico. O redesign transforma a AuthPage numa continuação direta da landing — mesmo fundo, mesma atmosfera, mesma linguagem do futebol — usando layout split-screen com showcase do produto no lado direito.
+
+Done looks like
+Layout split-screen em desktop (≥ 768px): metade esquerda com o formulário, metade direita com showcase do produto
+Fundo #09090f com as linhas de campo SVG sutis e gradiente radial roxo — idêntico ao hero da landing
+Logo do FC Career Manager (igual à navbar) substituindo o ícone roxo genérico
+Copy no universo do futebol: "Sua carreira continua aqui." (login) / "Comece sua história no futebol" (signup)
+Inputs com bordas finas rgba(255,255,255,0.08), fundo rgba(255,255,255,0.04) e focus state dourado/roxo combinando com o sistema
+Painel direito em desktop: mockup flutuante do Barcelona (HeroMockup reutilizado da landing), tagline emocional e mini-stat de técnicos ativos
+Em mobile: coluna única (form apenas, painel direito oculto)
+Todos os 3 modos (login, seleção de plano, formulário de cadastro) com a mesma atmosfera
+Estado de redirecionamento ao Stripe também com fundo e atmosfera consistentes
+Out of scope
+Mudanças no backend / lógica de autenticação
+Novas funcionalidades de auth (recuperação de senha, OAuth)
+Animação de partículas interativa no canvas (o fundo usa apenas o SVG estático + gradiente)
+Steps
+Estrutura split-screen — Substituir o container centralizado por um layout de duas colunas em tela cheia. Coluna esquerda: formulário com fundo escuro. Coluna direita: área de showcase, oculta em mobile via media query.
+
+Fundo e atmosfera — Aplicar #09090f como base, gradiente radial roxo deslocado e o SVG das linhas de campo do hero da landing no fundo de toda a página (não só da coluna direita).
+
+Painel direito — Construir o conteúdo do painel direito: logo + tagline emocional + HeroMockup flutuante (importando e reutilizando o componente da LandingPage) + contador de técnicos ativos.
+
+Logo e copy — Substituir o ícone genérico pelo logotipo (SVG do campo + "FC Career Manager") no cabeçalho do formulário. Atualizar todos os textos: "Sua carreira continua aqui." no login, "Comece sua história" no cadastro, "Escolha o nível da sua carreira" na seleção de plano.
+
+Inputs e botões — Padronizar os inputs: borda fina rgba(255,255,255,0.08), fundo rgba(255,255,255,0.04), sem border-radius excessivo, focus state com glow dourado (rgba(245,158,11,0.4)) nos CTAs principais e roxo nos secundários. Botão primário mantém o gradiente roxo com glow.
+
+Estados adicionais — Aplicar o mesmo fundo e layout ao estado de redirecionamento (Stripe). Em mobile, garantir que o formulário preenche a tela inteira sem o painel direito.
+
+Relevant files
+artifacts/fc-career-manager/src/components/AuthPage.tsx
+artifacts/fc-career-manager/src/components/LandingPage.tsx
+artifacts/fc-career-manager/src/index.css
