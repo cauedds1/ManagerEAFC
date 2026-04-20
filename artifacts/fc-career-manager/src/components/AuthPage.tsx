@@ -35,7 +35,7 @@ const PLAN_CARDS: Array<{
     period: "por mês",
     accentRgb: "124,92,252",
     accentColor: "#7c5cfc",
-    features: ["Até 5 carreiras ativas", "20 gerações de IA por dia", "Diretoria com até 4 membros", "Modelo Gemini Flash"],
+    features: ["Até 5 carreiras ativas", "20 gerações de IA por dia", "Diretoria com até 4 membros", "Notícias geradas em segundos"],
   },
   {
     plan: "ultra",
@@ -44,7 +44,7 @@ const PLAN_CARDS: Array<{
     period: "por mês",
     accentRgb: "245,158,11",
     accentColor: "#f59e0b",
-    features: ["Carreiras ilimitadas", "IA ilimitada com GPT-4o", "Notícias automáticas", "Boatos no vestiário", "Até 3 portais personalizados"],
+    features: ["Boatos no vestiário", "Até 3 portais personalizados", "Carreiras ilimitadas", "IA com notícias mais detalhadas e dramáticas", "Notícias automáticas"],
   },
 ];
 

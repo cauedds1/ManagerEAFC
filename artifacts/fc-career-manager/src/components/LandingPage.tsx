@@ -1372,7 +1372,7 @@ export function LandingPage({ onStart, onLogin, onStartWithPlan }: LandingPagePr
                 Assinar Pro
               </button>
               <ul style={{ marginTop: 28, listStyle: "none", padding: 0, display: "flex", flexDirection: "column", gap: 12 }}>
-                {["Até 5 carreiras ativas", "20 gerações de IA por dia", "Diretoria com até 4 membros", "Modelo Gemini Flash"].map(f => (
+                {["Até 5 carreiras ativas", "20 gerações de IA por dia", "Diretoria com até 4 membros", "Notícias geradas em segundos"].map(f => (
                   <li key={f} style={{ display: "flex", gap: 10, fontSize: 13, color: "#c0c0d8" }}>
                     <span style={{ color: "#7c5cfc", marginTop: 2 }}>✓</span> {f}
                   </li>
@@ -1389,7 +1389,7 @@ export function LandingPage({ onStart, onLogin, onStartWithPlan }: LandingPagePr
                 Assinar Ultra
               </button>
               <ul style={{ marginTop: 28, listStyle: "none", padding: 0, display: "flex", flexDirection: "column", gap: 12 }}>
-                {["Carreiras ilimitadas", "IA ilimitada com GPT-4o", "Notícias automáticas", "Boatos no vestiário", "Até 3 portais personalizados"].map(f => (
+                {["Boatos no vestiário", "Até 3 portais personalizados", "Carreiras ilimitadas", "IA com notícias mais detalhadas e dramáticas", "Notícias automáticas"].map(f => (
                   <li key={f} style={{ display: "flex", gap: 10, fontSize: 13, color: "#888899" }}>
                     <span style={{ color: "#f59e0b", marginTop: 2 }}>✓</span> {f}
                   </li>
