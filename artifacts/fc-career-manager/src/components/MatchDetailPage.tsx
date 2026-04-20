@@ -980,22 +980,22 @@ export function MatchDetailPage({
               const rightGoals = isHome ? oppGoalEntries : myGoalEntries;
               return (
                 <div className="flex gap-3 mt-1.5 w-full">
-                  {/* Left team goals — right-aligned */}
-                  <div className="flex-1 flex flex-col items-end gap-0.5 min-w-0">
+                  {/* Left team goals — name right, minute left */}
+                  <div className="flex-1 flex flex-col items-end gap-0.5">
                     {leftGoals.map((g, i) => (
-                      <div key={i} className="flex items-baseline gap-1 text-[10px] text-white/50 leading-tight w-full justify-end">
-                        <span className="truncate min-w-0">{g.name}</span>
+                      <div key={i} className="flex items-baseline justify-between gap-2 text-[10px] text-white/50 leading-tight w-full">
                         <span className="shrink-0">{g.minute}&apos;{g.isPenalty ? " (P)" : ""}</span>
+                        <span>{g.name}</span>
                       </div>
                     ))}
                   </div>
                   {/* Thin vertical divider */}
                   <div className="w-px self-stretch bg-white/10 flex-shrink-0" />
-                  {/* Right team goals — left-aligned */}
-                  <div className="flex-1 flex flex-col items-start gap-0.5 min-w-0">
+                  {/* Right team goals — name left, minute right */}
+                  <div className="flex-1 flex flex-col items-start gap-0.5">
                     {rightGoals.map((g, i) => (
-                      <div key={i} className="flex items-baseline gap-1 text-[10px] text-white/50 leading-tight w-full justify-start">
-                        <span className="truncate min-w-0">{g.name}</span>
+                      <div key={i} className="flex items-baseline justify-between gap-2 text-[10px] text-white/50 leading-tight w-full">
+                        <span>{g.name}</span>
                         <span className="shrink-0">{g.minute}&apos;{g.isPenalty ? " (P)" : ""}</span>
                       </div>
                     ))}
