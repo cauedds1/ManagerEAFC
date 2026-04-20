@@ -1,0 +1,41 @@
+Aqui está o prompt cirúrgico — para potencializar, não reescrever:
+
+CONTEXTO
+Você está refinando uma LandingPage.tsx já estruturada para o FC Career Manager, app de tracking de modo carreira do FC 25/EA FC. Não reescreva do zero. Potencialize o que existe tornando cada seção inesquecível.
+
+PRINCÍPIO ÚNICO QUE GUIA TUDO
+O usuário que chega nessa página já jogou centenas de horas de modo carreira. Ele tem memórias afetivas reais disso. Cada decisão de design deve ativar essa memória, não explicar o produto. Mostre, não descreva.
+
+INTERVENÇÕES CIRÚRGICAS POR SEÇÃO
+Hero
+Não centralizar o texto. Texto à esquerda, mockup à direita em perspectiva 3D CSS (rotateY(-8deg) rotateX(2deg)). A tagline não pode ser proposta de valor — tem que ser provocação emocional. Exemplo do tom certo: "Você lembra do título que ganhou às 2 da manhã. A gente também." Badge flutuante com contador real de técnicos ativos pulsando suavemente.
+Feature Explorer
+Painel dividido sticky. Coluna esquerda: 8 features com ícone + tagline de uma linha. Item ativo com borda esquerda roxa animada. Auto-cicla a cada 3s, pausa no hover. Coluna direita: mini mockup fiel ao app real — não ilustração genérica. Cada mockup tem dados fictícios verossímeis (nomes de jogadores reais, placares, datas de temporada).
+Seção do Clube / Tema Adaptativo
+Ao trocar de clube, as cores não apenas mudam — elas correm pela tela como uma onda (CSS clip-path animation ou radial gradient expandindo do ponto de clique). Todos os elementos do mockup mudam: cards, tabs, badges, bordas, botões. O background da seção inteira reflete as cores do clube com opacidade baixa.
+IA em Ação
+Visual de redação de jornal — header estilo La Gazzetta della Sport com nome fictício. Texto digitando com cursor piscando. Três headlines ciclando que soam como notícias reais: uma virada épica, um hat-trick improvável, uma crise na diretoria. O usuário deve ler e pensar "isso poderia ser da minha carreira".
+CTA Final
+Fundo de estádio com overlay escuro. Texto emocional grande. Mas a copy não pode ser "Comece grátis" — tem que fechar o loop emocional aberto no hero. Se o hero perguntou algo, o CTA final responde.
+
+RESTRIÇÕES
+
+Preservar props: onStart, onLogin, onStartWithPlan
+Manter imagens ../assets/ existentes
+Smooth scroll para IDs do navbar
+Mobile: Feature Explorer vira accordion
+Paleta: #09090f, #0d0820, roxo #7c5cfc, dourado #f59e0b
+Fontes: DM Sans, Bebas Neue, JetBrains Mono
+
+
+O QUE NÃO FAZER
+
+Sem grid de 6 cards iguais
+Sem hero 100% centralizado
+Sem copy genérica ("Poderoso", "Completo", "Fácil de usar")
+Sem mockups com dados falsos óbvios ("Lorem FC", "Jogador 1")
+Sem animações por animação — cada movimento deve ter intenção
+
+
+TESTE DE QUALIDADE
+Antes de entregar, responda internamente: "Quando o usuário fechar essa página, o que ele vai lembrar?" Se a resposta for uma feature ou um preço, reescreva. Se for uma emoção ou uma frase, está pronto.

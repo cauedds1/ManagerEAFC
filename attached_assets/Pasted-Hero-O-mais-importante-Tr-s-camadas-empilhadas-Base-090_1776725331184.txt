@@ -1,0 +1,29 @@
+Hero
+O mais importante. Três camadas empilhadas:
+
+Base: #09090f quase preto
+Meio: grade de linhas finas de campo de futebol — não óbvio, só as linhas do círculo central e da grande área, com opacidade de 3-4%. O usuário não vê conscientemente, mas sente que tem algo ali
+Topo: partículas douradas e roxas flutuando lentamente, com conexões entre elas como você viu no HTML que gerei
+
+O diferencial: o gradiente radial não fica centralizado — fica levemente deslocado para a direita, onde o mockup do app vai estar. Como se o app estivesse emitindo luz.
+
+Seção de Prova Social / Marquee
+Fundo levemente mais claro, #0d0820 com roxo bem sutil. Uma linha de 1px dourada em cima e embaixo separando a seção. Sem textura, sem ruído — contraste limpo.
+
+Feature Explorer
+De volta ao #09090f. Mas com um detalhe: conforme o item ativo muda na coluna esquerda, uma névoa colorida muito suave pulsa no fundo do painel direito — roxa para features táticas, dourada para conquistas, azul para financeiro. Cada feature tem sua cor ambiente.
+
+Seção do Clube
+Essa é a mais dramática. O fundo inteiro muda de cor com cada clube selecionado — mas não de forma óbvia. É um gradiente radial enorme, com opacidade de 8-10%, emanando do centro. Barcelona: azul-grená. City: azul celeste. A transição usa 0.8s de ease — você vê as cores "derramando" pelo fundo.
+
+Seção de IA / Jornal
+Aqui quebra o padrão escuro. Fundo #0f0e0a com uma textura muito sutil de papel — noise grain estático, opacidade 4%. Dá a sensação de papel de jornal sem parecer template. Uma fonte de luz amarelada fraca no topo, como se viesse de uma lampada de redação.
+
+Planos
+Escuro neutro #09090f. O card Pro — o do meio — tem um brilho roxo muito sutil saindo de baixo dele, como se estivesse levitando. Os outros dois cards não têm isso.
+
+CTA Final
+A única seção com imagem real — foto de estádio lotado com overlay escuro rgba(9,9,15,0.85). Mas com um detalhe: a foto tem um leve zoom lento em loop, 20s de duração. Imperceptível se você ficar parado, mas cria vida na seção.
+
+Fio condutor de tudo
+Nunca branco. Nunca cinza claro. A paleta escura com variações sutis cria profundidade sem precisar de imagens em todo lugar. O roxo e o dourado aparecem como luz, não como cor de fundo — sempre emanando de elementos, nunca preenchendo áreas grandes.

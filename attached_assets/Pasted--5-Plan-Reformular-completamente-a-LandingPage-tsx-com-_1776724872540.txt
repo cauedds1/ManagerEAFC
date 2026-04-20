@@ -1,0 +1,98 @@
+#5 - Plan
+Reformular completamente a LandingPage.tsx com foco em interatividade, identidade própria e apresentação máxima do sistema. Preservar todos os props existentes (onStart, onLogin, onStartWithPlan).
+
+Princípios de design
+SEM métricas de usuários (remover 12k+ técnicos, 340k+ partidas, 89 países, 4.8★)
+Foco total em MOSTRAR o sistema — o produto se vende sozinho
+Screenshots reais do app usadas como componentes animados (não imagens estáticas): cada print recebe borda roxa animada, efeito glow, scan line, animação de entrada ao scroll
+Muita interatividade: o usuário descobre explorando, não lendo
+CTAs com linguagem do futebol ("Iniciar Carreira", "Escrever História")
+Paleta escura com personalidade: roxo (#7c5cfc), dourado (#f59e0b)
+Seções (em ordem)
+1. HERO
+Background: grid animado + gradiente escuro
+Tagline em Bebas Neue grande, não centralizada (alinhada à esquerda ou split layout)
+Subtítulo curto emocional: "Cada partida vira história. Cada título vira lenda."
+CTA principal: "Iniciar Carreira" (roxo grande)
+CTA secundário discreto: "Ver planos →"
+Mockup do app à direita em perspectiva 3D CSS com tabs visíveis
+Sem badge de "X usuários" — remover métricas
+2. FEATURE EXPLORER (seção principal de funcionalidades — reinventada)
+Layout: painel dividido em 2 colunas
+
+Coluna esquerda: lista vertical de 8 funcionalidades com ícone + nome + tagline curta
+Item ativo tem destaque roxo com animação
+Hover troca o painel direito com fade
+Auto-cicla a cada 3s se sem interação
+Coluna direita (sticky): painel grande com mini mockup animado da feature ativa
+As 8 funcionalidades:
+
+Painel da Carreira — stats + partidas recentes
+Registre Partidas — placar, gols, cartões, destaques
+Elenco Tático — jogadores, posição, OVR
+Transferências — card de compra/venda com valor e clube
+Imprensa por IA — manchete + corpo + "FC Press · IA"
+Diretoria — diretor com rating e notificação (badge Pro)
+Armário de Troféus — grid de troféus com nome e ano
+Gestão Financeira — barras de orçamento/saldo/folha
+SE o usuário enviar screenshots reais das seções do app:
+
+Usar o print como base do painel direito do feature explorer
+Adicionar: borda roxa com glow pulsante, scan line animada sutil, entrada com slide+fade ao trocar de feature
+NÃO usar como 
+Unsupported image
+ estática simples
+3. TEMA ADAPTATIVO — Seção do Clube (melhorada)
+Manter estrutura: Barcelona / Cercle Brugge / Watford / Manchester City. Melhorias:
+
+Mockup do browser maior e mais detalhado (mais elementos internos visíveis)
+Ao trocar: efeito de "onda de tinta" — cores correm pela interface
+Cards, tabs, badges, botões: tudo muda de cor junto
+Auto-ciclo de 4s, pausa ao hover
+Liga como tag visível no mockup
+4. IA EM AÇÃO
+Visual de redação de jornal (header estilo editorial)
+Texto digitando com cursor piscando (manter + melhorar)
+3 headlines ciclando com fade
+Badge: "Ultra → automática após cada partida" vs "manual nos demais"
+5. COMO FUNCIONA
+Timeline com 4 passos conectados
+Se houver print de cada passo: usar com animação de borda/glow
+Ícones grandes, descrições curtas e diretas
+6. PLANOS
+3 cards: Free / Pro ("Mais popular" rotacionado) / Ultra ("Para os obcecados")
+Feature list com ✓ e —
+Preços: R$0 / R$14,90/mês / R$39,90/mês
+CTAs: onStart() / onStartWithPlan("pro") / onStartWithPlan("ultra")
+Linguagem: "Grátis para sempre" / "Para quem leva a sério" / "Para os obcecados"
+7. DEPOIMENTOS (manter mas sem métricas globais)
+3 cards existentes com 5★, offsets no layout
+Sem "89 países" ou contadores
+8. FAQ — Accordion animado
+5 perguntas: cartão / mobile / clubes / notícias auto / cancelamento
+9. CTA FINAL
+Background stadium
+Texto emocional em Bebas grande
+"Iniciar Carreira — É grátis" + "Assinar Pro por R$14,90"
+Tratamento de screenshots (quando enviadas)
+Nunca usar como 
+Unsupported image
+ simples
+Envolver em componente AnimatedScreenshot:
+borda roxa (1-2px) com glow pulsante (@keyframes)
+scan line fina descendo a cada 4s
+animação de entrada: slide-up + fade ao entrar no viewport
+reflection/brilho sutil no hover
+Contexto: cada screenshot fica dentro do Feature Explorer ou em seção própria de destaque
+Estilo
+#09090f, #0d0820, roxo #7c5cfc, dourado #f59e0b
+DM Sans, Bebas Neue, JetBrains Mono
+Mobile-first, responsivo (Feature Explorer → accordion no mobile)
+Restrições
+Preservar props: onStart, onLogin, onStartWithPlan
+Manter ../assets/ das imagens de clube
+Smooth scroll para IDs do navbar
+REMOVER StatCounter (métricas removidas)
+Arquivo
+artifacts/fc-career-manager/src/components/LandingPage.tsx
+artifacts/fc-career-manager/src/index.css

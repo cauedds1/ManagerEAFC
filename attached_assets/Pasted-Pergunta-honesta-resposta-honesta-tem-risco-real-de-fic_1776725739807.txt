@@ -1,0 +1,52 @@
+Pergunta honesta, resposta honesta: tem risco real de ficar exagerada.
+
+De onde vem o risco
+O documento tem muita coisa boa, mas empilhada. Conta:
+
+Cursor contextual com 4 estados
+Split-flap counter
+Tagline respirando
+Glitch no carregamento
+Parallax 3 camadas
+Som de estádio
+Gerador de notícia interativo
+Placar arrastável
+Club color picker com 65 clubes
+Ripple de cor ao trocar clube
+Névoa colorida que muda por feature
+Scrollbar customizada
+Seleção de texto dourada
+10 seções densas
+
+São 14+ efeitos simultâneos. O problema não é que cada um seja ruim — é que o cérebro humano não consegue apreciar tudo ao mesmo tempo. Quando tudo grita, nada se destaca.
+
+O que separa exagerado de extraordinário
+Sites que parecem extraordinários geralmente têm uma coisa absurdamente bem feita e o resto servindo de suporte silencioso.
+No Marblex que você curtiu, o que você lembrou? Provavelmente a atmosfera geral — não cada efeito individual. Porque eles escolheram onde gastar a atenção do usuário.
+
+O que eu cortaria sem dó
+Coisas que custam percepção mas entregam pouco:
+
+Tagline respirando — ninguém nota scale de 1.002. Corta.
+Scrollbar customizada — só designers notam, e olha lá. Corta.
+Parallax 3 camadas — 2 camadas entregam o mesmo efeito com metade do risco de performance. Simplifica.
+Névoa colorida por feature no Explorer — a troca de mockup já comunica a mudança. A névoa é ruído em cima de sinal. Corta.
+Placar arrastável — interação charmosa mas desvia foco do que importa. Guarda para dentro do app.
+
+
+O que eu manteria sem questionar
+As coisas que entregam emoção real:
+
+Glitch no carregamento — inesperado, memorável, dura 0.35s
+Split-flap counter — único, temático, justificado
+Gerador de notícia com input do usuário — esse é o mais importante de todos
+Club color picker — interação com identidade própria
+Copy: "Você lembra do título que ganhou às 2 da manhã" — intocável
+CTA fechando o loop — intocável
+Som de estádio — baixo risco, alto charme
+
+
+A pergunta que filtra tudo
+Antes de cada efeito: "Isso ajuda o usuário a sentir algo ou só impressiona por 2 segundos?"
+Glitch → faz sentir que o produto tem personalidade. Fica.
+Névoa colorida por feature → impressiona por 2 segundos. Corta.

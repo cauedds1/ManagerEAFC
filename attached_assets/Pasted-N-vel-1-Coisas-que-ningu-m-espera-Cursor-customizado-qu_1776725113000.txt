@@ -1,0 +1,33 @@
+Nível 1 — Coisas que ninguém espera
+Cursor customizado que reage ao contexto
+Não só mudar de forma — quando passa sobre o CTA principal, o cursor vira uma bola de futebol girando. Quando passa sobre estatísticas, vira um cursor de mira/análise. Cada zona da página tem um cursor diferente.
+Placar ao vivo no hero
+Um placar estilo televisão de estádio — dígitos que "flipam" como aqueles relógios mecânicos antigos (efeito split-flap). Mostrando "12.847 técnicos" com os números trocando individualmente, não só contando.
+Texto que respira
+A tagline principal pulsa muito sutilmente em escala — 1.000 a 1.002 — como se estivesse viva. Imperceptível conscientemente, mas o cérebro nota.
+
+Nível 2 — Interações que ensinam o produto
+Notícia que você escreve
+Na seção de IA, um campo simples: "Nome do seu clube" + "Resultado do jogo". O usuário digita e a notícia é gerada na hora com os dados dele. Ele experimenta o produto sem criar conta.
+Placar arrastável
+No mockup de registro de partida, o usuário consegue clicar nos números do placar e mudar — e a "notícia" embaixo atualiza em tempo real com o novo resultado.
+Tema do clube interativo
+Em vez de botões para trocar, o usuário digita o nome de qualquer clube e as cores da página mudam para as cores daquele clube. Não só os 4 pré-definidos.
+
+Nível 3 — Atmosfera que nenhum SaaS tem
+Parallax de campo
+Não o parallax genérico de scroll. As linhas do campo de futebol no fundo se movem em velocidades diferentes conforme o scroll — criando profundidade real, como se você estivesse sobrevoando o estádio.
+Som ambiente opcional
+Um botão discreto no canto. Clicou: som suave de estádio ao longe, torcida murmurando. A maioria das pessoas vai clicar só por curiosidade. Ninguém faz isso.
+Glitch em momentos específicos
+Quando a página carrega, o título faz um glitch de 0.3 segundos — como se fosse um placar eletrônico ligando. Só uma vez, só no carregamento. Memorável exatamente por ser inesperado.
+Contador de temporadas em andamento
+No rodapé ou num canto fixo: "Neste momento, 847 técnicos estão jogando sua temporada." Número real via API, atualizando a cada 30s. Cria senso de comunidade viva.
+
+Nível 4 — O detalhe que designers notam
+Seleção de texto customizada
+Quando o usuário seleciona qualquer texto da página, o highlight é dourado com texto escuro — não o azul padrão do browser. Dois segundos de CSS, impacto desproporcional.
+Scrollbar customizada
+Fina, dourada, no lado direito. A maioria ignora. Quem nota, lembra.
+Focus states com personalidade
+Quando navega por teclado, o outline dos elementos é dourado com um leve glow — não o azul feio padrão.
