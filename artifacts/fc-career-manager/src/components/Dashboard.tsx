@@ -12,7 +12,8 @@ import {
   migratePositionOverride,
 } from "@/lib/squadCache";
 import { getAllPlayerOverrides } from "@/lib/playerStatsStorage";
-import { getTransfers, addTransfer, updateTransfer } from "@/lib/transferStorage";
+import { getTransfers, addTransfer, updateTransfer, saveTransfers } from "@/lib/transferStorage";
+import { getTransferWindow, saveTransferWindow, type TransferWindowState } from "@/lib/transferWindowStorage";
 import { getRivals } from "@/lib/rivalsStorage";
 import { fetchPortals } from "@/lib/customPortalStorage";
 import { addPost as addNewsPost, generatePostId, generateCommentId } from "@/lib/noticiaStorage";
@@ -229,6 +230,10 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     () => getTransfers(activeSeasonId)
   );
 
+  const [transferWindow, setTransferWindow] = useState<TransferWindowState>(
+    () => getTransferWindow(activeSeasonId)
+  );
+
   const [matches, setMatches] = useState<MatchRecord[]>(
     () => getMatches(activeSeasonId)
   );
@@ -273,6 +278,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
       // Sync and load data for the ACTIVE season (not the initial/first one)
       await syncSeasonFromDb(effectiveSeasonId);
       setTransfers(getTransfers(effectiveSeasonId));
+      setTransferWindow(getTransferWindow(effectiveSeasonId));
       setMatches(getMatches(effectiveSeasonId));
       setOverrides(getAllPlayerOverrides(career.id));
 
@@ -302,6 +308,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     setActiveSeasonId(season.id);
     setActiveSeasonLabel(season.label);
     setTransfers(getTransfers(season.id));
+    setTransferWindow(getTransferWindow(season.id));
     setMatches(getMatches(season.id));
     if (season.finalized) setActiveTab("resumo");
     else setActiveTab("painel");
@@ -497,22 +504,25 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     };
   });
 
+  // Only effective (non-pending) transfers affect the squad
+  const effectiveTransfers = transfers.filter((t) => !t.windowPending);
+
   const soldPlayerIds = new Set(
-    transfers.filter((t) => t.type === "venda").map((t) => t.playerId),
+    effectiveTransfers.filter((t) => t.type === "venda").map((t) => t.playerId),
   );
   const soldPlayerNames = new Set(
-    transfers
-      .filter((t) => t.type === "venda" && !transfers.find((c) => (!c.type || c.type === "compra") && c.playerId === t.playerId))
+    effectiveTransfers
+      .filter((t) => t.type === "venda" && !effectiveTransfers.find((c) => (!c.type || c.type === "compra") && c.playerId === t.playerId))
       .map((t) => t.playerName.toLowerCase().trim()),
   );
 
   const loanedOutIds = new Set(
-    transfers
+    effectiveTransfers
       .filter((t) => t.type === "emprestimo" && t.loanDirection === "saida" && !t.loanEnded)
       .map((t) => t.playerId),
   );
   const loanedOutNames = new Set(
-    transfers
+    effectiveTransfers
       .filter((t) => t.type === "emprestimo" && t.loanDirection === "saida" && !t.loanEnded)
       .map((t) => t.playerName.toLowerCase().trim()),
   );
@@ -520,8 +530,13 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
   const removedIds = new Set([...soldPlayerIds, ...loanedOutIds]);
   const removedNames = new Set([...soldPlayerNames, ...loanedOutNames]);
 
+  // Pending incoming transfers don't join the squad yet
+  const effectiveTransferredPlayers = transferredPlayers.filter(
+    (p) => !effectiveTransfers.find((t) => t.windowPending && t.playerId === p.id)
+  );
+
   const existingIds = new Set(squadPlayers.map((p) => p.id));
-  const newTransferredPlayers = transferredPlayers.filter(
+  const newTransferredPlayers = effectiveTransferredPlayers.filter(
     (p) => !existingIds.has(p.id) && !removedIds.has(p.id),
   );
   const allPlayers = [
@@ -564,6 +579,37 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     ];
   }, [allPlayers, formerPlayers, removedIds, removedNames, isReadOnly]);
 
+  const handleWindowToggle = useCallback(() => {
+    if (transferWindow.open) {
+      // Closing window
+      const next = { open: false, openCount: transferWindow.openCount };
+      saveTransferWindow(activeSeasonId, next);
+      setTransferWindow(next);
+    } else {
+      // Opening window — activate all pending transfers
+      if (transferWindow.openCount >= 2) return;
+      const next = { open: true, openCount: transferWindow.openCount + 1 };
+      saveTransferWindow(activeSeasonId, next);
+      setTransferWindow(next);
+
+      setTransfers((prev) => {
+        const pendingOuts = prev.filter(
+          (t) => t.windowPending && (t.type === "venda" || (t.type === "emprestimo" && t.loanDirection === "saida"))
+        );
+        for (const t of pendingOuts) {
+          const player = allPlayers.find((p) => p.id === t.playerId);
+          if (player) addFormerPlayer(career.id, player);
+        }
+        if (pendingOuts.length > 0) {
+          setFormerPlayers(getFormerPlayers(career.id));
+        }
+        const activated = prev.map((t) => t.windowPending ? { ...t, windowPending: false } : t);
+        saveTransfers(activeSeasonId, activated);
+        return activated;
+      });
+    }
+  }, [activeSeasonId, allPlayers, career.id, transferWindow]);
+
   const handleTransferAdded = useCallback((transfer: TransferRecord) => {
     addTransfer(activeSeasonId, transfer);
     setTransfers((prev) => [...prev, transfer]);
@@ -581,16 +627,19 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     setNoticiasUnread((prev) => prev + 1);
   }, [addToast]);
 
-  const handleHighValueSigning = useCallback((playerName: string, ovr: number, position: string, fromClub?: string, deltaVsAvg?: number) => {
+  const handleHighValueSigning = useCallback((playerName: string, ovr: number, position: string, fromClub?: string, deltaVsAvg?: number, isPending?: boolean) => {
     const headers = getAiHeaders();
     const fromClubStr = fromClub ? ` do ${fromClub}` : " de jogador livre";
     const deltaStr = deltaVsAvg != null && deltaVsAvg > 0 ? `, ${deltaVsAvg} pontos acima da média do elenco` : "";
     const seasonLabel = seasons.find((s) => s.id === activeSeasonId)?.label ?? career.season;
+    const windowCtx = isPending
+      ? ` A janela de transferências está FECHADA — o jogador ainda não se apresentou e só estará disponível quando a janela abrir.`
+      : ` A janela de transferências está ABERTA — o jogador já está disponível no elenco.`;
     void fetch("/api/noticias/generate", {
       method: "POST",
       headers,
       body: JSON.stringify({
-        description: `${career.clubName} anuncia a contratação de ${playerName} (${position}, OVR ${ovr})${fromClubStr}${deltaStr}. Um reforço de alto nível que eleva o patamar do elenco.`,
+        description: `${career.clubName} anuncia a contratação de ${playerName} (${position}, OVR ${ovr})${fromClubStr}${deltaStr}. Um reforço de alto nível que eleva o patamar do elenco.${windowCtx}`,
         clubName: career.clubName,
         season: seasonLabel,
         source: "espn",
@@ -904,6 +953,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
         setActiveSeasonId(newSeason.id);
         setActiveSeasonLabel(label);
         setTransfers([]);
+        setTransferWindow({ open: false, openCount: 0 });
         setMatches([]);
         setShowNewSeasonWizard(false);
         setShowSeasonModal(false);
@@ -1301,6 +1351,9 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
                 onTransferUpdated={handleTransferUpdated}
                 onHighValueSigning={handleHighValueSigning}
                 onPlayerLeftInTrade={handlePlayerLeftInTrade}
+                transferWindowOpen={transferWindow.open}
+                transferWindowOpenCount={transferWindow.openCount}
+                onToggleWindow={handleWindowToggle}
                 isReadOnly={isReadOnly}
               />
             )}

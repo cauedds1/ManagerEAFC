@@ -441,6 +441,14 @@ function TransferCard({
               Encerrado
             </span>
           )}
+          {transfer.windowPending && (
+            <span
+              className="text-[10px] font-black px-2 py-0.5 rounded-md flex-shrink-0 tracking-wider"
+              style={{ background: "rgba(168,85,247,0.15)", color: "#a855f7", border: "1px solid rgba(168,85,247,0.3)" }}
+            >
+              PENDENTE
+            </span>
+          )}
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
@@ -625,8 +633,11 @@ interface TransferenciasViewProps {
   allPlayers: SquadPlayer[];
   onTransferAdded: (transfer: TransferRecord) => void;
   onTransferUpdated?: (id: string, changes: Partial<TransferRecord>) => void;
-  onHighValueSigning?: (playerName: string, ovr: number, position: string, fromClub?: string, deltaVsAvg?: number) => void;
+  onHighValueSigning?: (playerName: string, ovr: number, position: string, fromClub?: string, deltaVsAvg?: number, isPending?: boolean) => void;
   onPlayerLeftInTrade?: (player: SquadPlayer) => void;
+  transferWindowOpen?: boolean;
+  transferWindowOpenCount?: number;
+  onToggleWindow?: () => void;
   isReadOnly?: boolean;
 }
 
@@ -642,16 +653,24 @@ export function TransferenciasView({
   onTransferUpdated,
   onHighValueSigning,
   onPlayerLeftInTrade,
+  transferWindowOpen = false,
+  transferWindowOpenCount = 0,
+  onToggleWindow,
   isReadOnly,
 }: TransferenciasViewProps) {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<FormData>(DEFAULT_FORM);
   const [submitting, setSubmitting] = useState(false);
 
-  const sortedTransfers = [...transfers].sort((a, b) => b.transferredAt - a.transferredAt);
+  const sortedTransfers = [...transfers].sort((a, b) => {
+    if (a.windowPending && !b.windowPending) return -1;
+    if (!a.windowPending && b.windowPending) return 1;
+    return b.transferredAt - a.transferredAt;
+  });
   const comprasCount = transfers.filter((t) => !t.type || t.type === "compra").length;
   const vendasCount = transfers.filter((t) => t.type === "venda").length;
   const emprestimosCount = transfers.filter((t) => t.type === "emprestimo").length;
+  const pendingCount = transfers.filter((t) => t.windowPending).length;
 
   const set = <K extends keyof FormData>(field: K, value: FormData[K]) =>
     setForm((f) => ({ ...f, [field]: value }));
@@ -672,6 +691,7 @@ export function TransferenciasView({
     const isVenda = form.transferType === "venda";
     const isEmprestimo = form.transferType === "emprestimo";
     const isEntrada = !isVenda && !isLoanSaida;
+    const isPending = !transferWindowOpen;
 
     const playerId =
       ((isVenda || isLoanSaida) && form.resolvedPlayerId)
@@ -705,6 +725,7 @@ export function TransferenciasView({
             form.playerPositionPtBr,
             form.fromClub.trim() || undefined,
             signingOvr - squadAvg,
+            isPending,
           );
         }
       }
@@ -734,13 +755,15 @@ export function TransferenciasView({
       loanEnded: false,
       playerOverall: signingOvr,
       transferredAt: Date.now(),
+      windowPending: isPending || undefined,
     };
 
     onTransferAdded(transfer);
 
     // For sales and loan-outs, notify that the player left so they remain in
-    // historical stats even after being removed from the active squad.
-    if (isVenda || isLoanSaida) {
+    // historical stats — but only when the window is open (immediate effect).
+    // When pending, the player still belongs to the squad until the window opens.
+    if (!isPending && (isVenda || isLoanSaida)) {
       const leftPlayer = allPlayers.find((p) => p.id === playerId);
       if (leftPlayer) {
         onPlayerLeftInTrade?.(leftPlayer);
@@ -777,9 +800,10 @@ export function TransferenciasView({
           toClubLogo: form.fromClubLogo.trim() || undefined,
           loanEnded: false,
           transferredAt: Date.now() + 1,
+          windowPending: isPending || undefined,
         };
         onTransferAdded(tradeTransfer);
-        if (tradedPlayer) {
+        if (!isPending && tradedPlayer) {
           onPlayerLeftInTrade?.(tradedPlayer);
         }
       } else if (isVenda) {
@@ -811,6 +835,7 @@ export function TransferenciasView({
           loanEnded: false,
           playerOverall: tradeOvr,
           transferredAt: Date.now() + 1,
+          windowPending: isPending || undefined,
         };
         onTransferAdded(tradeTransfer);
       }
@@ -878,6 +903,14 @@ export function TransferenciasView({
               {vendasCount} saída{vendasCount !== 1 ? "s" : ""}
             </span>
           )}
+          {pendingCount > 0 && (
+            <span
+              className="text-xs font-bold px-2.5 py-0.5 rounded-full tabular-nums"
+              style={{ background: "rgba(168,85,247,0.12)", color: "#a855f7" }}
+            >
+              {pendingCount} pendente{pendingCount !== 1 ? "s" : ""}
+            </span>
+          )}
         </div>
         {!isReadOnly && (
           <div className="flex items-center gap-2">
@@ -913,6 +946,72 @@ export function TransferenciasView({
           </div>
         )}
       </div>
+
+      {!isReadOnly && (
+        <div
+          className="flex items-center justify-between gap-4 px-4 py-3 rounded-2xl"
+          style={{
+            background: transferWindowOpen
+              ? "rgba(34,197,94,0.08)"
+              : "rgba(168,85,247,0.08)",
+            border: `1px solid ${transferWindowOpen ? "rgba(34,197,94,0.2)" : "rgba(168,85,247,0.2)"}`,
+          }}
+        >
+          <div className="flex items-center gap-3">
+            <div
+              className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+              style={{
+                background: transferWindowOpen ? "#22c55e" : "#a855f7",
+                boxShadow: transferWindowOpen ? "0 0 8px rgba(34,197,94,0.6)" : "0 0 8px rgba(168,85,247,0.5)",
+              }}
+            />
+            <div>
+              <p className="text-white font-bold text-sm">
+                Janela {transferWindowOpen ? "Aberta" : "Fechada"}
+              </p>
+              <p className="text-white/40 text-xs mt-0.5">
+                {transferWindowOpen
+                  ? "Contratações e vendas têm efeito imediato"
+                  : transferWindowOpenCount >= 2
+                  ? "Janela encerrada para esta temporada"
+                  : `${2 - transferWindowOpenCount} abertura${2 - transferWindowOpenCount !== 1 ? "s" : ""} restante${2 - transferWindowOpenCount !== 1 ? "s" : ""} nesta temporada`}
+              </p>
+            </div>
+          </div>
+          {onToggleWindow && (
+            <button
+              onClick={onToggleWindow}
+              disabled={!transferWindowOpen && transferWindowOpenCount >= 2}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all hover:opacity-90 active:scale-95 disabled:opacity-35 disabled:cursor-not-allowed flex-shrink-0"
+              style={
+                transferWindowOpen
+                  ? { background: "rgba(239,68,68,0.15)", color: "#f87171", border: "1px solid rgba(239,68,68,0.3)" }
+                  : transferWindowOpenCount >= 2
+                  ? { background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.3)", border: "1px solid rgba(255,255,255,0.1)" }
+                  : { background: "rgba(34,197,94,0.15)", color: "#22c55e", border: "1px solid rgba(34,197,94,0.3)" }
+              }
+            >
+              {transferWindowOpen ? (
+                <>
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  Fechar Janela
+                </>
+              ) : transferWindowOpenCount >= 2 ? (
+                "Encerrada"
+              ) : (
+                <>
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                  Abrir Janela
+                </>
+              )}
+            </button>
+          )}
+        </div>
+      )}
 
       {sortedTransfers.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 rounded-2xl gap-4 glass text-center">
@@ -971,6 +1070,14 @@ export function TransferenciasView({
                 <h3 className="text-white font-black text-lg">{formTitle}</h3>
                 <p className="text-white/35 text-xs mt-0.5">Temporada {season}</p>
               </div>
+              {!transferWindowOpen && (
+                <span
+                  className="text-[11px] font-bold px-2.5 py-1 rounded-lg flex-shrink-0"
+                  style={{ background: "rgba(168,85,247,0.15)", color: "#a855f7", border: "1px solid rgba(168,85,247,0.25)" }}
+                >
+                  Janela Fechada · Pendente
+                </span>
+              )}
               <button
                 onClick={() => setShowForm(false)}
                 className="w-8 h-8 rounded-lg flex items-center justify-center text-white/40 hover:text-white/80 hover:bg-white/10 transition-all"

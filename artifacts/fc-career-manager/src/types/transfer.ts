@@ -25,4 +25,5 @@ export interface TransferRecord {
   loanEnded?: boolean;
   playerOverall?: number;
   transferredAt: number;
+  windowPending?: boolean;
 }
