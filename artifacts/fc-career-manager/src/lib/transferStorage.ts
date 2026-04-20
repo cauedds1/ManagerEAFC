@@ -16,16 +16,12 @@ export function saveTransfers(seasonId: string, list: TransferRecord[]): void {
 }
 
 export function addTransfer(seasonId: string, transfer: TransferRecord): void {
-  const list = getTransfers(seasonId);
-  list.push(transfer);
+  const list = [...getTransfers(seasonId), transfer];
   saveTransfers(seasonId, list);
 }
 
 export function updateTransfer(seasonId: string, id: string, changes: Partial<TransferRecord>): void {
-  const list = getTransfers(seasonId);
-  const idx = list.findIndex((t) => t.id === id);
-  if (idx === -1) return;
-  list[idx] = { ...list[idx], ...changes };
+  const list = getTransfers(seasonId).map((t) => t.id === id ? { ...t, ...changes } : t);
   saveTransfers(seasonId, list);
 }
 

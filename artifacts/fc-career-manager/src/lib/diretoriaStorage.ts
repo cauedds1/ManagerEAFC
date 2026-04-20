@@ -23,9 +23,7 @@ export function saveMembers(careerId: string, members: BoardMember[]): void {
 }
 
 export function addMember(careerId: string, member: BoardMember): void {
-  const members = getMembers(careerId);
-  members.push(member);
-  saveMembers(careerId, members);
+  saveMembers(careerId, [...getMembers(careerId), member]);
 }
 
 export function updateMember(
@@ -36,8 +34,7 @@ export function updateMember(
   const members = getMembers(careerId);
   const idx = members.findIndex((m) => m.id === memberId);
   if (idx >= 0) {
-    members[idx] = { ...members[idx], ...updates };
-    saveMembers(careerId, members);
+    saveMembers(careerId, members.map((m) => m.id === memberId ? { ...m, ...updates } : m));
   }
 }
 
@@ -69,13 +66,11 @@ export function getMeetings(careerId: string): MeetingRecord[] {
 }
 
 export function saveMeeting(careerId: string, meeting: MeetingRecord): void {
-  const meetings = getMeetings(careerId);
-  const idx = meetings.findIndex((m) => m.id === meeting.id);
-  if (idx >= 0) {
-    meetings[idx] = meeting;
-  } else {
-    meetings.unshift(meeting);
-  }
+  const existing = getMeetings(careerId);
+  const idx = existing.findIndex((m) => m.id === meeting.id);
+  const meetings = idx >= 0
+    ? existing.map((m) => m.id === meeting.id ? meeting : m)
+    : [meeting, ...existing];
   sessionSet(meetingsKey(careerId), meetings);
   void putCareerData(careerId, "diretoria_meetings", meetings);
 }
@@ -96,14 +91,12 @@ export function addNotification(
   careerId: string,
   notif: PendingNotification,
 ): void {
-  const notifs = getNotifications(careerId);
-  const idx = notifs.findIndex((n) => n.memberId === notif.memberId);
-  if (idx >= 0) {
-    notifs[idx] = notif;
-  } else {
-    notifs.push(notif);
-  }
-  saveNotifications(careerId, notifs);
+  const existing = getNotifications(careerId);
+  const idx = existing.findIndex((n) => n.memberId === notif.memberId);
+  saveNotifications(
+    careerId,
+    idx >= 0 ? existing.map((n) => n.memberId === notif.memberId ? notif : n) : [...existing, notif],
+  );
 }
 
 export function clearNotification(careerId: string, memberId: string): void {

@@ -13,17 +13,13 @@ export function getMatches(seasonId: string): MatchRecord[] {
 }
 
 export function addMatch(seasonId: string, match: MatchRecord): void {
-  const list = getMatches(seasonId);
-  list.push(match);
+  const list = [...getMatches(seasonId), match];
   sessionSet(matchesKey(seasonId), list);
   void putSeasonData(seasonId, "matches", list);
 }
 
 export function updateMatch(seasonId: string, updated: MatchRecord): void {
-  const list = getMatches(seasonId);
-  const idx = list.findIndex((m) => m.id === updated.id);
-  if (idx === -1) return;
-  list[idx] = updated;
+  const list = getMatches(seasonId).map((m) => m.id === updated.id ? updated : m);
   sessionSet(matchesKey(seasonId), list);
   void putSeasonData(seasonId, "matches", list);
 }

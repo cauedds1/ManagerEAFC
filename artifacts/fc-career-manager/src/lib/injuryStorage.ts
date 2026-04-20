@@ -25,29 +25,27 @@ export function saveInjuries(seasonId: string, records: InjuryRecord[]): void {
 }
 
 export function upsertInjury(seasonId: string, record: InjuryRecord): void {
-  const records = getInjuries(seasonId);
-  const idx = records.findIndex((r) => r.id === record.id);
-  if (idx >= 0) records[idx] = record;
-  else records.push(record);
-  saveInjuries(seasonId, records);
+  const existing = getInjuries(seasonId);
+  const idx = existing.findIndex((r) => r.id === record.id);
+  if (idx >= 0) {
+    saveInjuries(seasonId, existing.map((r) => r.id === record.id ? record : r));
+  } else {
+    saveInjuries(seasonId, [...existing, record]);
+  }
 }
 
 export function releaseInjury(seasonId: string, injuryId: string, releasedAt: string): void {
-  const records = getInjuries(seasonId);
-  const idx = records.findIndex((r) => r.id === injuryId);
-  if (idx >= 0) {
-    records[idx].releasedAt = releasedAt;
-    saveInjuries(seasonId, records);
-  }
+  saveInjuries(
+    seasonId,
+    getInjuries(seasonId).map((r) => r.id === injuryId ? { ...r, releasedAt } : r),
+  );
 }
 
 export function updateInjuryName(seasonId: string, injuryId: string, name: string): void {
-  const records = getInjuries(seasonId);
-  const idx = records.findIndex((r) => r.id === injuryId);
-  if (idx >= 0) {
-    records[idx].injuryName = name;
-    saveInjuries(seasonId, records);
-  }
+  saveInjuries(
+    seasonId,
+    getInjuries(seasonId).map((r) => r.id === injuryId ? { ...r, injuryName: name } : r),
+  );
 }
 
 export function injuryIdForOccurrence(matchId: string, playerId: number): string {

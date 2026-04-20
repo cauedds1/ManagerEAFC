@@ -20,12 +20,9 @@ export function saveFormerPlayers(careerId: string, players: SquadPlayer[]): voi
 }
 
 export function addFormerPlayer(careerId: string, player: SquadPlayer): void {
-  const list = getFormerPlayers(careerId);
-  const exists = list.some((p) => p.id === player.id);
-  if (!exists) {
-    list.push(player);
-    saveFormerPlayers(careerId, list);
-  }
+  const existing = getFormerPlayers(careerId);
+  if (existing.some((p) => p.id === player.id)) return;
+  saveFormerPlayers(careerId, [...existing, player]);
 }
 
 export function getHiddenPlayerIds(careerId: string): number[] {
@@ -33,12 +30,11 @@ export function getHiddenPlayerIds(careerId: string): number[] {
 }
 
 export function addHiddenPlayerId(careerId: string, id: number): void {
-  const list = getHiddenPlayerIds(careerId);
-  if (!list.includes(id)) {
-    list.push(id);
-    sessionSet(hiddenKey(careerId), list);
-    void putCareerData(careerId, "hiddenPlayerIds", list);
-  }
+  const existing = getHiddenPlayerIds(careerId);
+  if (existing.includes(id)) return;
+  const next = [...existing, id];
+  sessionSet(hiddenKey(careerId), next);
+  void putCareerData(careerId, "hiddenPlayerIds", next);
 }
 
 function key(careerId: string): string {
@@ -55,14 +51,11 @@ export function saveCustomPlayers(careerId: string, players: SquadPlayer[]): voi
 }
 
 export function addCustomPlayer(careerId: string, player: SquadPlayer): void {
-  const list = getCustomPlayers(careerId);
-  list.push(player);
-  saveCustomPlayers(careerId, list);
+  saveCustomPlayers(careerId, [...getCustomPlayers(careerId), player]);
 }
 
 export function removeCustomPlayer(careerId: string, playerId: number): void {
-  const list = getCustomPlayers(careerId).filter((p) => p.id !== playerId);
-  saveCustomPlayers(careerId, list);
+  saveCustomPlayers(careerId, getCustomPlayers(careerId).filter((p) => p.id !== playerId));
 }
 
 export function generateCustomPlayerId(): number {

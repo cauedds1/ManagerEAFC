@@ -48,17 +48,11 @@ function _save(careerId: string, list: CompetitionResult[]): void {
 }
 
 export function addCompetitionResult(careerId: string, result: CompetitionResult): void {
-  const list = getCompetitionResults(careerId);
-  list.push(result);
-  _save(careerId, list);
+  _save(careerId, [...getCompetitionResults(careerId), result]);
 }
 
 export function updateCompetitionResult(careerId: string, updated: CompetitionResult): void {
-  const list = getCompetitionResults(careerId);
-  const idx = list.findIndex((r) => r.id === updated.id);
-  if (idx === -1) return;
-  list[idx] = updated;
-  _save(careerId, list);
+  _save(careerId, getCompetitionResults(careerId).map((r) => r.id === updated.id ? updated : r));
 }
 
 export function deleteCompetitionResult(careerId: string, resultId: string): void {
