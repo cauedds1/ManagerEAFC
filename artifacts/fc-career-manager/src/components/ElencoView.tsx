@@ -234,6 +234,7 @@ export function ElencoView({
 }: ElencoViewProps) {
   const [tab, setTab] = useState<SquadTab>("pitch");
   const [pendingSwap, setPendingSwap] = useState<SquadPlayer | null>(null);
+  const [pendingSlot, setPendingSlot] = useState<number | null>(null);
   const [detailPlayer, setDetailPlayer] = useState<SquadPlayer | null>(null);
   const [overrides, setOverrides] = useState<Record<number, PlayerOverride>>(
     () => getAllPlayerOverrides(careerId)
@@ -343,9 +344,10 @@ export function ElencoView({
 
   const defaultStarterIds = mergedPlayers.length > 0 ? pickBestEleven(mergedPlayers) : [];
   const starterIds: number[] = customLineup ?? defaultStarterIds;
-  const starterSet = new Set(starterIds);
+  // 0 is used as a "reserved empty slot" placeholder — filter it out for the player lists
+  const starterSet = new Set(starterIds.filter((id) => id > 0));
   const starters = starterIds
-    .map((id) => mergedPlayers.find((p) => p.id === id))
+    .map((id) => (id > 0 ? mergedPlayers.find((p) => p.id === id) : null))
     .filter((p): p is SquadPlayer => p != null);
 
   const rawBench = mergedPlayers.filter((p) => !starterSet.has(p.id));
@@ -416,9 +418,29 @@ export function ElencoView({
     }
   }, [careerId, starterIds, bench]);
 
+  const fillSlot = useCallback((slotIndex: number, playerId: number) => {
+    // Build a full 11-slot array; 0 = empty position
+    const lineup: number[] = Array(11).fill(0);
+    for (let i = 0; i < Math.min(starterIds.length, 11); i++) {
+      lineup[i] = starterIds[i] ?? 0;
+    }
+    // Remove player from its current slot if already a starter
+    const existing = lineup.indexOf(playerId);
+    if (existing !== -1) lineup[existing] = 0;
+    lineup[slotIndex] = playerId;
+    setCustomLineupState(lineup);
+    setCustomLineup(careerId, lineup);
+    setPendingSlot(null);
+  }, [careerId, starterIds]);
+
   const handlePlayerClick = useCallback((player: SquadPlayer) => {
     if (isFinalized) {
       setDetailPlayer(player);
+      return;
+    }
+    // Fill an empty slot if one is pending
+    if (pendingSlot !== null) {
+      fillSlot(pendingSlot, player.id);
       return;
     }
     if (pendingSwap === null) {
@@ -430,7 +452,7 @@ export function ElencoView({
       swapPlayers(pendingSwap.id, player.id);
       setPendingSwap(null);
     }
-  }, [isFinalized, pendingSwap, swapPlayers]);
+  }, [isFinalized, pendingSlot, fillSlot, pendingSwap, swapPlayers]);
 
   const sourceLabel = squad
     ? squad.source === "api-football"
@@ -727,7 +749,22 @@ export function ElencoView({
             <p className="text-white/25 text-xs font-semibold tracking-widest uppercase">
               Titulares ({starters.length})
             </p>
-            {pendingSwap ? (
+            {pendingSlot !== null ? (
+              <div className="flex items-center gap-2">
+                <p className="text-xs" style={{ color: "var(--club-primary)" }}>
+                  Clique em qualquer jogador para ocupar a vaga
+                </p>
+                <button
+                  onClick={() => setPendingSlot(null)}
+                  className="text-white/30 hover:text-white/60 transition-colors"
+                  title="Cancelar"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            ) : pendingSwap ? (
               <div className="flex items-center gap-2">
                 <p className="text-xs" style={{ color: "var(--club-primary)" }}>
                   {(() => { const ov = overrides[pendingSwap.id]; return ov?.nameOverride ?? pendingSwap.name; })()}
@@ -832,6 +869,8 @@ export function ElencoView({
                 onPlayerClick={handlePlayerClick}
                 highlightedPlayerId={pendingSwap?.id}
                 formation={formation}
+                onEmptySlotClick={(i) => { setPendingSwap(null); setPendingSlot(i); }}
+                pendingSlotIndex={pendingSlot}
               />
             </div>
 

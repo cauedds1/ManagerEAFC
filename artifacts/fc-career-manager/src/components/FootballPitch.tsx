@@ -204,6 +204,40 @@ function PitchSkeleton() {
   );
 }
 
+function EmptySlotCircle({
+  x, y, onClick, pending,
+}: {
+  x: number;
+  y: number;
+  onClick?: () => void;
+  pending?: boolean;
+}) {
+  const radius = 20;
+  return (
+    <g onClick={onClick} style={{ cursor: onClick ? "pointer" : "default" }}>
+      <circle cx={x} cy={y} r={radius + 6} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={1} strokeDasharray="4 3" />
+      {pending && (
+        <circle cx={x} cy={y} r={radius + 9} fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth={1.5} strokeDasharray="4 3">
+          <animate attributeName="r" values={`${radius + 7};${radius + 14};${radius + 7}`} dur="1.2s" repeatCount="indefinite" />
+          <animate attributeName="opacity" values="0.6;0;0.6" dur="1.2s" repeatCount="indefinite" />
+        </circle>
+      )}
+      <circle
+        cx={x} cy={y} r={radius}
+        fill={pending ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.04)"}
+        stroke={pending ? "rgba(255,255,255,0.55)" : "rgba(255,255,255,0.18)"}
+        strokeWidth={pending ? 2 : 1.2}
+        strokeDasharray={pending ? undefined : "5 3"}
+      />
+      <text x={x} y={y + 1} textAnchor="middle" dominantBaseline="middle"
+        fill={pending ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.35)"}
+        fontSize={pending ? 22 : 20} fontWeight="300" fontFamily="Inter, sans-serif">
+        +
+      </text>
+    </g>
+  );
+}
+
 interface FootballPitchProps {
   players: SquadPlayer[];
   starterIds?: number[];
@@ -214,6 +248,8 @@ interface FootballPitchProps {
   formation?: FormationKey;
   ratings?: Record<number, number>;
   dimmedPlayerIds?: Set<number>;
+  onEmptySlotClick?: (slotIndex: number) => void;
+  pendingSlotIndex?: number | null;
 }
 
 export function FootballPitch({
@@ -226,6 +262,8 @@ export function FootballPitch({
   formation = DEFAULT_FORMATION,
   ratings,
   dimmedPlayerIds,
+  onEmptySlotClick,
+  pendingSlotIndex,
 }: FootballPitchProps) {
   const positions = getFormationPositions(formation);
   const orderedIds = externalStarters ?? (players.length > 0 ? pickBestEleven(players) : []);
@@ -301,8 +339,19 @@ export function FootballPitch({
           </g>
 
           {pitchData.map((player, i) => {
-            if (!player) return null;
             const [x, y] = positions[i];
+            if (!player) {
+              if (!onEmptySlotClick) return null;
+              return (
+                <EmptySlotCircle
+                  key={`empty-${i}`}
+                  x={x}
+                  y={y}
+                  onClick={() => onEmptySlotClick(i)}
+                  pending={pendingSlotIndex === i}
+                />
+              );
+            }
             return (
               <PlayerCircle
                 key={`${player.id}-${i}`}
