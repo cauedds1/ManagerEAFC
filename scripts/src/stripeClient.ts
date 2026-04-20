@@ -50,3 +50,16 @@ export async function getUncachableStripeClient(): Promise<Stripe> {
     apiVersion: "2025-08-27.basil" as Parameters<typeof Stripe>[1]["apiVersion"],
   });
 }
+
+export async function getStripeSync(): Promise<import("stripe-replit-sync").StripeSync> {
+  const { StripeSync } = await import("stripe-replit-sync");
+  const { secretKey } = await getCredentials();
+  const databaseUrl = process.env.DATABASE_URL;
+  if (!databaseUrl) {
+    throw new Error("DATABASE_URL environment variable is required");
+  }
+  return new StripeSync({
+    poolConfig: { connectionString: databaseUrl, max: 2 },
+    stripeSecretKey: secretKey,
+  });
+}
