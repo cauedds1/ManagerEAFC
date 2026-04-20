@@ -1520,7 +1520,10 @@ export function LandingPage({ onStart, onLogin, onStartWithPlan }: LandingPagePr
             <a key={l} href="#" style={{ color: "#444466", fontSize: 12, textDecoration: "none" }} onMouseEnter={e => (e.currentTarget.style.color = "#888899")} onMouseLeave={e => (e.currentTarget.style.color = "#444466")}>{l}</a>
           ))}
         </div>
-        <p style={{ color: "#333355", fontSize: 12 }}>© {new Date().getFullYear()} FC Career Manager. Todos os direitos reservados.</p>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <img src="/logo.png" alt="" style={{ width: 16, height: 16, objectFit: "contain", opacity: 0.5 }} />
+          <p style={{ color: "#333355", fontSize: 12, margin: 0 }}>© {new Date().getFullYear()} FC Career Manager. Todos os direitos reservados.</p>
+        </div>
       </footer>
     </div>
   );
