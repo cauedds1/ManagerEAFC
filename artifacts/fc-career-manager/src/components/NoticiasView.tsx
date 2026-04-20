@@ -1048,7 +1048,8 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
     const welcomePendingKey = `fc-welcome-pending-${seasonId}`;
     const alreadyDone = !!localStorage.getItem(welcomeKey);
     const alreadyPending = !!localStorage.getItem(welcomePendingKey);
-    if (isFirstSeed && !alreadyDone && !alreadyPending) {
+    const isFirstCareerSeason = pastSeasons.length === 0;
+    if (isFirstSeed && isFirstCareerSeason && !alreadyDone && !alreadyPending) {
       localStorage.setItem(welcomePendingKey, "1");
       fetch("/api/noticias/generate-welcome", {
         method: "POST",
