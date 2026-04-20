@@ -55,7 +55,7 @@ import { getFinanceiroSettings, computeFinancialSnapshot } from "@/lib/financeir
 import { getFormerPlayers, addFormerPlayer, saveFormerPlayers } from "@/lib/customPlayersStorage";
 import { buildPlayerPerformanceContext, buildSquadOvrContext } from "@/lib/playerContext";
 import { getAiHeaders } from "@/lib/apiStorage";
-import { getUserPlan } from "@/lib/userPlan";
+import { getUserPlan, getPlanLimits } from "@/lib/userPlan";
 import {
   countUnreadDiretoria,
   countUnreadNoticias,
@@ -951,49 +951,55 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     setFanMoodScore(newMoodScore);
     const moodInfo = getFanMoodLabel(newMoodScore);
 
-    void runAutoNews(match, {
-      careerId: career.id,
-      seasonId: activeSeasonId,
-      season: seasonLabel,
-      clubName: career.clubName,
-      clubLeague: effectiveLeague,
-      currentCompetitions: currentCompetitions.length ? currentCompetitions : undefined,
-      clubTitles: career.clubTitles,
-      clubDescription: career.clubDescription,
-      projeto: career.projeto,
-      allMatches: updatedMatches,
-      allPlayers,
-      leaguePosition: leaguePos,
-      rivals,
-      fanMoodScore: newMoodScore,
-      fanMoodLabel: `${moodInfo.emoji} ${moodInfo.label}`,
-      onNewPost: handleNewPost,
-    });
+    const planLimits = getPlanLimits(userPlan);
+
+    if (planLimits.autoNewsEnabled) {
+      void runAutoNews(match, {
+        careerId: career.id,
+        seasonId: activeSeasonId,
+        season: seasonLabel,
+        clubName: career.clubName,
+        clubLeague: effectiveLeague,
+        currentCompetitions: currentCompetitions.length ? currentCompetitions : undefined,
+        clubTitles: career.clubTitles,
+        clubDescription: career.clubDescription,
+        projeto: career.projeto,
+        allMatches: updatedMatches,
+        allPlayers,
+        leaguePosition: leaguePos,
+        rivals,
+        fanMoodScore: newMoodScore,
+        fanMoodLabel: `${moodInfo.emoji} ${moodInfo.label}`,
+        onNewPost: handleNewPost,
+      });
+    }
 
     setTimeout(() => {
       void runDiretoriaTriggers(updatedMatches, allPlayers, isClassico, rivalName, newMoodScore, `${moodInfo.emoji} ${moodInfo.label}`);
     }, 1500);
 
-    setTimeout(() => {
-      void fetchPortals(career.id).then((customPortals) => {
-        void runRumorNews({
-          careerId: career.id,
-          seasonId: activeSeasonId,
-          season: seasonLabel,
-          clubName: career.clubName,
-          clubLeague: effectiveLeague,
-          currentCompetitions: currentCompetitions.length ? currentCompetitions : undefined,
-          clubDescription: career.clubDescription,
-          projeto: career.projeto,
-          allMatches: updatedMatches,
-          allPlayers,
-          customPortals,
-          fanMoodScore: newMoodScore,
-          fanMoodLabel: `${moodInfo.emoji} ${moodInfo.label}`,
-          onNewPost: handleNewPost,
+    if (planLimits.autoNewsEnabled) {
+      setTimeout(() => {
+        void fetchPortals(career.id).then((customPortals) => {
+          void runRumorNews({
+            careerId: career.id,
+            seasonId: activeSeasonId,
+            season: seasonLabel,
+            clubName: career.clubName,
+            clubLeague: effectiveLeague,
+            currentCompetitions: currentCompetitions.length ? currentCompetitions : undefined,
+            clubDescription: career.clubDescription,
+            projeto: career.projeto,
+            allMatches: updatedMatches,
+            allPlayers,
+            customPortals,
+            fanMoodScore: newMoodScore,
+            fanMoodLabel: `${moodInfo.emoji} ${moodInfo.label}`,
+            onNewPost: handleNewPost,
+          });
         });
-      });
-    }, 3000);
+      }, 3000);
+    }
   }, [activeSeasonId, matches, allPlayers, seasons, activeSeasonLabel, career.id, career.clubName, career.clubLeague, career.clubTitles, career.clubDescription, career.projeto, career.competitions, runDiretoriaTriggers, handleNewPost]);
 
   const handleNewSeasonConfirm = useCallback(async (label: string, competitions: string[]) => {
@@ -1040,7 +1046,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
         setShowNewSeasonWizard(false);
         setShowSeasonModal(false);
 
-        if (oldLeague && newLeague && oldLeague !== newLeague && leagueTierLevel(oldLeague) !== leagueTierLevel(newLeague)) {
+        if (oldLeague && newLeague && oldLeague !== newLeague && leagueTierLevel(oldLeague) !== leagueTierLevel(newLeague) && getPlanLimits(userPlan).autoNewsEnabled) {
           setTimeout(() => {
             void runPromotionRelegationNews({
               careerId: career.id,
