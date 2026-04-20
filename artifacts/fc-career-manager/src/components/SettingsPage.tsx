@@ -351,9 +351,8 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
   const [subLoading, setSubLoading] = useState(false);
 
   useEffect(() => {
-    if (resolvedPlan === "free") return;
     const token = localStorage.getItem(AUTH_TOKEN_KEY);
-    if (!token) return;
+    if (!token || resolvedPlan === "free") return;
     setSubLoading(true);
     fetch(`${API_BASE}/stripe/subscription`, {
       headers: { Authorization: `Bearer ${token}` },
@@ -988,6 +987,14 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
             ))}
           </div>
 
+          {resolvedPlan === "free" && (
+            <div className="rounded-xl px-4 py-3 flex flex-col gap-1" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+              <div className="flex items-center justify-between">
+                <span className="text-white/40 text-xs">Status</span>
+                <span className="text-white/80 text-xs font-semibold">Gratuito — sem assinatura ativa</span>
+              </div>
+            </div>
+          )}
           {resolvedPlan !== "free" && (
             <div className="flex flex-col gap-2">
               {subLoading && (

@@ -80,24 +80,26 @@ export function AuthPage({ onBack, onAuthSuccess }: AuthPageProps) {
       const priceRes = await fetch(`${API_BASE}/stripe/products-with-plan`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (priceRes.ok) {
-        const prices = await priceRes.json() as Array<{ planTier: string; priceId: string }>;
-        const match = prices.find((p) => p.planTier === plan);
-        if (match?.priceId) {
-          const checkoutRes = await fetch(`${API_BASE}/stripe/checkout`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-            body: JSON.stringify({ priceId: match.priceId }),
-          });
-          if (checkoutRes.ok) {
-            const { url } = await checkoutRes.json() as { url?: string };
-            if (url) { window.location.href = url; return; }
-          }
-        }
+      if (!priceRes.ok) throw new Error("Não foi possível obter os planos disponíveis.");
+      const prices = await priceRes.json() as Array<{ planTier: string; priceId: string }>;
+      const match = prices.find((p) => p.planTier === plan);
+      if (!match?.priceId) throw new Error("Plano selecionado não encontrado.");
+      const checkoutRes = await fetch(`${API_BASE}/stripe/checkout`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ priceId: match.priceId }),
+      });
+      if (!checkoutRes.ok) {
+        const d = await checkoutRes.json() as { error?: string };
+        throw new Error(d.error ?? "Erro ao iniciar pagamento.");
       }
-    } catch {}
-    setRedirecting(false);
-    onAuthSuccess(token, user);
+      const { url } = await checkoutRes.json() as { url?: string };
+      if (url) { window.location.href = url; return; }
+      throw new Error("URL de pagamento inválida.");
+    } catch (e) {
+      setRedirecting(false);
+      setError(e instanceof Error ? e.message : "Erro ao iniciar pagamento. Tente novamente.");
+    }
   };
 
   const handleFormSubmit = async () => {
