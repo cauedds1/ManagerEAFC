@@ -1,5 +1,6 @@
 import { putSeasonData } from "@/lib/apiStorage";
 import { sessionGet, sessionSet } from "@/lib/sessionStore";
+import { DASHBOARD } from "@/lib/i18n";
 import type { Lang } from "@/lib/i18n";
 
 const DEFAULT_SCORE = 50;
@@ -12,18 +13,13 @@ export interface FanMoodInfo {
   color: string;
 }
 
-const MOOD_LABELS: Record<Lang, [string, string, string, string, string]> = {
-  pt: ["Revoltada", "Insatisfeita", "Neutra", "Animada", "Eufórica"],
-  en: ["Revolted",  "Unsatisfied",  "Neutral", "Excited", "Euphoric"],
-};
-
 export function getFanMoodLabel(score: number, lang: Lang = "pt"): { label: string; emoji: string; color: string } {
-  const [l0, l1, l2, l3, l4] = MOOD_LABELS[lang];
-  if (score < 20) return { label: l0, emoji: "😡", color: "#ef4444" };
-  if (score < 40) return { label: l1, emoji: "😤", color: "#f97316" };
-  if (score < 60) return { label: l2, emoji: "😐", color: "#eab308" };
-  if (score < 80) return { label: l3, emoji: "🔥", color: "#22c55e" };
-  return            { label: l4, emoji: "🙌", color: "#16a34a" };
+  const t = DASHBOARD[lang];
+  if (score < 20) return { label: t.moodRevoltada,    emoji: "😡", color: "#ef4444" };
+  if (score < 40) return { label: t.moodInsatisfeita, emoji: "😤", color: "#f97316" };
+  if (score < 60) return { label: t.moodNeutra,       emoji: "😐", color: "#eab308" };
+  if (score < 80) return { label: t.moodAnimada,      emoji: "🔥", color: "#22c55e" };
+  return            { label: t.moodEuforica,      emoji: "🙌", color: "#16a34a" };
 }
 
 export function getFanMood(seasonId: string): number {
