@@ -9,6 +9,7 @@ export interface Momento {
   createdAt: string;
   mediaType?: "image" | "video";
   videoUrl?: string;
+  videoKey?: string;
 }
 
 function momentosKey(seasonId: string): string {
@@ -77,13 +78,19 @@ export async function resizeImageToDataUrl(file: File, maxPx = 1280, quality = 0
   });
 }
 
-export async function deleteVideoFromR2(videoUrl: string): Promise<void> {
+function getAuthHeader(): Record<string, string> {
+  const token = localStorage.getItem("fc_auth_token");
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+export async function deleteVideoFromR2(videoKey: string): Promise<boolean> {
   try {
-    await fetch("/api/storage/objects", {
+    const res = await fetch(`/api/storage/objects?key=${encodeURIComponent(videoKey)}`, {
       method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url: videoUrl }),
+      headers: { ...getAuthHeader() },
     });
+    return res.ok;
   } catch {
+    return false;
   }
 }

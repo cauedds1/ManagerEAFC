@@ -32,28 +32,58 @@ function ConfirmDeleteModal({
   onCancel,
 }: {
   title: string;
-  onConfirm: () => void;
+  onConfirm: () => Promise<void>;
   onCancel: () => void;
 }) {
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onCancel(); };
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape" && !deleting) onCancel(); };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [onCancel]);
+  }, [onCancel, deleting]);
+
+  const handleConfirm = async () => {
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await onConfirm();
+    } catch {
+      setDeleteError("Falha ao excluir o arquivo de vídeo. Tente novamente.");
+      setDeleting(false);
+    }
+  };
 
   return createPortal(
-    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.72)" }} onClick={onCancel}>
+    <div
+      className="fixed inset-0 z-[80] flex items-center justify-center p-4"
+      style={{ background: "rgba(0,0,0,0.72)" }}
+      onClick={() => { if (!deleting) onCancel(); }}
+    >
       <div className="glass rounded-2xl p-6 max-w-sm w-full flex flex-col gap-4" onClick={(e) => e.stopPropagation()}>
         <p className="text-white font-bold text-base">Excluir momento?</p>
         <p className="text-white/60 text-sm leading-relaxed">
           "<span className="text-white/80">{title}</span>" será removido permanentemente.
         </p>
+        {deleteError && (
+          <p className="text-red-400 text-xs bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">{deleteError}</p>
+        )}
         <div className="flex gap-3 justify-end">
-          <button onClick={onCancel} className="px-4 py-2 rounded-xl text-sm font-semibold text-white/60 hover:text-white/90 transition-colors">
+          <button
+            onClick={onCancel}
+            disabled={deleting}
+            className="px-4 py-2 rounded-xl text-sm font-semibold text-white/60 hover:text-white/90 transition-colors disabled:opacity-40"
+          >
             Cancelar
           </button>
-          <button onClick={onConfirm} className="px-4 py-2 rounded-xl text-sm font-bold bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors">
-            Excluir
+          <button
+            onClick={handleConfirm}
+            disabled={deleting}
+            className="px-4 py-2 rounded-xl text-sm font-bold bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors disabled:opacity-60 flex items-center gap-2"
+          >
+            {deleting && <div className="w-3.5 h-3.5 border-2 border-red-400/40 border-t-red-400 rounded-full animate-spin" />}
+            {deleting ? "Excluindo…" : "Excluir"}
           </button>
         </div>
       </div>
@@ -62,7 +92,15 @@ function ConfirmDeleteModal({
   );
 }
 
-function DetailModal({ momento, onClose, onDelete }: { momento: Momento; onClose: () => void; onDelete: () => void }) {
+function DetailModal({
+  momento,
+  onClose,
+  onDelete,
+}: {
+  momento: Momento;
+  onClose: () => void;
+  onDelete: () => Promise<void>;
+}) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const isVideo = momento.mediaType === "video";
 
@@ -104,7 +142,7 @@ function DetailModal({ momento, onClose, onDelete }: { momento: Momento; onClose
           </div>
 
           <div className="p-5 flex flex-col gap-2 overflow-y-auto">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               {isVideo && (
                 <span className="flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-lg" style={{ background: "rgba(124,92,252,0.18)", color: "#a78bfa" }}>
                   <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
@@ -137,7 +175,11 @@ function DetailModal({ momento, onClose, onDelete }: { momento: Momento; onClose
       {confirmDelete && (
         <ConfirmDeleteModal
           title={momento.title}
-          onConfirm={() => { setConfirmDelete(false); onDelete(); onClose(); }}
+          onConfirm={async () => {
+            await onDelete();
+            setConfirmDelete(false);
+            onClose();
+          }}
           onCancel={() => setConfirmDelete(false)}
         />
       )}
@@ -148,6 +190,11 @@ function DetailModal({ momento, onClose, onDelete }: { momento: Momento; onClose
 
 type UploadState = "idle" | "uploading" | "done" | "error";
 
+interface VideoUploadResult {
+  url: string;
+  key: string;
+}
+
 function VideoUploadSection({
   planLimits,
   videoCount,
@@ -155,7 +202,7 @@ function VideoUploadSection({
 }: {
   planLimits: FrontendPlanLimits;
   videoCount: number;
-  onVideoReady: (url: string | null) => void;
+  onVideoReady: (result: VideoUploadResult | null) => void;
 }) {
   const [uploadState, setUploadState] = useState<UploadState>("idle");
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -181,7 +228,6 @@ function VideoUploadSection({
     }
     setUploadError(null);
     setSelectedFile(file);
-
     setUploadState("uploading");
     setUploadProgress(0);
     onVideoReady(null);
@@ -197,7 +243,11 @@ function VideoUploadSection({
         setUploadError("Não foi possível iniciar o upload. Tente novamente.");
         return;
       }
-      const { uploadURL, objectPath } = (await metaRes.json()) as { uploadURL: string; objectPath: string };
+      const { uploadURL, objectPath, key } = (await metaRes.json()) as {
+        uploadURL: string;
+        objectPath: string;
+        key: string;
+      };
 
       await new Promise<void>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
@@ -217,7 +267,7 @@ function VideoUploadSection({
 
       setUploadState("done");
       setUploadProgress(100);
-      onVideoReady(objectPath);
+      onVideoReady({ url: objectPath, key });
     } catch (err) {
       setUploadState("error");
       setUploadError(err instanceof Error ? err.message : "Falha no upload.");
@@ -247,9 +297,7 @@ function VideoUploadSection({
         <svg className="w-6 h-6 text-amber-400/70" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
         </svg>
-        <p className="text-amber-300/80 text-sm font-semibold">
-          Limite atingido ({videoCount}/{maxVideos})
-        </p>
+        <p className="text-amber-300/80 text-sm font-semibold">Limite atingido ({videoCount}/{maxVideos})</p>
         <p className="text-white/40 text-xs">Exclua um vídeo existente para adicionar outro.</p>
       </div>
     );
@@ -343,7 +391,7 @@ function AddMomentoModal({
   const [description, setDescription] = useState("");
   const [gameDate, setGameDate] = useState("");
   const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null);
-  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [videoUpload, setVideoUpload] = useState<VideoUploadResult | null>(null);
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [photoLoading, setPhotoLoading] = useState(false);
   const [errors, setErrors] = useState<{ title?: string; gameDate?: string; media?: string }>({});
@@ -390,21 +438,22 @@ function AddMomentoModal({
     if (!title.trim()) errs.title = "Título é obrigatório.";
     if (!gameDate.trim()) errs.gameDate = "Data no jogo é obrigatória.";
     if (mediaTab === "photo" && !photoDataUrl) errs.media = "Foto é obrigatória.";
-    if (mediaTab === "video" && !videoUrl) errs.media = "Aguarde o upload do vídeo ou selecione um arquivo.";
+    if (mediaTab === "video" && !videoUpload) errs.media = "Aguarde o upload do vídeo ou selecione um arquivo.";
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
 
   const handleSave = () => {
     if (!validate()) return;
-    if (mediaTab === "video" && videoUrl) {
+    if (mediaTab === "video" && videoUpload) {
       onSave({
         title: title.trim(),
         description: description.trim(),
         gameDate: gameDate.trim(),
         photoDataUrl: "",
         mediaType: "video",
-        videoUrl,
+        videoUrl: videoUpload.url,
+        videoKey: videoUpload.key,
       });
     } else {
       onSave({
@@ -529,9 +578,9 @@ function AddMomentoModal({
                 <VideoUploadSection
                   planLimits={planLimits}
                   videoCount={videoCount}
-                  onVideoReady={(url) => {
-                    setVideoUrl(url);
-                    if (url) setErrors((e) => ({ ...e, media: undefined }));
+                  onVideoReady={(result) => {
+                    setVideoUpload(result);
+                    if (result) setErrors((e) => ({ ...e, media: undefined }));
                   }}
                 />
               )}
@@ -593,55 +642,89 @@ function AddMomentoModal({
   );
 }
 
-function VideoThumbnail({ videoUrl }: { videoUrl: string }) {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  return (
-    <video
-      ref={videoRef}
-      src={`${videoUrl}#t=0.1`}
-      preload="metadata"
-      muted
-      playsInline
-      className="w-full h-full object-cover"
-    />
-  );
-}
-
-function MomentoCard({ momento, onClick }: { momento: Momento; onClick: () => void }) {
-  const isVideo = momento.mediaType === "video";
+function VideoCard({ momento, onOpenDetail }: { momento: Momento; onOpenDetail: () => void }) {
+  const [playing, setPlaying] = useState(false);
 
   return (
-    <button
-      onClick={onClick}
-      className="group glass glass-hover rounded-2xl overflow-hidden text-left w-full transition-all duration-200 hover:scale-[1.02]"
-    >
-      <div className="relative aspect-video overflow-hidden bg-black/30">
-        {isVideo && momento.videoUrl ? (
+    <div className="glass glass-hover rounded-2xl overflow-hidden w-full transition-all duration-200 hover:scale-[1.02]">
+      <div className="relative aspect-video overflow-hidden bg-black/40">
+        {playing ? (
+          <div onClick={(e) => e.stopPropagation()}>
+            <video
+              autoPlay
+              controls
+              playsInline
+              src={momento.videoUrl}
+              className="w-full h-full object-contain bg-black"
+            />
+          </div>
+        ) : (
           <>
-            <VideoThumbnail videoUrl={momento.videoUrl} />
-            <div className="absolute inset-0 flex items-center justify-center">
+            <video
+              src={`${momento.videoUrl ?? ""}#t=0.1`}
+              preload="metadata"
+              muted
+              playsInline
+              className="w-full h-full object-cover"
+            />
+            <div
+              className="absolute inset-0 flex items-center justify-center cursor-pointer"
+              onClick={() => setPlaying(true)}
+              style={{ background: "rgba(0,0,0,0.25)" }}
+            >
               <div
-                className="w-11 h-11 rounded-full flex items-center justify-center transition-transform duration-200 group-hover:scale-110"
-                style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)" }}
+                className="w-12 h-12 rounded-full flex items-center justify-center transition-transform duration-200 hover:scale-110"
+                style={{ background: "rgba(0,0,0,0.60)", backdropFilter: "blur(4px)" }}
               >
                 <svg className="w-5 h-5 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M8 5v14l11-7z" />
                 </svg>
               </div>
             </div>
+            <button
+              onClick={(e) => { e.stopPropagation(); onOpenDetail(); }}
+              className="absolute top-2 right-2 w-7 h-7 rounded-lg flex items-center justify-center text-white/70 hover:text-white transition-colors"
+              style={{ background: "rgba(0,0,0,0.55)" }}
+              title="Ver detalhes"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+              </svg>
+            </button>
           </>
-        ) : (
-          <img src={momento.photoDataUrl} alt={momento.title} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
         )}
+        <div className="absolute bottom-0 left-0 right-0 h-16 pointer-events-none" style={{ background: "linear-gradient(to top, rgba(0,0,0,0.65), transparent)" }} />
+        <span className="absolute bottom-2 left-2.5 text-[11px] font-bold text-white/80 pointer-events-none">
+          🗓 {formatGameDate(momento.gameDate)}
+        </span>
+      </div>
+      <div className="px-3 pt-2.5 pb-3 cursor-pointer" onClick={onOpenDetail}>
+        <div className="flex items-center gap-1.5 mb-1">
+          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: "rgba(124,92,252,0.18)", color: "#a78bfa" }}>
+            ▶ VÍDEO
+          </span>
+        </div>
+        <p className="text-white font-bold text-sm leading-snug line-clamp-2">{momento.title}</p>
+        {momento.description && (
+          <p className="text-white/45 text-xs mt-1 leading-relaxed line-clamp-2">{momento.description}</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ImageCard({ momento, onClick }: { momento: Momento; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="group glass glass-hover rounded-2xl overflow-hidden text-left w-full transition-all duration-200 hover:scale-[1.02]"
+    >
+      <div className="relative aspect-video overflow-hidden">
+        <img src={momento.photoDataUrl} alt={momento.title} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
         <div className="absolute bottom-0 left-0 right-0 h-16 pointer-events-none" style={{ background: "linear-gradient(to top, rgba(0,0,0,0.65), transparent)" }} />
         <span className="absolute bottom-2 left-2.5 text-[11px] font-bold text-white/80">
           🗓 {formatGameDate(momento.gameDate)}
         </span>
-        {isVideo && (
-          <span className="absolute top-2 right-2 text-[10px] font-bold px-1.5 py-0.5 rounded-md" style={{ background: "rgba(0,0,0,0.55)", color: "rgba(255,255,255,0.7)" }}>
-            ▶ VÍDEO
-          </span>
-        )}
       </div>
       <div className="px-3 pt-2.5 pb-3">
         <p className="text-white font-bold text-sm leading-snug line-clamp-2">{momento.title}</p>
@@ -697,9 +780,12 @@ export function MomentosView({ seasonId, allSeasonIds, isReadOnly }: MomentosVie
     setShowAdd(false);
   };
 
-  const handleDelete = async (tagged: Tagged) => {
-    if (tagged.mediaType === "video" && tagged.videoUrl) {
-      void deleteVideoFromR2(tagged.videoUrl);
+  const handleDelete = async (tagged: Tagged): Promise<void> => {
+    if (tagged.mediaType === "video" && tagged.videoKey) {
+      const success = await deleteVideoFromR2(tagged.videoKey);
+      if (!success) {
+        throw new Error("Falha ao excluir o arquivo de vídeo do storage.");
+      }
     }
     deleteMomento(tagged._sid, tagged.id);
     refresh();
@@ -775,9 +861,13 @@ export function MomentosView({ seasonId, allSeasonIds, isReadOnly }: MomentosVie
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {momentos.map((m) => (
-            <MomentoCard key={m.id} momento={m} onClick={() => setSelectedMomento(m)} />
-          ))}
+          {momentos.map((m) =>
+            m.mediaType === "video" ? (
+              <VideoCard key={m.id} momento={m} onOpenDetail={() => setSelectedMomento(m)} />
+            ) : (
+              <ImageCard key={m.id} momento={m} onClick={() => setSelectedMomento(m)} />
+            )
+          )}
         </div>
       )}
 

@@ -2,6 +2,7 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import multer from "multer";
 import { RequestUploadUrlBody, RequestUploadUrlResponse } from "@workspace/api-zod";
 import { isR2Configured, createPresignedUploadUrl, uploadFileToR2, deleteFileFromR2 } from "../lib/r2Storage";
+import { requireAuth, type AuthRequest } from "../middleware/auth";
 
 const router: IRouter = Router();
 
@@ -98,27 +99,19 @@ router.post("/storage/uploads/file", (req: Request, res: Response) => {
   });
 });
 
-router.delete("/storage/objects", async (req: Request, res: Response) => {
+router.delete("/storage/objects", requireAuth, async (req: AuthRequest, res: Response) => {
   if (!isR2Configured()) {
     res.status(503).json({ error: "R2 não está configurado." });
     return;
   }
 
-  const { url } = req.body as { url?: string };
-  if (!url || typeof url !== "string") {
-    res.status(400).json({ error: "Campo 'url' é obrigatório." });
+  const key = (req.query.key as string | undefined);
+  if (!key) {
+    res.status(400).json({ error: "Parâmetro 'key' é obrigatório." });
     return;
   }
 
-  const publicBase = process.env.R2_PUBLIC_URL?.replace(/\/$/, "");
-  if (!publicBase || !url.startsWith(publicBase + "/")) {
-    res.status(400).json({ error: "URL inválida ou não pertence ao bucket configurado." });
-    return;
-  }
-
-  const key = url.slice(publicBase.length + 1);
   const folder = key.split("/")[0];
-
   if (!ALLOWED_PRESIGNED_FOLDERS.has(folder)) {
     res.status(403).json({ error: "Pasta não permitida para exclusão." });
     return;
