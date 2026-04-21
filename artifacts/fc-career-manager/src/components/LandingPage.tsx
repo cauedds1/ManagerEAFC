@@ -857,11 +857,12 @@ export function LandingPage({ onStart, onLogin, onStartWithPlan }: LandingPagePr
   useEffect(() => {
     if (!customClubInput.trim()) { setCustomClub(null); setCustomClubName(""); setClubNotFound(false); return; }
     const timer = setTimeout(() => {
-      const key = customClubInput.trim().toLowerCase();
-      const match = CLUBS_DB[key];
-      if (match) {
-        setCustomClub(match);
-        setCustomClubName(customClubInput.trim());
+      const normalize = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      const key = normalize(customClubInput.trim());
+      const entry = Object.entries(CLUBS_DB).find(([name]) => normalize(name).includes(key));
+      if (entry) {
+        setCustomClub(entry[1]);
+        setCustomClubName(entry[0].replace(/\b\w/g, c => c.toUpperCase()));
         setClubNotFound(false);
       } else {
         setCustomClub(null);
