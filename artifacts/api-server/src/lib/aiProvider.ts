@@ -139,14 +139,11 @@ export async function callNewsCompletion(
     return callOpenAI(client, systemPrompt, userPrompt, maxTokens, "gpt-4o");
   }
 
-  const useGemini = Math.random() < 0.7;
-  if (useGemini) {
-    try {
-      return await callGemini(systemPrompt, userPrompt);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.warn("[aiProvider] Gemini falhou, usando OpenAI:", msg);
-    }
+  try {
+    return await callGemini(systemPrompt, userPrompt);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn("[aiProvider] Gemini falhou, usando GPT-4o-mini:", msg);
   }
 
   const serverClient = getServerOpenAIClient();
@@ -164,20 +161,23 @@ export async function callDiretoriaCompletion(
   userPrompt: string,
   maxTokens = 1024,
 ): Promise<string> {
-  const model = usingUserKey ? "gpt-4o" : "gpt-4o-mini";
-
-  if (!usingUserKey) {
-    try {
-      return await callGemini(systemPrompt, userPrompt);
-    } catch {
-    }
-    const serverClient = getServerOpenAIClient();
-    if (serverClient) {
-      return callOpenAI(serverClient, systemPrompt, userPrompt, maxTokens, model);
-    }
+  if (usingUserKey) {
+    return callOpenAI(client, systemPrompt, userPrompt, maxTokens, "gpt-4o");
   }
 
-  return callOpenAI(client, systemPrompt, userPrompt, maxTokens, model);
+  try {
+    return await callGemini(systemPrompt, userPrompt);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn("[aiProvider] Gemini falhou, usando GPT-4o-mini:", msg);
+  }
+
+  const serverClient = getServerOpenAIClient();
+  if (serverClient) {
+    return callOpenAI(serverClient, systemPrompt, userPrompt, maxTokens, "gpt-4o-mini");
+  }
+
+  return callOpenAI(client, systemPrompt, userPrompt, maxTokens, "gpt-4o-mini");
 }
 
 async function callOpenAIMessages(
