@@ -6,6 +6,8 @@ interface AuthPageProps {
   onBack: () => void;
   onAuthSuccess: (token: string, user: { id: number; email: string; name: string; plan?: Plan }) => void;
   initialPlan?: Plan;
+  checkoutDraft?: { name: string; email: string; plan: "pro" | "ultra" } | null;
+  onDraftConsumed?: () => void;
 }
 
 const API_BASE = "/api";
@@ -429,16 +431,24 @@ function FieldLines() {
 }
 
 /* ── Main component ── */
-export function AuthPage({ onBack, onAuthSuccess, initialPlan }: AuthPageProps) {
+export function AuthPage({ onBack, onAuthSuccess, initialPlan, checkoutDraft, onDraftConsumed }: AuthPageProps) {
+  const hasDraft = !!checkoutDraft;
   const [mode, setMode] = useState<"login" | "signup">("login");
-  const [signupStep, setSignupStep] = useState<"plan" | "form">(initialPlan && initialPlan !== "free" ? "form" : "plan");
-  const [selectedPlan, setSelectedPlan] = useState<Plan>(initialPlan ?? "free");
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
+  const [signupStep, setSignupStep] = useState<"plan" | "form">(
+    hasDraft || (initialPlan && initialPlan !== "free") ? "form" : "plan"
+  );
+  const [selectedPlan, setSelectedPlan] = useState<Plan>(checkoutDraft?.plan ?? initialPlan ?? "free");
+  const [name, setName] = useState(checkoutDraft?.name ?? "");
+  const [email, setEmail] = useState(checkoutDraft?.email ?? "");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
+
+  useEffect(() => {
+    if (hasDraft) onDraftConsumed?.();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const isLogin = mode === "login";
 
@@ -460,6 +470,9 @@ export function AuthPage({ onBack, onAuthSuccess, initialPlan }: AuthPageProps) 
       if (selectedPlan !== "free") {
         setLoading(false);
         setRedirecting(true);
+        try {
+          sessionStorage.setItem("fc_checkout_draft", JSON.stringify({ name: name.trim(), email: email.trim(), plan: selectedPlan }));
+        } catch {}
         const priceRes = await fetch(`${API_BASE}/stripe/products-with-plan`);
         if (!priceRes.ok) throw new Error("Não foi possível obter os planos disponíveis.");
         const prices = await priceRes.json() as Array<{ planTier: string; priceId: string }>;

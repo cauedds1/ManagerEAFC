@@ -152,6 +152,7 @@ export default function App() {
   const [progress, setProgress] = useState<LoadingProgress>({ loaded: 0, total: 0, leagueName: "" });
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [authInitialPlan, setAuthInitialPlan] = useState<"free" | "pro" | "ultra">("free");
+  const [authCheckoutDraft, setAuthCheckoutDraft] = useState<{ name: string; email: string; plan: "pro" | "ultra" } | null>(null);
   const [checkoutPending, setCheckoutPending] = useState(false);
   const [checkoutConfirmed, setCheckoutConfirmed] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
@@ -272,6 +273,22 @@ export default function App() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+
+    if (params.get("checkout") === "cancel") {
+      window.history.replaceState({}, "", window.location.pathname);
+      try {
+        const raw = sessionStorage.getItem("fc_checkout_draft");
+        if (raw) {
+          const draft = JSON.parse(raw) as { name: string; email: string; plan: "pro" | "ultra" };
+          sessionStorage.removeItem("fc_checkout_draft");
+          setAuthCheckoutDraft(draft);
+          setAuthInitialPlan(draft.plan);
+          setView("auth");
+        }
+      } catch {}
+      return;
+    }
+
     if (params.get("checkout") !== "success") return;
 
     const sessionId = params.get("session_id");
@@ -525,7 +542,7 @@ export default function App() {
     }
 
     if (view === "auth") {
-      return <AuthPage onBack={handleAuthBack} onAuthSuccess={handleAuthSuccess} initialPlan={authInitialPlan} />;
+      return <AuthPage onBack={handleAuthBack} onAuthSuccess={handleAuthSuccess} initialPlan={authInitialPlan} checkoutDraft={authCheckoutDraft} onDraftConsumed={() => setAuthCheckoutDraft(null)} />;
     }
 
     if (view === "loading-clubs") {
