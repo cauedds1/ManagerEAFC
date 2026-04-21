@@ -94,6 +94,13 @@ const MiniShield = ({ accent }: { accent: string }) => (
 /* ── Tabs ─────────────────────────────────────────────────── */
 const TABS = ["Painel","Partidas","Clube","Transferências","Notícias","Diretoria","Momentos"];
 
+/* ── Blend accent colour into a near-black base ──────────── */
+function tintBg(accentRgb: string, strength: number, base = 7): string {
+  const [r, g, b] = accentRgb.split(",").map(Number);
+  const mix = (c: number) => Math.round(base + (c - base) * strength);
+  return `rgb(${mix(r)},${mix(g)},${mix(b)})`;
+}
+
 /* ══════════════════════════════════════════════════════════════════════════ */
 export function ClubDemoMockup({ clubName, leagueName, accent, accentRgb }: Props) {
   const seed       = h(clubName);
@@ -103,16 +110,17 @@ export function ClubDemoMockup({ clubName, leagueName, accent, accentRgb }: Prop
   const mood       = "Animada";
   const matches    = buildMatches(clubName);
 
-  const T = (d: number) => `transition: all ${d}s ease`;
+  const bg      = (s: number) => tintBg(accentRgb, s);
+  const divider = `rgba(${accentRgb},0.1)`;
 
   return (
-    <div style={{ background: "#0a0a14", fontFamily: "DM Sans, sans-serif",
-      borderRadius: "0 0 12px 12px", overflow: "hidden" }}>
+    <div style={{ background: bg(0.10), fontFamily: "DM Sans, sans-serif",
+      borderRadius: "0 0 12px 12px", overflow: "hidden", transition: "background 0.5s" }}>
 
       {/* ── App header ── */}
       <div style={{ padding: "10px 16px", display: "flex", alignItems: "center",
-        justifyContent: "space-between", borderBottom: `1px solid rgba(${accentRgb},0.12)`,
-        background: "#0c0c18" }}>
+        justifyContent: "space-between", borderBottom: `1px solid ${divider}`,
+        background: bg(0.14), transition: "background 0.5s" }}>
 
         {/* Left: shield + name */}
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -152,8 +160,8 @@ export function ClubDemoMockup({ clubName, leagueName, accent, accentRgb }: Prop
       </div>
 
       {/* ── Nav tabs ── */}
-      <div style={{ display: "flex", borderBottom: "1px solid rgba(255,255,255,0.05)",
-        padding: "0 14px", background: "#0b0b16", overflowX: "auto" }}>
+      <div style={{ display: "flex", borderBottom: `1px solid ${divider}`,
+        padding: "0 14px", background: bg(0.11), overflowX: "auto", transition: "background 0.5s" }}>
         {TABS.map((tab, i) => (
           <div key={tab} style={{ position: "relative", padding: "9px 11px",
             fontSize: 11.5, whiteSpace: "nowrap", flexShrink: 0,
@@ -175,28 +183,28 @@ export function ClubDemoMockup({ clubName, leagueName, accent, accentRgb }: Prop
       {/* ── Stats row ── */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)",
         margin: "10px 12px", borderRadius: 10, overflow: "hidden",
-        border: "1px solid rgba(255,255,255,0.05)" }}>
+        border: `1px solid ${divider}`, transition: "border-color 0.5s" }}>
         {[
           { label: "Partidas",       value: partidas,   sub: "registradas"   },
           { label: "Temporada",      value: "2026/27",  sub: "em andamento"  },
           { label: "Elenco",         value: elenco,     sub: "jogadores"     },
           { label: "Transferências", value: transfers,  sub: "movimentações" },
         ].map((s, i) => (
-          <div key={s.label} style={{ padding: "10px 12px", background: "#0a0a14",
-            borderRight: i < 3 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
-            <div style={{ color: "#2a2a44", fontSize: 9, marginBottom: 3,
-              textTransform: "uppercase", letterSpacing: "0.06em" }}>{s.label}</div>
+          <div key={s.label} style={{ padding: "10px 12px", background: bg(0.09),
+            borderRight: i < 3 ? `1px solid ${divider}` : "none", transition: "background 0.5s" }}>
+            <div style={{ color: `rgba(${accentRgb},0.35)`, fontSize: 9, marginBottom: 3,
+              textTransform: "uppercase", letterSpacing: "0.06em", transition: "color 0.5s" }}>{s.label}</div>
             <div style={{ color: "#f0f0ff", fontSize: 17, fontWeight: 700,
               lineHeight: 1.1 }}>{s.value}</div>
-            <div style={{ color: "#2a2a44", fontSize: 9, marginTop: 1 }}>{s.sub}</div>
+            <div style={{ color: `rgba(${accentRgb},0.28)`, fontSize: 9, marginTop: 1, transition: "color 0.5s" }}>{s.sub}</div>
           </div>
         ))}
       </div>
 
       {/* ── Últimas partidas ── */}
       <div style={{ padding: "0 12px 14px" }}>
-        <div style={{ color: "#2a2a44", fontSize: 9, fontWeight: 700,
-          letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 8 }}>
+        <div style={{ color: `rgba(${accentRgb},0.4)`, fontSize: 9, fontWeight: 700,
+          letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 8, transition: "color 0.5s" }}>
           Últimas Partidas
         </div>
 
@@ -207,8 +215,8 @@ export function ClubDemoMockup({ clubName, leagueName, accent, accentRgb }: Prop
             return (
               <div key={i} style={{ flex: "0 0 auto", width: "calc(20% - 6px)",
                 borderRadius: 8,
-                border: `1px solid rgba(${rRgb},0.25)`,
-                background: m.result === "V" ? `rgba(${accentRgb},0.05)` : "#0d0d1a",
+                border: `1px solid rgba(${rRgb},0.28)`,
+                background: m.result === "V" ? bg(0.16) : bg(0.08),
                 padding: "7px 9px", transition: "all 0.5s" }}>
 
                 {/* Comp + rodada */}
@@ -219,7 +227,7 @@ export function ClubDemoMockup({ clubName, leagueName, accent, accentRgb }: Prop
                     borderRadius: 3, transition: "all 0.5s",
                     maxWidth: 60, overflow: "hidden", textOverflow: "ellipsis",
                     whiteSpace: "nowrap" }}>{m.comp}</span>
-                  <span style={{ fontSize: 8, color: "#222244" }}>Rd {m.rodada}</span>
+                  <span style={{ fontSize: 8, color: `rgba(${accentRgb},0.28)`, transition: "color 0.5s" }}>Rd {m.rodada}</span>
                 </div>
 
                 {/* Home row */}
@@ -241,7 +249,7 @@ export function ClubDemoMockup({ clubName, leagueName, accent, accentRgb }: Prop
                   justifyContent: "space-between" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 5,
                     minWidth: 0 }}>
-                    <MiniShield accent="#555577" />
+                    <MiniShield accent={`rgba(${accentRgb},0.5)`} />
                     <span style={{ fontSize: 10, color: "#aaaacc", fontWeight: 500,
                       overflow: "hidden", textOverflow: "ellipsis",
                       whiteSpace: "nowrap", maxWidth: 48 }}>{m.team2}</span>
@@ -251,7 +259,7 @@ export function ClubDemoMockup({ clubName, leagueName, accent, accentRgb }: Prop
                 </div>
 
                 {/* Footer result */}
-                <div style={{ marginTop: 6, borderTop: "1px solid rgba(255,255,255,0.04)",
+                <div style={{ marginTop: 6, borderTop: `1px solid rgba(${accentRgb},0.15)`,
                   paddingTop: 5, fontSize: 8, textAlign: "center",
                   color: rCol, fontWeight: 700, letterSpacing: "0.06em",
                   transition: "color 0.5s" }}>
