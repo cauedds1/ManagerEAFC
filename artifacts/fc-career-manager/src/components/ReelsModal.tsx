@@ -200,9 +200,11 @@ export function ReelsModal({ post, portalPhotos, customPortals, onClose }: Reels
             className="w-full h-full object-cover sm:object-contain"
             style={{ display: "block" }}
           />
+
+          {/* Mute button — bottom-left to avoid overlap with action buttons */}
           <button
             onClick={handleMuteToggle}
-            className="absolute bottom-4 right-4 flex items-center justify-center rounded-full transition-all hover:bg-white/20 active:scale-90 z-10"
+            className="absolute bottom-4 left-4 flex items-center justify-center rounded-full transition-all hover:bg-white/20 active:scale-90 z-10"
             style={{ width: 36, height: 36, background: "rgba(0,0,0,0.55)", backdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,0.15)" }}
             aria-label={muted ? "Ativar som" : "Silenciar"}
           >
@@ -217,40 +219,10 @@ export function ReelsModal({ post, portalPhotos, customPortals, onClose }: Reels
               </svg>
             )}
           </button>
-        </div>
 
-        <button
-          onClick={onClose}
-          className="absolute top-4 left-4 flex items-center justify-center rounded-full transition-all hover:bg-white/20 active:scale-90 z-10"
-          style={{ width: 38, height: 38, background: "rgba(0,0,0,0.55)", backdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,0.15)" }}
-          aria-label="Fechar"
-        >
-          <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-
-        {/* Mobile engagement overlay — hidden on sm+ */}
-        <div className="absolute inset-0 pointer-events-none sm:hidden">
+          {/* Action buttons — always visible on right side of video */}
           <div
-            className="absolute bottom-0 left-0 right-0 px-4 pb-5 pt-20 pointer-events-auto"
-            style={{ background: "linear-gradient(to top, rgba(0,0,0,0.88) 0%, transparent 100%)" }}
-          >
-            <div className="flex items-center gap-2 mb-2">
-              <SourceAvatar source={post.source} sourceName={post.sourceName} size={32} photoUrl={postPhotoUrl} />
-              <span className="text-white text-sm font-bold leading-tight">{post.sourceName}</span>
-              {cfg.verified && (
-                <svg className="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 24 24" fill={cfg.color}>
-                  <path d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
-                </svg>
-              )}
-            </div>
-            {post.title && <p className="text-white font-bold text-sm leading-snug mb-1">{post.title}</p>}
-            <p className="text-white/70 text-xs leading-relaxed line-clamp-2">{post.content}</p>
-          </div>
-
-          <div
-            className="absolute right-3 flex flex-col items-center gap-5 pointer-events-auto"
+            className="absolute right-3 flex flex-col items-center gap-5 z-10"
             style={{ bottom: 80 }}
           >
             <button
@@ -270,7 +242,7 @@ export function ReelsModal({ post, portalPhotos, customPortals, onClose }: Reels
 
             <button
               onClick={() => setShowComments(v => !v)}
-              className="flex flex-col items-center gap-1 transition-all active:scale-90"
+              className="flex flex-col items-center gap-1 transition-all active:scale-90 sm:hidden"
             >
               <div
                 className="w-11 h-11 rounded-full flex items-center justify-center transition-colors"
@@ -304,45 +276,76 @@ export function ReelsModal({ post, portalPhotos, customPortals, onClose }: Reels
             </button>
           </div>
 
-          {showComments && (
+          {/* Mobile text overlay — hidden on sm+ (sidebar shows this info instead) */}
+          <div className="absolute inset-0 pointer-events-none sm:hidden">
             <div
-              className="absolute right-0 top-0 bottom-0 flex flex-col pointer-events-auto"
-              style={{
-                width: "72vw",
-                maxWidth: 320,
-                background: "rgba(10,10,18,0.96)",
-                backdropFilter: "blur(16px)",
-                WebkitBackdropFilter: "blur(16px)",
-                borderLeft: "1px solid rgba(255,255,255,0.1)",
-              } as React.CSSProperties}
+              className="absolute bottom-0 left-0 right-0 px-4 pb-5 pt-20 pointer-events-none"
+              style={{ background: "linear-gradient(to top, rgba(0,0,0,0.88) 0%, transparent 100%)" }}
             >
-              <div
-                className="flex items-center justify-between px-4 py-3 flex-shrink-0"
-                style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}
-              >
-                <span className="text-white text-sm font-bold">Comentários</span>
-                <button
-                  onClick={() => setShowComments(false)}
-                  className="flex items-center justify-center rounded-full w-7 h-7 transition-colors hover:bg-white/10"
-                  style={{ color: "rgba(255,255,255,0.5)" }}
-                >
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              <div className="flex items-center gap-2 mb-2">
+                <SourceAvatar source={post.source} sourceName={post.sourceName} size={32} photoUrl={postPhotoUrl} />
+                <span className="text-white text-sm font-bold leading-tight">{post.sourceName}</span>
+                {cfg.verified && (
+                  <svg className="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 24 24" fill={cfg.color}>
+                    <path d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
                   </svg>
-                </button>
+                )}
               </div>
-              <div
-                className="flex-1 overflow-y-auto px-3 py-3 flex flex-col gap-4"
-                style={{ scrollbarWidth: "thin", scrollbarColor: "rgba(255,255,255,0.1) transparent" }}
-              >
-                {hasComments
-                  ? post.comments.map(c => <CommentRow key={c.id} comment={c} />)
-                  : <p className="text-white/30 text-xs text-center py-8">Nenhum comentário ainda</p>
-                }
-              </div>
+              {post.title && <p className="text-white font-bold text-sm leading-snug mb-1">{post.title}</p>}
+              <p className="text-white/70 text-xs leading-relaxed line-clamp-2">{post.content}</p>
             </div>
-          )}
+
+            {showComments && (
+              <div
+                className="absolute right-0 top-0 bottom-0 flex flex-col pointer-events-auto"
+                style={{
+                  width: "72vw",
+                  maxWidth: 320,
+                  background: "rgba(10,10,18,0.96)",
+                  backdropFilter: "blur(16px)",
+                  WebkitBackdropFilter: "blur(16px)",
+                  borderLeft: "1px solid rgba(255,255,255,0.1)",
+                } as React.CSSProperties}
+              >
+                <div
+                  className="flex items-center justify-between px-4 py-3 flex-shrink-0"
+                  style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}
+                >
+                  <span className="text-white text-sm font-bold">Comentários</span>
+                  <button
+                    onClick={() => setShowComments(false)}
+                    className="flex items-center justify-center rounded-full w-7 h-7 transition-colors hover:bg-white/10"
+                    style={{ color: "rgba(255,255,255,0.5)" }}
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+                <div
+                  className="flex-1 overflow-y-auto px-3 py-3 flex flex-col gap-4"
+                  style={{ scrollbarWidth: "thin", scrollbarColor: "rgba(255,255,255,0.1) transparent" }}
+                >
+                  {hasComments
+                    ? post.comments.map(c => <CommentRow key={c.id} comment={c} />)
+                    : <p className="text-white/30 text-xs text-center py-8">Nenhum comentário ainda</p>
+                  }
+                </div>
+              </div>
+            )}
+          </div>
         </div>
+
+        <button
+          onClick={onClose}
+          className="absolute top-4 left-4 flex items-center justify-center rounded-full transition-all hover:bg-white/20 active:scale-90 z-10"
+          style={{ width: 38, height: 38, background: "rgba(0,0,0,0.55)", backdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,0.15)" }}
+          aria-label="Fechar"
+        >
+          <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
       </div>
 
       {/* Desktop sidebar — hidden below sm breakpoint */}
