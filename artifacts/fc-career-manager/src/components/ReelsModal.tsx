@@ -168,19 +168,11 @@ export function ReelsModal({ post, portalPhotos, customPortals, onClose }: Reels
       className="fixed inset-0 z-[400] flex"
       style={{ background: "rgba(0,0,0,0.97)" }}
     >
-      <div className="relative flex-1 flex items-center justify-center min-h-0 min-w-0" style={{ background: "#000" }}>
+      <div className="relative flex-1 min-h-0 min-w-0 flex items-stretch sm:items-center sm:justify-center" style={{ background: "#000" }}>
 
-        {/* 9:16 portrait stage — horizontal videos appear letter-boxed */}
-        <div
-          className="relative flex-shrink-0"
-          style={{
-            aspectRatio: "9 / 16",
-            height: "100%",
-            maxHeight: "100vh",
-            maxWidth: "100%",
-            background: "#000",
-          }}
-        >
+        {/* Full-bleed on mobile; 9:16 portrait stage on desktop */}
+        <style>{`.reels-stage { width: 100%; height: 100%; } @media (min-width: 640px) { .reels-stage { aspect-ratio: 9 / 16; width: auto; height: 100%; max-height: 100vh; flex-shrink: 0; } }`}</style>
+        <div className="reels-stage relative" style={{ background: "#000" }}>
           <video
             ref={videoRef}
             src={post.videoUrl}
@@ -188,12 +180,12 @@ export function ReelsModal({ post, portalPhotos, customPortals, onClose }: Reels
             loop
             playsInline
             muted={muted}
-            style={{ width: "100%", height: "100%", display: "block", objectFit: "contain" }}
+            className="w-full h-full object-cover sm:object-contain"
+            style={{ display: "block" }}
           />
-
           <button
             onClick={handleMuteToggle}
-            className="absolute bottom-4 right-4 flex items-center justify-center rounded-full transition-all hover:bg-white/20 active:scale-90"
+            className="absolute bottom-4 right-4 flex items-center justify-center rounded-full transition-all hover:bg-white/20 active:scale-90 z-10"
             style={{ width: 36, height: 36, background: "rgba(0,0,0,0.55)", backdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,0.12)" }}
             aria-label={muted ? "Ativar som" : "Silenciar"}
           >
