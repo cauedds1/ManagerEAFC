@@ -849,6 +849,10 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
   };
 
   const handleMemberCreated = (member: BoardMember) => {
+    if (members.length >= planLimits.maxDiretoriaMembers) {
+      setShowCreateModal(false);
+      return;
+    }
     addMember(career.id, member);
     setMembers((prev) => [...prev, member]);
     setConversations((prev) => ({ ...prev, [member.id]: [] }));
@@ -990,14 +994,24 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
                   Convocar Reunião
                 </button>
               )}
-              <button
-                onClick={() => setShowCreateModal(true)}
-                className="flex items-center justify-center w-7 h-7 rounded-lg transition-all hover:scale-[1.05]"
-                style={{ background: "rgba(var(--club-primary-rgb),0.12)", color: "var(--club-primary)", border: "1px solid rgba(var(--club-primary-rgb),0.2)" }}
-                title="Adicionar membro"
-              >
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-              </button>
+              {members.length < planLimits.maxDiretoriaMembers ? (
+                <button
+                  onClick={() => setShowCreateModal(true)}
+                  className="flex items-center justify-center w-7 h-7 rounded-lg transition-all hover:scale-[1.05]"
+                  style={{ background: "rgba(var(--club-primary-rgb),0.12)", color: "var(--club-primary)", border: "1px solid rgba(var(--club-primary-rgb),0.2)" }}
+                  title="Adicionar membro"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                </button>
+              ) : planLimits.maxDiretoriaMembers < Infinity ? (
+                <span
+                  className="text-[10px] font-semibold px-2 py-1 rounded-lg"
+                  style={{ background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.25)", border: "1px solid rgba(255,255,255,0.07)" }}
+                  title={`Limite do plano: ${planLimits.maxDiretoriaMembers} membros`}
+                >
+                  {members.length}/{planLimits.maxDiretoriaMembers} membros
+                </span>
+              ) : null}
             </div>
           </div>
 
