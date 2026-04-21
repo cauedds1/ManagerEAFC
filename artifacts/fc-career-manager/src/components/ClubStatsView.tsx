@@ -208,15 +208,15 @@ function WDLBar({ wins, draws, losses, label, t }: WDLBarProps) {
       <div className="flex gap-4">
         <div className="flex items-center gap-1.5">
           <div className="w-2 h-2 rounded-full" style={{ background: "#34d399" }} />
-          <span className="text-white/50 text-xs tabular-nums">{wins}V</span>
+          <span className="text-white/50 text-xs tabular-nums">{wins}{t.winsChip}</span>
         </div>
         <div className="flex items-center gap-1.5">
           <div className="w-2 h-2 rounded-full" style={{ background: "#94a3b8" }} />
-          <span className="text-white/50 text-xs tabular-nums">{draws}E</span>
+          <span className="text-white/50 text-xs tabular-nums">{draws}{t.drawsChip}</span>
         </div>
         <div className="flex items-center gap-1.5">
           <div className="w-2 h-2 rounded-full" style={{ background: "#f87171" }} />
-          <span className="text-white/50 text-xs tabular-nums">{losses}D</span>
+          <span className="text-white/50 text-xs tabular-nums">{losses}{t.lossesChip}</span>
         </div>
         <div className="ml-auto flex items-center gap-1">
           <span className="text-white/20 text-[10px]">{t.winRateAbbr}</span>

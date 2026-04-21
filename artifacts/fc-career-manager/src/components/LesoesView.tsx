@@ -171,7 +171,7 @@ function ActiveInjuryCard({
   const [nameInput, setNameInput] = useState(injury.injuryName);
   const [releasing, setReleasing] = useState(false);
 
-  const name = player?.name ?? `Jogador ${injury.playerId}`;
+  const name = player?.name ?? t.playerFallback.replace("{n}", String(injury.playerId));
   const photo = player?.photo ?? "";
   const pos = player?.positionPtBr;
 
@@ -270,7 +270,7 @@ function HistoryCard({
   const [lang] = useLang();
   const t = CLUBE[lang];
 
-  const name = player?.name ?? `Jogador ${injury.playerId}`;
+  const name = player?.name ?? t.playerFallback.replace("{n}", String(injury.playerId));
   const photo = player?.photo ?? "";
   const pos = player?.positionPtBr;
   const days = injury.releasedAt ? daysBetween(injury.matchDate, injury.releasedAt) : null;

@@ -1018,7 +1018,7 @@ export function CompetitionResultsView({
   const seasonOptions = useMemo(() => {
     return [...seasons]
       .sort((a, b) => b.createdAt - a.createdAt)
-      .map((s) => ({ value: s.id, label: s.label + (s.id === seasonId ? ` (${t.currentSeason})` : "") }));
+      .map((s) => ({ value: s.id, label: s.label + (s.id === seasonId ? ` ${t.currentSeason}` : "") }));
   }, [seasons, seasonId, t]);
 
   const matchTournaments = useMemo(() => {

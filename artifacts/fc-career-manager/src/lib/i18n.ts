@@ -1188,6 +1188,9 @@ export const CLUBE = {
     winsTip: "vitórias",
     drawsTip: "empates",
     lossesTip: "derrotas",
+    winsChip: "V",
+    drawsChip: "E",
+    lossesChip: "D",
     winRateAbbr: "aproveit.",
     nd: "N/D",
     // PlayerStatsTable
@@ -1243,6 +1246,7 @@ export const CLUBE = {
     // LesoesView
     injuredTab: "Lesionados",
     historyTab: "Histórico",
+    playerFallback: "Jogador {n}",
     releaseModalTitle: "Liberar jogador",
     releaseModalSubtitle: "voltará a estar disponível para escalação.",
     releaseDateLabel: "Data de liberação",
@@ -1473,6 +1477,9 @@ export const CLUBE = {
     winsTip: "wins",
     drawsTip: "draws",
     lossesTip: "losses",
+    winsChip: "W",
+    drawsChip: "D",
+    lossesChip: "L",
     winRateAbbr: "pts%",
     nd: "N/A",
     // PlayerStatsTable
@@ -1528,6 +1535,7 @@ export const CLUBE = {
     // LesoesView
     injuredTab: "Injured",
     historyTab: "History",
+    playerFallback: "Player {n}",
     releaseModalTitle: "Release player",
     releaseModalSubtitle: "will be available for selection again.",
     releaseDateLabel: "Release date",
