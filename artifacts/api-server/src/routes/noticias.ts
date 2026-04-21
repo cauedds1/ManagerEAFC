@@ -526,6 +526,24 @@ REGRAS DE REPLIES — OBRIGATÓRIO:
   }
 });
 
+router.get("/noticias/ai-usage", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const userId = req.user!.id;
+    const [dbUser] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+    if (!dbUser) { res.status(401).json({ error: "Usuário não encontrado" }); return; }
+    const limits = getPlanLimits(dbUser.plan);
+    const today = getTodayDateString();
+    let usageCount = dbUser.aiUsageCount;
+    if (dbUser.aiUsageResetDate !== today) {
+      await db.update(usersTable).set({ aiUsageCount: 0, aiUsageResetDate: today }).where(eq(usersTable.id, userId));
+      usageCount = 0;
+    }
+    res.json({ aiUsageToday: usageCount, aiUsageLimit: limits.aiGenerationsPerDay });
+  } catch (err) {
+    res.status(500).json({ error: "Erro ao buscar uso de IA" });
+  }
+});
+
 interface GenerateWelcomeBody {
   coachName: string;
   coachAge?: number;

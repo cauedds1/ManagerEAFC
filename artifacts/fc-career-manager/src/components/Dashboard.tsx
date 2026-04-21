@@ -352,6 +352,19 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     setNoticiasUnread(countUnreadNoticias(activeSeasonId));
   }, [career.id, activeSeasonId]);
 
+  useEffect(() => {
+    const headers = getAiHeaders();
+    if (!headers.Authorization) return;
+    fetch("/api/noticias/ai-usage", { headers })
+      .then(r => r.ok ? r.json() : null)
+      .then((data: { aiUsageToday?: number; aiUsageLimit?: number } | null) => {
+        if (!data) return;
+        if (typeof data.aiUsageToday === "number") setAiUsageToday(data.aiUsageToday);
+        if (typeof data.aiUsageLimit === "number") setAiUsageLimit(data.aiUsageLimit);
+      })
+      .catch(() => {});
+  }, []);
+
   const addToast = useCallback((toast: Omit<ToastItem, "id">) => {
     const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     setToasts((prev) => [...prev.slice(-2), { ...toast, id }]);
