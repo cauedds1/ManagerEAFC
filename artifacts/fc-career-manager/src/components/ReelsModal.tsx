@@ -223,7 +223,7 @@ export function ReelsModal({ post, portalPhotos, customPortals, onClose }: Reels
           {/* Action buttons — always visible on right side of video */}
           <div
             className="absolute right-3 flex flex-col items-center gap-5 z-10"
-            style={{ bottom: 80 }}
+            style={{ top: "50%", transform: "translateY(-50%)" }}
           >
             <button
               onClick={() => setLiked(l => !l)}
@@ -242,7 +242,7 @@ export function ReelsModal({ post, portalPhotos, customPortals, onClose }: Reels
 
             <button
               onClick={() => setShowComments(v => !v)}
-              className="flex flex-col items-center gap-1 transition-all active:scale-90 sm:hidden"
+              className="flex flex-col items-center gap-1 transition-all active:scale-90"
             >
               <div
                 className="w-11 h-11 rounded-full flex items-center justify-center transition-colors"
