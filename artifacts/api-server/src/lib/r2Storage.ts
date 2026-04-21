@@ -1,6 +1,7 @@
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { randomUUID } from "crypto";
+import type { Readable } from "stream";
 
 export function isR2Configured(): boolean {
   return !!(
@@ -95,6 +96,35 @@ export async function uploadFileToR2(
 
   const base = R2_PUBLIC_URL.replace(/\/$/, "");
   return `${base}/${key}`;
+}
+
+export async function uploadStreamToR2(
+  folder: string,
+  contentType: string,
+  stream: Readable,
+  contentLength?: number,
+): Promise<{ url: string; key: string }> {
+  const { R2_BUCKET_NAME, R2_PUBLIC_URL } = process.env;
+  if (!R2_BUCKET_NAME || !R2_PUBLIC_URL) {
+    throw new Error("R2_BUCKET_NAME or R2_PUBLIC_URL not configured");
+  }
+
+  const client = createR2Client();
+  const ext = mimeToExt(contentType);
+  const key = `${folder}/${randomUUID()}.${ext}`;
+
+  await client.send(
+    new PutObjectCommand({
+      Bucket: R2_BUCKET_NAME,
+      Key: key,
+      Body: stream,
+      ContentType: contentType,
+      ...(typeof contentLength === "number" && contentLength > 0 ? { ContentLength: contentLength } : {}),
+    }),
+  );
+
+  const base = R2_PUBLIC_URL.replace(/\/$/, "");
+  return { url: `${base}/${key}`, key };
 }
 
 export async function deleteFileFromR2(key: string): Promise<void> {

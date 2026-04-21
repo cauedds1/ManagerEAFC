@@ -388,35 +388,38 @@ function AddPostModal({
     setVideoUploadError(null);
     try {
       const token = localStorage.getItem("fc_auth_token");
-      const authHeader: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
-      const metaRes = await fetch("/api/storage/uploads/request-url?folder=noticias-video", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...authHeader },
-        body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }),
-      });
-      if (!metaRes.ok) {
-        setVideoUploadState("error");
-        setVideoUploadError("Não foi possível iniciar o upload. Tente novamente.");
-        return;
-      }
-      const { uploadURL, objectPath, key } = await metaRes.json() as { uploadURL: string; objectPath: string; key: string };
-      await new Promise<void>((resolve, reject) => {
+
+      const result = await new Promise<{ url: string; key: string }>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
         xhr.upload.onprogress = (e) => {
           if (e.lengthComputable) setVideoUploadProgress(Math.round((e.loaded / e.total) * 100));
         };
-        xhr.onload = () => (xhr.status < 300 ? resolve() : reject(new Error(`HTTP ${xhr.status}`)));
-        xhr.onerror = () => reject(new Error("Falha de rede"));
-        xhr.open("PUT", uploadURL);
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              resolve(JSON.parse(xhr.responseText) as { url: string; key: string });
+            } catch {
+              reject(new Error("Resposta inválida do servidor."));
+            }
+          } else {
+            let errMsg = `Erro ${xhr.status}`;
+            try { errMsg = (JSON.parse(xhr.responseText) as { error?: string }).error ?? errMsg; } catch { /* noop */ }
+            reject(new Error(errMsg));
+          }
+        };
+        xhr.onerror = () => reject(new Error("Erro de rede no upload."));
+        xhr.open("POST", "/api/storage/uploads/video?folder=noticias-video");
         xhr.setRequestHeader("Content-Type", file.type);
+        if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
         xhr.send(file);
       });
-      setVideoUrl(objectPath);
-      setVideoKey(key);
+
+      setVideoUrl(result.url);
+      setVideoKey(result.key);
       setVideoUploadState("done");
-    } catch {
+    } catch (err) {
       setVideoUploadState("error");
-      setVideoUploadError("Upload falhou. Tente novamente.");
+      setVideoUploadError(err instanceof Error ? err.message : "Upload falhou. Tente novamente.");
     }
   };
 

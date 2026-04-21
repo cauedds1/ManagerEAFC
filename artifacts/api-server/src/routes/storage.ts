@@ -1,7 +1,7 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import multer from "multer";
 import { RequestUploadUrlBody, RequestUploadUrlResponse } from "@workspace/api-zod";
-import { isR2Configured, createPresignedUploadUrl, uploadFileToR2, deleteFileFromR2 } from "../lib/r2Storage";
+import { isR2Configured, createPresignedUploadUrl, uploadFileToR2, uploadStreamToR2, deleteFileFromR2 } from "../lib/r2Storage";
 import { requireAuth, extractUserIdFromToken, type AuthRequest } from "../middleware/auth";
 import { getUserPlanFromDb, MOMENTOS_MAX_SIZE_BYTES } from "../lib/planLimits";
 
@@ -144,6 +144,73 @@ router.post("/storage/uploads/file", (req: Request, res: Response) => {
       res.status(500).json({ error: "Falha ao fazer upload do arquivo." });
     }
   });
+});
+
+const ALLOWED_VIDEO_MIME_TYPES_SET = new Set(["video/mp4", "video/webm", "video/quicktime"]);
+const ALLOWED_VIDEO_FOLDERS = new Set(["momentos", "noticias-video"]);
+
+router.post("/storage/uploads/video", async (req: Request, res: Response) => {
+  if (!isR2Configured()) {
+    res.status(503).json({ error: "Armazenamento não configurado." });
+    return;
+  }
+
+  const userId = extractUserIdFromToken(req.headers.authorization);
+  if (!userId) {
+    res.status(401).json({ error: "Autenticação necessária." });
+    return;
+  }
+
+  const rawFolder = (req.query.folder as string | undefined) ?? "momentos";
+  if (!ALLOWED_VIDEO_FOLDERS.has(rawFolder)) {
+    res.status(400).json({ error: "Pasta não permitida para upload de vídeo." });
+    return;
+  }
+
+  const contentType = (req.headers["content-type"] ?? "").split(";")[0].trim();
+  if (!ALLOWED_VIDEO_MIME_TYPES_SET.has(contentType)) {
+    res.status(400).json({ error: `Tipo de arquivo não suportado: ${contentType}. Use MP4, WebM ou MOV.` });
+    return;
+  }
+
+  const contentLength = req.headers["content-length"] ? Number(req.headers["content-length"]) : undefined;
+
+  let plan: import("../lib/planLimits").Plan;
+  try {
+    plan = await getUserPlanFromDb(userId);
+  } catch (err) {
+    req.log.error({ err }, "Error fetching user plan");
+    res.status(500).json({ error: "Erro ao verificar plano do usuário." });
+    return;
+  }
+
+  if (rawFolder === "noticias-video" && plan !== "ultra") {
+    res.status(403).json({ error: "Upload de vídeos em notícias está disponível apenas no plano Ultra." });
+    return;
+  }
+
+  if (rawFolder === "momentos") {
+    const maxBytes = MOMENTOS_MAX_SIZE_BYTES[plan];
+    if (maxBytes === 0) {
+      res.status(403).json({ error: "Upload de vídeos em Momentos não está disponível no plano Free." });
+      return;
+    }
+    if (typeof contentLength === "number" && contentLength > maxBytes) {
+      const maxMB = (maxBytes / (1024 * 1024)).toFixed(0);
+      res.status(403).json({ error: `Tamanho máximo permitido no seu plano é ${maxMB} MB.` });
+      return;
+    }
+  }
+
+  const folder = `${rawFolder}/${userId}`;
+
+  try {
+    const { url, key } = await uploadStreamToR2(folder, contentType, req, contentLength);
+    res.json({ url, key });
+  } catch (err) {
+    req.log.error({ err }, "Error streaming video to R2");
+    res.status(500).json({ error: "Falha no upload do vídeo. Tente novamente." });
+  }
 });
 
 router.delete("/storage/objects", requireAuth, async (req: AuthRequest, res: Response) => {
