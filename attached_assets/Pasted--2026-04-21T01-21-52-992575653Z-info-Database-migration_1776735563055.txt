@@ -1,0 +1,34 @@
+[2026-04-21T01:21:52.992575653Z] [info] Database migrations applied
+[2026-04-21T01:21:52.992583991Z] [info] Purged legacy squad rows on startup
+[2026-04-21T01:21:52.992588435Z] [info] Initializing Stripe schema...
+[2026-04-21T01:21:52.992604162Z] [info] [migrations] Starting — folder: /app/migrations
+[2026-04-21T01:21:52.992608012Z] [info] [migrations] Found 6 migration(s) in journal
+[2026-04-21T01:21:52.992611919Z] [info] [migrations] Already applied: 0000_slippery_ender_wiggin, 0001_great_raider, 0002_users_multitenancy, 0003_plan_tiers, 0004_seasons_finalized, 0005_stripe_customer_id
+[2026-04-21T01:21:52.992616063Z] [info] [migrations] Skip 0000_slippery_ender_wiggin (already applied)
+[2026-04-21T01:21:52.992619192Z] [info] [migrations] Skip 0001_great_raider (already applied)
+[2026-04-21T01:21:52.992622648Z] [info] [migrations] Skip 0002_users_multitenancy (already applied)
+[2026-04-21T01:21:52.992626447Z] [info] [migrations] Skip 0003_plan_tiers (already applied)
+[2026-04-21T01:21:52.992630494Z] [info] [migrations] Skip 0004_seasons_finalized (already applied)
+[2026-04-21T01:21:52.992634311Z] [info] [migrations] Skip 0005_stripe_customer_id (already applied)
+[2026-04-21T01:21:52.992639145Z] [info] [migrations] All migrations complete ✓
+[2026-04-21T01:21:53.432908422Z] [info] Starting Container
+[2026-04-21T01:21:56.063724861Z] [info] Stripe schema ready
+[2026-04-21T01:21:56.063728361Z] [info] { autoExpandLists: undefined, stripeApiVersion: undefined } StripeSync initialized
+[2026-04-21T01:21:56.063731588Z] [info] Setting up managed Stripe webhook...
+[2026-04-21T01:21:56.257730170Z] [error] {
+[2026-04-21T01:21:56.257735053Z] [error]   webhookId: 'we_1TOPxBFa7qP5DLisKjD6tAoG',
+[2026-04-21T01:21:56.257738592Z] [error]   url: 'https://da6928e1-1fe7-4ba9-ab4a-717ed1c0b37b-00-3bqp1g5hktws1.janeway.replit.dev/api/stripe/webhook'
+[2026-04-21T01:21:56.257741761Z] [error] } Found orphaned managed webhook in Stripe, deleting
+[2026-04-21T01:21:57.015442311Z] [info] Stripe data backfill complete
+[2026-04-21T01:21:57.015448935Z] [info] Server listening
+[2026-04-21T01:21:57.015473495Z] [info] Stripe webhook configured
+[2026-04-21T01:24:57.081070368Z] [info] request completed
+[2026-04-21T01:24:57.668784815Z] [info] request completed
+[2026-04-21T01:24:57.804941236Z] [info] request completed
+[2026-04-21T01:24:59.198495278Z] [info] request completed
+[2026-04-21T01:24:59.237818057Z] [info] request completed
+[2026-04-21T01:25:05.152405696Z] [info] request completed
+[2026-04-21T01:25:25.204573937Z] [info] request completed
+[2026-04-21T01:25:25.204631434Z] [info] request completed
+[2026-04-21T01:31:26.259498136Z] [info] request completed
+[2026-04-21T01:35:19.096638906Z] [info] Stopping Container
