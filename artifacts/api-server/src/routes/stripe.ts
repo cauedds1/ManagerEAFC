@@ -8,11 +8,14 @@ import bcrypt from "bcryptjs";
 
 const router = Router();
 
-const FRONTEND_URL = process.env.FRONTEND_URL ?? (
-  process.env.REPLIT_DOMAINS
-    ? `https://${process.env.REPLIT_DOMAINS.split(",")[0]}`
-    : "http://localhost:3000"
-);
+const FRONTEND_URL = (() => {
+  if (process.env.FRONTEND_URL) return process.env.FRONTEND_URL.replace(/\/$/, "");
+  if (process.env.REPLIT_DOMAINS) return `https://${process.env.REPLIT_DOMAINS.split(",")[0]}`;
+  if (process.env.NODE_ENV === "production") {
+    console.error("[stripe] FRONTEND_URL não configurado em produção! Redirects do Stripe vão falhar.");
+  }
+  return "http://localhost:3000";
+})();
 
 const ALLOWED_PLAN_TIERS = new Set(["pro", "ultra"]);
 
