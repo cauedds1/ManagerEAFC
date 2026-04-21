@@ -553,7 +553,7 @@ function ResultModal({
                     onClick={() => { setCustomName(false); setCompName(""); }}
                     className="text-xs text-white/30 hover:text-white/60 transition-colors px-2"
                   >
-                    ← {t.backToList}
+                    {t.backToList}
                   </button>
                 )}
               </div>
@@ -916,7 +916,7 @@ function DetailView({
     <div className="space-y-4 py-4">
       <div className="flex items-center gap-3">
         <button type="button" onClick={onBack} className="text-white/30 hover:text-white/70 transition-colors text-sm">
-          ← {t.backBtn}
+          {t.backBtn}
         </button>
       </div>
 

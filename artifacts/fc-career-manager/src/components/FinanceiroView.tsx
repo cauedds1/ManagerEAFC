@@ -190,7 +190,7 @@ export function FinanceiroView({ careerId, seasonId, transfers, season, isReadOn
       label: t.weeklyWages,
       value: snapshot.currentWageBill > 0 ? `€${snapshot.currentWageBill.toLocaleString(locale)}k` : "—",
       sub: settings.salaryBudget > 0
-        ? `${t.ofTotal.replace("{n}", `€${settings.salaryBudget.toLocaleString(locale)}k`)} ${lang === "pt" ? "máximo" : "max"}`
+        ? `${t.ofTotal.replace("{n}", `€${settings.salaryBudget.toLocaleString(locale)}k`)} ${t.wageMaxSuffix}`
         : t.budgetNotSet,
       color: settings.salaryBudget > 0 && snapshot.wageRoom < 0 ? "#f87171" : "#60a5fa",
       icon: "💼",
