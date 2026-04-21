@@ -274,57 +274,6 @@ function ParticleCanvas() {
   );
 }
 
-/* ─── Hero Mockup ────────────────────────────────────────── */
-function HeroMockup({ t }: { t: Record<string, string> }) {
-  const matches = [
-    { comp: "La Liga",  h: "Atlético",  hs: 0, a: "Barcelona", as: 3, r: t.mockupResultW, color: "#00e5a0" },
-    { comp: "La Liga",  h: "Barcelona", hs: 2, a: "Elche",     as: 0, r: t.mockupResultW, color: "#00e5a0" },
-    { comp: "UCL",      h: "Barcelona", hs: 3, a: "PSG",       as: 1, r: t.mockupResultW, color: "#00e5a0" },
-  ];
-  return (
-    <div style={{ background: "#1a0a12", borderRadius: 16, overflow: "hidden", border: "1px solid rgba(200,16,46,0.25)", boxShadow: "0 40px 100px rgba(0,0,0,0.8), 0 0 50px rgba(200,16,46,0.15)", animation: "floatMockup 6s ease-in-out infinite" }}>
-      <div style={{ background: "#220d17", padding: "10px 14px", display: "flex", alignItems: "center", gap: 10, borderBottom: "1px solid rgba(200,16,46,0.15)" }}>
-        <div style={{ width: 26, height: 26, background: "linear-gradient(135deg,#c8102e,#8b0a26)", borderRadius: 5, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={1.5} style={{ width: 14, height: 14 }}><circle cx="12" cy="12" r="9" /><path d="M12 3v18M3 12h18" /></svg>
-        </div>
-        <div>
-          <div style={{ color: "#f0f0ff", fontWeight: 700, fontSize: 12 }}>Barcelona</div>
-          <div style={{ color: "#8888aa", fontSize: 10 }}>{t.heroMockupSeason}</div>
-        </div>
-        <span style={{ marginLeft: "auto", background: "rgba(200,16,46,0.15)", border: "1px solid rgba(200,16,46,0.3)", color: "#c8102e", borderRadius: 20, padding: "2px 8px", fontSize: 9 }}>{t.heroMockupAnimated}</span>
-      </div>
-      <div style={{ display: "flex", gap: 0, padding: "0 14px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-        {[t.heroMockupTabPainel, t.heroMockupTabPartidas, t.heroMockupTabClube, t.heroMockupTabNoticias, t.heroMockupTabDiretoria].map((tab, i) => (
-          <div key={tab} style={{ padding: "7px 10px", fontSize: 9, whiteSpace: "nowrap", color: i === 0 ? "#c8102e" : "#555577", borderBottom: i === 0 ? "2px solid #c8102e" : "2px solid transparent" }}>{tab}</div>
-        ))}
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 5, padding: "10px 12px" }}>
-        {[{ l: t.heroMockupStatPartidas, v: "18" }, { l: t.heroMockupStatPos, v: "1º" }, { l: t.heroMockupStatElenco, v: "33" }, { l: t.heroMockupStatPontos, v: "51" }].map(c => (
-          <div key={c.l} style={{ background: "rgba(255,255,255,0.04)", borderRadius: 7, padding: "6px 8px", border: "1px solid rgba(200,16,46,0.1)" }}>
-            <div style={{ color: "#555577", fontSize: 8, marginBottom: 2 }}>{c.l}</div>
-            <div style={{ color: "#f0f0ff", fontWeight: 700, fontSize: 13, fontFamily: "JetBrains Mono, monospace" }}>{c.v}</div>
-          </div>
-        ))}
-      </div>
-      <div style={{ padding: "0 12px 12px" }}>
-        <div style={{ color: "#444466", fontSize: 8, letterSpacing: "0.1em", marginBottom: 6 }}>{t.heroMockupLastMatches}</div>
-        <div style={{ display: "flex", gap: 4 }}>
-          {matches.map((m, i) => (
-            <div key={i} style={{ flex: 1, background: "rgba(255,255,255,0.03)", borderRadius: 6, padding: "5px 6px", borderTop: `2px solid ${m.color}` }}>
-              <div style={{ color: "#444466", fontSize: 7, marginBottom: 3 }}>{m.comp}</div>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <span style={{ color: "#f0f0ff", fontWeight: 700, fontSize: 11, fontFamily: "JetBrains Mono, monospace" }}>{m.hs}</span>
-                <span style={{ color: "#333355", fontSize: 7 }}>–</span>
-                <span style={{ color: "#f0f0ff", fontWeight: 700, fontSize: 11, fontFamily: "JetBrains Mono, monospace" }}>{m.as}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 /* ─── Hero Reels Phone Mockup ───────────────────────────── */
 const REELS_CLIPS = [
   { src: "/reels/v1.mp4", club: "Chelsea FC",  desc: "Belo gol de fora da área", likes: "4.2K" },
