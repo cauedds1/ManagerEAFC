@@ -487,8 +487,11 @@ function AddPostModal({
     onClose();
   };
 
+  const isSubmittingRef = useRef(false);
+
   const handlePublishManual = () => {
-    if (!manContent.trim()) return;
+    if (isSubmittingRef.current || !manContent.trim()) return;
+    isSubmittingRef.current = true;
     const post: NewsPost = {
       id: generatePostId(),
       careerId: career.id,
@@ -1677,8 +1680,13 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
   };
 
   const handleSavePost = (post: NewsPost) => {
+    const existing = getPosts(seasonId);
+    if (existing.some((p) => p.id === post.id)) return;
     addPost(seasonId, post);
-    setPosts((prev) => [post, ...prev]);
+    setPosts((prev) => {
+      if (prev.some((p) => p.id === post.id)) return prev;
+      return [post, ...prev];
+    });
     if (allPlayers.length > 0 && (post.content || post.comments?.length)) {
       const criticised = scanPostForCriticism(post.content, post.comments ?? [], allPlayers);
       const allStats = getAllPlayerStats(seasonId);
