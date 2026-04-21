@@ -128,6 +128,7 @@ export function ReelsModal({ post, portalPhotos, customPortals, onClose }: Reels
   const videoRef = useRef<HTMLVideoElement>(null);
   const [liked, setLiked] = useState(false);
   const [muted, setMuted] = useState(true);
+  const [showComments, setShowComments] = useState(false);
 
   const customPortal = post.source === "custom" && post.customPortalId
     ? customPortals?.find(p => p.id === post.customPortalId) : undefined;
@@ -173,13 +174,22 @@ export function ReelsModal({ post, portalPhotos, customPortals, onClose }: Reels
     }
   };
 
+  const hasComments = post.comments.length > 0;
+
   const modal = (
     <div
       className="fixed inset-0 z-[400] flex"
-      style={{ background: "rgba(0,0,0,0.97)" }}
+      style={{
+        background: "rgba(0,0,0,0.72)",
+        backdropFilter: "blur(22px)",
+        WebkitBackdropFilter: "blur(22px)",
+      } as React.CSSProperties}
     >
-      <div className="relative flex-1 min-h-0 min-w-0 flex items-stretch sm:items-center sm:justify-center" style={{ background: "#000" }}>
-
+      {/* ── Video area ─────────────────────────────────────────────────── */}
+      <div
+        className="relative flex-1 min-h-0 min-w-0 flex items-stretch sm:items-center sm:justify-center"
+        style={{ background: "transparent" }}
+      >
         {/* Full-bleed on mobile; 9:16 portrait stage on desktop */}
         <style>{`.reels-stage { width: 100%; height: 100%; } @media (min-width: 640px) { .reels-stage { aspect-ratio: 9 / 16; width: auto; height: 100%; max-height: 100vh; flex-shrink: 0; } }`}</style>
         <div className="reels-stage relative" style={{ background: "#000" }}>
@@ -193,10 +203,11 @@ export function ReelsModal({ post, portalPhotos, customPortals, onClose }: Reels
             className="w-full h-full object-cover sm:object-contain"
             style={{ display: "block" }}
           />
+          {/* Mute button */}
           <button
             onClick={handleMuteToggle}
             className="absolute bottom-4 right-4 flex items-center justify-center rounded-full transition-all hover:bg-white/20 active:scale-90 z-10"
-            style={{ width: 36, height: 36, background: "rgba(0,0,0,0.55)", backdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,0.12)" }}
+            style={{ width: 36, height: 36, background: "rgba(0,0,0,0.55)", backdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,0.15)" }}
             aria-label={muted ? "Ativar som" : "Silenciar"}
           >
             {muted ? (
@@ -212,10 +223,11 @@ export function ReelsModal({ post, portalPhotos, customPortals, onClose }: Reels
           </button>
         </div>
 
+        {/* Close button */}
         <button
           onClick={onClose}
           className="absolute top-4 left-4 flex items-center justify-center rounded-full transition-all hover:bg-white/20 active:scale-90 z-10"
-          style={{ width: 38, height: 38, background: "rgba(0,0,0,0.55)", backdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,0.12)" }}
+          style={{ width: 38, height: 38, background: "rgba(0,0,0,0.55)", backdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,0.15)" }}
           aria-label="Fechar"
         >
           <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -223,7 +235,9 @@ export function ReelsModal({ post, portalPhotos, customPortals, onClose }: Reels
           </svg>
         </button>
 
+        {/* ── Mobile overlay (hidden on sm+) ─────────────────────────── */}
         <div className="absolute inset-0 pointer-events-none sm:hidden">
+          {/* Bottom gradient with post info */}
           <div
             className="absolute bottom-0 left-0 right-0 px-4 pb-5 pt-20 pointer-events-auto"
             style={{ background: "linear-gradient(to top, rgba(0,0,0,0.88) 0%, transparent 100%)" }}
@@ -237,50 +251,120 @@ export function ReelsModal({ post, portalPhotos, customPortals, onClose }: Reels
                 </svg>
               )}
             </div>
-            {post.title && (
-              <p className="text-white font-bold text-sm leading-snug mb-1">{post.title}</p>
-            )}
-            <p className="text-white/70 text-xs leading-relaxed line-clamp-3">{post.content}</p>
+            {post.title && <p className="text-white font-bold text-sm leading-snug mb-1">{post.title}</p>}
+            <p className="text-white/70 text-xs leading-relaxed line-clamp-2">{post.content}</p>
           </div>
 
+          {/* Floating right action buttons */}
           <div
-            className="absolute right-4 flex flex-col items-center gap-5 pointer-events-auto"
-            style={{ bottom: 120 }}
+            className="absolute right-3 flex flex-col items-center gap-5 pointer-events-auto"
+            style={{ bottom: 80 }}
           >
+            {/* Like */}
             <button
               onClick={() => setLiked(l => !l)}
               className="flex flex-col items-center gap-1 transition-all active:scale-90"
             >
-              <div className="w-11 h-11 rounded-full flex items-center justify-center" style={{ background: "rgba(0,0,0,0.5)" }}>
+              <div
+                className="w-11 h-11 rounded-full flex items-center justify-center"
+                style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,0.12)" }}
+              >
                 <span style={{ fontSize: 22 }}>{liked ? "❤️" : "🤍"}</span>
               </div>
-              <span className="text-white text-xs font-semibold">{formatCount(totalLikes)}</span>
+              <span className="text-white text-xs font-bold tabular-nums" style={{ textShadow: "0 1px 4px rgba(0,0,0,0.8)" }}>
+                {formatCount(totalLikes)}
+              </span>
             </button>
-            <button className="flex flex-col items-center gap-1">
-              <div className="w-11 h-11 rounded-full flex items-center justify-center" style={{ background: "rgba(0,0,0,0.5)" }}>
+
+            {/* Comments */}
+            <button
+              onClick={() => setShowComments(v => !v)}
+              className="flex flex-col items-center gap-1 transition-all active:scale-90"
+            >
+              <div
+                className="w-11 h-11 rounded-full flex items-center justify-center transition-colors"
+                style={{
+                  background: showComments ? "rgba(var(--club-primary-rgb),0.35)" : "rgba(0,0,0,0.6)",
+                  backdropFilter: "blur(8px)",
+                  border: showComments ? "1px solid rgba(var(--club-primary-rgb),0.5)" : "1px solid rgba(255,255,255,0.12)",
+                }}
+              >
                 <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                 </svg>
               </div>
-              <span className="text-white text-xs font-semibold">{formatCount(post.commentsCount)}</span>
+              <span className="text-white text-xs font-bold tabular-nums" style={{ textShadow: "0 1px 4px rgba(0,0,0,0.8)" }}>
+                {formatCount(post.commentsCount)}
+              </span>
             </button>
+
+            {/* Share */}
             <button className="flex flex-col items-center gap-1">
-              <div className="w-11 h-11 rounded-full flex items-center justify-center" style={{ background: "rgba(0,0,0,0.5)" }}>
+              <div
+                className="w-11 h-11 rounded-full flex items-center justify-center"
+                style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,0.12)" }}
+              >
                 <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
                 </svg>
               </div>
-              <span className="text-white text-xs font-semibold">{formatCount(post.sharesCount)}</span>
+              <span className="text-white text-xs font-bold tabular-nums" style={{ textShadow: "0 1px 4px rgba(0,0,0,0.8)" }}>
+                {formatCount(post.sharesCount)}
+              </span>
             </button>
           </div>
+
+          {/* Mobile comments panel — slides in from right when showComments */}
+          {showComments && hasComments && (
+            <div
+              className="absolute right-0 top-0 bottom-0 flex flex-col pointer-events-auto"
+              style={{
+                width: "72vw",
+                maxWidth: 320,
+                background: "rgba(10,10,18,0.96)",
+                backdropFilter: "blur(16px)",
+                WebkitBackdropFilter: "blur(16px)",
+                borderLeft: "1px solid rgba(255,255,255,0.1)",
+              } as React.CSSProperties}
+            >
+              <div
+                className="flex items-center justify-between px-4 py-3 flex-shrink-0"
+                style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}
+              >
+                <span className="text-white text-sm font-bold">Comentários</span>
+                <button
+                  onClick={() => setShowComments(false)}
+                  className="flex items-center justify-center rounded-full w-7 h-7 transition-colors hover:bg-white/10"
+                  style={{ color: "rgba(255,255,255,0.5)" }}
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto px-3 py-3 flex flex-col gap-4" style={{ scrollbarWidth: "thin", scrollbarColor: "rgba(255,255,255,0.1) transparent" }}>
+                {post.comments.map(c => <CommentRow key={c.id} comment={c} />)}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
+      {/* ── Desktop sidebar (hidden below sm) ─────────────────────────── */}
       <div
-        className="hidden sm:flex flex-col w-[360px] lg:w-[400px] flex-shrink-0"
-        style={{ background: "#09090f", borderLeft: "1px solid rgba(255,255,255,0.07)" }}
+        className="hidden sm:flex flex-col w-[340px] lg:w-[380px] flex-shrink-0"
+        style={{
+          background: "rgba(12,12,20,0.92)",
+          backdropFilter: "blur(16px)",
+          WebkitBackdropFilter: "blur(16px)",
+          borderLeft: "1px solid rgba(255,255,255,0.12)",
+        } as React.CSSProperties}
       >
-        <div className="flex items-center gap-3 px-4 py-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
+        {/* Source header */}
+        <div
+          className="flex items-center gap-3 px-4 py-4 flex-shrink-0"
+          style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}
+        >
           <SourceAvatar source={post.source} sourceName={post.sourceName} size={42} photoUrl={postPhotoUrl} />
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5">
@@ -294,7 +378,7 @@ export function ReelsModal({ post, portalPhotos, customPortals, onClose }: Reels
             <div className="flex items-center gap-2 mt-0.5">
               <span className="text-xs font-medium" style={{ color: cfg.color }}>{post.sourceHandle}</span>
               <span className="text-white/20 text-xs">·</span>
-              <span className="text-white/30 text-xs">{formatTimeAgo(post.createdAt)}</span>
+              <span className="text-white/40 text-xs">{formatTimeAgo(post.createdAt)}</span>
             </div>
           </div>
           <span
@@ -305,60 +389,75 @@ export function ReelsModal({ post, portalPhotos, customPortals, onClose }: Reels
           </span>
         </div>
 
-        <div className="flex-1 overflow-y-auto" style={{ scrollbarWidth: "thin", scrollbarColor: "rgba(255,255,255,0.1) transparent" }}>
-          <div className="px-4 pt-4 pb-3" style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-            <div className="flex gap-2.5">
-              <SourceAvatar source={post.source} sourceName={post.sourceName} size={32} photoUrl={postPhotoUrl} />
-              <div className="flex-1 min-w-0">
-                <span className="text-white text-xs font-bold mr-1.5">{post.sourceName}</span>
-                {post.title && (
-                  <span className="text-white font-bold text-xs mr-1.5">{post.title}</span>
-                )}
-                <span className="text-white/65 text-xs leading-relaxed whitespace-pre-line">{post.content}</span>
-                <p className="text-white/25 text-xs mt-2">{formatTimeAgo(post.createdAt)}</p>
-              </div>
+        {/* Post content */}
+        <div
+          className="px-4 pt-4 pb-3 flex-shrink-0"
+          style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
+        >
+          <div className="flex gap-2.5">
+            <SourceAvatar source={post.source} sourceName={post.sourceName} size={32} photoUrl={postPhotoUrl} />
+            <div className="flex-1 min-w-0">
+              <span className="text-white text-xs font-bold mr-1.5">{post.sourceName}</span>
+              {post.title && <span className="text-white font-bold text-xs mr-1.5">{post.title}</span>}
+              <span className="text-white/70 text-xs leading-relaxed whitespace-pre-line">{post.content}</span>
+              <p className="text-white/30 text-xs mt-2">{formatTimeAgo(post.createdAt)}</p>
             </div>
           </div>
-
-          {post.comments.length > 0 && (
-            <div className="px-4 py-3 flex flex-col gap-4">
-              {post.comments.map(c => <CommentRow key={c.id} comment={c} />)}
-            </div>
-          )}
         </div>
 
-        <div style={{ borderTop: "1px solid rgba(255,255,255,0.07)" }}>
-          <div className="flex items-center gap-5 px-4 py-3">
+        {/* Comments area — shown when showComments is true */}
+        {showComments && hasComments && (
+          <div
+            className="flex-1 overflow-y-auto px-4 py-3 flex flex-col gap-4"
+            style={{ scrollbarWidth: "thin", scrollbarColor: "rgba(255,255,255,0.1) transparent" }}
+          >
+            {post.comments.map(c => <CommentRow key={c.id} comment={c} />)}
+          </div>
+        )}
+
+        {/* Spacer when comments hidden */}
+        {!showComments && <div className="flex-1" />}
+
+        {/* Engagement bar */}
+        <div
+          className="flex-shrink-0"
+          style={{ borderTop: "1px solid rgba(255,255,255,0.1)" }}
+        >
+          <div className="flex items-center gap-4 px-4 py-3.5">
+            {/* Like */}
             <button
               onClick={() => setLiked(l => !l)}
-              className="flex items-center gap-1.5 transition-all duration-200 active:scale-90"
-              style={{ color: liked ? "#f87171" : "rgba(255,255,255,0.5)" }}
+              className="flex items-center gap-2 transition-all duration-200 active:scale-90"
+              style={{ color: liked ? "#f87171" : "rgba(255,255,255,0.75)" }}
             >
               <span style={{ fontSize: 20 }}>{liked ? "❤️" : "🤍"}</span>
-              <span className="text-sm font-semibold tabular-nums">{formatCount(totalLikes)}</span>
+              <span className="text-sm font-bold tabular-nums">{formatCount(totalLikes)}</span>
             </button>
 
+            {/* Comments toggle */}
             <button
-              className="flex items-center gap-1.5 transition-colors duration-200"
-              style={{ color: "rgba(255,255,255,0.5)" }}
+              onClick={() => setShowComments(v => !v)}
+              className="flex items-center gap-2 transition-all duration-200 active:scale-90"
+              style={{ color: showComments ? "var(--club-primary)" : "rgba(255,255,255,0.75)" }}
             >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg className="w-5 h-5" fill={showComments ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
               </svg>
-              <span className="text-sm font-semibold tabular-nums">{formatCount(post.commentsCount)}</span>
+              <span className="text-sm font-bold tabular-nums">{formatCount(post.commentsCount)}</span>
             </button>
 
+            {/* Share */}
             <button
-              className="flex items-center gap-1.5 transition-colors duration-200"
-              style={{ color: "rgba(255,255,255,0.5)" }}
+              className="flex items-center gap-2 transition-colors duration-200"
+              style={{ color: "rgba(255,255,255,0.75)" }}
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
               </svg>
-              <span className="text-sm font-semibold tabular-nums">{formatCount(post.sharesCount)}</span>
+              <span className="text-sm font-bold tabular-nums">{formatCount(post.sharesCount)}</span>
             </button>
 
-            <div className="ml-auto flex items-center gap-2 text-xs" style={{ color: "rgba(255,255,255,0.2)" }}>
+            <div className="ml-auto flex items-center gap-1.5 text-xs" style={{ color: "rgba(255,255,255,0.25)" }}>
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" />
               </svg>
