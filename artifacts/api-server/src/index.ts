@@ -39,39 +39,49 @@ async function initStripe() {
     return;
   }
 
+  try {
+    logger.info("Initializing Stripe schema...");
+    const { runMigrations: runStripeMigrations } = await import("stripe-replit-sync");
+    await runStripeMigrations({ databaseUrl });
+    logger.info("Stripe schema ready");
+  } catch (err) {
+    logger.warn({ err }, "Stripe schema migration failed (non-fatal)");
+  }
+
   const isReplit = !!process.env.REPLIT_DOMAINS;
 
-  if (isReplit) {
-    try {
-      logger.info("Initializing Stripe schema (Replit managed)...");
-      const { runMigrations: runStripeMigrations } = await import("stripe-replit-sync");
-      await runStripeMigrations({ databaseUrl });
-      logger.info("Stripe schema ready");
+  try {
+    const stripeSync = await getStripeSync();
 
-      const stripeSync = await getStripeSync();
-      const webhookBaseUrl = `https://${process.env.REPLIT_DOMAINS!.split(",")[0]}`;
+    const webhookBaseUrl = isReplit
+      ? `https://${process.env.REPLIT_DOMAINS!.split(",")[0]}`
+      : process.env.RAILWAY_PUBLIC_DOMAIN
+        ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+        : process.env.PUBLIC_DOMAIN
+          ? `https://${process.env.PUBLIC_DOMAIN}`
+          : null;
 
+    if (webhookBaseUrl) {
       logger.info({ webhookBaseUrl }, "Setting up managed Stripe webhook...");
       await stripeSync.findOrCreateManagedWebhook(`${webhookBaseUrl}/api/stripe/webhook`);
       logger.info("Stripe webhook configured");
-
-      stripeSync.syncBackfill()
-        .then(() => logger.info("Stripe data backfill complete"))
-        .catch((err) => logger.warn({ err }, "Stripe backfill error (non-fatal)"));
-    } catch (err) {
-      logger.warn({ err }, "Stripe initialization failed (non-fatal) — check Stripe integration is connected");
+    } else {
+      const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+      if (!webhookSecret) {
+        logger.warn(
+          "No public domain configured and STRIPE_WEBHOOK_SECRET not set — webhooks will be rejected. " +
+          "Set RAILWAY_PUBLIC_DOMAIN or PUBLIC_DOMAIN for automatic webhook setup, or add STRIPE_WEBHOOK_SECRET to your environment."
+        );
+      } else {
+        logger.info("Stripe webhook secret configured (manual mode)");
+      }
     }
-    return;
-  }
 
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-  if (!webhookSecret) {
-    logger.warn(
-      "STRIPE_WEBHOOK_SECRET not set — webhooks will be rejected. " +
-      "Register your webhook in the Stripe dashboard and add STRIPE_WEBHOOK_SECRET to your environment."
-    );
-  } else {
-    logger.info("Stripe webhook secret configured (standard mode)");
+    stripeSync.syncBackfill()
+      .then(() => logger.info("Stripe data backfill complete"))
+      .catch((err) => logger.warn({ err }, "Stripe backfill error (non-fatal)"));
+  } catch (err) {
+    logger.warn({ err }, "Stripe initialization failed (non-fatal) — check Stripe credentials are configured");
   }
 }
 
