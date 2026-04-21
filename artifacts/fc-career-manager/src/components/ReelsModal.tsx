@@ -127,7 +127,7 @@ interface ReelsModalProps {
 export function ReelsModal({ post, portalPhotos, customPortals, onClose }: ReelsModalProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [liked, setLiked] = useState(false);
-  const [muted, setMuted] = useState(false);
+  const [muted, setMuted] = useState(true);
 
   const customPortal = post.source === "custom" && post.customPortalId
     ? customPortals?.find(p => p.id === post.customPortalId) : undefined;
@@ -171,47 +171,57 @@ export function ReelsModal({ post, portalPhotos, customPortals, onClose }: Reels
       {/* ── VIDEO SIDE ──────────────────────────────── */}
       <div className="relative flex-1 flex items-center justify-center min-h-0 min-w-0" style={{ background: "#000" }}>
 
-        {/* Video */}
-        <video
-          ref={videoRef}
-          src={post.videoUrl}
-          autoPlay
-          loop
-          playsInline
-          muted={muted}
-          className="max-w-full max-h-full"
-          style={{ display: "block", objectFit: "contain", maxHeight: "100vh", maxWidth: "100%" }}
-        />
+        {/* 9:16 vertical stage — letter-boxes horizontal videos within a fixed portrait frame */}
+        <div
+          className="relative flex-shrink-0"
+          style={{
+            aspectRatio: "9 / 16",
+            height: "100%",
+            maxHeight: "100vh",
+            maxWidth: "100%",
+            background: "#000",
+          }}
+        >
+          <video
+            ref={videoRef}
+            src={post.videoUrl}
+            autoPlay
+            loop
+            playsInline
+            muted={muted}
+            style={{ width: "100%", height: "100%", display: "block", objectFit: "contain" }}
+          />
 
-        {/* Close button (always visible on video side) */}
+          {/* Mute button — inside the 9:16 stage, bottom-right */}
+          <button
+            onClick={handleMuteToggle}
+            className="absolute bottom-4 right-4 flex items-center justify-center rounded-full transition-all hover:bg-white/20 active:scale-90"
+            style={{ width: 36, height: 36, background: "rgba(0,0,0,0.55)", backdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,0.12)" }}
+            aria-label={muted ? "Ativar som" : "Silenciar"}
+          >
+            {muted ? (
+              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+              </svg>
+            ) : (
+              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.536 8.464a5 5 0 010 7.072M12 6v12m-3.536-9.536a5 5 0 000 7.072M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+              </svg>
+            )}
+          </button>
+        </div>
+
+        {/* Close button — outside the stage, top-left of the full video side */}
         <button
           onClick={onClose}
-          className="absolute top-4 left-4 flex items-center justify-center rounded-full transition-all hover:bg-white/20 active:scale-90"
+          className="absolute top-4 left-4 flex items-center justify-center rounded-full transition-all hover:bg-white/20 active:scale-90 z-10"
           style={{ width: 38, height: 38, background: "rgba(0,0,0,0.55)", backdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,0.12)" }}
           aria-label="Fechar"
         >
           <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
           </svg>
-        </button>
-
-        {/* Mute button */}
-        <button
-          onClick={handleMuteToggle}
-          className="absolute bottom-4 right-4 flex items-center justify-center rounded-full transition-all hover:bg-white/20 active:scale-90"
-          style={{ width: 36, height: 36, background: "rgba(0,0,0,0.55)", backdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,0.12)" }}
-          aria-label={muted ? "Ativar som" : "Silenciar"}
-        >
-          {muted ? (
-            <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-              <path strokeLinecap="round" strokeLinejoin="round" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
-            </svg>
-          ) : (
-            <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15.536 8.464a5 5 0 010 7.072M12 6v12m-3.536-9.536a5 5 0 000 7.072M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-            </svg>
-          )}
         </button>
 
         {/* ── MOBILE OVERLAY (hidden on sm+) ──────── */}
