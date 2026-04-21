@@ -102,7 +102,11 @@ function ConfirmDeleteModal({
       style={{ background: "rgba(0,0,0,0.72)" }}
       onClick={() => { if (!deleting) onCancel(); }}
     >
-      <div className="glass rounded-2xl p-6 max-w-sm w-full flex flex-col gap-4" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="rounded-2xl p-6 max-w-sm w-full flex flex-col gap-4"
+        style={{ background: "rgb(13,13,20)", border: "1px solid rgba(255,255,255,0.1)" }}
+        onClick={(e) => e.stopPropagation()}
+      >
         <p className="text-white font-bold text-base">Excluir momento?</p>
         <p className="text-white/60 text-sm leading-relaxed">
           "<span className="text-white/80">{title}</span>" será removido permanentemente.
@@ -154,7 +158,11 @@ function DetailModal({
   return createPortal(
     <>
       <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.85)" }} onClick={onClose}>
-        <div className="glass rounded-2xl overflow-hidden max-w-2xl w-full max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="rounded-2xl overflow-hidden max-w-2xl w-full max-h-[90vh] flex flex-col"
+          style={{ background: "rgb(13,13,20)", border: "1px solid rgba(255,255,255,0.1)" }}
+          onClick={(e) => e.stopPropagation()}
+        >
           <div className="relative flex-shrink-0">
             {isVideo && momento.videoUrl ? (
               <video
@@ -566,7 +574,13 @@ function AddMomentoModal({
   return createPortal(
     <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center p-0 sm:p-4" style={{ background: "rgba(0,0,0,0.75)" }} onClick={onClose}>
       <div
-        className="glass rounded-t-2xl sm:rounded-2xl w-full sm:max-w-lg flex flex-col max-h-[92vh] overflow-hidden"
+        className="rounded-t-2xl sm:rounded-2xl w-full sm:max-w-lg flex flex-col max-h-[92vh] overflow-hidden"
+        style={{
+          background: "rgb(13,13,20)",
+          border: "1px solid rgba(255,255,255,0.1)",
+          backdropFilter: "blur(20px)",
+          WebkitBackdropFilter: "blur(20px)",
+        }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-5 pt-5 pb-3 flex-shrink-0">
@@ -607,8 +621,8 @@ function AddMomentoModal({
               </svg>
               Vídeo
               {!canUseVideo ? (
-                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md ml-0.5" style={{ background: "rgba(124,92,252,0.25)", color: "#a78bfa" }}>
-                  PRO
+                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md ml-0.5" style={{ background: "rgba(245,158,11,0.22)", color: "#fbbf24" }}>
+                  Pro/Ultra
                 </span>
               ) : (
                 <span
@@ -616,10 +630,10 @@ function AddMomentoModal({
                   style={{
                     background: videoCount >= planLimits.maxVideoMomentos
                       ? "rgba(239,68,68,0.2)"
-                      : "rgba(255,255,255,0.08)",
+                      : "rgba(16,185,129,0.15)",
                     color: videoCount >= planLimits.maxVideoMomentos
                       ? "#f87171"
-                      : "rgba(255,255,255,0.4)",
+                      : "#34d399",
                   }}
                 >
                   {videoCount}/{planLimits.maxVideoMomentos}
@@ -681,8 +695,8 @@ function AddMomentoModal({
                     </svg>
                   </div>
                   <div>
-                    <p className="text-white/80 font-semibold text-sm">Importação de vídeo apenas no plano Pro</p>
-                    <p className="text-white/40 text-xs mt-1">Faça upgrade para gravar gols, lances e clipes da sua carreira.</p>
+                    <p className="text-white/80 font-semibold text-sm">Vídeos disponíveis nos planos Pro e Ultra</p>
+                    <p className="text-white/40 text-xs mt-1">Faça upgrade para registrar gols, lances e clipes da sua carreira.</p>
                   </div>
                 </div>
               ) : (
