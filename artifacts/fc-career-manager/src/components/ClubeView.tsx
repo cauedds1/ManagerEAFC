@@ -36,6 +36,7 @@ interface ClubeViewProps {
   squadError: boolean;
   allPlayers: SquadPlayer[];
   historicalPlayers?: SquadPlayer[];
+  formerPlayers?: SquadPlayer[];
   transfers: TransferRecord[];
   onRefresh: () => void;
   onOpenSettings: () => void;
@@ -81,6 +82,7 @@ export function ClubeView({
   squadError,
   allPlayers,
   historicalPlayers,
+  formerPlayers,
   transfers,
   onRefresh,
   onOpenSettings,
@@ -163,6 +165,8 @@ export function ClubeView({
             squadLoading={squadLoading}
             squadError={squadError}
             allPlayers={allPlayers}
+            transfers={transfers}
+            formerPlayers={formerPlayers}
             onRefresh={onRefresh}
             onOpenSettings={onOpenSettings}
             onOverridesUpdated={onOverridesUpdated}

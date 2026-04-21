@@ -1401,6 +1401,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
             squadError={squadError}
             allPlayers={elencoPlayers}
             historicalPlayers={allTimeCareerPlayers}
+            formerPlayers={formerPlayers}
             transfers={transfers}
             onRefresh={handleRefreshSquad}
             onOpenSettings={() => setActiveTab("configuracoes")}

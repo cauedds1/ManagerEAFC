@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import type { SquadResult, SquadPlayer, PositionPtBr, PositionGroup } from "@/lib/squadCache";
 import { migratePositionOverride, PT_BR_TO_POSITION } from "@/lib/squadCache";
 import type { PlayerOverride } from "@/types/playerStats";
+import type { TransferRecord } from "@/types/transfer";
 import { getAllPlayerOverrides } from "@/lib/playerStatsStorage";
 import {
   getCustomPlayers,
@@ -195,7 +196,7 @@ function PlayerRow({
   );
 }
 
-type SquadTab = "pitch" | "list";
+type SquadTab = "pitch" | "list" | "exits";
 
 interface ElencoViewProps {
   careerId: string;
@@ -205,6 +206,8 @@ interface ElencoViewProps {
   squadLoading: boolean;
   squadError: boolean;
   allPlayers: SquadPlayer[];
+  transfers?: TransferRecord[];
+  formerPlayers?: SquadPlayer[];
   onRefresh: () => void;
   onOpenSettings: () => void;
   onOverridesUpdated?: () => void;
@@ -222,6 +225,8 @@ export function ElencoView({
   squadLoading,
   squadError,
   allPlayers,
+  transfers,
+  formerPlayers,
   onRefresh,
   onOpenSettings,
   onOverridesUpdated,
@@ -248,6 +253,46 @@ export function ElencoView({
   const importInputRef = useRef<HTMLInputElement>(null);
 
   const hiddenSet = useMemo(() => new Set(hiddenPlayerIds), [hiddenPlayerIds]);
+
+  type ExitEntry = { player: SquadPlayer; reason: string; date: number };
+  const exitsList = useMemo<ExitEntry[]>(() => {
+    const list: ExitEntry[] = [];
+    const seenIds = new Set<number>();
+
+    for (const t of (transfers ?? [])) {
+      if (t.type === "venda") {
+        seenIds.add(t.playerId);
+        list.push({
+          player: { id: t.playerId, name: t.playerName, age: t.playerAge, position: PT_BR_TO_POSITION[t.playerPositionPtBr] ?? "Midfielder", positionPtBr: t.playerPositionPtBr, photo: t.playerPhoto ?? "", number: t.shirtNumber },
+          reason: "Vendido",
+          date: t.transferredAt,
+        });
+      } else if (t.type === "emprestimo" && t.loanDirection === "saida" && !t.loanEnded) {
+        seenIds.add(t.playerId);
+        list.push({
+          player: { id: t.playerId, name: t.playerName, age: t.playerAge, position: PT_BR_TO_POSITION[t.playerPositionPtBr] ?? "Midfielder", positionPtBr: t.playerPositionPtBr, photo: t.playerPhoto ?? "", number: t.shirtNumber },
+          reason: "Emprestado",
+          date: t.transferredAt,
+        });
+      }
+    }
+
+    for (const p of (formerPlayers ?? [])) {
+      if (seenIds.has(p.id)) continue;
+      if (hiddenSet.has(p.id)) {
+        seenIds.add(p.id);
+        list.push({ player: p, reason: "Removido do elenco", date: 0 });
+      } else if (p.id < 0) {
+        const stillActive = customPlayers.some((cp) => cp.id === p.id);
+        if (!stillActive) {
+          seenIds.add(p.id);
+          list.push({ player: p, reason: "Removido do elenco", date: 0 });
+        }
+      }
+    }
+
+    return list.sort((a, b) => b.date - a.date);
+  }, [transfers, formerPlayers, hiddenSet, customPlayers]);
 
   const mergedPlayers = useMemo<SquadPlayer[]>(
     () => [...allPlayers, ...customPlayers].filter((p) => !hiddenSet.has(p.id)),
@@ -608,17 +653,25 @@ export function ElencoView({
                 </button>
               )}
               <div className="flex rounded-lg p-0.5" style={{ background: "rgba(255,255,255,0.04)" }}>
-                {(["pitch", "list"] as SquadTab[]).map((t) => (
+                {(["pitch", "list", "exits"] as SquadTab[]).map((t) => (
                   <button
                     key={t}
                     onClick={() => setTab(t)}
-                    className="px-3 py-1.5 rounded-md text-xs font-semibold transition-all duration-200"
+                    className="px-3 py-1.5 rounded-md text-xs font-semibold transition-all duration-200 flex items-center gap-1.5"
                     style={{
-                      background: tab === t ? "rgba(var(--club-primary-rgb),0.15)" : "transparent",
-                      color: tab === t ? "var(--club-primary)" : "rgba(255,255,255,0.35)",
+                      background: tab === t ? (t === "exits" ? "rgba(248,113,113,0.12)" : "rgba(var(--club-primary-rgb),0.15)") : "transparent",
+                      color: tab === t ? (t === "exits" ? "#f87171" : "var(--club-primary)") : "rgba(255,255,255,0.35)",
                     }}
                   >
-                    {t === "pitch" ? "Campo" : "Lista"}
+                    {t === "pitch" ? "Campo" : t === "list" ? "Lista" : "Saídas"}
+                    {t === "exits" && exitsList.length > 0 && (
+                      <span
+                        className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+                        style={{ background: tab === "exits" ? "rgba(248,113,113,0.2)" : "rgba(248,113,113,0.15)", color: "#f87171" }}
+                      >
+                        {exitsList.length}
+                      </span>
+                    )}
                   </button>
                 ))}
               </div>
@@ -918,6 +971,75 @@ export function ElencoView({
               )}
             </div>
           </div>
+        </div>
+      ) : tab === "exits" ? (
+        <div className="px-4 sm:px-6 pb-6">
+          {exitsList.length === 0 ? (
+            <div className="flex flex-col items-center justify-center gap-3 py-20">
+              <svg className="w-10 h-10 opacity-20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+              <p className="text-white/25 text-sm font-medium">Nenhuma saída registrada</p>
+              <p className="text-white/15 text-xs text-center max-w-xs">Jogadores vendidos, emprestados ou removidos do elenco aparecerão aqui.</p>
+            </div>
+          ) : (
+            <div className="mt-2">
+              <p className="text-white/25 text-xs font-semibold tracking-widest uppercase mb-3">
+                Saídas ({exitsList.length})
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                {exitsList.map(({ player, reason }) => {
+                  const badgeColors: Record<string, { bg: string; text: string; icon: string }> = {
+                    "Vendido":           { bg: "rgba(34,197,94,0.15)",   text: "#4ade80", icon: "€" },
+                    "Emprestado":        { bg: "rgba(251,191,36,0.15)",  text: "#fbbf24", icon: "↑" },
+                    "Removido do elenco":{ bg: "rgba(248,113,113,0.15)", text: "#f87171", icon: "✕" },
+                  };
+                  const badge = badgeColors[reason] ?? { bg: "rgba(255,255,255,0.08)", text: "rgba(255,255,255,0.4)", icon: "–" };
+                  return (
+                    <div
+                      key={`exit-${player.id}`}
+                      className="flex items-center gap-3 rounded-2xl px-3 py-2.5"
+                      style={{
+                        background: "rgba(255,255,255,0.03)",
+                        border: "1px solid rgba(255,255,255,0.06)",
+                        opacity: 0.72,
+                      }}
+                    >
+                      {player.photo ? (
+                        <img
+                          src={player.photo}
+                          alt={player.name}
+                          className="w-9 h-9 rounded-full object-cover flex-shrink-0"
+                          style={{ filter: "grayscale(40%)" }}
+                          onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                        />
+                      ) : (
+                        <div
+                          className="w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center text-white/20 text-sm font-bold"
+                          style={{ background: "rgba(255,255,255,0.06)" }}
+                        >
+                          {player.name.charAt(0)}
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-white/60 text-sm font-semibold truncate leading-tight">{player.name}</p>
+                        <p className="text-white/30 text-xs truncate">
+                          {player.positionPtBr ?? player.position}
+                          {player.age ? ` · ${player.age} anos` : ""}
+                        </p>
+                      </div>
+                      <span
+                        className="text-[10px] font-bold px-2 py-1 rounded-full flex-shrink-0 whitespace-nowrap"
+                        style={{ background: badge.bg, color: badge.text }}
+                      >
+                        {badge.icon} {reason}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         <div className="px-4 sm:px-6 pb-6">
