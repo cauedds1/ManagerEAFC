@@ -1,0 +1,55 @@
+GET /stripe/products-with-plan error: _DrizzleQueryError: Failed query: 
+        SELECT
+          pr.metadata->>'planTier' AS plan_tier,
+          p.id AS price_id,
+          p.currency
+          p.unit_amount,
+        FROM stripe.products pr
+        JOIN stripe.prices p ON p.product = pr.id AND p.active = true
+    '      ',
+        WHERE pr.active = true
+    code: '42P01',
+  params: [],
+    '          p.currency\n' +
+        ORDER BY p.unit_amount ASC
+          AND pr.metadata->>'planTier' IS NOT NULL
+      at async <anonymous> (/app/src/routes/stripe.ts:171:20) {
+    length: 115,
+    detail: undefined,
+  cause: error: relation "stripe.products" does not exist
+      
+    '        FROM stripe.products pr\n' +
+      at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    severity: 'ERROR',
+      at <anonymous> (/node_modules/.pnpm/pg-pool@3.13.0_pg@8.20.0/node_modules/pg-pool/index.js:45:11)
+params: 
+    '        JOIN stripe.prices p ON p.product = pr.id AND p.active = true\n' +
+    at NodePgPreparedQuery.queryWithCache (/node_modules/.pnpm/drizzle-orm@0.45.1_@types+pg@8.18.0_pg@8.20.0/node_modules/src/pg-core/session.ts:73:11)
+      at async <anonymous> (/node_modules/.pnpm/drizzle-orm@0.45.1_@types+pg@8.18.0_pg@8.20.0/node_modules/src/node-postgres/session.ts:149:14)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+      at async NodePgPreparedQuery.queryWithCache (/node_modules/.pnpm/drizzle-orm@0.45.1_@types+pg@8.18.0_pg@8.20.0/node_modules/src/pg-core/session.ts:71:12)
+    '        WHERE pr.active = true\n' +
+    at async <anonymous> (/app/src/routes/stripe.ts:171:20) {
+  query: '\n' +
+    "          AND pr.metadata->>'planTier' IS NOT NULL\n" +
+    hint: undefined,
+    '        SELECT\n' +
+    '        ORDER BY p.unit_amount ASC\n' +
+    "          pr.metadata->>'planTier' AS plan_tier,\n" +
+    position: '153',
+    '          p.id AS price_id,\n' +
+    internalPosition: undefined,
+    '          p.unit_amount,\n' +
+    internalQuery: undefined,
+    where: undefined,
+    schema: undefined,
+    table: undefined,
+    column: undefined,
+    dataType: undefined,
+    constraint: undefined,
+    file: 'parse_relation.c',
+    line: '1445',
+    routine: 'parserOpenTable'
+  }
+}
+request completed
