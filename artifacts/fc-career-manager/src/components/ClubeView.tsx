@@ -161,6 +161,7 @@ export function ClubeView({
         {sub === "elenco" && (
           <ElencoView
             careerId={careerId}
+            seasonId={seasonId}
             squad={squad}
             squadLoading={squadLoading}
             squadError={squadError}

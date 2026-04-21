@@ -8,6 +8,8 @@ import { getAllPlayerOverrides } from "@/lib/playerStatsStorage";
 import {
   getCustomPlayers,
   addCustomPlayer,
+  getExitSeasonMap,
+  saveExitSeasonId,
   removeCustomPlayer,
   getHiddenPlayerIds,
   addHiddenPlayerId,
@@ -200,6 +202,7 @@ type SquadTab = "pitch" | "list" | "exits";
 
 interface ElencoViewProps {
   careerId: string;
+  seasonId?: string;
   clubName?: string;
   teamId?: number;
   squad: SquadResult | null;
@@ -221,6 +224,7 @@ interface ElencoViewProps {
 
 export function ElencoView({
   careerId,
+  seasonId,
   squad,
   squadLoading,
   squadError,
@@ -277,22 +281,27 @@ export function ElencoView({
       }
     }
 
-    for (const p of (formerPlayers ?? [])) {
-      if (seenIds.has(p.id)) continue;
-      if (hiddenSet.has(p.id)) {
-        seenIds.add(p.id);
-        list.push({ player: p, reason: "Removido do elenco", date: 0 });
-      } else if (p.id < 0) {
-        const stillActive = customPlayers.some((cp) => cp.id === p.id);
-        if (!stillActive) {
+    if (seasonId) {
+      const exitSeasonMap = getExitSeasonMap(careerId);
+      for (const p of (formerPlayers ?? [])) {
+        if (seenIds.has(p.id)) continue;
+        const exitSeason = exitSeasonMap[String(p.id)];
+        if (exitSeason !== seasonId) continue;
+        if (hiddenSet.has(p.id)) {
           seenIds.add(p.id);
           list.push({ player: p, reason: "Removido do elenco", date: 0 });
+        } else if (p.id < 0) {
+          const stillActive = customPlayers.some((cp) => cp.id === p.id);
+          if (!stillActive) {
+            seenIds.add(p.id);
+            list.push({ player: p, reason: "Removido do elenco", date: 0 });
+          }
         }
       }
     }
 
     return list.sort((a, b) => b.date - a.date);
-  }, [transfers, formerPlayers, hiddenSet, customPlayers]);
+  }, [transfers, formerPlayers, hiddenSet, customPlayers, seasonId, careerId]);
 
   const mergedPlayers = useMemo<SquadPlayer[]>(
     () => [...allPlayers, ...customPlayers].filter((p) => !hiddenSet.has(p.id)),
@@ -309,6 +318,7 @@ export function ElencoView({
       ...(posOvr ? { positionPtBr: posOvr, position: PT_BR_TO_POSITION[posOvr] ?? player.position } : {}),
     };
     addFormerPlayer(careerId, resolvedPlayer);
+    if (seasonId) saveExitSeasonId(careerId, player.id, seasonId);
 
     if (player.id < 0) {
       removeCustomPlayer(careerId, player.id);

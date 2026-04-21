@@ -61,3 +61,18 @@ export function removeCustomPlayer(careerId: string, playerId: number): void {
 export function generateCustomPlayerId(): number {
   return -(Date.now() + Math.floor(Math.random() * 10_000));
 }
+
+function exitSeasonKey(careerId: string): string {
+  return `fc-career-manager-exit-season-${careerId}`;
+}
+
+export function getExitSeasonMap(careerId: string): Record<string, string> {
+  return sessionGet<Record<string, string>>(exitSeasonKey(careerId)) ?? {};
+}
+
+export function saveExitSeasonId(careerId: string, playerId: number, seasonId: string): void {
+  const map = getExitSeasonMap(careerId);
+  map[String(playerId)] = seasonId;
+  sessionSet(exitSeasonKey(careerId), map);
+  void putCareerData(careerId, "exitSeasonMap", map);
+}

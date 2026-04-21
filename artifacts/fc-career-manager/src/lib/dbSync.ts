@@ -26,6 +26,7 @@ function compResultsKey(cid: string) { return `fc-cm-comp-results-${cid}`; }
 function customPlayersKey(cid: string) { return `fc-career-manager-custom-players-${cid}`; }
 function formerPlayersKey(cid: string) { return `fc-career-manager-former-players-${cid}`; }
 function hiddenKey(cid: string) { return `fc-career-manager-hidden-players-${cid}`; }
+function exitSeasonKey(cid: string) { return `fc-career-manager-exit-season-${cid}`; }
 
 function getLocal<T>(key: string): T | null {
   try {
@@ -116,6 +117,7 @@ export async function syncCareerFromDb(careerId: string): Promise<void> {
   if (data.customPlayers !== undefined) sessionSet(customPlayersKey(careerId), data.customPlayers);
   if (data.formerPlayers !== undefined) sessionSet(formerPlayersKey(careerId), data.formerPlayers);
   if (data.hiddenPlayerIds !== undefined) sessionSet(hiddenKey(careerId), data.hiddenPlayerIds);
+  if (data.exitSeasonMap !== undefined) sessionSet(exitSeasonKey(careerId), data.exitSeasonMap);
 
   for (const [key, value] of Object.entries(data)) {
     if (key.startsWith("conv_")) {
@@ -157,6 +159,8 @@ async function migrateCareerToDb(careerId: string): Promise<void> {
   if (customPlayers) { sessionSet(customPlayersKey(careerId), customPlayers); tasks.push(putCareerData(careerId, "customPlayers", customPlayers)); }
   if (formerPlayers) { sessionSet(formerPlayersKey(careerId), formerPlayers); tasks.push(putCareerData(careerId, "formerPlayers", formerPlayers)); }
   if (hiddenPlayerIds) { sessionSet(hiddenKey(careerId), hiddenPlayerIds); tasks.push(putCareerData(careerId, "hiddenPlayerIds", hiddenPlayerIds)); }
+  const exitSeasonMapRaw = getLocal<Record<string, string>>(exitSeasonKey(careerId));
+  if (exitSeasonMapRaw) { sessionSet(exitSeasonKey(careerId), exitSeasonMapRaw); tasks.push(putCareerData(careerId, "exitSeasonMap", exitSeasonMapRaw)); }
 
   const allKeys = Object.keys(localStorage);
   const convPrefix = `fc-diretoria-conv-${careerId}-`;
