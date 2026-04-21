@@ -387,7 +387,7 @@ function AddPostModal({
       return;
     }
     if (file.size > MAX_MB * 1024 * 1024) {
-      setVideoUploadError(`Arquivo muito grande. Máximo: ${MAX_MB} MB.`);
+      setVideoUploadError(tModal.videoFileTooLarge.replace("{max}", String(MAX_MB)));
       return;
     }
     setVideoUploadState("uploading");
@@ -414,7 +414,7 @@ function AddPostModal({
             reject(new Error(errMsg));
           }
         };
-        xhr.onerror = () => reject(new Error("Erro de rede no upload."));
+        xhr.onerror = () => reject(new Error(tModal.videoNetworkError));
         xhr.open("POST", "/api/storage/uploads/video?folder=noticias-video");
         xhr.setRequestHeader("Content-Type", file.type);
         if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
@@ -426,7 +426,7 @@ function AddPostModal({
       setVideoUploadState("done");
     } catch (err) {
       setVideoUploadState("error");
-      setVideoUploadError(err instanceof Error ? err.message : "Upload falhou. Tente novamente.");
+      setVideoUploadError(err instanceof Error ? err.message : tModal.videoUploadFailed);
     }
   };
 
@@ -517,8 +517,8 @@ function AddPostModal({
         {
           id: generateCommentId(),
           username: "@torcedordigital",
-          displayName: "Torcedor Digital",
-          content: "Que notícia! 🔥🔥",
+          displayName: tModal.fanDisplayName,
+          content: tModal.fanDefaultComment,
           likes: 34,
           personality: "otimista",
           createdAt: Date.now() - 60_000,
@@ -708,7 +708,7 @@ function AddPostModal({
                       <button
                         onClick={() => setAttachedMatchId(null)}
                         className="text-white/30 hover:text-white/60 transition-colors flex-shrink-0"
-                        title="Remover partida"
+                        title={tModal.removeMatch}
                       >
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -825,7 +825,7 @@ function AddPostModal({
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
                     </svg>
-                    Adicionar foto ao post
+                    {tModal.photoAddToPost}
                   </button>
                 )}
                 {imageError && (
@@ -850,7 +850,7 @@ function AddPostModal({
                     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                     </svg>
-                    Desbloqueie vídeos com o plano Ultra
+                    {tModal.videoUnlockUltra}
                   </div>
                 ) : videoUploadState === "idle" && !videoUrl ? (
                   <button
@@ -865,7 +865,7 @@ function AddPostModal({
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" />
                     </svg>
-                    Adicionar vídeo ao post (opcional)
+                    {tModal.videoAddOptional}
                   </button>
                 ) : videoUploadState === "done" && videoUrl ? (
                     <div className="rounded-xl border border-emerald-500/30 p-3 flex items-center gap-3" style={{ background: "rgba(16,185,129,0.06)" }}>
@@ -876,7 +876,7 @@ function AddPostModal({
                         muted
                       />
                       <div className="flex-1 min-w-0">
-                        <p className="text-emerald-300 text-xs font-semibold">Vídeo pronto</p>
+                        <p className="text-emerald-300 text-xs font-semibold">{tModal.videoReady}</p>
                         <p className="text-white/40 text-xs truncate">{videoUrl.split("/").pop()}</p>
                       </div>
                       <button
@@ -1023,7 +1023,7 @@ function AddPostModal({
                   type="text"
                   value={manTitle}
                   onChange={(e) => setManTitle(e.target.value)}
-                  placeholder="Ex: LESIONADO 🚑"
+                  placeholder={tModal.manTitlePlaceholder}
                   className="w-full px-4 py-2.5 rounded-xl text-white text-sm focus:outline-none placeholder:text-white/20"
                   style={{
                     background: "rgba(255,255,255,0.05)",
@@ -1041,7 +1041,7 @@ function AddPostModal({
                   ref={textareaRef}
                   value={manContent}
                   onChange={(e) => setManContent(e.target.value)}
-                  placeholder={`Escreva a notícia no estilo Instagram...\n\nEx: "LESIONADO 🚑\n\n${career.clubName} confirma lesão muscular..."`}
+                  placeholder={tModal.manContentPlaceholder.replace("{club}", career.clubName)}
                   className="w-full px-4 py-3 rounded-xl text-white text-sm focus:outline-none resize-none placeholder:text-white/20 leading-relaxed"
                   style={{
                     background: "rgba(255,255,255,0.05)",
@@ -1050,7 +1050,7 @@ function AddPostModal({
                   }}
                 />
                 <p className="text-white/20 text-xs mt-1.5">
-                  Fonte: <span style={{ color: "rgba(var(--club-primary-rgb),0.6)" }}>{manSourceHandle}</span>
+                  {tModal.labelSourcePrefix} <span style={{ color: "rgba(var(--club-primary-rgb),0.6)" }}>{manSourceHandle}</span>
                 </p>
               </div>
 
@@ -1112,10 +1112,10 @@ function AddPostModal({
               {/* Video picker (manual mode) */}
               <div>
                 <label className="text-white/40 text-xs font-semibold uppercase tracking-wider flex items-center gap-2 mb-2">
-                  Vídeo <span className="text-white/25 normal-case font-normal">(opcional)</span>
+                  {tModal.labelVideo} <span className="text-white/25 normal-case font-normal">{tModal.labelPhotoOptional}</span>
                   {!canUploadVideo && (
                     <span className="px-1.5 py-0.5 rounded text-[10px] font-bold" style={{ background: "rgba(245,158,11,0.15)", color: "#f59e0b" }}>
-                      Somente Ultra
+                      {tModal.videoOnlyUltra}
                     </span>
                   )}
                 </label>
@@ -1134,7 +1134,7 @@ function AddPostModal({
                     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                     </svg>
-                    Desbloqueie vídeos com o plano Ultra
+                    {tModal.videoUnlockUltra}
                   </div>
                 ) : videoUploadState === "done" && videoUrl ? (
                   <div
@@ -1152,7 +1152,7 @@ function AddPostModal({
                       <svg className="w-3 h-3 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                       </svg>
-                      <span className="text-green-400 text-xs font-semibold">Enviado</span>
+                      <span className="text-green-400 text-xs font-semibold">{tModal.videoUploaded}</span>
                     </div>
                     <button
                       onClick={handleVideoRemove}
@@ -1193,7 +1193,7 @@ function AddPostModal({
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" />
                     </svg>
-                    Adicionar vídeo ao post
+                    {tModal.videoAddToPost}
                   </button>
                 )}
                 {videoUploadError && (
@@ -2097,7 +2097,7 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
                 className="rounded-2xl p-4 flex flex-col gap-3"
                 style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
               >
-                <p className="text-white/35 text-xs font-bold uppercase tracking-wider">Conteúdo</p>
+                <p className="text-white/35 text-xs font-bold uppercase tracking-wider">{t.filterSectionContent}</p>
                 <button
                   onClick={() => setFilterOnlyWithImages((v) => !v)}
                   className="flex items-center justify-between px-2.5 py-2 rounded-xl transition-all duration-150 text-left w-full"
@@ -2124,7 +2124,7 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
                       className="text-xs font-semibold"
                       style={{ color: filterOnlyWithImages ? "var(--club-primary)" : "rgba(255,255,255,0.45)" }}
                     >
-                      Com imagens
+                      {t.filterWithImages}
                     </span>
                   </span>
                   <span

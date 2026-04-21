@@ -119,7 +119,7 @@ function CommentAvatar({ username, displayName, size }: { username: string; disp
   );
 }
 
-function ReplyComment({ comment }: { comment: NewsComment }) {
+function ReplyComment({ comment, lang }: { comment: NewsComment; lang: Lang }) {
   const [liked, setLiked] = useState(false);
   return (
     <div className="flex gap-2.5 mt-2.5 ml-8">
@@ -130,7 +130,7 @@ function ReplyComment({ comment }: { comment: NewsComment }) {
           <span className="text-white/35 text-xs leading-relaxed">{comment.content}</span>
         </div>
         <div className="flex items-center gap-3 mt-1">
-          <span className="text-white/25 text-xs">{formatTimeAgo(comment.createdAt)}</span>
+          <span className="text-white/25 text-xs">{formatTimeAgo(comment.createdAt, lang)}</span>
           {comment.likes > 0 && (
             <button
               onClick={() => setLiked((l) => !l)}
@@ -147,7 +147,8 @@ function ReplyComment({ comment }: { comment: NewsComment }) {
   );
 }
 
-function CommentItem({ comment }: { comment: NewsComment }) {
+function CommentItem({ comment, lang }: { comment: NewsComment; lang: Lang }) {
+  const t = NOTICIAS[lang];
   const [liked, setLiked] = useState(false);
   const [showReplies, setShowReplies] = useState(false);
   const hasReplies = comment.replies && comment.replies.length > 0;
@@ -161,7 +162,7 @@ function CommentItem({ comment }: { comment: NewsComment }) {
           <span className="text-white/60 text-xs leading-relaxed">{comment.content}</span>
         </div>
         <div className="flex items-center gap-3 mt-1.5">
-          <span className="text-white/25 text-xs">{formatTimeAgo(comment.createdAt)}</span>
+          <span className="text-white/25 text-xs">{formatTimeAgo(comment.createdAt, lang)}</span>
           <button
             onClick={() => setLiked((l) => !l)}
             className="flex items-center gap-1 text-xs transition-colors"
@@ -177,15 +178,17 @@ function CommentItem({ comment }: { comment: NewsComment }) {
               style={{ color: "rgba(255,255,255,0.35)" }}
             >
               {showReplies
-                ? "— ocultar respostas"
-                : `— ver ${comment.replies!.length} ${comment.replies!.length === 1 ? "resposta" : "respostas"}`}
+                ? t.hideReplies
+                : (comment.replies!.length === 1
+                    ? t.viewReply.replace("{n}", String(comment.replies!.length))
+                    : t.viewReplies.replace("{n}", String(comment.replies!.length)))}
             </button>
           )}
         </div>
         {hasReplies && showReplies && (
           <div className="mt-1">
             {comment.replies!.map((reply) => (
-              <ReplyComment key={reply.id} comment={reply} />
+              <ReplyComment key={reply.id} comment={reply} lang={lang} />
             ))}
           </div>
         )}
@@ -331,7 +334,7 @@ export function NoticiaPost({ post, portalPhotos, customPortals, onUpdateImage, 
             onClick={() => setLightboxOpen(false)}
             className="absolute top-4 right-4 w-9 h-9 rounded-full flex items-center justify-center transition-all hover:bg-white/10"
             style={{ color: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.12)" }}
-            aria-label="Fechar"
+            aria-label={t.closeBtn}
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -339,7 +342,7 @@ export function NoticiaPost({ post, portalPhotos, customPortals, onUpdateImage, 
           </button>
           <img
             src={displayImageUrl.startsWith("http") || displayImageUrl.startsWith("blob:") ? displayImageUrl : `/api/storage${displayImageUrl}`}
-            alt="Foto completa"
+            alt={t.altFullPhoto}
             onClick={(e) => e.stopPropagation()}
             className="max-w-full max-h-full object-contain rounded-xl shadow-2xl"
             style={{ maxWidth: "92vw", maxHeight: "92vh" }}
@@ -381,7 +384,7 @@ export function NoticiaPost({ post, portalPhotos, customPortals, onUpdateImage, 
           <button
             onClick={() => setMenuOpen((v) => !v)}
             disabled={uploading || isRefreshing}
-            title="Editar notícia"
+            title={t.editPost}
             className="flex items-center justify-center rounded-lg transition-all duration-150"
             style={{
               width: 28,
@@ -641,7 +644,7 @@ export function NoticiaPost({ post, portalPhotos, customPortals, onUpdateImage, 
           </p>
           {(post.comments ?? []).length > 0 ? (
             (post.comments ?? []).map((comment) => (
-              <CommentItem key={comment.id} comment={comment} />
+              <CommentItem key={comment.id} comment={comment} lang={lang} />
             ))
           ) : (
             <p className="text-white/25 text-xs">{t.commentsEmpty}</p>
