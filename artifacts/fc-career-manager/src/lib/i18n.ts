@@ -1851,6 +1851,22 @@ export const TRANSFERENCIAS: Record<Lang, Record<string, string>> = {
     mySquadLabel: "Meu elenco",
     otherPlayersLabel: "Outros jogadores",
     noPlayerFound: "Nenhum jogador encontrado",
+    // Role labels (for transfer card and squad role selector)
+    roleEsporadico: "Esporádico",
+    roleRodizio: "Rodízio",
+    rolePromessa: "Promessa",
+    roleImportante: "Importante",
+    roleCrucial: "Crucial",
+    // Placeholder text
+    phAge: "Ex: 26",
+    phShirtNumber: "Ex: 10",
+    phTradeAge: "Ex: 24",
+    phTradeOvr: "Ex: 80",
+    phSalary: "Ex: 120",
+    phPhoto: "https://...",
+    // Abbreviations
+    contractYearAbbr: "A",
+    overallAbbr: "OVR",
   },
   en: {
     // Section heading
@@ -1974,6 +1990,22 @@ export const TRANSFERENCIAS: Record<Lang, Record<string, string>> = {
     mySquadLabel: "My squad",
     otherPlayersLabel: "Other players",
     noPlayerFound: "No player found",
+    // Role labels (for transfer card and squad role selector)
+    roleEsporadico: "Sporadic",
+    roleRodizio: "Rotation",
+    rolePromessa: "Prospect",
+    roleImportante: "Key player",
+    roleCrucial: "Crucial",
+    // Placeholder text
+    phAge: "E.g.: 26",
+    phShirtNumber: "E.g.: 10",
+    phTradeAge: "E.g.: 24",
+    phTradeOvr: "E.g.: 80",
+    phSalary: "E.g.: 120",
+    phPhoto: "https://...",
+    // Abbreviations
+    contractYearAbbr: "Y",
+    overallAbbr: "OVR",
   },
 };
 

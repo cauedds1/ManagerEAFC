@@ -30,6 +30,17 @@ const ALL_ROLES: TeamRole[] = ["esporadico","rodizio","promessa","importante","c
 
 const LOAN_DURATIONS = ["6 meses", "1 temporada", "2 temporadas", "3 temporadas"];
 
+function getRoleLabel(role: TeamRole, t: Record<string, string>): string {
+  const map: Record<TeamRole, string> = {
+    esporadico: t.roleEsporadico,
+    rodizio:    t.roleRodizio,
+    promessa:   t.rolePromessa,
+    importante: t.roleImportante,
+    crucial:    t.roleCrucial,
+  };
+  return map[role] ?? role;
+}
+
 function formatDate(ts: number): string {
   const d = new Date(ts);
   return `${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}/${d.getFullYear()}`;
@@ -410,7 +421,7 @@ function TransferCard({
             {migratedPosKey}
           </span>
           <span className="text-xs font-semibold px-2 py-0.5 rounded-md flex-shrink-0" style={{ background: role.bg, color: role.color }}>
-            {ROLE_LABELS[transfer.role]}
+            {getRoleLabel(transfer.role, t)}
           </span>
           {isVenda && (
             <span
@@ -469,7 +480,7 @@ function TransferCard({
           {transfer.contractYears > 0 && !isVenda && !isEmprestimo && (
             <>
               <span className="text-white/20 text-xs">·</span>
-              <span className="text-white/25 text-xs">{transfer.contractYears}A</span>
+              <span className="text-white/25 text-xs">{transfer.contractYears}{t.contractYearAbbr}</span>
             </>
           )}
           {isEmprestimo && loanDurDisplay && (
@@ -1245,7 +1256,7 @@ export function TransferenciasView({
                           className={inputClass}
                           value={form.playerPhoto}
                           onChange={(e) => set("playerPhoto", e.target.value)}
-                          placeholder="https://..."
+                          placeholder={t.phPhoto}
                         />
                       </div>
                     </div>
@@ -1274,7 +1285,7 @@ export function TransferenciasView({
                     className={inputClass}
                     value={form.playerAge}
                     onChange={(e) => set("playerAge", e.target.value)}
-                    placeholder="Ex: 26"
+                    placeholder={t.phAge}
                     min={14}
                     max={50}
                   />
@@ -1305,7 +1316,7 @@ export function TransferenciasView({
                         className={inputClass}
                         value={form.shirtNumber}
                         onChange={(e) => set("shirtNumber", e.target.value)}
-                        placeholder="Ex: 10"
+                        placeholder={t.phShirtNumber}
                         min={1}
                         max={99}
                       />
@@ -1394,7 +1405,7 @@ export function TransferenciasView({
                             transform: active ? "scale(1.04)" : "scale(1)",
                           }}
                         >
-                          {ROLE_LABELS[r]}
+                          {getRoleLabel(r, t)}
                         </button>
                       );
                     })}
@@ -1567,7 +1578,7 @@ export function TransferenciasView({
                                     className={inputClass}
                                     value={form.tradePlayerPhoto}
                                     onChange={(e) => set("tradePlayerPhoto", e.target.value)}
-                                    placeholder="https://..."
+                                    placeholder={t.phPhoto}
                                   />
                                 </div>
                               </div>
@@ -1595,19 +1606,19 @@ export function TransferenciasView({
                                 className={inputClass}
                                 value={form.tradePlayerAge}
                                 onChange={(e) => set("tradePlayerAge", e.target.value)}
-                                placeholder="Ex: 24"
+                                placeholder={t.phTradeAge}
                                 min={14}
                                 max={50}
                               />
                             </div>
                             <div>
-                              <label className={labelClass}>OVR</label>
+                              <label className={labelClass}>{t.overallAbbr}</label>
                               <input
                                 type="number"
                                 className={inputClass}
                                 value={form.tradePlayerOverall}
                                 onChange={(e) => set("tradePlayerOverall", e.target.value)}
-                                placeholder="Ex: 80"
+                                placeholder={t.phTradeOvr}
                                 min={1}
                                 max={99}
                               />
@@ -1660,7 +1671,7 @@ export function TransferenciasView({
                         className={inputClass}
                         value={form.salary}
                         onChange={(e) => set("salary", e.target.value)}
-                        placeholder="Ex: 120"
+                        placeholder={t.phSalary}
                         min={0}
                       />
                     </div>
