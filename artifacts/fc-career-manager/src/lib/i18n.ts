@@ -1122,6 +1122,11 @@ export const WIZARD = {
   },
 } satisfies Record<Lang, Record<string, string>>;
 
+export function getResultChip(lang: string, r: "V" | "E" | "D"): string {
+  if (lang === "en") return r === "V" ? "W" : r === "E" ? "D" : "L";
+  return r;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Clube view tabs & scope toggles + all sub-tab strings
 // ─────────────────────────────────────────────────────────────────────────────

@@ -4,7 +4,7 @@ import { getMatchResult } from "@/types/match";
 import type { MatchRecord } from "@/types/match";
 import type { Season } from "@/types/career";
 import { useLang } from "@/hooks/useLang";
-import { CLUBE } from "@/lib/i18n";
+import { CLUBE, getResultChip } from "@/lib/i18n";
 
 interface Props {
   careerId: string;
@@ -234,13 +234,6 @@ const FORM_STYLE: Record<"V" | "E" | "D", { bg: string; color: string }> = {
   E: { bg: "rgba(148,163,184,0.12)", color: "#94a3b8" },
   D: { bg: "rgba(239,68,68,0.18)",   color: "#f87171" },
 };
-
-function getResultChip(lang: string, r: "V" | "E" | "D"): string {
-  if (lang === "en") {
-    return r === "V" ? "W" : r === "E" ? "D" : "L";
-  }
-  return r;
-}
 
 function FilterDropdown({
   value,
