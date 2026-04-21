@@ -168,10 +168,9 @@ export function ReelsModal({ post, portalPhotos, customPortals, onClose }: Reels
       className="fixed inset-0 z-[400] flex"
       style={{ background: "rgba(0,0,0,0.97)" }}
     >
-      {/* ── VIDEO SIDE ──────────────────────────────── */}
       <div className="relative flex-1 flex items-center justify-center min-h-0 min-w-0" style={{ background: "#000" }}>
 
-        {/* 9:16 vertical stage — letter-boxes horizontal videos within a fixed portrait frame */}
+        {/* 9:16 portrait stage — horizontal videos appear letter-boxed */}
         <div
           className="relative flex-shrink-0"
           style={{
@@ -192,7 +191,6 @@ export function ReelsModal({ post, portalPhotos, customPortals, onClose }: Reels
             style={{ width: "100%", height: "100%", display: "block", objectFit: "contain" }}
           />
 
-          {/* Mute button — inside the 9:16 stage, bottom-right */}
           <button
             onClick={handleMuteToggle}
             className="absolute bottom-4 right-4 flex items-center justify-center rounded-full transition-all hover:bg-white/20 active:scale-90"
@@ -212,7 +210,6 @@ export function ReelsModal({ post, portalPhotos, customPortals, onClose }: Reels
           </button>
         </div>
 
-        {/* Close button — outside the stage, top-left of the full video side */}
         <button
           onClick={onClose}
           className="absolute top-4 left-4 flex items-center justify-center rounded-full transition-all hover:bg-white/20 active:scale-90 z-10"
@@ -224,9 +221,7 @@ export function ReelsModal({ post, portalPhotos, customPortals, onClose }: Reels
           </svg>
         </button>
 
-        {/* ── MOBILE OVERLAY (hidden on sm+) ──────── */}
         <div className="absolute inset-0 pointer-events-none sm:hidden">
-          {/* Bottom gradient + caption */}
           <div
             className="absolute bottom-0 left-0 right-0 px-4 pb-5 pt-20 pointer-events-auto"
             style={{ background: "linear-gradient(to top, rgba(0,0,0,0.88) 0%, transparent 100%)" }}
@@ -246,7 +241,6 @@ export function ReelsModal({ post, portalPhotos, customPortals, onClose }: Reels
             <p className="text-white/70 text-xs leading-relaxed line-clamp-3">{post.content}</p>
           </div>
 
-          {/* Right-side action buttons (mobile) */}
           <div
             className="absolute right-4 flex flex-col items-center gap-5 pointer-events-auto"
             style={{ bottom: 120 }}
@@ -280,12 +274,10 @@ export function ReelsModal({ post, portalPhotos, customPortals, onClose }: Reels
         </div>
       </div>
 
-      {/* ── INFO PANEL (desktop only) ───────────────── */}
       <div
         className="hidden sm:flex flex-col w-[360px] lg:w-[400px] flex-shrink-0"
         style={{ background: "#09090f", borderLeft: "1px solid rgba(255,255,255,0.07)" }}
       >
-        {/* Panel header */}
         <div className="flex items-center gap-3 px-4 py-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
           <SourceAvatar source={post.source} sourceName={post.sourceName} size={42} photoUrl={postPhotoUrl} />
           <div className="flex-1 min-w-0">
@@ -303,7 +295,6 @@ export function ReelsModal({ post, portalPhotos, customPortals, onClose }: Reels
               <span className="text-white/30 text-xs">{formatTimeAgo(post.createdAt)}</span>
             </div>
           </div>
-          {/* Category badge */}
           <span
             className="text-xs font-semibold px-2 py-0.5 rounded-full flex-shrink-0"
             style={{ background: catStyle.bg, color: catStyle.color }}
@@ -312,9 +303,7 @@ export function ReelsModal({ post, portalPhotos, customPortals, onClose }: Reels
           </span>
         </div>
 
-        {/* Scrollable content area */}
         <div className="flex-1 overflow-y-auto" style={{ scrollbarWidth: "thin", scrollbarColor: "rgba(255,255,255,0.1) transparent" }}>
-          {/* Post caption */}
           <div className="px-4 pt-4 pb-3" style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
             <div className="flex gap-2.5">
               <SourceAvatar source={post.source} sourceName={post.sourceName} size={32} photoUrl={postPhotoUrl} />
@@ -329,7 +318,6 @@ export function ReelsModal({ post, portalPhotos, customPortals, onClose }: Reels
             </div>
           </div>
 
-          {/* Comments */}
           {post.comments.length > 0 && (
             <div className="px-4 py-3 flex flex-col gap-4">
               {post.comments.map(c => <CommentRow key={c.id} comment={c} />)}
@@ -337,7 +325,6 @@ export function ReelsModal({ post, portalPhotos, customPortals, onClose }: Reels
           )}
         </div>
 
-        {/* Engagement bar */}
         <div style={{ borderTop: "1px solid rgba(255,255,255,0.07)" }}>
           <div className="flex items-center gap-5 px-4 py-3">
             <button
