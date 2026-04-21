@@ -2608,6 +2608,8 @@ export const NOTICIAS: Record<Lang, Record<string, string>> = {
     // Refresh post alerts
     errorRefreshPost: "Erro ao atualizar notícia",
     alertRefreshFailed: "Não foi possível atualizar a notícia agora. Verifique sua chave de IA e tente novamente.",
+    // Upgrade CTA
+    upgradeCtaBtn: "Fazer upgrade para mais gerações →",
   },
   en: {
     // Header
@@ -2728,6 +2730,8 @@ export const NOTICIAS: Record<Lang, Record<string, string>> = {
     // Refresh post alerts
     errorRefreshPost: "Error updating post",
     alertRefreshFailed: "Could not update the post right now. Check your AI key and try again.",
+    // Upgrade CTA
+    upgradeCtaBtn: "Upgrade for more generations →",
   },
 } satisfies Record<Lang, Record<string, string>>;
 

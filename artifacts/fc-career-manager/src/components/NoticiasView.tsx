@@ -961,7 +961,7 @@ function AddPostModal({
                     className="w-full py-2.5 rounded-xl text-xs font-bold transition-all duration-200 hover:opacity-90 active:scale-[0.98] flex items-center justify-center gap-2"
                     style={{ background: "rgba(124,92,252,0.12)", border: "1px solid rgba(124,92,252,0.25)", color: "#a78bfa" }}
                   >
-                    Fazer upgrade para mais gerações →
+                    {tModal.upgradeCtaBtn}
                   </button>
                 </div>
               ) : (

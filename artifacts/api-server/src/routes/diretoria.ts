@@ -444,7 +444,7 @@ router.post("/diretoria/generate-member", requireAuth, async (req: AuthRequest, 
   const tier = clubTierFromLeague(clubLeague);
 
   const memberLangInstruction = memberLang === "en"
-    ? "\n\nCRITICAL: Write the description field entirely in English. The name can be any nationality that fits the club. Do NOT write in Portuguese."
+    ? "\n\nCRITICAL: Write the description field entirely in English. Keep the name in Brazilian Portuguese style. Do NOT write the description in Portuguese."
     : "";
 
   const systemPrompt = `Você é um criador de personagens para simuladores de futebol. Crie personagens realistas, complexos e coerentes com o contexto do clube.${memberLangInstruction}`;
@@ -457,7 +457,7 @@ CLUBE: ${clubName} — ${clubLeague} (${tier})
 ${extraTraits ? `TRAÇOS EXTRAS: ${extraTraits}` : ""}
 
 REGRAS:
-- ${memberLang === "en" ? "Name appropriate for the club's country/league" : "Nome brasileiro real e comum (não inventar sobrenomes estrangeiros)"}
+- Nome brasileiro real e comum (não inventar sobrenomes estrangeiros)
 - A descrição deve ter 3-5 frases: como age, o que prioriza, como reage a resultados ruins/bons, nível de paciência, peculiaridades
 - Paciência coerente com o estilo (conservador/diplomático = mais paciente; agressivo/exigente = menos)
 - O personagem deve ser ÚNICO e ter nuances — evite clichês simples
