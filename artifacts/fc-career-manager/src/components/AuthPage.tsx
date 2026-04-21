@@ -383,6 +383,157 @@ function PlanDetailPanel({ selectedPlan }: { selectedPlan: Plan }) {
   );
 }
 
+/* ── Plan Welcome Panel (right side during form step) ── */
+const PLAN_WELCOME: Record<Plan, {
+  headline: string;
+  sub: string;
+  accentColor: string;
+  accentRgb: string;
+  icon: React.ReactNode;
+  features: Array<{ emoji: string; text: string }>;
+  footer: string;
+}> = {
+  free: {
+    headline: "Bem-vindo ao FC Career Manager!",
+    sub: "Sua jornada começa agora — de graça e sem cartão.",
+    accentColor: "rgba(200,200,220,0.85)",
+    accentRgb: "200,200,220",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} style={{ width: 44, height: 44 }}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    ),
+    features: [
+      { emoji: "⚽", text: "1 carreira ativa para comandar" },
+      { emoji: "🤖", text: "3 gerações de IA por dia" },
+      { emoji: "📊", text: "Partidas e estatísticas ilimitadas" },
+      { emoji: "🆓", text: "Sem custo, sem cartão de crédito" },
+    ],
+    footer: "Você pode fazer upgrade a qualquer momento.",
+  },
+  pro: {
+    headline: "Excelente escolha! Bem-vindo ao Pro.",
+    sub: "Recursos profissionais para levar sua carreira a sério.",
+    accentColor: "#7c5cfc",
+    accentRgb: "124,92,252",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} style={{ width: 44, height: 44 }}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+      </svg>
+    ),
+    features: [
+      { emoji: "🏆", text: "Até 5 carreiras ativas simultâneas" },
+      { emoji: "🤖", text: "20 gerações de IA por dia" },
+      { emoji: "👔", text: "Diretoria com até 4 membros" },
+      { emoji: "📰", text: "Notícias geradas em segundos por IA" },
+    ],
+    footer: "Obrigado por apoiar o FC Career Manager!",
+  },
+  ultra: {
+    headline: "Você escolheu o melhor. Plano Ultra!",
+    sub: "A experiência definitiva do modo carreira — sem limites.",
+    accentColor: "#f59e0b",
+    accentRgb: "245,158,11",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} style={{ width: 44, height: 44 }}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+      </svg>
+    ),
+    features: [
+      { emoji: "♾️", text: "Carreiras e diretoria ilimitadas" },
+      { emoji: "🗞️", text: "Até 3 portais de notícias personalizados" },
+      { emoji: "🔥", text: "IA com notícias dramáticas e detalhadas" },
+      { emoji: "💬", text: "Boatos exclusivos no vestiário" },
+      { emoji: "⚡", text: "Notícias automáticas em tempo real" },
+    ],
+    footer: "Obrigado por escolher a experiência completa!",
+  },
+};
+
+function PlanWelcomePanel({ plan }: { plan: Plan }) {
+  const data = PLAN_WELCOME[plan];
+  const [visibleFeatures, setVisibleFeatures] = useState<number[]>([]);
+
+  useEffect(() => {
+    setVisibleFeatures([]);
+    data.features.forEach((_, i) => {
+      setTimeout(() => setVisibleFeatures(prev => [...prev, i]), 350 + i * 140);
+    });
+  }, [plan]);
+
+  return (
+    <div className="auth-content-enter" style={{ width: "100%", maxWidth: 420, display: "flex", flexDirection: "column", gap: 0 }}>
+
+      {/* Glow orb behind icon */}
+      <div style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", marginBottom: 28 }}>
+        <div style={{
+          position: "absolute",
+          width: 160, height: 160,
+          borderRadius: "50%",
+          background: `radial-gradient(circle, rgba(${data.accentRgb},0.22) 0%, transparent 70%)`,
+          top: "50%", left: "50%",
+          transform: "translate(-50%, -50%)",
+          animation: "pulse 3s ease-in-out infinite",
+          pointerEvents: "none",
+        }} />
+        <div style={{ color: data.accentColor, position: "relative", zIndex: 1, filter: `drop-shadow(0 0 18px rgba(${data.accentRgb},0.6))`, animation: "welcomeIconFloat 3.5s ease-in-out infinite" }}>
+          {data.icon}
+        </div>
+      </div>
+
+      {/* Plan badge */}
+      <div style={{ display: "flex", justifyContent: "center", marginBottom: 14 }}>
+        <span style={{
+          fontSize: 11, fontWeight: 700, padding: "5px 16px",
+          borderRadius: 20,
+          background: `rgba(${data.accentRgb},0.12)`,
+          color: data.accentColor,
+          border: `1px solid rgba(${data.accentRgb},0.3)`,
+          letterSpacing: "0.08em", textTransform: "uppercase",
+        }}>
+          {plan === "free" ? "Plano Free" : plan === "pro" ? "Plano Pro — R$14,90/mês" : "Plano Ultra — R$39,90/mês"}
+        </span>
+      </div>
+
+      {/* Headline + subtitle */}
+      <div style={{ textAlign: "center", marginBottom: 28 }}>
+        <h2 style={{ color: "#f0f0ff", fontWeight: 800, fontSize: 20, margin: "0 0 8px", fontFamily: "DM Sans, sans-serif", lineHeight: 1.3 }}>
+          {data.headline}
+        </h2>
+        <p style={{ color: "#555577", fontSize: 13, margin: 0, lineHeight: 1.6 }}>{data.sub}</p>
+      </div>
+
+      {/* Feature list */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 24 }}>
+        {data.features.map((f, i) => (
+          <div
+            key={f.text}
+            style={{
+              display: "flex", alignItems: "center", gap: 14,
+              padding: "11px 16px",
+              borderRadius: 12,
+              background: `rgba(${data.accentRgb},0.05)`,
+              border: `1px solid rgba(${data.accentRgb},0.12)`,
+              transition: "opacity 0.4s ease, transform 0.4s ease",
+              opacity: visibleFeatures.includes(i) ? 1 : 0,
+              transform: visibleFeatures.includes(i) ? "translateX(0)" : "translateX(-14px)",
+            }}
+          >
+            <span style={{ fontSize: 18, lineHeight: 1, flexShrink: 0 }}>{f.emoji}</span>
+            <span style={{ color: "#b0b0cc", fontSize: 13, fontWeight: 500 }}>{f.text}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Footer */}
+      <div style={{ textAlign: "center", padding: "12px 16px", borderRadius: 12, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}>
+        <p style={{ color: "#444466", fontSize: 12, margin: 0, fontStyle: "italic" }}>{data.footer}</p>
+      </div>
+    </div>
+  );
+}
+
 /* ── Shared input style helper ── */
 const INPUT_STYLE: React.CSSProperties = {
   width: "100%",
@@ -579,9 +730,12 @@ export function AuthPage({ onBack, onAuthSuccess, initialPlan, checkoutDraft, on
       {/* ════ LEFT: FORM COLUMN ════ */}
       <div className="auth-form-col" style={{ position: "relative", zIndex: 1, width: "100%", maxWidth: 480, flexShrink: 0, display: "flex", flexDirection: "column", overflowY: "auto", borderRight: "1px solid rgba(255,255,255,0.05)", animation: "authFormEnter 0.45s cubic-bezier(0.25,0.46,0.45,0.94) both" }}>
 
-        {/* Back button */}
+        {/* Back button — context-aware */}
         <button
-          onClick={onBack}
+          onClick={() => {
+            if (!isLogin && signupStep === "form") setSignupStep("plan");
+            else onBack();
+          }}
           style={{ position: "sticky", top: 0, zIndex: 2, alignSelf: "flex-start", display: "flex", alignItems: "center", gap: 6, color: "#444466", fontSize: 13, background: "rgba(9,9,15,0.9)", border: "none", cursor: "pointer", transition: "color 0.2s", padding: "20px 28px 8px" }}
           onMouseEnter={e => (e.currentTarget.style.color = "#8888aa")}
           onMouseLeave={e => (e.currentTarget.style.color = "#444466")}>
@@ -673,13 +827,6 @@ export function AuthPage({ onBack, onAuthSuccess, initialPlan, checkoutDraft, on
         {!isLogin && signupStep === "form" && (
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 28 }}>
-              <button onClick={() => setSignupStep("plan")} style={{ color: "#444466", background: "none", border: "none", cursor: "pointer", display: "flex", padding: 0, transition: "color 0.2s" }}
-                onMouseEnter={e => (e.currentTarget.style.color = "#8888aa")}
-                onMouseLeave={e => (e.currentTarget.style.color = "#444466")}>
-                <svg viewBox="0 0 20 20" fill="currentColor" style={{ width: 18, height: 18 }}>
-                  <path fillRule="evenodd" d="M17 10a.75.75 0 0 1-.75.75H5.612l4.158 3.96a.75.75 0 1 1-1.04 1.08l-5.5-5.25a.75.75 0 0 1 0-1.08l5.5-5.25a.75.75 0 1 1 1.04 1.08L5.612 9.25H16.25A.75.75 0 0 1 17 10Z" clipRule="evenodd" />
-                </svg>
-              </button>
               {(() => {
                 const card = PLAN_CARDS.find(c => c.plan === selectedPlan)!;
                 return (
@@ -729,6 +876,8 @@ export function AuthPage({ onBack, onAuthSuccess, initialPlan, checkoutDraft, on
         <div style={{ position: "relative", zIndex: 1, width: "100%", maxWidth: 420 }}>
           {!isLogin && signupStep === "plan" ? (
             <PlanDetailPanel key={selectedPlan} selectedPlan={selectedPlan} />
+          ) : !isLogin && signupStep === "form" ? (
+            <PlanWelcomePanel key={selectedPlan} plan={selectedPlan} />
           ) : (
             <>
               {/* Masthead logo */}

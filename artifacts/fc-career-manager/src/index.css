@@ -531,6 +531,11 @@ option {
   animation: authContentIn 0.32s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
 }
 
+@keyframes welcomeIconFloat {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-8px); }
+}
+
 @media (max-width: 767px) {
   .auth-showcase { display: none !important; }
   .auth-form-col { max-width: 100% !important; border-right: none !important; padding: 40px 28px !important; }
