@@ -280,7 +280,7 @@ function PlayerDetailPanel({
                 )}
                 {player.id === match.motmPlayerId && (
                   <span className="text-xs px-2 py-0.5 rounded-lg font-semibold" style={{ background: "rgba(234,179,8,0.15)", color: "#fbbf24" }}>
-                    ⭐ MOTM
+                    {t.motmShortBadge}
                   </span>
                 )}
               </div>

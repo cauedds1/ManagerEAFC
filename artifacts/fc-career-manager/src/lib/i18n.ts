@@ -1256,6 +1256,9 @@ export const PARTIDAS: Record<Lang, Record<string, string>> = {
     tablePHEx: "Ex: 3",
     subBadge: "sub",
     ageYears: "anos",
+    motmShortBadge: "⭐ MOTM",
+    ratingPoor: "Ruim",
+    ratingGreat: "Ótimo",
     // PlayerLineupRow & sub-components
     ratingLabel: "Nota",
     goalsSection: "Gols",
@@ -1454,6 +1457,9 @@ export const PARTIDAS: Record<Lang, Record<string, string>> = {
     tablePHEx: "Ex: 3",
     subBadge: "sub",
     ageYears: "yrs",
+    motmShortBadge: "⭐ MOTM",
+    ratingPoor: "Poor",
+    ratingGreat: "Great",
     // PlayerLineupRow & sub-components
     ratingLabel: "Rating",
     goalsSection: "Goals",
@@ -1587,13 +1593,15 @@ export function getResultPill(lang: Lang, result: "vitoria" | "empate" | "derrot
 
 export function getRatingLabel(lang: Lang, rating: number): string {
   const t = PARTIDAS[lang];
-  if (rating < 5.0) return lang === "en" ? "Poor" : "Ruim";
+  if (rating < 5.0) return t.ratingPoor;
   if (rating < 6.0) return t.ratingBelow;
   if (rating < 7.0) return t.ratingAverage;
   if (rating < 8.0) return t.ratingGood;
-  if (rating < 9.0) return lang === "en" ? "Great" : "Ótimo";
+  if (rating < 9.0) return t.ratingGreat;
   return t.ratingExcellent;
 }
+
+export const getResultLabel = getResultPill;
 
 export function matchDateLocale(lang: Lang): string {
   return lang === "en" ? "en-US" : "pt-BR";
