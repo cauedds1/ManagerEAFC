@@ -155,7 +155,15 @@ export function ReelsModal({ post, portalPhotos, customPortals, onClose }: Reels
   useEffect(() => {
     const v = videoRef.current;
     if (!v) return;
-    v.play().catch(() => {});
+    v.muted = true;
+    setMuted(true);
+    const playPromise = v.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(() => {
+        v.muted = true;
+        v.play().catch(() => {});
+      });
+    }
   }, []);
 
   const handleMuteToggle = () => {

@@ -557,76 +557,6 @@ export function NoticiaPost({ post, portalPhotos, customPortals, onUpdateImage, 
             </div>
           </div>
 
-          {/* Reels-style side action buttons — right edge of the video */}
-          <div
-            className="absolute right-3 flex flex-col items-center gap-4"
-            style={{ bottom: 12, zIndex: 10 }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Like */}
-            <button
-              onClick={() => setLiked((l) => !l)}
-              className="flex flex-col items-center gap-0.5 transition-transform duration-150 active:scale-90"
-            >
-              <div
-                className="w-10 h-10 rounded-full flex items-center justify-center"
-                style={{ background: "rgba(0,0,0,0.52)", backdropFilter: "blur(6px)" }}
-              >
-                <span style={{ fontSize: 20 }}>{liked ? "❤️" : "🤍"}</span>
-              </div>
-              <span className="text-white text-[11px] font-bold tabular-nums" style={{ textShadow: "0 1px 3px rgba(0,0,0,0.9)" }}>
-                {formatCount(totalLikes)}
-              </span>
-            </button>
-
-            {/* Comment */}
-            <button
-              onClick={() => setShowComments((v) => !v)}
-              className="flex flex-col items-center gap-0.5"
-              style={{ color: showComments ? "var(--club-primary)" : "rgba(255,255,255,0.9)" }}
-            >
-              <div
-                className="w-10 h-10 rounded-full flex items-center justify-center"
-                style={{ background: "rgba(0,0,0,0.52)", backdropFilter: "blur(6px)" }}
-              >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                </svg>
-              </div>
-              <span className="text-[11px] font-bold tabular-nums" style={{ textShadow: "0 1px 3px rgba(0,0,0,0.9)" }}>
-                {formatCount(post.commentsCount)}
-              </span>
-            </button>
-
-            {/* Share */}
-            <button
-              className="flex flex-col items-center gap-0.5"
-              style={{ color: "rgba(255,255,255,0.9)" }}
-            >
-              <div
-                className="w-10 h-10 rounded-full flex items-center justify-center"
-                style={{ background: "rgba(0,0,0,0.52)", backdropFilter: "blur(6px)" }}
-              >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-                </svg>
-              </div>
-              <span className="text-[11px] font-bold tabular-nums" style={{ textShadow: "0 1px 3px rgba(0,0,0,0.9)" }}>
-                {formatCount(post.sharesCount)}
-              </span>
-            </button>
-
-            {/* Reels badge */}
-            <div
-              className="flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold"
-              style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(6px)", color: "rgba(255,255,255,0.65)", border: "1px solid rgba(255,255,255,0.12)" }}
-            >
-              <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" />
-              </svg>
-              Reels
-            </div>
-          </div>
         </div>
       )}
 
@@ -653,13 +583,10 @@ export function NoticiaPost({ post, portalPhotos, customPortals, onUpdateImage, 
         </div>
       </div>
 
-      {/* Divider — only for posts without video */}
-      {!post.videoUrl && (
-        <div style={{ height: 1, background: "rgba(255,255,255,0.05)", margin: "0 16px" }} />
-      )}
+      {/* Divider */}
+      <div style={{ height: 1, background: "rgba(255,255,255,0.05)", margin: "0 16px" }} />
 
-      {/* Engagement bar — only for posts without video (video posts use side buttons) */}
-      {!post.videoUrl && (
+      {/* Engagement bar */}
       <div className="flex items-center px-4 py-3 gap-5">
         <button
           onClick={() => setLiked((l) => !l)}
@@ -691,7 +618,6 @@ export function NoticiaPost({ post, portalPhotos, customPortals, onUpdateImage, 
           <span className="text-xs font-semibold tabular-nums">{formatCount(post.sharesCount)}</span>
         </button>
       </div>
-      )}
 
       {/* Comments section */}
       {showComments && post.comments.length > 0 && (
