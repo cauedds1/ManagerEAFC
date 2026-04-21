@@ -775,7 +775,7 @@ export function ElencoView({
                     };
                     const badge = badgeColors[reason] ?? { bg: "rgba(255,255,255,0.08)", text: "rgba(255,255,255,0.4)", icon: "–" };
                     return (
-                      <div key={`exit-fin-${player.id}`} className="flex items-center gap-3 rounded-2xl px-3 py-2.5" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", opacity: 0.72 }}>
+                      <div key={`exit-fin-${player.id}`} className="flex items-center gap-3 rounded-2xl px-3 py-2.5 cursor-pointer" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", opacity: 0.72 }} onClick={() => setDetailPlayer(player)}>
                         {player.photo ? (
                           <img src={player.photo} alt={player.name} className="w-9 h-9 rounded-full object-cover flex-shrink-0" style={{ filter: "grayscale(40%)" }} onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
                         ) : (
@@ -798,6 +798,9 @@ export function ElencoView({
           const finalStarters = finalizedPlayers.filter(p => (stats[p.id]?.matchesAsStarter ?? 0) > 0);
           const finalNonStarters = finalizedPlayers.filter(p => (stats[p.id]?.matchesAsStarter ?? 0) === 0);
           const finalStarterIds = pickBestEleven(finalStarters);
+          const finalStarterIdsSet = new Set(finalStarterIds);
+          const finalStartersNotInBestEleven = finalStarters.filter(p => !finalStarterIdsSet.has(p.id));
+          const allOthers = [...finalStartersNotInBestEleven, ...finalNonStarters];
           return (
             <div className="px-4 sm:px-6 pb-8">
               <div className="mb-3 flex items-center gap-2">
@@ -819,13 +822,13 @@ export function ElencoView({
                   />
                 </div>
                 <div className="flex-1 min-w-0 w-full">
-                  {finalNonStarters.length > 0 && (
+                  {allOthers.length > 0 && (
                     <div className="flex flex-col gap-1">
                       <p className="text-white/25 text-xs font-semibold tracking-widest uppercase mb-2">
-                        Outros que atuaram ({finalNonStarters.length})
+                        Outros que atuaram ({allOthers.length})
                       </p>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                        {finalNonStarters.map(player => (
+                        {allOthers.map(player => (
                           <PlayerRow
                             key={player.id}
                             player={player}
@@ -837,7 +840,7 @@ export function ElencoView({
                       </div>
                     </div>
                   )}
-                  {finalNonStarters.length === 0 && (
+                  {allOthers.length === 0 && (
                     <p className="text-white/20 text-xs text-center py-4">Todos os jogadores foram titulares em pelo menos uma partida</p>
                   )}
                 </div>
@@ -1048,12 +1051,13 @@ export function ElencoView({
                   return (
                     <div
                       key={`exit-${player.id}`}
-                      className="flex items-center gap-3 rounded-2xl px-3 py-2.5"
+                      className="flex items-center gap-3 rounded-2xl px-3 py-2.5 cursor-pointer"
                       style={{
                         background: "rgba(255,255,255,0.03)",
                         border: "1px solid rgba(255,255,255,0.06)",
                         opacity: 0.72,
                       }}
+                      onClick={() => setDetailPlayer(player)}
                     >
                       {player.photo ? (
                         <img

@@ -1,10 +1,11 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import type { SquadResult, SquadPlayer } from "@/lib/squadCache";
 import type { TransferRecord } from "@/types/transfer";
 import type { Career, Season } from "@/types/career";
 import type { MatchRecord } from "@/types/match";
 import { getMatches } from "@/lib/matchStorage";
 import { aggregatePlayerStats } from "@/lib/playerStatsStorage";
+import { syncSeasonFromDb } from "@/lib/dbSync";
 import { ElencoView } from "./ElencoView";
 import { PlayerStatsTable } from "./PlayerStatsTable";
 import { LesoesView } from "./LesoesView";
@@ -105,18 +106,36 @@ export function ClubeView({
   const [statsMini, setStatsMini] = useState<StatsMiniTab>("jogadores");
   const [seqScope, setSeqScope] = useState<SeqScope>("atual");
   const [statsScope, setStatsScope] = useState<SeqScope>("atual");
+  const [pastSeasonsLoaded, setPastSeasonsLoaded] = useState(false);
+  const loadingPastRef = useRef(false);
 
   const hasMultipleSeasons = seasons.length > 1;
   const allSeasonIds = seasons.map((s) => s.id);
 
+  useEffect(() => {
+    if (statsScope !== "todas" || pastSeasonsLoaded || loadingPastRef.current) return;
+    if (allSeasonIds.length <= 1) { setPastSeasonsLoaded(true); return; }
+    loadingPastRef.current = true;
+    const otherIds = allSeasonIds.filter((id) => id !== seasonId);
+    Promise.all(otherIds.map((id) => syncSeasonFromDb(id))).then(() => {
+      setPastSeasonsLoaded(true);
+      loadingPastRef.current = false;
+    }).catch(() => {
+      setPastSeasonsLoaded(true);
+      loadingPastRef.current = false;
+    });
+  }, [statsScope, allSeasonIds, seasonId, pastSeasonsLoaded]);
+
   const allSeasonMatches = useMemo<MatchRecord[]>(
     () => allSeasonIds.flatMap((id) => getMatches(id)),
-    [allSeasonIds]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [allSeasonIds, pastSeasonsLoaded]
   );
 
   const allStatsOverride = useMemo(
     () => aggregatePlayerStats(allSeasonIds),
-    [allSeasonIds]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [allSeasonIds, pastSeasonsLoaded]
   );
 
   const allMatchesForSeq = useMemo<MatchRecord[] | undefined>(() => {
