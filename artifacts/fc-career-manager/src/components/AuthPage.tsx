@@ -48,6 +48,73 @@ const PLAN_CARDS: Array<{
   },
 ];
 
+/* ── Plan detail data for the comparison panel ── */
+const PLAN_DETAIL_DATA: Record<Plan, {
+  tagline: string;
+  features: string[];
+  missing: Array<{ label: string; nextPlan: string }>;
+  upsell: { plan: string; color: string; rgb: string; price: string; msg: string } | null;
+}> = {
+  free: {
+    tagline: "Bom para testar o sistema",
+    features: [
+      "1 carreira ativa",
+      "3 gerações de IA por dia",
+      "Partidas ilimitadas",
+      "Estatísticas básicas",
+    ],
+    missing: [
+      { label: "Diretoria do clube", nextPlan: "Pro" },
+      { label: "Notícias geradas por IA", nextPlan: "Pro" },
+      { label: "Múltiplas carreiras", nextPlan: "Pro" },
+      { label: "Boatos no vestiário", nextPlan: "Ultra" },
+    ],
+    upsell: {
+      plan: "Pro",
+      color: "#7c5cfc",
+      rgb: "124,92,252",
+      price: "R$ 14,90/mês",
+      msg: "Desbloqueie o potencial completo da sua carreira",
+    },
+  },
+  pro: {
+    tagline: "Para o treinador que leva a sério",
+    features: [
+      "Até 5 carreiras ativas",
+      "20 gerações de IA por dia",
+      "Diretoria com até 4 membros",
+      "Notícias geradas em segundos",
+    ],
+    missing: [
+      { label: "Boatos no vestiário", nextPlan: "Ultra" },
+      { label: "3 portais de notícias personalizados", nextPlan: "Ultra" },
+      { label: "Carreiras ilimitadas", nextPlan: "Ultra" },
+      { label: "IA com notícias dramáticas", nextPlan: "Ultra" },
+      { label: "Notícias automáticas", nextPlan: "Ultra" },
+    ],
+    upsell: {
+      plan: "Ultra",
+      color: "#f59e0b",
+      rgb: "245,158,11",
+      price: "R$ 39,90/mês",
+      msg: "Viva a experiência total do modo carreira",
+    },
+  },
+  ultra: {
+    tagline: "A experiência definitiva do modo carreira",
+    features: [
+      "Carreiras ilimitadas",
+      "Diretoria ilimitada",
+      "Boatos no vestiário",
+      "3 portais de notícias personalizados",
+      "IA com notícias dramáticas e detalhadas",
+      "Notícias automáticas",
+    ],
+    missing: [],
+    upsell: null,
+  },
+};
+
 /* ── AI News data ── */
 const NEWS_STORIES = [
   {
@@ -222,6 +289,94 @@ function AiNewsCard() {
           ))}
         </div>
       </div>
+    </div>
+  );
+}
+
+/* ── Plan detail panel (right side during plan selection) ── */
+function PlanDetailPanel({ selectedPlan }: { selectedPlan: Plan }) {
+  const card = PLAN_CARDS.find(c => c.plan === selectedPlan)!;
+  const detail = PLAN_DETAIL_DATA[selectedPlan];
+
+  return (
+    <div className="auth-content-enter" style={{ width: "100%", maxWidth: 400, display: "flex", flexDirection: "column", gap: 14 }}>
+
+      {/* ── Header masthead ── */}
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 4 }}>
+        <img src="/logo.png" alt="FC Career Manager" style={{ width: 36, height: 36, objectFit: "contain", filter: "drop-shadow(0 2px 12px rgba(124,92,252,0.4))" }} />
+        <p style={{ color: "#7c5cfc", fontSize: 10, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", margin: 0 }}>FC Career Manager</p>
+      </div>
+
+      {/* ── Plan identity card ── */}
+      <div style={{ background: `rgba(${card.accentRgb},0.06)`, border: `1px solid rgba(${card.accentRgb},0.22)`, borderRadius: 20, padding: "24px 24px 20px", boxShadow: `0 8px 32px rgba(${card.accentRgb},0.07)` }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ width: 10, height: 10, borderRadius: "50%", background: card.accentColor, boxShadow: `0 0 10px ${card.accentColor}`, flexShrink: 0 }} />
+            <span style={{ fontFamily: "Bebas Neue, sans-serif", fontSize: 26, letterSpacing: "0.08em", color: card.accentColor, lineHeight: 1 }}>Plano {card.label}</span>
+          </div>
+          <div style={{ textAlign: "right" }}>
+            <span style={{ color: card.accentColor, fontWeight: 800, fontSize: 18 }}>{card.price}</span>
+            <span style={{ color: "#444466", fontSize: 11, marginLeft: 4 }}>{card.period}</span>
+          </div>
+        </div>
+        <p style={{ color: "#666688", fontSize: 12, margin: "0 0 18px", fontStyle: "italic" }}>{detail.tagline}</p>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+          {detail.features.map(f => (
+            <div key={f} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ width: 22, height: 22, borderRadius: 7, background: `rgba(${card.accentRgb},0.12)`, border: `1px solid rgba(${card.accentRgb},0.2)`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <svg style={{ width: 11, height: 11, color: card.accentColor }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <span style={{ color: "#c0c0e0", fontSize: 13 }}>{f}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Missing features card ── */}
+      {detail.missing.length > 0 && (
+        <div style={{ background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 20, padding: "18px 20px" }}>
+          <p style={{ color: "#3a3a55", fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", margin: "0 0 12px" }}>Não incluído neste plano</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {detail.missing.map(m => (
+              <div key={m.label} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ width: 22, height: 22, borderRadius: 7, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <svg style={{ width: 11, height: 11, color: "#333355" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                </div>
+                <span style={{ color: "#3a3a55", fontSize: 13, flex: 1 }}>{m.label}</span>
+                <span style={{ fontSize: 10, color: "#2a2a45", fontWeight: 700, padding: "2px 8px", borderRadius: 8, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)", whiteSpace: "nowrap" }}>{m.nextPlan}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Upsell nudge */}
+          {detail.upsell && (
+            <div style={{ marginTop: 14, padding: "12px 14px", borderRadius: 12, background: `rgba(${detail.upsell.rgb},0.06)`, border: `1px solid rgba(${detail.upsell.rgb},0.18)`, display: "flex", alignItems: "flex-start", gap: 10 }}>
+              <svg style={{ width: 16, height: 16, color: detail.upsell.color, flexShrink: 0, marginTop: 1 }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              <div>
+                <p style={{ margin: 0, color: detail.upsell.color, fontWeight: 700, fontSize: 12 }}>{detail.upsell.msg}</p>
+                <p style={{ margin: "3px 0 0", color: "#444466", fontSize: 11 }}>Plano {detail.upsell.plan} — {detail.upsell.price}</p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Ultra: all-in badge ── */}
+      {selectedPlan === "ultra" && (
+        <div style={{ padding: "16px 18px", borderRadius: 16, background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.15)", display: "flex", alignItems: "center", gap: 12 }}>
+          <svg style={{ width: 20, height: 20, color: "#f59e0b", flexShrink: 0 }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+          </svg>
+          <p style={{ margin: 0, color: "#c09040", fontSize: 13, fontWeight: 600 }}>Você escolheu o melhor. Cada detalhe do modo carreira está incluído aqui.</p>
+        </div>
+      )}
     </div>
   );
 }
@@ -573,15 +728,19 @@ export function AuthPage({ onBack, onAuthSuccess, initialPlan }: AuthPageProps) 
         <div style={{ background: "radial-gradient(ellipse 600px 500px at 50% 50%, rgba(124,92,252,0.09) 0%, transparent 65%)", position: "absolute", inset: 0, pointerEvents: "none" }} />
 
         <div style={{ position: "relative", zIndex: 1, width: "100%", maxWidth: 420 }}>
-
-          {/* Masthead logo */}
-          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 32 }}>
-            <img src="/logo.png" alt="FC Career Manager" style={{ width: 48, height: 48, objectFit: "contain", filter: "drop-shadow(0 2px 12px rgba(124,92,252,0.4))" }} />
-            <p style={{ color: "#7c5cfc", fontSize: 10, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", margin: 0 }}>FC Career Manager</p>
-          </div>
-
-          {/* News card */}
-          <AiNewsCard />
+          {!isLogin && signupStep === "plan" ? (
+            <PlanDetailPanel key={selectedPlan} selectedPlan={selectedPlan} />
+          ) : (
+            <>
+              {/* Masthead logo */}
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 32 }}>
+                <img src="/logo.png" alt="FC Career Manager" style={{ width: 48, height: 48, objectFit: "contain", filter: "drop-shadow(0 2px 12px rgba(124,92,252,0.4))" }} />
+                <p style={{ color: "#7c5cfc", fontSize: 10, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", margin: 0 }}>FC Career Manager</p>
+              </div>
+              {/* News card */}
+              <AiNewsCard />
+            </>
+          )}
         </div>
       </div>
     </div>
