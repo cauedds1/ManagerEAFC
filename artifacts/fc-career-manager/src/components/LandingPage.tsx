@@ -947,7 +947,7 @@ export function LandingPage({ onStart, onLogin, onStartWithPlan }: LandingPagePr
       </button>
 
       {/* ════════════════ NAVBAR ════════════════ */}
-      <nav ref={navbarRef} style={{ position: "sticky", top: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 40px", borderBottom: "1px solid transparent", transition: "backdrop-filter 0.3s, border-color 0.3s", background: "rgba(9,9,15,0.8)" }}>
+      <nav ref={navbarRef} className="lp-navbar" style={{ position: "sticky", top: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 40px", borderBottom: "1px solid transparent", transition: "backdrop-filter 0.3s, border-color 0.3s", background: "rgba(9,9,15,0.8)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <img src="/logo.png" alt="FC Career Manager" style={{ width: 34, height: 34, objectFit: "contain" }} />
           <span style={{ color: "#f0f0ff", fontWeight: 700, fontSize: 15, letterSpacing: "-0.01em" }}>FC Career Manager</span>
@@ -963,7 +963,7 @@ export function LandingPage({ onStart, onLogin, onStartWithPlan }: LandingPagePr
       </nav>
 
       {/* ════════════════ HERO ════════════════ */}
-      <section style={{ position: "relative", minHeight: "100vh", display: "flex", alignItems: "center", overflow: "hidden", padding: "60px 40px" }}>
+      <section className="lp-hero-section" style={{ position: "relative", minHeight: "100vh", display: "flex", alignItems: "center", overflow: "hidden", padding: "60px 40px" }}>
         {/* Layer 1: Field lines (far) — 2-layer parallax */}
         <div id="parallax-layer-1" style={{ position: "absolute", inset: 0, pointerEvents: "none", opacity: 0.035 }}>
           <svg viewBox="0 0 1200 700" fill="none" stroke="white" strokeWidth={1} preserveAspectRatio="xMidYMid slice" style={{ width: "100%", height: "100%" }}>
@@ -990,7 +990,7 @@ export function LandingPage({ onStart, onLogin, onStartWithPlan }: LandingPagePr
         <ParticleCanvas />
 
         {/* Hero content — split layout */}
-        <div className="lp-hero-split" style={{ position: "relative", zIndex: 1, width: "100%", maxWidth: 1200, margin: "0 auto", display: "flex", alignItems: "center", gap: 60 }}>
+        <div className="lp-hero-split lp-hero-gap" style={{ position: "relative", zIndex: 1, width: "100%", maxWidth: 1200, margin: "0 auto", display: "flex", alignItems: "center", gap: 60 }}>
 
           {/* Left: text + CTAs */}
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -1017,7 +1017,7 @@ export function LandingPage({ onStart, onLogin, onStartWithPlan }: LandingPagePr
 
             {/* Split-flap live counter */}
             <div style={{ animation: "landingFadeIn 1s ease 1.1s both" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 14, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(245,158,11,0.12)", borderRadius: 12, padding: "14px 20px", maxWidth: 340 }}>
+              <div className="lp-hero-counter" style={{ display: "flex", alignItems: "center", gap: 14, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(245,158,11,0.12)", borderRadius: 12, padding: "14px 20px", maxWidth: 340 }}>
                 <div>
                   <SplitFlap value={liveCount} />
                 </div>
@@ -1050,8 +1050,8 @@ export function LandingPage({ onStart, onLogin, onStartWithPlan }: LandingPagePr
       </div>
 
       {/* ════════════════ FEATURE EXPLORER ════════════════ */}
-      <section id="features" style={{ padding: "100px 0", background: "#09090f" }}>
-        <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 40px" }}>
+      <section id="features" className="lp-section-v" style={{ padding: "100px 0", background: "#09090f" }}>
+        <div className="lp-section-inner" style={{ maxWidth: 1200, margin: "0 auto", padding: "0 40px" }}>
           <div className="lp-reveal" style={{ marginBottom: 56, textAlign: "center" }}>
             <p style={{ color: "#7c5cfc", fontSize: 11, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", marginBottom: 14 }}>Funcionalidades</p>
             <h2 className="font-bebas" style={{ fontSize: "clamp(2.5rem,5vw,4rem)", color: "#f0f0ff", lineHeight: 1 }}>Tudo que um técnico de verdade precisa</h2>
@@ -1138,8 +1138,8 @@ export function LandingPage({ onStart, onLogin, onStartWithPlan }: LandingPagePr
       </section>
 
       {/* ════════════════ CLUB THEME ════════════════ */}
-      <section id="clube" style={{ position: "relative", overflow: "hidden", padding: "80px 0 64px", transition: "background 0.8s ease", background: `radial-gradient(ellipse 120% 100% at 50% 60%, rgba(${club.accentRgb},0.09) 0%, #09090f 55%)` }}>
-        <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 40px" }}>
+      <section id="clube" className="lp-section-v" style={{ position: "relative", overflow: "hidden", padding: "80px 0 64px", transition: "background 0.8s ease", background: `radial-gradient(ellipse 120% 100% at 50% 60%, rgba(${club.accentRgb},0.09) 0%, #09090f 55%)` }}>
+        <div className="lp-section-inner" style={{ maxWidth: 1200, margin: "0 auto", padding: "0 40px" }}>
           <div className="text-center lp-reveal" style={{ marginBottom: 32 }}>
             <p style={{ color: club.accent, fontSize: 11, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", marginBottom: 12, transition: "color 0.5s" }}>Personalização</p>
             <h2 className="font-bebas" style={{ fontSize: "clamp(2rem,4vw,3.2rem)", color: "#f0f0ff", lineHeight: 1 }}>O app se transforma com o seu clube</h2>
@@ -1216,7 +1216,7 @@ export function LandingPage({ onStart, onLogin, onStartWithPlan }: LandingPagePr
       </section>
 
       {/* ════════════════ AI SECTION ════════════════ */}
-      <section id="ia" style={{ position: "relative", overflow: "hidden", padding: "100px 40px", background: "#0f0e0a" }}>
+      <section id="ia" className="lp-section" style={{ position: "relative", overflow: "hidden", padding: "100px 40px", background: "#0f0e0a" }}>
         {/* Paper grain texture via SVG filter */}
         <svg style={{ position: "absolute", width: 0, height: 0 }}>
           <filter id="paper-noise">
@@ -1252,8 +1252,8 @@ export function LandingPage({ onStart, onLogin, onStartWithPlan }: LandingPagePr
             {/* Interactive news generator */}
             <div style={{ background: "rgba(0,0,0,0.3)", border: "1px solid rgba(245,158,11,0.2)", borderRadius: 14, padding: "20px 22px" }}>
               <p style={{ color: "#f59e0b", fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 14 }}>Gere a sua notícia agora</p>
-              <div style={{ display: "flex", gap: 10, marginBottom: 10 }}>
-                <input placeholder="Seu clube (ex: Grêmio)" value={userClub} onChange={e => setUserClub(e.target.value)} style={{ flex: 1, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, padding: "9px 12px", color: "#f0f0ff", fontSize: 12, outline: "none", fontFamily: "DM Sans, sans-serif", cursor: "text", transition: "border-color 0.2s" }} onFocus={e => (e.currentTarget.style.borderColor = "rgba(245,158,11,0.4)")} onBlur={e => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)")} />
+              <div className="lp-ai-inputs" style={{ display: "flex", gap: 10, marginBottom: 10 }}>
+                <input placeholder="Seu clube (ex: Grêmio)" value={userClub} onChange={e => setUserClub(e.target.value)} style={{ flex: 1, minWidth: 0, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, padding: "9px 12px", color: "#f0f0ff", fontSize: 12, outline: "none", fontFamily: "DM Sans, sans-serif", cursor: "text", transition: "border-color 0.2s" }} onFocus={e => (e.currentTarget.style.borderColor = "rgba(245,158,11,0.4)")} onBlur={e => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)")} />
                 <input placeholder="Resultado (3-1)" value={userResult} onChange={e => setUserResult(e.target.value)} style={{ width: 130, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, padding: "9px 12px", color: "#f0f0ff", fontSize: 12, outline: "none", fontFamily: "JetBrains Mono, monospace", cursor: "text", transition: "border-color 0.2s" }} onFocus={e => (e.currentTarget.style.borderColor = "rgba(245,158,11,0.4)")} onBlur={e => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)")} />
               </div>
               <button data-cursor="ball" onClick={generateNews} style={{ width: "100%", background: "linear-gradient(135deg,rgba(245,158,11,0.85),rgba(200,110,0,0.8))", border: "none", borderRadius: 8, padding: "10px 0", color: "#09090f", fontSize: 13, fontWeight: 700, cursor: "none", transition: "opacity 0.2s" }} onMouseEnter={e => ((e.currentTarget as HTMLButtonElement).style.opacity = "0.85")} onMouseLeave={e => ((e.currentTarget as HTMLButtonElement).style.opacity = "1")}>
@@ -1298,7 +1298,7 @@ export function LandingPage({ onStart, onLogin, onStartWithPlan }: LandingPagePr
       </section>
 
       {/* ════════════════ HOW IT WORKS ════════════════ */}
-      <section id="como-funciona" style={{ padding: "100px 40px", background: "#09090f" }}>
+      <section id="como-funciona" className="lp-section" style={{ padding: "100px 40px", background: "#09090f" }}>
         <div style={{ maxWidth: 1000, margin: "0 auto" }}>
           <div className="text-center lp-reveal" style={{ marginBottom: 72 }}>
             <p style={{ color: "#7c5cfc", fontSize: 11, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", marginBottom: 14 }}>Como funciona</p>
@@ -1306,7 +1306,7 @@ export function LandingPage({ onStart, onLogin, onStartWithPlan }: LandingPagePr
           </div>
           <div style={{ position: "relative" }}>
             {/* Connecting line */}
-            <div style={{ position: "absolute", top: 36, left: "12.5%", right: "12.5%", height: 1, background: "rgba(255,255,255,0.05)", overflow: "hidden" }}>
+            <div className="lp-steps-line" style={{ position: "absolute", top: 36, left: "12.5%", right: "12.5%", height: 1, background: "rgba(255,255,255,0.05)", overflow: "hidden" }}>
               <div ref={stepLineRef} style={{ height: "100%", background: "linear-gradient(90deg,#7c5cfc,#f59e0b)", width: "0%", transition: "width 0s" }} />
             </div>
             <div className="lp-steps-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 20, position: "relative" }}>
@@ -1326,7 +1326,7 @@ export function LandingPage({ onStart, onLogin, onStartWithPlan }: LandingPagePr
       </section>
 
       {/* ════════════════ PRICING ════════════════ */}
-      <section id="planos" style={{ padding: "100px 40px", background: "#09090f" }}>
+      <section id="planos" className="lp-section" style={{ padding: "100px 40px", background: "#09090f" }}>
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
           <div className="text-center lp-reveal" style={{ marginBottom: 64 }}>
             <p style={{ color: "#7c5cfc", fontSize: 11, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", marginBottom: 14 }}>Planos</p>
@@ -1334,7 +1334,7 @@ export function LandingPage({ onStart, onLogin, onStartWithPlan }: LandingPagePr
           </div>
           <div className="lp-pricing-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 24 }}>
             {/* Free */}
-            <div className="lp-reveal lp-delay-1" style={{ background: "#0d0d1a", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 20, padding: "36px 32px" }}>
+            <div className="lp-reveal lp-delay-1 lp-pricing-card" style={{ background: "#0d0d1a", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 20, padding: "36px 32px" }}>
               <p style={{ color: "#666688", fontSize: 12, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 12 }}>Grátis para sempre</p>
               <div className="font-bebas" style={{ fontSize: 48, color: "#f0f0ff", lineHeight: 1 }}>R$0</div>
               <p style={{ color: "#555577", fontSize: 13, marginTop: 8, marginBottom: 28 }}>Para quem quer começar</p>
@@ -1351,7 +1351,7 @@ export function LandingPage({ onStart, onLogin, onStartWithPlan }: LandingPagePr
             </div>
 
             {/* Pro — levitating */}
-            <div className="lp-reveal lp-delay-2" style={{ background: "#111120", border: "1px solid rgba(124,92,252,0.35)", borderRadius: 20, padding: "36px 32px", position: "relative", boxShadow: "0 24px 80px rgba(124,92,252,0.22), 0 0 0 1px rgba(124,92,252,0.15), inset 0 -1px 0 rgba(124,92,252,0.1)", transform: "translateY(-8px)" }}>
+            <div className="lp-reveal lp-delay-2 lp-pricing-card lp-pricing-pro" style={{ background: "#111120", border: "1px solid rgba(124,92,252,0.35)", borderRadius: 20, padding: "36px 32px", position: "relative", boxShadow: "0 24px 80px rgba(124,92,252,0.22), 0 0 0 1px rgba(124,92,252,0.15), inset 0 -1px 0 rgba(124,92,252,0.1)", transform: "translateY(-8px)" }}>
               {/* Pro glow from below */}
               <div style={{ position: "absolute", bottom: -1, left: 0, right: 0, height: "60%", background: "linear-gradient(to top, rgba(124,92,252,0.1) 0%, transparent 100%)", borderRadius: "0 0 20px 20px", pointerEvents: "none" }} />
               <div style={{ position: "absolute", top: -12, left: "50%", transform: "translateX(-50%)", background: "linear-gradient(135deg,#7c5cfc,#5b3fd1)", borderRadius: 20, padding: "4px 16px", fontSize: 11, fontWeight: 700, color: "#fff", whiteSpace: "nowrap" }}>Mais popular</div>
@@ -1371,7 +1371,7 @@ export function LandingPage({ onStart, onLogin, onStartWithPlan }: LandingPagePr
             </div>
 
             {/* Ultra */}
-            <div className="lp-reveal lp-delay-3" style={{ background: "#0d0d1a", border: "1px solid rgba(245,158,11,0.2)", borderRadius: 20, padding: "36px 32px" }}>
+            <div className="lp-reveal lp-delay-3 lp-pricing-card" style={{ background: "#0d0d1a", border: "1px solid rgba(245,158,11,0.2)", borderRadius: 20, padding: "36px 32px" }}>
               <p style={{ color: "#f59e0b", fontSize: 12, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 12 }}>Para os obcecados</p>
               <div className="font-bebas" style={{ fontSize: 48, color: "#f0f0ff", lineHeight: 1 }}>R$39<span style={{ fontSize: 24 }}>,90</span></div>
               <p style={{ color: "#555577", fontSize: 13, marginTop: 8, marginBottom: 28 }}>por mês</p>
@@ -1391,7 +1391,7 @@ export function LandingPage({ onStart, onLogin, onStartWithPlan }: LandingPagePr
       </section>
 
       {/* ════════════════ TESTIMONIALS ════════════════ */}
-      <section style={{ padding: "80px 40px", background: "#0d0820", borderTop: "1px solid rgba(245,158,11,0.1)", borderBottom: "1px solid rgba(245,158,11,0.1)" }}>
+      <section className="lp-section" style={{ padding: "80px 40px", background: "#0d0820", borderTop: "1px solid rgba(245,158,11,0.1)", borderBottom: "1px solid rgba(245,158,11,0.1)" }}>
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
           <div className="text-center lp-reveal" style={{ marginBottom: 56 }}>
             <p style={{ color: "#7c5cfc", fontSize: 11, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", marginBottom: 14 }}>Depoimentos</p>
@@ -1399,7 +1399,7 @@ export function LandingPage({ onStart, onLogin, onStartWithPlan }: LandingPagePr
           </div>
           <div className="lp-testimonials-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 24, alignItems: "start" }}>
             {TESTIMONIALS.map((t, i) => (
-              <div key={t.handle} className={`lp-reveal lp-delay-${i + 1}`}
+              <div key={t.handle} className={`lp-reveal lp-delay-${i + 1}${i === 1 ? " lp-testimonial-mid" : ""}`}
                 style={{ background: "#0f0f1a", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 18, padding: "28px 28px", transform: i === 1 ? "translateY(32px)" : "none" }}>
                 <p style={{ color: "#c0c0d8", fontSize: 14, lineHeight: 1.72, marginBottom: 24 }}>"{t.text}"</p>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -1416,7 +1416,7 @@ export function LandingPage({ onStart, onLogin, onStartWithPlan }: LandingPagePr
       </section>
 
       {/* ════════════════ FAQ ════════════════ */}
-      <section style={{ padding: "100px 40px", background: "#09090f" }}>
+      <section className="lp-section" style={{ padding: "100px 40px", background: "#09090f" }}>
         <div style={{ maxWidth: 780, margin: "0 auto" }}>
           <div className="text-center lp-reveal" style={{ marginBottom: 56 }}>
             <p style={{ color: "#7c5cfc", fontSize: 11, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", marginBottom: 14 }}>FAQ</p>
@@ -1444,7 +1444,7 @@ export function LandingPage({ onStart, onLogin, onStartWithPlan }: LandingPagePr
       </section>
 
       {/* ════════════════ CTA FINAL ════════════════ */}
-      <section style={{ position: "relative", overflow: "hidden", padding: "120px 40px", textAlign: "center", background: "#09090f" }}>
+      <section className="lp-cta-section" style={{ position: "relative", overflow: "hidden", padding: "120px 40px", textAlign: "center", background: "#09090f" }}>
         {/* Stadium SVG background with slow zoom */}
         <div style={{ position: "absolute", inset: 0, overflow: "hidden" }}>
           <svg viewBox="0 0 1200 600" preserveAspectRatio="xMidYMid slice" style={{ width: "100%", height: "100%", animation: "stadiumZoom 22s ease-in-out infinite alternate", opacity: 0.15 }}>
@@ -1500,7 +1500,7 @@ export function LandingPage({ onStart, onLogin, onStartWithPlan }: LandingPagePr
       </section>
 
       {/* ════════════════ FOOTER ════════════════ */}
-      <footer style={{ background: "#09090f", borderTop: "1px solid rgba(255,255,255,0.05)", padding: "32px 40px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16 }}>
+      <footer className="lp-footer" style={{ background: "#09090f", borderTop: "1px solid rgba(255,255,255,0.05)", padding: "32px 40px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <img src="/logo.png" alt="FC Career Manager" style={{ width: 22, height: 22, objectFit: "contain", opacity: 0.7 }} />
           <span style={{ color: "#444466", fontSize: 13, fontWeight: 600 }}>FC Career Manager</span>

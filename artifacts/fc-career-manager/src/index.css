@@ -493,6 +493,40 @@ option {
   .lp-pricing-grid { grid-template-columns: 1fr !important; }
   .lp-hero-split { flex-direction: column !important; text-align: center; }
   .lp-hero-ctas { justify-content: center !important; }
+
+  /* ── Mobile-only overrides ── */
+  button, a { cursor: pointer !important; }
+
+  /* Navbar */
+  .lp-navbar { padding: 12px 20px !important; }
+
+  /* Hero */
+  .lp-hero-section { padding: 80px 20px 40px !important; }
+  .lp-hero-gap { gap: 24px !important; }
+  .lp-hero-counter { max-width: 100% !important; }
+
+  /* Generic sections (horizontal padding) */
+  .lp-section { padding-left: 20px !important; padding-right: 20px !important; padding-top: 64px !important; padding-bottom: 64px !important; }
+  .lp-section-v { padding-top: 64px !important; padding-bottom: 48px !important; }
+  .lp-section-inner { padding-left: 20px !important; padding-right: 20px !important; }
+  .lp-cta-section { padding: 80px 20px !important; }
+
+  /* Steps connecting line: wrong for 2-col layout */
+  .lp-steps-line { display: none !important; }
+
+  /* Pricing */
+  .lp-pricing-card { padding: 24px 20px !important; }
+  .lp-pricing-pro { transform: none !important; margin-top: 8px !important; }
+
+  /* Testimonials: remove vertical offset */
+  .lp-testimonial-mid { transform: none !important; }
+
+  /* AI news generator inputs: stack vertically */
+  .lp-ai-inputs { flex-direction: column !important; }
+  .lp-ai-inputs > input { width: 100% !important; }
+
+  /* Footer */
+  .lp-footer { padding: 24px 20px !important; flex-direction: column !important; align-items: flex-start !important; }
 }
 
 /* ── AuthPage split-screen ── */
