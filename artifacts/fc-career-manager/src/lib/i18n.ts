@@ -2600,6 +2600,14 @@ export const NOTICIAS: Record<Lang, Record<string, string>> = {
     aiLimitReached: "Limite diário atingido",
     aiRemaining: "{remaining} de {total} gerações restantes hoje",
     aiLimitReachedFull: "Limite diário atingido · Reinicia à meia-noite",
+    // Post card actions
+    closeBtn: "Fechar",
+    editPost: "Editar notícia",
+    altFullPhoto: "Foto completa",
+    clearSearch: "Limpar busca",
+    // Refresh post alerts
+    errorRefreshPost: "Erro ao atualizar notícia",
+    alertRefreshFailed: "Não foi possível atualizar a notícia agora. Verifique sua chave de IA e tente novamente.",
   },
   en: {
     // Header
@@ -2712,6 +2720,14 @@ export const NOTICIAS: Record<Lang, Record<string, string>> = {
     aiLimitReached: "Daily limit reached",
     aiRemaining: "{remaining} of {total} generations left today",
     aiLimitReachedFull: "Daily limit reached · Resets at midnight",
+    // Post card actions
+    closeBtn: "Close",
+    editPost: "Edit post",
+    altFullPhoto: "Full photo",
+    clearSearch: "Clear search",
+    // Refresh post alerts
+    errorRefreshPost: "Error updating post",
+    alertRefreshFailed: "Could not update the post right now. Check your AI key and try again.",
   },
 } satisfies Record<Lang, Record<string, string>>;
 

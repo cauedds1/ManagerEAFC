@@ -1608,7 +1608,7 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
     if (!post?.matchId || refreshingPostId) return;
     const match = _matches.find((m) => m.id === post.matchId);
     if (!match) {
-      window.alert(NOTICIAS[localStorage.getItem("fc_lang") as Lang || "pt"]?.alertMatchNotFound ?? "Não encontrei a partida vinculada a esta notícia.");
+      window.alert(NOTICIAS[localStorage.getItem("fc_lang") as Lang || "pt"]?.alertMatchNotFound);
       return;
     }
     setRefreshingPostId(postId);
@@ -1662,7 +1662,7 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
           lang: localStorage.getItem("fc_lang") || "pt",
         }),
       });
-      if (!res.ok) throw new Error("Erro ao atualizar notícia");
+      if (!res.ok) throw new Error(NOTICIAS[localStorage.getItem("fc_lang") as Lang || "pt"].errorRefreshPost);
       const data = await res.json() as AiPreview & { customPortalId?: string };
       const refreshed: NewsPost = {
         ...post,
@@ -1702,7 +1702,7 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
       updatePost(seasonId, postId, refreshed);
       setPosts((prev) => prev.map((p) => p.id === postId ? refreshed : p));
     } catch {
-      window.alert("Não foi possível atualizar a notícia agora. Verifique sua chave de IA e tente novamente.");
+      window.alert(NOTICIAS[localStorage.getItem("fc_lang") as Lang || "pt"].alertRefreshFailed);
     } finally {
       setRefreshingPostId(null);
     }
@@ -1890,7 +1890,7 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
               onClick={() => setSearchQuery("")}
               className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 rounded-md transition-opacity hover:opacity-80"
               style={{ color: "rgba(255,255,255,0.35)" }}
-              aria-label="Limpar busca"
+              aria-label={t.clearSearch}
             >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
