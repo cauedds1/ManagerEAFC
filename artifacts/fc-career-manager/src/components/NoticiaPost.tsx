@@ -5,6 +5,7 @@ import type { PortalPhotos } from "@/lib/portalPhotosStorage";
 import { PORTAL_DEFAULT_PHOTOS } from "@/lib/portalPhotosStorage";
 import type { CustomPortal } from "@/lib/customPortalStorage";
 import { getCommentAvatarUrl } from "@/lib/commentAvatar";
+import { ReelsModal } from "./ReelsModal";
 
 const SOURCE_CONFIG: Record<NewsSource, { color: string; bgColor: string; verified: boolean; emoji: string }> = {
   tnt: {
@@ -224,7 +225,7 @@ export function NoticiaPost({ post, portalPhotos, customPortals, onUpdateImage, 
   const [liked, setLiked] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
-  const [videoPlaying, setVideoPlaying] = useState(false);
+  const [reelsOpen, setReelsOpen] = useState(false);
 
   const [hovered, setHovered] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -525,45 +526,45 @@ export function NoticiaPost({ post, portalPhotos, customPortals, onUpdateImage, 
         </div>
       )}
 
-      {/* Post video */}
+      {/* Post video — click opens Reels viewer */}
       {post.videoUrl && (
         <div className="overflow-hidden" style={{ background: "#000" }}>
-          {videoPlaying ? (
+          <div
+            className="relative cursor-pointer group"
+            style={{ aspectRatio: "16/9", background: "#111" }}
+            onClick={() => setReelsOpen(true)}
+          >
             <video
-              src={post.videoUrl}
-              autoPlay
-              controls
-              className="w-full"
-              style={{ display: "block", maxHeight: 420 }}
+              src={`${post.videoUrl}#t=0.1`}
+              muted
+              preload="metadata"
+              className="w-full h-full object-cover"
+              style={{ display: "block" }}
             />
-          ) : (
             <div
-              className="relative cursor-pointer"
-              style={{ aspectRatio: "16/9", background: "#111" }}
-              onClick={() => setVideoPlaying(true)}
+              className="absolute inset-0 flex items-center justify-center transition-all duration-200 group-hover:bg-black/50"
+              style={{ background: "rgba(0,0,0,0.38)" }}
             >
-              <video
-                src={`${post.videoUrl}#t=0.1`}
-                muted
-                preload="metadata"
-                className="w-full h-full object-cover"
-                style={{ display: "block" }}
-              />
               <div
-                className="absolute inset-0 flex items-center justify-center"
-                style={{ background: "rgba(0,0,0,0.38)" }}
+                className="flex items-center justify-center rounded-full transition-transform duration-200 group-hover:scale-110"
+                style={{ width: 56, height: 56, background: "rgba(255,255,255,0.92)", boxShadow: "0 4px 24px rgba(0,0,0,0.45)" }}
               >
-                <div
-                  className="flex items-center justify-center rounded-full"
-                  style={{ width: 56, height: 56, background: "rgba(255,255,255,0.92)", boxShadow: "0 4px 24px rgba(0,0,0,0.45)" }}
-                >
-                  <svg className="w-6 h-6" viewBox="0 0 24 24" fill="#111" style={{ marginLeft: 3 }}>
-                    <path d="M8 5v14l11-7z" />
-                  </svg>
-                </div>
+                <svg className="w-6 h-6" viewBox="0 0 24 24" fill="#111" style={{ marginLeft: 3 }}>
+                  <path d="M8 5v14l11-7z" />
+                </svg>
+              </div>
+              {/* Reels badge */}
+              <div
+                className="absolute bottom-3 right-3 flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-semibold"
+                style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(6px)", color: "rgba(255,255,255,0.8)", border: "1px solid rgba(255,255,255,0.12)" }}
+              >
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" />
+                </svg>
+                Reels
               </div>
             </div>
-          )}
+          </div>
         </div>
       )}
 
@@ -643,6 +644,15 @@ export function NoticiaPost({ post, portalPhotos, customPortals, onUpdateImage, 
     </article>
 
     {lightboxPortal}
+
+    {reelsOpen && post.videoUrl && (
+      <ReelsModal
+        post={post}
+        portalPhotos={portalPhotos}
+        customPortals={customPortals}
+        onClose={() => setReelsOpen(false)}
+      />
+    )}
     </>
   );
 }
