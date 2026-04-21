@@ -325,6 +325,120 @@ function HeroMockup({ t }: { t: Record<string, string> }) {
   );
 }
 
+/* ─── Hero Reels Phone Mockup ───────────────────────────── */
+const REELS_CLIPS = [
+  { src: "/reels/v1.mp4", club: "Chelsea FC",  desc: "Belo gol de fora da área", likes: "4.2K" },
+  { src: "/reels/v2.mp4", club: "West Ham",    desc: "Golaço no ângulo de fora", likes: "6.8K" },
+  { src: "/reels/v3.mp4", club: "Mowatt",      desc: "Pancada de fora — gol",   likes: "3.1K" },
+];
+
+function HeroReelsMockup() {
+  const [idx, setIdx]         = useState(0);
+  const [prevIdx, setPrevIdx] = useState<number | null>(null);
+  const [phase, setPhase]     = useState<"idle" | "prepare" | "animate">("idle");
+  const videoRef  = useRef<HTMLVideoElement>(null);
+  const rafRef    = useRef<number | null>(null);
+  const timerRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const advance = useCallback(() => {
+    if (phase !== "idle") return;
+    const next = (idx + 1) % REELS_CLIPS.length;
+    setPrevIdx(idx);
+    setIdx(next);
+    setPhase("prepare");
+  }, [idx, phase]);
+
+  useEffect(() => {
+    if (phase !== "prepare") return;
+    rafRef.current = requestAnimationFrame(() => {
+      setPhase("animate");
+      timerRef.current = setTimeout(() => {
+        setPrevIdx(null);
+        setPhase("idle");
+      }, 700);
+    });
+  }, [phase]);
+
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    v.currentTime = 0;
+    v.play().catch(() => {});
+  }, [idx]);
+
+  useEffect(() => {
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
+
+  const ease = "transform 0.65s cubic-bezier(0.25, 0.46, 0.45, 0.94)";
+  const currTransform = phase === "prepare" ? "translateY(100%)" : "translateY(0%)";
+  const currTransition = phase === "animate" ? ease : "none";
+  const prevTransform  = phase === "animate" ? "translateY(-100%)" : "translateY(0%)";
+  const prevTransition = phase === "animate" ? ease : "none";
+
+  const screenW = 224;
+  const screenH = 420;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 20, animation: "floatMockup 6s ease-in-out infinite" }}>
+      <div style={{ textAlign: "center" }}>
+        <p style={{ color: "#7c5cfc", fontSize: 10, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", marginBottom: 6 }}>
+          SEUS MOMENTOS, IMORTALIZADOS
+        </p>
+        <p style={{ color: "#555577", fontSize: 12, lineHeight: 1.5 }}>
+          Registre, reviva e compartilhe cada golaço da sua carreira
+        </p>
+      </div>
+
+      <div style={{
+        width: screenW + 16,
+        background: "#0a0a14",
+        borderRadius: 40,
+        border: "1.5px solid rgba(255,255,255,0.12)",
+        boxShadow: "0 0 0 1px rgba(0,0,0,0.8), inset 0 0 0 1px rgba(255,255,255,0.04), 0 40px 80px rgba(0,0,0,0.9), 0 0 40px rgba(124,92,252,0.12)",
+        padding: "14px 8px 12px",
+        position: "relative",
+      }}>
+        <div style={{ width: 80, height: 24, background: "#0a0a14", borderRadius: 20, border: "1.5px solid rgba(255,255,255,0.1)", margin: "0 auto 10px", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+          <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#1a1a2e", border: "1px solid rgba(255,255,255,0.06)" }} />
+          <div style={{ width: 32, height: 6, borderRadius: 4, background: "#1a1a2e", border: "1px solid rgba(255,255,255,0.06)" }} />
+        </div>
+
+        <div style={{ width: screenW, height: screenH, borderRadius: 20, overflow: "hidden", position: "relative", background: "#000" }}>
+          {prevIdx !== null && (
+            <div style={{ position: "absolute", inset: 0, transform: prevTransform, transition: prevTransition, zIndex: 1 }}>
+              <video src={REELS_CLIPS[prevIdx].src} muted playsInline style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+              <ClipOverlay clip={REELS_CLIPS[prevIdx]} />
+            </div>
+          )}
+          <div style={{ position: "absolute", inset: 0, transform: currTransform, transition: currTransition, zIndex: 2 }}>
+            <video ref={videoRef} src={REELS_CLIPS[idx].src} muted playsInline autoPlay onEnded={advance} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+            <ClipOverlay clip={REELS_CLIPS[idx]} />
+          </div>
+        </div>
+
+        <div style={{ width: 100, height: 4, borderRadius: 2, background: "rgba(255,255,255,0.18)", margin: "10px auto 0" }} />
+      </div>
+    </div>
+  );
+}
+
+function ClipOverlay({ clip }: { clip: typeof REELS_CLIPS[number] }) {
+  return (
+    <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "40px 14px 14px", background: "linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 100%)", pointerEvents: "none" }}>
+      <div style={{ color: "#fff", fontWeight: 700, fontSize: 13, marginBottom: 3 }}>{clip.club}</div>
+      <div style={{ color: "rgba(255,255,255,0.75)", fontSize: 11, marginBottom: 8, lineHeight: 1.3 }}>{clip.desc}</div>
+      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+        <span style={{ fontSize: 13 }}>❤️</span>
+        <span style={{ color: "rgba(255,255,255,0.8)", fontSize: 11, fontWeight: 600 }}>{clip.likes}</span>
+      </div>
+    </div>
+  );
+}
+
 /* ─── Feature mockups ────────────────────────────────────── */
 function PainelMockup({ t }: { t: Record<string, string> }) {
   return (
@@ -882,8 +996,8 @@ export function LandingPage({ onStart, onLogin, onStartWithPlan, lang, setLang }
             </div>
           </div>
 
-          <div className="lg-mockup" style={{ width: 380, flexShrink: 0 }}>
-            <HeroMockup t={t} />
+          <div className="lg-mockup" style={{ width: 380, flexShrink: 0, display: "flex", justifyContent: "center" }}>
+            <HeroReelsMockup />
           </div>
         </div>
       </section>
