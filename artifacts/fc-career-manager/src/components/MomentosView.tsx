@@ -11,6 +11,9 @@ import {
 } from "@/lib/momentoStorage";
 import { getUserPlan, getPlanLimits, type FrontendPlanLimits } from "@/lib/userPlan";
 import type { SquadPlayer } from "@/lib/squadCache";
+import { useLang } from "@/hooks/useLang";
+import { MOMENTOS } from "@/lib/i18n";
+import type { Lang } from "@/lib/i18n";
 
 interface MomentosViewProps {
   seasonId: string;
@@ -71,11 +74,14 @@ function ConfirmDeleteModal({
   title,
   onConfirm,
   onCancel,
+  lang,
 }: {
   title: string;
   onConfirm: () => Promise<void>;
   onCancel: () => void;
+  lang: Lang;
 }) {
+  const t = MOMENTOS[lang];
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
@@ -91,7 +97,7 @@ function ConfirmDeleteModal({
     try {
       await onConfirm();
     } catch {
-      setDeleteError("Falha ao excluir o arquivo de vídeo. Tente novamente.");
+      setDeleteError(t.errDeleteVideoFailed);
       setDeleting(false);
     }
   };
@@ -107,9 +113,9 @@ function ConfirmDeleteModal({
         style={{ background: "rgb(13,13,20)", border: "1px solid rgba(255,255,255,0.1)" }}
         onClick={(e) => e.stopPropagation()}
       >
-        <p className="text-white font-bold text-base">Excluir momento?</p>
+        <p className="text-white font-bold text-base">{t.confirmDeleteTitle}</p>
         <p className="text-white/60 text-sm leading-relaxed">
-          "<span className="text-white/80">{title}</span>" será removido permanentemente.
+          "<span className="text-white/80">{title}</span>" {t.confirmDeleteBody}
         </p>
         {deleteError && (
           <p className="text-red-400 text-xs bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">{deleteError}</p>
@@ -120,7 +126,7 @@ function ConfirmDeleteModal({
             disabled={deleting}
             className="px-4 py-2 rounded-xl text-sm font-semibold text-white/60 hover:text-white/90 transition-colors disabled:opacity-40"
           >
-            Cancelar
+            {t.confirmDeleteCancel}
           </button>
           <button
             onClick={handleConfirm}
@@ -128,7 +134,7 @@ function ConfirmDeleteModal({
             className="px-4 py-2 rounded-xl text-sm font-bold bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors disabled:opacity-60 flex items-center gap-2"
           >
             {deleting && <div className="w-3.5 h-3.5 border-2 border-red-400/40 border-t-red-400 rounded-full animate-spin" />}
-            {deleting ? "Excluindo…" : "Excluir"}
+            {deleting ? t.confirmDeleteDeleting : t.confirmDeleteBtn}
           </button>
         </div>
       </div>
@@ -141,11 +147,14 @@ function DetailModal({
   momento,
   onClose,
   onDelete,
+  lang,
 }: {
   momento: Momento;
   onClose: () => void;
   onDelete: () => Promise<void>;
+  lang: Lang;
 }) {
+  const t = MOMENTOS[lang];
   const [confirmDelete, setConfirmDelete] = useState(false);
   const isVideo = momento.mediaType === "video";
 
@@ -197,7 +206,7 @@ function DetailModal({
                   <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M8 5v14l11-7z" />
                   </svg>
-                  Vídeo
+                  {t.videoBadge}
                 </span>
               )}
               <h2 className="text-white font-bold text-xl leading-snug">{momento.title}</h2>
@@ -215,7 +224,7 @@ function DetailModal({
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
               </svg>
-              Excluir
+              {t.detailDeleteBtn}
             </button>
           </div>
         </div>
@@ -224,6 +233,7 @@ function DetailModal({
       {confirmDelete && (
         <ConfirmDeleteModal
           title={momento.title}
+          lang={lang}
           onConfirm={async () => {
             await onDelete();
             setConfirmDelete(false);
@@ -248,11 +258,14 @@ function VideoUploadSection({
   planLimits,
   videoCount,
   onVideoReady,
+  lang,
 }: {
   planLimits: FrontendPlanLimits;
   videoCount: number;
   onVideoReady: (result: VideoUploadResult | null) => void;
+  lang: Lang;
 }) {
+  const t = MOMENTOS[lang];
   const [uploadState, setUploadState] = useState<UploadState>("idle");
   const [uploadProgress, setUploadProgress] = useState(0);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -267,12 +280,12 @@ function VideoUploadSection({
   const handleFile = useCallback(async (file: File) => {
     const allowed = ["video/mp4", "video/webm", "video/quicktime"];
     if (!allowed.includes(file.type)) {
-      setUploadError("Formato não suportado. Use MP4, WebM ou MOV.");
+      setUploadError(t.errVideoFormat);
       return;
     }
     const sizeMb = file.size / (1024 * 1024);
     if (sizeMb > maxSizeMb) {
-      setUploadError(`Vídeo excede o limite de ${maxSizeMb} MB do seu plano. Tamanho: ${sizeMb.toFixed(1)} MB.`);
+      setUploadError(t.errVideoSize.replace("{mb}", String(maxSizeMb)).replace("{size}", sizeMb.toFixed(1)));
       return;
     }
     setUploadError(null);
@@ -295,15 +308,15 @@ function VideoUploadSection({
             try {
               resolve(JSON.parse(xhr.responseText) as { url: string; key: string });
             } catch {
-              reject(new Error("Resposta inválida do servidor."));
+              reject(new Error(t.errVideoInvalidResponse));
             }
           } else {
-            let errMsg = `Erro ${xhr.status}`;
+            let errMsg = `HTTP ${xhr.status}`;
             try { errMsg = (JSON.parse(xhr.responseText) as { error?: string }).error ?? errMsg; } catch { /* noop */ }
             reject(new Error(errMsg));
           }
         };
-        xhr.onerror = () => reject(new Error("Erro de rede no upload."));
+        xhr.onerror = () => reject(new Error(t.errVideoNetwork));
         xhr.open("POST", "/api/storage/uploads/video?folder=momentos");
         xhr.setRequestHeader("Content-Type", file.type);
         if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
@@ -315,10 +328,10 @@ function VideoUploadSection({
       onVideoReady(result);
     } catch (err) {
       setUploadState("error");
-      setUploadError(err instanceof Error ? err.message : "Falha no upload.");
+      setUploadError(err instanceof Error ? err.message : t.errVideoUploadFailed);
       onVideoReady(null);
     }
-  }, [maxSizeMb, onVideoReady]);
+  }, [maxSizeMb, onVideoReady, t]);
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
@@ -342,7 +355,7 @@ function VideoUploadSection({
   const CounterBar = () => (
     <div className="flex flex-col gap-1.5 mb-3">
       <div className="flex items-center justify-between">
-        <span className="text-white/40 text-xs font-semibold">Vídeos usados</span>
+        <span className="text-white/40 text-xs font-semibold">{t.videosUsed}</span>
         <span className="text-sm font-black tabular-nums" style={{ color: counterColor }}>{videoCount}/{maxVideos}</span>
       </div>
       <div className="w-full h-1.5 rounded-full" style={{ background: "rgba(255,255,255,0.08)" }}>
@@ -362,8 +375,8 @@ function VideoUploadSection({
           <svg className="w-5 h-5 text-amber-400/70" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
           </svg>
-          <p className="text-amber-300/80 text-sm font-semibold">Limite de {maxVideos} vídeos atingido</p>
-          <p className="text-white/40 text-xs">Exclua um vídeo existente para adicionar outro.</p>
+          <p className="text-amber-300/80 text-sm font-semibold">{t.videoLimitReached.replace("{n}", String(maxVideos))}</p>
+          <p className="text-white/40 text-xs">{t.videoLimitHint}</p>
         </div>
       </div>
     );
@@ -381,7 +394,7 @@ function VideoUploadSection({
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-emerald-300 text-sm font-semibold truncate">{selectedFile.name}</p>
-            <p className="text-white/40 text-xs">{formatFileSize(selectedFile.size)} · Pronto para salvar</p>
+            <p className="text-white/40 text-xs">{formatFileSize(selectedFile.size)} · {t.uploadReadyToSave}</p>
           </div>
           <button onClick={handleReset} className="text-white/30 hover:text-white/60 transition-colors flex-shrink-0 p-1">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -438,8 +451,8 @@ function VideoUploadSection({
         <svg className="w-9 h-9 text-white/25" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" />
         </svg>
-        <span className="text-white/40 text-sm">Clique ou arraste um vídeo</span>
-        <span className="text-white/25 text-xs">MP4, WebM, MOV · até {maxSizeMb} MB</span>
+        <span className="text-white/40 text-sm">{t.dropVideo}</span>
+        <span className="text-white/25 text-xs">{t.dropVideoHint.replace("{mb}", String(maxSizeMb))}</span>
       </div>
       {uploadError && <p className="text-red-400 text-xs mt-1.5">{uploadError}</p>}
     </div>
@@ -454,13 +467,16 @@ function AddMomentoModal({
   planLimits,
   videoCount,
   allPlayers,
+  lang,
 }: {
   onClose: () => void;
   onSave: (m: Omit<Momento, "id" | "createdAt">) => void;
   planLimits: FrontendPlanLimits;
   videoCount: number;
   allPlayers?: SquadPlayer[];
+  lang: Lang;
 }) {
+  const t = MOMENTOS[lang];
   const [mediaTab, setMediaTab] = useState<MediaTab>("photo");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -503,11 +519,11 @@ function AddMomentoModal({
 
   const handleFile = async (file: File) => {
     if (!file.type.startsWith("image/")) {
-      setPhotoError("Apenas imagens são permitidas.");
+      setPhotoError(t.errImagesOnly);
       return;
     }
     if (file.size > 20 * 1024 * 1024) {
-      setPhotoError("Imagem deve ter no máximo 20 MB.");
+      setPhotoError(t.errImageTooLarge);
       return;
     }
     setPhotoError(null);
@@ -517,7 +533,7 @@ function AddMomentoModal({
       setPhotoDataUrl(dataUrl);
       setErrors((e) => ({ ...e, media: undefined }));
     } catch {
-      setPhotoError("Não foi possível carregar a imagem.");
+      setPhotoError(t.errImageLoad);
     } finally {
       setPhotoLoading(false);
     }
@@ -531,10 +547,10 @@ function AddMomentoModal({
 
   const validate = () => {
     const errs: typeof errors = {};
-    if (!title.trim()) errs.title = "Título é obrigatório.";
-    if (!gameDate.trim()) errs.gameDate = "Data no jogo é obrigatória.";
-    if (mediaTab === "photo" && !photoDataUrl) errs.media = "Foto é obrigatória.";
-    if (mediaTab === "video" && !videoUpload) errs.media = "Aguarde o upload do vídeo ou selecione um arquivo.";
+    if (!title.trim()) errs.title = t.errTitleRequired;
+    if (!gameDate.trim()) errs.gameDate = t.errGameDateRequired;
+    if (mediaTab === "photo" && !photoDataUrl) errs.media = t.errPhotoRequired;
+    if (mediaTab === "video" && !videoUpload) errs.media = t.errVideoWaiting;
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -578,7 +594,7 @@ function AddMomentoModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-5 pt-5 pb-3 flex-shrink-0">
-          <h2 className="text-white font-bold text-lg">Novo Momento</h2>
+          <h2 className="text-white font-bold text-lg">{t.addMomentoTitle}</h2>
           <button onClick={onClose} className="text-white/40 hover:text-white/80 transition-colors">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -600,7 +616,7 @@ function AddMomentoModal({
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
-              Foto
+              {t.tabPhoto}
             </button>
             <button
               onClick={() => setMediaTab("video")}
@@ -613,10 +629,10 @@ function AddMomentoModal({
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" />
               </svg>
-              Vídeo
+              {t.tabVideo}
               {!canUseVideo ? (
                 <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md ml-0.5" style={{ background: "rgba(245,158,11,0.22)", color: "#fbbf24" }}>
-                  Pro/Ultra
+                  {t.proUltraBadge}
                 </span>
               ) : (
                 <span
@@ -651,7 +667,7 @@ function AddMomentoModal({
                 {photoLoading && (
                   <div className="flex flex-col items-center gap-2 py-10">
                     <div className="w-6 h-6 border-2 border-white/30 border-t-white/80 rounded-full animate-spin" />
-                    <span className="text-white/50 text-xs">Carregando…</span>
+                    <span className="text-white/50 text-xs">{t.photoLoading}</span>
                   </div>
                 )}
                 {!photoLoading && !photoDataUrl && (
@@ -659,15 +675,15 @@ function AddMomentoModal({
                     <svg className="w-8 h-8 text-white/30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
-                    <span className="text-white/40 text-sm">Clique ou arraste uma foto</span>
-                    <span className="text-white/25 text-xs">JPG, PNG, WEBP · até 20 MB</span>
+                    <span className="text-white/40 text-sm">{t.dropPhoto}</span>
+                    <span className="text-white/25 text-xs">{t.dropPhotoHint}</span>
                   </div>
                 )}
                 {!photoLoading && photoDataUrl && (
                   <>
                     <img src={photoDataUrl} alt="preview" className="w-full object-cover rounded-xl max-h-56" />
                     <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity rounded-xl" style={{ background: "rgba(0,0,0,0.45)" }}>
-                      <span className="text-white text-xs font-semibold">Trocar foto</span>
+                      <span className="text-white text-xs font-semibold">{t.changePhoto}</span>
                     </div>
                   </>
                 )}
@@ -689,14 +705,15 @@ function AddMomentoModal({
                     </svg>
                   </div>
                   <div>
-                    <p className="text-white/80 font-semibold text-sm">Uploads de vídeos disponíveis apenas no Pro</p>
-                    <p className="text-white/40 text-xs mt-1">Faça upgrade para registrar gols, lances e clipes da sua carreira.</p>
+                    <p className="text-white/80 font-semibold text-sm">{t.videoProOnly}</p>
+                    <p className="text-white/40 text-xs mt-1">{t.videoProOnlyHint}</p>
                   </div>
                 </div>
               ) : (
                 <VideoUploadSection
                   planLimits={planLimits}
                   videoCount={videoCount}
+                  lang={lang}
                   onVideoReady={(result) => {
                     setVideoUpload(result);
                     if (result) setErrors((e) => ({ ...e, media: undefined }));
@@ -710,11 +727,11 @@ function AddMomentoModal({
           )}
 
           <div className="flex flex-col gap-1">
-            <label className="text-white/60 text-xs font-semibold uppercase tracking-wide">Título <span className="text-red-400">*</span></label>
+            <label className="text-white/60 text-xs font-semibold uppercase tracking-wide">{t.labelTitle} <span className="text-red-400">*</span></label>
             <input
               value={title}
               onChange={(e) => { setTitle(e.target.value); if (errors.title) setErrors((er) => ({ ...er, title: undefined })); }}
-              placeholder="Ex: Primeiro título pelo clube"
+              placeholder={t.titlePlaceholder}
               maxLength={100}
               className={`w-full rounded-xl px-3 py-2.5 text-sm text-white placeholder-white/30 outline-none transition-colors
                 ${errors.title ? "border border-red-500/60 bg-red-500/5" : "border border-white/10 bg-white/5 focus:border-white/25"}`}
@@ -723,11 +740,11 @@ function AddMomentoModal({
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-white/60 text-xs font-semibold uppercase tracking-wide">Data no jogo <span className="text-red-400">*</span></label>
+            <label className="text-white/60 text-xs font-semibold uppercase tracking-wide">{t.labelGameDate} <span className="text-red-400">*</span></label>
             <input
               value={gameDate}
               onChange={(e) => { setGameDate(e.target.value); if (errors.gameDate) setErrors((er) => ({ ...er, gameDate: undefined })); }}
-              placeholder="Ex: 15/05/2027"
+              placeholder={t.gameDatePlaceholder}
               maxLength={30}
               className={`w-full rounded-xl px-3 py-2.5 text-sm text-white placeholder-white/30 outline-none transition-colors
                 ${errors.gameDate ? "border border-red-500/60 bg-red-500/5" : "border border-white/10 bg-white/5 focus:border-white/25"}`}
@@ -736,11 +753,11 @@ function AddMomentoModal({
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-white/60 text-xs font-semibold uppercase tracking-wide">Descrição <span className="text-white/30 font-normal normal-case">(opcional)</span></label>
+            <label className="text-white/60 text-xs font-semibold uppercase tracking-wide">{t.labelDescription} <span className="text-white/30 font-normal normal-case">{t.optional}</span></label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Conte o que aconteceu nesse momento…"
+              placeholder={t.descriptionPlaceholder}
               rows={3}
               maxLength={500}
               className="w-full rounded-xl px-3 py-2.5 text-sm text-white placeholder-white/30 outline-none border border-white/10 bg-white/5 focus:border-white/25 transition-colors resize-none"
@@ -750,7 +767,7 @@ function AddMomentoModal({
           {(allPlayers ?? []).length > 0 && (
             <div className="flex flex-col gap-2">
               <label className="text-white/60 text-xs font-semibold uppercase tracking-wide">
-                Jogadores <span className="text-white/30 font-normal normal-case">(opcional)</span>
+                {t.labelPlayers} <span className="text-white/30 font-normal normal-case">{t.optional}</span>
               </label>
               {selectedPlayers.length > 0 && (
                 <div className="flex flex-wrap gap-1.5">
@@ -781,7 +798,7 @@ function AddMomentoModal({
                   onClick={() => { setShowPlayerDropdown((v) => !v); setPlayerSearch(""); }}
                   className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-sm border border-white/10 bg-white/5 text-white/50 hover:border-white/25 hover:text-white/70 transition-colors"
                 >
-                  <span>+ Adicionar jogador</span>
+                  <span>{t.addPlayer}</span>
                   <svg className={`w-4 h-4 transition-transform ${showPlayerDropdown ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                   </svg>
@@ -793,14 +810,14 @@ function AddMomentoModal({
                         autoFocus
                         value={playerSearch}
                         onChange={(e) => setPlayerSearch(e.target.value)}
-                        placeholder="Buscar jogador…"
+                        placeholder={t.searchPlayer}
                         className="w-full rounded-lg px-2.5 py-1.5 text-sm text-white placeholder-white/30 outline-none border border-white/10 focus:border-white/25 transition-colors"
                         style={{ background: "rgba(255,255,255,0.06)" }}
                       />
                     </div>
                     <div className="overflow-y-auto" style={{ maxHeight: 160 }}>
                       {availablePlayers.length === 0 ? (
-                        <p className="text-white/30 text-xs text-center py-4">Nenhum jogador encontrado</p>
+                        <p className="text-white/30 text-xs text-center py-4">{t.noPlayersFound}</p>
                       ) : (
                         availablePlayers.map((p) => (
                           <button
@@ -834,7 +851,7 @@ function AddMomentoModal({
             className="w-full py-3 rounded-xl font-bold text-sm transition-all text-white"
             style={{ background: "var(--club-primary, #3b82f6)" }}
           >
-            Salvar Momento
+            {t.saveMomento}
           </button>
         </div>
       </div>
@@ -843,7 +860,8 @@ function AddMomentoModal({
   );
 }
 
-function VideoCard({ momento, onOpenDetail, allPlayers, highlight }: { momento: Momento; onOpenDetail: () => void; allPlayers?: SquadPlayer[]; highlight?: boolean }) {
+function VideoCard({ momento, onOpenDetail, allPlayers, highlight, lang }: { momento: Momento; onOpenDetail: () => void; allPlayers?: SquadPlayer[]; highlight?: boolean; lang: Lang }) {
+  const t = MOMENTOS[lang];
   const [playing, setPlaying] = useState(false);
 
   return (
@@ -890,7 +908,7 @@ function VideoCard({ momento, onOpenDetail, allPlayers, highlight }: { momento: 
               onClick={(e) => { e.stopPropagation(); onOpenDetail(); }}
               className="absolute top-2 right-2 w-7 h-7 rounded-lg flex items-center justify-center text-white/70 hover:text-white transition-colors"
               style={{ background: "rgba(0,0,0,0.55)" }}
-              title="Ver detalhes"
+              title={t.viewDetails}
             >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
@@ -906,7 +924,7 @@ function VideoCard({ momento, onOpenDetail, allPlayers, highlight }: { momento: 
       <div className="px-3 pt-2.5 pb-3 cursor-pointer" onClick={onOpenDetail}>
         <div className="flex items-center justify-between gap-2 mb-1">
           <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: "rgba(124,92,252,0.18)", color: "#a78bfa" }}>
-            ▶ VÍDEO
+            {t.videoBadgeCard}
           </span>
           <PlayerAvatarStrip playerIds={momento.playerIds} allPlayers={allPlayers} />
         </div>
@@ -950,6 +968,9 @@ function ImageCard({ momento, onClick, allPlayers, highlight }: { momento: Momen
 type Tagged = Momento & { _sid: string };
 
 export function MomentosView({ seasonId, allSeasonIds, isReadOnly, allPlayers, highlightMomentoId, onClearHighlight }: MomentosViewProps) {
+  const [lang] = useLang();
+  const t = MOMENTOS[lang];
+
   const [currentMomentos, setCurrentMomentos] = useState<Momento[]>(() => getMomentos(seasonId));
   const [scope, setScope] = useState<"atual" | "todas">("atual");
   const [showAdd, setShowAdd] = useState(false);
@@ -1004,7 +1025,7 @@ export function MomentosView({ seasonId, allSeasonIds, isReadOnly, allPlayers, h
     if (tagged.mediaType === "video" && tagged.videoKey) {
       const success = await deleteVideoFromR2(tagged.videoKey);
       if (!success) {
-        throw new Error("Falha ao excluir o arquivo de vídeo do storage.");
+        throw new Error(t.errDeleteVideoStorage);
       }
     }
     deleteMomento(tagged._sid, tagged.id);
@@ -1016,8 +1037,8 @@ export function MomentosView({ seasonId, allSeasonIds, isReadOnly, allPlayers, h
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
-          <h2 className="text-white font-bold text-xl">Momentos</h2>
-          <p className="text-white/40 text-sm mt-0.5">Fotos e vídeos da sua carreira</p>
+          <h2 className="text-white font-bold text-xl">{t.heading}</h2>
+          <p className="text-white/40 text-sm mt-0.5">{t.subtitle}</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {hasMultipleSeasons && (
@@ -1032,7 +1053,7 @@ export function MomentosView({ seasonId, allSeasonIds, isReadOnly, allPlayers, h
                     color: scope === s ? "var(--club-primary)" : "rgba(255,255,255,0.4)",
                   }}
                 >
-                  {s === "atual" ? "Temporada atual" : "Todas as temporadas"}
+                  {s === "atual" ? t.scopeCurrent : t.scopeAll}
                 </button>
               ))}
             </div>
@@ -1046,7 +1067,7 @@ export function MomentosView({ seasonId, allSeasonIds, isReadOnly, allPlayers, h
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
               </svg>
-              Adicionar Momento
+              {t.addMomentoBtn}
             </button>
           )}
         </div>
@@ -1060,13 +1081,13 @@ export function MomentosView({ seasonId, allSeasonIds, isReadOnly, allPlayers, h
             </svg>
           </div>
           <div>
-            <p className="text-white/60 font-semibold text-sm">Nenhum momento registrado</p>
+            <p className="text-white/60 font-semibold text-sm">{t.emptyTitle}</p>
             <p className="text-white/30 text-xs mt-1">
               {scope === "todas"
-                ? "Nenhuma temporada possui momentos ainda."
+                ? t.emptyAllSeasons
                 : isReadOnly
-                ? "Esta temporada não possui momentos."
-                : "Adicione fotos ou vídeos de conquistas, jogos épicos e outros instantes especiais."}
+                ? t.emptyReadOnly
+                : t.emptyDefault}
             </p>
           </div>
           {!isReadOnly && scope === "atual" && (
@@ -1075,7 +1096,7 @@ export function MomentosView({ seasonId, allSeasonIds, isReadOnly, allPlayers, h
               className="mt-1 px-5 py-2.5 rounded-xl font-semibold text-sm text-white transition-all"
               style={{ background: "var(--club-primary, #3b82f6)" }}
             >
-              Adicionar primeiro momento
+              {t.addFirstMomento}
             </button>
           )}
         </div>
@@ -1089,6 +1110,7 @@ export function MomentosView({ seasonId, allSeasonIds, isReadOnly, allPlayers, h
                 onOpenDetail={() => setSelectedMomento(m)}
                 allPlayers={allPlayers}
                 highlight={highlightMomentoId === m.id}
+                lang={lang}
               />
             ) : (
               <ImageCard
@@ -1110,12 +1132,14 @@ export function MomentosView({ seasonId, allSeasonIds, isReadOnly, allPlayers, h
           planLimits={planLimits}
           videoCount={videoCount}
           allPlayers={allPlayers}
+          lang={lang}
         />
       )}
 
       {selectedMomento && (
         <DetailModal
           momento={selectedMomento}
+          lang={lang}
           onClose={() => setSelectedMomento(null)}
           onDelete={() => handleDelete(selectedMomento)}
         />
