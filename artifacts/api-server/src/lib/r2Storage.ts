@@ -43,6 +43,7 @@ function mimeToExt(contentType: string): string {
 export async function createPresignedUploadUrl(
   folder: string,
   contentType: string,
+  contentLength?: number,
 ): Promise<{ uploadURL: string; publicFileUrl: string; key: string }> {
   const { R2_BUCKET_NAME, R2_PUBLIC_URL } = process.env;
   if (!R2_BUCKET_NAME || !R2_PUBLIC_URL) {
@@ -57,9 +58,13 @@ export async function createPresignedUploadUrl(
     Bucket: R2_BUCKET_NAME,
     Key: key,
     ContentType: contentType,
+    ...(typeof contentLength === "number" ? { ContentLength: contentLength } : {}),
   });
 
-  const uploadURL = await getSignedUrl(client, command, { expiresIn: 900 });
+  const uploadURL = await getSignedUrl(client, command, {
+    expiresIn: 900,
+    ...(typeof contentLength === "number" ? { signableHeaders: new Set(["content-length"]) } : {}),
+  });
   const base = R2_PUBLIC_URL.replace(/\/$/, "");
   return { uploadURL, publicFileUrl: `${base}/${key}`, key };
 }

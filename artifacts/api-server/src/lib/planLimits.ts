@@ -1,3 +1,6 @@
+import { eq } from "drizzle-orm";
+import { db, usersTable } from "@workspace/db";
+
 export type Plan = "free" | "pro" | "ultra";
 
 export interface PlanLimits {
@@ -51,4 +54,22 @@ export function getPlanLimits(plan: string): PlanLimits {
 
 export function getTodayDateString(): string {
   return new Date().toISOString().slice(0, 10);
+}
+
+export const MOMENTOS_MAX_SIZE_BYTES: Record<Plan, number> = {
+  free: 0,
+  pro: 200 * 1024 * 1024,
+  ultra: 500 * 1024 * 1024,
+};
+
+export async function getUserPlanFromDb(userId: number): Promise<Plan> {
+  const [user] = await db
+    .select({ plan: usersTable.plan })
+    .from(usersTable)
+    .where(eq(usersTable.id, userId))
+    .limit(1);
+  if (!user) return "free";
+  const plan = user.plan ?? "free";
+  if (plan === "pro" || plan === "ultra") return plan;
+  return "free";
 }

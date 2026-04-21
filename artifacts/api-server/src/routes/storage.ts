@@ -1,10 +1,9 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import multer from "multer";
-import { eq } from "drizzle-orm";
 import { RequestUploadUrlBody, RequestUploadUrlResponse } from "@workspace/api-zod";
 import { isR2Configured, createPresignedUploadUrl, uploadFileToR2, deleteFileFromR2 } from "../lib/r2Storage";
 import { requireAuth, extractUserIdFromToken, type AuthRequest } from "../middleware/auth";
-import { db, usersTable } from "@workspace/db";
+import { getUserPlanFromDb, MOMENTOS_MAX_SIZE_BYTES } from "../lib/planLimits";
 
 const router: IRouter = Router();
 
@@ -62,14 +61,33 @@ router.post("/storage/uploads/request-url", async (req: Request, res: Response) 
       res.status(401).json({ error: "Autenticação necessária para upload nesta pasta." });
       return;
     }
+    let plan: import("../lib/planLimits").Plan;
+    try {
+      plan = await getUserPlanFromDb(userId);
+    } catch (err) {
+      req.log.error({ err }, "Error fetching user plan from DB");
+      res.status(500).json({ error: "Erro ao verificar plano do usuário." });
+      return;
+    }
     if (rawFolder === "noticias-video") {
-      const [dbUser] = await db
-        .select({ plan: usersTable.plan })
-        .from(usersTable)
-        .where(eq(usersTable.id, userId))
-        .limit(1);
-      if (!dbUser || dbUser.plan !== "ultra") {
+      if (plan !== "ultra") {
         res.status(403).json({ error: "Upload de vídeos em notícias está disponível apenas no plano Ultra." });
+        return;
+      }
+    }
+    if (rawFolder === "momentos") {
+      if (typeof size !== "number") {
+        res.status(400).json({ error: "O campo 'size' é obrigatório para uploads em Momentos." });
+        return;
+      }
+      const maxBytes = MOMENTOS_MAX_SIZE_BYTES[plan];
+      if (maxBytes === 0) {
+        res.status(403).json({ error: "Upload de vídeos em Momentos não está disponível no plano Free." });
+        return;
+      }
+      if (size > maxBytes) {
+        const maxMB = maxBytes / (1024 * 1024);
+        res.status(403).json({ error: `Tamanho máximo permitido no seu plano é ${maxMB} MB.` });
         return;
       }
     }
@@ -78,8 +96,11 @@ router.post("/storage/uploads/request-url", async (req: Request, res: Response) 
     folder = ALLOWED_PRESIGNED_FOLDERS.has(rawFolder) ? rawFolder : "uploads";
   }
 
+  const signedContentLength =
+    (rawFolder === "momentos" && typeof size === "number") ? size : undefined;
+
   try {
-    const { uploadURL, publicFileUrl, key } = await createPresignedUploadUrl(folder, contentType ?? "image/jpeg");
+    const { uploadURL, publicFileUrl, key } = await createPresignedUploadUrl(folder, contentType ?? "image/jpeg", signedContentLength);
 
     const baseResponse = RequestUploadUrlResponse.parse({
       uploadURL,
