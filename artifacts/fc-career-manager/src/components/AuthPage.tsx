@@ -736,7 +736,7 @@ export function AuthPage({ onBack, onAuthSuccess, initialPlan, checkoutDraft, on
             if (!isLogin && signupStep === "form") setSignupStep("plan");
             else onBack();
           }}
-          style={{ position: "sticky", top: 0, zIndex: 2, alignSelf: "flex-start", display: "flex", alignItems: "center", gap: 6, color: "#444466", fontSize: 13, background: "rgba(9,9,15,0.9)", border: "none", cursor: "pointer", transition: "color 0.2s", padding: "20px 28px 8px" }}
+          style={{ flexShrink: 0, alignSelf: "flex-start", display: "flex", alignItems: "center", gap: 6, color: "#444466", fontSize: 13, background: "none", border: "none", cursor: "pointer", transition: "color 0.2s", padding: "20px 28px 8px" }}
           onMouseEnter={e => (e.currentTarget.style.color = "#8888aa")}
           onMouseLeave={e => (e.currentTarget.style.color = "#444466")}>
           <svg viewBox="0 0 20 20" fill="currentColor" style={{ width: 16, height: 16 }}>
