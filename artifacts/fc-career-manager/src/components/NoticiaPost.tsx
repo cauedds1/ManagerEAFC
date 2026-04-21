@@ -224,6 +224,7 @@ export function NoticiaPost({ post, portalPhotos, customPortals, onUpdateImage, 
   const [liked, setLiked] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [videoPlaying, setVideoPlaying] = useState(false);
 
   const [hovered, setHovered] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -524,8 +525,50 @@ export function NoticiaPost({ post, portalPhotos, customPortals, onUpdateImage, 
         </div>
       )}
 
+      {/* Post video */}
+      {post.videoUrl && (
+        <div className="overflow-hidden" style={{ background: "#000" }}>
+          {videoPlaying ? (
+            <video
+              src={post.videoUrl}
+              autoPlay
+              controls
+              className="w-full"
+              style={{ display: "block", maxHeight: 420 }}
+            />
+          ) : (
+            <div
+              className="relative cursor-pointer"
+              style={{ aspectRatio: "16/9", background: "#111" }}
+              onClick={() => setVideoPlaying(true)}
+            >
+              <video
+                src={`${post.videoUrl}#t=0.1`}
+                muted
+                preload="metadata"
+                className="w-full h-full object-cover"
+                style={{ display: "block" }}
+              />
+              <div
+                className="absolute inset-0 flex items-center justify-center"
+                style={{ background: "rgba(0,0,0,0.38)" }}
+              >
+                <div
+                  className="flex items-center justify-center rounded-full"
+                  style={{ width: 56, height: 56, background: "rgba(255,255,255,0.92)", boxShadow: "0 4px 24px rgba(0,0,0,0.45)" }}
+                >
+                  <svg className="w-6 h-6" viewBox="0 0 24 24" fill="#111" style={{ marginLeft: 3 }}>
+                    <path d="M8 5v14l11-7z" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Content */}
-      <div className="px-4 pb-4" style={{ paddingTop: displayImageUrl ? 12 : 0 }}>
+      <div className="px-4 pb-4" style={{ paddingTop: displayImageUrl || post.videoUrl ? 12 : 0 }}>
         {post.title && (
           <p className="text-white font-black text-base leading-snug mb-2">{post.title}</p>
         )}

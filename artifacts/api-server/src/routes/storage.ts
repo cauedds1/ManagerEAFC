@@ -54,13 +54,15 @@ router.post("/storage/uploads/request-url", async (req: Request, res: Response) 
 
   let folder: string;
 
-  if (rawFolder === "momentos") {
+  const userScopedFolders = new Set(["momentos", "noticias-video"]);
+
+  if (userScopedFolders.has(rawFolder)) {
     const userId = extractUserIdFromToken(req.headers.authorization);
     if (!userId) {
-      res.status(401).json({ error: "Autenticação necessária para upload de vídeos em momentos." });
+      res.status(401).json({ error: "Autenticação necessária para upload nesta pasta." });
       return;
     }
-    folder = `momentos/${userId}`;
+    folder = `${rawFolder}/${userId}`;
   } else {
     folder = ALLOWED_PRESIGNED_FOLDERS.has(rawFolder) ? rawFolder : "uploads";
   }
@@ -127,8 +129,9 @@ router.delete("/storage/objects", requireAuth, async (req: AuthRequest, res: Res
   const parts = key.split("/");
   const folder = parts[0];
 
-  if (folder !== "momentos") {
-    res.status(403).json({ error: "Esta rota só permite exclusão de arquivos de momentos." });
+  const deletableFolders = new Set(["momentos", "noticias-video"]);
+  if (!deletableFolders.has(folder)) {
+    res.status(403).json({ error: "Esta rota só permite exclusão de arquivos de momentos e notícias." });
     return;
   }
 

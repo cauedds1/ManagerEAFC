@@ -26,6 +26,8 @@ import { getAllPlayerStats, getAllPlayerOverrides } from "@/lib/playerStatsStora
 import { getLeaguePosition } from "@/lib/leagueStorage";
 import { getTransfers } from "@/lib/transferStorage";
 import { getFanMood, getFanMoodLabel } from "@/lib/fanMoodStorage";
+import { deleteVideoFromR2 } from "@/lib/momentoStorage";
+import { getPlanLimits } from "@/lib/userPlan";
 
 import type { Season } from "@/types/career";
 
@@ -304,6 +306,7 @@ function AddPostModal({
   allPlayers,
   seasonId,
   careerId,
+  userPlan,
   onClose,
   onSave,
   onGenerateBackground,
@@ -322,6 +325,7 @@ function AddPostModal({
   allPlayers?: SquadPlayer[];
   seasonId: string;
   careerId: string;
+  userPlan?: "free" | "pro" | "ultra";
   onClose: () => void;
   onSave: (post: NewsPost) => void;
   onGenerateBackground: (params: BgGenParams) => void;
@@ -355,6 +359,73 @@ function AddPostModal({
     cancelCrop: cancelImageCrop,
     reset: handleImageRemove,
   } = useImageUpload();
+
+  type VideoUploadState = "idle" | "uploading" | "done" | "error";
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [videoKey, setVideoKey] = useState<string | null>(null);
+  const [videoUploadState, setVideoUploadState] = useState<VideoUploadState>("idle");
+  const [videoUploadProgress, setVideoUploadProgress] = useState(0);
+  const [videoUploadError, setVideoUploadError] = useState<string | null>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
+
+  const planLimits = getPlanLimits(userPlan ?? "free");
+  const canUploadVideo = planLimits.videoNewsEnabled;
+
+  const handleVideoSelect = async (file: File) => {
+    const MAX_MB = 500;
+    if (!["video/mp4", "video/webm", "video/quicktime"].includes(file.type)) {
+      setVideoUploadError("Formato não suportado. Use MP4, MOV ou WebM.");
+      return;
+    }
+    if (file.size > MAX_MB * 1024 * 1024) {
+      setVideoUploadError(`Arquivo muito grande. Máximo: ${MAX_MB} MB.`);
+      return;
+    }
+    setVideoUploadState("uploading");
+    setVideoUploadProgress(0);
+    setVideoUploadError(null);
+    try {
+      const token = localStorage.getItem("fc_auth_token");
+      const authHeader: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+      const metaRes = await fetch("/api/storage/uploads/request-url?folder=noticias-video", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...authHeader },
+        body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }),
+      });
+      if (!metaRes.ok) {
+        setVideoUploadState("error");
+        setVideoUploadError("Não foi possível iniciar o upload. Tente novamente.");
+        return;
+      }
+      const { uploadURL, objectPath, key } = await metaRes.json() as { uploadURL: string; objectPath: string; key: string };
+      await new Promise<void>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable) setVideoUploadProgress(Math.round((e.loaded / e.total) * 100));
+        };
+        xhr.onload = () => (xhr.status < 300 ? resolve() : reject(new Error(`HTTP ${xhr.status}`)));
+        xhr.onerror = () => reject(new Error("Falha de rede"));
+        xhr.open("PUT", uploadURL);
+        xhr.setRequestHeader("Content-Type", file.type);
+        xhr.send(file);
+      });
+      setVideoUrl(objectPath);
+      setVideoKey(key);
+      setVideoUploadState("done");
+    } catch {
+      setVideoUploadState("error");
+      setVideoUploadError("Upload falhou. Tente novamente.");
+    }
+  };
+
+  const handleVideoRemove = () => {
+    setVideoUrl(null);
+    setVideoKey(null);
+    setVideoUploadState("idle");
+    setVideoUploadProgress(0);
+    setVideoUploadError(null);
+    if (videoInputRef.current) videoInputRef.current.value = "";
+  };
 
   useEffect(() => {
     if (mode === "manual") textareaRef.current?.focus();
@@ -420,6 +491,7 @@ function AddPostModal({
       ...(manTitle.trim() ? { title: manTitle.trim() } : {}),
       content: manContent.trim(),
       ...(imageObjectPath ? { imageUrl: imageObjectPath } : {}),
+      ...(videoUrl ? { videoUrl, videoKey: videoKey ?? undefined } : {}),
       likes: Math.floor(Math.random() * 5000) + 500,
       commentsCount: Math.floor(Math.random() * 300) + 20,
       sharesCount: Math.floor(Math.random() * 1000) + 100,
@@ -948,13 +1020,105 @@ function AddPostModal({
                 )}
               </div>
 
+              {/* Video picker (manual mode) */}
+              <div>
+                <label className="text-white/40 text-xs font-semibold uppercase tracking-wider flex items-center gap-2 mb-2">
+                  Vídeo <span className="text-white/25 normal-case font-normal">(opcional)</span>
+                  {!canUploadVideo && (
+                    <span className="px-1.5 py-0.5 rounded text-[10px] font-bold" style={{ background: "rgba(245,158,11,0.15)", color: "#f59e0b" }}>
+                      Somente Ultra
+                    </span>
+                  )}
+                </label>
+                <input
+                  ref={videoInputRef}
+                  type="file"
+                  accept="video/mp4,video/webm,video/quicktime"
+                  className="hidden"
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) handleVideoSelect(f); }}
+                />
+                {!canUploadVideo ? (
+                  <div
+                    className="w-full py-3 px-4 rounded-xl text-xs font-semibold flex items-center justify-center gap-2"
+                    style={{ background: "rgba(245,158,11,0.05)", border: "1px dashed rgba(245,158,11,0.2)", color: "rgba(245,158,11,0.5)", cursor: "not-allowed" }}
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" />
+                    </svg>
+                    Disponível apenas no plano Ultra
+                  </div>
+                ) : videoUploadState === "done" && videoUrl ? (
+                  <div
+                    className="relative rounded-xl overflow-hidden"
+                    style={{ background: "#111", border: "1px solid rgba(255,255,255,0.1)" }}
+                  >
+                    <video
+                      src={`${videoUrl}#t=0.1`}
+                      muted
+                      preload="metadata"
+                      className="w-full object-cover rounded-xl"
+                      style={{ maxHeight: 160, display: "block" }}
+                    />
+                    <div className="absolute top-2 right-2 flex items-center gap-1 bg-black/60 rounded-full px-2 py-0.5">
+                      <svg className="w-3 h-3 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                      <span className="text-green-400 text-xs font-semibold">Enviado</span>
+                    </div>
+                    <button
+                      onClick={handleVideoRemove}
+                      className="absolute top-2 left-2 w-6 h-6 rounded-full flex items-center justify-center transition-opacity hover:opacity-80"
+                      style={{ background: "rgba(0,0,0,0.6)" }}
+                    >
+                      <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                ) : videoUploadState === "uploading" ? (
+                  <div
+                    className="w-full py-4 px-4 rounded-xl flex flex-col gap-2"
+                    style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-white/50 text-xs">Enviando vídeo...</span>
+                      <span className="text-white/40 text-xs font-semibold">{videoUploadProgress}%</span>
+                    </div>
+                    <div className="h-1.5 w-full rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.08)" }}>
+                      <div
+                        className="h-full rounded-full transition-all duration-300"
+                        style={{ width: `${videoUploadProgress}%`, background: "var(--club-primary)" }}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => videoInputRef.current?.click()}
+                    className="w-full py-3 px-4 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-all duration-150 hover:opacity-80"
+                    style={{
+                      background: "rgba(255,255,255,0.04)",
+                      border: "1px dashed rgba(255,255,255,0.12)",
+                      color: "rgba(255,255,255,0.35)",
+                    }}
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" />
+                    </svg>
+                    Adicionar vídeo ao post
+                  </button>
+                )}
+                {videoUploadError && (
+                  <p className="text-red-400/80 text-xs mt-1.5">{videoUploadError}</p>
+                )}
+              </div>
+
               <button
                 onClick={handlePublishManual}
-                disabled={!manContent.trim() || isUploadingImage}
+                disabled={!manContent.trim() || isUploadingImage || videoUploadState === "uploading"}
                 className="w-full py-3 rounded-xl text-sm font-bold text-white transition-all duration-200 hover:opacity-90 active:scale-[0.98] disabled:opacity-30 disabled:cursor-not-allowed"
                 style={{ background: "var(--club-gradient)" }}
               >
-                {isUploadingImage ? "Enviando foto..." : "Publicar notícia"}
+                {isUploadingImage ? "Enviando foto..." : videoUploadState === "uploading" ? "Enviando vídeo..." : "Publicar notícia"}
               </button>
             </div>
           )}
@@ -983,7 +1147,7 @@ const SOURCE_SIDEBAR_COLOR: Record<string, { color: string; bg: string }> = {
 const CUSTOM_SIDEBAR_COLOR = { color: "#a78bfa", bg: "rgba(167,139,250,0.15)" };
 
 
-export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matches = [], pastSeasons = [], isReadOnly, onGenerateBackground, aiUsageToday, aiUsageLimit }: NoticiasViewProps) {
+export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matches = [], pastSeasons = [], isReadOnly, onGenerateBackground, userPlan, aiUsageToday, aiUsageLimit }: NoticiasViewProps) {
   const [posts, setPosts] = useState<NewsPost[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [filterSource, setFilterSource] = useState<string>("all");
@@ -1321,7 +1485,11 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
     setPosts((prev) => prev.map((p) => p.id === postId ? { ...p, imageFit: fit } : p));
   };
 
-  const handleDeletePost = (postId: string) => {
+  const handleDeletePost = async (postId: string) => {
+    const post = posts.find((p) => p.id === postId);
+    if (post?.videoKey) {
+      await deleteVideoFromR2(post.videoKey);
+    }
     removePost(seasonId, postId);
     setPosts((prev) => prev.filter((p) => p.id !== postId));
   };
@@ -1875,6 +2043,7 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
         allPlayers={allPlayers}
         seasonId={seasonId}
         careerId={career.id}
+        userPlan={userPlan ?? "free"}
         onClose={() => setShowAddModal(false)}
         onSave={handleSavePost}
         onGenerateBackground={onGenerateBackground}

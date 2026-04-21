@@ -41,6 +41,8 @@ export interface NewsPost {
   content: string;
   imageUrl?: string;
   imageFit?: "cover" | "contain";
+  videoUrl?: string;
+  videoKey?: string;
   likes: number;
   commentsCount: number;
   sharesCount: number;
