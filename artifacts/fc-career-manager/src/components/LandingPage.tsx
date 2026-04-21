@@ -73,6 +73,30 @@ const CLUBS_DB: Record<string, { primary: string; secondary: string; accentRgb: 
   "besiktas":           { primary: "#000000", secondary: "#ffffff", accentRgb: "50,50,50" },
 };
 
+/* ─── Hash-based fallback accent for unknown clubs ───────── */
+function hashAccent(name: string): { accent: string; accentRgb: string; secondary: string } {
+  let n = 0;
+  const s = name.toLowerCase().trim();
+  for (let i = 0; i < s.length; i++) n = (n * 31 + s.charCodeAt(i)) | 0;
+  n = Math.abs(n);
+  const palette: Array<[number, number, number, number, number, number]> = [
+    [200, 50,  50,  255, 100, 100],
+    [50,  130, 220, 100, 200, 255],
+    [40,  170, 80,  120, 255, 150],
+    [220, 175, 50,  255, 220, 100],
+    [160, 60,  210, 220, 120, 255],
+    [220, 110, 40,  255, 170, 100],
+    [0,   160, 160, 80,  230, 230],
+    [180, 40,  100, 255, 100, 160],
+  ];
+  const [r, g, b, sr, sg, sb] = palette[n % palette.length];
+  return {
+    accent:    `rgb(${r},${g},${b})`,
+    accentRgb: `${r},${g},${b}`,
+    secondary: `rgb(${sr},${sg},${sb})`,
+  };
+}
+
 /* ─── AI Texts (auto-typing) ─────────────────────────────── */
 const AI_TEXTS = [
   {
@@ -693,9 +717,13 @@ export function LandingPage({ onStart, onLogin, onStartWithPlan }: LandingPagePr
   const [homeScore, setHomeScore]             = useState(2);
   const [awayScore, setAwayScore]             = useState(1);
 
+  const typedUnknown = clubNotFound && customClubInput.trim().length > 0;
+  const unknownColors = typedUnknown ? hashAccent(customClubInput.trim()) : null;
   const club = customClub && customClubName
-    ? { ...CLUBS[activeClub], bg: "#09090f", accent: customClub.primary, accentRgb: customClub.accentRgb, name: customClubName }
-    : CLUBS[activeClub];
+    ? { ...CLUBS[activeClub], accent: customClub.primary, accentRgb: customClub.accentRgb, secondary: customClub.secondary, name: customClubName, league: "" }
+    : typedUnknown && unknownColors
+    ? { ...CLUBS[activeClub], accent: unknownColors.accent, accentRgb: unknownColors.accentRgb, secondary: unknownColors.secondary, name: customClubInput.trim(), league: "" }
+    : { ...CLUBS[activeClub], secondary: "#888899" };
 
   /* ── Live coaches counter ─── */
   useEffect(() => {
@@ -1155,15 +1183,16 @@ export function LandingPage({ onStart, onLogin, onStartWithPlan }: LandingPagePr
                   </div>
                   <div style={{ background: `rgba(${club.accentRgb},0.12)`, border: `1px solid rgba(${club.accentRgb},0.28)`, borderRadius: 6, padding: "3px 12px", display: "flex", alignItems: "center", gap: 6, transition: "all 0.5s" }}>
                     <span style={{ width: 6, height: 6, borderRadius: "50%", background: club.accent, transition: "background 0.5s" }} />
-                    <span style={{ color: club.accent, fontSize: 11, fontWeight: 600, transition: "color 0.5s" }}>{customClubName || CLUBS[activeClub].league}</span>
+                    <span style={{ color: club.accent, fontSize: 11, fontWeight: 600, transition: "color 0.5s" }}>{club.league || club.name}</span>
                   </div>
                 </div>
                 {/* Live mockup */}
                 <ClubDemoMockup
-                  clubName={customClubName || CLUBS[activeClub].name}
-                  leagueName={CLUBS[activeClub].league}
+                  clubName={club.name}
+                  leagueName={club.league}
                   accent={club.accent}
                   accentRgb={club.accentRgb}
+                  secondary={club.secondary}
                 />
               </div>
             </div>

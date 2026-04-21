@@ -9,6 +9,7 @@ interface Props {
   leagueName: string;
   accent:     string;
   accentRgb:  string;
+  secondary?: string;
 }
 
 /* ── Deterministic hash ───────────────────────────────────── */
@@ -98,8 +99,7 @@ export function ClubDemoMockup({ clubName, leagueName, accent, accentRgb }: Prop
   const partidas   = 3  + (seed % 40);
   const elenco     = 24 + (h(clubName, "e") % 12);
   const transfers  = h(clubName, "t") % 8;
-  const moods      = ["Animada", "Neutra", "Eufórica", "Tensa"] as const;
-  const mood       = moods[seed % 4];
+  const mood       = "Animada";
   const matches    = buildMatches(clubName);
 
   const T = (d: number) => `transition: all ${d}s ease`;
