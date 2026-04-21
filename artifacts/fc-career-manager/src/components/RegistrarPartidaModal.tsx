@@ -11,7 +11,9 @@ import type {
   PenaltyShootout,
   PenaltyKick,
 } from "@/types/match";
-import { LOCATION_LABELS, LOCATION_ICONS, GOAL_TYPE_LABELS, GOAL_TYPE_ICONS, type GoalType } from "@/types/match";
+import { LOCATION_ICONS, GOAL_TYPE_ICONS, type GoalType } from "@/types/match";
+import { PARTIDAS, getLocationLabel, getGoalTypeLabel, getRatingLabel } from "@/lib/i18n";
+import { useLang } from "@/hooks/useLang";
 import {
   addMatch,
   updateMatch,
@@ -270,15 +272,18 @@ function Toggle({
 }
 
 function RatingBar({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  const [lang] = useLang();
+  const t = PARTIDAS[lang];
   const rc = getRatingColor(value);
+  const ratingText = getRatingLabel(lang, value);
   const pct = (value / 10) * 100;
   const stops = ["0", "2", "4", "6", "8", "10"];
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <span className="text-white/50 text-xs font-medium uppercase tracking-wider">Nota</span>
+        <span className="text-white/50 text-xs font-medium uppercase tracking-wider">{t.ratingLabel}</span>
         <div className="flex items-center gap-2">
-          <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: rc.bg, color: rc.color }}>{rc.label}</span>
+          <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: rc.bg, color: rc.color }}>{ratingText}</span>
           <span className="text-2xl font-black tabular-nums" style={{ color: rc.color }}>{value.toFixed(1)}</span>
         </div>
       </div>
@@ -319,19 +324,20 @@ function GoalEditor({
   goal: GoalEntry; playerIndex: number; allParticipants: SquadPlayer[];
   currentPlayerId: number; onChange: (g: GoalEntry) => void; onRemove: () => void;
 }) {
+  const [lang] = useLang();
+  const t = PARTIDAS[lang];
   const others = allParticipants.filter((p) => p.id !== currentPlayerId);
   const selectedType = goal.goalType ?? "normal";
   return (
     <div className="glass rounded-xl p-3 space-y-2.5">
       <div className="flex items-center gap-2">
         <span className="text-base">{GOAL_TYPE_ICONS[selectedType]}</span>
-        <span className="text-white/50 text-xs">Gol {playerIndex + 1}</span>
+        <span className="text-white/50 text-xs">{t.opponentGoalLabel} {playerIndex + 1}</span>
         <button type="button" onClick={onRemove} className="ml-auto w-5 h-5 rounded-full flex items-center justify-center text-white/30 hover:text-red-400 hover:bg-red-400/10 transition-colors text-xs">×</button>
       </div>
 
-      {/* Forma do gol */}
       <div className="space-y-1.5">
-        <label className="text-white/40 text-[11px] font-semibold uppercase tracking-wide">Forma do gol</label>
+        <label className="text-white/40 text-[11px] font-semibold uppercase tracking-wide">{t.goalTypeLabel}</label>
         <div className="flex flex-wrap gap-1.5">
           {GOAL_TYPES.map((type) => {
             const active = selectedType === type;
@@ -348,7 +354,7 @@ function GoalEditor({
                 }}
               >
                 <span>{GOAL_TYPE_ICONS[type]}</span>
-                <span>{GOAL_TYPE_LABELS[type]}</span>
+                <span>{getGoalTypeLabel(lang, type)}</span>
               </button>
             );
           })}
@@ -356,18 +362,18 @@ function GoalEditor({
       </div>
 
       <div className="flex items-center gap-2">
-        <label className="text-white/40 text-xs w-14 flex-shrink-0">Minuto</label>
+        <label className="text-white/40 text-xs w-14 flex-shrink-0">{t.goalMinuteLabel}</label>
         <NumericInput value={goal.minute} onChange={(v) => onChange({ ...goal, minute: v ?? 0 })} min={1} max={120} placeholder="Min" className="w-16" />
       </div>
       <div className="flex items-center gap-2">
-        <label className="text-white/40 text-xs w-14 flex-shrink-0">Assist.</label>
+        <label className="text-white/40 text-xs w-14 flex-shrink-0">{t.assistLabel}</label>
         <select
           value={goal.assistPlayerId ?? ""}
           onChange={(e) => onChange({ ...goal, assistPlayerId: e.target.value ? Number(e.target.value) : undefined })}
           className="flex-1 px-2.5 py-1.5 rounded-xl text-white text-sm focus:outline-none glass"
           style={{ background: "rgba(255,255,255,0.05)" }}
         >
-          <option value="">Sem assistência</option>
+          <option value="">{t.noAssist}</option>
           {others.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
         </select>
       </div>
@@ -382,19 +388,21 @@ function OpponentGoalEditor({
   allSystemPlayers: SquadPlayer[];
   onChange: (g: OpponentGoalEntry) => void; onRemove: () => void;
 }) {
+  const [lang] = useLang();
+  const t = PARTIDAS[lang];
   return (
     <div className="glass rounded-xl p-3 space-y-2">
       <div className="flex items-center gap-2">
         <span className="text-base">⚽</span>
-        <span className="text-white/50 text-xs">{opponentName || "Adversário"} — Gol {index + 1}</span>
+        <span className="text-white/50 text-xs">{opponentName || t.opponent} — {t.opponentGoalLabel} {index + 1}</span>
         <button type="button" onClick={onRemove} className="ml-auto w-5 h-5 rounded-full flex items-center justify-center text-white/30 hover:text-red-400 hover:bg-red-400/10 transition-colors text-xs">×</button>
       </div>
       <div className="flex items-center gap-2">
-        <label className="text-white/40 text-xs w-16 flex-shrink-0">Minuto</label>
+        <label className="text-white/40 text-xs w-16 flex-shrink-0">{t.goalMinuteLabel}</label>
         <NumericInput value={goal.minute} onChange={(v) => onChange({ ...goal, minute: v ?? 0 })} min={1} max={120} placeholder="Min" className="w-16" />
       </div>
       <div className="space-y-1">
-        <label className="text-white/40 text-xs">Jogador (opcional)</label>
+        <label className="text-white/40 text-xs">{t.playerOptional}</label>
         <MotmAutocomplete
           playerId={null}
           playerName={goal.playerName ?? ""}
@@ -524,6 +532,8 @@ function MotmAutocomplete({
   allPlayers: SquadPlayer[];
   onChange: (val: { playerId: number | null; playerName: string }) => void;
 }) {
+  const [lang] = useLang();
+  const t = PARTIDAS[lang];
   const selectedSquadPlayer = playerId != null ? allPlayers.find((p) => p.id === playerId) ?? null : null;
   const displayName = selectedSquadPlayer?.name ?? playerName;
   const [query, setQuery] = useState(displayName);
@@ -579,7 +589,7 @@ function MotmAutocomplete({
           }}
           onFocus={() => setOpen(true)}
           onBlur={handleBlur}
-          placeholder="Buscar ou digitar nome do jogador..."
+          placeholder={t.searchPlayerPlaceholder}
           className="w-full px-3 py-2.5 pr-9 rounded-xl text-white text-sm focus:outline-none glass"
           style={{ border: "1px solid rgba(255,255,255,0.08)" }}
         />
@@ -638,6 +648,8 @@ function PlayerPicker({
   onSelect: (player: SquadPlayer) => void;
   onClose: () => void;
 }) {
+  const [lang] = useLang();
+  const t = PARTIDAS[lang];
   const [filter, setFilter] = useState("");
   const available = allPlayers.filter(
     (p) => !usedIds.has(p.id) && (filter === "" || p.name.toLowerCase().includes(filter.toLowerCase()) || p.positionPtBr.toLowerCase().includes(filter.toLowerCase()))
@@ -655,7 +667,7 @@ function PlayerPicker({
       style={{ background: "rgba(12,12,18,0.98)", border: "1px solid rgba(255,255,255,0.12)", backdropFilter: "blur(24px)" }}
     >
       <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
-        <p className="text-white/70 text-sm font-semibold">Adicionar jogador</p>
+        <p className="text-white/70 text-sm font-semibold">{t.playerPickerTitle}</p>
         <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-colors">
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -666,7 +678,7 @@ function PlayerPicker({
         <input
           type="text"
           autoFocus
-          placeholder="Buscar jogador..."
+          placeholder={t.playerSearchPlaceholder}
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
           className="w-full px-3 py-1.5 rounded-xl text-white text-sm focus:outline-none glass"
@@ -675,7 +687,7 @@ function PlayerPicker({
       </div>
       <div className="overflow-y-auto" style={{ maxHeight: 240 }}>
         {available.length === 0 ? (
-          <p className="text-white/25 text-xs text-center py-6">Nenhum jogador disponível</p>
+          <p className="text-white/25 text-xs text-center py-6">{t.noPlayersAvailable}</p>
         ) : (
           available.map((p) => (
             <button
@@ -716,6 +728,8 @@ function SearchablePlayerSelect({
   selectedId?: number;
   onChange: (id: number | undefined) => void;
 }) {
+  const [lang] = useLang();
+  const t = PARTIDAS[lang];
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [dropdownRect, setDropdownRect] = useState<{ top: number; left: number; width: number } | null>(null);
@@ -778,7 +792,7 @@ function SearchablePlayerSelect({
           type="button"
           onClick={() => { onChange(undefined); }}
           className="w-7 h-7 rounded-lg flex items-center justify-center text-white/30 hover:text-white/60 hover:bg-white/08 transition-colors flex-shrink-0"
-          title="Remover"
+          title={t.removeTitle ?? "×"}
         >
           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -788,7 +802,7 @@ function SearchablePlayerSelect({
           type="button"
           onClick={() => setOpen(true)}
           className="w-7 h-7 rounded-lg flex items-center justify-center text-white/30 hover:text-white/60 hover:bg-white/08 transition-colors flex-shrink-0"
-          title="Trocar"
+          title={t.swapTitle ?? "↔"}
         >
           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
@@ -818,7 +832,7 @@ function SearchablePlayerSelect({
         >
           <div className="overflow-y-auto" style={{ maxHeight: 220 }}>
             {filtered.length === 0 ? (
-              <p className="text-white/25 text-xs text-center py-5">Nenhum jogador disponível</p>
+              <p className="text-white/25 text-xs text-center py-5">{t.noPlayersAvailable}</p>
             ) : (
               filtered.map((p) => (
                 <button
@@ -857,7 +871,7 @@ function SearchablePlayerSelect({
           value={query}
           onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
           onFocus={() => setOpen(true)}
-          placeholder="Buscar jogador..."
+          placeholder={t.playerSearchPlaceholder}
           className="flex-1 bg-transparent text-white/90 text-sm placeholder-white/25 focus:outline-none"
         />
         {query && (
@@ -894,6 +908,8 @@ function PlayerLineupRow({
   onRemove: () => void;
   onSubPlayerAdded?: (playerId: number) => void;
 }) {
+  const [lang] = useLang();
+  const t = PARTIDAS[lang];
   const [expanded, setExpanded] = useState(false);
   const isGK = player.positionPtBr === "GOL";
   const rc = getRatingColor(stats.rating);
@@ -970,18 +986,18 @@ function PlayerLineupRow({
 
           <div>
             <div className="flex items-center justify-between mb-2">
-              <span className="text-white/50 text-xs font-medium uppercase tracking-wider">Gols</span>
+              <span className="text-white/50 text-xs font-medium uppercase tracking-wider">{t.goalsSection}</span>
               <button
                 type="button"
                 onClick={addGoal}
                 className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors"
                 style={{ background: "rgba(var(--club-primary-rgb),0.15)", color: "var(--club-primary)" }}
               >
-                + Gol
+                {t.addGoal}
               </button>
             </div>
             {stats.goals.length === 0 ? (
-              <p className="text-white/20 text-xs text-center py-1">Nenhum gol</p>
+              <p className="text-white/20 text-xs text-center py-1">{t.noGoals}</p>
             ) : (
               <div className="space-y-2">
                 {stats.goals.map((g, i) => (
@@ -1000,12 +1016,12 @@ function PlayerLineupRow({
           </div>
 
           <div>
-            <span className="text-white/50 text-xs font-medium uppercase tracking-wider block mb-2">Estatísticas</span>
+            <span className="text-white/50 text-xs font-medium uppercase tracking-wider block mb-2">{t.statsSection}</span>
             <div className="space-y-0">
               {[
                 ...(!isGK ? [
                   {
-                    label: "Finalizações", icon: "⚽",
+                    label: t.statShots, icon: "⚽",
                     node: (
                       <div className="flex items-center gap-1">
                         <NumericInput emptyAsZero value={stats.shots} onChange={(v) => onUpdate({ shots: v })} placeholder="Total" className="w-14 text-right" />
@@ -1015,7 +1031,7 @@ function PlayerLineupRow({
                     ),
                   },
                   {
-                    label: "Passes", icon: "🎯",
+                    label: t.statPasses, icon: "🎯",
                     node: (
                       <div className="flex items-center gap-1">
                         <NumericInput emptyAsZero value={stats.passes} onChange={(v) => onUpdate({ passes: v })} placeholder="Total" className="w-14 text-right" />
@@ -1026,7 +1042,7 @@ function PlayerLineupRow({
                     ),
                   },
                   {
-                    label: "Dribles", icon: "🔄",
+                    label: t.statDribbles, icon: "🔄",
                     node: (
                       <div className="flex items-center gap-1">
                         <NumericInput emptyAsZero value={stats.dribblesCompleted} onChange={(v) => onUpdate({ dribblesCompleted: v })} placeholder="Dribles" className="w-16 text-right" />
@@ -1036,7 +1052,7 @@ function PlayerLineupRow({
                     ),
                   },
                   {
-                    label: "Rec. / Perdas", icon: "🛡️",
+                    label: t.statRecLoss, icon: "🛡️",
                     node: (
                       <div className="flex items-center gap-1">
                         <NumericInput emptyAsZero value={stats.ballRecoveries} onChange={(v) => onUpdate({ ballRecoveries: v })} placeholder="Rec." className="w-14 text-right" />
@@ -1047,8 +1063,8 @@ function PlayerLineupRow({
                   },
                 ] : []),
                 ...(isGK ? [
-                  { label: "Defesas", icon: "🧤", node: <NumericInput emptyAsZero value={stats.saves} onChange={(v) => onUpdate({ saves: v })} placeholder="Total" className="w-16 text-right" /> },
-                  { label: "Pên. Def.", icon: "🥅", node: <NumericInput emptyAsZero value={stats.penaltiesSaved} onChange={(v) => onUpdate({ penaltiesSaved: v })} placeholder="—" className="w-16 text-right" /> },
+                  { label: t.statSaves, icon: "🧤", node: <NumericInput emptyAsZero value={stats.saves} onChange={(v) => onUpdate({ saves: v })} placeholder="Total" className="w-16 text-right" /> },
+                  { label: t.statPenSaved, icon: "🥅", node: <NumericInput emptyAsZero value={stats.penaltiesSaved} onChange={(v) => onUpdate({ penaltiesSaved: v })} placeholder="—" className="w-16 text-right" /> },
                 ] : []),
               ].map(({ label, icon, node }) => (
                 <div key={label} className="flex items-center gap-3 py-2 border-b" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
@@ -1061,22 +1077,22 @@ function PlayerLineupRow({
           </div>
 
           <div>
-            <span className="text-white/50 text-xs font-medium uppercase tracking-wider block mb-2">Eventos</span>
+            <span className="text-white/50 text-xs font-medium uppercase tracking-wider block mb-2">{t.eventsSection}</span>
             <div className="space-y-2">
               <div className="glass rounded-xl p-3 space-y-2">
-                <Toggle checked={stats.ownGoal} onChange={(v) => onUpdate({ ownGoal: v, ownGoalMinute: v ? stats.ownGoalMinute : undefined })} label="Gol contra" />
+                <Toggle checked={stats.ownGoal} onChange={(v) => onUpdate({ ownGoal: v, ownGoalMinute: v ? stats.ownGoalMinute : undefined })} label={t.ownGoalLabel} />
                 {stats.ownGoal && (
                   <div className="flex items-center gap-2 pl-11">
-                    <span className="text-white/40 text-xs">Minuto:</span>
+                    <span className="text-white/40 text-xs">{t.minuteLabel}</span>
                     <NumericInput value={stats.ownGoalMinute} onChange={(v) => onUpdate({ ownGoalMinute: v })} min={1} max={120} placeholder="Min" className="w-16" />
                   </div>
                 )}
               </div>
               <div className="glass rounded-xl p-3 space-y-2">
-                <Toggle checked={stats.missedPenalty} onChange={(v) => onUpdate({ missedPenalty: v, missedPenaltyMinute: v ? stats.missedPenaltyMinute : undefined })} label="Pênalti perdido" />
+                <Toggle checked={stats.missedPenalty} onChange={(v) => onUpdate({ missedPenalty: v, missedPenaltyMinute: v ? stats.missedPenaltyMinute : undefined })} label={t.missedPenaltyLabel} />
                 {stats.missedPenalty && (
                   <div className="flex items-center gap-2 pl-11">
-                    <span className="text-white/40 text-xs">Minuto:</span>
+                    <span className="text-white/40 text-xs">{t.minuteLabel}</span>
                     <NumericInput value={stats.missedPenaltyMinute} onChange={(v) => onUpdate({ missedPenaltyMinute: v })} min={1} max={120} placeholder="Min" className="w-16" />
                   </div>
                 )}
@@ -1097,12 +1113,12 @@ function PlayerLineupRow({
                       onUpdate({ yellowCard: true });
                     }
                   }}
-                  label="Cartão amarelo"
+                  label={t.yellowCardLabel}
                 />
                 {stats.yellowCard && (
                   <div className="pl-11 space-y-2">
                     <div className="flex items-center gap-2">
-                      <span className="text-white/40 text-xs w-20 flex-shrink-0">1º amarelo:</span>
+                      <span className="text-white/40 text-xs w-20 flex-shrink-0">{t.yellowCard1Label}</span>
                       <NumericInput value={stats.yellowCardMinute} onChange={(v) => onUpdate({ yellowCardMinute: v })} min={1} max={120} placeholder="Min" className="w-16" />
                     </div>
                     <Toggle
@@ -1111,11 +1127,11 @@ function PlayerLineupRow({
                         if (v) onUpdate({ yellowCard2: true, redCard: true });
                         else onUpdate({ yellowCard2: false, yellowCard2Minute: undefined, redCard: false });
                       }}
-                      label="2º Amarelo → 🟥 Expulsão"
+                      label={t.yellowCard2Label}
                     />
                     {stats.yellowCard2 && (
                       <div className="flex items-center gap-2">
-                        <span className="text-white/40 text-xs w-20 flex-shrink-0">2º amarelo:</span>
+                        <span className="text-white/40 text-xs w-20 flex-shrink-0">{t.yellowCard2Minute}:</span>
                         <NumericInput value={stats.yellowCard2Minute} onChange={(v) => onUpdate({ yellowCard2Minute: v })} min={1} max={120} placeholder="Min" className="w-16" />
                       </div>
                     )}
@@ -1132,9 +1148,9 @@ function PlayerLineupRow({
                     }}>
                       <div style={{ width: 16, height: 16, borderRadius: 8, background: "#ef4444", marginLeft: "auto" }} />
                     </div>
-                    <span className="text-white/55 text-sm flex-1">Cartão vermelho</span>
+                    <span className="text-white/55 text-sm flex-1">{t.redCardLabel}</span>
                     <span className="text-xs text-white/30 italic">
-                      2º amarelo{stats.yellowCard2Minute ? ` — ${stats.yellowCard2Minute}'` : ""}
+                      {t.yellowCard2Minute}{stats.yellowCard2Minute ? ` — ${stats.yellowCard2Minute}'` : ""}
                     </span>
                   </div>
                 ) : (
@@ -1142,11 +1158,11 @@ function PlayerLineupRow({
                     <Toggle
                       checked={stats.redCard ?? false}
                       onChange={(v) => onUpdate({ redCard: v, redCardMinute: v ? stats.redCardMinute : undefined })}
-                      label="Cartão vermelho"
+                      label={t.redCardLabel}
                     />
                     {stats.redCard && (
                       <div className="flex items-center gap-2 pl-11">
-                        <span className="text-white/40 text-xs">Minuto:</span>
+                        <span className="text-white/40 text-xs">{t.minuteLabel}</span>
                         <NumericInput value={stats.redCardMinute} onChange={(v) => onUpdate({ redCardMinute: v })} min={1} max={120} placeholder="Min" className="w-16" />
                       </div>
                     )}
@@ -1154,25 +1170,25 @@ function PlayerLineupRow({
                 )}
               </div>
               <div className="glass rounded-xl p-3 space-y-2">
-                <Toggle checked={stats.injured} onChange={(v) => onUpdate({ injured: v, injuryMinute: v ? stats.injuryMinute : undefined })} label="Lesionado" />
+                <Toggle checked={stats.injured} onChange={(v) => onUpdate({ injured: v, injuryMinute: v ? stats.injuryMinute : undefined })} label={t.injuredLabel} />
                 {stats.injured && (
                   <div className="flex items-center gap-2 pl-11">
-                    <span className="text-white/40 text-xs">Minuto:</span>
+                    <span className="text-white/40 text-xs">{t.minuteLabel}</span>
                     <NumericInput value={stats.injuryMinute} onChange={(v) => onUpdate({ injuryMinute: v })} min={1} max={120} placeholder="Min" className="w-16" />
                   </div>
                 )}
               </div>
               {!isSub && (
                 <div className="glass rounded-xl p-3 space-y-2">
-                  <Toggle checked={stats.substituted} onChange={handleSubToggle} label="Substituído" />
+                  <Toggle checked={stats.substituted} onChange={handleSubToggle} label={t.substitutedLabel} />
                   {stats.substituted && (
                     <div className="space-y-2 pl-11">
                       <div className="flex items-center gap-2">
-                        <span className="text-white/40 text-xs">Minuto:</span>
+                        <span className="text-white/40 text-xs">{t.minuteLabel}</span>
                         <NumericInput value={stats.substitutedAtMinute} onChange={(v) => onUpdate({ substitutedAtMinute: v })} min={1} max={120} placeholder="Min" className="w-16" />
                       </div>
                       <div>
-                        <span className="text-white/40 text-xs block mb-1">Quem entrou:</span>
+                        <span className="text-white/40 text-xs block mb-1">{t.subInLabel}</span>
                         <SearchablePlayerSelect
                           allUnused={allUnused}
                           allParticipants={allParticipants}
@@ -1208,6 +1224,8 @@ export function RegistrarPartidaModal({
   competitions,
   editMatch,
 }: Props) {
+  const [lang] = useLang();
+  const t = PARTIDAS[lang];
   const isEditMode = editMatch != null;
   const [saving, setSaving] = useState(false);
   const [pickerMode, setPickerMode] = useState<"starter" | "sub" | null>(null);
@@ -1485,7 +1503,7 @@ export function RegistrarPartidaModal({
               className="w-2 h-2 rounded-full"
               style={{ background: resultColor, boxShadow: `0 0 8px ${resultColor}` }}
             />
-            <h2 className="text-white font-black text-base">{isEditMode ? "Editar Partida" : "Registrar Partida"}</h2>
+            <h2 className="text-white font-black text-base">{isEditMode ? t.editMatch : t.registerMatch}</h2>
             {draft.opponent && (
               <span className="text-white/40 text-sm truncate max-w-32">{draft.opponent}</span>
             )}
@@ -1504,7 +1522,7 @@ export function RegistrarPartidaModal({
 
           {/* Adversário */}
           <div className="space-y-1.5">
-            <label className="text-white/40 text-xs font-medium uppercase tracking-wider">Adversário *</label>
+            <label className="text-white/40 text-xs font-medium uppercase tracking-wider">{t.opponentLabel}</label>
             <OpponentAutocomplete
               value={draft.opponent}
               onChange={(v) => onChange({ opponent: v })}
@@ -1522,11 +1540,11 @@ export function RegistrarPartidaModal({
               const leftBadge = isHome
                 ? <ClubBadge src={clubLogoUrl ?? null} name={clubName} size={36} />
                 : <ClubBadge src={draft.opponentLogoUrl ?? null} name={draft.opponent || "?"} size={36} />;
-              const leftName  = isHome ? clubName : (draft.opponent || "Adversário");
+              const leftName  = isHome ? clubName : (draft.opponent || t.opponent);
               const rightBadge = isHome
                 ? <ClubBadge src={draft.opponentLogoUrl ?? null} name={draft.opponent || "?"} size={36} />
                 : <ClubBadge src={clubLogoUrl ?? null} name={clubName} size={36} />;
-              const rightName  = isHome ? (draft.opponent || "Adversário") : clubName;
+              const rightName  = isHome ? (draft.opponent || t.opponent) : clubName;
               const leftInput  = isHome
                 ? <ScoreInput value={draft.myScore} onChange={(v) => onChange({ myScore: v })} />
                 : <ScoreInput value={draft.opponentScore} onChange={(v) => onChange({ opponentScore: v })} />;
@@ -1555,7 +1573,7 @@ export function RegistrarPartidaModal({
                         color: resultColor,
                       }}
                     >
-                      {draft.myScore > draft.opponentScore ? "Vitória" : draft.myScore < draft.opponentScore ? "Derrota" : "Empate"}
+                      {draft.myScore > draft.opponentScore ? t.resultWin : draft.myScore < draft.opponentScore ? t.resultLoss : t.resultDraw}
                     </span>
                   </div>
 
@@ -1583,7 +1601,7 @@ export function RegistrarPartidaModal({
                 border: draft.hasExtraTime ? "1px solid rgba(251,191,36,0.35)" : "1px solid rgba(255,255,255,0.08)",
               }}
             >
-              ⏱ Prorrogação
+              {t.extraTimeBtn}
             </button>
             <button
               type="button"
@@ -1601,10 +1619,10 @@ export function RegistrarPartidaModal({
                 border: draft.penaltyShootout ? "1px solid rgba(168,85,247,0.35)" : "1px solid rgba(255,255,255,0.08)",
               }}
             >
-              🥅 Pênaltis
+              {t.penaltyBtn}
             </button>
             {draft.hasExtraTime && !draft.penaltyShootout && (
-              <span className="text-xs text-white/30 italic">+30 min para jogadores em campo</span>
+              <span className="text-xs text-white/30 italic">{t.extraTimeHint}</span>
             )}
           </div>
 
@@ -1630,7 +1648,7 @@ export function RegistrarPartidaModal({
                 className="rounded-2xl p-4 space-y-4"
                 style={{ background: "rgba(168,85,247,0.06)", border: "1px solid rgba(168,85,247,0.2)" }}
               >
-                <p className="text-white/50 text-xs font-bold uppercase tracking-wider">🥅 Disputa de Pênaltis</p>
+                <p className="text-white/50 text-xs font-bold uppercase tracking-wider">{t.penaltySection}</p>
 
                 {/* Penalty score */}
                 <div className="flex items-center gap-3">
@@ -1643,7 +1661,7 @@ export function RegistrarPartidaModal({
                   </div>
                   <span className="text-white/20 font-light flex-shrink-0" style={{ fontSize: 18 }}>×</span>
                   <div className="flex-1 flex flex-col items-center gap-1">
-                    <span className="text-white/30 text-xs text-center">{draft.opponent || "Adversário"}</span>
+                    <span className="text-white/30 text-xs text-center">{draft.opponent || t.opponent}</span>
                     <ScoreInput
                       value={ps.opponentScore}
                       onChange={(v) => updatePs({ opponentScore: v })}
@@ -1653,7 +1671,7 @@ export function RegistrarPartidaModal({
 
                 {/* Goalkeeper saves */}
                 <div className="flex items-center gap-3">
-                  <span className="text-white/40 text-xs font-medium flex-1">🧤 Defesas do goleiro</span>
+                  <span className="text-white/40 text-xs font-medium flex-1">{t.gkSavesLabel}</span>
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
@@ -1674,18 +1692,18 @@ export function RegistrarPartidaModal({
                 {/* Kicks list */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-white/30 text-xs font-medium uppercase tracking-wider">Cobradores ({ps.kicks.length})</span>
+                    <span className="text-white/30 text-xs font-medium uppercase tracking-wider">{t.kickersLabel} ({ps.kicks.length})</span>
                     <button
                       type="button"
                       onClick={addKick}
                       className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors"
                       style={{ background: "rgba(168,85,247,0.15)", color: "#c084fc" }}
                     >
-                      + Cobrador
+                      {t.addKicker}
                     </button>
                   </div>
                   {ps.kicks.length === 0 ? (
-                    <p className="text-white/15 text-xs text-center py-2">Nenhum cobrador adicionado</p>
+                    <p className="text-white/15 text-xs text-center py-2">{t.noKickers}</p>
                   ) : (
                     <div className="space-y-1.5">
                       {ps.kicks.map((kick, idx) => {
@@ -1701,7 +1719,7 @@ export function RegistrarPartidaModal({
                                 className="w-full bg-transparent text-white text-xs focus:outline-none rounded-lg py-0.5"
                                 style={{ border: "1px solid rgba(255,255,255,0.1)", padding: "2px 6px", background: "rgba(255,255,255,0.05)", color: kick.playerId ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.3)" }}
                               >
-                                <option value="" style={{ background: "#1a1a2e" }}>Selecionar jogador...</option>
+                                <option value="" style={{ background: "#1a1a2e" }}>{t.selectPlayer}</option>
                                 {allInField.map((p) => (
                                   <option key={p.id} value={p.id} style={{ background: "#1a1a2e" }}>{p.name} ({p.positionPtBr})</option>
                                 ))}
@@ -1722,7 +1740,7 @@ export function RegistrarPartidaModal({
                                 minWidth: 70,
                               }}
                             >
-                              {kick.scored ? "✓ Gol" : "✗ Erro"}
+                              {kick.scored ? t.goalScored : t.goalMissed}
                             </button>
                             {/* Remove */}
                             <button
@@ -1745,7 +1763,7 @@ export function RegistrarPartidaModal({
           {/* Data + Local */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <label className="text-white/40 text-xs font-medium uppercase tracking-wider">Data</label>
+              <label className="text-white/40 text-xs font-medium uppercase tracking-wider">{t.dateLabel}</label>
               <input
                 type="date"
                 value={draft.date}
@@ -1755,7 +1773,7 @@ export function RegistrarPartidaModal({
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-white/40 text-xs font-medium uppercase tracking-wider">Local</label>
+              <label className="text-white/40 text-xs font-medium uppercase tracking-wider">{t.locationLabel}</label>
               <div className="flex gap-2 h-[42px]">
                 {(["casa", "fora", "neutro"] as MatchLocation[]).map((loc) => (
                   <button
@@ -1770,7 +1788,7 @@ export function RegistrarPartidaModal({
                     }}
                   >
                     <span>{LOCATION_ICONS[loc]}</span>
-                    <span>{LOCATION_LABELS[loc]}</span>
+                    <span>{getLocationLabel(lang, loc)}</span>
                   </button>
                 ))}
               </div>
@@ -1780,7 +1798,7 @@ export function RegistrarPartidaModal({
           {/* Torneio + Rodada */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <label className="text-white/40 text-xs font-medium uppercase tracking-wider">Torneio</label>
+              <label className="text-white/40 text-xs font-medium uppercase tracking-wider">{t.tournamentLabel}</label>
               <input
                 type="text"
                 value={draft.tournament}
@@ -1807,17 +1825,17 @@ export function RegistrarPartidaModal({
               </div>
             </div>
             <div className="space-y-1.5">
-              <label className="text-white/40 text-xs font-medium uppercase tracking-wider">Estágio / Rodada</label>
+              <label className="text-white/40 text-xs font-medium uppercase tracking-wider">{t.stageLabel}</label>
               <input
                 type="text"
                 value={draft.stage}
                 onChange={(e) => onChange({ stage: e.target.value })}
-                placeholder="Ex: Rodada 15"
+                placeholder={t.stagePlaceholder}
                 className="w-full px-3 py-2.5 rounded-xl text-white text-sm focus:outline-none glass"
                 style={{ border: "1px solid rgba(255,255,255,0.08)" }}
               />
               <div className="space-y-1.5">
-                <label className="text-white/40 text-xs font-medium uppercase tracking-wider">Posição na tabela</label>
+                <label className="text-white/40 text-xs font-medium uppercase tracking-wider">{t.tablePositionLabel}</label>
                 <input
                   type="number"
                   min={1}
@@ -1836,7 +1854,7 @@ export function RegistrarPartidaModal({
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <p className="text-white/40 text-xs font-medium uppercase tracking-wider">
-                Titulares ({draft.starterIds.length})
+                {t.startersLabel} ({draft.starterIds.length})
               </p>
               <div className="flex items-center gap-2">
                 <button
@@ -1848,7 +1866,7 @@ export function RegistrarPartidaModal({
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
                   </svg>
-                  Preencher auto
+                  {t.autoFill}
                 </button>
                 <button
                   type="button"
@@ -1859,7 +1877,7 @@ export function RegistrarPartidaModal({
                     color: pickerMode === "starter" ? "var(--club-primary)" : "rgba(255,255,255,0.5)",
                     border: pickerMode === "starter" ? "1px solid rgba(var(--club-primary-rgb),0.4)" : "1px solid rgba(255,255,255,0.08)",
                   }}
-                  title="Adicionar titular"
+                  title={t.addStarterTitle}
                 >
                   +
                 </button>
@@ -1880,7 +1898,7 @@ export function RegistrarPartidaModal({
                 className="flex items-center justify-center py-6 rounded-2xl"
                 style={{ border: "1px dashed rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.01)" }}
               >
-                <p className="text-white/20 text-sm">Nenhum titular adicionado</p>
+                <p className="text-white/20 text-sm">{t.noStarters}</p>
               </div>
             )}
 
@@ -1911,7 +1929,7 @@ export function RegistrarPartidaModal({
             {/* Substitutos */}
             <div className="flex items-center justify-between pt-1">
               <p className="text-white/40 text-xs font-medium uppercase tracking-wider">
-                Substitutos ({draft.subIds.length})
+                {t.subsLabel} ({draft.subIds.length})
               </p>
               <button
                 type="button"
@@ -1922,7 +1940,7 @@ export function RegistrarPartidaModal({
                   color: pickerMode === "sub" ? "var(--club-primary)" : "rgba(255,255,255,0.5)",
                   border: pickerMode === "sub" ? "1px solid rgba(var(--club-primary-rgb),0.4)" : "1px solid rgba(255,255,255,0.08)",
                 }}
-                title="Adicionar substituto"
+                title={t.addSubTitle}
               >
                 +
               </button>
@@ -1964,7 +1982,7 @@ export function RegistrarPartidaModal({
             <div className="space-y-2 pt-1">
               <div className="flex items-center justify-between">
                 <label className="text-white/40 text-xs font-medium uppercase tracking-wider">
-                  ⚽ Gols do {draft.opponent || "Adversário"}
+                  ⚽ {t.opponentGoalsLabel} {draft.opponent || t.opponent}
                 </label>
                 <button
                   type="button"
@@ -1975,7 +1993,7 @@ export function RegistrarPartidaModal({
                   <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
                   </svg>
-                  Adicionar gol
+                  {t.addGoalBtn}
                 </button>
               </div>
               {draft.opponentGoals.length > 0 && (
@@ -1997,7 +2015,7 @@ export function RegistrarPartidaModal({
 
             {/* MOTM */}
             <div className="space-y-1.5 pt-1">
-              <label className="text-white/40 text-xs font-medium uppercase tracking-wider">⭐ Melhor em Campo (MOTM)</label>
+              <label className="text-white/40 text-xs font-medium uppercase tracking-wider">{t.motmLabel}</label>
               <MotmAutocomplete
                 playerId={draft.motmPlayerId}
                 playerName={draft.motmPlayerName}
@@ -2009,33 +2027,33 @@ export function RegistrarPartidaModal({
 
           {/* Estatísticas da partida */}
           <div className="space-y-3">
-            <p className="text-white/40 text-xs font-medium uppercase tracking-wider">Estatísticas da Partida</p>
+            <p className="text-white/40 text-xs font-medium uppercase tracking-wider">{t.matchStatsSection}</p>
             <div
               className="rounded-2xl p-4 space-y-4"
               style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}
             >
               <div className="flex items-center gap-4">
                 <div className="flex-1 space-y-1">
-                  <p className="text-white/40 text-xs text-center">Chutes — {clubName}</p>
+                  <p className="text-white/40 text-xs text-center">{t.shotsFor} {clubName}</p>
                   <div className="flex items-center justify-center">
                     <NumericInput value={draft.myShots} onChange={(v) => onChange({ myShots: v ?? 0 })} placeholder="0" className="w-16 text-center" />
                   </div>
                 </div>
                 <span className="text-white/15 text-xs flex-shrink-0">vs</span>
                 <div className="flex-1 space-y-1">
-                  <p className="text-white/40 text-xs text-center">Chutes — {draft.opponent || "Adversário"}</p>
+                  <p className="text-white/40 text-xs text-center">{t.shotsFor} {draft.opponent || t.opponent}</p>
                   <div className="flex items-center justify-center">
                     <NumericInput value={draft.opponentShots} onChange={(v) => onChange({ opponentShots: v ?? 0 })} placeholder="0" className="w-16 text-center" />
                   </div>
                 </div>
               </div>
               <div className="flex items-center justify-between pt-1 border-t" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
-                <span className="text-white/40 text-xs">Gols de pênalti 🎯</span>
+                <span className="text-white/40 text-xs">{t.penaltyGoalsLabel}</span>
                 <NumericInput value={draft.penaltyGoals} onChange={(v) => onChange({ penaltyGoals: v ?? 0 })} placeholder="0" className="w-16 text-center" />
               </div>
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-white/40 text-xs">Posse de bola</span>
+                  <span className="text-white/40 text-xs">{t.possessionSection}</span>
                   <div className="flex items-center gap-2">
                     <span className="text-white/60 text-xs font-bold tabular-nums" style={{ color: "var(--club-primary)" }}>{draft.possessionPct}%</span>
                     <span className="text-white/25 text-xs">— {100 - draft.possessionPct}%</span>
@@ -2055,7 +2073,7 @@ export function RegistrarPartidaModal({
                 </div>
                 <div className="flex justify-between text-xs text-white/20">
                   <span>{clubName}</span>
-                  <span>{draft.opponent || "Adversário"}</span>
+                  <span>{draft.opponent || t.opponent}</span>
                 </div>
               </div>
             </div>
@@ -2063,11 +2081,11 @@ export function RegistrarPartidaModal({
 
           {/* Observações */}
           <div className="space-y-2">
-            <p className="text-white/40 text-xs font-medium uppercase tracking-wider">Observações</p>
+            <p className="text-white/40 text-xs font-medium uppercase tracking-wider">{t.observationsSection}</p>
             <textarea
               value={draft.observations}
               onChange={(e) => onChange({ observations: e.target.value })}
-              placeholder="Descreva como foi o jogo, lances importantes, tática usada... Isso ajuda a IA a gerar notícias mais ricas sobre a partida."
+              placeholder={t.observationsPlaceholder}
               rows={4}
               className="w-full px-3.5 py-3 rounded-2xl text-white text-sm focus:outline-none resize-none glass leading-relaxed"
               style={{
@@ -2077,7 +2095,7 @@ export function RegistrarPartidaModal({
                 caretColor: "var(--club-primary)",
               }}
             />
-            <p className="text-white/20 text-xs">Opcional — visível no resumo da partida e usado para geração de notícias.</p>
+            <p className="text-white/20 text-xs">{t.observationsSub}</p>
           </div>
 
           <div className="h-1" />
@@ -2089,7 +2107,7 @@ export function RegistrarPartidaModal({
           style={{ borderTop: "1px solid rgba(255,255,255,0.07)" }}
         >
           {!canSave && (
-            <p className="text-white/30 text-xs text-center mb-2">Preencha o nome do adversário para salvar</p>
+            <p className="text-white/30 text-xs text-center mb-2">{t.missingOpponent}</p>
           )}
           <button
             type="button"
@@ -2098,7 +2116,7 @@ export function RegistrarPartidaModal({
             className="w-full py-3.5 rounded-2xl font-black text-sm text-white transition-all duration-200 hover:scale-[1.01] active:scale-[0.99] disabled:opacity-40 disabled:cursor-not-allowed disabled:scale-100"
             style={{ background: canSave ? "var(--club-gradient)" : "rgba(255,255,255,0.08)" }}
           >
-            {saving ? (isEditMode ? "Atualizando..." : "Salvando...") : (isEditMode ? "Atualizar Partida" : "Salvar Partida")}
+            {saving ? (isEditMode ? t.updating : t.saving) : (isEditMode ? t.updateMatch : t.saveMatch)}
           </button>
         </div>
       </div>

@@ -1,7 +1,9 @@
 import { useState, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import type { MatchRecord, PlayerMatchStats, GoalEntry } from "@/types/match";
-import { getMatchResult, getMatchResultFull, RESULT_STYLE, LOCATION_ICONS, LOCATION_LABELS, GOAL_TYPE_ICONS, GOAL_TYPE_LABELS } from "@/types/match";
+import { getMatchResult, getMatchResultFull, RESULT_STYLE, LOCATION_ICONS, GOAL_TYPE_ICONS } from "@/types/match";
+import { PARTIDAS, getLocationLabel, getGoalTypeLabel, matchDateLocale } from "@/lib/i18n";
+import { useLang } from "@/hooks/useLang";
 import { getAllMatchesForCareer } from "@/lib/matchStorage";
 import type { SquadPlayer } from "@/lib/squadCache";
 import { getCachedClubList } from "@/lib/clubListCache";
@@ -164,6 +166,8 @@ function PlayerDetailPanel({
   allPlayers: SquadPlayer[];
   onClose: () => void;
 }) {
+  const [lang] = useLang();
+  const t = PARTIDAS[lang];
   const stats = match.playerStats[player.id];
   const isStarter = match.starterIds.includes(player.id);
   const minutes = stats ? calcMinutes(player.id, stats, match) : 0;
@@ -212,28 +216,28 @@ function PlayerDetailPanel({
   }, [onClose]);
 
   const events: { label: string; minute?: number; color: string }[] = [
-    ...(stats?.yellowCard ? [{ label: "Cartão amarelo", minute: stats.yellowCardMinute, color: "#fbbf24" }] : []),
-    ...(stats?.yellowCard2 ? [{ label: "2º Cartão amarelo", minute: stats.yellowCard2Minute, color: "#fbbf24" }] : []),
-    ...(stats?.redCard ? [{ label: "Cartão vermelho", minute: stats.yellowCard2 ? stats.yellowCard2Minute : stats.redCardMinute, color: "#ef4444" }] : []),
-    ...(stats?.ownGoal ? [{ label: "Autogolo", minute: stats.ownGoalMinute, color: "#f87171" }] : []),
-    ...(stats?.missedPenalty ? [{ label: "Pênalti falhado", minute: stats.missedPenaltyMinute, color: "#f97316" }] : []),
-    ...(stats?.injured ? [{ label: "Lesão", minute: stats.injuryMinute, color: "#fb923c" }] : []),
+    ...(stats?.yellowCard ? [{ label: t.yellowCardEvent, minute: stats.yellowCardMinute, color: "#fbbf24" }] : []),
+    ...(stats?.yellowCard2 ? [{ label: t.yellowCard2Event, minute: stats.yellowCard2Minute, color: "#fbbf24" }] : []),
+    ...(stats?.redCard ? [{ label: t.redCardEvent, minute: stats.yellowCard2 ? stats.yellowCard2Minute : stats.redCardMinute, color: "#ef4444" }] : []),
+    ...(stats?.ownGoal ? [{ label: t.ownGoalEvent, minute: stats.ownGoalMinute, color: "#f87171" }] : []),
+    ...(stats?.missedPenalty ? [{ label: t.missedPenaltyEvent, minute: stats.missedPenaltyMinute, color: "#f97316" }] : []),
+    ...(stats?.injured ? [{ label: t.injuryEvent, minute: stats.injuryMinute, color: "#fb923c" }] : []),
   ];
 
   const extraStats = [
     stats?.shots != null ? {
-      label: "Finalizações",
+      label: t.extraShots,
       value: stats.shotsOnTargetPct != null ? `${stats.shots} (${stats.shotsOnTargetPct}% no gol)` : stats.shots,
     } : null,
-    stats?.passes != null ? { label: "Passes", value: stats.passes } : null,
-    stats?.passAccuracy != null ? { label: "Precisão", value: `${stats.passAccuracy}%` } : null,
-    stats?.keyPasses != null ? { label: "Passes-chave", value: stats.keyPasses } : null,
+    stats?.passes != null ? { label: t.extraPasses, value: stats.passes } : null,
+    stats?.passAccuracy != null ? { label: t.extraAccuracy, value: `${stats.passAccuracy}%` } : null,
+    stats?.keyPasses != null ? { label: t.extraKeyPasses, value: stats.keyPasses } : null,
     stats?.dribblesCompleted != null ? {
-      label: "Dribles",
+      label: t.extraDribbles,
       value: stats.dribblesSuccessRate != null ? `${stats.dribblesCompleted} (${stats.dribblesSuccessRate}%)` : stats.dribblesCompleted,
     } : null,
-    stats?.saves != null ? { label: "Defesas", value: stats.saves } : null,
-    stats?.ballRecoveries != null ? { label: "Recuperações", value: stats.ballRecoveries } : null,
+    stats?.saves != null ? { label: t.extraSaves, value: stats.saves } : null,
+    stats?.ballRecoveries != null ? { label: t.extraRecoveries, value: stats.ballRecoveries } : null,
   ].filter(Boolean).slice(0, 4) as { label: string; value: string | number }[];
 
   const pos = POS_BADGE[player.positionPtBr] ?? POS_BADGE.MID;
@@ -282,7 +286,7 @@ function PlayerDetailPanel({
               </div>
               <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                 <span className="text-[11px] font-semibold px-2 py-0.5 rounded-md" style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.55)" }}>
-                  {isStarter ? "Titular" : `Entrou${subEntryMinute != null ? ` ${subEntryMinute}'` : ""}`}
+                  {isStarter ? t.starterBadge : `${t.enteredBadge}${subEntryMinute != null ? ` ${subEntryMinute}'` : ""}`}
                 </span>
                 {replacedPlayer && (
                   <span className="text-white/35 text-[11px]">↑ {lastName(replacedPlayer.name)}</span>
@@ -307,10 +311,10 @@ function PlayerDetailPanel({
         {/* ── 4-col stats row ── */}
         <div className="px-5 pt-4 pb-3 grid grid-cols-4 gap-2">
           {[
-            { label: "Nota", value: rating > 0 ? rating.toFixed(1) : "—", accent: rating > 0 ? ratingC : undefined, sub: rating > 0 ? (rating > 8.5 ? "Excelente" : rating >= 7.6 ? "Bom" : rating >= 6.5 ? "Regular" : "Abaixo") : undefined, subColor: ratingB },
-            { label: "Minutos", value: minutes > 0 ? `${minutes}'` : "—" },
-            { label: "Golos", value: goalsScored > 0 ? goalsScored : "—" },
-            { label: "Assist.", value: assists > 0 ? assists : "—" },
+            { label: t.ratingStatLabel, value: rating > 0 ? rating.toFixed(1) : "—", accent: rating > 0 ? ratingC : undefined, sub: rating > 0 ? (rating > 8.5 ? t.ratingExcellent : rating >= 7.6 ? t.ratingGood : rating >= 6.5 ? t.ratingAverage : t.ratingBelow) : undefined, subColor: ratingB },
+            { label: t.minutesLabel, value: minutes > 0 ? `${minutes}'` : "—" },
+            { label: t.goalsLabel, value: goalsScored > 0 ? goalsScored : "—" },
+            { label: t.assistsLabel, value: assists > 0 ? assists : "—" },
           ].map((item, i) => (
             <div
               key={i}
@@ -356,7 +360,7 @@ function PlayerDetailPanel({
               const assister = g.assistPlayerId != null ? allPlayers.find((p) => p.id === g.assistPlayerId) : null;
               const isLast = i === stats!.goals.length - 1 && events.length === 0;
               const typeIcon = g.goalType ? GOAL_TYPE_ICONS[g.goalType] : "⚽";
-              const typeLabel = g.goalType && g.goalType !== "normal" ? GOAL_TYPE_LABELS[g.goalType] : null;
+              const typeLabel = g.goalType && g.goalType !== "normal" ? getGoalTypeLabel(lang, g.goalType) : null;
               return (
                 <div key={g.id ?? i} className="flex items-center gap-2 px-3 py-2.5" style={{ borderBottom: isLast ? "none" : "1px solid rgba(255,255,255,0.05)" }}>
                   <span className="text-sm">{typeIcon}</span>
@@ -386,7 +390,7 @@ function PlayerDetailPanel({
             className="w-full py-2.5 rounded-xl text-sm font-semibold text-white/60 hover:text-white transition-colors"
             style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}
           >
-            Fechar
+            {t.closeBtn}
           </button>
         </div>
       </div>
@@ -470,6 +474,8 @@ export function MatchDetailPage({
   onSelectMatch?: (match: MatchRecord) => void;
   isReadOnly?: boolean;
 }) {
+  const [lang] = useLang();
+  const t = PARTIDAS[lang];
   const [match, setMatch] = useState<MatchRecord>(initialMatch);
   const [selectedPlayer, setSelectedPlayer] = useState<SquadPlayer | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -551,7 +557,7 @@ export function MatchDetailPage({
   const gradientAngle = isHome ? 135 : 225;
 
   const dateStr = match.date
-    ? new Date(match.date + "T12:00:00").toLocaleDateString("pt-BR", {
+    ? new Date(match.date + "T12:00:00").toLocaleDateString(matchDateLocale(lang), {
         weekday: "long",
         day: "2-digit",
         month: "long",
@@ -625,14 +631,14 @@ export function MatchDetailPage({
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
           </svg>
-          Voltar
+          {t.back}
         </button>
 
         <div className="flex items-center gap-2">
           {careerId && h2hMatches.length > 0 && (
             <button
               onClick={() => setShowH2H(true)}
-              title="Ver histórico de confrontos diretos"
+              title={t.h2hTitle}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-colors text-sm font-semibold"
               style={{
                 border: "1px solid rgba(255,255,255,0.09)",
@@ -644,20 +650,20 @@ export function MatchDetailPage({
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M7 16V4m0 0L3 8m4-4 4 4M17 8v12m0 0 4-4m-4 4-4-4" />
               </svg>
-              Confrontos Diretos ({h2hMatches.length})
+              {t.directMatches} ({h2hMatches.length})
             </button>
           )}
           {!isReadOnly && careerId && seasonId && season && (
             <button
               onClick={() => setIsEditModalOpen(true)}
-              title="Editar partida"
+              title={t.edit}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-white/50 hover:text-white/90 hover:bg-white/08 transition-colors text-sm font-semibold"
               style={{ border: "1px solid rgba(255,255,255,0.09)" }}
             >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487a2.1 2.1 0 1 1 2.97 2.97L8.122 19.167 4 20l.833-4.122 12.03-11.391z" />
               </svg>
-              Editar
+              {t.edit}
             </button>
           )}
         </div>
@@ -685,9 +691,9 @@ export function MatchDetailPage({
               style={{ borderBottom: "1px solid rgba(var(--club-primary-rgb),0.1)" }}
             >
               <div>
-                <p className="text-white font-bold text-base">Confrontos Diretos</p>
+                <p className="text-white font-bold text-base">{t.h2hTitle}</p>
                 <p className="text-white/40 text-xs mt-0.5">
-                  vs {match.opponent} — {h2hMatches.length} confronto{h2hMatches.length !== 1 ? "s" : ""}
+                  vs {match.opponent} — {h2hMatches.length} {h2hMatches.length !== 1 ? t.confrontoPlural : t.confrontoSingular}
                 </p>
                 {h2hMatches.length > 0 && (
                   <div className="flex items-center gap-1.5 mt-2 flex-wrap">
@@ -735,16 +741,16 @@ export function MatchDetailPage({
                   <svg className="w-10 h-10 text-white/15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2z" />
                   </svg>
-                  <p className="text-white/30 text-sm">Nenhum confronto anterior registrado.</p>
+                  <p className="text-white/30 text-sm">{t.noPreviousMatches}</p>
                 </div>
               )}
               {h2hMatches.map((m) => {
                 const r = getMatchResult(m.myScore, m.opponentScore);
-                const resultLabel = r === "vitoria" ? "V" : r === "empate" ? "E" : "D";
+                const resultLabel = getMatchResult(m.myScore, m.opponentScore) === "vitoria" ? t.resultV : r === "empate" ? t.resultE : t.resultD;
                 const resultColor = r === "vitoria" ? "#34d399" : r === "empate" ? "#fbbf24" : "#f87171";
                 const resultBg = r === "vitoria" ? "rgba(52,211,153,0.13)" : r === "empate" ? "rgba(251,191,36,0.13)" : "rgba(248,113,113,0.13)";
                 const dateFormatted = m.date
-                  ? new Date(m.date + "T12:00:00").toLocaleDateString("pt-BR", {
+                  ? new Date(m.date + "T12:00:00").toLocaleDateString(matchDateLocale(lang), {
                       day: "2-digit",
                       month: "2-digit",
                       year: "numeric",
@@ -810,7 +816,7 @@ export function MatchDetailPage({
 
         {/* LEFT: Pitch */}
         <div>
-          <p className="text-white/30 text-[10px] font-bold tracking-widest uppercase mb-2">Titulares</p>
+          <p className="text-white/30 text-[10px] font-bold tracking-widest uppercase mb-2">{t.startersSection}</p>
           {starters.length > 0 ? (
             <FootballPitch
               players={allPlayers}
@@ -824,7 +830,7 @@ export function MatchDetailPage({
               className="rounded-2xl flex items-center justify-center py-16"
               style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
             >
-              <span className="text-white/25 text-sm">Nenhum titular registrado</span>
+              <span className="text-white/25 text-sm">{t.noStartersRegistered}</span>
             </div>
           )}
         </div>
@@ -851,7 +857,7 @@ export function MatchDetailPage({
         {/* Meta */}
         <div className="flex items-center justify-between px-5 pt-4 pb-1 gap-3">
           <div className="flex items-center gap-2">
-            <span className="opacity-50 text-sm" title={LOCATION_LABELS[match.location]}>
+            <span className="opacity-50 text-sm" title={getLocationLabel(lang, match.location)}>
               {LOCATION_ICONS[match.location]}
             </span>
             {match.tournament && (
@@ -887,7 +893,7 @@ export function MatchDetailPage({
             borderTop: isRivalWin ? "1px solid rgba(249,115,22,0.2)" : "1px solid rgba(127,29,29,0.3)",
             borderBottom: isRivalWin ? "1px solid rgba(249,115,22,0.2)" : "1px solid rgba(127,29,29,0.3)",
           }}>
-            {isRivalWin ? "⚔️ CLÁSSICO · VITÓRIA SOBRE RIVAL" : "💀 DERROTA NO CLÁSSICO"}
+            {isRivalWin ? t.classicWin : t.classicLoss}
           </div>
         )}
 
@@ -940,7 +946,7 @@ export function MatchDetailPage({
 
             {/* Extra time / penalty score */}
             {match.hasExtraTime && !match.penaltyShootout && (
-              <span className="text-xs font-semibold" style={{ color: "rgba(251,191,36,0.75)" }}>após prorrogação</span>
+              <span className="text-xs font-semibold" style={{ color: "rgba(251,191,36,0.75)" }}>{t.afterExtraTime}</span>
             )}
             {match.penaltyShootout && (() => {
               const leftPen = isHome ? match.penaltyShootout.myScore : match.penaltyShootout.opponentScore;
@@ -948,7 +954,7 @@ export function MatchDetailPage({
               const penWon = leftPen > rightPen;
               return (
                 <div className="flex flex-col items-center gap-0.5 mt-1">
-                  <span className="text-[10px] font-medium" style={{ color: "rgba(192,132,252,0.55)" }}>pênaltis</span>
+                  <span className="text-[10px] font-medium" style={{ color: "rgba(192,132,252,0.55)" }}>{t.penaltiesLabel}</span>
                   <span
                     className="text-xl font-black tabular-nums leading-none"
                     style={{ color: "rgba(192,132,252,0.9)", letterSpacing: "0.04em" }}
@@ -956,7 +962,7 @@ export function MatchDetailPage({
                     {leftPen} × {rightPen}
                   </span>
                   <span className="text-[10px] font-medium" style={{ color: penWon ? "rgba(52,211,153,0.7)" : "rgba(248,113,113,0.7)" }}>
-                    {penWon ? `${leftName} vence nos pênaltis` : `${rightName} vence nos pênaltis`}
+                    {penWon ? `${leftName} ${t.winsOnPenalties}` : `${rightName} ${t.winsOnPenalties}`}
                   </span>
                 </div>
               );
@@ -1025,7 +1031,7 @@ export function MatchDetailPage({
             style={{ background: "rgba(234,179,8,0.08)", border: "1px solid rgba(234,179,8,0.15)" }}
           >
             <span className="text-sm">⭐</span>
-            <span className="text-xs font-semibold" style={{ color: "#fbbf24" }}>Jogador da partida</span>
+            <span className="text-xs font-semibold" style={{ color: "#fbbf24" }}>{t.motmBadge}</span>
             <div className="flex items-center gap-2 ml-auto">
               <PlayerPhoto photo={motmPhoto} name={motmDisplayName} size={28} borderColor="#fbbf24" />
               <span className="text-white/80 text-sm font-bold">{motmDisplayName}</span>
@@ -1048,7 +1054,7 @@ export function MatchDetailPage({
               className="rounded-2xl p-4 space-y-3"
               style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}
             >
-              <p className="text-white/30 text-[10px] font-bold tracking-widest uppercase">Estatísticas</p>
+              <p className="text-white/30 text-[10px] font-bold tracking-widest uppercase">{t.statsDetail}</p>
 
               {/* Team labels */}
               <div className="flex items-center gap-3">
@@ -1060,7 +1066,7 @@ export function MatchDetailPage({
               {myPoss > 0 && (
                 <div className="space-y-1.5">
                   <StatRow
-                    label="Posse de bola"
+                    label={t.possessionStat}
                     leftVal={`${myPoss}%`}
                     rightVal={`${oppPoss}%`}
                     leftHigher={myPoss > oppPoss ? true : myPoss < oppPoss ? false : undefined}
@@ -1081,7 +1087,7 @@ export function MatchDetailPage({
 
               {(match.matchStats.myShots > 0 || match.matchStats.opponentShots > 0) && (
                 <StatRow
-                  label="Finalizações"
+                  label={t.shotsStat}
                   leftVal={match.matchStats.myShots}
                   rightVal={match.matchStats.opponentShots}
                   leftHigher={
@@ -1102,7 +1108,7 @@ export function MatchDetailPage({
               className="rounded-2xl p-4"
               style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}
             >
-              <p className="text-white/30 text-[10px] font-bold tracking-widest uppercase mb-3">Substituições</p>
+              <p className="text-white/30 text-[10px] font-bold tracking-widest uppercase mb-3">{t.substitutions}</p>
               <div className="space-y-3">
                 {subEvents.map((ev, i) => (
                   <div key={i} className="flex items-center gap-2">
@@ -1115,7 +1121,7 @@ export function MatchDetailPage({
                         onClick={() => setSelectedPlayer(ev.comingOn)}
                         className="flex items-center gap-1.5 hover:opacity-80 transition-opacity text-left"
                       >
-                        <span className="text-green-400 text-[9px] font-bold w-10 text-right flex-shrink-0">Entrou</span>
+                        <span className="text-green-400 text-[9px] font-bold w-10 text-right flex-shrink-0">{t.subIn}</span>
                         <PlayerPhoto photo={ev.comingOn.photo} name={ev.comingOn.name} size={22} borderColor={
                           (match.playerStats[ev.comingOn.id]?.rating ?? 0) > 0
                             ? ratingColor(match.playerStats[ev.comingOn.id].rating)
@@ -1133,7 +1139,7 @@ export function MatchDetailPage({
                         onClick={() => setSelectedPlayer(ev.goingOff)}
                         className="flex items-center gap-1.5 hover:opacity-80 transition-opacity text-left"
                       >
-                        <span className="text-red-400 text-[9px] font-bold w-10 text-right flex-shrink-0">Saiu</span>
+                        <span className="text-red-400 text-[9px] font-bold w-10 text-right flex-shrink-0">{t.subOut}</span>
                         <PlayerPhoto photo={ev.goingOff.photo} name={ev.goingOff.name} size={22} borderColor={
                           (match.playerStats[ev.goingOff.id]?.rating ?? 0) > 0
                             ? ratingColor(match.playerStats[ev.goingOff.id].rating)
@@ -1159,7 +1165,7 @@ export function MatchDetailPage({
               className="rounded-2xl p-4"
               style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}
             >
-              <p className="text-white/30 text-[10px] font-bold tracking-widest uppercase mb-3">No banco</p>
+              <p className="text-white/30 text-[10px] font-bold tracking-widest uppercase mb-3">{t.bench}</p>
               <div className="space-y-2">
                 {subs
                   .filter((s) => !subEvents.some((ev) => ev.comingOn.id === s.id))
@@ -1192,7 +1198,7 @@ export function MatchDetailPage({
           style={{ border: "1px solid rgba(255,255,255,0.07)" }}
         >
           <div className="px-5 py-3" style={{ borderBottom: "1px solid rgba(255,255,255,0.05)", background: "rgba(255,255,255,0.02)" }}>
-            <p className="text-white/30 text-[10px] font-bold tracking-widest uppercase">Notas dos jogadores</p>
+            <p className="text-white/30 text-[10px] font-bold tracking-widest uppercase">{t.playerRatings}</p>
           </div>
           <div className="divide-y" style={{ "--tw-divide-opacity": 1 } as React.CSSProperties}>
             {[
@@ -1257,17 +1263,17 @@ export function MatchDetailPage({
           style={{ background: "rgba(168,85,247,0.06)", border: "1px solid rgba(168,85,247,0.18)" }}
         >
           <div className="flex items-center justify-between">
-            <p className="text-[10px] font-bold tracking-widest uppercase" style={{ color: "rgba(192,132,252,0.6)" }}>🥅 Cobradores de Pênalti</p>
+            <p className="text-[10px] font-bold tracking-widest uppercase" style={{ color: "rgba(192,132,252,0.6)" }}>{t.penaltyKickers}</p>
             {(match.penaltyShootout?.goalkeeperSaves ?? 0) > 0 && (
               <span className="text-xs font-bold px-2 py-0.5 rounded-lg" style={{ background: "rgba(34,197,94,0.15)", color: "#4ade80" }}>
-                🧤 {match.penaltyShootout!.goalkeeperSaves} defesa{match.penaltyShootout!.goalkeeperSaves !== 1 ? "s" : ""}
+                🧤 {match.penaltyShootout!.goalkeeperSaves} {match.penaltyShootout!.goalkeeperSaves !== 1 ? t.penDefesaPlural : t.penDefesaSingular}
               </span>
             )}
           </div>
           <div className="flex flex-col gap-1.5">
             {match.penaltyShootout.kicks.map((kick, i) => {
               const kPlayer = kick.playerId != null ? allPlayers.find((p) => p.id === kick.playerId) : null;
-              const kName = kPlayer ? kPlayer.name : "Jogador desconhecido";
+              const kName = kPlayer ? kPlayer.name : t.unknownPlayer;
               return (
                 <div key={i} className="flex items-center gap-2">
                   <span className="text-white/20 text-xs w-4 flex-shrink-0 tabular-nums">{i + 1}.</span>
@@ -1279,7 +1285,7 @@ export function MatchDetailPage({
                       color: kick.scored ? "#4ade80" : "#f87171",
                     }}
                   >
-                    {kick.scored ? "✓ Gol" : "✗ Erro"}
+                    {kick.scored ? t.penGoal : t.penMiss}
                   </span>
                 </div>
               );
@@ -1294,7 +1300,7 @@ export function MatchDetailPage({
           className="mx-4 mb-4 rounded-2xl p-4 space-y-2"
           style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}
         >
-          <p className="text-white/30 text-[10px] font-bold tracking-widest uppercase">Observações</p>
+          <p className="text-white/30 text-[10px] font-bold tracking-widest uppercase">{t.observationsLabel}</p>
           <p className="text-white/60 text-sm leading-relaxed whitespace-pre-wrap">{match.observations}</p>
         </div>
       )}

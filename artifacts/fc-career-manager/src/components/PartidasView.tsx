@@ -1,12 +1,14 @@
 import { useState, useEffect } from "react";
 import type { MatchRecord, MatchResult } from "@/types/match";
-import { getMatchResult, getMatchResultFull, RESULT_STYLE, LOCATION_ICONS, LOCATION_LABELS } from "@/types/match";
+import { getMatchResult, getMatchResultFull, RESULT_STYLE, LOCATION_ICONS } from "@/types/match";
 import type { SquadPlayer } from "@/lib/squadCache";
 import { getCachedClubList } from "@/lib/clubListCache";
 import { searchStaticClubs } from "@/lib/staticClubList";
 import { RegistrarPartidaModal, hasSavedDraft, discardSavedDraft } from "./RegistrarPartidaModal";
 import { MatchDetailPage } from "./MatchDetailPage";
 import { isRival } from "@/lib/rivalsStorage";
+import { useLang } from "@/hooks/useLang";
+import { PARTIDAS, getLocationLabel, getResultPill, matchDateLocale } from "@/lib/i18n";
 
 function resolveOpponentLogo(name: string, stored?: string): string | undefined {
   if (stored) return stored;
@@ -37,13 +39,6 @@ interface PartidasViewProps {
 }
 
 type Filter = "todos" | MatchResult;
-
-const FILTER_LABELS: Record<Filter, string> = {
-  todos:   "Todos",
-  vitoria: "Vitórias",
-  empate:  "Empates",
-  derrota: "Derrotas",
-};
 
 function StatCard({ label, value, sub, color }: { label: string; value: string | number; sub?: string; color?: string }) {
   return (
@@ -163,6 +158,8 @@ function MatchCard({
   seasonId: string;
 }) {
   const [goalsOpen, setGoalsOpen] = useState(false);
+  const [lang] = useLang();
+  const t = PARTIDAS[lang];
 
   const result = getMatchResultFull(match.myScore, match.opponentScore, match.penaltyShootout);
   const rs = RESULT_STYLE[result];
@@ -219,7 +216,7 @@ function MatchCard({
   const hasGoals     = totalGoals > 0;
 
   const dateStr = match.date
-    ? new Date(match.date + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "2-digit" })
+    ? new Date(match.date + "T12:00:00").toLocaleDateString(matchDateLocale(lang), { day: "2-digit", month: "2-digit", year: "2-digit" })
     : "";
 
   const hasFooter = !!motmDisplayName || myPoss > 0 || myShots > 0 || oppShots > 0;
@@ -279,7 +276,7 @@ function MatchCard({
       {/* ── Meta row ── */}
       <div className="flex items-center justify-between gap-2 px-4 pt-3 pb-0 min-w-0">
         <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
-          <span className="text-xs flex-shrink-0 opacity-50" title={LOCATION_LABELS[match.location]}>
+          <span className="text-xs flex-shrink-0 opacity-50" title={getLocationLabel(lang, match.location)}>
             {LOCATION_ICONS[match.location]}
           </span>
           {match.tournament && (
@@ -298,7 +295,7 @@ function MatchCard({
               className="px-2 py-0.5 rounded-full text-[10px] font-black flex-shrink-0"
               style={{ background: "rgba(154,52,18,0.35)", color: "#fb923c", border: "1px solid rgba(249,115,22,0.4)" }}
             >
-              ⚔️ CLÁSSICO
+              ⚔️ {t.classicBadge}
             </span>
           )}
           {isRivalLoss && (
@@ -306,7 +303,7 @@ function MatchCard({
               className="px-2 py-0.5 rounded-full text-[10px] font-black flex-shrink-0"
               style={{ background: "rgba(40,0,0,0.5)", color: "#fca5a5", border: "1px solid rgba(127,29,29,0.5)" }}
             >
-              💀 CLÁSSICO
+              💀 {t.classicBadge}
             </span>
           )}
         </div>
@@ -316,7 +313,7 @@ function MatchCard({
             className="px-2 py-0.5 rounded-full text-[10px] font-black tracking-widest"
             style={{ background: rs.bg, color: rs.color }}
           >
-            {rs.label}
+            {getResultPill(lang, result)}
           </span>
         </div>
       </div>
@@ -364,7 +361,7 @@ function MatchCard({
             );
           })()}
           {match.hasExtraTime && !match.penaltyShootout && (
-            <span className="text-[10px] font-semibold" style={{ color: "rgba(251,191,36,0.7)" }}>prorrogação</span>
+            <span className="text-[10px] font-semibold" style={{ color: "rgba(251,191,36,0.7)" }}>{t.extraTimePill}</span>
           )}
         </div>
 
@@ -392,7 +389,7 @@ function MatchCard({
             color: "rgba(255,255,255,0.28)",
           }}
         >
-          <span className="text-[10px] font-semibold">⚽ {totalGoals} {totalGoals === 1 ? "gol" : "gols"}</span>
+          <span className="text-[10px] font-semibold">⚽ {totalGoals} {totalGoals === 1 ? t.goalSingular : t.goalPlural}</span>
           <svg
             width="10" height="10" viewBox="0 0 10 10" fill="none"
             style={{ transition: "transform 0.2s", transform: goalsOpen ? "rotate(180deg)" : "rotate(0deg)" }}
@@ -461,7 +458,7 @@ function MatchCard({
               </div>
               <div className="flex justify-between mt-1">
                 <span className="text-[10px] text-white/30 tabular-nums">{leftPoss}%</span>
-                <span className="text-[10px]" style={{ color: "rgba(255,255,255,0.18)" }}>posse de bola</span>
+                <span className="text-[10px]" style={{ color: "rgba(255,255,255,0.18)" }}>{t.possessionLabel}</span>
                 <span className="text-[10px] text-white/30 tabular-nums">{rightPoss}%</span>
               </div>
             </div>
@@ -476,7 +473,7 @@ function MatchCard({
                 {leftShots > 0 && (
                   <div className="flex items-center gap-1">
                     <span className="text-[10px] text-white/50 font-bold tabular-nums">{leftShots}</span>
-                    <span className="text-[10px] text-white/25">finalizações</span>
+                    <span className="text-[10px] text-white/25">{t.shotsLabel}</span>
                   </div>
                 )}
               </div>
@@ -497,7 +494,7 @@ function MatchCard({
               <div className="flex flex-col gap-1 items-end justify-start">
                 {rightShots > 0 && (
                   <div className="flex items-center gap-1">
-                    <span className="text-[10px] text-white/25">finalizações</span>
+                    <span className="text-[10px] text-white/25">{t.shotsLabel}</span>
                     <span className="text-[10px] text-white/50 font-bold tabular-nums">{rightShots}</span>
                   </div>
                 )}
@@ -524,12 +521,15 @@ function CompactMatchCard({
   onClick?: () => void;
   seasonId: string;
 }) {
+  const [lang] = useLang();
+  const t = PARTIDAS[lang];
+
   const result = getMatchResultFull(match.myScore, match.opponentScore, match.penaltyShootout);
   const rs = RESULT_STYLE[result];
   const oppLogoUrl = resolveOpponentLogo(match.opponent, match.opponentLogoUrl);
 
   const dateStr = match.date
-    ? new Date(match.date + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })
+    ? new Date(match.date + "T12:00:00").toLocaleDateString(matchDateLocale(lang), { day: "2-digit", month: "2-digit" })
     : null;
 
   const isHome = match.location !== "fora";
@@ -595,7 +595,7 @@ function CompactMatchCard({
           className="text-xs font-bold leading-tight truncate"
           style={{ color: tournamentColor, flex: 1, minWidth: 0 }}
         >
-          {tournamentPrefix}{match.tournament || "Amistoso"}
+          {tournamentPrefix}{match.tournament || t.friendly}
         </span>
         {dateStr && (
           <span className="text-white/35 text-xs flex-shrink-0 font-medium tabular-nums">{dateStr}</span>
@@ -634,13 +634,13 @@ function CompactMatchCard({
             );
           })()}
           {match.hasExtraTime && !match.penaltyShootout && (
-            <span className="font-semibold" style={{ fontSize: 9, color: "rgba(251,191,36,0.7)" }}>prorrogação</span>
+            <span className="font-semibold" style={{ fontSize: 9, color: "rgba(251,191,36,0.7)" }}>{t.extraTimePill}</span>
           )}
           <span
             className="px-2 py-0.5 rounded-full font-black"
             style={{ background: "rgba(0,0,0,0.3)", color: rs.color, fontSize: 9, letterSpacing: "0.05em" }}
           >
-            {rs.label}
+            {getResultPill(lang, result)}
           </span>
         </div>
 
@@ -665,7 +665,7 @@ function CompactMatchCard({
         style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}
       >
         <span className="text-white/30 text-xs font-medium truncate">{match.stage || "—"}</span>
-        <span className="text-white/35 flex-shrink-0" style={{ fontSize: 12 }} title={LOCATION_LABELS[match.location]}>
+        <span className="text-white/35 flex-shrink-0" style={{ fontSize: 12 }} title={getLocationLabel(lang, match.location)}>
           {LOCATION_ICONS[match.location]}
         </span>
       </div>
@@ -674,6 +674,8 @@ function CompactMatchCard({
 }
 
 function EmptyState({ onAdd }: { onAdd: () => void }) {
+  const [lang] = useLang();
+  const t = PARTIDAS[lang];
   return (
     <div className="flex flex-col items-center justify-center py-20 gap-4">
       <div
@@ -683,8 +685,8 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
         ⚽
       </div>
       <div className="text-center">
-        <p className="text-white/60 font-semibold text-sm">Nenhuma partida registrada</p>
-        <p className="text-white/25 text-xs mt-1">Registre a primeira partida da temporada</p>
+        <p className="text-white/60 font-semibold text-sm">{t.emptyTitle}</p>
+        <p className="text-white/25 text-xs mt-1">{t.emptySub}</p>
       </div>
       <button
         onClick={onAdd}
@@ -694,7 +696,7 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
         </svg>
-        Registrar Partida
+        {t.registerMatchBtn}
       </button>
     </div>
   );
@@ -703,6 +705,8 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
 const VIEW_MODE_KEY = "fc-partidas-view-mode";
 
 export function PartidasView({ careerId, seasonId, season, clubName, clubLogoUrl, matches, allPlayers, onMatchAdded, onMatchUpdated, competitions, isReadOnly }: PartidasViewProps) {
+  const [lang] = useLang();
+  const t = PARTIDAS[lang];
   const [filter, setFilter] = useState<Filter>("todos");
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedMatch, setSelectedMatch] = useState<MatchRecord | null>(null);
@@ -760,7 +764,7 @@ export function PartidasView({ careerId, seasonId, season, clubName, clubLogoUrl
   return (
     <div className="space-y-5 animate-fade-up">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="text-white/35 text-xs font-bold tracking-widest uppercase">Partidas — {season}</h2>
+        <h2 className="text-white/35 text-xs font-bold tracking-widest uppercase">{t.matchesTitle} — {season}</h2>
         <div className="flex items-center gap-2">
           {/* View mode toggle */}
           {matches.length > 0 && (
@@ -770,7 +774,7 @@ export function PartidasView({ careerId, seasonId, season, clubName, clubLogoUrl
             >
               <button
                 onClick={() => setViewMode("lista")}
-                title="Modo lista"
+                title={t.viewModeList}
                 className="px-2.5 py-1.5 transition-colors duration-150"
                 style={{
                   background: viewMode === "lista" ? "rgba(var(--club-primary-rgb),0.2)" : "rgba(255,255,255,0.04)",
@@ -785,7 +789,7 @@ export function PartidasView({ careerId, seasonId, season, clubName, clubLogoUrl
               </button>
               <button
                 onClick={() => setViewMode("grade")}
-                title="Modo grade"
+                title={t.viewModeGrid}
                 className="px-2.5 py-1.5 transition-colors duration-150"
                 style={{
                   background: viewMode === "grade" ? "rgba(var(--club-primary-rgb),0.2)" : "rgba(255,255,255,0.04)",
@@ -811,7 +815,7 @@ export function PartidasView({ careerId, seasonId, season, clubName, clubLogoUrl
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
               </svg>
-              Registrar
+              {t.registerBtn}
             </button>
           )}
         </div>
@@ -825,22 +829,22 @@ export function PartidasView({ careerId, seasonId, season, clubName, clubLogoUrl
         >
           <span className="text-lg flex-shrink-0">📝</span>
           <div className="flex-1 min-w-0">
-            <p className="text-white/80 text-sm font-bold leading-tight">Registro em andamento</p>
-            <p className="text-white/40 text-xs mt-0.5">Você tem um rascunho salvo de registro de partida.</p>
+            <p className="text-white/80 text-sm font-bold leading-tight">{t.draftTitle}</p>
+            <p className="text-white/40 text-xs mt-0.5">{t.draftSub}</p>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
             <button
               onClick={handleDiscardDraft}
               className="text-white/30 text-xs hover:text-white/60 transition-colors px-2 py-1"
             >
-              Descartar
+              {t.draftDiscard}
             </button>
             <button
               onClick={() => setModalOpen(true)}
               className="px-3 py-1.5 rounded-xl font-bold text-xs transition-all hover:scale-[1.02] active:scale-[0.98]"
               style={{ background: "var(--club-primary)", color: "white" }}
             >
-              Continuar registro
+              {t.draftContinue}
             </button>
           </div>
         </div>
@@ -849,16 +853,22 @@ export function PartidasView({ careerId, seasonId, season, clubName, clubLogoUrl
       {matches.length > 0 && (
         <>
           <div className="flex gap-2 flex-wrap">
-            <StatCard label="Vitórias"  value={wins}   color={RESULT_STYLE.vitoria.color} />
-            <StatCard label="Empates"   value={draws}  color={RESULT_STYLE.empate.color} />
-            <StatCard label="Derrotas"  value={losses} color={RESULT_STYLE.derrota.color} />
-            <StatCard label="Gols Pró"  value={goalsFor} />
-            <StatCard label="Gols Con." value={goalsAgainst} />
+            <StatCard label={t.statWins}         value={wins}          color={RESULT_STYLE.vitoria.color} />
+            <StatCard label={t.statDraws}        value={draws}         color={RESULT_STYLE.empate.color} />
+            <StatCard label={t.statLosses}       value={losses}        color={RESULT_STYLE.derrota.color} />
+            <StatCard label={t.statGoalsFor}     value={goalsFor} />
+            <StatCard label={t.statGoalsAgainst} value={goalsAgainst} />
           </div>
 
           <div className="flex gap-2 flex-wrap">
             {(["todos", "vitoria", "empate", "derrota"] as Filter[]).map((f) => {
               const active = filter === f;
+              const filterLabel: Record<Filter, string> = {
+                todos:   t.filterAll,
+                vitoria: t.filterWins,
+                empate:  t.filterDraws,
+                derrota: t.filterLosses,
+              };
               return (
                 <button
                   key={f}
@@ -875,7 +885,7 @@ export function PartidasView({ careerId, seasonId, season, clubName, clubLogoUrl
                       : "rgba(255,255,255,0.35)",
                   }}
                 >
-                  {FILTER_LABELS[f]} {f !== "todos" && `(${matches.filter((m) => getMatchResult(m.myScore, m.opponentScore) === f).length})`}
+                  {filterLabel[f]} {f !== "todos" && `(${matches.filter((m) => getMatchResult(m.myScore, m.opponentScore) === f).length})`}
                 </button>
               );
             })}
@@ -884,7 +894,7 @@ export function PartidasView({ careerId, seasonId, season, clubName, clubLogoUrl
           {viewMode === "lista" ? (
             <div className="space-y-3">
               {sorted.length === 0 ? (
-                <p className="text-white/25 text-sm text-center py-8">Nenhuma partida com esse filtro.</p>
+                <p className="text-white/25 text-sm text-center py-8">{t.noMatchesFilter}</p>
               ) : (
                 sorted.map((m) => (
                   <MatchCard
@@ -902,7 +912,7 @@ export function PartidasView({ careerId, seasonId, season, clubName, clubLogoUrl
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {sorted.length === 0 ? (
-                <p className="col-span-full text-white/25 text-sm text-center py-8">Nenhuma partida com esse filtro.</p>
+                <p className="col-span-full text-white/25 text-sm text-center py-8">{t.noMatchesFilter}</p>
               ) : (
                 sorted.map((m) => (
                   <CompactMatchCard
