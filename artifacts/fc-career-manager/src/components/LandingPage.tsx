@@ -1007,17 +1007,11 @@ export function LandingPage({ onStart, onLogin, onStartWithPlan }: LandingPagePr
 
             {/* CTAs */}
             <div className="lp-hero-ctas" style={{ display: "flex", gap: 14, flexWrap: "wrap", marginBottom: 40, animation: "landingFadeIn 1s ease 0.9s both" }}>
-              <button data-cursor="ball" onClick={onStart}
-                style={{ background: "linear-gradient(135deg,#7c5cfc,#5b3fd1)", color: "#fff", border: "none", borderRadius: 14, padding: "15px 36px", fontSize: 15, fontWeight: 700, cursor: "none", boxShadow: "0 8px 32px rgba(124,92,252,0.45)", transition: "all 0.25s" }}
+              <button data-cursor="ball" onClick={onLogin}
+                style={{ background: "linear-gradient(135deg,#7c5cfc,#5b3fd1)", color: "#fff", border: "none", borderRadius: 14, padding: "15px 56px", fontSize: 15, fontWeight: 700, cursor: "none", boxShadow: "0 8px 32px rgba(124,92,252,0.45)", transition: "all 0.25s" }}
                 onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 50px rgba(124,92,252,0.7), 0 8px 32px rgba(124,92,252,0.5)"; (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-3px) scale(1.03)"; }}
                 onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 8px 32px rgba(124,92,252,0.45)"; (e.currentTarget as HTMLButtonElement).style.transform = "none"; }}>
                 Iniciar Carreira
-              </button>
-              <button onClick={onLogin}
-                style={{ background: "rgba(255,255,255,0.04)", color: "#c0c0e0", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 14, padding: "15px 30px", fontSize: 15, fontWeight: 600, cursor: "none", display: "flex", alignItems: "center", gap: 10, transition: "all 0.25s" }}
-                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(124,92,252,0.45)"; (e.currentTarget as HTMLButtonElement).style.background = "rgba(124,92,252,0.08)"; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,255,255,0.1)"; (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.04)"; }}>
-                <span style={{ opacity: 0.7 }}>▶</span> Ver demonstração
               </button>
             </div>
 
@@ -1344,7 +1338,7 @@ export function LandingPage({ onStart, onLogin, onStartWithPlan }: LandingPagePr
               <p style={{ color: "#666688", fontSize: 12, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 12 }}>Grátis para sempre</p>
               <div className="font-bebas" style={{ fontSize: 48, color: "#f0f0ff", lineHeight: 1 }}>R$0</div>
               <p style={{ color: "#555577", fontSize: 13, marginTop: 8, marginBottom: 28 }}>Para quem quer começar</p>
-              <button onClick={onStart} style={{ width: "100%", padding: "12px 0", borderRadius: 12, fontWeight: 700, fontSize: 14, color: "#888", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", cursor: "none", transition: "all 0.2s" }} onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.08)"; (e.currentTarget as HTMLButtonElement).style.color = "#f0f0ff"; }} onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.05)"; (e.currentTarget as HTMLButtonElement).style.color = "#888"; }}>
+              <button onClick={onLogin} style={{ width: "100%", padding: "12px 0", borderRadius: 12, fontWeight: 700, fontSize: 14, color: "#888", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", cursor: "none", transition: "all 0.2s" }} onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.08)"; (e.currentTarget as HTMLButtonElement).style.color = "#f0f0ff"; }} onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.05)"; (e.currentTarget as HTMLButtonElement).style.color = "#888"; }}>
                 Começar grátis
               </button>
               <ul style={{ marginTop: 28, listStyle: "none", padding: 0, display: "flex", flexDirection: "column", gap: 12 }}>
@@ -1495,7 +1489,7 @@ export function LandingPage({ onStart, onLogin, onStartWithPlan }: LandingPagePr
             <h2 className="font-bebas" style={{ fontSize: "clamp(3rem,7vw,6rem)", background: "linear-gradient(135deg,#7c5cfc,#f59e0b)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", lineHeight: 0.92, marginBottom: 40 }}>
               merece ser registrada.
             </h2>
-            <button data-cursor="ball" onClick={onStart}
+            <button data-cursor="ball" onClick={onLogin}
               style={{ background: "linear-gradient(135deg,#7c5cfc,#5b3fd1)", color: "#fff", border: "none", borderRadius: 16, padding: "18px 48px", fontSize: 16, fontWeight: 700, cursor: "none", boxShadow: "0 12px 48px rgba(124,92,252,0.45)", transition: "all 0.25s" }}
               onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 60px rgba(124,92,252,0.7), 0 12px 48px rgba(124,92,252,0.5)"; (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-4px) scale(1.04)"; }}
               onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 12px 48px rgba(124,92,252,0.45)"; (e.currentTarget as HTMLButtonElement).style.transform = "none"; }}>
