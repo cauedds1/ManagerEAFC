@@ -298,12 +298,12 @@ export function AuthPage({ onBack, onAuthSuccess, initialPlan }: AuthPageProps) 
       <FieldLines />
 
       {/* ════ LEFT: FORM COLUMN ════ */}
-      <div className="auth-form-col" style={{ position: "relative", zIndex: 1, width: "100%", maxWidth: 480, flexShrink: 0, display: "flex", flexDirection: "column", justifyContent: "center", padding: "40px 48px", overflowY: "auto", borderRight: "1px solid rgba(255,255,255,0.05)", animation: "authFormEnter 0.45s cubic-bezier(0.25,0.46,0.45,0.94) both" }}>
+      <div className="auth-form-col" style={{ position: "relative", zIndex: 1, width: "100%", maxWidth: 480, flexShrink: 0, display: "flex", flexDirection: "column", overflowY: "auto", borderRight: "1px solid rgba(255,255,255,0.05)", animation: "authFormEnter 0.45s cubic-bezier(0.25,0.46,0.45,0.94) both" }}>
 
         {/* Back button */}
         <button
           onClick={onBack}
-          style={{ position: "absolute", top: 24, left: 28, display: "flex", alignItems: "center", gap: 6, color: "#444466", fontSize: 13, background: "none", border: "none", cursor: "pointer", transition: "color 0.2s", padding: 0 }}
+          style={{ position: "sticky", top: 0, zIndex: 2, alignSelf: "flex-start", display: "flex", alignItems: "center", gap: 6, color: "#444466", fontSize: 13, background: "rgba(9,9,15,0.9)", border: "none", cursor: "pointer", transition: "color 0.2s", padding: "20px 28px 8px" }}
           onMouseEnter={e => (e.currentTarget.style.color = "#8888aa")}
           onMouseLeave={e => (e.currentTarget.style.color = "#444466")}>
           <svg viewBox="0 0 20 20" fill="currentColor" style={{ width: 16, height: 16 }}>
@@ -312,8 +312,8 @@ export function AuthPage({ onBack, onAuthSuccess, initialPlan }: AuthPageProps) 
           Voltar
         </button>
 
-        {/* ── FORM CONTENT (animated on mode switch) ── */}
-        <div key={contentKey} className="auth-content-enter">
+        {/* ── FORM CONTENT (animated on mode switch, margin:auto centers when short) ── */}
+        <div key={contentKey} className="auth-content-enter" style={{ margin: "auto 0", padding: "24px 48px 48px" }}>
 
         {/* ── LOGIN ── */}
         {isLogin && (
