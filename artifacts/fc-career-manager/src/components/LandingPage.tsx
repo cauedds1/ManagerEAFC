@@ -1389,7 +1389,7 @@ export function LandingPage({ onStart, onLogin, onStartWithPlan }: LandingPagePr
                 Assinar Ultra
               </button>
               <ul style={{ marginTop: 28, listStyle: "none", padding: 0, display: "flex", flexDirection: "column", gap: 12 }}>
-                {["Boatos no vestiário", "Até 3 portais personalizados", "Carreiras ilimitadas", "Diretoria ilimitada", "IA com notícias mais detalhadas e dramáticas", "Notícias automáticas"].map(f => (
+                {["Boatos no vestiário", "Até 3 portais de notícias personalizados", "Carreiras ilimitadas", "Diretoria ilimitada", "IA com notícias mais detalhadas e dramáticas", "Notícias automáticas"].map(f => (
                   <li key={f} style={{ display: "flex", gap: 10, fontSize: 13, color: "#888899" }}>
                     <span style={{ color: "#f59e0b", marginTop: 2 }}>✓</span> {f}
                   </li>

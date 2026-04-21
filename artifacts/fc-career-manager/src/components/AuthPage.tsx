@@ -44,7 +44,7 @@ const PLAN_CARDS: Array<{
     period: "por mês",
     accentRgb: "245,158,11",
     accentColor: "#f59e0b",
-    features: ["Boatos no vestiário", "Até 3 portais personalizados", "Carreiras ilimitadas", "Diretoria ilimitada", "IA com notícias mais detalhadas e dramáticas", "Notícias automáticas"],
+    features: ["Boatos no vestiário", "Até 3 portais de notícias personalizados", "Carreiras ilimitadas", "Diretoria ilimitada", "IA com notícias mais detalhadas e dramáticas", "Notícias automáticas"],
   },
 ];
 
