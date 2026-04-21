@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, type CSSProperties } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo, type CSSProperties } from "react";
 import { ClubDemoMockup } from "./ClubDemoMockup";
 import { LP, getAiTexts, getHeadlineTemplates, getBodyTemplates, getSteps, getFaqItems, getFeaturesExplorer, getTestimonials, type Lang } from "@/lib/i18n";
 
@@ -276,19 +276,26 @@ function ParticleCanvas() {
 
 /* ─── Hero Reels Phone Mockup ───────────────────────────── */
 const REELS_CLIPS = [
-  { src: "/reels/v1.mp4", club: "Chelsea FC",  desc: "Belo gol de fora da área", likes: "4.2K" },
-  { src: "/reels/v2.mp4", club: "West Ham",    desc: "Golaço no ângulo de fora", likes: "6.8K" },
-  { src: "/reels/v3.mp4", club: "Mowatt",      desc: "Pancada de fora — gol",   likes: "3.1K" },
+  { src: "/reels/v1.mp4", club: "Chelsea FC", desc: "Belo gol de fora da área",  likes: "4.2K", comments: "312",  shares: "1.1K" },
+  { src: "/reels/v2.mp4", club: "West Ham",   desc: "Golaço no ângulo de fora", likes: "6.8K", comments: "487",  shares: "2.3K" },
+  { src: "/reels/v3.mp4", club: "Mowatt",     desc: "Pancada de fora — gol",    likes: "3.1K", comments: "204",  shares: "890"  },
 ];
 
-function HeroReelsMockup() {
-  const [idx, setIdx]         = useState(0);
-  const [prevIdx, setPrevIdx] = useState<number | null>(null);
-  const [phase, setPhase]     = useState<"idle" | "prepare" | "animate">("idle");
+function HeroReelsMockup({ lang }: { lang: Lang }) {
+  const t = LP[lang];
+
+  const [idx, setIdx]           = useState(0);
+  const [prevIdx, setPrevIdx]   = useState<number | null>(null);
+  const [phase, setPhase]       = useState<"idle" | "prepare" | "animate">("idle");
   const [progress, setProgress] = useState(0);
-  const videoRef  = useRef<HTMLVideoElement>(null);
-  const rafRef    = useRef<number | null>(null);
-  const timerRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const v0Ref = useRef<HTMLVideoElement>(null);
+  const v1Ref = useRef<HTMLVideoElement>(null);
+  const v2Ref = useRef<HTMLVideoElement>(null);
+  const videoRefs = useMemo(() => [v0Ref, v1Ref, v2Ref], []);
+
+  const rafRef   = useRef<number | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const advance = useCallback(() => {
     if (phase !== "idle") return;
@@ -311,20 +318,28 @@ function HeroReelsMockup() {
   }, [phase]);
 
   useEffect(() => {
-    const v = videoRef.current;
+    const v = videoRefs[idx].current;
     if (!v) return;
     v.currentTime = 0;
     setProgress(0);
     v.play().catch(() => {});
 
     const onTimeUpdate = () => {
-      if (v.duration && v.duration > 0) {
-        setProgress(v.currentTime / v.duration);
-      }
+      if (v.duration && v.duration > 0) setProgress(v.currentTime / v.duration);
     };
+    const onEnded = () => advance();
     v.addEventListener("timeupdate", onTimeUpdate);
-    return () => v.removeEventListener("timeupdate", onTimeUpdate);
-  }, [idx]);
+    v.addEventListener("ended", onEnded);
+
+    REELS_CLIPS.forEach((_, i) => {
+      if (i !== idx) videoRefs[i].current?.pause();
+    });
+
+    return () => {
+      v.removeEventListener("timeupdate", onTimeUpdate);
+      v.removeEventListener("ended", onEnded);
+    };
+  }, [idx, advance, videoRefs]);
 
   useEffect(() => {
     return () => {
@@ -334,22 +349,18 @@ function HeroReelsMockup() {
   }, []);
 
   const ease = "transform 0.65s cubic-bezier(0.25, 0.46, 0.45, 0.94)";
-  const currTransform = phase === "prepare" ? "translateY(100%)" : "translateY(0%)";
-  const currTransition = phase === "animate" ? ease : "none";
-  const prevTransform  = phase === "animate" ? "translateY(-100%)" : "translateY(0%)";
-  const prevTransition = phase === "animate" ? ease : "none";
 
-  const screenW = 224;
-  const screenH = 420;
+  const screenW = 210;
+  const screenH = 360;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 20, animation: "floatMockup 6s ease-in-out infinite" }}>
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12, animation: "floatMockup 6s ease-in-out infinite" }}>
       <div style={{ textAlign: "center" }}>
         <p style={{ color: "#7c5cfc", fontSize: 10, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", marginBottom: 6 }}>
-          SEUS MOMENTOS, IMORTALIZADOS
+          {t.heroReelsLabel}
         </p>
         <p style={{ color: "#555577", fontSize: 12, lineHeight: 1.5 }}>
-          Registre, reviva e compartilhe cada golaço da sua carreira
+          {t.heroReelsSub}
         </p>
       </div>
 
@@ -368,16 +379,39 @@ function HeroReelsMockup() {
         </div>
 
         <div style={{ width: screenW, height: screenH, borderRadius: 20, overflow: "hidden", position: "relative", background: "#000" }}>
-          {prevIdx !== null && (
-            <div style={{ position: "absolute", inset: 0, transform: prevTransform, transition: prevTransition, zIndex: 1 }}>
-              <video src={REELS_CLIPS[prevIdx].src} muted playsInline style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-              <ClipOverlay clip={REELS_CLIPS[prevIdx]} />
-            </div>
-          )}
-          <div style={{ position: "absolute", inset: 0, transform: currTransform, transition: currTransition, zIndex: 2 }}>
-            <video ref={videoRef} src={REELS_CLIPS[idx].src} muted playsInline autoPlay onEnded={advance} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-            <ClipOverlay clip={REELS_CLIPS[idx]} />
-          </div>
+          {REELS_CLIPS.map((clip, i) => {
+            const isCurrent = i === idx;
+            const isPrev    = i === prevIdx;
+            let transform: string;
+            let transition: string;
+            let zIndex: number;
+            if (isCurrent) {
+              transform  = phase === "prepare" ? "translateY(100%)" : "translateY(0%)";
+              transition = phase === "animate" ? ease : "none";
+              zIndex     = 2;
+            } else if (isPrev) {
+              transform  = phase === "animate" ? "translateY(-100%)" : "translateY(0%)";
+              transition = phase === "animate" ? ease : "none";
+              zIndex     = 1;
+            } else {
+              transform  = "translateY(100%)";
+              transition = "none";
+              zIndex     = 0;
+            }
+            return (
+              <div key={i} style={{ position: "absolute", inset: 0, transform, transition, zIndex }}>
+                <video
+                  ref={videoRefs[i]}
+                  src={clip.src}
+                  muted
+                  playsInline
+                  preload="auto"
+                  style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                />
+                <ClipOverlay clip={clip} />
+              </div>
+            );
+          })}
         </div>
 
         {/* ── Progress indicator dots ── */}
@@ -424,12 +458,34 @@ function HeroReelsMockup() {
 
 function ClipOverlay({ clip }: { clip: typeof REELS_CLIPS[number] }) {
   return (
-    <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "40px 14px 14px", background: "linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 100%)", pointerEvents: "none" }}>
-      <div style={{ color: "#fff", fontWeight: 700, fontSize: 13, marginBottom: 3 }}>{clip.club}</div>
-      <div style={{ color: "rgba(255,255,255,0.75)", fontSize: 11, marginBottom: 8, lineHeight: 1.3 }}>{clip.desc}</div>
-      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-        <span style={{ fontSize: 13 }}>❤️</span>
-        <span style={{ color: "rgba(255,255,255,0.8)", fontSize: 11, fontWeight: 600 }}>{clip.likes}</span>
+    <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
+      {/* Bottom-left: club + description */}
+      <div style={{ position: "absolute", bottom: 0, left: 0, right: 48, padding: "40px 12px 14px", background: "linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 100%)" }}>
+        <div style={{ color: "#fff", fontWeight: 700, fontSize: 12, marginBottom: 3 }}>{clip.club}</div>
+        <div style={{ color: "rgba(255,255,255,0.75)", fontSize: 10, lineHeight: 1.3 }}>{clip.desc}</div>
+      </div>
+
+      {/* Right-center: engagement column (likes → comments → shares) */}
+      <div style={{
+        position: "absolute",
+        right: 8,
+        top: "50%",
+        transform: "translateY(-50%)",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        gap: 16,
+      }}>
+        {[
+          { icon: "❤️", value: clip.likes },
+          { icon: "💬", value: clip.comments },
+          { icon: "↗️", value: clip.shares },
+        ].map(({ icon, value }) => (
+          <div key={icon} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
+            <span style={{ fontSize: 18, lineHeight: 1 }}>{icon}</span>
+            <span style={{ color: "#fff", fontSize: 10, fontWeight: 600, textShadow: "0 1px 3px rgba(0,0,0,0.8)" }}>{value}</span>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -993,7 +1049,7 @@ export function LandingPage({ onStart, onLogin, onStartWithPlan, lang, setLang }
           </div>
 
           <div className="lg-mockup" style={{ width: 380, flexShrink: 0, display: "flex", justifyContent: "center" }}>
-            <HeroReelsMockup />
+            <HeroReelsMockup lang={lang} />
           </div>
         </div>
       </section>

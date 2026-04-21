@@ -33,6 +33,9 @@ export const LP: Record<Lang, Record<string, string>> = {
     heroMockupStatElenco: "Elenco",
     heroMockupStatPontos: "Pontos",
     heroMockupLastMatches: "ÚLTIMAS PARTIDAS",
+    // hero reels mockup
+    heroReelsLabel: "SEUS MOMENTOS, IMORTALIZADOS",
+    heroReelsSub: "Registre, reviva e compartilhe cada golaço da sua carreira",
     // painel mockup
     mockupPainelStatPartidas: "Partidas",
     mockupPainelStatVitorias: "Vitórias",
@@ -174,6 +177,9 @@ export const LP: Record<Lang, Record<string, string>> = {
     heroMockupStatElenco: "Squad",
     heroMockupStatPontos: "Points",
     heroMockupLastMatches: "LATEST MATCHES",
+    // hero reels mockup
+    heroReelsLabel: "YOUR MOMENTS, IMMORTALIZED",
+    heroReelsSub: "Record, relive and share every goal of your career",
     // painel mockup
     mockupPainelStatPartidas: "Matches",
     mockupPainelStatVitorias: "Wins",
