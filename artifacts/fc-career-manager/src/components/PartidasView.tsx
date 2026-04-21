@@ -355,7 +355,7 @@ function MatchCard({
             return (
               <div className="flex items-center gap-1">
                 <span className="text-[10px] font-bold tabular-nums" style={{ color: "rgba(192,132,252,0.8)" }}>
-                  ({leftPen} × {rightPen} pen.)
+                  ({leftPen} × {rightPen} {t.penaltyAbbr})
                 </span>
               </div>
             );
@@ -629,7 +629,7 @@ function CompactMatchCard({
             const rightPen = isHome ? match.penaltyShootout.opponentScore : match.penaltyShootout.myScore;
             return (
               <span className="font-bold tabular-nums" style={{ fontSize: 9, color: "rgba(192,132,252,0.85)" }}>
-                ({leftPen}×{rightPen} pen.)
+                ({leftPen}×{rightPen} {t.penaltyAbbr})
               </span>
             );
           })()}

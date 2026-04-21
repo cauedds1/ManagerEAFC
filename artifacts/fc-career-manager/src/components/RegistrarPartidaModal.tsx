@@ -363,7 +363,7 @@ function GoalEditor({
 
       <div className="flex items-center gap-2">
         <label className="text-white/40 text-xs w-14 flex-shrink-0">{t.goalMinuteLabel}</label>
-        <NumericInput value={goal.minute} onChange={(v) => onChange({ ...goal, minute: v ?? 0 })} min={1} max={120} placeholder="Min" className="w-16" />
+        <NumericInput value={goal.minute} onChange={(v) => onChange({ ...goal, minute: v ?? 0 })} min={1} max={120} placeholder={t.minutePH} className="w-16" />
       </div>
       <div className="flex items-center gap-2">
         <label className="text-white/40 text-xs w-14 flex-shrink-0">{t.assistLabel}</label>
@@ -399,7 +399,7 @@ function OpponentGoalEditor({
       </div>
       <div className="flex items-center gap-2">
         <label className="text-white/40 text-xs w-16 flex-shrink-0">{t.goalMinuteLabel}</label>
-        <NumericInput value={goal.minute} onChange={(v) => onChange({ ...goal, minute: v ?? 0 })} min={1} max={120} placeholder="Min" className="w-16" />
+        <NumericInput value={goal.minute} onChange={(v) => onChange({ ...goal, minute: v ?? 0 })} min={1} max={120} placeholder={t.minutePH} className="w-16" />
       </div>
       <div className="space-y-1">
         <label className="text-white/40 text-xs">{t.playerOptional}</label>
@@ -438,6 +438,8 @@ function OpponentAutocomplete({
   onChange: (v: string) => void;
   onSelectClub: (logo: string | null) => void;
 }) {
+  const [lang] = useLang();
+  const t = PARTIDAS[lang];
   const [open, setOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -462,7 +464,7 @@ function OpponentAutocomplete({
         onChange={(e) => { onChange(e.target.value); setOpen(true); }}
         onFocus={() => setOpen(true)}
         onBlur={() => setTimeout(() => setOpen(false), 180)}
-        placeholder="Ex: Real Madrid"
+        placeholder={t.opponentPHEx}
         autoFocus
         className="w-full px-3 py-2.5 rounded-xl text-white text-sm focus:outline-none glass"
         style={{ border: "1px solid rgba(255,255,255,0.08)" }}
@@ -627,7 +629,7 @@ function MotmAutocomplete({
                 </p>
               </div>
               {player.age && (
-                <span className="text-white/35 text-xs tabular-nums flex-shrink-0">{player.age} anos</span>
+                <span className="text-white/35 text-xs tabular-nums flex-shrink-0">{player.age} {t.ageYears}</span>
               )}
             </button>
           ))}
@@ -952,7 +954,7 @@ function PlayerLineupRow({
             <div className="flex items-center gap-2 mt-0.5 flex-wrap">
               <span className="text-xs font-bold" style={{ color: rc.color }}>{stats.rating.toFixed(1)}</span>
               <span className="text-white/30 text-xs">{player.positionPtBr}</span>
-              {isSub && <span className="text-xs" style={{ color: "#2dd4bf" }}>sub</span>}
+              {isSub && <span className="text-xs" style={{ color: "#2dd4bf" }}>{t.subBadge}</span>}
               {stats.goals.length > 0 && <span className="text-xs text-white/60">⚽ {stats.goals.length}</span>}
               {assistCount > 0 && <span className="text-xs" style={{ color: "#60a5fa" }}>👟 {assistCount > 1 ? assistCount : ""}</span>}
               {stats.ownGoal && <span className="text-xs" style={{ color: "#f87171" }}>GC</span>}
@@ -1024,7 +1026,7 @@ function PlayerLineupRow({
                     label: t.statShots, icon: "⚽",
                     node: (
                       <div className="flex items-center gap-1">
-                        <NumericInput emptyAsZero value={stats.shots} onChange={(v) => onUpdate({ shots: v })} placeholder="Total" className="w-14 text-right" />
+                        <NumericInput emptyAsZero value={stats.shots} onChange={(v) => onUpdate({ shots: v })} placeholder={t.totalPH} className="w-14 text-right" />
                         <NumericInput emptyAsZero value={stats.shotsOnTargetPct} onChange={(v) => onUpdate({ shotsOnTargetPct: v != null ? Math.min(100, v) : undefined })} max={100} placeholder="%" className="w-12 text-right" />
                         <span className="text-white/30 text-xs">%</span>
                       </div>
@@ -1034,10 +1036,10 @@ function PlayerLineupRow({
                     label: t.statPasses, icon: "🎯",
                     node: (
                       <div className="flex items-center gap-1">
-                        <NumericInput emptyAsZero value={stats.passes} onChange={(v) => onUpdate({ passes: v })} placeholder="Total" className="w-14 text-right" />
+                        <NumericInput emptyAsZero value={stats.passes} onChange={(v) => onUpdate({ passes: v })} placeholder={t.totalPH} className="w-14 text-right" />
                         <NumericInput emptyAsZero value={stats.passAccuracy} onChange={(v) => onUpdate({ passAccuracy: v != null ? Math.min(100, v) : undefined })} max={100} placeholder="%" className="w-12 text-right" />
                         <span className="text-white/30 text-xs">%</span>
-                        <NumericInput emptyAsZero value={stats.keyPasses} onChange={(v) => onUpdate({ keyPasses: v })} placeholder="Chave" className="w-14 text-right" />
+                        <NumericInput emptyAsZero value={stats.keyPasses} onChange={(v) => onUpdate({ keyPasses: v })} placeholder={t.keyPassPH} className="w-14 text-right" />
                       </div>
                     ),
                   },
@@ -1045,7 +1047,7 @@ function PlayerLineupRow({
                     label: t.statDribbles, icon: "🔄",
                     node: (
                       <div className="flex items-center gap-1">
-                        <NumericInput emptyAsZero value={stats.dribblesCompleted} onChange={(v) => onUpdate({ dribblesCompleted: v })} placeholder="Dribles" className="w-16 text-right" />
+                        <NumericInput emptyAsZero value={stats.dribblesCompleted} onChange={(v) => onUpdate({ dribblesCompleted: v })} placeholder={t.dribblesPH} className="w-16 text-right" />
                         <NumericInput emptyAsZero value={stats.dribblesSuccessRate} onChange={(v) => onUpdate({ dribblesSuccessRate: v != null ? Math.min(100, v) : undefined })} max={100} placeholder="%" className="w-12 text-right" />
                         <span className="text-white/30 text-xs">%</span>
                       </div>
@@ -1055,15 +1057,15 @@ function PlayerLineupRow({
                     label: t.statRecLoss, icon: "🛡️",
                     node: (
                       <div className="flex items-center gap-1">
-                        <NumericInput emptyAsZero value={stats.ballRecoveries} onChange={(v) => onUpdate({ ballRecoveries: v })} placeholder="Rec." className="w-14 text-right" />
+                        <NumericInput emptyAsZero value={stats.ballRecoveries} onChange={(v) => onUpdate({ ballRecoveries: v })} placeholder={t.recoveryPH} className="w-14 text-right" />
                         <span className="text-white/20 text-xs">|</span>
-                        <NumericInput emptyAsZero value={stats.ballLosses} onChange={(v) => onUpdate({ ballLosses: v })} placeholder="Perda" className="w-14 text-right" />
+                        <NumericInput emptyAsZero value={stats.ballLosses} onChange={(v) => onUpdate({ ballLosses: v })} placeholder={t.ballLostPH} className="w-14 text-right" />
                       </div>
                     ),
                   },
                 ] : []),
                 ...(isGK ? [
-                  { label: t.statSaves, icon: "🧤", node: <NumericInput emptyAsZero value={stats.saves} onChange={(v) => onUpdate({ saves: v })} placeholder="Total" className="w-16 text-right" /> },
+                  { label: t.statSaves, icon: "🧤", node: <NumericInput emptyAsZero value={stats.saves} onChange={(v) => onUpdate({ saves: v })} placeholder={t.totalPH} className="w-16 text-right" /> },
                   { label: t.statPenSaved, icon: "🥅", node: <NumericInput emptyAsZero value={stats.penaltiesSaved} onChange={(v) => onUpdate({ penaltiesSaved: v })} placeholder="—" className="w-16 text-right" /> },
                 ] : []),
               ].map(({ label, icon, node }) => (
@@ -1084,7 +1086,7 @@ function PlayerLineupRow({
                 {stats.ownGoal && (
                   <div className="flex items-center gap-2 pl-11">
                     <span className="text-white/40 text-xs">{t.minuteLabel}</span>
-                    <NumericInput value={stats.ownGoalMinute} onChange={(v) => onUpdate({ ownGoalMinute: v })} min={1} max={120} placeholder="Min" className="w-16" />
+                    <NumericInput value={stats.ownGoalMinute} onChange={(v) => onUpdate({ ownGoalMinute: v })} min={1} max={120} placeholder={t.minutePH} className="w-16" />
                   </div>
                 )}
               </div>
@@ -1093,7 +1095,7 @@ function PlayerLineupRow({
                 {stats.missedPenalty && (
                   <div className="flex items-center gap-2 pl-11">
                     <span className="text-white/40 text-xs">{t.minuteLabel}</span>
-                    <NumericInput value={stats.missedPenaltyMinute} onChange={(v) => onUpdate({ missedPenaltyMinute: v })} min={1} max={120} placeholder="Min" className="w-16" />
+                    <NumericInput value={stats.missedPenaltyMinute} onChange={(v) => onUpdate({ missedPenaltyMinute: v })} min={1} max={120} placeholder={t.minutePH} className="w-16" />
                   </div>
                 )}
               </div>
@@ -1119,7 +1121,7 @@ function PlayerLineupRow({
                   <div className="pl-11 space-y-2">
                     <div className="flex items-center gap-2">
                       <span className="text-white/40 text-xs w-20 flex-shrink-0">{t.yellowCard1Label}</span>
-                      <NumericInput value={stats.yellowCardMinute} onChange={(v) => onUpdate({ yellowCardMinute: v })} min={1} max={120} placeholder="Min" className="w-16" />
+                      <NumericInput value={stats.yellowCardMinute} onChange={(v) => onUpdate({ yellowCardMinute: v })} min={1} max={120} placeholder={t.minutePH} className="w-16" />
                     </div>
                     <Toggle
                       checked={stats.yellowCard2 ?? false}
@@ -1132,7 +1134,7 @@ function PlayerLineupRow({
                     {stats.yellowCard2 && (
                       <div className="flex items-center gap-2">
                         <span className="text-white/40 text-xs w-20 flex-shrink-0">{t.yellowCard2Minute}:</span>
-                        <NumericInput value={stats.yellowCard2Minute} onChange={(v) => onUpdate({ yellowCard2Minute: v })} min={1} max={120} placeholder="Min" className="w-16" />
+                        <NumericInput value={stats.yellowCard2Minute} onChange={(v) => onUpdate({ yellowCard2Minute: v })} min={1} max={120} placeholder={t.minutePH} className="w-16" />
                       </div>
                     )}
                   </div>
@@ -1163,7 +1165,7 @@ function PlayerLineupRow({
                     {stats.redCard && (
                       <div className="flex items-center gap-2 pl-11">
                         <span className="text-white/40 text-xs">{t.minuteLabel}</span>
-                        <NumericInput value={stats.redCardMinute} onChange={(v) => onUpdate({ redCardMinute: v })} min={1} max={120} placeholder="Min" className="w-16" />
+                        <NumericInput value={stats.redCardMinute} onChange={(v) => onUpdate({ redCardMinute: v })} min={1} max={120} placeholder={t.minutePH} className="w-16" />
                       </div>
                     )}
                   </>
@@ -1174,7 +1176,7 @@ function PlayerLineupRow({
                 {stats.injured && (
                   <div className="flex items-center gap-2 pl-11">
                     <span className="text-white/40 text-xs">{t.minuteLabel}</span>
-                    <NumericInput value={stats.injuryMinute} onChange={(v) => onUpdate({ injuryMinute: v })} min={1} max={120} placeholder="Min" className="w-16" />
+                    <NumericInput value={stats.injuryMinute} onChange={(v) => onUpdate({ injuryMinute: v })} min={1} max={120} placeholder={t.minutePH} className="w-16" />
                   </div>
                 )}
               </div>
@@ -1185,7 +1187,7 @@ function PlayerLineupRow({
                     <div className="space-y-2 pl-11">
                       <div className="flex items-center gap-2">
                         <span className="text-white/40 text-xs">{t.minuteLabel}</span>
-                        <NumericInput value={stats.substitutedAtMinute} onChange={(v) => onUpdate({ substitutedAtMinute: v })} min={1} max={120} placeholder="Min" className="w-16" />
+                        <NumericInput value={stats.substitutedAtMinute} onChange={(v) => onUpdate({ substitutedAtMinute: v })} min={1} max={120} placeholder={t.minutePH} className="w-16" />
                       </div>
                       <div>
                         <span className="text-white/40 text-xs block mb-1">{t.subInLabel}</span>
@@ -1803,7 +1805,7 @@ export function RegistrarPartidaModal({
                 type="text"
                 value={draft.tournament}
                 onChange={(e) => onChange({ tournament: e.target.value })}
-                placeholder="Ex: Premier League"
+                placeholder={t.tournamentPHEx}
                 className="w-full px-3 py-2.5 rounded-xl text-white text-sm focus:outline-none glass"
                 style={{ border: "1px solid rgba(255,255,255,0.08)" }}
               />
@@ -1842,7 +1844,7 @@ export function RegistrarPartidaModal({
                   max={99}
                   value={draft.tablePosition}
                   onChange={(e) => onChange({ tablePosition: e.target.value })}
-                  placeholder="Ex: 3"
+                  placeholder={t.tablePHEx}
                   className="w-full px-3 py-2.5 rounded-xl text-white text-sm focus:outline-none glass"
                   style={{ border: "1px solid rgba(255,255,255,0.08)" }}
                 />

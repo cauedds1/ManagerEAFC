@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import type { MatchRecord, PlayerMatchStats, GoalEntry } from "@/types/match";
 import { getMatchResult, getMatchResultFull, RESULT_STYLE, LOCATION_ICONS, GOAL_TYPE_ICONS } from "@/types/match";
-import { PARTIDAS, getLocationLabel, getGoalTypeLabel, matchDateLocale } from "@/lib/i18n";
+import { PARTIDAS, getLocationLabel, getGoalTypeLabel, getResultPill, matchDateLocale } from "@/lib/i18n";
 import { useLang } from "@/hooks/useLang";
 import { getAllMatchesForCareer } from "@/lib/matchStorage";
 import type { SquadPlayer } from "@/lib/squadCache";
@@ -227,7 +227,7 @@ function PlayerDetailPanel({
   const extraStats = [
     stats?.shots != null ? {
       label: t.extraShots,
-      value: stats.shotsOnTargetPct != null ? `${stats.shots} (${stats.shotsOnTargetPct}% no gol)` : stats.shots,
+      value: stats.shotsOnTargetPct != null ? `${stats.shots} (${stats.shotsOnTargetPct}${t.shotsOnTargetSuffix})` : stats.shots,
     } : null,
     stats?.passes != null ? { label: t.extraPasses, value: stats.passes } : null,
     stats?.passAccuracy != null ? { label: t.extraAccuracy, value: `${stats.passAccuracy}%` } : null,
@@ -701,19 +701,19 @@ export function MatchDetailPage({
                       className="text-xs font-bold px-2 py-0.5 rounded-md tabular-nums"
                       style={{ background: "rgba(52,211,153,0.15)", color: "#34d399" }}
                     >
-                      {h2hStats.wins}V
+                      {h2hStats.wins}{t.resultV}
                     </span>
                     <span
                       className="text-xs font-bold px-2 py-0.5 rounded-md tabular-nums"
                       style={{ background: "rgba(251,191,36,0.15)", color: "#fbbf24" }}
                     >
-                      {h2hStats.draws}E
+                      {h2hStats.draws}{t.resultE}
                     </span>
                     <span
                       className="text-xs font-bold px-2 py-0.5 rounded-md tabular-nums"
                       style={{ background: "rgba(248,113,113,0.15)", color: "#f87171" }}
                     >
-                      {h2hStats.losses}D
+                      {h2hStats.losses}{t.resultD}
                     </span>
                     <span className="text-white/20 text-xs mx-0.5">·</span>
                     <span
@@ -874,7 +874,7 @@ export function MatchDetailPage({
               className="px-2 py-0.5 rounded-full text-[10px] font-black tracking-widest"
               style={{ background: rs.bg, color: rs.color }}
             >
-              {rs.label}
+              {getResultPill(lang, result)}
             </span>
           </div>
         </div>
@@ -990,7 +990,7 @@ export function MatchDetailPage({
                   <div className="flex-1 flex flex-col items-end gap-0.5">
                     {leftGoals.map((g, i) => (
                       <div key={i} className="flex items-baseline justify-between gap-2 text-[10px] text-white/50 leading-tight w-full">
-                        <span className="shrink-0">{g.minute}&apos;{g.isPenalty ? " (P)" : ""}</span>
+                        <span className="shrink-0">{g.minute}&apos;{g.isPenalty ? ` ${t.penaltyMarker}` : ""}</span>
                         <span>{g.name}</span>
                       </div>
                     ))}
@@ -1002,7 +1002,7 @@ export function MatchDetailPage({
                     {rightGoals.map((g, i) => (
                       <div key={i} className="flex items-baseline justify-between gap-2 text-[10px] text-white/50 leading-tight w-full">
                         <span>{g.name}</span>
-                        <span className="shrink-0">{g.minute}&apos;{g.isPenalty ? " (P)" : ""}</span>
+                        <span className="shrink-0">{g.minute}&apos;{g.isPenalty ? ` ${t.penaltyMarker}` : ""}</span>
                       </div>
                     ))}
                   </div>
