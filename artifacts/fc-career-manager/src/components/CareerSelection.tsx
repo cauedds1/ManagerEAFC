@@ -264,7 +264,7 @@ export function CareerSelection({ careers, onSelectCareer, onCreateNew, onCareer
               currentPlan={resolvedPlan}
               requiredPlan={resolvedPlan === "free" ? "pro" : "ultra"}
               featureName={`${t.newCareer} (${careers.length}/${planLimits.maxCareers})`}
-              description={`${lang === "pt" ? `Você atingiu o limite de carreiras do plano ${getPlanLabel(resolvedPlan)}. Faça upgrade para criar mais.` : `You have reached the career limit for the ${getPlanLabel(resolvedPlan)} plan. Upgrade to create more.`}`}
+              description={t.upgradeAtLimit.replace("{plan}", getPlanLabel(resolvedPlan))}
               compact
             />
           ) : (

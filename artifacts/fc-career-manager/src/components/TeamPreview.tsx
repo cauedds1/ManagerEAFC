@@ -98,7 +98,7 @@ function SquadStatsBlock({ players, loading, t }: { players: SquadPlayer[]; load
           className="ml-auto text-xs font-semibold px-2 py-0.5 rounded-full"
           style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.3)" }}
         >
-          {total} {t.playersCount}
+          {total} {t.playersCountShort}
         </span>
       </div>
 

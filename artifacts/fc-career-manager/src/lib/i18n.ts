@@ -927,6 +927,7 @@ export const CAREER_SEL = {
     chipAI: "IA integrada",
     chipLegacy: "Legado",
     coachAge: "anos",
+    upgradeAtLimit: "Você atingiu o limite de carreiras do plano {plan}. Faça upgrade para criar mais.",
   },
   en: {
     eaLabel: "EA FC 26 · Career Mode",
@@ -951,6 +952,7 @@ export const CAREER_SEL = {
     chipAI: "AI integrated",
     chipLegacy: "Legacy",
     coachAge: "years old",
+    upgradeAtLimit: "You have reached the career limit for the {plan} plan. Upgrade to create more.",
   },
 } satisfies Record<Lang, Record<string, string>>;
 
@@ -996,6 +998,7 @@ export const WIZARD = {
     yourClub: "Seu clube",
     seasonLabel: "Temporada",
     playersCount: "jogadores",
+    playersCountShort: "jog.",
     loadingInfo: "Carregando informações...",
     titles: "Títulos",
     squadStats: "Estatísticas do Elenco",
@@ -1075,6 +1078,7 @@ export const WIZARD = {
     yourClub: "Your club",
     seasonLabel: "Season",
     playersCount: "players",
+    playersCountShort: "pl.",
     loadingInfo: "Loading information...",
     titles: "Titles",
     squadStats: "Squad Statistics",
