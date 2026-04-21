@@ -10,6 +10,7 @@ export interface Momento {
   mediaType?: "image" | "video";
   videoUrl?: string;
   videoKey?: string;
+  playerIds?: number[];
 }
 
 function momentosKey(seasonId: string): string {

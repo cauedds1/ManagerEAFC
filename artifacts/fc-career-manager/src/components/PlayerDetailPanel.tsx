@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import type { SquadPlayer, PositionPtBr } from "@/lib/squadCache";
 import { migratePositionOverride } from "@/lib/squadCache";
 import type { PlayerOverride, OvrHistoryEntry } from "@/types/playerStats";
@@ -13,6 +13,7 @@ import {
   setPlayerStats,
   setPlayerOverride,
 } from "@/lib/playerStatsStorage";
+import { getMomentos, type Momento } from "@/lib/momentoStorage";
 
 const POS_STYLE: Record<PositionPtBr, { bg: string; color: string }> = {
   GOL: { bg: "rgba(245,158,11,0.18)",  color: "#f59e0b" },
@@ -86,17 +87,19 @@ function LabeledInput({ label, value, onChange, type = "text", min, max, placeho
 interface PlayerDetailPanelProps {
   player: SquadPlayer;
   careerId: string;
+  seasonId?: string;
   override?: PlayerOverride;
   onClose: () => void;
   onUpdated: () => void;
   onRemove?: () => void;
 }
 
-type Tab = "stats" | "edit";
+type Tab = "stats" | "edit" | "momentos";
 
 export function PlayerDetailPanel({
   player,
   careerId,
+  seasonId,
   override,
   onClose,
   onUpdated,
@@ -105,6 +108,11 @@ export function PlayerDetailPanel({
   const [tab, setTab] = useState<Tab>("stats");
   const [confirmRemove, setConfirmRemove] = useState(false);
   const [stats, setStatsState] = useState(() => getPlayerStats(careerId, player.id));
+
+  const playerMomentos = useMemo<Momento[]>(() => {
+    if (!seasonId) return [];
+    return getMomentos(seasonId).filter((m) => m.playerIds?.includes(player.id));
+  }, [seasonId, player.id]);
 
   const totalMatches = (stats.matchesAsStarter ?? 0) + (stats.matchesAsSubstitute ?? 0);
   const avgRating = (() => {
@@ -241,10 +249,11 @@ export function PlayerDetailPanel({
         </div>
 
         {/* ── Tabs ── */}
-        <div className="flex gap-1 px-6 pt-4 pb-0 flex-shrink-0">
+        <div className="flex gap-1 px-6 pt-4 pb-0 flex-shrink-0 overflow-x-auto">
           {([
-            { key: "stats", label: "Estatísticas" },
-            { key: "edit",  label: "Editar Jogador" },
+            { key: "stats",    label: "Estatísticas" },
+            ...(playerMomentos.length > 0 ? [{ key: "momentos", label: `Momentos (${playerMomentos.length})` }] : []),
+            { key: "edit",     label: "Editar Jogador" },
           ] as { key: Tab; label: string }[]).map(({ key, label }) => (
             <button
               key={key}
@@ -260,7 +269,7 @@ export function PlayerDetailPanel({
                 }
                 setTab(key);
               }}
-              className="flex-1 py-2 rounded-xl text-sm font-semibold transition-all duration-200"
+              className="flex-shrink-0 flex-1 py-2 rounded-xl text-sm font-semibold transition-all duration-200 whitespace-nowrap"
               style={tab === key
                 ? { background: "var(--club-gradient)", color: "#fff", boxShadow: "0 2px 12px rgba(var(--club-primary-rgb),0.3)" }
                 : { background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.07)" }
@@ -421,6 +430,61 @@ export function PlayerDetailPanel({
                   </div>
                 )}
               </>
+            )}
+
+            {tab === "momentos" && (
+              <div className="flex flex-col gap-3">
+                {playerMomentos.length === 0 ? (
+                  <div className="flex flex-col items-center gap-3 py-12 text-center">
+                    <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ background: "rgba(255,255,255,0.05)" }}>
+                      <svg className="w-6 h-6 text-white/25" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                    <p className="text-white/40 text-sm">Nenhum momento com {displayName}</p>
+                  </div>
+                ) : (
+                  playerMomentos.map((m) => (
+                    <div
+                      key={m.id}
+                      className="flex gap-3 items-start rounded-xl p-3"
+                      style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}
+                    >
+                      <div className="w-20 h-14 rounded-lg overflow-hidden shrink-0 bg-black/30">
+                        {m.mediaType === "video" ? (
+                          <div className="w-full h-full flex items-center justify-center" style={{ background: "rgba(124,92,252,0.12)" }}>
+                            <svg className="w-6 h-6 text-purple-400/70" fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M8 5v14l11-7z" />
+                            </svg>
+                          </div>
+                        ) : (
+                          <img src={m.photoDataUrl} alt={m.title} className="w-full h-full object-cover" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0 flex flex-col gap-1">
+                        <p className="text-white text-sm font-bold leading-snug line-clamp-2">{m.title}</p>
+                        <p className="text-white/35 text-xs">🗓 {m.gameDate}</p>
+                      </div>
+                      <button
+                        type="button"
+                        title="Ver na aba Momentos"
+                        onClick={() => {
+                          document.dispatchEvent(
+                            new CustomEvent("fc:open-momentos", { detail: { momentoId: m.id } })
+                          );
+                          onClose();
+                        }}
+                        className="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-white/40 hover:text-white transition-colors"
+                        style={{ background: "rgba(255,255,255,0.05)" }}
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                        </svg>
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
             )}
 
             {tab === "edit" && (

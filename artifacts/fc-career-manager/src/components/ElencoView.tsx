@@ -1141,6 +1141,7 @@ export function ElencoView({
         <PlayerDetailPanel
           player={detailPlayer}
           careerId={careerId}
+          seasonId={seasonId}
           override={overrides[detailPlayer.id]}
           onClose={() => setDetailPlayer(null)}
           onUpdated={refreshOverrides}

@@ -10,11 +10,15 @@ import {
   type Momento,
 } from "@/lib/momentoStorage";
 import { getUserPlan, getPlanLimits, type FrontendPlanLimits } from "@/lib/userPlan";
+import type { SquadPlayer } from "@/lib/squadCache";
 
 interface MomentosViewProps {
   seasonId: string;
   allSeasonIds?: string[];
   isReadOnly?: boolean;
+  allPlayers?: SquadPlayer[];
+  highlightMomentoId?: string;
+  onClearHighlight?: () => void;
 }
 
 function formatGameDate(raw: string): string {
@@ -24,6 +28,43 @@ function formatGameDate(raw: string): string {
 function formatFileSize(bytes: number): string {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function PlayerInitials({ name, size }: { name: string; size: number }) {
+  const parts = name.trim().split(/\s+/);
+  const initials = parts.length >= 2
+    ? `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
+    : name.slice(0, 2).toUpperCase();
+  return (
+    <span
+      className="flex items-center justify-center rounded-full text-white font-black shrink-0"
+      style={{
+        width: size,
+        height: size,
+        fontSize: Math.max(8, size * 0.38),
+        background: "rgba(var(--club-primary-rgb),0.32)",
+        border: "1.5px solid rgba(var(--club-primary-rgb),0.45)",
+      }}
+    >
+      {initials}
+    </span>
+  );
+}
+
+function PlayerAvatarStrip({ playerIds, allPlayers }: { playerIds?: number[]; allPlayers?: SquadPlayer[] }) {
+  if (!playerIds || playerIds.length === 0 || !allPlayers) return null;
+  const players = playerIds.slice(0, 3).map((id) => allPlayers.find((p) => p.id === id)).filter(Boolean) as SquadPlayer[];
+  if (players.length === 0) return null;
+  return (
+    <div className="flex items-center gap-0.5 flex-wrap">
+      {players.map((p) => (
+        <PlayerInitials key={p.id} name={p.name} size={20} />
+      ))}
+      {playerIds.length > 3 && (
+        <span className="text-white/45 text-[10px] font-bold ml-0.5">+{playerIds.length - 3}</span>
+      )}
+    </div>
+  );
 }
 
 function ConfirmDeleteModal({
@@ -382,11 +423,13 @@ function AddMomentoModal({
   onSave,
   planLimits,
   videoCount,
+  allPlayers,
 }: {
   onClose: () => void;
   onSave: (m: Omit<Momento, "id" | "createdAt">) => void;
   planLimits: FrontendPlanLimits;
   videoCount: number;
+  allPlayers?: SquadPlayer[];
 }) {
   const [mediaTab, setMediaTab] = useState<MediaTab>("photo");
   const [title, setTitle] = useState("");
@@ -398,6 +441,27 @@ function AddMomentoModal({
   const [photoLoading, setPhotoLoading] = useState(false);
   const [errors, setErrors] = useState<{ title?: string; gameDate?: string; media?: string }>({});
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const [selectedPlayerIds, setSelectedPlayerIds] = useState<number[]>([]);
+  const [playerSearch, setPlayerSearch] = useState("");
+  const [showPlayerDropdown, setShowPlayerDropdown] = useState(false);
+  const playerDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showPlayerDropdown) return;
+    const handler = (e: MouseEvent) => {
+      if (playerDropdownRef.current && !playerDropdownRef.current.contains(e.target as Node)) {
+        setShowPlayerDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showPlayerDropdown]);
+
+  const availablePlayers = (allPlayers ?? []).filter(
+    (p) => !selectedPlayerIds.includes(p.id) && p.name.toLowerCase().includes(playerSearch.toLowerCase())
+  );
+  const selectedPlayers = (allPlayers ?? []).filter((p) => selectedPlayerIds.includes(p.id));
 
   const canUseVideo = planLimits.maxVideoMomentos > 0;
 
@@ -447,6 +511,7 @@ function AddMomentoModal({
 
   const handleSave = () => {
     if (!validate()) return;
+    const taggedPlayers = selectedPlayerIds.length > 0 ? selectedPlayerIds : undefined;
     if (mediaTab === "video" && videoUpload) {
       onSave({
         title: title.trim(),
@@ -456,6 +521,7 @@ function AddMomentoModal({
         mediaType: "video",
         videoUrl: videoUpload.url,
         videoKey: videoUpload.key,
+        playerIds: taggedPlayers,
       });
     } else {
       onSave({
@@ -464,6 +530,7 @@ function AddMomentoModal({
         gameDate: gameDate.trim(),
         photoDataUrl: photoDataUrl!,
         mediaType: "image",
+        playerIds: taggedPlayers,
       });
     }
   };
@@ -630,6 +697,84 @@ function AddMomentoModal({
             />
           </div>
 
+          {(allPlayers ?? []).length > 0 && (
+            <div className="flex flex-col gap-2">
+              <label className="text-white/60 text-xs font-semibold uppercase tracking-wide">
+                Jogadores <span className="text-white/30 font-normal normal-case">(opcional)</span>
+              </label>
+              {selectedPlayers.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {selectedPlayers.map((p) => (
+                    <span
+                      key={p.id}
+                      className="flex items-center gap-1.5 pl-2 pr-1 py-1 rounded-lg text-xs font-semibold text-white"
+                      style={{ background: "rgba(var(--club-primary-rgb),0.18)", border: "1px solid rgba(var(--club-primary-rgb),0.25)" }}
+                    >
+                      <PlayerInitials name={p.name} size={18} />
+                      {p.name.split(" ")[0]}
+                      <button
+                        type="button"
+                        onClick={() => setSelectedPlayerIds((ids) => ids.filter((id) => id !== p.id))}
+                        className="w-4 h-4 flex items-center justify-center rounded text-white/50 hover:text-white transition-colors ml-0.5"
+                      >
+                        <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+              <div className="relative" ref={playerDropdownRef}>
+                <button
+                  type="button"
+                  onClick={() => { setShowPlayerDropdown((v) => !v); setPlayerSearch(""); }}
+                  className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-sm border border-white/10 bg-white/5 text-white/50 hover:border-white/25 hover:text-white/70 transition-colors"
+                >
+                  <span>+ Adicionar jogador</span>
+                  <svg className={`w-4 h-4 transition-transform ${showPlayerDropdown ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                {showPlayerDropdown && (
+                  <div className="absolute left-0 right-0 top-full mt-1 rounded-xl border border-white/10 overflow-hidden z-10" style={{ background: "var(--app-bg-lighter, #141024)", maxHeight: 200 }}>
+                    <div className="p-2 border-b border-white/10">
+                      <input
+                        autoFocus
+                        value={playerSearch}
+                        onChange={(e) => setPlayerSearch(e.target.value)}
+                        placeholder="Buscar jogador…"
+                        className="w-full rounded-lg px-2.5 py-1.5 text-sm text-white placeholder-white/30 outline-none bg-white/5 border border-white/10 focus:border-white/25"
+                      />
+                    </div>
+                    <div className="overflow-y-auto" style={{ maxHeight: 148 }}>
+                      {availablePlayers.length === 0 ? (
+                        <p className="text-white/30 text-xs text-center py-4">Nenhum jogador encontrado</p>
+                      ) : (
+                        availablePlayers.map((p) => (
+                          <button
+                            key={p.id}
+                            type="button"
+                            onClick={() => {
+                              setSelectedPlayerIds((ids) => [...ids, p.id]);
+                              setPlayerSearch("");
+                              setShowPlayerDropdown(false);
+                            }}
+                            className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-sm text-white hover:bg-white/5 transition-colors"
+                          >
+                            <PlayerInitials name={p.name} size={24} />
+                            <span className="flex-1 min-w-0 truncate">{p.name}</span>
+                            {p.position && <span className="text-white/30 text-xs shrink-0">{p.position}</span>}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           <button
             onClick={handleSave}
             className="w-full py-3 rounded-xl font-bold text-sm transition-all text-white"
@@ -644,11 +789,15 @@ function AddMomentoModal({
   );
 }
 
-function VideoCard({ momento, onOpenDetail }: { momento: Momento; onOpenDetail: () => void }) {
+function VideoCard({ momento, onOpenDetail, allPlayers, highlight }: { momento: Momento; onOpenDetail: () => void; allPlayers?: SquadPlayer[]; highlight?: boolean }) {
   const [playing, setPlaying] = useState(false);
 
   return (
-    <div className="glass glass-hover rounded-2xl overflow-hidden w-full transition-all duration-200 hover:scale-[1.02]">
+    <div
+      id={`momento-card-${momento.id}`}
+      className="glass glass-hover rounded-2xl overflow-hidden w-full transition-all duration-200 hover:scale-[1.02]"
+      style={highlight ? { boxShadow: "0 0 0 2px var(--club-primary, #7c5cfc), 0 0 20px rgba(var(--club-primary-rgb),0.35)" } : undefined}
+    >
       <div className="relative aspect-video overflow-hidden bg-black/40">
         {playing ? (
           <div onClick={(e) => e.stopPropagation()}>
@@ -701,10 +850,11 @@ function VideoCard({ momento, onOpenDetail }: { momento: Momento; onOpenDetail: 
         </span>
       </div>
       <div className="px-3 pt-2.5 pb-3 cursor-pointer" onClick={onOpenDetail}>
-        <div className="flex items-center gap-1.5 mb-1">
+        <div className="flex items-center justify-between gap-2 mb-1">
           <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: "rgba(124,92,252,0.18)", color: "#a78bfa" }}>
             ▶ VÍDEO
           </span>
+          <PlayerAvatarStrip playerIds={momento.playerIds} allPlayers={allPlayers} />
         </div>
         <p className="text-white font-bold text-sm leading-snug line-clamp-2">{momento.title}</p>
         {momento.description && (
@@ -715,11 +865,13 @@ function VideoCard({ momento, onOpenDetail }: { momento: Momento; onOpenDetail: 
   );
 }
 
-function ImageCard({ momento, onClick }: { momento: Momento; onClick: () => void }) {
+function ImageCard({ momento, onClick, allPlayers, highlight }: { momento: Momento; onClick: () => void; allPlayers?: SquadPlayer[]; highlight?: boolean }) {
   return (
     <button
+      id={`momento-card-${momento.id}`}
       onClick={onClick}
       className="group glass glass-hover rounded-2xl overflow-hidden text-left w-full transition-all duration-200 hover:scale-[1.02]"
+      style={highlight ? { boxShadow: "0 0 0 2px var(--club-primary, #7c5cfc), 0 0 20px rgba(var(--club-primary-rgb),0.35)" } : undefined}
     >
       <div className="relative aspect-video overflow-hidden">
         <img src={momento.photoDataUrl} alt={momento.title} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
@@ -729,6 +881,9 @@ function ImageCard({ momento, onClick }: { momento: Momento; onClick: () => void
         </span>
       </div>
       <div className="px-3 pt-2.5 pb-3">
+        <div className="flex items-center justify-between gap-2 mb-1">
+          <PlayerAvatarStrip playerIds={momento.playerIds} allPlayers={allPlayers} />
+        </div>
         <p className="text-white font-bold text-sm leading-snug line-clamp-2">{momento.title}</p>
         {momento.description && (
           <p className="text-white/45 text-xs mt-1 leading-relaxed line-clamp-2">{momento.description}</p>
@@ -740,7 +895,7 @@ function ImageCard({ momento, onClick }: { momento: Momento; onClick: () => void
 
 type Tagged = Momento & { _sid: string };
 
-export function MomentosView({ seasonId, allSeasonIds, isReadOnly }: MomentosViewProps) {
+export function MomentosView({ seasonId, allSeasonIds, isReadOnly, allPlayers, highlightMomentoId, onClearHighlight }: MomentosViewProps) {
   const [currentMomentos, setCurrentMomentos] = useState<Momento[]>(() => getMomentos(seasonId));
   const [scope, setScope] = useState<"atual" | "todas">("atual");
   const [showAdd, setShowAdd] = useState(false);
@@ -774,6 +929,15 @@ export function MomentosView({ seasonId, allSeasonIds, isReadOnly }: MomentosVie
       : currentMomentos;
     return all.filter((m) => m.mediaType === "video").length;
   }, [allSeasonIds, currentMomentos]);
+
+  useEffect(() => {
+    if (!highlightMomentoId) return undefined;
+    const el = document.getElementById(`momento-card-${highlightMomentoId}`);
+    if (!el) return undefined;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    const timer = setTimeout(() => { onClearHighlight?.(); }, 3000);
+    return () => clearTimeout(timer);
+  }, [highlightMomentoId, onClearHighlight, momentos]);
 
   const handleSave = (data: Omit<Momento, "id" | "createdAt">) => {
     const m: Momento = { ...data, id: generateMomentoId(), createdAt: new Date().toISOString() };
@@ -865,9 +1029,21 @@ export function MomentosView({ seasonId, allSeasonIds, isReadOnly }: MomentosVie
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {momentos.map((m) =>
             m.mediaType === "video" ? (
-              <VideoCard key={m.id} momento={m} onOpenDetail={() => setSelectedMomento(m)} />
+              <VideoCard
+                key={m.id}
+                momento={m}
+                onOpenDetail={() => setSelectedMomento(m)}
+                allPlayers={allPlayers}
+                highlight={highlightMomentoId === m.id}
+              />
             ) : (
-              <ImageCard key={m.id} momento={m} onClick={() => setSelectedMomento(m)} />
+              <ImageCard
+                key={m.id}
+                momento={m}
+                onClick={() => setSelectedMomento(m)}
+                allPlayers={allPlayers}
+                highlight={highlightMomentoId === m.id}
+              />
             )
           )}
         </div>
@@ -879,6 +1055,7 @@ export function MomentosView({ seasonId, allSeasonIds, isReadOnly }: MomentosVie
           onSave={handleSave}
           planLimits={planLimits}
           videoCount={videoCount}
+          allPlayers={allPlayers}
         />
       )}
 

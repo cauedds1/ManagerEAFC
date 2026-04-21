@@ -210,6 +210,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     }
   }, []);
   const [activeTab, setActiveTab] = useState<CareerTab>("painel");
+  const [highlightMomentoId, setHighlightMomentoId] = useState<string | undefined>();
 
   const [seasons, setSeasons] = useState<Season[]>([]);
   const [activeSeasonId, setActiveSeasonId] = useState<string>(career.currentSeasonId ?? career.id);
@@ -490,6 +491,18 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
       setNoticiasUnread(0);
     }
   }, [career.id, activeSeasonId]);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const momentoId = (e as CustomEvent<{ momentoId: string }>).detail?.momentoId;
+      if (momentoId) {
+        setActiveTab("momentos");
+        setHighlightMomentoId(momentoId);
+      }
+    };
+    document.addEventListener("fc:open-momentos", handler);
+    return () => document.removeEventListener("fc:open-momentos", handler);
+  }, []);
 
   const cachedPhotoMap = useMemo(() => {
     const map = new Map<number, string>();
@@ -1507,6 +1520,9 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
                 seasonId={activeSeasonId}
                 allSeasonIds={seasons.map((s) => s.id)}
                 isReadOnly={isReadOnly}
+                allPlayers={allPlayers}
+                highlightMomentoId={highlightMomentoId}
+                onClearHighlight={() => setHighlightMomentoId(undefined)}
               />
             )}
             {activeTab === "configuracoes" && (
