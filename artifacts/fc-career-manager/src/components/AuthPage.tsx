@@ -46,7 +46,7 @@ const PLAN_CARDS: Array<{
     period: "por mês",
     accentRgb: "245,158,11",
     accentColor: "#f59e0b",
-    features: ["Boatos no vestiário", "Até 3 portais de notícias personalizados", "Carreiras ilimitadas", "Diretoria ilimitada", "IA com notícias mais detalhadas e dramáticas", "Notícias automáticas"],
+    features: ["Carreiras e diretoria ilimitadas", "Gerações de IA ilimitadas", "Boatos no vestiário", "Até 3 portais de notícias personalizados", "IA com notícias mais detalhadas e dramáticas", "Notícias automáticas"],
   },
 ];
 
@@ -105,8 +105,8 @@ const PLAN_DETAIL_DATA: Record<Plan, {
   ultra: {
     tagline: "A experiência definitiva do modo carreira",
     features: [
-      "Carreiras ilimitadas",
-      "Diretoria ilimitada",
+      "Carreiras e diretoria ilimitadas",
+      "Gerações de IA ilimitadas",
       "Boatos no vestiário",
       "3 portais de notícias personalizados",
       "IA com notícias dramáticas e detalhadas",
@@ -442,6 +442,7 @@ const PLAN_WELCOME: Record<Plan, {
     ),
     features: [
       { emoji: "♾️", text: "Carreiras e diretoria ilimitadas" },
+      { emoji: "🤖", text: "Gerações de IA ilimitadas" },
       { emoji: "🗞️", text: "Até 3 portais de notícias personalizados" },
       { emoji: "🔥", text: "IA com notícias dramáticas e detalhadas" },
       { emoji: "💬", text: "Boatos exclusivos no vestiário" },
