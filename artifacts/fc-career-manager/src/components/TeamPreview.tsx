@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from "react";
 import { ClubEntry } from "@/types/club";
 import { getSquad, SquadPlayer } from "@/lib/squadCache";
 import { getAiHeaders } from "@/lib/apiStorage";
+import { useLang } from "@/hooks/useLang";
+import { WIZARD } from "@/lib/i18n";
 
 interface ClubTitle {
   name: string;
@@ -27,15 +29,6 @@ const POS_COLOR: Record<string, { bg: string; color: string }> = {
   MID: { bg: "rgba(16,185,129,0.18)", color: "#34d399" },
   ATA: { bg: "rgba(239,68,68,0.18)",  color: "#f87171" },
 };
-
-const POS_GROUP: Record<string, string> = {
-  GOL: "Goleiros",
-  DEF: "Defensores",
-  MID: "Meio-Campistas",
-  ATA: "Atacantes",
-};
-
-const GROUP_ORDER = ["Goleiros", "Defensores", "Meio-Campistas", "Atacantes"];
 
 const TROPHY_COLORS: Array<[RegExp, string]> = [
   [/champions|liga dos campe/i, "#fbbf24"],
@@ -69,7 +62,7 @@ function TrophyIcon({ color }: { color: string }) {
   );
 }
 
-function SquadStatsBlock({ players, loading }: { players: SquadPlayer[]; loading: boolean }) {
+function SquadStatsBlock({ players, loading, t }: { players: SquadPlayer[]; loading: boolean; t: typeof WIZARD["pt"] }) {
   if (loading) {
     return (
       <div className="rounded-2xl px-4 py-3 glass">
@@ -96,21 +89,19 @@ function SquadStatsBlock({ players, loading }: { players: SquadPlayer[]; loading
 
   return (
     <div className="rounded-2xl px-4 py-3 glass">
-      <p className="text-white/20 text-[10px] font-bold tracking-widest uppercase mb-2.5">Estatísticas do Elenco</p>
+      <p className="text-white/20 text-[10px] font-bold tracking-widest uppercase mb-2.5">{t.squadStats}</p>
 
-      {/* Average age + total */}
       <div className="flex items-baseline gap-2 mb-3">
         <span className="text-white font-black text-2xl leading-none">{avgAge}</span>
-        <span className="text-white/30 text-xs">anos em média</span>
+        <span className="text-white/30 text-xs">{t.avgAge}</span>
         <span
           className="ml-auto text-xs font-semibold px-2 py-0.5 rounded-full"
           style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.3)" }}
         >
-          {total} jog.
+          {total} {t.playersCount}
         </span>
       </div>
 
-      {/* Proportional position bar */}
       <div className="flex rounded-full overflow-hidden h-2 mb-2.5 gap-px">
         {(["GOL","DEF","MID","ATA"] as const).map(pos => {
           const pct = ((counts[pos] ?? 0) / total) * 100;
@@ -124,7 +115,6 @@ function SquadStatsBlock({ players, loading }: { players: SquadPlayer[]; loading
         })}
       </div>
 
-      {/* Position count chips */}
       <div className="grid grid-cols-4 gap-1.5">
         {(["GOL","DEF","MID","ATA"] as const).map(pos => (
           <div
@@ -150,11 +140,13 @@ function DestaquePlayerCard({
   label,
   labelColor,
   labelBg,
+  yearsLabel,
 }: {
   player: SquadPlayer;
   label: string;
   labelColor: string;
   labelBg: string;
+  yearsLabel: string;
 }) {
   const [imgErr, setImgErr] = useState(false);
   const pos = POS_COLOR[player.positionPtBr] ?? POS_COLOR.MID;
@@ -163,14 +155,12 @@ function DestaquePlayerCard({
       className="flex flex-col items-center gap-1.5 p-2.5 rounded-xl"
       style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
     >
-      {/* Label badge */}
       <span
         className="text-[9px] font-black tracking-wider uppercase px-2 py-0.5 rounded-full"
         style={{ background: labelBg, color: labelColor }}
       >
         {label}
       </span>
-      {/* Photo */}
       <div
         className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center flex-shrink-0"
         style={{ background: "rgba(255,255,255,0.07)" }}
@@ -184,11 +174,9 @@ function DestaquePlayerCard({
           </svg>
         )}
       </div>
-      {/* Name */}
       <p className="text-white text-[11px] font-semibold text-center leading-tight line-clamp-2 w-full">{player.name}</p>
-      {/* Age + position */}
       <div className="flex items-center gap-1">
-        {player.age > 0 && <span className="text-white/30 text-[10px]">{player.age} anos</span>}
+        {player.age > 0 && <span className="text-white/30 text-[10px]">{player.age} {yearsLabel}</span>}
         <span className="text-[9px] font-bold px-1.5 py-0.5 rounded" style={{ background: pos.bg, color: pos.color }}>
           {player.positionPtBr}
         </span>
@@ -197,7 +185,7 @@ function DestaquePlayerCard({
   );
 }
 
-function DestaquesBlock({ players, loading }: { players: SquadPlayer[]; loading: boolean }) {
+function DestaquesBlock({ players, loading, t }: { players: SquadPlayer[]; loading: boolean; t: typeof WIZARD["pt"] }) {
   if (loading) {
     return (
       <div className="rounded-2xl px-4 py-3 glass">
@@ -211,7 +199,6 @@ function DestaquesBlock({ players, loading }: { players: SquadPlayer[]; loading:
   if (players.length === 0) return null;
   const withAge = players.filter(p => p.age > 0);
 
-  // Fallback: if no age data, pick first and last player by squad order
   const youngest = withAge.length > 0
     ? withAge.reduce((min, p) => p.age < min.age ? p : min, withAge[0])
     : players[0];
@@ -219,31 +206,32 @@ function DestaquesBlock({ players, loading }: { players: SquadPlayer[]; loading:
     ? withAge.reduce((max, p) => p.age > max.age ? p : max, withAge[0])
     : players[players.length - 1];
 
-  // If both resolve to the same player, show only one card
   if (youngest.id === oldest.id) return null;
 
   return (
     <div className="rounded-2xl px-4 py-3 glass">
-      <p className="text-white/20 text-[10px] font-bold tracking-widest uppercase mb-2.5">Destaques</p>
+      <p className="text-white/20 text-[10px] font-bold tracking-widest uppercase mb-2.5">{t.highlights}</p>
       <div className="grid grid-cols-2 gap-2">
         <DestaquePlayerCard
           player={youngest}
-          label="Pérola"
+          label={t.gem}
           labelColor="#34d399"
           labelBg="rgba(16,185,129,0.15)"
+          yearsLabel={t.yearsOld}
         />
         <DestaquePlayerCard
           player={oldest}
-          label="Veterano"
+          label={t.veteran}
           labelColor="#f59e0b"
           labelBg="rgba(245,158,11,0.15)"
+          yearsLabel={t.yearsOld}
         />
       </div>
     </div>
   );
 }
 
-function PlayerCard({ player }: { player: SquadPlayer }) {
+function PlayerCard({ player, yearsLabel }: { player: SquadPlayer; yearsLabel: string }) {
   const [imgErr, setImgErr] = useState(false);
   const pos = POS_COLOR[player.positionPtBr] ?? POS_COLOR.MID;
   return (
@@ -263,7 +251,7 @@ function PlayerCard({ player }: { player: SquadPlayer }) {
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-white text-xs font-semibold truncate leading-tight">{player.name}</p>
-        {player.age > 0 && <p className="text-white/25 text-[10px]">{player.age} anos</p>}
+        {player.age > 0 && <p className="text-white/25 text-[10px]">{player.age} {yearsLabel}</p>}
       </div>
       <span className="text-[10px] font-bold px-1.5 py-0.5 rounded flex-shrink-0" style={{ background: pos.bg, color: pos.color }}>
         {player.positionPtBr}
@@ -304,6 +292,17 @@ function ClubLogo({ logo, name, size = 72 }: { logo: string; name: string; size?
 }
 
 export function TeamPreview({ club, season, onNext, onBack, onClubInfoLoaded }: TeamPreviewProps) {
+  const [lang] = useLang();
+  const t = WIZARD[lang];
+
+  const posGroups: Record<string, string> = {
+    GOL: t.posGoalkeepers,
+    DEF: t.posDefenders,
+    MID: t.posMidfielders,
+    ATA: t.posForwards,
+  };
+  const groupOrder = [t.posGoalkeepers, t.posDefenders, t.posMidfielders, t.posForwards];
+
   const [players, setPlayers] = useState<SquadPlayer[]>([]);
   const [loadingSquad, setLoadingSquad] = useState(true);
   const [clubInfo, setClubInfo] = useState<ClubInfo | null>(null);
@@ -339,29 +338,25 @@ export function TeamPreview({ club, season, onNext, onBack, onClubInfoLoaded }: 
 
   useEffect(() => { fetchClubInfo(); }, [fetchClubInfo]);
 
-  const grouped = GROUP_ORDER.map((group) => ({
+  const grouped = groupOrder.map((group) => ({
     group,
-    players: players.filter((p) => (POS_GROUP[p.positionPtBr] ?? "Atacantes") === group),
+    players: players.filter((p) => (posGroups[p.positionPtBr] ?? t.posForwards) === group),
   })).filter((g) => g.players.length > 0);
 
   return (
     <div className="animate-fade-up flex flex-col min-h-full">
 
-      {/* Page header */}
       <div className="text-center flex-shrink-0 mb-3">
         <p className="text-xs font-bold tracking-widest uppercase mb-0.5" style={{ color: "var(--club-primary)" }}>
-          Etapa 3 de 4 · Revisão do Clube
+          {t.step3of4}
         </p>
-        <h2 className="text-xl font-black text-white">Seu clube</h2>
+        <h2 className="text-xl font-black text-white">{t.yourClub}</h2>
       </div>
 
-      {/* Two-column layout — left: club info, right: squad */}
       <div className="flex gap-3 flex-1 items-start">
 
-        {/* LEFT column: club identity + AI info */}
         <div className="flex flex-col gap-3 flex-shrink-0" style={{ width: "38%" }}>
 
-          {/* Club hero card */}
           <div
             className="rounded-2xl p-4 glass relative overflow-hidden"
             style={{ boxShadow: "0 4px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.04)" }}
@@ -394,14 +389,14 @@ export function TeamPreview({ club, season, onNext, onBack, onClubInfoLoaded }: 
                     className="text-xs font-semibold px-2.5 py-0.5 rounded-full"
                     style={{ background: "rgba(var(--club-primary-rgb),0.12)", color: "var(--club-primary)" }}
                   >
-                    Temporada {season}
+                    {t.seasonLabel} {season}
                   </span>
                   {!loadingSquad && players.length > 0 && (
                     <span
                       className="text-xs font-semibold px-2.5 py-0.5 rounded-full"
                       style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.35)" }}
                     >
-                      {players.length} jogadores
+                      {players.length} {t.playersCount}
                     </span>
                   )}
                 </div>
@@ -409,12 +404,11 @@ export function TeamPreview({ club, season, onNext, onBack, onClubInfoLoaded }: 
             </div>
           </div>
 
-          {/* AI description */}
           {loadingInfo ? (
             <div className="rounded-2xl px-4 py-3 glass">
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-3 h-3 rounded-full border-2 border-white/15 border-t-white/50 animate-spin flex-shrink-0" />
-                <span className="text-white/20 text-[10px]">Carregando informações...</span>
+                <span className="text-white/20 text-[10px]">{t.loadingInfo}</span>
               </div>
               <div className="space-y-1.5">
                 {[85, 60, 75, 50].map((w, i) => (
@@ -428,13 +422,12 @@ export function TeamPreview({ club, season, onNext, onBack, onClubInfoLoaded }: 
             </div>
           ) : null}
 
-          {/* Titles */}
           {!loadingInfo && clubInfo?.titles && clubInfo.titles.length > 0 && (
             <div className="rounded-2xl px-4 py-3 glass">
-              <p className="text-white/20 text-[10px] font-bold tracking-widest uppercase mb-2">Títulos</p>
+              <p className="text-white/20 text-[10px] font-bold tracking-widest uppercase mb-2">{t.titles}</p>
               <div className="flex flex-wrap gap-1.5">
-                {clubInfo.titles.map((t, i) => {
-                  const color = getTrophyColor(t.name);
+                {clubInfo.titles.map((title, i) => {
+                  const color = getTrophyColor(title.name);
                   return (
                     <div
                       key={i}
@@ -442,8 +435,8 @@ export function TeamPreview({ club, season, onNext, onBack, onClubInfoLoaded }: 
                       style={{ background: `${color}15`, border: `1px solid ${color}28` }}
                     >
                       <TrophyIcon color={color} />
-                      <span className="text-[10px] font-medium" style={{ color }}>{t.name}</span>
-                      <span className="text-[10px] font-black" style={{ color }}>×{t.count}</span>
+                      <span className="text-[10px] font-medium" style={{ color }}>{title.name}</span>
+                      <span className="text-[10px] font-black" style={{ color }}>×{title.count}</span>
                     </div>
                   );
                 })}
@@ -451,19 +444,16 @@ export function TeamPreview({ club, season, onNext, onBack, onClubInfoLoaded }: 
             </div>
           )}
 
-          {/* Squad stats */}
-          <SquadStatsBlock players={players} loading={loadingSquad} />
+          <SquadStatsBlock players={players} loading={loadingSquad} t={t} />
 
-          {/* Destaques: Pérola + Veterano */}
-          <DestaquesBlock players={players} loading={loadingSquad} />
+          <DestaquesBlock players={players} loading={loadingSquad} t={t} />
         </div>
 
-        {/* RIGHT column: full squad — no inner scroll */}
         <div className="flex-1 min-w-0">
           <div className="rounded-2xl p-3 glass">
             <div className="flex items-center justify-between mb-2.5 px-1">
               <h4 className="text-white/35 text-[10px] font-bold tracking-widest uppercase">
-                Elenco{!loadingSquad && players.length > 0 && <span className="text-white/20 ml-1">({players.length})</span>}
+                {t.squad}{!loadingSquad && players.length > 0 && <span className="text-white/20 ml-1">({players.length})</span>}
               </h4>
             </div>
 
@@ -480,7 +470,7 @@ export function TeamPreview({ club, season, onNext, onBack, onClubInfoLoaded }: 
                 ))}
               </div>
             ) : players.length === 0 ? (
-              <p className="text-white/20 text-xs text-center py-6">Elenco não disponível</p>
+              <p className="text-white/20 text-xs text-center py-6">{t.squadUnavailable}</p>
             ) : (
               <div className="space-y-3">
                 {grouped.map(({ group, players: gPlayers }) => (
@@ -489,7 +479,7 @@ export function TeamPreview({ club, season, onNext, onBack, onClubInfoLoaded }: 
                       {group} <span className="opacity-50">({gPlayers.length})</span>
                     </p>
                     <div className="grid grid-cols-3 gap-0.5">
-                      {gPlayers.map((p) => <PlayerCard key={p.id} player={p} />)}
+                      {gPlayers.map((p) => <PlayerCard key={p.id} player={p} yearsLabel={t.yearsOld} />)}
                     </div>
                   </div>
                 ))}
@@ -499,7 +489,6 @@ export function TeamPreview({ club, season, onNext, onBack, onClubInfoLoaded }: 
         </div>
       </div>
 
-      {/* Sticky bottom buttons */}
       <div
         className="flex gap-2 mt-3 flex-shrink-0 sticky bottom-0 py-3"
         style={{ background: "linear-gradient(to top, var(--app-bg, #0d0b1a) 65%, transparent)" }}
@@ -511,14 +500,14 @@ export function TeamPreview({ club, season, onNext, onBack, onClubInfoLoaded }: 
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
           </svg>
-          Voltar
+          {t.back}
         </button>
         <button
           onClick={onNext}
           className="flex-1 py-2.5 rounded-xl font-bold text-white text-sm transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2"
           style={{ background: "var(--club-gradient)", boxShadow: "0 4px 20px rgba(var(--club-primary-rgb),0.25)" }}
         >
-          Configurar Carreira
+          {t.setupCareer}
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
           </svg>

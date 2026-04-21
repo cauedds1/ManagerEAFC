@@ -6,6 +6,8 @@ import { APIFOOTBALL_TO_FC26_NAME } from "@/lib/footballApiMap";
 import { hexToRgb, SYSTEM_COLORS } from "@/lib/themeManager";
 import { getUserPlan, getPlanLimits, getPlanLabel, type Plan } from "@/lib/userPlan";
 import { UpgradePrompt } from "@/components/UpgradePrompt";
+import { useLang } from "@/hooks/useLang";
+import { CAREER_SEL } from "@/lib/i18n";
 
 interface CareerSelectionProps {
   careers: Career[];
@@ -65,7 +67,13 @@ function CoachAvatar({ career, rgb }: { career: Career; rgb: string }) {
   );
 }
 
-function CareerCard({ career, onSelect, onDelete, index }: { career: Career; onSelect: () => void; onDelete: () => void; index: number }) {
+function CareerCard({ career, onSelect, onDelete, index, t }: {
+  career: Career;
+  onSelect: () => void;
+  onDelete: () => void;
+  index: number;
+  t: typeof CAREER_SEL["pt"];
+}) {
   const [deleting, setDeleting] = useState(false);
   const cc = useMemo(() => resolveCareerColors(career.clubName, career.clubPrimary, career.clubSecondary), [career.clubName, career.clubPrimary, career.clubSecondary]);
 
@@ -93,17 +101,14 @@ function CareerCard({ career, onSelect, onDelete, index }: { career: Career; onS
         onMouseEnter={e => { (e.currentTarget as HTMLElement).style.boxShadow = `0 8px 32px rgba(${cc.rgb},0.2), 0 2px 20px rgba(0,0,0,0.3)`; (e.currentTarget as HTMLElement).style.borderColor = `rgba(${cc.rgb},0.25)`; }}
         onMouseLeave={e => { (e.currentTarget as HTMLElement).style.boxShadow = `0 2px 20px rgba(0,0,0,0.25)`; (e.currentTarget as HTMLElement).style.borderColor = `rgba(${cc.rgb},0.12)`; }}
       >
-        {/* Top gradient bar */}
         <div className="h-1 w-full" style={{ background: cc.gradient }} />
 
-        {/* Ambient glow bg */}
         <div className="absolute inset-0 pointer-events-none rounded-2xl overflow-hidden" style={{ top: 4 }}>
           <div className="absolute -top-8 -left-4 w-32 h-32 rounded-full blur-2xl opacity-20"
             style={{ background: cc.primary }} />
         </div>
 
         <div className="relative p-4">
-          {/* Club row */}
           <div className="flex items-start gap-3 mb-3">
             <ClubLogoLg logo={career.clubLogo} name={career.clubName} rgb={cc.rgb} />
             <div className="flex-1 min-w-0 pt-0.5">
@@ -117,10 +122,8 @@ function CareerCard({ career, onSelect, onDelete, index }: { career: Career; onS
             </span>
           </div>
 
-          {/* Divider */}
           <div className="mb-3" style={{ height: "1px", background: `rgba(${cc.rgb},0.1)` }} />
 
-          {/* Coach row */}
           <div className="flex items-center gap-2">
             <CoachAvatar career={career} rgb={cc.rgb} />
             <div className="flex-1 min-w-0">
@@ -128,17 +131,16 @@ function CareerCard({ career, onSelect, onDelete, index }: { career: Career; onS
                 <span className="text-sm leading-none">{career.coach.nationalityFlag}</span>
                 <p className="text-white/70 font-semibold text-xs truncate">{career.coach.name}</p>
               </div>
-              <p className="text-white/25 text-[10px] mt-0.5">{career.coach.nationality} · {career.coach.age} anos</p>
+              <p className="text-white/25 text-[10px] mt-0.5">{career.coach.nationality} · {career.coach.age} {t.coachAge}</p>
             </div>
             <p className="text-white/25 text-[10px] flex-shrink-0">{formatDate(career.createdAt)}</p>
           </div>
         </div>
 
-        {/* Footer CTA */}
         <div className="px-4 py-2.5 flex items-center justify-between"
           style={{ borderTop: `1px solid rgba(${cc.rgb},0.08)` }}>
           <span className="text-white/25 text-xs group-hover:text-white/50 transition-colors duration-200">
-            Continuar carreira
+            {t.continueCareer}
           </span>
           <svg className="w-3.5 h-3.5 text-white/20 group-hover:text-white/50 group-hover:translate-x-0.5 transition-all duration-200"
             fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -147,11 +149,10 @@ function CareerCard({ career, onSelect, onDelete, index }: { career: Career; onS
         </div>
       </button>
 
-      {/* Delete */}
       <button
         onClick={handleDelete}
         className="absolute top-4 right-4 w-6 h-6 rounded-md flex items-center justify-center opacity-0 group-hover:opacity-100 hover:!opacity-100 text-white/0 group-hover:text-white/30 hover:!text-red-400 hover:!bg-red-500/15 transition-all duration-200"
-        title="Excluir carreira"
+        title={t.deleteCareer}
       >
         <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -161,7 +162,7 @@ function CareerCard({ career, onSelect, onDelete, index }: { career: Career; onS
   );
 }
 
-function NewCareerCard({ onClick, index }: { onClick: () => void; index: number }) {
+function NewCareerCard({ onClick, index, label }: { onClick: () => void; index: number; label: string }) {
   return (
     <button
       onClick={onClick}
@@ -183,13 +184,16 @@ function NewCareerCard({ onClick, index }: { onClick: () => void; index: number 
         </svg>
       </div>
       <p className="text-white/35 text-sm font-semibold group-hover:text-white/60 transition-colors duration-200">
-        Nova Carreira
+        {label}
       </p>
     </button>
   );
 }
 
 export function CareerSelection({ careers, onSelectCareer, onCreateNew, onCareersChange, onLogout, userPlan }: CareerSelectionProps) {
+  const [lang] = useLang();
+  const t = CAREER_SEL[lang];
+
   const resolvedPlan = userPlan ?? getUserPlan();
   const planLimits = getPlanLimits(resolvedPlan);
   const atCareerLimit = isFinite(planLimits.maxCareers) && careers.length >= planLimits.maxCareers;
@@ -206,52 +210,49 @@ export function CareerSelection({ careers, onSelectCareer, onCreateNew, onCareer
 
   const hasCareer = localCareers.length > 0;
 
+  const leagueCount = [...new Set(localCareers.map(c => c.clubLeague))].length;
+  const careerLabel = localCareers.length === 1 ? t.statCareer : t.statCareers;
+  const leagueLabel = leagueCount === 1 ? t.statLeague : t.statLeagues;
+
   return (
     <div className="h-full flex overflow-hidden">
 
-      {/* ── LEFT SIDEBAR ── */}
       <div
         className="w-64 xl:w-72 flex-shrink-0 flex flex-col justify-between p-7 relative overflow-hidden"
         style={{ borderRight: "1px solid rgba(255,255,255,0.05)" }}
       >
-        {/* Ambient bg glow */}
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute -bottom-20 -left-20 w-64 h-64 rounded-full blur-3xl opacity-10"
             style={{ background: "var(--club-primary)" }} />
         </div>
 
         <div className="relative">
-          {/* Icon */}
           <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-7 animate-float"
             style={{ background: "rgba(var(--club-primary-rgb),0.12)", border: "1px solid rgba(var(--club-primary-rgb),0.2)", boxShadow: "0 0 30px rgba(var(--club-primary-rgb),0.15)" }}>
             <svg className="w-6 h-6" style={{ color: "var(--club-primary)" }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 6.75V15m6-6v8.25m.503 3.498l4.875-2.437c.381-.19.622-.58.622-1.006V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0L9.503 3.252a1.125 1.125 0 00-1.006 0L3.622 5.689C3.24 5.88 3 6.27 3 6.695V19.18c0 .836.88 1.38 1.628 1.006l3.869-1.934c.317-.159.69-.159 1.006 0l4.994 2.497c.317.158.69.158 1.006 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 6.75V15m6-6v8.25m.503 3.498l4.875-2.437c.381-.19.622-.58.622-1.006V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0L9.503 3.252a1.125 1.125 0 00-1.006 0L3.622 5.689C3.24 5.88 3 6.27 3 6.695V19.18c0 .836.88 1.38 1.628 1.006l3.869-1.934c-.317-.159.69-.159 1.006 0l4.994 2.497c.317.158.69.158 1.006 0z" />
             </svg>
           </div>
 
           <p className="text-[10px] font-bold tracking-widest uppercase mb-2" style={{ color: "var(--club-primary)" }}>
-            EA FC 26 · Modo Carreira
+            {t.eaLabel}
           </p>
-          <h1 className="text-2xl font-black text-white leading-tight mb-3">
-            {hasCareer ? "Suas\nCarreiras" : "FC Career\nManager"}
+          <h1 className="text-2xl font-black text-white leading-tight mb-3" style={{ whiteSpace: "pre-line" }}>
+            {hasCareer ? t.headingExisting : t.headingNew}
           </h1>
           <p className="text-white/30 text-xs leading-relaxed">
-            {hasCareer
-              ? "Continue de onde parou ou comece uma nova aventura no modo carreira."
-              : "Gerencie sua carreira no modo técnico do EA FC 26. Crie seu técnico, escolha um clube e construa um legado."}
+            {hasCareer ? t.descExisting : t.descNew}
           </p>
 
           {hasCareer && (
             <div className="mt-5 grid grid-cols-2 gap-2">
               <div className="rounded-xl p-3" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
                 <p className="text-2xl font-black text-white">{localCareers.length}</p>
-                <p className="text-white/30 text-[10px] font-medium mt-0.5">Carreira{localCareers.length !== 1 ? "s" : ""}</p>
+                <p className="text-white/30 text-[10px] font-medium mt-0.5">{careerLabel}</p>
               </div>
               <div className="rounded-xl p-3" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                <p className="text-2xl font-black text-white">
-                  {[...new Set(localCareers.map(c => c.clubLeague))].length}
-                </p>
-                <p className="text-white/30 text-[10px] font-medium mt-0.5">Liga{[...new Set(localCareers.map(c => c.clubLeague))].length !== 1 ? "s" : ""}</p>
+                <p className="text-2xl font-black text-white">{leagueCount}</p>
+                <p className="text-white/30 text-[10px] font-medium mt-0.5">{leagueLabel}</p>
               </div>
             </div>
           )}
@@ -262,8 +263,8 @@ export function CareerSelection({ careers, onSelectCareer, onCreateNew, onCareer
             <UpgradePrompt
               currentPlan={resolvedPlan}
               requiredPlan={resolvedPlan === "free" ? "pro" : "ultra"}
-              featureName={`Nova Carreira (${careers.length}/${planLimits.maxCareers})`}
-              description={`Você atingiu o limite de carreiras do plano ${getPlanLabel(resolvedPlan)}. Faça upgrade para criar mais.`}
+              featureName={`${t.newCareer} (${careers.length}/${planLimits.maxCareers})`}
+              description={`${lang === "pt" ? `Você atingiu o limite de carreiras do plano ${getPlanLabel(resolvedPlan)}. Faça upgrade para criar mais.` : `You have reached the career limit for the ${getPlanLabel(resolvedPlan)} plan. Upgrade to create more.`}`}
               compact
             />
           ) : (
@@ -275,7 +276,7 @@ export function CareerSelection({ careers, onSelectCareer, onCreateNew, onCareer
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
             </svg>
-            Nova Carreira
+            {t.newCareer}
           </button>
           )}
           {onLogout && (
@@ -287,19 +288,16 @@ export function CareerSelection({ careers, onSelectCareer, onCreateNew, onCareer
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 9V5.25A2.25 2.25 0 0 1 10.5 3h6a2.25 2.25 0 0 1 2.25 2.25v13.5A2.25 2.25 0 0 1 16.5 21h-6a2.25 2.25 0 0 1-2.25-2.25V15M12 9l3 3m0 0-3 3m3-3H2.25" />
               </svg>
-              Sair da conta
+              {t.logout}
             </button>
           )}
         </div>
       </div>
 
-      {/* ── RIGHT CONTENT ── */}
       <div className="flex-1 min-w-0 overflow-y-auto p-5 xl:p-7">
         {!hasCareer ? (
-          /* ── Rich Empty State ── */
           <div className="h-full flex flex-col items-center justify-center animate-fade-up relative overflow-hidden">
 
-            {/* Pitch SVG watermark */}
             <svg viewBox="0 0 600 400" className="absolute inset-0 w-full h-full pointer-events-none"
               preserveAspectRatio="xMidYMid slice"
               style={{ opacity: 0.04 }}>
@@ -311,11 +309,9 @@ export function CareerSelection({ careers, onSelectCareer, onCreateNew, onCareer
               <rect x="480" y="140" width="90" height="120" rx="3" fill="none" stroke="white" strokeWidth="1.5" />
             </svg>
 
-            {/* Ambient glow */}
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full pointer-events-none"
               style={{ background: "radial-gradient(ellipse, rgba(var(--club-primary-rgb),0.06) 0%, transparent 70%)" }} />
 
-            {/* Icon */}
             <div className="relative w-24 h-24 rounded-3xl flex items-center justify-center mb-7 animate-float"
               style={{ background: "rgba(var(--club-primary-rgb),0.08)", border: "1px solid rgba(var(--club-primary-rgb),0.18)", boxShadow: "0 0 60px rgba(var(--club-primary-rgb),0.15)" }}>
               <div className="absolute inset-2 rounded-2xl" style={{ border: "1px solid rgba(var(--club-primary-rgb),0.1)" }} />
@@ -324,24 +320,22 @@ export function CareerSelection({ careers, onSelectCareer, onCreateNew, onCareer
               </svg>
             </div>
 
-            {/* Text */}
             <div className="text-center mb-7 relative">
               <p className="text-xs font-bold tracking-widest uppercase mb-3" style={{ color: "var(--club-primary)", opacity: 0.7 }}>
-                Modo Carreira · EA FC 26
+                {t.modeLabel}
               </p>
-              <h3 className="text-white font-black text-2xl mb-2.5 leading-tight">Comece sua jornada</h3>
+              <h3 className="text-white font-black text-2xl mb-2.5 leading-tight">{t.startJourney}</h3>
               <p className="text-white/35 text-sm leading-relaxed max-w-[280px] mx-auto">
-                Crie seu técnico, escolha um clube e construa um legado que será lembrado para sempre.
+                {t.descEmpty}
               </p>
             </div>
 
-            {/* Feature chips */}
             <div className="flex flex-wrap justify-center gap-2 mb-8 max-w-xs relative">
               {[
-                { icon: "⚽", label: "700+ clubes" },
-                { icon: "📊", label: "Estatísticas" },
-                { icon: "🤖", label: "IA integrada" },
-                { icon: "🏆", label: "Legado" },
+                { icon: "⚽", label: t.chip700 },
+                { icon: "📊", label: t.chipStats },
+                { icon: "🤖", label: t.chipAI },
+                { icon: "🏆", label: t.chipLegacy },
               ].map((chip) => (
                 <div key={chip.label}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold"
@@ -352,7 +346,6 @@ export function CareerSelection({ careers, onSelectCareer, onCreateNew, onCareer
               ))}
             </div>
 
-            {/* CTA */}
             <button
               onClick={onCreateNew}
               className="relative flex items-center gap-2.5 px-8 py-3.5 rounded-2xl font-bold text-white text-sm transition-all duration-300 hover:scale-[1.03] active:scale-[0.98]"
@@ -363,11 +356,10 @@ export function CareerSelection({ careers, onSelectCareer, onCreateNew, onCareer
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
               </svg>
-              Criar primeira carreira
+              {t.createFirst}
             </button>
           </div>
         ) : (
-          /* Career grid */
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 xl:gap-4 auto-rows-max">
             {localCareers.map((career, i) => (
               <CareerCard
@@ -376,9 +368,10 @@ export function CareerSelection({ careers, onSelectCareer, onCreateNew, onCareer
                 onSelect={() => onSelectCareer(career)}
                 onDelete={() => handleDelete(career.id)}
                 index={i}
+                t={t}
               />
             ))}
-            {!atCareerLimit && <NewCareerCard onClick={onCreateNew} index={localCareers.length} />}
+            {!atCareerLimit && <NewCareerCard onClick={onCreateNew} index={localCareers.length} label={t.newCareer} />}
           </div>
         )}
       </div>

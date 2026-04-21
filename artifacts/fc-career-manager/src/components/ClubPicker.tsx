@@ -3,6 +3,8 @@ import { ClubEntry } from "@/types/club";
 import { DOMESTIC_LEAGUES, INTERNATIONAL_LEAGUES, LeagueInfo } from "@/lib/footballApiMap";
 import { getClubsByLeague, searchClubs } from "@/lib/clubListCache";
 import { applyTheme, resetTheme, extractColorsFromImage, getCurrentColors } from "@/lib/themeManager";
+import { useLang } from "@/hooks/useLang";
+import { WIZARD } from "@/lib/i18n";
 
 interface ClubPickerProps {
   allClubs: ClubEntry[];
@@ -63,11 +65,13 @@ function LeagueCard({
   count,
   onClick,
   index,
+  clubsLabel,
 }: {
   league: LeagueInfo;
   count: number;
   onClick: () => void;
   index: number;
+  clubsLabel: string;
 }) {
   return (
     <button
@@ -84,7 +88,7 @@ function LeagueCard({
           {league.displayName ?? league.name}
         </p>
         {count > 0 && (
-          <p className="text-white/30 text-xs tabular-nums mt-0.5">{count} clubes</p>
+          <p className="text-white/30 text-xs tabular-nums mt-0.5">{count} {clubsLabel}</p>
         )}
       </div>
       <svg
@@ -193,6 +197,9 @@ function CompactClubCard({
 }
 
 export function ClubPicker({ allClubs, onSelectClub, initialLeague }: ClubPickerProps) {
+  const [lang] = useLang();
+  const t = WIZARD[lang];
+
   const [selectedLeague, setSelectedLeague] = useState<LeagueInfo | null>(
     initialLeague ?? null
   );
@@ -212,10 +219,6 @@ export function ClubPicker({ allClubs, onSelectClub, initialLeague }: ClubPicker
   }, [allClubs]);
 
   const domesticLeagues = DOMESTIC_LEAGUES.map((l) => ({
-    league: l,
-    count: countByLeague.get(l.id) ?? 0,
-  }));
-  const internationalLeagues = INTERNATIONAL_LEAGUES.map((l) => ({
     league: l,
     count: countByLeague.get(l.id) ?? 0,
   }));
@@ -242,19 +245,18 @@ export function ClubPicker({ allClubs, onSelectClub, initialLeague }: ClubPicker
 
   return (
     <div className="flex flex-col h-full animate-fade-up">
-      {/* Compact header */}
       <div className="flex items-center justify-between mb-3 flex-shrink-0">
         <div>
           <p
             className="text-[10px] font-bold tracking-widest uppercase mb-0.5"
             style={{ color: "var(--club-primary)" }}
           >
-            Etapa 2 de 4
+            {t.step2of4}
           </p>
           <h2 className="text-lg font-black text-white leading-tight">
             {selectedLeague
               ? (selectedLeague.displayName ?? selectedLeague.name)
-              : "Escolha seu clube"}
+              : t.chooseClub}
           </h2>
         </div>
         {selectedLeague && (
@@ -271,12 +273,11 @@ export function ClubPicker({ allClubs, onSelectClub, initialLeague }: ClubPicker
             >
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
             </svg>
-            Ligas
+            {t.backLeagues}
           </button>
         )}
       </div>
 
-      {/* Search bar */}
       <div className="relative mb-3 flex-shrink-0">
         <svg
           className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/30 pointer-events-none"
@@ -298,8 +299,8 @@ export function ClubPicker({ allClubs, onSelectClub, initialLeague }: ClubPicker
           onChange={(e) => setSearch(e.target.value)}
           placeholder={
             selectedLeague
-              ? `Buscar em ${selectedLeague.displayName ?? selectedLeague.name}...`
-              : "Buscar clube ou liga..."
+              ? `${t.searchInLeague} ${selectedLeague.displayName ?? selectedLeague.name}...`
+              : t.searchClubOrLeague
           }
           className="w-full pl-9 pr-8 py-2 rounded-lg text-white placeholder-white/25 focus:outline-none transition-all duration-200 text-xs glass"
           onFocus={(e) =>
@@ -325,17 +326,15 @@ export function ClubPicker({ allClubs, onSelectClub, initialLeague }: ClubPicker
         )}
       </div>
 
-      {/* Scrollable content */}
       <div className="flex-1 overflow-y-auto -mx-1 px-1 min-h-0">
         {isSearching && !selectedLeague ? (
-          /* Global search results */
           <div>
             <p className="text-white/25 text-[10px] mb-1.5 tabular-nums">
               {globalSearchResults.length}{" "}
-              {globalSearchResults.length === 1 ? "clube encontrado" : "clubes encontrados"}
+              {globalSearchResults.length === 1 ? t.clubFound : t.clubsFound}
             </p>
             {globalSearchResults.length === 0 ? (
-              <EmptySearchState />
+              <EmptySearchState label={t.noClub} />
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1.5">
                 {globalSearchResults.map((entry, i) => (
@@ -350,15 +349,14 @@ export function ClubPicker({ allClubs, onSelectClub, initialLeague }: ClubPicker
             )}
           </div>
         ) : selectedLeague ? (
-          /* Clubs inside a league */
           <div>
             <div className="flex items-center gap-2 mb-2">
               <span className="text-white/25 text-[10px]">
-                {selectedLeague.country} · {clubsInLeague.length} clubes
+                {selectedLeague.country} · {clubsInLeague.length} {t.clubs}
               </span>
             </div>
             {clubsInLeague.length === 0 ? (
-              <EmptySearchState />
+              <EmptySearchState label={t.noClub} />
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1.5">
                 {clubsInLeague.map((entry, i) => (
@@ -373,10 +371,9 @@ export function ClubPicker({ allClubs, onSelectClub, initialLeague }: ClubPicker
             )}
           </div>
         ) : (
-          /* League grid — all leagues, no tabs */
           <div>
             <p className="text-white/25 text-[10px] font-semibold tracking-widest uppercase mb-1.5">
-              Ligas Domésticas
+              {t.domesticLeagues}
             </p>
             <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-1.5 mb-4">
               {domesticLeagues.map(({ league, count }, i) => (
@@ -386,10 +383,10 @@ export function ClubPicker({ allClubs, onSelectClub, initialLeague }: ClubPicker
                   count={count}
                   onClick={() => setSelectedLeague(league)}
                   index={i}
+                  clubsLabel={t.clubs}
                 />
               ))}
             </div>
-
           </div>
         )}
       </div>
@@ -397,7 +394,7 @@ export function ClubPicker({ allClubs, onSelectClub, initialLeague }: ClubPicker
   );
 }
 
-function EmptySearchState() {
+function EmptySearchState({ label }: { label: string }) {
   return (
     <div className="flex flex-col items-center justify-center py-10 gap-2">
       <svg
@@ -413,7 +410,7 @@ function EmptySearchState() {
           d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
         />
       </svg>
-      <p className="text-white/25 text-sm">Nenhum clube encontrado</p>
+      <p className="text-white/25 text-sm">{label}</p>
     </div>
   );
 }

@@ -14,18 +14,11 @@ import { FinanceiroView } from "./FinanceiroView";
 import { ClubStatsView } from "./ClubStatsView";
 import { CompetitionResultsView } from "./CompetitionResultsView";
 import { TrophyCabinetView } from "./TrophyCabinetView";
+import { useLang } from "@/hooks/useLang";
+import { CLUBE } from "@/lib/i18n";
+
 type ClubeSubTab = "elenco" | "estatisticas" | "lesoes" | "sequencias" | "financeiro" | "competicoes" | "trofeus";
 type StatsMiniTab = "jogadores" | "clube";
-
-const SUB_TABS: { id: ClubeSubTab; label: string; icon: string }[] = [
-  { id: "elenco",       label: "Elenco",       icon: "👥" },
-  { id: "estatisticas", label: "Estatísticas",  icon: "📊" },
-  { id: "lesoes",       label: "Lesões",        icon: "🤕" },
-  { id: "sequencias",   label: "Sequências",    icon: "🔥" },
-  { id: "financeiro",   label: "Financeiro",    icon: "💰" },
-  { id: "competicoes",  label: "Competições",   icon: "🏆" },
-  { id: "trofeus",      label: "Troféus",       icon: "🥇" },
-];
 
 interface ClubeViewProps {
   careerId: string;
@@ -53,7 +46,7 @@ interface ClubeViewProps {
 
 type SeqScope = "atual" | "todas";
 
-function ScopeToggle({ scope, setScope }: { scope: SeqScope; setScope: (s: SeqScope) => void }) {
+function ScopeToggle({ scope, setScope, t }: { scope: SeqScope; setScope: (s: SeqScope) => void; t: typeof CLUBE["pt"] }) {
   return (
     <div className="flex rounded-xl overflow-hidden border border-white/10">
       {(["atual", "todas"] as SeqScope[]).map((s) => (
@@ -66,7 +59,7 @@ function ScopeToggle({ scope, setScope }: { scope: SeqScope; setScope: (s: SeqSc
             color: scope === s ? "var(--club-primary)" : "rgba(255,255,255,0.4)",
           }}
         >
-          {s === "atual" ? "Temporada atual" : "Todas as temporadas"}
+          {s === "atual" ? t.scopeCurrent : t.scopeAll}
         </button>
       ))}
     </div>
@@ -96,6 +89,19 @@ export function ClubeView({
   finalizedLeftIds,
   finalizedSeasonStats,
 }: ClubeViewProps) {
+  const [lang] = useLang();
+  const t = CLUBE[lang];
+
+  const SUB_TABS: { id: ClubeSubTab; label: string; icon: string }[] = [
+    { id: "elenco",       label: t.tabSquad,    icon: "👥" },
+    { id: "estatisticas", label: t.tabStats,    icon: "📊" },
+    { id: "lesoes",       label: t.tabInjuries, icon: "🤕" },
+    { id: "sequencias",   label: t.tabStreaks,  icon: "🔥" },
+    { id: "financeiro",   label: t.tabFinance,  icon: "💰" },
+    { id: "competicoes",  label: t.tabComps,    icon: "🏆" },
+    { id: "trofeus",      label: t.tabTrophies, icon: "🥇" },
+  ];
+
   const statsPlayers = historicalPlayers ?? allPlayers;
   const currentPlayerIds = useMemo(() => new Set(allPlayers.map((p) => p.id)), [allPlayers]);
   const formerPlayerIds = useMemo(() => {
@@ -138,10 +144,6 @@ export function ClubeView({
     [allSeasonIds, pastSeasonsLoaded]
   );
 
-  // For "todas as temporadas": cover every player ID present in allStatsOverride.
-  // statsPlayers = allTimeCareerPlayers (built from current squad + former players +
-  // squad cache + all transfer records), so virtually all IDs resolve here.
-  // A minimal placeholder is created only for genuinely unresolvable IDs.
   const expandedStatsPlayers = useMemo(() => {
     if (!hasMultipleSeasons) return statsPlayers;
     const statsPlayerMap = new Map(statsPlayers.map((p) => [p.id, p]));
@@ -149,7 +151,6 @@ export function ClubeView({
     for (const idStr of Object.keys(allStatsOverride)) {
       const id = Number(idStr);
       if (!statsPlayerMap.has(id)) {
-        // Last-resort placeholder — name/position unknown for this player ID
         extras.push({
           id,
           name: `Jogador #${id}`,
@@ -176,7 +177,6 @@ export function ClubeView({
 
   return (
     <div className="w-full">
-      {/* Sub-tab nav — sticky logo abaixo da tab nav principal (~50px) */}
       <div
         className="sticky top-[50px] z-20 flex items-center gap-1 px-4 pt-3 pb-0 overflow-x-auto"
         style={{
@@ -186,12 +186,12 @@ export function ClubeView({
           WebkitBackdropFilter: "blur(12px)",
         }}
       >
-        {SUB_TABS.map((t) => {
-          const active = sub === t.id;
+        {SUB_TABS.map((tab) => {
+          const active = sub === tab.id;
           return (
             <button
-              key={t.id}
-              onClick={() => setSub(t.id)}
+              key={tab.id}
+              onClick={() => setSub(tab.id)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-t-lg text-xs font-medium whitespace-nowrap transition-colors relative"
               style={{
                 background: active ? "rgba(var(--club-primary-rgb),0.12)" : "transparent",
@@ -200,8 +200,8 @@ export function ClubeView({
                 marginBottom: "-1px",
               }}
             >
-              <span>{t.icon}</span>
-              <span>{t.label}</span>
+              <span>{tab.icon}</span>
+              <span>{tab.label}</span>
             </button>
           );
         })}
@@ -232,15 +232,14 @@ export function ClubeView({
 
         {sub === "estatisticas" && (
           <div className="px-4 sm:px-6">
-            {/* Mini-tabs + scope toggle row */}
             <div className="flex items-center justify-between gap-3 pt-4 pb-3 flex-wrap">
               <div className="flex gap-1">
-                {(["jogadores", "clube"] as StatsMiniTab[]).map((t) => {
-                  const active = statsMini === t;
+                {(["jogadores", "clube"] as StatsMiniTab[]).map((tab) => {
+                  const active = statsMini === tab;
                   return (
                     <button
-                      key={t}
-                      onClick={() => setStatsMini(t)}
+                      key={tab}
+                      onClick={() => setStatsMini(tab)}
                       className="px-4 py-1.5 rounded-xl text-xs font-semibold transition-all duration-200"
                       style={{
                         background: active ? "rgba(var(--club-primary-rgb),0.15)" : "rgba(255,255,255,0.05)",
@@ -250,14 +249,13 @@ export function ClubeView({
                           : "1px solid rgba(255,255,255,0.07)",
                       }}
                     >
-                      {t === "jogadores" ? "👤 Jogadores" : "🏟️ Clube"}
+                      {tab === "jogadores" ? t.miniPlayers : t.miniClub}
                     </button>
                   );
                 })}
               </div>
-              {/* Scope toggle only for Jogadores tab with multiple seasons */}
               {hasMultipleSeasons && statsMini === "jogadores" && (
-                <ScopeToggle scope={statsScope} setScope={setStatsScope} />
+                <ScopeToggle scope={statsScope} setScope={setStatsScope} t={t} />
               )}
             </div>
 
@@ -292,7 +290,7 @@ export function ClubeView({
           <div>
             {hasMultipleSeasons && (
               <div className="flex justify-end px-4 sm:px-6 pt-4">
-                <ScopeToggle scope={seqScope} setScope={setSeqScope} />
+                <ScopeToggle scope={seqScope} setScope={setSeqScope} t={t} />
               </div>
             )}
             <SequenciasView
@@ -325,7 +323,6 @@ export function ClubeView({
         {sub === "trofeus" && (
           <TrophyCabinetView careerId={careerId} />
         )}
-
       </div>
     </div>
   );

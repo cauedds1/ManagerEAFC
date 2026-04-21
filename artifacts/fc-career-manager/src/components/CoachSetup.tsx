@@ -1,6 +1,8 @@
 import { useState, useRef } from "react";
 import { CoachProfile } from "@/types/career";
 import { COUNTRIES } from "@/lib/countryList";
+import { useLang } from "@/hooks/useLang";
+import { WIZARD } from "@/lib/i18n";
 
 interface CoachSetupProps {
   onNext: (coach: CoachProfile) => void;
@@ -8,6 +10,9 @@ interface CoachSetupProps {
 }
 
 export function CoachSetup({ onNext, initial }: CoachSetupProps) {
+  const [lang] = useLang();
+  const t = WIZARD[lang];
+
   const [name, setName] = useState(initial?.name ?? "");
   const [age, setAge] = useState(initial?.age ? String(initial.age) : "");
   const [nationality, setNationality] = useState(initial?.nationality ?? "Brasil");
@@ -32,10 +37,10 @@ export function CoachSetup({ onNext, initial }: CoachSetupProps) {
 
   const validate = (): boolean => {
     const errs: { name?: string; age?: string } = {};
-    if (!name.trim()) errs.name = "Informe o nome do técnico";
+    if (!name.trim()) errs.name = t.nameError;
     const ageNum = parseInt(age, 10);
     if (!age.trim() || isNaN(ageNum) || ageNum < 18 || ageNum > 80) {
-      errs.age = "Idade entre 18 e 80";
+      errs.age = t.ageError;
     }
     setErrors(errs);
     return Object.keys(errs).length === 0;
@@ -50,10 +55,10 @@ export function CoachSetup({ onNext, initial }: CoachSetupProps) {
     <div className="flex flex-col h-full animate-fade-up">
       <div className="text-center mb-6">
         <p className="text-xs font-bold tracking-widest uppercase mb-2" style={{ color: "var(--club-primary)" }}>
-          Etapa 1 de 4
+          {t.step1of4}
         </p>
-        <h2 className="text-2xl sm:text-3xl font-black text-white mb-1">Seu Técnico</h2>
-        <p className="text-white/40 text-sm">Crie o perfil do treinador que vai comandar o clube</p>
+        <h2 className="text-2xl sm:text-3xl font-black text-white mb-1">{t.yourCoach}</h2>
+        <p className="text-white/40 text-sm">{t.coachSubtitle}</p>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-6 flex-1">
@@ -69,13 +74,13 @@ export function CoachSetup({ onNext, initial }: CoachSetupProps) {
             }}
           >
             {photo ? (
-              <img src={photo} alt="Foto" className="w-full h-full object-cover" />
+              <img src={photo} alt={t.photo} className="w-full h-full object-cover" />
             ) : (
               <div className="flex flex-col items-center gap-1">
                 <svg className="w-7 h-7 text-white/25 group-hover:text-white/50 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
                 </svg>
-                <span className="text-white/20 text-xs group-hover:text-white/40 transition-colors">Foto</span>
+                <span className="text-white/20 text-xs group-hover:text-white/40 transition-colors">{t.photo}</span>
               </div>
             )}
             <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-2xl">
@@ -91,7 +96,7 @@ export function CoachSetup({ onNext, initial }: CoachSetupProps) {
               onClick={() => setPhoto(undefined)}
               className="text-xs text-red-400/70 hover:text-red-400 transition-colors"
             >
-              Remover foto
+              {t.removePhoto}
             </button>
           )}
           <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
@@ -99,7 +104,7 @@ export function CoachSetup({ onNext, initial }: CoachSetupProps) {
 
         <div className="flex-1 flex flex-col gap-5">
           <div>
-            <label className="block text-white/50 text-xs font-semibold tracking-widest uppercase mb-2">Nome completo</label>
+            <label className="block text-white/50 text-xs font-semibold tracking-widest uppercase mb-2">{t.fullName}</label>
             <input
               type="text"
               value={name}
@@ -116,7 +121,7 @@ export function CoachSetup({ onNext, initial }: CoachSetupProps) {
 
           <div className="flex gap-3">
             <div className="flex-1 relative">
-              <label className="block text-white/50 text-xs font-semibold tracking-widest uppercase mb-2">Nacionalidade</label>
+              <label className="block text-white/50 text-xs font-semibold tracking-widest uppercase mb-2">{t.nationality}</label>
               <button
                 type="button"
                 onClick={() => setShowCountryList((v) => !v)}
@@ -136,7 +141,7 @@ export function CoachSetup({ onNext, initial }: CoachSetupProps) {
                       type="text"
                       value={countrySearch}
                       onChange={(e) => setCountrySearch(e.target.value)}
-                      placeholder="Buscar..."
+                      placeholder={t.search}
                       className="w-full px-3 py-1.5 rounded-lg text-white text-sm placeholder-white/30 focus:outline-none"
                       style={{ background: "rgba(255,255,255,0.06)" }}
                     />
@@ -156,14 +161,14 @@ export function CoachSetup({ onNext, initial }: CoachSetupProps) {
                         )}
                       </button>
                     ))}
-                    {filteredCountries.length === 0 && <p className="text-white/30 text-sm text-center py-4">Nenhum país encontrado</p>}
+                    {filteredCountries.length === 0 && <p className="text-white/30 text-sm text-center py-4">{t.noCountry}</p>}
                   </div>
                 </div>
               )}
             </div>
 
             <div style={{ width: 100 }}>
-              <label className="block text-white/50 text-xs font-semibold tracking-widest uppercase mb-2">Idade</label>
+              <label className="block text-white/50 text-xs font-semibold tracking-widest uppercase mb-2">{t.age}</label>
               <input
                 type="number"
                 min={18}
@@ -189,7 +194,7 @@ export function CoachSetup({ onNext, initial }: CoachSetupProps) {
         style={{ background: "var(--club-gradient)", boxShadow: "0 4px 20px rgba(var(--club-primary-rgb),0.25)" }}
       >
         <span className="flex items-center justify-center gap-2">
-          Próximo — Escolher clube
+          {t.nextChooseClub}
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
         </span>
       </button>

@@ -12,6 +12,8 @@ import { applyTheme, resetTheme, extractColorsFromImage, getCurrentColors } from
 import { getClubColors } from "@/lib/clubColors";
 import { APIFOOTBALL_TO_FC26_NAME, LeagueInfo } from "@/lib/footballApiMap";
 import type { ClubTitle } from "@/types/career";
+import { useLang } from "@/hooks/useLang";
+import { WIZARD } from "@/lib/i18n";
 
 interface CreateCareerWizardProps {
   allClubs: ClubEntry[];
@@ -21,12 +23,11 @@ interface CreateCareerWizardProps {
   initialCoach?: CoachProfile | null;
 }
 
-const STEPS = ["Técnico", "Clube", "Preview", "Configurar"];
-
-function ProgressBar({ step }: { step: number }) {
+function ProgressBar({ step, t }: { step: number; t: typeof WIZARD["pt"] }) {
+  const steps = [t.stepCoach, t.stepClub, t.stepPreview, t.stepSetup];
   return (
     <div className="flex items-center gap-1.5 mb-5">
-      {STEPS.map((label, i) => {
+      {steps.map((label, i) => {
         const active = i === step;
         const done = i < step;
         return (
@@ -64,7 +65,7 @@ function ProgressBar({ step }: { step: number }) {
                 {label}
               </span>
             </div>
-            {i < STEPS.length - 1 && (
+            {i < steps.length - 1 && (
               <div
                 className="flex-1 h-px transition-all duration-500"
                 style={{ background: done ? "var(--club-primary)" : "rgba(255,255,255,0.06)" }}
@@ -84,6 +85,9 @@ export function CreateCareerWizard({
   initialStep = 0,
   initialCoach,
 }: CreateCareerWizardProps) {
+  const [lang] = useLang();
+  const t = WIZARD[lang];
+
   const [step, setStep] = useState<0 | 1 | 2 | 3>(initialStep as 0 | 1 | 2 | 3);
   const [coach, setCoach] = useState<CoachProfile | null>(initialCoach ?? null);
   const [selectedClub, setSelectedClub] = useState<ClubEntry | null>(null);
@@ -166,19 +170,18 @@ export function CreateCareerWizard({
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
           </svg>
-          Cancelar
+          {t.cancel}
         </button>
         <span className="text-white/25 text-xs font-semibold tracking-widest uppercase">
-          Nova Carreira
+          {t.newCareer}
         </span>
         <div style={{ width: 80 }} />
       </div>
 
-      {/* Step 2 (Preview): full-width, single outer scroll */}
       {isPreviewStep && selectedClub && (
         <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
           <div className="flex-shrink-0 max-w-3xl w-full mx-auto px-4 sm:px-6 pt-4 pb-2">
-            <ProgressBar step={step} />
+            <ProgressBar step={step} t={t} />
           </div>
           <div className="flex-1 min-h-0 overflow-y-auto px-3">
             <TeamPreview
@@ -192,14 +195,12 @@ export function CreateCareerWizard({
         </div>
       )}
 
-      {/* All other steps: normal scrollable layout */}
       {!isPreviewStep && (
         <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Club picker (step 1) gets full width, no max-w constraint */}
           {step === 1 ? (
             <div className="flex-1 overflow-y-auto flex flex-col">
               <div className="max-w-3xl mx-auto w-full px-4 sm:px-6 pt-5 pb-2 flex-shrink-0">
-                <ProgressBar step={step} />
+                <ProgressBar step={step} t={t} />
               </div>
               <div key={step} className="flex-1 min-h-0 w-full px-3 pb-4 flex flex-col">
                 <ClubPicker allClubs={allClubs} onSelectClub={handleClubSelect} initialLeague={selectedLeague} />
@@ -208,10 +209,10 @@ export function CreateCareerWizard({
           ) : (
           <div className="flex-1 overflow-y-auto">
             <div className="max-w-3xl mx-auto px-4 sm:px-6 py-5">
-              <ProgressBar step={step} />
+              <ProgressBar step={step} t={t} />
               <div key={step}>
                 {step === 0 && <CoachSetup onNext={handleCoachNext} initial={coach} />}
-                {step === 1 && null /* handled above */}
+                {step === 1 && null}
                 {step === 3 && selectedClub && (
                   <CareerSetupStep
                     club={selectedClub}

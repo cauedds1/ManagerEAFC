@@ -1,6 +1,8 @@
 import { useState, useCallback } from "react";
 import { ClubEntry } from "@/types/club";
 import { getAiHeaders } from "@/lib/apiStorage";
+import { useLang } from "@/hooks/useLang";
+import { WIZARD } from "@/lib/i18n";
 
 interface ClubTitle {
   name: string;
@@ -15,14 +17,6 @@ interface CareerSetupStepProps {
   onBack: () => void;
   confirming?: boolean;
 }
-
-const PROJETO_EXAMPLES = [
-  "Vencer a Champions em 3 temporadas",
-  "Reconstruir o clube com jovens talentos",
-  "Conquistar o campeonato nacional",
-  "Elevar o clube ao topo europeu",
-  "Desenvolver jogadores para vendas lucrativas",
-];
 
 function getLeagueSuggestions(league: string, leagueId?: number): string[] {
   const l = league.toLowerCase();
@@ -104,6 +98,11 @@ export function CareerSetupStep({
   onBack,
   confirming,
 }: CareerSetupStepProps) {
+  const [lang] = useLang();
+  const t = WIZARD[lang];
+
+  const projetoExamples = [t.proj1, t.proj2, t.proj3, t.proj4, t.proj5];
+
   const [projeto, setProjeto] = useState("");
   const [competitions, setCompetitions] = useState<string[]>([]);
   const [newComp, setNewComp] = useState("");
@@ -152,7 +151,7 @@ export function CareerSetupStep({
       if (data.projeto) setProjeto(data.projeto);
       else throw new Error("Resposta vazia");
     } catch {
-      setProjetoError("Não foi possível gerar. Verifique sua chave OpenAI.");
+      setProjetoError(t.aiError);
     } finally {
       setGeneratingProjeto(false);
     }
@@ -162,13 +161,12 @@ export function CareerSetupStep({
     <div className="flex flex-col gap-4 animate-fade-up">
       <div className="text-center mb-1">
         <p className="text-xs font-bold tracking-widest uppercase mb-1" style={{ color: "var(--club-primary)" }}>
-          Etapa 4 de 4 · Configurar Carreira
+          {t.step4of4}
         </p>
-        <h2 className="text-2xl font-black text-white">Configure sua carreira</h2>
-        <p className="text-white/40 text-sm">Defina o projeto e as competições da temporada</p>
+        <h2 className="text-2xl font-black text-white">{t.configTitle}</h2>
+        <p className="text-white/40 text-sm">{t.configSubtitle}</p>
       </div>
 
-      {/* Club mini-header */}
       <div
         className="flex items-center gap-3 px-3 py-2.5 rounded-xl glass"
         style={{ border: "1px solid rgba(var(--club-primary-rgb),0.2)" }}
@@ -182,7 +180,6 @@ export function CareerSetupStep({
         </div>
       </div>
 
-      {/* Projeto */}
       <div className="rounded-2xl p-4 glass">
         <div className="flex items-start gap-2 mb-3">
           <div
@@ -194,17 +191,15 @@ export function CareerSetupStep({
             </svg>
           </div>
           <div className="flex-1">
-            <h3 className="text-white font-bold text-sm">Projeto de Carreira</h3>
-            <p className="text-white/35 text-xs mt-0.5 leading-relaxed">
-              O projeto que o clube apresenta ao técnico. A diretoria vai cobrar e reagir com base neste projeto — os torcedores não sabem.
-            </p>
+            <h3 className="text-white font-bold text-sm">{t.projectTitle}</h3>
+            <p className="text-white/35 text-xs mt-0.5 leading-relaxed">{t.projectDesc}</p>
           </div>
         </div>
 
         <textarea
           value={projeto}
           onChange={(e) => setProjeto(e.target.value)}
-          placeholder="Descreva o projeto do clube...&#10;Ex: Nosso objetivo é reconstruir o elenco com jovens talentos e conquistar a Premier League em 4 temporadas."
+          placeholder={t.projectPlaceholder}
           rows={3}
           className="w-full rounded-xl px-3 py-2.5 text-sm text-white resize-none transition-all outline-none placeholder-white/20"
           style={{
@@ -216,7 +211,6 @@ export function CareerSetupStep({
           onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.08)")}
         />
 
-        {/* Gerar com IA + quick-fill suggestions */}
         <div className="mt-2 flex flex-col gap-2">
           <div className="flex items-center gap-2">
             <button
@@ -232,14 +226,14 @@ export function CareerSetupStep({
               {generatingProjeto ? (
                 <>
                   <div className="w-3 h-3 rounded-full border-2 border-current/30 border-t-current animate-spin" />
-                  Gerando...
+                  {t.generating}
                 </>
               ) : (
                 <>
                   <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                   </svg>
-                  Gerar com IA
+                  {t.generateAI}
                 </>
               )}
             </button>
@@ -249,9 +243,9 @@ export function CareerSetupStep({
           </div>
 
           <div>
-            <p className="text-white/20 text-[10px] font-semibold uppercase tracking-wider mb-1">Sugestões manuais</p>
+            <p className="text-white/20 text-[10px] font-semibold uppercase tracking-wider mb-1">{t.manualSuggestions}</p>
             <div className="flex flex-wrap gap-1.5">
-              {PROJETO_EXAMPLES.map((ex) => (
+              {projetoExamples.map((ex) => (
                 <button
                   key={ex}
                   onClick={() => setProjeto(ex)}
@@ -266,7 +260,6 @@ export function CareerSetupStep({
         </div>
       </div>
 
-      {/* Competições */}
       <div className="rounded-2xl p-4 glass">
         <div className="flex items-start gap-2 mb-3">
           <div
@@ -278,10 +271,8 @@ export function CareerSetupStep({
             </svg>
           </div>
           <div>
-            <h3 className="text-white font-bold text-sm">Competições da Temporada</h3>
-            <p className="text-white/35 text-xs mt-0.5 leading-relaxed">
-              Quais torneios você vai disputar? Eles vão aparecer ao registrar uma partida.
-            </p>
+            <h3 className="text-white font-bold text-sm">{t.competitionsTitle}</h3>
+            <p className="text-white/35 text-xs mt-0.5 leading-relaxed">{t.competitionsDesc}</p>
           </div>
         </div>
 
@@ -291,7 +282,7 @@ export function CareerSetupStep({
             value={newComp}
             onChange={(e) => setNewComp(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Nome da competição..."
+            placeholder={t.competitionPlaceholder}
             className="flex-1 rounded-xl px-3 py-2 text-sm text-white outline-none placeholder-white/20 transition-all"
             style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
             onFocus={(e) => (e.target.style.borderColor = "rgba(var(--club-primary-rgb),0.4)")}
@@ -303,7 +294,7 @@ export function CareerSetupStep({
             className="px-3.5 py-2 rounded-xl font-bold text-sm transition-all disabled:opacity-30 hover:scale-105 active:scale-95"
             style={{ background: "rgba(var(--club-primary-rgb),0.2)", color: "var(--club-primary)" }}
           >
-            + Adicionar
+            {t.addBtn}
           </button>
         </div>
 
@@ -316,7 +307,7 @@ export function CareerSetupStep({
         )}
 
         <div>
-          <p className="text-white/25 text-[10px] font-semibold uppercase tracking-wider mb-1.5">Sugestões para {club.league}</p>
+          <p className="text-white/25 text-[10px] font-semibold uppercase tracking-wider mb-1.5">{t.suggestionsFor} {club.league}</p>
           <div className="flex flex-wrap gap-1.5">
             {suggestions.map((s) => (
               <SuggestionChip
@@ -331,12 +322,11 @@ export function CareerSetupStep({
 
         {competitions.length === 0 && (
           <p className="text-white/15 text-xs mt-2 text-center">
-            Nenhuma competição adicionada — você pode pular esta etapa
+            {t.noCompetitions}
           </p>
         )}
       </div>
 
-      {/* Buttons */}
       <div className="flex gap-3 pt-1">
         <button
           onClick={onBack}
@@ -346,7 +336,7 @@ export function CareerSetupStep({
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
           </svg>
-          Voltar
+          {t.back}
         </button>
         <button
           onClick={() => onConfirm(projeto.trim(), competitions)}
@@ -357,14 +347,14 @@ export function CareerSetupStep({
           {confirming ? (
             <>
               <div className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-              Iniciando carreira...
+              {t.starting}
             </>
           ) : (
             <>
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
               </svg>
-              Confirmar e Iniciar
+              {t.confirm}
             </>
           )}
         </button>
