@@ -140,6 +140,7 @@ export function ReelsModal({ post, portalPhotos, customPortals, onClose }: Reels
   const cfg = SOURCE_CONFIG[post.source] ?? SOURCE_CONFIG.custom;
   const catStyle = CATEGORY_COLOR[post.category] ?? CATEGORY_COLOR.geral;
   const totalLikes = post.likes + (liked ? 1 : 0);
+  const hasComments = post.comments.length > 0;
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -174,8 +175,6 @@ export function ReelsModal({ post, portalPhotos, customPortals, onClose }: Reels
     }
   };
 
-  const hasComments = post.comments.length > 0;
-
   const modal = (
     <div
       className="fixed inset-0 z-[400] flex"
@@ -185,12 +184,10 @@ export function ReelsModal({ post, portalPhotos, customPortals, onClose }: Reels
         WebkitBackdropFilter: "blur(22px)",
       } as React.CSSProperties}
     >
-      {/* ── Video area ─────────────────────────────────────────────────── */}
       <div
         className="relative flex-1 min-h-0 min-w-0 flex items-stretch sm:items-center sm:justify-center"
         style={{ background: "transparent" }}
       >
-        {/* Full-bleed on mobile; 9:16 portrait stage on desktop */}
         <style>{`.reels-stage { width: 100%; height: 100%; } @media (min-width: 640px) { .reels-stage { aspect-ratio: 9 / 16; width: auto; height: 100%; max-height: 100vh; flex-shrink: 0; } }`}</style>
         <div className="reels-stage relative" style={{ background: "#000" }}>
           <video
@@ -203,7 +200,6 @@ export function ReelsModal({ post, portalPhotos, customPortals, onClose }: Reels
             className="w-full h-full object-cover sm:object-contain"
             style={{ display: "block" }}
           />
-          {/* Mute button */}
           <button
             onClick={handleMuteToggle}
             className="absolute bottom-4 right-4 flex items-center justify-center rounded-full transition-all hover:bg-white/20 active:scale-90 z-10"
@@ -223,7 +219,6 @@ export function ReelsModal({ post, portalPhotos, customPortals, onClose }: Reels
           </button>
         </div>
 
-        {/* Close button */}
         <button
           onClick={onClose}
           className="absolute top-4 left-4 flex items-center justify-center rounded-full transition-all hover:bg-white/20 active:scale-90 z-10"
@@ -235,9 +230,8 @@ export function ReelsModal({ post, portalPhotos, customPortals, onClose }: Reels
           </svg>
         </button>
 
-        {/* ── Mobile overlay (hidden on sm+) ─────────────────────────── */}
+        {/* Mobile engagement overlay — hidden on sm+ */}
         <div className="absolute inset-0 pointer-events-none sm:hidden">
-          {/* Bottom gradient with post info */}
           <div
             className="absolute bottom-0 left-0 right-0 px-4 pb-5 pt-20 pointer-events-auto"
             style={{ background: "linear-gradient(to top, rgba(0,0,0,0.88) 0%, transparent 100%)" }}
@@ -255,12 +249,10 @@ export function ReelsModal({ post, portalPhotos, customPortals, onClose }: Reels
             <p className="text-white/70 text-xs leading-relaxed line-clamp-2">{post.content}</p>
           </div>
 
-          {/* Floating right action buttons */}
           <div
             className="absolute right-3 flex flex-col items-center gap-5 pointer-events-auto"
             style={{ bottom: 80 }}
           >
-            {/* Like */}
             <button
               onClick={() => setLiked(l => !l)}
               className="flex flex-col items-center gap-1 transition-all active:scale-90"
@@ -276,7 +268,6 @@ export function ReelsModal({ post, portalPhotos, customPortals, onClose }: Reels
               </span>
             </button>
 
-            {/* Comments */}
             <button
               onClick={() => setShowComments(v => !v)}
               className="flex flex-col items-center gap-1 transition-all active:scale-90"
@@ -298,7 +289,6 @@ export function ReelsModal({ post, portalPhotos, customPortals, onClose }: Reels
               </span>
             </button>
 
-            {/* Share */}
             <button className="flex flex-col items-center gap-1">
               <div
                 className="w-11 h-11 rounded-full flex items-center justify-center"
@@ -314,7 +304,6 @@ export function ReelsModal({ post, portalPhotos, customPortals, onClose }: Reels
             </button>
           </div>
 
-          {/* Mobile comments panel — slides in from right when showComments */}
           {showComments && hasComments && (
             <div
               className="absolute right-0 top-0 bottom-0 flex flex-col pointer-events-auto"
@@ -342,7 +331,10 @@ export function ReelsModal({ post, portalPhotos, customPortals, onClose }: Reels
                   </svg>
                 </button>
               </div>
-              <div className="flex-1 overflow-y-auto px-3 py-3 flex flex-col gap-4" style={{ scrollbarWidth: "thin", scrollbarColor: "rgba(255,255,255,0.1) transparent" }}>
+              <div
+                className="flex-1 overflow-y-auto px-3 py-3 flex flex-col gap-4"
+                style={{ scrollbarWidth: "thin", scrollbarColor: "rgba(255,255,255,0.1) transparent" }}
+              >
                 {post.comments.map(c => <CommentRow key={c.id} comment={c} />)}
               </div>
             </div>
@@ -350,7 +342,7 @@ export function ReelsModal({ post, portalPhotos, customPortals, onClose }: Reels
         </div>
       </div>
 
-      {/* ── Desktop sidebar (hidden below sm) ─────────────────────────── */}
+      {/* Desktop sidebar — hidden below sm breakpoint */}
       <div
         className="hidden sm:flex flex-col w-[340px] lg:w-[380px] flex-shrink-0"
         style={{
@@ -360,7 +352,6 @@ export function ReelsModal({ post, portalPhotos, customPortals, onClose }: Reels
           borderLeft: "1px solid rgba(255,255,255,0.12)",
         } as React.CSSProperties}
       >
-        {/* Source header */}
         <div
           className="flex items-center gap-3 px-4 py-4 flex-shrink-0"
           style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}
@@ -389,7 +380,6 @@ export function ReelsModal({ post, portalPhotos, customPortals, onClose }: Reels
           </span>
         </div>
 
-        {/* Post content */}
         <div
           className="px-4 pt-4 pb-3 flex-shrink-0"
           style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
@@ -405,26 +395,19 @@ export function ReelsModal({ post, portalPhotos, customPortals, onClose }: Reels
           </div>
         </div>
 
-        {/* Comments area — shown when showComments is true */}
-        {showComments && hasComments && (
+        {showComments && hasComments ? (
           <div
             className="flex-1 overflow-y-auto px-4 py-3 flex flex-col gap-4"
             style={{ scrollbarWidth: "thin", scrollbarColor: "rgba(255,255,255,0.1) transparent" }}
           >
             {post.comments.map(c => <CommentRow key={c.id} comment={c} />)}
           </div>
+        ) : (
+          <div className="flex-1" />
         )}
 
-        {/* Spacer when comments hidden */}
-        {!showComments && <div className="flex-1" />}
-
-        {/* Engagement bar */}
-        <div
-          className="flex-shrink-0"
-          style={{ borderTop: "1px solid rgba(255,255,255,0.1)" }}
-        >
+        <div className="flex-shrink-0" style={{ borderTop: "1px solid rgba(255,255,255,0.1)" }}>
           <div className="flex items-center gap-4 px-4 py-3.5">
-            {/* Like */}
             <button
               onClick={() => setLiked(l => !l)}
               className="flex items-center gap-2 transition-all duration-200 active:scale-90"
@@ -434,7 +417,6 @@ export function ReelsModal({ post, portalPhotos, customPortals, onClose }: Reels
               <span className="text-sm font-bold tabular-nums">{formatCount(totalLikes)}</span>
             </button>
 
-            {/* Comments toggle */}
             <button
               onClick={() => setShowComments(v => !v)}
               className="flex items-center gap-2 transition-all duration-200 active:scale-90"
@@ -446,7 +428,6 @@ export function ReelsModal({ post, portalPhotos, customPortals, onClose }: Reels
               <span className="text-sm font-bold tabular-nums">{formatCount(post.commentsCount)}</span>
             </button>
 
-            {/* Share */}
             <button
               className="flex items-center gap-2 transition-colors duration-200"
               style={{ color: "rgba(255,255,255,0.75)" }}
