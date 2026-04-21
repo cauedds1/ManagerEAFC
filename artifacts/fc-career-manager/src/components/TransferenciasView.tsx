@@ -14,6 +14,8 @@ import {
 import { setPlayerStats, defaultStats, setPlayerOverride, getAllPlayerOverrides } from "@/lib/playerStatsStorage";
 import { getCachedClubList } from "@/lib/clubListCache";
 import { searchStaticClubs } from "@/lib/staticClubList";
+import { useLang } from "@/hooks/useLang";
+import { TRANSFERENCIAS, LOAN_DURATION_LABELS, LOAN_DURATION_DISPLAY } from "@/lib/i18n";
 
 const ALL_POSITIONS: PositionPtBr[] = ["GOL","DEF","MID","ATA"];
 
@@ -33,8 +35,8 @@ function formatDate(ts: number): string {
   return `${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}/${d.getFullYear()}`;
 }
 
-function formatFee(fee: number): string {
-  if (fee === 0) return "Grátis";
+function formatFee(fee: number, freeLabel: string): string {
+  if (fee === 0) return freeLabel;
   return `€${fee.toLocaleString("pt-BR")}`;
 }
 
@@ -125,6 +127,9 @@ function PlayerAutocomplete({
   localOnly?: boolean;
   hideLocalResults?: boolean;
 }) {
+  const [lang] = useLang();
+  const t = TRANSFERENCIAS[lang];
+
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [apiResults, setApiResults] = useState<PlayerSuggestion[]>([]);
@@ -191,7 +196,7 @@ function PlayerAutocomplete({
         onChange={(e) => handleChange(e.target.value)}
         onFocus={() => setOpen(true)}
         onBlur={() => setTimeout(() => setOpen(false), 180)}
-        placeholder={localOnly ? "Buscar no meu elenco..." : "Ex: Rodrygo, Mikel Merino..."}
+        placeholder={localOnly ? t.searchMySquadPlaceholder : t.searchPlayerPlaceholder}
         className="w-full pl-12 pr-3 py-2.5 rounded-xl text-white text-sm focus:outline-none glass placeholder:text-white/20"
         autoFocus
       />
@@ -206,7 +211,7 @@ function PlayerAutocomplete({
           style={{ background: "rgba(12,12,18,0.98)", border: "1px solid rgba(255,255,255,0.1)", backdropFilter: "blur(24px)" }}
         >
           {localResults.length > 0 && apiResults.length > 0 && (
-            <p className="px-4 pt-2.5 pb-1 text-white/20 text-xs uppercase tracking-wider">Meu elenco</p>
+            <p className="px-4 pt-2.5 pb-1 text-white/20 text-xs uppercase tracking-wider">{t.mySquadLabel}</p>
           )}
           {localResults.map((pl) => (
             <button
@@ -219,12 +224,12 @@ function PlayerAutocomplete({
               <PlayerFace src={pl.photo} name={pl.name} size={36} />
               <div className="flex-1 min-w-0">
                 <p className="text-white text-sm font-bold truncate">{pl.name}</p>
-                <p className="text-white/35 text-xs">{pl.position}{pl.age ? ` · ${pl.age} anos` : ""}</p>
+                <p className="text-white/35 text-xs">{pl.position}{pl.age ? ` · ${pl.age} ${t.yearsOld}` : ""}</p>
               </div>
             </button>
           ))}
           {apiResults.length > 0 && (
-            <p className="px-4 pt-2.5 pb-1 text-white/20 text-xs uppercase tracking-wider">Outros jogadores</p>
+            <p className="px-4 pt-2.5 pb-1 text-white/20 text-xs uppercase tracking-wider">{t.otherPlayersLabel}</p>
           )}
           {apiResults.map((pl) => (
             <button
@@ -237,7 +242,7 @@ function PlayerAutocomplete({
               <PlayerFace src={pl.photo} name={pl.name} size={36} />
               <div className="flex-1 min-w-0">
                 <p className="text-white text-sm font-bold truncate">{pl.name}</p>
-                <p className="text-white/35 text-xs">{pl.nationality ? `${pl.nationality} · ` : ""}{pl.position}{pl.age ? ` · ${pl.age} anos` : ""}</p>
+                <p className="text-white/35 text-xs">{pl.nationality ? `${pl.nationality} · ` : ""}{pl.position}{pl.age ? ` · ${pl.age} ${t.yearsOld}` : ""}</p>
               </div>
             </button>
           ))}
@@ -248,7 +253,7 @@ function PlayerAutocomplete({
           className="absolute z-50 left-0 right-0 mt-1 rounded-xl px-4 py-3"
           style={{ background: "rgba(12,12,18,0.98)", border: "1px solid rgba(255,255,255,0.08)" }}
         >
-          <p className="text-white/30 text-xs">Nenhum jogador encontrado</p>
+          <p className="text-white/30 text-xs">{t.noPlayerFound}</p>
         </div>
       )}
     </div>
@@ -294,7 +299,6 @@ function ClubAutocomplete({
   const handleBlur = () => {
     setTimeout(() => {
       setOpen(false);
-      // Auto-match logo if user typed without selecting from dropdown
       if (value.trim()) {
         const logo = findClubLogo(value);
         if (logo) onSelectLogo(logo);
@@ -311,7 +315,7 @@ function ClubAutocomplete({
         onChange={(e) => { onChange(e.target.value); setOpen(true); }}
         onFocus={() => setOpen(true)}
         onBlur={handleBlur}
-        placeholder={placeholder ?? "Ex: Manchester City (vazio = Jogador Livre)"}
+        placeholder={placeholder}
         className="w-full px-3 py-2.5 rounded-xl text-white text-sm focus:outline-none glass placeholder:text-white/20"
       />
       {open && suggestions.length > 0 && (
@@ -377,6 +381,9 @@ function TransferCard({
   clubLogoUrl?: string | null;
   onLoanAction?: (id: string, changes: Partial<TransferRecord>) => void;
 }) {
+  const [lang] = useLang();
+  const t = TRANSFERENCIAS[lang];
+
   const migratedPosKey = migratePositionOverride(transfer.playerPositionPtBr) ?? "MID";
   const pos = POS_STYLE[migratedPosKey] ?? POS_STYLE.MID;
   const role = ROLE_COLORS[transfer.role];
@@ -384,6 +391,10 @@ function TransferCard({
   const isEmprestimo = transfer.type === "emprestimo";
   const isFree = !transfer.fromClub && !transfer.toClub;
   const isLoanEnded = isEmprestimo && transfer.loanEnded;
+
+  const loanDurDisplay = transfer.loanDuration
+    ? (LOAN_DURATION_DISPLAY[transfer.loanDuration]?.[lang] ?? transfer.loanDuration)
+    : null;
 
   return (
     <div
@@ -406,7 +417,7 @@ function TransferCard({
               className="text-[10px] font-black px-2 py-0.5 rounded-md flex-shrink-0 tracking-wider"
               style={{ background: "rgba(251,191,36,0.15)", color: "#fbbf24", border: "1px solid rgba(251,191,36,0.25)" }}
             >
-              VENDA
+              {t.badgeVenda}
             </span>
           )}
           {isEmprestimo && (
@@ -414,7 +425,7 @@ function TransferCard({
               className="text-[10px] font-black px-2 py-0.5 rounded-md flex-shrink-0 tracking-wider"
               style={{ background: "rgba(251,146,60,0.15)", color: "#fb923c", border: "1px solid rgba(251,146,60,0.25)" }}
             >
-              EMPRÉSTIMO
+              {t.badgeEmprestimo}
             </span>
           )}
           {isEmprestimo && transfer.loanDirection === "entrada" && !isLoanEnded && (
@@ -422,7 +433,7 @@ function TransferCard({
               className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md flex-shrink-0"
               style={{ background: "rgba(96,165,250,0.12)", color: "#60a5fa" }}
             >
-              ↓ Entrada
+              {t.badgeLoanIn}
             </span>
           )}
           {isEmprestimo && transfer.loanDirection === "saida" && !isLoanEnded && (
@@ -430,7 +441,7 @@ function TransferCard({
               className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md flex-shrink-0"
               style={{ background: "rgba(251,191,36,0.12)", color: "#fbbf24" }}
             >
-              ↑ Saída
+              {t.badgeLoanOut}
             </span>
           )}
           {isLoanEnded && (
@@ -438,7 +449,7 @@ function TransferCard({
               className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md flex-shrink-0"
               style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.3)" }}
             >
-              Encerrado
+              {t.badgeLoanEnded}
             </span>
           )}
           {transfer.windowPending && (
@@ -446,13 +457,13 @@ function TransferCard({
               className="text-[10px] font-black px-2 py-0.5 rounded-md flex-shrink-0 tracking-wider"
               style={{ background: "rgba(168,85,247,0.15)", color: "#a855f7", border: "1px solid rgba(168,85,247,0.3)" }}
             >
-              PENDENTE
+              {t.badgePendente}
             </span>
           )}
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-white/30 text-xs">{transfer.playerAge} anos</span>
+          <span className="text-white/30 text-xs">{transfer.playerAge} {t.yearsOld}</span>
           <span className="text-white/20 text-xs">·</span>
           <span className="text-white/25 text-xs">{transfer.season}</span>
           {transfer.contractYears > 0 && !isVenda && !isEmprestimo && (
@@ -461,10 +472,10 @@ function TransferCard({
               <span className="text-white/25 text-xs">{transfer.contractYears}A</span>
             </>
           )}
-          {isEmprestimo && transfer.loanDuration && (
+          {isEmprestimo && loanDurDisplay && (
             <>
               <span className="text-white/20 text-xs">·</span>
-              <span className="text-white/35 text-xs">{transfer.loanDuration}</span>
+              <span className="text-white/35 text-xs">{loanDurDisplay}</span>
             </>
           )}
         </div>
@@ -482,7 +493,7 @@ function TransferCard({
                 <span className="text-white/30 text-xs truncate max-w-24">{transfer.toClub}</span>
               </>
             ) : (
-              <span className="text-white/25 text-xs italic">Saída do clube</span>
+              <span className="text-white/25 text-xs italic">{t.cardDeparture}</span>
             )
           ) : isEmprestimo ? (
             transfer.loanDirection === "saida" ? (
@@ -498,7 +509,7 @@ function TransferCard({
                     <span className="text-white/30 text-xs truncate max-w-24">{transfer.toClub}</span>
                   </>
                 ) : (
-                  <span className="text-white/25 text-xs italic">Clube desconhecido</span>
+                  <span className="text-white/25 text-xs italic">{t.cardUnknownClub}</span>
                 )}
               </>
             ) : (
@@ -517,7 +528,7 @@ function TransferCard({
               </>
             )
           ) : isFree ? (
-            <span className="text-white/25 text-xs italic">Jogador Livre</span>
+            <span className="text-white/25 text-xs italic">{t.cardFreeAgent}</span>
           ) : (
             <>
               <ClubBadge src={transfer.fromClubLogo} name={transfer.fromClub!} size={20} />
@@ -533,13 +544,13 @@ function TransferCard({
           {isEmprestimo && !isLoanEnded && onLoanAction && (
             transfer.loanDirection === "saida" ? (
               <LoanActionButton
-                label="Chamar de volta"
+                label={t.btnRecallLoan}
                 color="blue"
                 onClick={() => onLoanAction(transfer.id, { loanEnded: true })}
               />
             ) : transfer.loanDirection === "entrada" ? (
               <LoanActionButton
-                label="Fim do empréstimo"
+                label={t.btnEndLoan}
                 color="amber"
                 onClick={() => onLoanAction(transfer.id, { loanEnded: true })}
               />
@@ -549,9 +560,9 @@ function TransferCard({
       </div>
 
       <div className="text-right flex-shrink-0">
-        <p className="text-white font-black text-base tabular-nums">{formatFee(transfer.fee)}</p>
+        <p className="text-white font-black text-base tabular-nums">{formatFee(transfer.fee, t.freeLabel)}</p>
         {transfer.salary > 0 && !isVenda && !isEmprestimo && (
-          <p className="text-white/35 text-xs tabular-nums">€{transfer.salary}k/sem</p>
+          <p className="text-white/35 text-xs tabular-nums">€{transfer.salary}{t.wagePerWeek}</p>
         )}
         <p className="text-white/20 text-xs mt-0.5">{formatDate(transfer.transferredAt)}</p>
       </div>
@@ -658,6 +669,10 @@ export function TransferenciasView({
   onToggleWindow,
   isReadOnly,
 }: TransferenciasViewProps) {
+  const [lang] = useLang();
+  const t = TRANSFERENCIAS[lang];
+  const loanDurationLabels = LOAN_DURATION_LABELS[lang];
+
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<FormData>(DEFAULT_FORM);
   const [submitting, setSubmitting] = useState(false);
@@ -760,9 +775,6 @@ export function TransferenciasView({
 
     onTransferAdded(transfer);
 
-    // For sales and loan-outs, notify that the player left so they remain in
-    // historical stats — but only when the window is open (immediate effect).
-    // When pending, the player still belongs to the squad until the window opens.
     if (!isPending && (isVenda || isLoanSaida)) {
       const leftPlayer = allPlayers.find((p) => p.id === playerId);
       if (leftPlayer) {
@@ -855,18 +867,18 @@ export function TransferenciasView({
   const labelClass = "text-white/40 text-xs font-medium mb-1 block";
 
   const formTitle = isVendaForm
-    ? "Registrar Venda"
+    ? t.formTitleVenda
     : isEmprestimoForm
-    ? "Registrar Empréstimo"
-    : "Registrar Contratação";
+    ? t.formTitleEmprestimo
+    : t.formTitleCompra;
 
   const submitLabel = submitting
-    ? "Registrando..."
+    ? t.btnSubmitting
     : isVendaForm
-    ? "Confirmar Venda"
+    ? t.btnConfirmVenda
     : isEmprestimoForm
-    ? "Confirmar Empréstimo"
-    : "Confirmar Contratação";
+    ? t.btnConfirmEmprestimo
+    : t.btnConfirmContratacao;
 
   const submitStyle = isVendaForm
     ? { background: "rgba(251,191,36,0.2)", border: "1px solid rgba(251,191,36,0.35)", color: "#fbbf24" }
@@ -878,13 +890,13 @@ export function TransferenciasView({
     <div className="animate-fade-up space-y-5">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
-          <h2 className="text-white/35 text-xs font-bold tracking-widest uppercase">Transferências</h2>
+          <h2 className="text-white/35 text-xs font-bold tracking-widest uppercase">{t.heading}</h2>
           {comprasCount > 0 && (
             <span
               className="text-xs font-bold px-2.5 py-0.5 rounded-full tabular-nums"
               style={{ background: "rgba(var(--club-primary-rgb),0.15)", color: "var(--club-primary)" }}
             >
-              {comprasCount} entrada{comprasCount !== 1 ? "s" : ""}
+              {comprasCount} {comprasCount !== 1 ? t.entradaPlural : t.entradaSingular}
             </span>
           )}
           {emprestimosCount > 0 && (
@@ -892,7 +904,7 @@ export function TransferenciasView({
               className="text-xs font-bold px-2.5 py-0.5 rounded-full tabular-nums"
               style={{ background: "rgba(251,146,60,0.12)", color: "#fb923c" }}
             >
-              {emprestimosCount} empréstimo{emprestimosCount !== 1 ? "s" : ""}
+              {emprestimosCount} {emprestimosCount !== 1 ? t.emprestimoPlural : t.emprestimoSingular}
             </span>
           )}
           {vendasCount > 0 && (
@@ -900,7 +912,7 @@ export function TransferenciasView({
               className="text-xs font-bold px-2.5 py-0.5 rounded-full tabular-nums"
               style={{ background: "rgba(251,191,36,0.12)", color: "#fbbf24" }}
             >
-              {vendasCount} saída{vendasCount !== 1 ? "s" : ""}
+              {vendasCount} {vendasCount !== 1 ? t.saidaPlural : t.saidaSingular}
             </span>
           )}
           {pendingCount > 0 && (
@@ -908,7 +920,7 @@ export function TransferenciasView({
               className="text-xs font-bold px-2.5 py-0.5 rounded-full tabular-nums"
               style={{ background: "rgba(168,85,247,0.12)", color: "#a855f7" }}
             >
-              {pendingCount} pendente{pendingCount !== 1 ? "s" : ""}
+              {pendingCount} {pendingCount !== 1 ? t.pendenteplural : t.pendenteSingular}
             </span>
           )}
         </div>
@@ -921,7 +933,7 @@ export function TransferenciasView({
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7" />
               </svg>
-              Registrar Venda
+              {t.btnRegVenda}
             </button>
             <button
               onClick={() => openForm("emprestimo")}
@@ -931,7 +943,7 @@ export function TransferenciasView({
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
               </svg>
-              Empréstimo
+              {t.btnEmprestimo}
             </button>
             <button
               onClick={() => openForm("compra")}
@@ -941,7 +953,7 @@ export function TransferenciasView({
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
               </svg>
-              Registrar Contratação
+              {t.btnRegContratacao}
             </button>
           </div>
         )}
@@ -967,14 +979,14 @@ export function TransferenciasView({
             />
             <div>
               <p className="text-white font-bold text-sm">
-                Janela {transferWindowOpen ? "Aberta" : "Fechada"}
+                {t.windowLabel} {transferWindowOpen ? t.windowOpen : t.windowClosed}
               </p>
               <p className="text-white/40 text-xs mt-0.5">
                 {transferWindowOpen
-                  ? "Contratações e vendas têm efeito imediato"
+                  ? t.windowImmediateEffect
                   : transferWindowOpenCount >= 2
-                  ? "Janela encerrada para esta temporada"
-                  : `${2 - transferWindowOpenCount} abertura${2 - transferWindowOpenCount !== 1 ? "s" : ""} restante${2 - transferWindowOpenCount !== 1 ? "s" : ""} nesta temporada`}
+                  ? t.windowClosedSeason
+                  : `${2 - transferWindowOpenCount} ${2 - transferWindowOpenCount !== 1 ? t.windowOpeningsPlural : t.windowOpeningsSingular}`}
               </p>
             </div>
           </div>
@@ -996,16 +1008,16 @@ export function TransferenciasView({
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                   </svg>
-                  Fechar Janela
+                  {t.btnCloseWindow}
                 </>
               ) : transferWindowOpenCount >= 2 ? (
-                "Encerrada"
+                t.btnWindowEnded
               ) : (
                 <>
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
                   </svg>
-                  Abrir Janela
+                  {t.btnOpenWindow}
                 </>
               )}
             </button>
@@ -1021,23 +1033,23 @@ export function TransferenciasView({
             </svg>
           </div>
           <div>
-            <p className="text-white/50 font-semibold text-base">Nenhuma movimentação registrada</p>
-            <p className="text-white/25 text-sm mt-1">Registre contratações, empréstimos e vendas do EA FC para acompanhar o mercado do seu clube.</p>
+            <p className="text-white/50 font-semibold text-base">{t.emptyTitle}</p>
+            <p className="text-white/25 text-sm mt-1">{t.emptySub}</p>
           </div>
           <button
             onClick={() => openForm("compra")}
             className="px-6 py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90"
             style={{ background: "var(--club-gradient)" }}
           >
-            Registrar primeira contratação
+            {t.emptyBtn}
           </button>
         </div>
       ) : (
         <div className="flex flex-col gap-3">
-          {sortedTransfers.map((t) => (
+          {sortedTransfers.map((tr) => (
             <TransferCard
-              key={t.id}
-              transfer={t}
+              key={tr.id}
+              transfer={tr}
               clubName={clubName}
               clubLogoUrl={clubLogoUrl}
               onLoanAction={!isReadOnly && onTransferUpdated ? onTransferUpdated : undefined}
@@ -1068,14 +1080,14 @@ export function TransferenciasView({
             >
               <div>
                 <h3 className="text-white font-black text-lg">{formTitle}</h3>
-                <p className="text-white/35 text-xs mt-0.5">Temporada {season}</p>
+                <p className="text-white/35 text-xs mt-0.5">{t.formSeasonLabel} {season}</p>
               </div>
               {!transferWindowOpen && (
                 <span
                   className="text-[11px] font-bold px-2.5 py-1 rounded-lg flex-shrink-0"
                   style={{ background: "rgba(168,85,247,0.15)", color: "#a855f7", border: "1px solid rgba(168,85,247,0.25)" }}
                 >
-                  Janela Fechada · Pendente
+                  {t.formWindowPending}
                 </span>
               )}
               <button
@@ -1089,19 +1101,19 @@ export function TransferenciasView({
             </div>
 
             <div className="flex gap-2 px-6 pt-4 flex-shrink-0">
-              {(["compra", "emprestimo", "venda"] as const).map((t) => {
-                const active = form.transferType === t;
+              {(["compra", "emprestimo", "venda"] as const).map((tp) => {
+                const active = form.transferType === tp;
                 const activeStyle =
-                  t === "compra"
+                  tp === "compra"
                     ? { bg: "rgba(var(--club-primary-rgb),0.2)", color: "var(--club-primary)", border: "rgba(var(--club-primary-rgb),0.4)" }
-                    : t === "emprestimo"
+                    : tp === "emprestimo"
                     ? { bg: "rgba(251,146,60,0.18)", color: "#fb923c", border: "rgba(251,146,60,0.4)" }
                     : { bg: "rgba(251,191,36,0.15)", color: "#fbbf24", border: "rgba(251,191,36,0.35)" };
                 return (
                   <button
-                    key={t}
+                    key={tp}
                     type="button"
-                    onClick={() => set("transferType", t)}
+                    onClick={() => set("transferType", tp)}
                     className="flex-1 py-2 rounded-xl text-sm font-semibold transition-all"
                     style={{
                       background: active ? activeStyle.bg : "rgba(255,255,255,0.05)",
@@ -1109,7 +1121,7 @@ export function TransferenciasView({
                       border: `1px solid ${active ? activeStyle.border : "rgba(255,255,255,0.08)"}`,
                     }}
                   >
-                    {t === "compra" ? "Contratação" : t === "emprestimo" ? "Empréstimo" : "Venda"}
+                    {tp === "compra" ? t.tabCompra : tp === "emprestimo" ? t.tabEmprestimo : t.tabVenda}
                   </button>
                 );
               })}
@@ -1133,16 +1145,17 @@ export function TransferenciasView({
                         }}
                       >
                         <span>{dir === "entrada" ? "↓" : "↑"}</span>
-                        <span>{dir === "entrada" ? "Contratar" : "Emprestar"}</span>
+                        <span>{dir === "entrada" ? t.loanIn : t.loanOut}</span>
                       </button>
                     );
                   })}
                 </div>
                 <div>
-                  <label className={labelClass}>Duração do empréstimo</label>
+                  <label className={labelClass}>{t.loanDurationLabel}</label>
                   <div className="flex gap-2 flex-wrap">
-                    {LOAN_DURATIONS.map((dur) => {
+                    {LOAN_DURATIONS.map((dur, idx) => {
                       const active = form.loanDuration === dur;
+                      const displayLabel = loanDurationLabels[idx] ?? dur;
                       return (
                         <button
                           key={dur}
@@ -1155,7 +1168,7 @@ export function TransferenciasView({
                             border: `1px solid ${active ? "rgba(251,146,60,0.35)" : "rgba(255,255,255,0.08)"}`,
                           }}
                         >
-                          {dur}
+                          {displayLabel}
                         </button>
                       );
                     })}
@@ -1167,7 +1180,7 @@ export function TransferenciasView({
             <div className="overflow-y-auto p-6 flex flex-col gap-5">
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className={labelClass} style={{ marginBottom: 0 }}>Jogador *</label>
+                  <label className={labelClass} style={{ marginBottom: 0 }}>{t.playerLabel}</label>
                   <div className="flex rounded-lg overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.1)" }}>
                     {(["search", "create"] as const).map((mode) => (
                       <button
@@ -1180,7 +1193,7 @@ export function TransferenciasView({
                           color: form.playerMode === mode ? "var(--club-primary)" : "rgba(255,255,255,0.35)",
                         }}
                       >
-                        {mode === "search" ? "🔍 Buscar" : "✏️ Criar"}
+                        {mode === "search" ? t.btnSearch : t.btnCreate}
                       </button>
                     ))}
                   </div>
@@ -1212,21 +1225,21 @@ export function TransferenciasView({
                       className={inputClass}
                       value={form.playerName}
                       onChange={(e) => set("playerName", e.target.value)}
-                      placeholder="Nome completo do jogador"
+                      placeholder={t.playerFullNamePlaceholder}
                     />
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className={labelClass}>Nacionalidade</label>
+                        <label className={labelClass}>{t.nationalityLabel}</label>
                         <input
                           type="text"
                           className={inputClass}
                           value={form.playerNationality}
                           onChange={(e) => set("playerNationality", e.target.value)}
-                          placeholder="Ex: Brasileiro"
+                          placeholder={t.nationalityPtPlaceholder}
                         />
                       </div>
                       <div>
-                        <label className={labelClass}>Foto (URL, opcional)</label>
+                        <label className={labelClass}>{t.photoLabel}</label>
                         <input
                           type="url"
                           className={inputClass}
@@ -1242,7 +1255,7 @@ export function TransferenciasView({
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className={labelClass}>Posição *</label>
+                  <label className={labelClass}>{t.positionLabel}</label>
                   <select
                     className={`${inputClass} cursor-pointer`}
                     style={{ appearance: "none" }}
@@ -1255,7 +1268,7 @@ export function TransferenciasView({
                   </select>
                 </div>
                 <div>
-                  <label className={labelClass}>Idade *</label>
+                  <label className={labelClass}>{t.ageLabel}</label>
                   <input
                     type="number"
                     className={inputClass}
@@ -1269,24 +1282,24 @@ export function TransferenciasView({
 
                 {!isVendaForm && !isLoanSaida && (
                   <div className="sm:col-span-2">
-                    <label className={labelClass}>Overall (OVR)</label>
+                    <label className={labelClass}>{t.overallLabel}</label>
                     <input
                       type="number"
                       className={inputClass}
                       value={form.playerOverall}
                       onChange={(e) => set("playerOverall", e.target.value)}
-                      placeholder="Ex: 82 (opcional)"
+                      placeholder={t.overallPlaceholder}
                       min={1}
                       max={99}
                     />
-                    <p className="text-white/20 text-xs mt-1">Preencha para registrar o nível do jogador — dispara notícia se for reforço acima da média</p>
+                    <p className="text-white/20 text-xs mt-1">{t.overallHint}</p>
                   </div>
                 )}
 
                 {!isVendaForm && !isEmprestimoForm && (
                   <>
                     <div>
-                      <label className={labelClass}>Número da camisa</label>
+                      <label className={labelClass}>{t.shirtNumberLabel}</label>
                       <input
                         type="number"
                         className={inputClass}
@@ -1298,7 +1311,7 @@ export function TransferenciasView({
                       />
                     </div>
                     <div>
-                      <label className={labelClass}>Contrato (anos)</label>
+                      <label className={labelClass}>{t.contractLabel}</label>
                       <select
                         className={`${inputClass} cursor-pointer`}
                         style={{ appearance: "none" }}
@@ -1306,64 +1319,64 @@ export function TransferenciasView({
                         onChange={(e) => set("contractYears", e.target.value)}
                       >
                         {[1,2,3,4,5,6,7].map((y) => (
-                          <option key={y} value={y} style={{ background: "#1a1030" }}>{y} {y === 1 ? "ano" : "anos"}</option>
+                          <option key={y} value={y} style={{ background: "#1a1030" }}>{y} {y === 1 ? t.yearSingular : t.yearPlural}</option>
                         ))}
                       </select>
                     </div>
                     <div className="sm:col-span-2">
-                      <label className={labelClass}>Clube de origem</label>
+                      <label className={labelClass}>{t.fromClubLabel}</label>
                       <ClubAutocomplete
                         value={form.fromClub}
                         onChange={(v) => set("fromClub", v)}
                         onSelectLogo={(logo) => set("fromClubLogo", logo ?? "")}
-                        placeholder="Ex: Manchester City (vazio = Jogador Livre)"
+                        placeholder={t.fromClubPlaceholder}
                       />
-                      <p className="text-white/20 text-xs mt-1">Deixe vazio se for Jogador Livre</p>
+                      <p className="text-white/20 text-xs mt-1">{t.fromClubHint}</p>
                     </div>
                   </>
                 )}
 
                 {isEmprestimoForm && form.loanDirection === "entrada" && (
                   <div className="sm:col-span-2">
-                    <label className={labelClass}>Clube de origem</label>
+                    <label className={labelClass}>{t.fromClubLabel}</label>
                     <ClubAutocomplete
                       value={form.fromClub}
                       onChange={(v) => set("fromClub", v)}
                       onSelectLogo={(logo) => set("fromClubLogo", logo ?? "")}
-                      placeholder="Ex: PSG, Benfica..."
+                      placeholder={t.fromClubLoanPlaceholder}
                     />
                   </div>
                 )}
 
                 {isEmprestimoForm && form.loanDirection === "saida" && (
                   <div className="sm:col-span-2">
-                    <label className={labelClass}>Clube de destino</label>
+                    <label className={labelClass}>{t.toClubLabel}</label>
                     <ClubAutocomplete
                       value={form.toClub}
                       onChange={(v) => set("toClub", v)}
                       onSelectLogo={(logo) => set("toClubLogo", logo ?? "")}
-                      placeholder="Ex: Real Madrid (vazio = destino desconhecido)"
+                      placeholder={t.toClubPlaceholder}
                     />
                   </div>
                 )}
 
                 {isVendaForm && (
                   <div className="sm:col-span-2">
-                    <label className={labelClass}>Clube de destino</label>
+                    <label className={labelClass}>{t.toClubLabel}</label>
                     <ClubAutocomplete
                       value={form.toClub}
                       onChange={(v) => set("toClub", v)}
                       onSelectLogo={(logo) => set("toClubLogo", logo ?? "")}
-                      placeholder="Ex: Real Madrid (vazio = destino desconhecido)"
+                      placeholder={t.toClubPlaceholder}
                     />
-                    <p className="text-white/20 text-xs mt-1">Deixe vazio se o destino não for definido</p>
+                    <p className="text-white/20 text-xs mt-1">{t.toClubHint}</p>
                   </div>
                 )}
               </div>
 
               {!isVendaForm && !isEmprestimoForm && (
                 <div>
-                  <label className={labelClass}>Função no elenco</label>
+                  <label className={labelClass}>{t.squadRoleLabel}</label>
                   <div className="flex flex-wrap gap-2">
                     {ALL_ROLES.map((r) => {
                       const c = ROLE_COLORS[r];
@@ -1425,9 +1438,9 @@ export function TransferenciasView({
                         <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                       </svg>
                       <span>
-                        {isVendaForm ? "Receber jogador no negócio" : "Incluir jogador no negócio"}
+                        {isVendaForm ? t.tradeReceive : t.tradeInclude}
                         <span className="block text-[11px] font-normal mt-0.5" style={{ color: "rgba(251,146,60,0.5)" }}>
-                          {isVendaForm ? "Adicionar contrapartida em forma de jogador" : "Enviar um atleta como parte da contratação"}
+                          {isVendaForm ? t.tradeSubReceive : t.tradeSubInclude}
                         </span>
                       </span>
                     </span>
@@ -1444,7 +1457,7 @@ export function TransferenciasView({
                     <div className="px-4 pb-4 pt-3 flex flex-col gap-3" style={{ background: "rgba(255,255,255,0.02)" }}>
                       {!isVendaForm ? (
                         <>
-                          <p className="text-xs text-white/30">Selecione um jogador do seu elenco que sairá como parte desta negociação. Ele será movido para ex-jogadores automaticamente.</p>
+                          <p className="text-xs text-white/30">{t.tradeSelectHint}</p>
                           {form.tradePlayerName ? (
                             <div
                               className="flex items-center gap-3 p-3 rounded-xl"
@@ -1459,7 +1472,7 @@ export function TransferenciasView({
                               )}
                               <div className="flex-1 min-w-0">
                                 <p className="text-white text-sm font-bold truncate">{form.tradePlayerName}</p>
-                                <p className="text-white/40 text-xs">{form.tradePlayerPosition} · {form.tradePlayerAge ? `${form.tradePlayerAge} anos` : "—"}</p>
+                                <p className="text-white/40 text-xs">{form.tradePlayerPosition} · {form.tradePlayerAge ? `${form.tradePlayerAge} ${t.yearsOld}` : "—"}</p>
                               </div>
                               <button
                                 type="button"
@@ -1491,9 +1504,8 @@ export function TransferenciasView({
                         </>
                       ) : (
                         <>
-                          <p className="text-xs text-white/30">Registre o jogador que o outro clube enviará como parte desta negociação. Ele será adicionado ao seu elenco.</p>
+                          <p className="text-xs text-white/30">{t.tradeRegisterHint}</p>
 
-                          {/* Search / Create toggle */}
                           <div className="flex rounded-lg overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.1)", alignSelf: "flex-start" }}>
                             {(["search", "create"] as const).map((mode) => (
                               <button
@@ -1506,13 +1518,12 @@ export function TransferenciasView({
                                   color: form.tradePlayerMode === mode ? "#fb923c" : "rgba(255,255,255,0.35)",
                                 }}
                               >
-                                {mode === "search" ? "🔍 Buscar" : "✏️ Criar"}
+                                {mode === "search" ? t.btnSearch : t.btnCreate}
                               </button>
                             ))}
                           </div>
 
                           {form.tradePlayerMode === "search" ? (
-                            /* Search: show all players (squad + API) */
                             <PlayerAutocomplete
                               value={form.tradePlayerName}
                               photo={form.tradePlayerPhoto}
@@ -1529,7 +1540,6 @@ export function TransferenciasView({
                               localOnly={false}
                             />
                           ) : (
-                            /* Create: full player creation form */
                             <div className="flex flex-col gap-3">
                               <input
                                 type="text"
@@ -1537,21 +1547,21 @@ export function TransferenciasView({
                                 className={inputClass}
                                 value={form.tradePlayerName}
                                 onChange={(e) => set("tradePlayerName", e.target.value)}
-                                placeholder="Nome completo do jogador"
+                                placeholder={t.playerFullNamePlaceholder}
                               />
                               <div className="grid grid-cols-2 gap-3">
                                 <div>
-                                  <label className={labelClass}>Nacionalidade</label>
+                                  <label className={labelClass}>{t.nationalityLabel}</label>
                                   <input
                                     type="text"
                                     className={inputClass}
                                     value={form.tradePlayerNationality}
                                     onChange={(e) => set("tradePlayerNationality", e.target.value)}
-                                    placeholder="Ex: Espanhol"
+                                    placeholder={t.tradeNationalityPlaceholder}
                                   />
                                 </div>
                                 <div>
-                                  <label className={labelClass}>Foto (URL, opcional)</label>
+                                  <label className={labelClass}>{t.photoLabel}</label>
                                   <input
                                     type="url"
                                     className={inputClass}
@@ -1564,10 +1574,9 @@ export function TransferenciasView({
                             </div>
                           )}
 
-                          {/* Position / Age / OVR — always visible so user can confirm/adjust after search */}
                           <div className="grid grid-cols-3 gap-2">
                             <div>
-                              <label className={labelClass}>Posição</label>
+                              <label className={labelClass}>{t.tradePosLabel}</label>
                               <select
                                 className={`${inputClass} cursor-pointer`}
                                 style={{ appearance: "none" }}
@@ -1580,7 +1589,7 @@ export function TransferenciasView({
                               </select>
                             </div>
                             <div>
-                              <label className={labelClass}>Idade</label>
+                              <label className={labelClass}>{t.tradeAgeLabel}</label>
                               <input
                                 type="number"
                                 className={inputClass}
@@ -1616,11 +1625,11 @@ export function TransferenciasView({
                 style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
               >
                 <p className="text-white/35 text-xs font-semibold uppercase tracking-wider">
-                  {isVendaForm ? "Valor da venda" : isEmprestimoForm ? "Taxa de empréstimo" : "Valores financeiros"}
+                  {isVendaForm ? t.financeSaleLabel : isEmprestimoForm ? t.financeLoanLabel : t.financeGeneralLabel}
                 </p>
                 <div className={`grid gap-4 ${isVendaForm || isEmprestimoForm ? "grid-cols-1" : "grid-cols-2"}`}>
                   <div>
-                    <label className={labelClass}>Taxa de transferência (€)</label>
+                    <label className={labelClass}>{t.feeLabel}</label>
                     <input
                       type="text"
                       inputMode="numeric"
@@ -1640,12 +1649,12 @@ export function TransferenciasView({
                         const formatted = formatFeeInput(e.target.value);
                         set("fee", formatted === "0" ? "" : formatted);
                       }}
-                      placeholder={isEmprestimoForm ? "Ex: 500.000 (0 = Grátis)" : "Ex: 15.000.000"}
+                      placeholder={isEmprestimoForm ? t.feeLoanPlaceholder : t.feeSigningPlaceholder}
                     />
                   </div>
                   {!isVendaForm && !isEmprestimoForm && (
                     <div>
-                      <label className={labelClass}>Salário (€k / semana)</label>
+                      <label className={labelClass}>{t.salaryLabel}</label>
                       <input
                         type="number"
                         className={inputClass}
@@ -1668,7 +1677,7 @@ export function TransferenciasView({
                 onClick={() => setShowForm(false)}
                 className="flex-1 py-3 rounded-xl text-sm font-semibold text-white/60 glass glass-hover transition-all"
               >
-                Cancelar
+                {t.btnCancel}
               </button>
               <button
                 onClick={handleSubmit}

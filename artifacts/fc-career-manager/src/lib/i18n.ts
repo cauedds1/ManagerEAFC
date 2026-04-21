@@ -1726,6 +1726,271 @@ export const CLUBE = {
 } satisfies Record<Lang, Record<string, string>>;
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Transferencias tab
+// ─────────────────────────────────────────────────────────────────────────────
+export const TRANSFERENCIAS: Record<Lang, Record<string, string>> = {
+  pt: {
+    // Section heading
+    heading: "Transferências",
+    // Stat badges
+    entradaSingular: "entrada",
+    entradaPlural: "entradas",
+    emprestimoSingular: "empréstimo",
+    emprestimoPlural: "empréstimos",
+    saidaSingular: "saída",
+    saidaPlural: "saídas",
+    pendenteSingular: "pendente",
+    pendenteplural: "pendentes",
+    // Action buttons
+    btnRegVenda: "Registrar Venda",
+    btnEmprestimo: "Empréstimo",
+    btnRegContratacao: "Registrar Contratação",
+    // Transfer window
+    windowLabel: "Janela",
+    windowOpen: "Aberta",
+    windowClosed: "Fechada",
+    windowImmediateEffect: "Contratações e vendas têm efeito imediato",
+    windowClosedSeason: "Janela encerrada para esta temporada",
+    windowOpeningsSingular: "abertura restante nesta temporada",
+    windowOpeningsPlural: "aberturas restantes nesta temporada",
+    btnCloseWindow: "Fechar Janela",
+    btnWindowEnded: "Encerrada",
+    btnOpenWindow: "Abrir Janela",
+    // Empty state
+    emptyTitle: "Nenhuma movimentação registrada",
+    emptySub: "Registre contratações, empréstimos e vendas do EA FC para acompanhar o mercado do seu clube.",
+    emptyBtn: "Registrar primeira contratação",
+    // Form modal header
+    formTitleCompra: "Registrar Contratação",
+    formTitleVenda: "Registrar Venda",
+    formTitleEmprestimo: "Registrar Empréstimo",
+    formSeasonLabel: "Temporada",
+    formWindowPending: "Janela Fechada · Pendente",
+    // Transfer type tabs
+    tabCompra: "Contratação",
+    tabEmprestimo: "Empréstimo",
+    tabVenda: "Venda",
+    // Loan direction
+    loanIn: "Contratar",
+    loanOut: "Emprestar",
+    loanDurationLabel: "Duração do empréstimo",
+    // Player field
+    playerLabel: "Jogador *",
+    btnSearch: "🔍 Buscar",
+    btnCreate: "✏️ Criar",
+    playerFullNamePlaceholder: "Nome completo do jogador",
+    nationalityLabel: "Nacionalidade",
+    photoLabel: "Foto (URL, opcional)",
+    nationalityPtPlaceholder: "Ex: Brasileiro",
+    // Position / Age / OVR
+    positionLabel: "Posição *",
+    ageLabel: "Idade *",
+    overallLabel: "Overall (OVR)",
+    overallPlaceholder: "Ex: 82 (opcional)",
+    overallHint: "Preencha para registrar o nível do jogador — dispara notícia se for reforço acima da média",
+    // Shirt / Contract
+    shirtNumberLabel: "Número da camisa",
+    contractLabel: "Contrato (anos)",
+    yearSingular: "ano",
+    yearPlural: "anos",
+    // Clubs
+    fromClubLabel: "Clube de origem",
+    fromClubPlaceholder: "Ex: Manchester City (vazio = Jogador Livre)",
+    fromClubHint: "Deixe vazio se for Jogador Livre",
+    fromClubLoanPlaceholder: "Ex: PSG, Benfica...",
+    toClubLabel: "Clube de destino",
+    toClubPlaceholder: "Ex: Real Madrid (vazio = destino desconhecido)",
+    toClubHint: "Deixe vazio se o destino não for definido",
+    // Squad role
+    squadRoleLabel: "Função no elenco",
+    // Trade section
+    tradeInclude: "Incluir jogador no negócio",
+    tradeReceive: "Receber jogador no negócio",
+    tradeSubInclude: "Enviar um atleta como parte da contratação",
+    tradeSubReceive: "Adicionar contrapartida em forma de jogador",
+    tradeSelectHint: "Selecione um jogador do seu elenco que sairá como parte desta negociação. Ele será movido para ex-jogadores automaticamente.",
+    tradeRegisterHint: "Registre o jogador que o outro clube enviará como parte desta negociação. Ele será adicionado ao seu elenco.",
+    tradeNationalityPlaceholder: "Ex: Espanhol",
+    tradePosLabel: "Posição",
+    tradeAgeLabel: "Idade",
+    // Financial section
+    financeSaleLabel: "Valor da venda",
+    financeLoanLabel: "Taxa de empréstimo",
+    financeGeneralLabel: "Valores financeiros",
+    feeLabel: "Taxa de transferência (€)",
+    feeLoanPlaceholder: "Ex: 500.000 (0 = Grátis)",
+    feeSigningPlaceholder: "Ex: 15.000.000",
+    salaryLabel: "Salário (€k / semana)",
+    // Submit / cancel
+    btnCancel: "Cancelar",
+    btnSubmitting: "Registrando...",
+    btnConfirmVenda: "Confirmar Venda",
+    btnConfirmEmprestimo: "Confirmar Empréstimo",
+    btnConfirmContratacao: "Confirmar Contratação",
+    // Transfer card badges
+    badgeVenda: "VENDA",
+    badgeEmprestimo: "EMPRÉSTIMO",
+    badgePendente: "PENDENTE",
+    badgeLoanIn: "↓ Entrada",
+    badgeLoanOut: "↑ Saída",
+    badgeLoanEnded: "Encerrado",
+    // Transfer card metadata
+    yearsOld: "anos",
+    cardDeparture: "Saída do clube",
+    cardUnknownClub: "Clube desconhecido",
+    cardFreeAgent: "Jogador Livre",
+    // Loan action buttons
+    btnRecallLoan: "Chamar de volta",
+    btnEndLoan: "Fim do empréstimo",
+    // Financial display
+    wagePerWeek: "k/sem",
+    freeLabel: "Grátis",
+    // Player autocomplete
+    searchMySquadPlaceholder: "Buscar no meu elenco...",
+    searchPlayerPlaceholder: "Ex: Rodrygo, Mikel Merino...",
+    mySquadLabel: "Meu elenco",
+    otherPlayersLabel: "Outros jogadores",
+    noPlayerFound: "Nenhum jogador encontrado",
+  },
+  en: {
+    // Section heading
+    heading: "Transfers",
+    // Stat badges
+    entradaSingular: "signing",
+    entradaPlural: "signings",
+    emprestimoSingular: "loan",
+    emprestimoPlural: "loans",
+    saidaSingular: "departure",
+    saidaPlural: "departures",
+    pendenteSingular: "pending",
+    pendenteplural: "pending",
+    // Action buttons
+    btnRegVenda: "Log Sale",
+    btnEmprestimo: "Loan",
+    btnRegContratacao: "Log Signing",
+    // Transfer window
+    windowLabel: "Window",
+    windowOpen: "Open",
+    windowClosed: "Closed",
+    windowImmediateEffect: "Signings and sales take immediate effect",
+    windowClosedSeason: "Window closed for this season",
+    windowOpeningsSingular: "opening left this season",
+    windowOpeningsPlural: "openings left this season",
+    btnCloseWindow: "Close Window",
+    btnWindowEnded: "Closed",
+    btnOpenWindow: "Open Window",
+    // Empty state
+    emptyTitle: "No movements recorded",
+    emptySub: "Log signings, loans and sales to track your club's transfer activity.",
+    emptyBtn: "Log first signing",
+    // Form modal header
+    formTitleCompra: "Log Signing",
+    formTitleVenda: "Log Sale",
+    formTitleEmprestimo: "Log Loan",
+    formSeasonLabel: "Season",
+    formWindowPending: "Window Closed · Pending",
+    // Transfer type tabs
+    tabCompra: "Signing",
+    tabEmprestimo: "Loan",
+    tabVenda: "Sale",
+    // Loan direction
+    loanIn: "Loan In",
+    loanOut: "Loan Out",
+    loanDurationLabel: "Loan duration",
+    // Player field
+    playerLabel: "Player *",
+    btnSearch: "🔍 Search",
+    btnCreate: "✏️ Create",
+    playerFullNamePlaceholder: "Player full name",
+    nationalityLabel: "Nationality",
+    photoLabel: "Photo (URL, optional)",
+    nationalityPtPlaceholder: "E.g.: Brazilian",
+    // Position / Age / OVR
+    positionLabel: "Position *",
+    ageLabel: "Age *",
+    overallLabel: "Overall (OVR)",
+    overallPlaceholder: "E.g.: 82 (optional)",
+    overallHint: "Fill in to log the player's level — triggers news if the signing is above squad average",
+    // Shirt / Contract
+    shirtNumberLabel: "Shirt number",
+    contractLabel: "Contract (years)",
+    yearSingular: "year",
+    yearPlural: "years",
+    // Clubs
+    fromClubLabel: "From club",
+    fromClubPlaceholder: "E.g.: Manchester City (empty = Free agent)",
+    fromClubHint: "Leave empty if the player is a free agent",
+    fromClubLoanPlaceholder: "E.g.: PSG, Benfica...",
+    toClubLabel: "To club",
+    toClubPlaceholder: "E.g.: Real Madrid (empty = unknown)",
+    toClubHint: "Leave empty if the destination is unknown",
+    // Squad role
+    squadRoleLabel: "Squad role",
+    // Trade section
+    tradeInclude: "Include player in deal",
+    tradeReceive: "Receive player in deal",
+    tradeSubInclude: "Send a player as part of the deal",
+    tradeSubReceive: "Add a player as part of the deal",
+    tradeSelectHint: "Select a squad player who will leave as part of this deal. They will be moved to former players automatically.",
+    tradeRegisterHint: "Register the player the other club will send as part of this deal. They will be added to your squad.",
+    tradeNationalityPlaceholder: "E.g.: Spanish",
+    tradePosLabel: "Position",
+    tradeAgeLabel: "Age",
+    // Financial section
+    financeSaleLabel: "Sale fee",
+    financeLoanLabel: "Loan fee",
+    financeGeneralLabel: "Financial values",
+    feeLabel: "Transfer fee (€)",
+    feeLoanPlaceholder: "E.g.: 500,000 (0 = Free)",
+    feeSigningPlaceholder: "E.g.: 15,000,000",
+    salaryLabel: "Salary (€k / week)",
+    // Submit / cancel
+    btnCancel: "Cancel",
+    btnSubmitting: "Saving...",
+    btnConfirmVenda: "Confirm Sale",
+    btnConfirmEmprestimo: "Confirm Loan",
+    btnConfirmContratacao: "Confirm Signing",
+    // Transfer card badges
+    badgeVenda: "SALE",
+    badgeEmprestimo: "LOAN",
+    badgePendente: "PENDING",
+    badgeLoanIn: "↓ In",
+    badgeLoanOut: "↑ Out",
+    badgeLoanEnded: "Ended",
+    // Transfer card metadata
+    yearsOld: "yrs",
+    cardDeparture: "Club departure",
+    cardUnknownClub: "Unknown club",
+    cardFreeAgent: "Free agent",
+    // Loan action buttons
+    btnRecallLoan: "Recall",
+    btnEndLoan: "End loan",
+    // Financial display
+    wagePerWeek: "k/wk",
+    freeLabel: "Free",
+    // Player autocomplete
+    searchMySquadPlaceholder: "Search my squad...",
+    searchPlayerPlaceholder: "E.g.: Rodrygo, Mikel Merino...",
+    mySquadLabel: "My squad",
+    otherPlayersLabel: "Other players",
+    noPlayerFound: "No player found",
+  },
+};
+
+export const LOAN_DURATION_LABELS: Record<Lang, string[]> = {
+  pt: ["6 meses", "1 temporada", "2 temporadas", "3 temporadas"],
+  en: ["6 months", "1 season", "2 seasons", "3 seasons"],
+};
+
+// Maps stored Portuguese duration values to translated display strings
+export const LOAN_DURATION_DISPLAY: Record<string, Record<Lang, string>> = {
+  "6 meses":      { pt: "6 meses",      en: "6 months"  },
+  "1 temporada":  { pt: "1 temporada",  en: "1 season"  },
+  "2 temporadas": { pt: "2 temporadas", en: "2 seasons" },
+  "3 temporadas": { pt: "3 temporadas", en: "3 seasons" },
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Partidas tab
 // ─────────────────────────────────────────────────────────────────────────────
 export const PARTIDAS: Record<Lang, Record<string, string>> = {
