@@ -4,15 +4,62 @@
    gets its own unique (but fictional) stats and match history.
 ──────────────────────────────────────────────────────────────────────────── */
 
+type Lang = "pt" | "en";
+
 interface Props {
   clubName:   string;
   leagueName: string;
   accent:     string;
   accentRgb:  string;
   secondary?: string;
+  lang?:      Lang;
 }
 
-/* ── Deterministic hash ───────────────────────────────────── */
+/* ── Translations ─────────────────────────────────────────────────────── */
+const T = {
+  pt: {
+    tabs:          ["Painel","Partidas","Clube","Transferências","Notícias","Diretoria","Momentos"],
+    newsTab:       "Notícias",
+    mood:          "Animada",
+    season:        "Temp:",
+    swap:          "↔ Trocar",
+    statMatches:   "Partidas",
+    statSeason:    "Temporada",
+    statSquad:     "Elenco",
+    statTransfers: "Transferências",
+    statMatchesSub:"registradas",
+    statSeasonSub: "em andamento",
+    statSquadSub:  "jogadores",
+    statTransSub:  "movimentações",
+    lastMatches:   "Últimas Partidas",
+    round:         "Rd",
+    win:           "VITÓRIA",
+    loss:          "DERROTA",
+    draw:          "EMPATE",
+  },
+  en: {
+    tabs:          ["Dashboard","Matches","Club","Transfers","News","Board","Moments"],
+    newsTab:       "News",
+    mood:          "High",
+    season:        "Season:",
+    swap:          "↔ Switch",
+    statMatches:   "Matches",
+    statSeason:    "Season",
+    statSquad:     "Squad",
+    statTransfers: "Transfers",
+    statMatchesSub:"recorded",
+    statSeasonSub: "in progress",
+    statSquadSub:  "players",
+    statTransSub:  "movements",
+    lastMatches:   "Recent Matches",
+    round:         "Rd",
+    win:           "WIN",
+    loss:          "LOSS",
+    draw:          "DRAW",
+  },
+};
+
+/* ── Deterministic hash ───────────────────────────────────────────────── */
 function h(s: string, salt = ""): number {
   const str = (s + salt).toLowerCase();
   let n = 0;
@@ -20,7 +67,7 @@ function h(s: string, salt = ""): number {
   return Math.abs(n);
 }
 
-/* ── Short club name for match cards ─────────────────────── */
+/* ── Short club name for match cards ─────────────────────────────────── */
 function short(name: string): string {
   const prefixes = ["FC", "SC", "AC", "RC", "CF", "GD", "SD", "AF", "FK", "PFC"];
   const words = name.split(" ");
@@ -29,7 +76,7 @@ function short(name: string): string {
   return words[0].slice(0, 9) + (words.length > 1 ? "." : "");
 }
 
-/* ── Static opponent pool ─────────────────────────────────── */
+/* ── Static opponent pool ─────────────────────────────────────────────── */
 const OPPS = [
   "Rival FC","City SC","United AF","Athletic RK","Metro CF",
   "Capital SC","Northern FC","Dynamo SC","Eastern CF","Western SK",
@@ -39,30 +86,30 @@ const OPPS = [
 
 const COMPS_POOL = ["Liga","Champions","Copa","Premier","Serie A","Ligue 1","Cups"];
 
-/* ── Generate mock match list ─────────────────────────────── */
+/* ── Generate mock match list ─────────────────────────────────────────── */
 function buildMatches(clubName: string) {
   const clk = short(clubName);
   return Array.from({ length: 5 }, (_, i) => {
-    const hi   = h(clubName, String(i));
-    const home = (hi % 2 === 0);
-    const opp  = OPPS[hi % OPPS.length];
-    const mine = hi % 4;          // 0-3
-    const theirs = h(clubName, `${i}o`) % 3; // 0-2
-    const diff = mine - theirs;
+    const hi    = h(clubName, String(i));
+    const home  = (hi % 2 === 0);
+    const opp   = OPPS[hi % OPPS.length];
+    const mine  = hi % 4;
+    const theirs = h(clubName, `${i}o`) % 3;
+    const diff  = mine - theirs;
     const result = diff > 0 ? "V" : diff < 0 ? "D" : "E";
     return {
-      comp:    COMPS_POOL[hi % COMPS_POOL.length],
-      team1:   home ? clk  : opp,
-      score1:  home ? mine : theirs,
-      team2:   home ? opp  : clk,
-      score2:  home ? theirs : mine,
+      comp:   COMPS_POOL[hi % COMPS_POOL.length],
+      team1:  home ? clk  : opp,
+      score1: home ? mine : theirs,
+      team2:  home ? opp  : clk,
+      score2: home ? theirs : mine,
       result,
-      rodada:  (hi % 12) + 1,
+      rodada: (hi % 12) + 1,
     };
   });
 }
 
-/* ── Result colour ────────────────────────────────────────── */
+/* ── Result colour ────────────────────────────────────────────────────── */
 function resultCol(result: string, accent: string) {
   if (result === "V") return accent;
   if (result === "D") return "#ef4444";
@@ -74,7 +121,7 @@ function resultRgb(result: string, accentRgb: string) {
   return "100,100,150";
 }
 
-/* ── Shield SVG ───────────────────────────────────────────── */
+/* ── Shield SVG ───────────────────────────────────────────────────────── */
 const Shield = ({ size = 20, accent }: { size?: number; accent: string }) => (
   <svg viewBox="0 0 24 24" fill="none" style={{ width: size, height: size, flexShrink: 0 }}>
     <path d="M12 2L3 6v6c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V6L12 2z"
@@ -91,10 +138,7 @@ const MiniShield = ({ accent }: { accent: string }) => (
   </div>
 );
 
-/* ── Tabs ─────────────────────────────────────────────────── */
-const TABS = ["Painel","Partidas","Clube","Transferências","Notícias","Diretoria","Momentos"];
-
-/* ── Blend accent colour into a near-black base ──────────── */
+/* ── Blend accent colour into a near-black base ──────────────────────── */
 function tintBg(accentRgb: string, strength: number, base = 7): string {
   const [r, g, b] = accentRgb.split(",").map(Number);
   const mix = (c: number) => Math.round(base + (c - base) * strength);
@@ -102,12 +146,12 @@ function tintBg(accentRgb: string, strength: number, base = 7): string {
 }
 
 /* ══════════════════════════════════════════════════════════════════════════ */
-export function ClubDemoMockup({ clubName, leagueName, accent, accentRgb }: Props) {
+export function ClubDemoMockup({ clubName, leagueName, accent, accentRgb, lang = "pt" }: Props) {
+  const t          = T[lang] ?? T.pt;
   const seed       = h(clubName);
   const partidas   = 3  + (seed % 40);
   const elenco     = 24 + (h(clubName, "e") % 12);
   const transfers  = h(clubName, "t") % 8;
-  const mood       = "Animada";
   const matches    = buildMatches(clubName);
 
   const bg      = (s: number) => tintBg(accentRgb, s);
@@ -122,7 +166,6 @@ export function ClubDemoMockup({ clubName, leagueName, accent, accentRgb }: Prop
         justifyContent: "space-between", borderBottom: `1px solid ${divider}`,
         background: bg(0.14), transition: "background 0.5s" }}>
 
-        {/* Left: shield + name */}
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div style={{ width: 38, height: 38, borderRadius: 10,
             background: `rgba(${accentRgb},0.12)`,
@@ -139,7 +182,6 @@ export function ClubDemoMockup({ clubName, leagueName, accent, accentRgb }: Prop
           </div>
         </div>
 
-        {/* Right: mood badge + season + trocar */}
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <div style={{ background: `rgba(${accentRgb},0.15)`,
             border: `1px solid rgba(${accentRgb},0.35)`,
@@ -148,29 +190,29 @@ export function ClubDemoMockup({ clubName, leagueName, accent, accentRgb }: Prop
             display: "flex", alignItems: "center", gap: 5 }}>
             <span style={{ width: 6, height: 6, borderRadius: "50%",
               background: accent, transition: "background 0.5s" }} />
-            {mood}
+            {t.mood}
           </div>
           <span style={{ color: "#333355", fontSize: 10 }}>
-            Temp: <span style={{ color: "#666688" }}>2026/27</span>
+            {t.season} <span style={{ color: "#666688" }}>2026/27</span>
           </span>
           <div style={{ background: "rgba(255,255,255,0.04)",
             border: "1px solid rgba(255,255,255,0.08)", borderRadius: 6,
-            padding: "3px 9px", fontSize: 10, color: "#555577" }}>↔ Trocar</div>
+            padding: "3px 9px", fontSize: 10, color: "#555577" }}>{t.swap}</div>
         </div>
       </div>
 
       {/* ── Nav tabs ── */}
       <div style={{ display: "flex", borderBottom: `1px solid ${divider}`,
         padding: "0 14px", background: bg(0.11), overflowX: "auto", transition: "background 0.5s" }}>
-        {TABS.map((tab, i) => (
-          <div key={tab} style={{ position: "relative", padding: "9px 11px",
+        {t.tabs.map((tab, i) => (
+          <div key={i} style={{ position: "relative", padding: "9px 11px",
             fontSize: 11.5, whiteSpace: "nowrap", flexShrink: 0,
             color: i === 0 ? accent : "#333355",
             fontWeight: i === 0 ? 600 : 400,
             borderBottom: i === 0 ? `2px solid ${accent}` : "2px solid transparent",
             transition: "all 0.5s" }}>
             {tab}
-            {tab === "Notícias" && (
+            {tab === t.newsTab && (
               <span style={{ position: "absolute", top: 5, right: 2,
                 background: accent, borderRadius: 100, fontSize: 8,
                 padding: "1px 4px", fontWeight: 700, color: "#fff",
@@ -185,12 +227,12 @@ export function ClubDemoMockup({ clubName, leagueName, accent, accentRgb }: Prop
         margin: "10px 12px", borderRadius: 10, overflow: "hidden",
         border: `1px solid ${divider}`, transition: "border-color 0.5s" }}>
         {[
-          { label: "Partidas",       value: partidas,   sub: "registradas"   },
-          { label: "Temporada",      value: "2026/27",  sub: "em andamento"  },
-          { label: "Elenco",         value: elenco,     sub: "jogadores"     },
-          { label: "Transferências", value: transfers,  sub: "movimentações" },
+          { label: t.statMatches,   value: partidas,   sub: t.statMatchesSub },
+          { label: t.statSeason,    value: "2026/27",  sub: t.statSeasonSub  },
+          { label: t.statSquad,     value: elenco,     sub: t.statSquadSub   },
+          { label: t.statTransfers, value: transfers,  sub: t.statTransSub   },
         ].map((s, i) => (
-          <div key={s.label} style={{ padding: "10px 12px", background: bg(0.09),
+          <div key={i} style={{ padding: "10px 12px", background: bg(0.09),
             borderRight: i < 3 ? `1px solid ${divider}` : "none", transition: "background 0.5s" }}>
             <div style={{ color: `rgba(${accentRgb},0.35)`, fontSize: 9, marginBottom: 3,
               textTransform: "uppercase", letterSpacing: "0.06em", transition: "color 0.5s" }}>{s.label}</div>
@@ -201,17 +243,18 @@ export function ClubDemoMockup({ clubName, leagueName, accent, accentRgb }: Prop
         ))}
       </div>
 
-      {/* ── Últimas partidas ── */}
+      {/* ── Recent matches ── */}
       <div style={{ padding: "0 12px 14px" }}>
         <div style={{ color: `rgba(${accentRgb},0.4)`, fontSize: 9, fontWeight: 700,
           letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 8, transition: "color 0.5s" }}>
-          Últimas Partidas
+          {t.lastMatches}
         </div>
 
         <div style={{ display: "flex", gap: 7 }}>
           {matches.map((m, i) => {
             const rCol = resultCol(m.result, accent);
             const rRgb = resultRgb(m.result, accentRgb);
+            const resultLabel = m.result === "V" ? t.win : m.result === "D" ? t.loss : t.draw;
             return (
               <div key={i} style={{ flex: "0 0 auto", width: "calc(20% - 6px)",
                 borderRadius: 8,
@@ -219,7 +262,6 @@ export function ClubDemoMockup({ clubName, leagueName, accent, accentRgb }: Prop
                 background: m.result === "V" ? bg(0.16) : bg(0.08),
                 padding: "7px 9px", transition: "all 0.5s" }}>
 
-                {/* Comp + rodada */}
                 <div style={{ display: "flex", justifyContent: "space-between",
                   alignItems: "center", marginBottom: 7 }}>
                   <span style={{ fontSize: 8.5, color: rCol, fontWeight: 700,
@@ -227,14 +269,12 @@ export function ClubDemoMockup({ clubName, leagueName, accent, accentRgb }: Prop
                     borderRadius: 3, transition: "all 0.5s",
                     maxWidth: 60, overflow: "hidden", textOverflow: "ellipsis",
                     whiteSpace: "nowrap" }}>{m.comp}</span>
-                  <span style={{ fontSize: 8, color: `rgba(${accentRgb},0.28)`, transition: "color 0.5s" }}>Rd {m.rodada}</span>
+                  <span style={{ fontSize: 8, color: `rgba(${accentRgb},0.28)`, transition: "color 0.5s" }}>{t.round} {m.rodada}</span>
                 </div>
 
-                {/* Home row */}
                 <div style={{ display: "flex", alignItems: "center",
                   justifyContent: "space-between", marginBottom: 4 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 5,
-                    minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 5, minWidth: 0 }}>
                     <MiniShield accent={accent} />
                     <span style={{ fontSize: 10, color: "#aaaacc", fontWeight: 500,
                       overflow: "hidden", textOverflow: "ellipsis",
@@ -244,11 +284,9 @@ export function ClubDemoMockup({ clubName, leagueName, accent, accentRgb }: Prop
                     marginLeft: 4, flexShrink: 0 }}>{m.score1}</span>
                 </div>
 
-                {/* Away row */}
                 <div style={{ display: "flex", alignItems: "center",
                   justifyContent: "space-between" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 5,
-                    minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 5, minWidth: 0 }}>
                     <MiniShield accent={`rgba(${accentRgb},0.5)`} />
                     <span style={{ fontSize: 10, color: "#aaaacc", fontWeight: 500,
                       overflow: "hidden", textOverflow: "ellipsis",
@@ -258,12 +296,11 @@ export function ClubDemoMockup({ clubName, leagueName, accent, accentRgb }: Prop
                     marginLeft: 4, flexShrink: 0 }}>{m.score2}</span>
                 </div>
 
-                {/* Footer result */}
                 <div style={{ marginTop: 6, borderTop: `1px solid rgba(${accentRgb},0.15)`,
                   paddingTop: 5, fontSize: 8, textAlign: "center",
                   color: rCol, fontWeight: 700, letterSpacing: "0.06em",
                   transition: "color 0.5s" }}>
-                  {m.result === "V" ? "VITÓRIA" : m.result === "D" ? "DERROTA" : "EMPATE"}
+                  {resultLabel}
                 </div>
               </div>
             );

@@ -638,14 +638,23 @@ export function LandingPage({ onStart, onLogin, onStartWithPlan, lang, setLang }
 
   /* ── Scroll-reveal intersection observer ─── */
   useEffect(() => {
-    const els = containerRef.current?.querySelectorAll(".lp-reveal, .lp-reveal-left, .lp-reveal-right");
-    if (!els) return;
+    const container = containerRef.current;
+    if (!container) return;
+    const els = container.querySelectorAll<HTMLElement>(".lp-reveal, .lp-reveal-left, .lp-reveal-right");
+    if (!els.length) return;
     const obs = new IntersectionObserver(entries => {
-      entries.forEach(e => { if (e.isIntersecting) { (e.target as HTMLElement).classList.add("lp-visible"); obs.unobserve(e.target); } });
-    }, { threshold: 0.12 });
-    els.forEach(el => obs.observe(el));
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          (e.target as HTMLElement).classList.add("lp-visible");
+          obs.unobserve(e.target);
+        }
+      });
+    }, { threshold: 0, rootMargin: "0px 0px -40px 0px" });
+    els.forEach(el => {
+      if (!el.classList.contains("lp-visible")) obs.observe(el);
+    });
     return () => obs.disconnect();
-  }, []);
+  }, [lang]);
 
   /* ── Step line animation on scroll ─── */
   useEffect(() => {
@@ -1032,6 +1041,7 @@ export function LandingPage({ onStart, onLogin, onStartWithPlan, lang, setLang }
                   accent={club.accent}
                   accentRgb={club.accentRgb}
                   secondary={club.secondary}
+                  lang={lang}
                 />
               </div>
             </div>
@@ -1131,7 +1141,7 @@ export function LandingPage({ onStart, onLogin, onStartWithPlan, lang, setLang }
             </div>
             <div className="lp-steps-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 20, position: "relative" }}>
               {steps.map((step, i) => (
-                <div key={step.title} className={`lp-reveal lp-delay-${i + 1}`} style={{ textAlign: "center", padding: "0 12px" }}>
+                <div key={i} className={`lp-reveal lp-delay-${i + 1}`} style={{ textAlign: "center", padding: "0 12px" }}>
                   <div style={{ width: 72, height: 72, borderRadius: "50%", background: "#0f0f1a", border: `1px solid ${i < 2 ? "rgba(124,92,252,0.25)" : i === 2 ? "rgba(61,156,245,0.25)" : "rgba(245,158,11,0.25)"}`, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 28px", boxShadow: `0 0 28px ${i < 2 ? "rgba(124,92,252,0.08)" : i === 2 ? "rgba(61,156,245,0.08)" : "rgba(245,158,11,0.08)"}` }}>
                     {/* Icon */}
                     {i === 0 && (
@@ -1249,7 +1259,7 @@ export function LandingPage({ onStart, onLogin, onStartWithPlan, lang, setLang }
           </div>
           <div className="lp-testimonials-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 24, alignItems: "start" }}>
             {testimonials.map((tm, i) => (
-              <div key={tm.handle} className={`lp-reveal lp-delay-${i + 1}${i === 1 ? " lp-testimonial-mid" : ""}`}
+              <div key={i} className={`lp-reveal lp-delay-${i + 1}${i === 1 ? " lp-testimonial-mid" : ""}`}
                 style={{ background: "#0f0f1a", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 18, padding: "28px 28px", transform: i === 1 ? "translateY(32px)" : "none" }}>
                 <p style={{ color: "#c0c0d8", fontSize: 14, lineHeight: 1.72, marginBottom: 24 }}>"{tm.text}"</p>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
