@@ -3162,3 +3162,73 @@ export const MOMENTOS: Record<Lang, Record<string, string>> = {
     errImageLoad: "Failed to load the image.",
   },
 } satisfies Record<Lang, Record<string, string>>;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Dashboard header & navigation
+// ─────────────────────────────────────────────────────────────────────────────
+export const DASHBOARD: Record<Lang, Record<string, string>> = {
+  pt: {
+    // breadcrumb
+    breadcrumb: "Carreiras",
+    // club info
+    foundedIn: "Fundado em",
+    // fan mood badge tooltip
+    moodTooltip: "Humor da torcida: {label} ({score}/100)",
+    // season selector
+    seasonLabel: "Temp:",
+    readOnlyBadge: "leitura",
+    // action buttons
+    settingsTooltip: "Configurações",
+    swapClub: "Trocar",
+    // read-only banner
+    readOnlyBannerPre: "Você está visualizando a temporada ",
+    readOnlyBannerPost: " em modo somente leitura.",
+    goToCurrent: "Voltar à atual",
+    // nav tabs
+    tabResumo: "Resumo",
+    tabPartidas: "Partidas",
+    tabClube: "Clube",
+    tabTransferencias: "Transferências",
+    tabNoticias: "Notícias",
+    tabDiretoria: "Diretoria",
+    tabMomentos: "Momentos",
+    // fan mood labels
+    moodRevoltada: "Revoltada",
+    moodInsatisfeita: "Insatisfeita",
+    moodNeutra: "Neutra",
+    moodAnimada: "Animada",
+    moodEuforica: "Eufórica",
+  },
+  en: {
+    // breadcrumb
+    breadcrumb: "Careers",
+    // club info
+    foundedIn: "Founded in",
+    // fan mood badge tooltip
+    moodTooltip: "Fan mood: {label} ({score}/100)",
+    // season selector
+    seasonLabel: "Season:",
+    readOnlyBadge: "read",
+    // action buttons
+    settingsTooltip: "Settings",
+    swapClub: "Swap",
+    // read-only banner
+    readOnlyBannerPre: "You are viewing season ",
+    readOnlyBannerPost: " in read-only mode.",
+    goToCurrent: "Go to current",
+    // nav tabs
+    tabResumo: "Summary",
+    tabPartidas: "Matches",
+    tabClube: "Club",
+    tabTransferencias: "Transfers",
+    tabNoticias: "News",
+    tabDiretoria: "Board",
+    tabMomentos: "Moments",
+    // fan mood labels
+    moodRevoltada: "Revolted",
+    moodInsatisfeita: "Unsatisfied",
+    moodNeutra: "Neutral",
+    moodAnimada: "Excited",
+    moodEuforica: "Euphoric",
+  },
+} satisfies Record<Lang, Record<string, string>>;

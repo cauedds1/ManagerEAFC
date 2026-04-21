@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useLang } from "@/hooks/useLang";
-import { PAINEL } from "@/lib/i18n";
+import { PAINEL, DASHBOARD } from "@/lib/i18n";
 import type { Career, Season } from "@/types/career";
 import { SettingsPage } from "./SettingsPage";
 import {
@@ -200,6 +200,15 @@ function CoachAvatar({ career }: { career: Career }) {
 export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub, onReloadClubs, onDeleteCareer }: DashboardProps) {
   const [lang] = useLang();
   const painelTabLabel = PAINEL[lang].tabLabel;
+  const t = DASHBOARD[lang];
+  const tabLabels: Record<string, string> = {
+    partidas: t.tabPartidas,
+    clube: t.tabClube,
+    transferencias: t.tabTransferencias,
+    noticias: t.tabNoticias,
+    diretoria: t.tabDiretoria,
+    momentos: t.tabMomentos,
+  };
   const userPlan = getUserPlan();
   const teamId = career.clubId > 0 ? career.clubId : 0;
 
@@ -410,7 +419,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
           matchPlayerContext: params.lastMatchPlayerContext || undefined,
           attachedMatchContext: params.attachedMatchContext || undefined,
           fanMoodScore,
-          fanMoodLabel: `${getFanMoodLabel(fanMoodScore).emoji} ${getFanMoodLabel(fanMoodScore).label}`,
+          fanMoodLabel: `${getFanMoodLabel(fanMoodScore, lang).emoji} ${getFanMoodLabel(fanMoodScore, lang).label}`,
           lang: params.lang ?? localStorage.getItem("fc_lang") ?? "pt",
         }),
       });
@@ -995,7 +1004,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     const newMoodScore = Math.max(0, Math.min(100, currentMood + moodDelta));
     void setFanMood(activeSeasonId, newMoodScore);
     setFanMoodScore(newMoodScore);
-    const moodInfo = getFanMoodLabel(newMoodScore);
+    const moodInfo = getFanMoodLabel(newMoodScore, lang);
 
     const planLimits = getPlanLimits(userPlan);
 
@@ -1200,7 +1209,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
                 </svg>
-                Carreiras
+                {t.breadcrumb}
               </button>
               <span className="text-white/15 text-xs">/</span>
               <div className="flex items-center gap-1.5">
@@ -1237,7 +1246,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
                     <p className="text-white/20 text-xs mt-0.5 truncate">
                       {career.clubStadium && <span>{career.clubStadium}</span>}
                       {career.clubStadium && career.clubFounded && <span> · </span>}
-                      {career.clubFounded && <span>Fundado em {career.clubFounded}</span>}
+                      {career.clubFounded && <span>{t.foundedIn} {career.clubFounded}</span>}
                     </p>
                   )}
                 </div>
@@ -1245,7 +1254,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
 
               <div className="flex items-center gap-2 flex-shrink-0">
                 {(() => {
-                  const moodInfo = getFanMoodLabel(fanMoodScore);
+                  const moodInfo = getFanMoodLabel(fanMoodScore, lang);
                   return (
                     <div
                       className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold"
@@ -1254,7 +1263,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
                         border: `1px solid ${moodInfo.color}35`,
                         color: moodInfo.color,
                       }}
-                      title={`Humor da torcida: ${moodInfo.label} (${fanMoodScore}/100)`}
+                      title={t.moodTooltip.replace("{label}", moodInfo.label).replace("{score}", String(fanMoodScore))}
                     >
                       <span>{moodInfo.emoji}</span>
                       <span>{moodInfo.label}</span>
@@ -1262,7 +1271,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
                   );
                 })()}
                 <div className="flex items-center gap-1.5">
-                  <span className="text-white/40 text-xs">Temp:</span>
+                  <span className="text-white/40 text-xs">{t.seasonLabel}</span>
                   <button
                     onClick={() => setShowSeasonModal(true)}
                     className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-bold text-sm text-white hover:bg-white/10 transition-colors duration-200 group glass"
@@ -1270,7 +1279,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
                     {displayLabel}
                     {isReadOnly && (
                       <span className="text-xs font-normal text-white/40 px-1.5 py-0.5 rounded" style={{ background: "rgba(255,255,255,0.06)" }}>
-                        leitura
+                        {t.readOnlyBadge}
                       </span>
                     )}
                     <svg className="w-3 h-3 text-white/30 group-hover:text-white/60 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1281,7 +1290,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
                 <button
                   onClick={() => setActiveTab("configuracoes")}
                   className="flex items-center justify-center w-9 h-9 rounded-xl text-white/50 hover:text-white transition-all duration-200 glass glass-hover"
-                  title="Configurações"
+                  title={t.settingsTooltip}
                   style={activeTab === "configuracoes" ? { color: "var(--club-primary)", background: "rgba(var(--club-primary-rgb),0.1)" } : {}}
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -1296,7 +1305,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                   </svg>
-                  Trocar
+                  {t.swapClub}
                 </button>
               </div>
             </div>
@@ -1324,7 +1333,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
                         <path strokeLinecap="round" strokeLinejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                       </svg>
                     </span>
-                    Resumo
+                    {t.tabResumo}
                     {active && (
                       <span
                         className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full"
@@ -1352,7 +1361,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
                     <span style={{ color: active ? "var(--club-primary)" : "rgba(255,255,255,0.3)" }}>
                       {tab.icon}
                     </span>
-                    {tab.id === "painel" ? painelTabLabel : tab.label}
+                    {tab.id === "painel" ? painelTabLabel : (tabLabels[tab.id] ?? tab.label)}
                     {tab.id === "transferencias" && transfers.length > 0 && (
                       <span
                         className="text-xs font-bold px-1.5 py-0.5 rounded-full tabular-nums min-w-[20px] text-center"
@@ -1400,13 +1409,13 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
               <span className="text-yellow-400/80">
-                Você está visualizando a temporada <strong>{displayLabel}</strong> em modo somente leitura.
+                {t.readOnlyBannerPre}<strong>{displayLabel}</strong>{t.readOnlyBannerPost}
               </span>
               <button
                 onClick={() => setShowSeasonModal(true)}
                 className="ml-auto text-yellow-400/70 hover:text-yellow-400 text-xs font-semibold underline whitespace-nowrap"
               >
-                Voltar à atual
+                {t.goToCurrent}
               </button>
             </div>
           </div>
