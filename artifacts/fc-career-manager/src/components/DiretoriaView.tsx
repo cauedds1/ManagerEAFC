@@ -168,7 +168,7 @@ function AvatarCircle({ member, size = 44 }: { member: BoardMember; size?: numbe
   );
 }
 
-function TypingDots({ name, typingLabel = "está digitando" }: { name: string; typingLabel?: string }) {
+function TypingDots({ name, typingLabel = "está digitando" }: { name: string; typingLabel?: string; }) {
   return (
     <div className="flex items-center gap-2 px-4 py-3">
       <div
@@ -727,13 +727,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
       setMembers((prev) => prev.map((m) => m.id === selectedMemberId ? { ...m, mood: newMood } : m));
     } catch (e) {
       const isAuthErr = (e as { isAuthErr?: boolean })?.isAuthErr;
-      const errText = isAuthErr
-        ? (lang === "en"
-            ? "⚠️ OpenAI key not configured. Go to settings (⚙️) to add your key and use the Board."
-            : "⚠️ Chave OpenAI não configurada. Acesse as configurações (ícone ⚙️) para adicionar sua chave e usar a Diretoria.")
-        : (lang === "en"
-            ? "Couldn't respond right now. Check your connection and try again."
-            : "Não consegui responder agora. Verifique sua conexão e tente novamente.");
+      const errText = isAuthErr ? t.errChatAuth : t.errChatConnection;
       const errMsg: DiretoriaMessage = {
         id: generateMessageId(),
         role: "character",
@@ -859,8 +853,8 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
     if (failCount > 0 && failCount === members.length) {
       const isKeyError = lastErrorMsg === "chave_openai";
       const errContent = isKeyError
-        ? "⚠️ Chave OpenAI não configurada. Acesse as configurações (ícone ⚙️) e adicione sua chave para usar a Diretoria."
-        : `⚠️ Erro ao conectar com a IA (${lastErrorMsg}). Verifique sua chave OpenAI nas configurações e tente novamente.`;
+        ? t.errMeetingAuth
+        : t.errMeetingConnection.replace("{details}", lastErrorMsg ?? "");
       const errMsg: MeetingMessage = {
         id: generateMessageId(),
         role: "error",
@@ -1208,7 +1202,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
                   </div>
                 </div>
               ))}
-              {isTyping && <TypingDots name={selectedMember.name} typingLabel={t.typing} />}
+              {isTyping && <TypingDots name={selectedMember.name} typingLabel={t.typingPhrase} />}
               <div ref={chatEndRef} />
             </div>
 
@@ -1344,7 +1338,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
                   </div>
                 );
               })}
-              {meetingTypingName && <TypingDots name={meetingTypingName} typingLabel={t.typing} />}
+              {meetingTypingName && <TypingDots name={meetingTypingName} typingLabel={t.typingPhrase} />}
               {suggestClose && !meetingResponding && (
                 <div className="flex justify-center">
                   <span

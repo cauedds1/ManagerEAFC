@@ -2876,10 +2876,15 @@ export const DIRETORIA: Record<Lang, Record<string, string>> = {
     ageYears: "{age} anos",
     btnNewSuggestions: "Gerar novas sugestões",
     errTransferFailed: "Erro ao buscar sugestões. Verifique sua chave OpenAI.",
-    // Typing indicator
-    typing: "digitando",
+    // Typing indicator phrase used as "{name} {typingPhrase}"
+    typingPhrase: "está digitando",
     // Age label in transfer suggestions
     yearsOld: "anos",
+    // Chat/meeting error messages
+    errChatAuth: "⚠️ Chave OpenAI não configurada. Acesse as configurações (ícone ⚙️) para adicionar sua chave e usar a Diretoria.",
+    errChatConnection: "Não consegui responder agora. Verifique sua conexão e tente novamente.",
+    errMeetingAuth: "⚠️ Chave OpenAI não configurada. Acesse as configurações (ícone ⚙️) e adicione sua chave para usar a Diretoria.",
+    errMeetingConnection: "⚠️ Erro ao conectar com a IA ({details}). Verifique sua chave OpenAI nas configurações e tente novamente.",
     // Upgrade prompt
     upgradeFeatureName: "Diretoria",
     upgradeDescription: "Converse com os diretores do clube, receba alertas sobre desempenho da equipe e negocie reforços. Disponível a partir do plano Pro.",
@@ -2999,10 +3004,15 @@ export const DIRETORIA: Record<Lang, Record<string, string>> = {
     ageYears: "{age} years old",
     btnNewSuggestions: "Generate new suggestions",
     errTransferFailed: "Failed to fetch suggestions. Check your OpenAI key.",
-    // Typing indicator
-    typing: "typing",
+    // Typing indicator phrase ("{name} is typing")
+    typingPhrase: "is typing",
     // Age label in transfer suggestions
     yearsOld: "y.o.",
+    // Chat/meeting error messages
+    errChatAuth: "⚠️ OpenAI key not configured. Go to settings (⚙️) to add your key and use the Board.",
+    errChatConnection: "Couldn't respond right now. Check your connection and try again.",
+    errMeetingAuth: "⚠️ OpenAI key not configured. Go to settings (⚙️) and add your key to use the Board.",
+    errMeetingConnection: "⚠️ Failed to connect to AI ({details}). Check your OpenAI key in settings and try again.",
     // Upgrade prompt
     upgradeFeatureName: "Board",
     upgradeDescription: "Chat with club directors, receive performance alerts and negotiate transfers. Available from the Pro plan.",
