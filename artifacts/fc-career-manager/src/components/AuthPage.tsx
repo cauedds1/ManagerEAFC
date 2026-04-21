@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 
 type Plan = "free" | "pro" | "ultra";
 
@@ -48,11 +48,116 @@ const PLAN_CARDS: Array<{
   },
 ];
 
+/* ── AI News data ── */
+const NEWS_STORIES = [
+  {
+    category: "La Liga",
+    categoryColor: "#7c5cfc",
+    categoryBg: "rgba(124,92,252,0.1)",
+    categoryBorder: "rgba(124,92,252,0.25)",
+    date: "Abr 2026",
+    headlineParts: ["Barcelona vira nos ", "acréscimos", " e mantém liderança isolada"],
+    highlightColor: "#f59e0b",
+    lead: "Em jogo tenso no Camp Nou, o técnico Martínez apostou no sistema 4-3-3 para superar o Atlético de Madrid. Dois gols nos últimos cinco minutos garantiram a virada histórica.",
+    timeAgo: "há 2 min",
+  },
+  {
+    category: "Premier League",
+    categoryColor: "#38bdf8",
+    categoryBg: "rgba(56,189,248,0.1)",
+    categoryBorder: "rgba(56,189,248,0.25)",
+    date: "Abr 2026",
+    headlineParts: ["City anuncia ", "contratação recorde", " de meia sul-americano"],
+    highlightColor: "#38bdf8",
+    lead: "O Manchester City fechou a contratação do meia Diego Ferreira por £85 milhões, tornando-o o jogador mais caro da história do clube. O jogador assina contrato de cinco anos.",
+    timeAgo: "há 7 min",
+  },
+  {
+    category: "Série A",
+    categoryColor: "#f43f5e",
+    categoryBg: "rgba(244,63,94,0.1)",
+    categoryBorder: "rgba(244,63,94,0.25)",
+    date: "Abr 2026",
+    headlineParts: ["Flamengo ", "goleia rival", " e retoma topo da tabela"],
+    highlightColor: "#f43f5e",
+    lead: "Com show de Gabigol e dois gols do jovem Pedro Santos, o Rubro-Negro aplicou 4 a 0 no Vasco no clássico e reassumiu a liderança do Brasileirão com folga de três pontos.",
+    timeAgo: "há 15 min",
+  },
+  {
+    category: "Champions League",
+    categoryColor: "#f59e0b",
+    categoryBg: "rgba(245,158,11,0.1)",
+    categoryBorder: "rgba(245,158,11,0.25)",
+    date: "Abr 2026",
+    headlineParts: ["Técnico revela ", "tática secreta", " que desbancou o Real Madrid"],
+    highlightColor: "#f59e0b",
+    lead: "Em entrevista exclusiva após a semifinal, o treinador detalhou como o pressing alto e a marcação por zona confundiram o meio-campo merengue durante os 90 minutos.",
+    timeAgo: "há 23 min",
+  },
+  {
+    category: "Vestiário",
+    categoryColor: "#a78bfa",
+    categoryBg: "rgba(167,139,250,0.1)",
+    categoryBorder: "rgba(167,139,250,0.25)",
+    date: "Abr 2026",
+    headlineParts: ["Atacante ", "pede transferência", " após briga com comissão técnica"],
+    highlightColor: "#a78bfa",
+    lead: "Fontes internas revelam que o centroavante titular entregou um pedido formal de saída ao presidente do clube. A relação com o treinador teria se deteriorado após ser substituído na final.",
+    timeAgo: "há 31 min",
+  },
+  {
+    category: "Bundesliga",
+    categoryColor: "#34d399",
+    categoryBg: "rgba(52,211,153,0.1)",
+    categoryBorder: "rgba(52,211,153,0.25)",
+    date: "Abr 2026",
+    headlineParts: ["Bayern demite técnico ", "às vésperas", " da decisão europeia"],
+    highlightColor: "#34d399",
+    lead: "A diretoria do Bayern de Munique confirmou a demissão de Thomas Brauer após sequência de três jogos sem vencer. O auxiliar Schneider assumirá interinamente até o fim da temporada.",
+    timeAgo: "há 44 min",
+  },
+];
+
 /* ── AI News Card ── */
 function AiNewsCard() {
-  return (
-    <div style={{ borderRadius: 20, overflow: "hidden", background: "rgba(10,10,20,0.85)", border: "1px solid rgba(124,92,252,0.2)", boxShadow: "0 32px 80px rgba(0,0,0,0.7), 0 0 40px rgba(124,92,252,0.08)", backdropFilter: "blur(12px)" }}>
+  const [current, setCurrent] = useState(0);
+  const [visible, setVisible] = useState(true);
+  const [paused, setPaused] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  const goTo = (idx: number) => {
+    setVisible(false);
+    setTimeout(() => {
+      setCurrent(idx);
+      setVisible(true);
+    }, 320);
+  };
+
+  const startTimer = () => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    timerRef.current = setInterval(() => {
+      setVisible(false);
+      setTimeout(() => {
+        setCurrent(prev => (prev + 1) % NEWS_STORIES.length);
+        setVisible(true);
+      }, 320);
+    }, 4500);
+  };
+
+  useEffect(() => {
+    if (!paused) startTimer();
+    else if (timerRef.current) clearInterval(timerRef.current);
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [paused]);
+
+  const story = NEWS_STORIES[current];
+
+  return (
+    <div
+      style={{ borderRadius: 20, overflow: "hidden", background: "rgba(10,10,20,0.85)", border: "1px solid rgba(124,92,252,0.2)", boxShadow: "0 32px 80px rgba(0,0,0,0.7), 0 0 40px rgba(124,92,252,0.08)", backdropFilter: "blur(12px)" }}
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+    >
       {/* ── Masthead ── */}
       <div style={{ padding: "18px 24px 14px", borderBottom: "1px solid rgba(255,255,255,0.05)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -71,36 +176,51 @@ function AiNewsCard() {
         </div>
       </div>
 
-      {/* ── Category + date ── */}
-      <div style={{ padding: "14px 24px 0", display: "flex", alignItems: "center", gap: 8 }}>
-        <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#7c5cfc", background: "rgba(124,92,252,0.1)", border: "1px solid rgba(124,92,252,0.25)", borderRadius: 6, padding: "3px 8px" }}>La Liga</span>
-        <span style={{ color: "#333355", fontSize: 11 }}>·</span>
-        <span style={{ color: "#444466", fontSize: 11 }}>Abr 2026</span>
-      </div>
+      {/* ── Animated content ── */}
+      <div style={{ transition: "opacity 0.32s ease, transform 0.32s ease", opacity: visible ? 1 : 0, transform: visible ? "translateY(0)" : "translateY(8px)" }}>
 
-      {/* ── Headline ── */}
-      <div style={{ padding: "12px 24px 0" }}>
-        <h3 style={{ fontFamily: "Bebas Neue, sans-serif", fontSize: "clamp(1.55rem, 2.4vw, 2rem)", lineHeight: 1.1, letterSpacing: "0.02em", margin: 0, color: "#f0f0ff" }}>
-          Barcelona vira nos{" "}
-          <span style={{ color: "#f59e0b" }}>acréscimos</span>
-          {" "}e mantém liderança isolada
-        </h3>
-      </div>
+        {/* ── Category + date ── */}
+        <div style={{ padding: "14px 24px 0", display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: story.categoryColor, background: story.categoryBg, border: `1px solid ${story.categoryBorder}`, borderRadius: 6, padding: "3px 8px" }}>{story.category}</span>
+          <span style={{ color: "#333355", fontSize: 11 }}>·</span>
+          <span style={{ color: "#444466", fontSize: 11 }}>{story.date}</span>
+        </div>
 
-      {/* ── Lead ── */}
-      <div style={{ padding: "12px 24px 20px" }}>
-        <p style={{ color: "#888899", fontSize: 14, lineHeight: 1.65, margin: 0 }}>
-          Em jogo tenso no Camp Nou, o técnico Martínez apostou no sistema 4-3-3 para superar o Atlético de Madrid. Dois gols nos últimos cinco minutos garantiram a virada histórica e abriram oito pontos de vantagem na tabela.
-        </p>
+        {/* ── Headline ── */}
+        <div style={{ padding: "12px 24px 0" }}>
+          <h3 style={{ fontFamily: "Bebas Neue, sans-serif", fontSize: "clamp(1.55rem, 2.4vw, 2rem)", lineHeight: 1.1, letterSpacing: "0.02em", margin: 0, color: "#f0f0ff" }}>
+            {story.headlineParts[0]}
+            <span style={{ color: story.highlightColor }}>{story.headlineParts[1]}</span>
+            {story.headlineParts[2]}
+          </h3>
+        </div>
+
+        {/* ── Lead ── */}
+        <div style={{ padding: "12px 24px 20px" }}>
+          <p style={{ color: "#888899", fontSize: 14, lineHeight: 1.65, margin: 0 }}>{story.lead}</p>
+        </div>
       </div>
 
       {/* ── Divider ── */}
       <div style={{ height: 1, background: "rgba(255,255,255,0.05)", margin: "0 24px" }} />
 
-      {/* ── Footer ── */}
-      <div style={{ padding: "14px 24px", display: "flex", alignItems: "center", gap: 10 }}>
-        <img src="/logo.png" alt="" style={{ width: 20, height: 20, objectFit: "contain", opacity: 0.6, flexShrink: 0 }} />
-        <span style={{ color: "#444466", fontSize: 12 }}>Gerado pela IA do <span style={{ color: "#7c5cfc" }}>FC Career Manager</span> · há 2 min</span>
+      {/* ── Footer with dots ── */}
+      <div style={{ padding: "12px 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <img src="/logo.png" alt="" style={{ width: 20, height: 20, objectFit: "contain", opacity: 0.6, flexShrink: 0 }} />
+          <span style={{ color: "#444466", fontSize: 12 }}>
+            <span style={{ color: "#7c5cfc" }}>FC Career Manager</span> · {story.timeAgo}
+          </span>
+        </div>
+        <div style={{ display: "flex", gap: 5 }}>
+          {NEWS_STORIES.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => { setPaused(true); goTo(i); setTimeout(() => setPaused(false), 6000); }}
+              style={{ width: i === current ? 18 : 6, height: 6, borderRadius: 3, border: "none", cursor: "pointer", padding: 0, transition: "width 0.3s ease, background 0.3s ease", background: i === current ? story.categoryColor : "rgba(255,255,255,0.15)" }}
+            />
+          ))}
+        </div>
       </div>
     </div>
   );
