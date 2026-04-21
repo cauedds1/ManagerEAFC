@@ -161,13 +161,8 @@ export default function App() {
     resetTheme();
   }, []);
 
-  const resolveViewAfterClubs = useCallback((hasCareers: boolean) => {
-    if (hasCareers) {
-      setView("career-selection");
-    } else {
-      setWizardMode("new");
-      setView("create-wizard");
-    }
+  const resolveViewAfterClubs = useCallback((_hasCareers: boolean) => {
+    setView("career-selection");
   }, []);
 
   const doFetchClubs = useCallback(
