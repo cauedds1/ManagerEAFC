@@ -1,58 +1,15 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import barcelonaImg from "../assets/image_1776619244345.png";
-import cercleImg    from "../assets/image_1776619246601.png";
-import watfordImg   from "../assets/image_1776619248678.png";
-import mancityImg   from "../assets/image_1776619250259.png";
+import { ClubDemoMockup } from "./ClubDemoMockup";
 
 /* ─── Types ─────────────────────────────────────────────── */
 interface LandingPageProps { onStart: () => void; onLogin: () => void; onStartWithPlan: (plan: "pro" | "ultra") => void; }
 
 /* ─── Club data ──────────────────────────────────────────── */
 const CLUBS = [
-  {
-    id: "barca", name: "Barcelona", league: "La Liga",
-    img: barcelonaImg, bg: "#1a0a12", accent: "#c8102e", accentRgb: "200,16,46",
-    textDark: false, glowAnim: "glowBarca 2.5s ease-in-out infinite",
-    badge: "Animada", partidas: 6, temporada: "2026/27", elenco: 33, transfers: 0,
-    matches: [
-      { comp: "La Liga", h: "Atlético", hs: 0, a: "Barcelona", as: 3, r: "V" },
-      { comp: "La Liga", h: "Barcelona", hs: 2, a: "Elche",    as: 0, r: "V" },
-      { comp: "La Liga", h: "Valencia", hs: 2, a: "Barcelona", as: 3, r: "V" },
-    ],
-  },
-  {
-    id: "cercle", name: "Cercle Brugge", league: "Belgian Pro League",
-    img: cercleImg, bg: "#071a0e", accent: "#00b050", accentRgb: "0,176,80",
-    textDark: false, glowAnim: "glowCercle 2.5s ease-in-out infinite",
-    badge: "Neutra", partidas: 3, temporada: "2026/27", elenco: 27, transfers: 0,
-    matches: [
-      { comp: "UCL",      h: "Zulte W.",  hs: 0, a: "Cercle B.", as: 2, r: "V" },
-      { comp: "UCL",      h: "Cercle B.", hs: 0, a: "PSV",       as: 2, r: "D" },
-      { comp: "Nacional", h: "Cercle B.", hs: 4, a: "Union St.", as: 0, r: "V" },
-    ],
-  },
-  {
-    id: "watford", name: "Watford", league: "Championship",
-    img: watfordImg, bg: "#1a1500", accent: "#fbee23", accentRgb: "251,238,35",
-    textDark: true, glowAnim: "glowWatford 2.5s ease-in-out infinite",
-    badge: "Eufórica", partidas: 40, temporada: "2025/26", elenco: 34, transfers: 7,
-    matches: [
-      { comp: "Championship", h: "Watford", hs: 1, a: "Ipswich", as: 1, r: "E" },
-      { comp: "Championship", h: "Watford", hs: 5, a: "Derby",   as: 0, r: "V" },
-      { comp: "Championship", h: "Preston", hs: 2, a: "Watford", as: 7, r: "V" },
-    ],
-  },
-  {
-    id: "mancity", name: "Manchester City", league: "Premier League",
-    img: mancityImg, bg: "#060d1a", accent: "#6cabdd", accentRgb: "108,171,221",
-    textDark: false, glowAnim: "glowMancity 2.5s ease-in-out infinite",
-    badge: "Animada", partidas: 3, temporada: "2026/27", elenco: 31, transfers: 0,
-    matches: [
-      { comp: "Premier League", h: "Man. City", hs: 0, a: "Leeds",    as: 1, r: "D" },
-      { comp: "Premier League", h: "Man. Utd",  hs: 0, a: "Man. City",as: 3, r: "V" },
-      { comp: "Premier League", h: "Everton",   hs: 0, a: "Man. City",as: 4, r: "V" },
-    ],
-  },
+  { id: "barca",   name: "Barcelona",       league: "La Liga",           accent: "#c8102e", accentRgb: "200,16,46",   textDark: false },
+  { id: "cercle",  name: "Cercle Brugge",   league: "Belgian Pro League",accent: "#00b050", accentRgb: "0,176,80",    textDark: false },
+  { id: "watford", name: "Watford",          league: "Championship",      accent: "#fbee23", accentRgb: "251,238,35",  textDark: true  },
+  { id: "mancity", name: "Manchester City",  league: "Premier League",    accent: "#6cabdd", accentRgb: "108,171,221", textDark: false },
 ] as const;
 
 /* ─── Clubs database for color picker ───────────────────── */
@@ -1189,30 +1146,25 @@ export function LandingPage({ onStart, onLogin, onStartWithPlan }: LandingPagePr
           {/* Screenshot */}
           <div style={{ position: "relative", maxWidth: 900, margin: "0 auto" }}>
             <div style={{ transition: "transform 0.4s cubic-bezier(0.34,1.56,0.64,1)" }} onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.transform = "scale(1.015)"; }} onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.transform = "scale(1)"; }}>
-              <div style={{ borderRadius: 20, overflow: "hidden", animation: CLUBS[activeClub].glowAnim, transition: "box-shadow 0.5s" }}>
-                <div style={{ background: "#0a0a0a", padding: "10px 16px", display: "flex", alignItems: "center", gap: 8, borderBottom: `1px solid rgba(${club.accentRgb},0.15)` }}>
+              <div style={{ borderRadius: 20, overflow: "hidden", boxShadow: `0 0 60px rgba(${club.accentRgb},0.18), 0 0 120px rgba(${club.accentRgb},0.08)`, transition: "box-shadow 0.6s ease" }}>
+                {/* Browser chrome */}
+                <div style={{ background: "#080810", padding: "10px 16px", display: "flex", alignItems: "center", gap: 8, borderBottom: `1px solid rgba(${club.accentRgb},0.12)` }}>
                   {[1,2,3].map(d => <span key={d} style={{ width: 12, height: 12, borderRadius: "50%", background: "#1a1a1a" }} />)}
                   <div style={{ flex: 1, height: 24, borderRadius: 6, background: "#111118", margin: "0 12px", display: "flex", alignItems: "center", justifyContent: "center" }}>
                     <span style={{ color: "#333355", fontSize: 11, fontFamily: "JetBrains Mono, monospace" }}>fc-career-manager.replit.app</span>
                   </div>
-                  <div style={{ background: `rgba(${club.accentRgb},0.15)`, border: `1px solid rgba(${club.accentRgb},0.3)`, borderRadius: 6, padding: "3px 12px", display: "flex", alignItems: "center", gap: 6, transition: "all 0.5s" }}>
+                  <div style={{ background: `rgba(${club.accentRgb},0.12)`, border: `1px solid rgba(${club.accentRgb},0.28)`, borderRadius: 6, padding: "3px 12px", display: "flex", alignItems: "center", gap: 6, transition: "all 0.5s" }}>
                     <span style={{ width: 6, height: 6, borderRadius: "50%", background: club.accent, transition: "background 0.5s" }} />
                     <span style={{ color: club.accent, fontSize: 11, fontWeight: 600, transition: "color 0.5s" }}>{customClubName || CLUBS[activeClub].league}</span>
                   </div>
                 </div>
-                <div style={{ position: "relative", lineHeight: 0, background: CLUBS[activeClub].bg, transition: "background 0.5s" }}>
-                  <img src={CLUBS[activeClub].img} aria-hidden style={{ width: "100%", height: "auto", display: "block", opacity: 0, pointerEvents: "none" }} />
-                  {CLUBS.map((c, i) => (
-                    <img key={c.id} src={c.img} alt={`Tema ${c.name}`} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", objectPosition: "top left", opacity: i === activeClub ? 1 : 0, transition: "opacity 0.55s ease" }} />
-                  ))}
-                </div>
-                <div style={{ background: "#0a0a0a", padding: "10px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: `1px solid rgba(${club.accentRgb},0.12)` }}>
-                  <span style={{ color: "#333355", fontSize: 11 }}>Tema automático ativo</span>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span style={{ width: 7, height: 7, borderRadius: "50%", background: club.accent, boxShadow: `0 0 8px ${club.accent}` }} />
-                    <span style={{ color: club.accent, fontSize: 12, fontWeight: 600, transition: "color 0.5s" }}>{customClubName || CLUBS[activeClub].name}</span>
-                  </div>
-                </div>
+                {/* Live mockup */}
+                <ClubDemoMockup
+                  clubName={customClubName || CLUBS[activeClub].name}
+                  leagueName={CLUBS[activeClub].league}
+                  accent={club.accent}
+                  accentRgb={club.accentRgb}
+                />
               </div>
             </div>
             <div style={{ display: "flex", justifyContent: "center", gap: 12, marginTop: 20 }}>
