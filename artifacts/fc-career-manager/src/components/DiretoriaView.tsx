@@ -820,7 +820,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
           if (/api key|apikey|authentication|401|unauthorized/i.test(details)) {
             lastErrorMsg = "chave_openai";
           } else {
-            lastErrorMsg = `Erro ${res.status}`;
+            lastErrorMsg = `HTTP ${res.status}`;
           }
           throw new Error(lastErrorMsg);
         }
