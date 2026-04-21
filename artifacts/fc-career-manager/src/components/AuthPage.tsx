@@ -249,11 +249,11 @@ export function AuthPage({ onBack, onAuthSuccess, initialPlan }: AuthPageProps) 
   };
 
   /* ── Shared form header (logo + title) ── */
-  const FormHeader = ({ title, subtitle }: { title: string; subtitle: string }) => (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: 32, textAlign: "center" }}>
-      <img src="/logo.png" alt="FC Career Manager" style={{ width: 60, height: 60, objectFit: "contain", marginBottom: 16, filter: "drop-shadow(0 0 16px rgba(124,92,252,0.35))" }} />
-      <h1 style={{ color: "#f0f0ff", fontWeight: 800, fontSize: 22, margin: 0, fontFamily: "DM Sans, sans-serif" }}>{title}</h1>
-      <p style={{ color: "#555577", fontSize: 14, margin: "6px 0 0", fontFamily: "DM Sans, sans-serif" }}>{subtitle}</p>
+  const FormHeader = ({ title, subtitle, compact }: { title: string; subtitle: string; compact?: boolean }) => (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: compact ? 14 : 32, textAlign: "center" }}>
+      <img src="/logo.png" alt="FC Career Manager" style={{ width: compact ? 44 : 60, height: compact ? 44 : 60, objectFit: "contain", marginBottom: compact ? 10 : 16, filter: "drop-shadow(0 0 16px rgba(124,92,252,0.35))" }} />
+      <h1 style={{ color: "#f0f0ff", fontWeight: 800, fontSize: compact ? 19 : 22, margin: 0, fontFamily: "DM Sans, sans-serif" }}>{title}</h1>
+      <p style={{ color: "#555577", fontSize: compact ? 13 : 14, margin: "5px 0 0", fontFamily: "DM Sans, sans-serif" }}>{subtitle}</p>
     </div>
   );
 
@@ -313,7 +313,7 @@ export function AuthPage({ onBack, onAuthSuccess, initialPlan }: AuthPageProps) 
         </button>
 
         {/* ── FORM CONTENT (animated on mode switch, margin:auto centers when short) ── */}
-        <div key={contentKey} className="auth-content-enter" style={{ margin: "auto 0", padding: "24px 48px 48px" }}>
+        <div key={contentKey} className="auth-content-enter" style={{ margin: "auto 0", padding: "16px 40px 36px" }}>
 
         {/* ── LOGIN ── */}
         {isLogin && (
@@ -349,27 +349,27 @@ export function AuthPage({ onBack, onAuthSuccess, initialPlan }: AuthPageProps) 
         {/* ── SIGNUP: PLAN SELECTION ── */}
         {!isLogin && signupStep === "plan" && (
           <div>
-            <FormHeader title="Escolha o nível da sua carreira." subtitle="Você pode mudar ou cancelar quando quiser" />
-            <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
+            <FormHeader compact title="Escolha o nível da sua carreira." subtitle="Você pode mudar ou cancelar quando quiser" />
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
               {PLAN_CARDS.map(card => {
                 const sel = selectedPlan === card.plan;
                 return (
                   <button key={card.plan} onClick={() => setSelectedPlan(card.plan)}
-                    style={{ textAlign: "left", borderRadius: 14, padding: "14px 16px", cursor: "pointer", transition: "all 0.2s", background: sel ? `rgba(${card.accentRgb},0.08)` : "rgba(255,255,255,0.03)", border: sel ? `1px solid rgba(${card.accentRgb},0.45)` : "1px solid rgba(255,255,255,0.07)", boxShadow: sel ? `0 0 20px rgba(${card.accentRgb},0.1)` : "none" }}>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        <div style={{ width: 8, height: 8, borderRadius: "50%", background: sel ? card.accentColor : "rgba(255,255,255,0.2)", transition: "background 0.2s" }} />
-                        <span style={{ color: "#f0f0ff", fontWeight: 700, fontSize: 15 }}>{card.label}</span>
+                    style={{ textAlign: "left", borderRadius: 12, padding: "10px 14px", cursor: "pointer", transition: "all 0.2s", background: sel ? `rgba(${card.accentRgb},0.08)` : "rgba(255,255,255,0.03)", border: sel ? `1px solid rgba(${card.accentRgb},0.45)` : "1px solid rgba(255,255,255,0.07)", boxShadow: sel ? `0 0 20px rgba(${card.accentRgb},0.1)` : "none" }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <div style={{ width: 7, height: 7, borderRadius: "50%", background: sel ? card.accentColor : "rgba(255,255,255,0.2)", transition: "background 0.2s" }} />
+                        <span style={{ color: "#f0f0ff", fontWeight: 700, fontSize: 14 }}>{card.label}</span>
                       </div>
                       <div>
-                        <span style={{ color: sel ? card.accentColor : "#888899", fontWeight: 700, fontSize: 15 }}>{card.price}</span>
-                        <span style={{ color: "#444466", fontSize: 12, marginLeft: 4 }}>{card.period}</span>
+                        <span style={{ color: sel ? card.accentColor : "#888899", fontWeight: 700, fontSize: 14 }}>{card.price}</span>
+                        <span style={{ color: "#444466", fontSize: 11, marginLeft: 4 }}>{card.period}</span>
                       </div>
                     </div>
-                    <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 4, paddingLeft: 18 }}>
+                    <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 3, paddingLeft: 15 }}>
                       {card.features.map(f => (
-                        <li key={f} style={{ color: "#555577", fontSize: 12, display: "flex", alignItems: "center", gap: 6 }}>
-                          <svg style={{ width: 12, height: 12, flexShrink: 0, color: sel ? card.accentColor : "rgba(255,255,255,0.2)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <li key={f} style={{ color: "#555577", fontSize: 11, display: "flex", alignItems: "center", gap: 5 }}>
+                          <svg style={{ width: 11, height: 11, flexShrink: 0, color: sel ? card.accentColor : "rgba(255,255,255,0.2)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                           </svg>
                           {f}
