@@ -138,6 +138,10 @@ export function ClubeView({
     [allSeasonIds, pastSeasonsLoaded]
   );
 
+  // For "todas as temporadas": cover every player ID present in allStatsOverride.
+  // statsPlayers = allTimeCareerPlayers (built from current squad + former players +
+  // squad cache + all transfer records), so virtually all IDs resolve here.
+  // A minimal placeholder is created only for genuinely unresolvable IDs.
   const expandedStatsPlayers = useMemo(() => {
     if (!hasMultipleSeasons) return statsPlayers;
     const statsPlayerMap = new Map(statsPlayers.map((p) => [p.id, p]));
@@ -145,6 +149,7 @@ export function ClubeView({
     for (const idStr of Object.keys(allStatsOverride)) {
       const id = Number(idStr);
       if (!statsPlayerMap.has(id)) {
+        // Last-resort placeholder — name/position unknown for this player ID
         extras.push({
           id,
           name: `Jogador #${id}`,
