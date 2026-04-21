@@ -196,11 +196,12 @@ router.get("/stripe/products-with-plan", requireAuth, async (_req, res) => {
       }
 
       if (!planTier) continue;
+      if (price.unit_amount == null) continue;
 
       plans.push({
         planTier,
         priceId: price.id,
-        unitAmount: price.unit_amount ?? 0,
+        unitAmount: price.unit_amount,
         currency: price.currency,
       });
     }
