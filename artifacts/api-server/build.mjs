@@ -3,7 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { build as esbuild } from "esbuild";
 import esbuildPluginPino from "esbuild-plugin-pino";
-import { rm } from "node:fs/promises";
+import { rm, cp } from "node:fs/promises";
 
 // Plugins (e.g. 'esbuild-plugin-pino') may use `require` to resolve dependencies
 globalThis.require = createRequire(import.meta.url);
@@ -116,7 +116,18 @@ globalThis.__dirname = __bannerPath.dirname(globalThis.__filename);
   });
 }
 
-buildAll().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+async function copyStripeMigrations(distDir) {
+  const req = createRequire(import.meta.url);
+  const mainEntry = req.resolve("stripe-replit-sync");
+  const src = path.join(path.dirname(mainEntry), "migrations");
+  const dest = path.join(distDir, "migrations");
+  await cp(src, dest, { recursive: true });
+  console.log("Copied stripe-replit-sync migrations →", dest);
+}
+
+buildAll()
+  .then(() => copyStripeMigrations(path.resolve(path.dirname(fileURLToPath(import.meta.url)), "dist")))
+  .catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });

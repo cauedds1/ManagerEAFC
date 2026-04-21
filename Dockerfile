@@ -18,15 +18,12 @@ RUN mkdir -p artifacts/api-server/public && \
 
 RUN pnpm --filter @workspace/api-server run build
 
-RUN find /app/node_modules -path "*/stripe-replit-sync/dist/migrations" -type d | head -1 | xargs -I{} cp -r {} /tmp/stripe-sync-migrations
-
 FROM node:22-slim AS runtime
 WORKDIR /app
 
 COPY --from=builder /app/artifacts/api-server/dist/ ./dist/
 COPY --from=builder /app/artifacts/api-server/public/ ./public/
 COPY --from=builder /app/lib/db/migrations/ ./migrations/
-COPY --from=builder /tmp/stripe-sync-migrations/ ./dist/migrations/
 
 ENV NODE_ENV=production
 ENV FRONTEND_DIST=/app/public

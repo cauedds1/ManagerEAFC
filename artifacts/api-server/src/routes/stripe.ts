@@ -171,24 +171,40 @@ router.get("/stripe/products-with-plan", requireAuth, async (_req, res) => {
     const result = await db.execute(
       sql`
         SELECT
-          pr.metadata->>'planTier' AS plan_tier,
-          p.id AS price_id,
+          COALESCE(
+            pr.metadata->>'planTier',
+            CASE
+              WHEN lower(pr.name) LIKE '%ultra%' THEN 'ultra'
+              WHEN lower(pr.name) LIKE '%pro%'   THEN 'pro'
+              ELSE NULL
+            END
+          ) AS plan_tier,
+          p.id   AS price_id,
           p.unit_amount,
-          p.currency
+          p.currency,
+          pr.name AS product_name
         FROM stripe.products pr
         JOIN stripe.prices p ON p.product = pr.id AND p.active = true
         WHERE pr.active = true
-          AND pr.metadata->>'planTier' IS NOT NULL
+          AND (
+            pr.metadata->>'planTier' IS NOT NULL
+            OR lower(pr.name) LIKE '%ultra%'
+            OR lower(pr.name) LIKE '%pro%'
+          )
         ORDER BY p.unit_amount ASC
       `
     );
     const rows = (result as unknown as { rows: Record<string, unknown>[] }).rows ?? [];
-    return res.json(rows.map((r) => ({
-      planTier: r.plan_tier,
-      priceId: r.price_id,
-      unitAmount: r.unit_amount,
-      currency: r.currency,
-    })));
+    console.log("GET /stripe/products-with-plan — rows found:", rows.length, rows.map(r => ({ name: r.product_name, tier: r.plan_tier, price: r.unit_amount })));
+    const mapped = rows
+      .map((r) => ({
+        planTier: r.plan_tier as string | null,
+        priceId: r.price_id,
+        unitAmount: r.unit_amount,
+        currency: r.currency,
+      }))
+      .filter((r) => r.planTier !== null);
+    return res.json(mapped);
   } catch (err) {
     console.error("GET /stripe/products-with-plan error:", err);
     return res.json([]);
