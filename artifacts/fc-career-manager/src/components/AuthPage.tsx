@@ -315,7 +315,12 @@ export function AuthPage({ onBack, onAuthSuccess, initialPlan }: AuthPageProps) 
         throw new Error(d.error ?? "Erro ao iniciar pagamento.");
       }
       const { url } = await checkoutRes.json() as { url?: string };
-      if (url) { window.location.href = url; return; }
+      if (url) {
+        localStorage.setItem("fc_auth_token", token);
+        localStorage.setItem("fc_auth_user", JSON.stringify(user));
+        window.location.href = url;
+        return;
+      }
       throw new Error("URL de pagamento inválida.");
     } catch (e) {
       setRedirecting(false);
@@ -337,11 +342,11 @@ export function AuthPage({ onBack, onAuthSuccess, initialPlan }: AuthPageProps) 
       const data = await res.json() as { token?: string; user?: { id: number; email: string; name: string; plan?: Plan }; error?: string; };
       if (!res.ok) { setError(data.error ?? "Ocorreu um erro. Tente novamente."); return; }
       if (!data.token || !data.user) { setError("Resposta inválida do servidor."); return; }
-      localStorage.setItem("fc_auth_token", data.token);
-      localStorage.setItem("fc_auth_user", JSON.stringify(data.user));
       if (selectedPlan !== "free") {
         await handlePaidSignup(selectedPlan, data.token, data.user);
       } else {
+        localStorage.setItem("fc_auth_token", data.token);
+        localStorage.setItem("fc_auth_user", JSON.stringify(data.user));
         onAuthSuccess(data.token, data.user);
       }
     } catch { setError("Não foi possível conectar ao servidor."); }
