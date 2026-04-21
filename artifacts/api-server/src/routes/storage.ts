@@ -1,18 +1,27 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import multer from "multer";
 import { RequestUploadUrlBody, RequestUploadUrlResponse } from "@workspace/api-zod";
-import { isR2Configured, createPresignedUploadUrl, uploadFileToR2 } from "../lib/r2Storage";
+import { isR2Configured, createPresignedUploadUrl, uploadFileToR2, deleteFileFromR2 } from "../lib/r2Storage";
 
 const router: IRouter = Router();
 
-const ALLOWED_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+const ALLOWED_IMAGE_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+const ALLOWED_VIDEO_MIME_TYPES = new Set(["video/mp4", "video/webm", "video/quicktime"]);
+const ALLOWED_PRESIGNED_MIME_TYPES = new Set([
+  ...ALLOWED_IMAGE_MIME_TYPES,
+  ...ALLOWED_VIDEO_MIME_TYPES,
+]);
 const ALLOWED_FOLDERS = new Set(["portals", "portal-photos", "uploads", "noticias", "test"]);
+const ALLOWED_PRESIGNED_FOLDERS = new Set([
+  ...ALLOWED_FOLDERS,
+  "momentos",
+]);
 
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
-    if (ALLOWED_MIME_TYPES.has(file.mimetype)) {
+    if (ALLOWED_IMAGE_MIME_TYPES.has(file.mimetype)) {
       cb(null, true);
     } else {
       cb(new Error(`Tipo de arquivo não permitido: ${file.mimetype}`));
@@ -32,18 +41,26 @@ router.post("/storage/uploads/request-url", async (req: Request, res: Response) 
     return;
   }
 
-  try {
-    const { name, size, contentType } = parsed.data;
-    const folder = (req.query.folder as string | undefined) ?? "uploads";
-    const { uploadURL, publicFileUrl } = await createPresignedUploadUrl(folder, contentType ?? "image/jpeg");
+  const { name, size, contentType } = parsed.data;
 
-    res.json(
-      RequestUploadUrlResponse.parse({
-        uploadURL,
-        objectPath: publicFileUrl,
-        metadata: { name, size, contentType },
-      }),
-    );
+  if (contentType && !ALLOWED_PRESIGNED_MIME_TYPES.has(contentType)) {
+    res.status(400).json({ error: `Tipo de arquivo não permitido: ${contentType}` });
+    return;
+  }
+
+  const rawFolder = (req.query.folder as string | undefined) ?? "uploads";
+  const folder = ALLOWED_PRESIGNED_FOLDERS.has(rawFolder) ? rawFolder : "uploads";
+
+  try {
+    const { uploadURL, publicFileUrl, key } = await createPresignedUploadUrl(folder, contentType ?? "image/jpeg");
+
+    const baseResponse = RequestUploadUrlResponse.parse({
+      uploadURL,
+      objectPath: publicFileUrl,
+      metadata: { name, size, contentType },
+    });
+
+    res.json({ ...baseResponse, key });
   } catch (error) {
     req.log.error({ err: error }, "Error generating R2 upload URL");
     res.status(500).json({ error: "Failed to generate upload URL" });
@@ -79,6 +96,41 @@ router.post("/storage/uploads/file", (req: Request, res: Response) => {
       res.status(500).json({ error: "Falha ao fazer upload do arquivo." });
     }
   });
+});
+
+router.delete("/storage/objects", async (req: Request, res: Response) => {
+  if (!isR2Configured()) {
+    res.status(503).json({ error: "R2 não está configurado." });
+    return;
+  }
+
+  const { url } = req.body as { url?: string };
+  if (!url || typeof url !== "string") {
+    res.status(400).json({ error: "Campo 'url' é obrigatório." });
+    return;
+  }
+
+  const publicBase = process.env.R2_PUBLIC_URL?.replace(/\/$/, "");
+  if (!publicBase || !url.startsWith(publicBase + "/")) {
+    res.status(400).json({ error: "URL inválida ou não pertence ao bucket configurado." });
+    return;
+  }
+
+  const key = url.slice(publicBase.length + 1);
+  const folder = key.split("/")[0];
+
+  if (!ALLOWED_PRESIGNED_FOLDERS.has(folder)) {
+    res.status(403).json({ error: "Pasta não permitida para exclusão." });
+    return;
+  }
+
+  try {
+    await deleteFileFromR2(key);
+    res.json({ success: true });
+  } catch (error) {
+    req.log.error({ err: error }, "Error deleting file from R2");
+    res.status(500).json({ error: "Falha ao excluir arquivo." });
+  }
 });
 
 export default router;

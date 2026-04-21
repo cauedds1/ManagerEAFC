@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { createPortal } from "react-dom";
 import {
   getMomentos,
@@ -6,8 +6,10 @@ import {
   deleteMomento,
   generateMomentoId,
   resizeImageToDataUrl,
+  deleteVideoFromR2,
   type Momento,
 } from "@/lib/momentoStorage";
+import { getUserPlan, getPlanLimits, type FrontendPlanLimits } from "@/lib/userPlan";
 
 interface MomentosViewProps {
   seasonId: string;
@@ -17,6 +19,11 @@ interface MomentosViewProps {
 
 function formatGameDate(raw: string): string {
   return raw.trim() || "—";
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function ConfirmDeleteModal({
@@ -57,6 +64,7 @@ function ConfirmDeleteModal({
 
 function DetailModal({ momento, onClose, onDelete }: { momento: Momento; onClose: () => void; onDelete: () => void }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const isVideo = momento.mediaType === "video";
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -69,7 +77,16 @@ function DetailModal({ momento, onClose, onDelete }: { momento: Momento; onClose
       <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.85)" }} onClick={onClose}>
         <div className="glass rounded-2xl overflow-hidden max-w-2xl w-full max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
           <div className="relative flex-shrink-0">
-            <img src={momento.photoDataUrl} alt={momento.title} className="w-full object-cover max-h-[50vh]" />
+            {isVideo && momento.videoUrl ? (
+              <video
+                src={momento.videoUrl}
+                controls
+                className="w-full object-cover max-h-[55vh] bg-black"
+                playsInline
+              />
+            ) : (
+              <img src={momento.photoDataUrl} alt={momento.title} className="w-full object-cover max-h-[50vh]" />
+            )}
             <button
               onClick={onClose}
               className="absolute top-3 right-3 w-8 h-8 rounded-full flex items-center justify-center text-white/80 hover:text-white transition-colors"
@@ -87,7 +104,17 @@ function DetailModal({ momento, onClose, onDelete }: { momento: Momento; onClose
           </div>
 
           <div className="p-5 flex flex-col gap-2 overflow-y-auto">
-            <h2 className="text-white font-bold text-xl leading-snug">{momento.title}</h2>
+            <div className="flex items-center gap-2">
+              {isVideo && (
+                <span className="flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-lg" style={{ background: "rgba(124,92,252,0.18)", color: "#a78bfa" }}>
+                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M8 5v14l11-7z" />
+                  </svg>
+                  Vídeo
+                </span>
+              )}
+              <h2 className="text-white font-bold text-xl leading-snug">{momento.title}</h2>
+            </div>
             {momento.description && (
               <p className="text-white/65 text-sm leading-relaxed whitespace-pre-wrap">{momento.description}</p>
             )}
@@ -119,21 +146,210 @@ function DetailModal({ momento, onClose, onDelete }: { momento: Momento; onClose
   );
 }
 
+type UploadState = "idle" | "uploading" | "done" | "error";
+
+function VideoUploadSection({
+  planLimits,
+  videoCount,
+  onVideoReady,
+}: {
+  planLimits: FrontendPlanLimits;
+  videoCount: number;
+  onVideoReady: (url: string | null) => void;
+}) {
+  const [uploadState, setUploadState] = useState<UploadState>("idle");
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const xhrRef = useRef<XMLHttpRequest | null>(null);
+
+  const maxSizeMb = planLimits.maxVideoMomentoSizeMb;
+  const maxVideos = planLimits.maxVideoMomentos;
+  const isAtLimit = videoCount >= maxVideos;
+
+  const handleFile = useCallback(async (file: File) => {
+    const allowed = ["video/mp4", "video/webm", "video/quicktime"];
+    if (!allowed.includes(file.type)) {
+      setUploadError("Formato não suportado. Use MP4, WebM ou MOV.");
+      return;
+    }
+    const sizeMb = file.size / (1024 * 1024);
+    if (sizeMb > maxSizeMb) {
+      setUploadError(`Vídeo excede o limite de ${maxSizeMb} MB do seu plano. Tamanho: ${sizeMb.toFixed(1)} MB.`);
+      return;
+    }
+    setUploadError(null);
+    setSelectedFile(file);
+
+    setUploadState("uploading");
+    setUploadProgress(0);
+    onVideoReady(null);
+
+    try {
+      const metaRes = await fetch("/api/storage/uploads/request-url?folder=momentos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }),
+      });
+      if (!metaRes.ok) {
+        setUploadState("error");
+        setUploadError("Não foi possível iniciar o upload. Tente novamente.");
+        return;
+      }
+      const { uploadURL, objectPath } = (await metaRes.json()) as { uploadURL: string; objectPath: string };
+
+      await new Promise<void>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhrRef.current = xhr;
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable) setUploadProgress(Math.round((e.loaded / e.total) * 100));
+        };
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) resolve();
+          else reject(new Error(`Upload falhou: ${xhr.status}`));
+        };
+        xhr.onerror = () => reject(new Error("Erro de rede no upload."));
+        xhr.open("PUT", uploadURL);
+        xhr.setRequestHeader("Content-Type", file.type);
+        xhr.send(file);
+      });
+
+      setUploadState("done");
+      setUploadProgress(100);
+      onVideoReady(objectPath);
+    } catch (err) {
+      setUploadState("error");
+      setUploadError(err instanceof Error ? err.message : "Falha no upload.");
+      onVideoReady(null);
+    }
+  }, [maxSizeMb, onVideoReady]);
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files[0];
+    if (file) handleFile(file);
+  };
+
+  const handleReset = () => {
+    if (xhrRef.current && uploadState === "uploading") xhrRef.current.abort();
+    setUploadState("idle");
+    setSelectedFile(null);
+    setUploadProgress(0);
+    setUploadError(null);
+    onVideoReady(null);
+    if (inputRef.current) inputRef.current.value = "";
+  };
+
+  if (isAtLimit) {
+    return (
+      <div className="rounded-xl border border-amber-500/30 bg-amber-500/8 p-4 flex flex-col items-center gap-2 text-center">
+        <svg className="w-6 h-6 text-amber-400/70" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+        </svg>
+        <p className="text-amber-300/80 text-sm font-semibold">
+          Limite atingido ({videoCount}/{maxVideos})
+        </p>
+        <p className="text-white/40 text-xs">Exclua um vídeo existente para adicionar outro.</p>
+      </div>
+    );
+  }
+
+  if (uploadState === "done" && selectedFile) {
+    return (
+      <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/8 p-4 flex items-center gap-3">
+        <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "rgba(16,185,129,0.15)" }}>
+          <svg className="w-5 h-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+          </svg>
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-emerald-300 text-sm font-semibold truncate">{selectedFile.name}</p>
+          <p className="text-white/40 text-xs">{formatFileSize(selectedFile.size)} · Pronto para salvar</p>
+        </div>
+        <button onClick={handleReset} className="text-white/30 hover:text-white/60 transition-colors flex-shrink-0 p-1">
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+    );
+  }
+
+  if (uploadState === "uploading" && selectedFile) {
+    return (
+      <div className="rounded-xl border border-white/10 bg-white/4 p-4 flex flex-col gap-3">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "rgba(124,92,252,0.15)" }}>
+            <div className="w-4 h-4 border-2 border-purple-400/40 border-t-purple-400 rounded-full animate-spin" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-white/80 text-sm font-semibold truncate">{selectedFile.name}</p>
+            <p className="text-white/40 text-xs">{formatFileSize(selectedFile.size)}</p>
+          </div>
+          <span className="text-purple-300 text-sm font-bold flex-shrink-0">{uploadProgress}%</span>
+        </div>
+        <div className="w-full h-1.5 rounded-full" style={{ background: "rgba(255,255,255,0.08)" }}>
+          <div
+            className="h-full rounded-full transition-all duration-300"
+            style={{ width: `${uploadProgress}%`, background: "var(--club-primary, #7c5cfc)" }}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="video/mp4,video/webm,video/quicktime"
+        className="hidden"
+        onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
+      />
+      <div
+        className="relative w-full rounded-xl border-2 border-dashed border-white/20 hover:border-white/40 transition-colors cursor-pointer flex flex-col items-center justify-center gap-2 py-10"
+        onClick={() => inputRef.current?.click()}
+        onDrop={handleDrop}
+        onDragOver={(e) => e.preventDefault()}
+      >
+        <svg className="w-9 h-9 text-white/25" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" />
+        </svg>
+        <span className="text-white/40 text-sm">Clique ou arraste um vídeo</span>
+        <span className="text-white/25 text-xs">MP4, WebM, MOV · até {maxSizeMb} MB · {videoCount}/{maxVideos} usados</span>
+      </div>
+      {uploadError && <p className="text-red-400 text-xs mt-1.5">{uploadError}</p>}
+    </div>
+  );
+}
+
+type MediaTab = "photo" | "video";
+
 function AddMomentoModal({
   onClose,
   onSave,
+  planLimits,
+  videoCount,
 }: {
   onClose: () => void;
   onSave: (m: Omit<Momento, "id" | "createdAt">) => void;
+  planLimits: FrontendPlanLimits;
+  videoCount: number;
 }) {
+  const [mediaTab, setMediaTab] = useState<MediaTab>("photo");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [gameDate, setGameDate] = useState("");
   const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null);
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [photoLoading, setPhotoLoading] = useState(false);
-  const [errors, setErrors] = useState<{ title?: string; gameDate?: string; photo?: string }>({});
+  const [errors, setErrors] = useState<{ title?: string; gameDate?: string; media?: string }>({});
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const canUseVideo = planLimits.maxVideoMomentos > 0;
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -155,7 +371,7 @@ function AddMomentoModal({
     try {
       const dataUrl = await resizeImageToDataUrl(file);
       setPhotoDataUrl(dataUrl);
-      setErrors((e) => ({ ...e, photo: undefined }));
+      setErrors((e) => ({ ...e, media: undefined }));
     } catch {
       setPhotoError("Não foi possível carregar a imagem.");
     } finally {
@@ -173,14 +389,32 @@ function AddMomentoModal({
     const errs: typeof errors = {};
     if (!title.trim()) errs.title = "Título é obrigatório.";
     if (!gameDate.trim()) errs.gameDate = "Data no jogo é obrigatória.";
-    if (!photoDataUrl) errs.photo = "Foto é obrigatória.";
+    if (mediaTab === "photo" && !photoDataUrl) errs.media = "Foto é obrigatória.";
+    if (mediaTab === "video" && !videoUrl) errs.media = "Aguarde o upload do vídeo ou selecione um arquivo.";
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
 
   const handleSave = () => {
     if (!validate()) return;
-    onSave({ title: title.trim(), description: description.trim(), gameDate: gameDate.trim(), photoDataUrl: photoDataUrl! });
+    if (mediaTab === "video" && videoUrl) {
+      onSave({
+        title: title.trim(),
+        description: description.trim(),
+        gameDate: gameDate.trim(),
+        photoDataUrl: "",
+        mediaType: "video",
+        videoUrl,
+      });
+    } else {
+      onSave({
+        title: title.trim(),
+        description: description.trim(),
+        gameDate: gameDate.trim(),
+        photoDataUrl: photoDataUrl!,
+        mediaType: "image",
+      });
+    }
   };
 
   return createPortal(
@@ -199,44 +433,113 @@ function AddMomentoModal({
         </div>
 
         <div className="flex flex-col gap-4 px-5 pb-5 overflow-y-auto">
-          <div>
-            <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
-            <div
-              className={`relative w-full rounded-xl border-2 border-dashed transition-colors cursor-pointer flex items-center justify-center overflow-hidden
-                ${errors.photo ? "border-red-500/60" : "border-white/20 hover:border-white/40"}`}
-              style={{ minHeight: photoDataUrl ? undefined : "160px" }}
-              onClick={() => inputRef.current?.click()}
-              onDrop={handleDrop}
-              onDragOver={(e) => e.preventDefault()}
+          {/* Media type toggle */}
+          <div className="flex rounded-xl overflow-hidden border border-white/10 self-start">
+            <button
+              onClick={() => setMediaTab("photo")}
+              className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold transition-all"
+              style={{
+                background: mediaTab === "photo" ? "rgba(var(--club-primary-rgb),0.18)" : "rgba(255,255,255,0.04)",
+                color: mediaTab === "photo" ? "var(--club-primary, #7c5cfc)" : "rgba(255,255,255,0.4)",
+              }}
             >
-              {photoLoading && (
-                <div className="flex flex-col items-center gap-2 py-10">
-                  <div className="w-6 h-6 border-2 border-white/30 border-t-white/80 rounded-full animate-spin" />
-                  <span className="text-white/50 text-xs">Carregando…</span>
-                </div>
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              Foto
+            </button>
+            <button
+              onClick={() => setMediaTab("video")}
+              className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold transition-all"
+              style={{
+                background: mediaTab === "video" ? "rgba(var(--club-primary-rgb),0.18)" : "rgba(255,255,255,0.04)",
+                color: mediaTab === "video" ? "var(--club-primary, #7c5cfc)" : "rgba(255,255,255,0.4)",
+              }}
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" />
+              </svg>
+              Vídeo
+              {!canUseVideo && (
+                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md ml-0.5" style={{ background: "rgba(124,92,252,0.25)", color: "#a78bfa" }}>
+                  PRO
+                </span>
               )}
-              {!photoLoading && !photoDataUrl && (
-                <div className="flex flex-col items-center gap-2 py-10">
-                  <svg className="w-8 h-8 text-white/30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                  <span className="text-white/40 text-sm">Clique ou arraste uma foto</span>
-                  <span className="text-white/25 text-xs">JPG, PNG, WEBP · até 20 MB</span>
-                </div>
-              )}
-              {!photoLoading && photoDataUrl && (
-                <>
-                  <img src={photoDataUrl} alt="preview" className="w-full object-cover rounded-xl max-h-56" />
-                  <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity rounded-xl" style={{ background: "rgba(0,0,0,0.45)" }}>
-                    <span className="text-white text-xs font-semibold">Trocar foto</span>
+            </button>
+          </div>
+
+          {/* Photo section */}
+          {mediaTab === "photo" && (
+            <div>
+              <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
+              <div
+                className={`relative w-full rounded-xl border-2 border-dashed transition-colors cursor-pointer flex items-center justify-center overflow-hidden
+                  ${errors.media ? "border-red-500/60" : "border-white/20 hover:border-white/40"}`}
+                style={{ minHeight: photoDataUrl ? undefined : "160px" }}
+                onClick={() => inputRef.current?.click()}
+                onDrop={handleDrop}
+                onDragOver={(e) => e.preventDefault()}
+              >
+                {photoLoading && (
+                  <div className="flex flex-col items-center gap-2 py-10">
+                    <div className="w-6 h-6 border-2 border-white/30 border-t-white/80 rounded-full animate-spin" />
+                    <span className="text-white/50 text-xs">Carregando…</span>
                   </div>
-                </>
+                )}
+                {!photoLoading && !photoDataUrl && (
+                  <div className="flex flex-col items-center gap-2 py-10">
+                    <svg className="w-8 h-8 text-white/30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <span className="text-white/40 text-sm">Clique ou arraste uma foto</span>
+                    <span className="text-white/25 text-xs">JPG, PNG, WEBP · até 20 MB</span>
+                  </div>
+                )}
+                {!photoLoading && photoDataUrl && (
+                  <>
+                    <img src={photoDataUrl} alt="preview" className="w-full object-cover rounded-xl max-h-56" />
+                    <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity rounded-xl" style={{ background: "rgba(0,0,0,0.45)" }}>
+                      <span className="text-white text-xs font-semibold">Trocar foto</span>
+                    </div>
+                  </>
+                )}
+              </div>
+              {(photoError || errors.media) && (
+                <p className="text-red-400 text-xs mt-1">{photoError ?? errors.media}</p>
               )}
             </div>
-            {(photoError || errors.photo) && (
-              <p className="text-red-400 text-xs mt-1">{photoError ?? errors.photo}</p>
-            )}
-          </div>
+          )}
+
+          {/* Video section */}
+          {mediaTab === "video" && (
+            <div>
+              {!canUseVideo ? (
+                <div className="rounded-xl border border-purple-500/25 p-5 flex flex-col items-center gap-3 text-center" style={{ background: "rgba(124,92,252,0.06)" }}>
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "rgba(124,92,252,0.15)" }}>
+                    <svg className="w-5 h-5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-white/80 font-semibold text-sm">Disponível no plano Pro ou Ultra</p>
+                    <p className="text-white/40 text-xs mt-1">Faça upgrade para gravar gols, lances e clipes da sua carreira.</p>
+                  </div>
+                </div>
+              ) : (
+                <VideoUploadSection
+                  planLimits={planLimits}
+                  videoCount={videoCount}
+                  onVideoReady={(url) => {
+                    setVideoUrl(url);
+                    if (url) setErrors((e) => ({ ...e, media: undefined }));
+                  }}
+                />
+              )}
+              {errors.media && canUseVideo && videoCount < planLimits.maxVideoMomentos && (
+                <p className="text-red-400 text-xs mt-1">{errors.media}</p>
+              )}
+            </div>
+          )}
 
           <div className="flex flex-col gap-1">
             <label className="text-white/60 text-xs font-semibold uppercase tracking-wide">Título <span className="text-red-400">*</span></label>
@@ -290,18 +593,55 @@ function AddMomentoModal({
   );
 }
 
+function VideoThumbnail({ videoUrl }: { videoUrl: string }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  return (
+    <video
+      ref={videoRef}
+      src={`${videoUrl}#t=0.1`}
+      preload="metadata"
+      muted
+      playsInline
+      className="w-full h-full object-cover"
+    />
+  );
+}
+
 function MomentoCard({ momento, onClick }: { momento: Momento; onClick: () => void }) {
+  const isVideo = momento.mediaType === "video";
+
   return (
     <button
       onClick={onClick}
       className="group glass glass-hover rounded-2xl overflow-hidden text-left w-full transition-all duration-200 hover:scale-[1.02]"
     >
-      <div className="relative aspect-video overflow-hidden">
-        <img src={momento.photoDataUrl} alt={momento.title} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
+      <div className="relative aspect-video overflow-hidden bg-black/30">
+        {isVideo && momento.videoUrl ? (
+          <>
+            <VideoThumbnail videoUrl={momento.videoUrl} />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div
+                className="w-11 h-11 rounded-full flex items-center justify-center transition-transform duration-200 group-hover:scale-110"
+                style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)" }}
+              >
+                <svg className="w-5 h-5 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M8 5v14l11-7z" />
+                </svg>
+              </div>
+            </div>
+          </>
+        ) : (
+          <img src={momento.photoDataUrl} alt={momento.title} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
+        )}
         <div className="absolute bottom-0 left-0 right-0 h-16 pointer-events-none" style={{ background: "linear-gradient(to top, rgba(0,0,0,0.65), transparent)" }} />
         <span className="absolute bottom-2 left-2.5 text-[11px] font-bold text-white/80">
           🗓 {formatGameDate(momento.gameDate)}
         </span>
+        {isVideo && (
+          <span className="absolute top-2 right-2 text-[10px] font-bold px-1.5 py-0.5 rounded-md" style={{ background: "rgba(0,0,0,0.55)", color: "rgba(255,255,255,0.7)" }}>
+            ▶ VÍDEO
+          </span>
+        )}
       </div>
       <div className="px-3 pt-2.5 pb-3">
         <p className="text-white font-bold text-sm leading-snug line-clamp-2">{momento.title}</p>
@@ -320,6 +660,9 @@ export function MomentosView({ seasonId, allSeasonIds, isReadOnly }: MomentosVie
   const [scope, setScope] = useState<"atual" | "todas">("atual");
   const [showAdd, setShowAdd] = useState(false);
   const [selectedMomento, setSelectedMomento] = useState<Tagged | null>(null);
+
+  const plan = getUserPlan();
+  const planLimits = getPlanLimits(plan);
 
   const hasMultipleSeasons = (allSeasonIds?.length ?? 0) > 1;
 
@@ -340,6 +683,13 @@ export function MomentosView({ seasonId, allSeasonIds, isReadOnly }: MomentosVie
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }, [scope, allSeasonIds, currentMomentos, seasonId]);
 
+  const videoCount = useMemo(() => {
+    const all = allSeasonIds
+      ? allSeasonIds.flatMap((sid) => getMomentos(sid))
+      : currentMomentos;
+    return all.filter((m) => m.mediaType === "video").length;
+  }, [allSeasonIds, currentMomentos]);
+
   const handleSave = (data: Omit<Momento, "id" | "createdAt">) => {
     const m: Momento = { ...data, id: generateMomentoId(), createdAt: new Date().toISOString() };
     addMomento(seasonId, m);
@@ -347,7 +697,10 @@ export function MomentosView({ seasonId, allSeasonIds, isReadOnly }: MomentosVie
     setShowAdd(false);
   };
 
-  const handleDelete = (tagged: Tagged) => {
+  const handleDelete = async (tagged: Tagged) => {
+    if (tagged.mediaType === "video" && tagged.videoUrl) {
+      void deleteVideoFromR2(tagged.videoUrl);
+    }
     deleteMomento(tagged._sid, tagged.id);
     refresh();
     setSelectedMomento(null);
@@ -358,7 +711,7 @@ export function MomentosView({ seasonId, allSeasonIds, isReadOnly }: MomentosVie
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
           <h2 className="text-white font-bold text-xl">Momentos</h2>
-          <p className="text-white/40 text-sm mt-0.5">Fotos e memórias da sua carreira</p>
+          <p className="text-white/40 text-sm mt-0.5">Fotos e vídeos da sua carreira</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {hasMultipleSeasons && (
@@ -407,7 +760,7 @@ export function MomentosView({ seasonId, allSeasonIds, isReadOnly }: MomentosVie
                 ? "Nenhuma temporada possui momentos ainda."
                 : isReadOnly
                 ? "Esta temporada não possui momentos."
-                : "Adicione fotos de conquistas, jogos épicos e outros instantes especiais."}
+                : "Adicione fotos ou vídeos de conquistas, jogos épicos e outros instantes especiais."}
             </p>
           </div>
           {!isReadOnly && scope === "atual" && (
@@ -429,7 +782,12 @@ export function MomentosView({ seasonId, allSeasonIds, isReadOnly }: MomentosVie
       )}
 
       {showAdd && (
-        <AddMomentoModal onClose={() => setShowAdd(false)} onSave={handleSave} />
+        <AddMomentoModal
+          onClose={() => setShowAdd(false)}
+          onSave={handleSave}
+          planLimits={planLimits}
+          videoCount={videoCount}
+        />
       )}
 
       {selectedMomento && (

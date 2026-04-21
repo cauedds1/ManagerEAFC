@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { randomUUID } from "crypto";
 
@@ -27,6 +27,19 @@ function createR2Client(): S3Client {
   });
 }
 
+function mimeToExt(contentType: string): string {
+  const map: Record<string, string> = {
+    "image/png": "png",
+    "image/jpeg": "jpg",
+    "image/webp": "webp",
+    "image/gif": "gif",
+    "video/mp4": "mp4",
+    "video/webm": "webm",
+    "video/quicktime": "mov",
+  };
+  return map[contentType] ?? "bin";
+}
+
 export async function createPresignedUploadUrl(
   folder: string,
   contentType: string,
@@ -37,7 +50,7 @@ export async function createPresignedUploadUrl(
   }
 
   const client = createR2Client();
-  const ext = contentType === "image/png" ? "png" : "jpg";
+  const ext = mimeToExt(contentType);
   const key = `${folder}/${randomUUID()}.${ext}`;
 
   const command = new PutObjectCommand({
@@ -62,7 +75,7 @@ export async function uploadFileToR2(
   }
 
   const client = createR2Client();
-  const ext = contentType === "image/png" ? "png" : "jpg";
+  const ext = mimeToExt(contentType);
   const key = `${folder}/${randomUUID()}.${ext}`;
 
   await client.send(
@@ -77,4 +90,18 @@ export async function uploadFileToR2(
 
   const base = R2_PUBLIC_URL.replace(/\/$/, "");
   return `${base}/${key}`;
+}
+
+export async function deleteFileFromR2(key: string): Promise<void> {
+  const { R2_BUCKET_NAME } = process.env;
+  if (!R2_BUCKET_NAME) {
+    throw new Error("R2_BUCKET_NAME not configured");
+  }
+  const client = createR2Client();
+  await client.send(
+    new DeleteObjectCommand({
+      Bucket: R2_BUCKET_NAME,
+      Key: key,
+    }),
+  );
 }

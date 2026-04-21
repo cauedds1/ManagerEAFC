@@ -8,6 +8,9 @@ export interface FrontendPlanLimits {
   autoNewsEnabled: boolean;
   rumorsEnabled: boolean;
   diretoriaEnabled: boolean;
+  maxVideoMomentos: number;
+  maxVideoMomentoSizeMb: number;
+  videoNewsEnabled: boolean;
 }
 
 const PLAN_LIMITS: Record<Plan, FrontendPlanLimits> = {
@@ -19,6 +22,9 @@ const PLAN_LIMITS: Record<Plan, FrontendPlanLimits> = {
     autoNewsEnabled: false,
     rumorsEnabled: false,
     diretoriaEnabled: false,
+    maxVideoMomentos: 0,
+    maxVideoMomentoSizeMb: 0,
+    videoNewsEnabled: false,
   },
   pro: {
     maxCareers: 5,
@@ -28,6 +34,9 @@ const PLAN_LIMITS: Record<Plan, FrontendPlanLimits> = {
     autoNewsEnabled: false,
     rumorsEnabled: false,
     diretoriaEnabled: true,
+    maxVideoMomentos: 25,
+    maxVideoMomentoSizeMb: 200,
+    videoNewsEnabled: false,
   },
   ultra: {
     maxCareers: Infinity,
@@ -37,6 +46,9 @@ const PLAN_LIMITS: Record<Plan, FrontendPlanLimits> = {
     autoNewsEnabled: true,
     rumorsEnabled: true,
     diretoriaEnabled: true,
+    maxVideoMomentos: 60,
+    maxVideoMomentoSizeMb: 500,
+    videoNewsEnabled: true,
   },
 };
 

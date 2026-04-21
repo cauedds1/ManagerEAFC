@@ -7,6 +7,8 @@ export interface Momento {
   gameDate: string;
   photoDataUrl: string;
   createdAt: string;
+  mediaType?: "image" | "video";
+  videoUrl?: string;
 }
 
 function momentosKey(seasonId: string): string {
@@ -73,4 +75,15 @@ export async function resizeImageToDataUrl(file: File, maxPx = 1280, quality = 0
     img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("image load error")); };
     img.src = url;
   });
+}
+
+export async function deleteVideoFromR2(videoUrl: string): Promise<void> {
+  try {
+    await fetch("/api/storage/objects", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: videoUrl }),
+    });
+  } catch {
+  }
 }
