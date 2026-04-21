@@ -745,6 +745,110 @@ export function getPlanWelcome(lang: Lang): Record<Plan, {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Painel (Dashboard) tab — all user-facing strings
+// ─────────────────────────────────────────────────────────────────────────────
+export const PAINEL: Record<Lang, Record<string, string>> = {
+  pt: {
+    // LeagueCard
+    leaguePosition: "Posição na Liga",
+    position: "Posição",
+    numTeams: "Nº de times",
+    wins: "Vitórias",
+    draws: "Empates",
+    losses: "Derrotas",
+    autoPoints: "Pontos calculados automaticamente",
+    savePosition: "Salvar posição",
+    noPosition: "Nenhuma posição registrada",
+    registerPosition: "+ Registrar posição",
+    teams: "times",
+    pts: "pts",
+    // TopPerformers
+    topScorers: "Artilheiros",
+    topAssists: "Assistentes",
+    goals: "gols",
+    assists: "assist.",
+    noGoals: "Nenhum gol registrado ainda",
+    noAssists: "Nenhuma assistência registrada ainda",
+    logMatchesHint: "Registre partidas com autores dos gols para ver aqui",
+    // LastMatches
+    lastMatches: "Últimas Partidas",
+    noMatches: "Nenhuma partida registrada ainda",
+    locationHome: "Casa",
+    locationAway: "Fora",
+    locationNeutral: "Neutro",
+    friendly: "Amistoso",
+    // MessagesSection
+    boardMessages: "Mensagens da Direção",
+    comingSoon: "Em breve",
+    rolePresident: "Presidente",
+    roleAssistant: "Auxiliar Técnico",
+    roleMarket: "Executivo de Mercado",
+    noMessages: "Nenhuma mensagem no momento",
+    messagesHint: "Mensagens aparecerão aqui conforme o progresso da temporada",
+    // Quick stats
+    statMatches: "Partidas",
+    statSeason: "Temporada",
+    statSquad: "Elenco",
+    statTransfers: "Transferências",
+    subLogged: "registradas",
+    subInProgress: "em andamento",
+    subPlayers: "jogadores",
+    subMovements: "movimentações",
+    // Tab label
+    tabLabel: "Painel",
+  },
+  en: {
+    // LeagueCard
+    leaguePosition: "League Position",
+    position: "Position",
+    numTeams: "No. of teams",
+    wins: "Wins",
+    draws: "Draws",
+    losses: "Losses",
+    autoPoints: "Points calculated automatically",
+    savePosition: "Save position",
+    noPosition: "No position logged",
+    registerPosition: "+ Register position",
+    teams: "teams",
+    pts: "pts",
+    // TopPerformers
+    topScorers: "Top Scorers",
+    topAssists: "Top Assists",
+    goals: "goals",
+    assists: "ast.",
+    noGoals: "No goals logged yet",
+    noAssists: "No assists logged yet",
+    logMatchesHint: "Log matches with goal scorers to see them here",
+    // LastMatches
+    lastMatches: "Latest Matches",
+    noMatches: "No matches logged yet",
+    locationHome: "Home",
+    locationAway: "Away",
+    locationNeutral: "Neutral",
+    friendly: "Friendly",
+    // MessagesSection
+    boardMessages: "Board Messages",
+    comingSoon: "Coming soon",
+    rolePresident: "President",
+    roleAssistant: "Assistant Coach",
+    roleMarket: "Market Executive",
+    noMessages: "No messages right now",
+    messagesHint: "Messages will appear here as the season progresses",
+    // Quick stats
+    statMatches: "Matches",
+    statSeason: "Season",
+    statSquad: "Squad",
+    statTransfers: "Transfers",
+    subLogged: "logged",
+    subInProgress: "in progress",
+    subPlayers: "players",
+    subMovements: "movements",
+    // Tab label
+    tabLabel: "Dashboard",
+  },
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Auth — AI News stories
 // ─────────────────────────────────────────────────────────────────────────────
 export function getNewsStories(lang: Lang) {

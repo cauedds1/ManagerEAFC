@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useLang } from "@/hooks/useLang";
+import { PAINEL } from "@/lib/i18n";
 import type { Career, Season } from "@/types/career";
 import { SettingsPage } from "./SettingsPage";
 import {
@@ -196,6 +198,8 @@ function CoachAvatar({ career }: { career: Career }) {
 }
 
 export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub, onReloadClubs, onDeleteCareer }: DashboardProps) {
+  const [lang] = useLang();
+  const painelTabLabel = PAINEL[lang].tabLabel;
   const userPlan = getUserPlan();
   const teamId = career.clubId > 0 ? career.clubId : 0;
 
@@ -1344,7 +1348,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
                     <span style={{ color: active ? "var(--club-primary)" : "rgba(255,255,255,0.3)" }}>
                       {tab.icon}
                     </span>
-                    {tab.label}
+                    {tab.id === "painel" ? painelTabLabel : tab.label}
                     {tab.id === "transferencias" && transfers.length > 0 && (
                       <span
                         className="text-xs font-bold px-1.5 py-0.5 rounded-full tabular-nums min-w-[20px] text-center"

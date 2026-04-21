@@ -12,6 +12,8 @@ import { getCachedClubList } from "@/lib/clubListCache";
 import { searchStaticClubs } from "@/lib/staticClubList";
 import { isRival } from "@/lib/rivalsStorage";
 import { MatchDetailPage } from "./MatchDetailPage";
+import { useLang } from "@/hooks/useLang";
+import { PAINEL } from "@/lib/i18n";
 
 function resolveOpponentLogo(name: string, stored?: string): string | undefined {
   if (stored) return stored;
@@ -100,6 +102,8 @@ function PlayerPhoto({ src, name, size = 8 }: { src: string; name: string; size?
 }
 
 function LeagueCard({ careerId, isReadOnly }: { careerId: string; isReadOnly?: boolean }) {
+  const [lang] = useLang();
+  const t = PAINEL[lang];
   const [data, setData] = useState<LeaguePosition | null>(() => getLeaguePosition(careerId));
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<LeaguePosition>(
@@ -138,7 +142,7 @@ function LeagueCard({ careerId, isReadOnly }: { careerId: string; isReadOnly?: b
     return (
       <div className="glass rounded-2xl p-5 flex flex-col gap-4">
         <div className="flex items-center justify-between">
-          <SectionTitle>Posição na Liga</SectionTitle>
+          <SectionTitle>{t.leaguePosition}</SectionTitle>
           <button onClick={() => setEditing(false)} className="text-white/30 hover:text-white/60 transition-colors">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -146,24 +150,24 @@ function LeagueCard({ careerId, isReadOnly }: { careerId: string; isReadOnly?: b
           </button>
         </div>
         <div className="grid grid-cols-2 gap-3">
-          {numInput("Posição", "position", 1, 40)}
-          {numInput("Nº de times", "totalTeams", 2, 40)}
-          {numInput("Vitórias", "wins", 0, 99)}
-          {numInput("Empates", "draws", 0, 99)}
-          {numInput("Derrotas", "losses", 0, 99)}
+          {numInput(t.position, "position", 1, 40)}
+          {numInput(t.numTeams, "totalTeams", 2, 40)}
+          {numInput(t.wins, "wins", 0, 99)}
+          {numInput(t.draws, "draws", 0, 99)}
+          {numInput(t.losses, "losses", 0, 99)}
         </div>
         <div className="flex items-center gap-2 text-white/40 text-xs">
           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01" />
           </svg>
-          Pontos calculados automaticamente ({draft.wins * 3 + draft.draws} pts)
+          {t.autoPoints} ({draft.wins * 3 + draft.draws} {t.pts})
         </div>
         <button
           onClick={save}
           className="w-full py-2.5 rounded-xl text-sm font-bold text-white transition-all duration-200 hover:opacity-90 active:scale-95"
           style={{ background: "var(--club-gradient)" }}
         >
-          Salvar posição
+          {t.savePosition}
         </button>
       </div>
     );
@@ -172,18 +176,18 @@ function LeagueCard({ careerId, isReadOnly }: { careerId: string; isReadOnly?: b
   if (!data) {
     return (
       <div className="glass rounded-2xl p-5 flex flex-col gap-3 items-center justify-center text-center min-h-[140px]">
-        <SectionTitle>Posição na Liga</SectionTitle>
+        <SectionTitle>{t.leaguePosition}</SectionTitle>
         <svg className="w-7 h-7 text-white/15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
         </svg>
-        <p className="text-white/30 text-xs">Nenhuma posição registrada</p>
+        <p className="text-white/30 text-xs">{t.noPosition}</p>
         {!isReadOnly && (
           <button
             onClick={() => setEditing(true)}
             className="px-4 py-1.5 rounded-lg text-xs font-semibold text-white transition-all hover:opacity-80"
             style={{ background: "rgba(var(--club-primary-rgb),0.2)", color: "var(--club-primary)" }}
           >
-            + Registrar posição
+            {t.registerPosition}
           </button>
         )}
       </div>
@@ -193,12 +197,11 @@ function LeagueCard({ careerId, isReadOnly }: { careerId: string; isReadOnly?: b
   return (
     <div className="glass rounded-2xl p-5 flex flex-col gap-2 relative">
       <div className="flex items-center justify-between mb-1">
-        <SectionTitle>Posição na Liga</SectionTitle>
+        <SectionTitle>{t.leaguePosition}</SectionTitle>
         {!isReadOnly && (
           <button
             onClick={() => { setDraft(data); setEditing(true); }}
             className="text-white/25 hover:text-white/55 transition-colors"
-            title="Editar"
           >
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
@@ -208,14 +211,14 @@ function LeagueCard({ careerId, isReadOnly }: { careerId: string; isReadOnly?: b
       </div>
       <div className="flex items-end gap-2">
         <span className="text-5xl font-black text-white tabular-nums leading-none">{data.position}°</span>
-        <span className="text-white/35 text-sm mb-1">/ {data.totalTeams} times</span>
+        <span className="text-white/35 text-sm mb-1">/ {data.totalTeams} {t.teams}</span>
       </div>
       <div className="flex items-center gap-3 mt-1">
         <span className="text-xs font-semibold tabular-nums" style={{ color: "#34d399" }}>{data.wins}V</span>
         <span className="text-xs font-semibold tabular-nums text-white/40">{data.draws}E</span>
         <span className="text-xs font-semibold tabular-nums" style={{ color: "#f87171" }}>{data.losses}D</span>
         <span className="text-white/20 text-xs">·</span>
-        <span className="text-xs font-black text-white tabular-nums">{data.points} pts</span>
+        <span className="text-xs font-black text-white tabular-nums">{data.points} {t.pts}</span>
       </div>
     </div>
   );
@@ -250,12 +253,11 @@ function TopPerformers({
       .filter((r) => r.player !== null);
   }, [careerId, playerMap, type, matchCount]);
 
-  const label = type === "goals" ? "Artilheiros" : "Assistentes";
-  const statLabel = type === "goals" ? "gols" : "assist.";
-  const emptyMsg =
-    type === "goals"
-      ? "Nenhum gol registrado ainda"
-      : "Nenhuma assistência registrada ainda";
+  const [lang] = useLang();
+  const t = PAINEL[lang];
+  const label = type === "goals" ? t.topScorers : t.topAssists;
+  const statLabel = type === "goals" ? t.goals : t.assists;
+  const emptyMsg = type === "goals" ? t.noGoals : t.noAssists;
 
   return (
     <div className="glass rounded-2xl p-5 flex flex-col gap-3">
@@ -280,7 +282,7 @@ function TopPerformers({
           </svg>
           <p className="text-white/25 text-xs">{emptyMsg}</p>
           <p className="text-white/15 text-xs">
-            Registre partidas com autores dos gols para ver aqui
+            {t.logMatchesHint}
           </p>
         </div>
       ) : (
@@ -328,15 +330,17 @@ function LastMatches({
   clubLogoUrl?: string | null;
   onMatchClick?: (match: MatchRecord) => void;
 }) {
+  const [lang] = useLang();
+  const t = PAINEL[lang];
   const last5 = [...matches].sort((a, b) => b.createdAt - a.createdAt).slice(0, 6);
 
-  const LOCATION_LABEL: Record<string, string> = { casa: "Casa", fora: "Fora", neutro: "Neutro" };
+  const LOCATION_LABEL: Record<string, string> = { casa: t.locationHome, fora: t.locationAway, neutro: t.locationNeutral };
   const LOCATION_ICON: Record<string, string> = { casa: "🏠", fora: "✈️", neutro: "⚖️" };
 
   if (matches.length === 0) {
     return (
       <div className="glass rounded-2xl p-5 flex flex-col gap-3">
-        <SectionTitle>Últimas Partidas</SectionTitle>
+        <SectionTitle>{t.lastMatches}</SectionTitle>
         <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(6, 1fr)" }}>
           {Array.from({ length: 6 }).map((_, i) => (
             <div
@@ -357,14 +361,14 @@ function LastMatches({
             </div>
           ))}
         </div>
-        <p className="text-white/20 text-xs text-center">Nenhuma partida registrada ainda</p>
+        <p className="text-white/20 text-xs text-center">{t.noMatches}</p>
       </div>
     );
   }
 
   return (
     <div className="glass rounded-2xl p-5 flex flex-col gap-3">
-      <SectionTitle>Últimas Partidas</SectionTitle>
+      <SectionTitle>{t.lastMatches}</SectionTitle>
       <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(6, 1fr)" }}>
         {last5.map((m) => {
           const result = getMatchResultFull(m.myScore, m.opponentScore, m.penaltyShootout);
@@ -431,7 +435,7 @@ function LastMatches({
                   className="text-xs font-bold leading-tight"
                   style={{ color: tournamentColor, flex: 1, minWidth: 0, wordBreak: "break-word" }}
                 >
-                  {tournamentPrefix}{m.tournament || "Amistoso"}
+                  {tournamentPrefix}{m.tournament || t.friendly}
                 </span>
                 {dateStr && (
                   <span className="text-white/35 text-xs flex-shrink-0 font-medium tabular-nums">{dateStr}</span>
@@ -499,21 +503,23 @@ function LastMatches({
 }
 
 function MessagesSection() {
+  const [lang] = useLang();
+  const t = PAINEL[lang];
   const senders = [
-    { role: "Presidente", icon: "🏛️", color: "rgba(245,158,11,0.18)", text: "#fbbf24" },
-    { role: "Auxiliar Técnico", icon: "📋", color: "rgba(59,130,246,0.18)", text: "#60a5fa" },
-    { role: "Executivo de Mercado", icon: "💼", color: "rgba(16,185,129,0.18)", text: "#34d399" },
+    { role: t.rolePresident, icon: "🏛️", color: "rgba(245,158,11,0.18)", text: "#fbbf24" },
+    { role: t.roleAssistant, icon: "📋", color: "rgba(59,130,246,0.18)", text: "#60a5fa" },
+    { role: t.roleMarket, icon: "💼", color: "rgba(16,185,129,0.18)", text: "#34d399" },
   ];
 
   return (
     <div className="glass rounded-2xl p-5 flex flex-col gap-3">
       <div className="flex items-center justify-between">
-        <SectionTitle>Mensagens da Direção</SectionTitle>
+        <SectionTitle>{t.boardMessages}</SectionTitle>
         <span
           className="text-xs font-semibold px-2.5 py-1 rounded-full"
           style={{ background: "rgba(var(--club-primary-rgb),0.12)", color: "var(--club-primary)" }}
         >
-          Em breve
+          {t.comingSoon}
         </span>
       </div>
       <div className="flex flex-col gap-2">
@@ -537,14 +543,14 @@ function MessagesSection() {
                 {s.role}
               </span>
               <p className="text-white/20 text-xs mt-1.5 italic">
-                Nenhuma mensagem no momento
+                {t.noMessages}
               </p>
             </div>
           </div>
         ))}
       </div>
       <p className="text-white/15 text-xs text-center">
-        Mensagens aparecerão aqui conforme o progresso da temporada
+        {t.messagesHint}
       </p>
     </div>
   );
@@ -564,12 +570,14 @@ export function PainelView({
   isReadOnly,
 }: PainelViewProps) {
   const careerId = careerIdProp ?? seasonId;
+  const [lang] = useLang();
+  const t = PAINEL[lang];
   const [selectedMatch, setSelectedMatch] = useState<MatchRecord | null>(null);
   const quickStats = [
     {
-      label: "Partidas",
+      label: t.statMatches,
       value: matches.length,
-      sub: "registradas",
+      sub: t.subLogged,
       icon: (
         <svg className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
           <circle cx="12" cy="12" r="10" />
@@ -578,9 +586,9 @@ export function PainelView({
       ),
     },
     {
-      label: "Temporada",
+      label: t.statSeason,
       value: season,
-      sub: "em andamento",
+      sub: t.subInProgress,
       icon: (
         <svg className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -588,9 +596,9 @@ export function PainelView({
       ),
     },
     {
-      label: "Elenco",
+      label: t.statSquad,
       value: squadSize ?? allPlayers.length,
-      sub: "jogadores",
+      sub: t.subPlayers,
       icon: (
         <svg className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -598,9 +606,9 @@ export function PainelView({
       ),
     },
     {
-      label: "Transferências",
+      label: t.statTransfers,
       value: transferCount,
-      sub: "movimentações",
+      sub: t.subMovements,
       icon: (
         <svg className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
