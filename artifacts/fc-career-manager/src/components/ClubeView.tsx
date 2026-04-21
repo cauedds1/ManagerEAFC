@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from "react";
-import type { SquadResult, SquadPlayer } from "@/lib/squadCache";
+import type { SquadResult, SquadPlayer, PositionPtBr } from "@/lib/squadCache";
 import type { TransferRecord } from "@/types/transfer";
 import type { Career, Season } from "@/types/career";
 import type { MatchRecord } from "@/types/match";
@@ -138,6 +138,32 @@ export function ClubeView({
     [allSeasonIds, pastSeasonsLoaded]
   );
 
+  const expandedStatsPlayers = useMemo(() => {
+    if (!hasMultipleSeasons) return statsPlayers;
+    const statsPlayerMap = new Map(statsPlayers.map((p) => [p.id, p]));
+    const extras: SquadPlayer[] = [];
+    for (const idStr of Object.keys(allStatsOverride)) {
+      const id = Number(idStr);
+      if (!statsPlayerMap.has(id)) {
+        extras.push({
+          id,
+          name: `Jogador #${id}`,
+          age: 0,
+          position: "Midfielder",
+          positionPtBr: "MID" as PositionPtBr,
+          photo: "",
+          number: 0,
+        });
+      }
+    }
+    return extras.length > 0 ? [...statsPlayers, ...extras] : statsPlayers;
+  }, [hasMultipleSeasons, statsPlayers, allStatsOverride]);
+
+  const expandedFormerPlayerIds = useMemo(() => {
+    if (!hasMultipleSeasons) return formerPlayerIds;
+    return new Set(expandedStatsPlayers.filter((p) => !currentPlayerIds.has(p.id)).map((p) => p.id));
+  }, [hasMultipleSeasons, expandedStatsPlayers, currentPlayerIds, formerPlayerIds]);
+
   const allMatchesForSeq = useMemo<MatchRecord[] | undefined>(() => {
     if (seqScope === "atual" || !hasMultipleSeasons) return undefined;
     return allSeasonMatches;
@@ -235,10 +261,10 @@ export function ClubeView({
                 <PlayerStatsTable
                   careerId={careerId}
                   seasonId={seasonId}
-                  allPlayers={statsPlayers}
+                  allPlayers={statsScope === "todas" && hasMultipleSeasons ? expandedStatsPlayers : statsPlayers}
                   statsOverride={statsScope === "todas" && hasMultipleSeasons ? allStatsOverride : undefined}
                   matchesOverride={statsScope === "todas" && hasMultipleSeasons ? allSeasonMatches : undefined}
-                  formerPlayerIds={formerPlayerIds}
+                  formerPlayerIds={statsScope === "todas" && hasMultipleSeasons ? expandedFormerPlayerIds : formerPlayerIds}
                 />
               </div>
             )}
