@@ -1362,7 +1362,7 @@ export function LandingPage({ onStart, onLogin, onStartWithPlan }: LandingPagePr
                 Assinar Pro
               </button>
               <ul style={{ marginTop: 28, listStyle: "none", padding: 0, display: "flex", flexDirection: "column", gap: 12 }}>
-                {["Até 5 carreiras ativas", "20 gerações de IA por dia", "Diretoria com até 4 membros", "Notícias geradas em segundos"].map(f => (
+                {["Até 5 carreiras ativas", "20 gerações de IA por dia", "Diretoria com até 2 membros", "Notícias geradas em segundos"].map(f => (
                   <li key={f} style={{ display: "flex", gap: 10, fontSize: 13, color: "#c0c0d8" }}>
                     <span style={{ color: "#7c5cfc", marginTop: 2 }}>✓</span> {f}
                   </li>

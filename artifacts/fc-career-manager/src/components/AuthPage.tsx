@@ -37,7 +37,7 @@ const PLAN_CARDS: Array<{
     period: "por mês",
     accentRgb: "124,92,252",
     accentColor: "#7c5cfc",
-    features: ["Até 5 carreiras ativas", "20 gerações de IA por dia", "Diretoria com até 4 membros", "Notícias geradas em segundos"],
+    features: ["Até 5 carreiras ativas", "20 gerações de IA por dia", "Diretoria com até 2 membros", "Notícias geradas em segundos"],
   },
   {
     plan: "ultra",
@@ -84,7 +84,7 @@ const PLAN_DETAIL_DATA: Record<Plan, {
     features: [
       "Até 5 carreiras ativas",
       "20 gerações de IA por dia",
-      "Diretoria com até 4 membros",
+      "Diretoria com até 2 membros",
       "Notícias geradas em segundos",
     ],
     missing: [
@@ -425,7 +425,7 @@ const PLAN_WELCOME: Record<Plan, {
     features: [
       { emoji: "🏆", text: "Até 5 carreiras ativas simultâneas" },
       { emoji: "🤖", text: "20 gerações de IA por dia" },
-      { emoji: "👔", text: "Diretoria com até 4 membros" },
+      { emoji: "👔", text: "Diretoria com até 2 membros" },
       { emoji: "📰", text: "Notícias geradas em segundos por IA" },
     ],
     footer: "Obrigado por apoiar o FC Career Manager!",

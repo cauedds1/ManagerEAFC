@@ -23,7 +23,7 @@ const PLAN_LIMITS: Record<Plan, FrontendPlanLimits> = {
   pro: {
     maxCareers: 5,
     aiGenerationsPerDay: 20,
-    maxDiretoriaMembers: 4,
+    maxDiretoriaMembers: 2,
     maxCustomPortals: 0,
     autoNewsEnabled: false,
     rumorsEnabled: false,
