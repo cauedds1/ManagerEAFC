@@ -153,7 +153,7 @@ export function ClubeView({
       if (!statsPlayerMap.has(id)) {
         extras.push({
           id,
-          name: `Jogador #${id}`,
+          name: t.playerFallback.replace("{n}", `#${id}`),
           age: 0,
           position: "Midfielder",
           positionPtBr: "MID" as PositionPtBr,

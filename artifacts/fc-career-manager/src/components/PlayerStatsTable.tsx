@@ -147,12 +147,12 @@ export function PlayerStatsTable({ careerId, seasonId, allPlayers, statsOverride
   ];
 
   const LEGEND_COMMON: { sigla: string; desc: string }[] = [
-    { sigla: "#",    desc: t.legendShirtNo },
-    { sigla: "Pos",  desc: t.legendPos },
-    { sigla: "J",    desc: t.legendGames },
-    { sigla: "S11",  desc: t.legendStarter },
-    { sigla: "Nota", desc: t.legendRating },
-    { sigla: "MOTM", desc: t.legendMOTM },
+    { sigla: "#",           desc: t.legendShirtNo },
+    { sigla: "Pos",         desc: t.legendPos },
+    { sigla: "J",           desc: t.legendGames },
+    { sigla: "S11",         desc: t.legendStarter },
+    { sigla: t.siglaRating, desc: t.legendRating },
+    { sigla: "MOTM",        desc: t.legendMOTM },
   ];
 
   const LEGEND_BY_TAB: Record<FilterTab, { sigla: string; desc: string }[]> = {
@@ -161,10 +161,10 @@ export function PlayerStatsTable({ careerId, seasonId, allPlayers, statsOverride
       { sigla: "A",      desc: t.legendAssists },
       { sigla: "G+A",    desc: t.legendGA },
       { sigla: "Hat",    desc: t.legendHat },
-      { sigla: "Pên⚽",   desc: t.legendPenScored },
-      { sigla: "Pên✗",   desc: t.legendPenMissed },
-      { sigla: "Fin",    desc: t.legendShots },
-      { sigla: "Acert%", desc: t.legendShotAcc },
+      { sigla: t.siglaPenScored, desc: t.legendPenScored },
+      { sigla: t.siglaPenMissed, desc: t.legendPenMissed },
+      { sigla: t.siglaShots,    desc: t.legendShots },
+      { sigla: t.siglaShotAcc,  desc: t.legendShotAcc },
       { sigla: "OVR",    desc: t.legendOVR },
     ],
     intermediario: [
@@ -185,7 +185,7 @@ export function PlayerStatsTable({ careerId, seasonId, allPlayers, statsOverride
     goleiro: [
       { sigla: "Def",  desc: t.legendSaves },
       { sigla: "GS",   desc: t.legendGA2 },
-      { sigla: "Pên✓", desc: t.legendPenSaved },
+      { sigla: t.siglaPenSaved, desc: t.legendPenSaved },
       { sigla: "OVR",  desc: t.legendOVR },
     ],
   };
@@ -394,7 +394,7 @@ export function PlayerStatsTable({ careerId, seasonId, allPlayers, statsOverride
       <Th label="Pos"     col="pos"     {...th} />
       <Th label="J"       col="total"   {...th} title={t.legendGames} />
       <Th label="S11"     col="starter" {...th} title={t.legendStarter} />
-      <Th label="Nota"    col="rating"  {...th} title={t.legendRating} />
+      <Th label={t.siglaRating} col="rating" {...th} title={t.legendRating} />
       <Th label="MOTM"    col="motm"    {...th} title={t.legendMOTM} accent="#fbbf24" />
     </>
   );
@@ -500,10 +500,10 @@ export function PlayerStatsTable({ careerId, seasonId, allPlayers, statsOverride
                 <Th label="A"      col="assists"   {...th} title={t.legendAssists}   accent="#60a5fa" />
                 <Th label="G+A"    col="ga"        {...th} title={t.legendGA}        accent="#a78bfa" />
                 <Th label="Hat"    col="hat"       {...th} title={t.legendHat}       accent="#fbbf24" />
-                <Th label="Pên⚽"   col="penScored" {...th} title={t.legendPenScored} accent="#34d399" />
-                <Th label="Pên✗"   col="penMissed" {...th} title={t.legendPenMissed} accent="#f87171" />
-                <Th label="Fin"    col="shots"     {...th} title={t.legendShots} />
-                <Th label="Acert%" col="shotAcc"   {...th} title={t.legendShotAcc}  accent="#fb923c" />
+                <Th label={t.siglaPenScored} col="penScored" {...th} title={t.legendPenScored} accent="#34d399" />
+                <Th label={t.siglaPenMissed} col="penMissed" {...th} title={t.legendPenMissed} accent="#f87171" />
+                <Th label={t.siglaShots}    col="shots"     {...th} title={t.legendShots} />
+                <Th label={t.siglaShotAcc}  col="shotAcc"   {...th} title={t.legendShotAcc}  accent="#fb923c" />
                 <Th label="OVR"    col="overall"   {...th} title={t.legendOVR} />
               </tr>
             )}
@@ -533,7 +533,7 @@ export function PlayerStatsTable({ careerId, seasonId, allPlayers, statsOverride
                 {ALWAYS_HEADER}
                 <Th label="Def"  col="saves"        {...th} title={t.legendSaves}    accent="#34d399" />
                 <Th label="GS"   col="goalsAgainst" {...th} title={t.legendGA2}      accent="#f87171" />
-                <Th label="Pên✓" col="penSaved"     {...th} title={t.legendPenSaved} accent="#60a5fa" />
+                <Th label={t.siglaPenSaved} col="penSaved" {...th} title={t.legendPenSaved} accent="#60a5fa" />
                 <Th label="OVR"  col="overall"      {...th} title={t.legendOVR} />
               </tr>
             )}
