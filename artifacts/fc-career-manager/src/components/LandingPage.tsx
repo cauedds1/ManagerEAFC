@@ -285,6 +285,7 @@ function HeroReelsMockup() {
   const [idx, setIdx]         = useState(0);
   const [prevIdx, setPrevIdx] = useState<number | null>(null);
   const [phase, setPhase]     = useState<"idle" | "prepare" | "animate">("idle");
+  const [progress, setProgress] = useState(0);
   const videoRef  = useRef<HTMLVideoElement>(null);
   const rafRef    = useRef<number | null>(null);
   const timerRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -295,6 +296,7 @@ function HeroReelsMockup() {
     setPrevIdx(idx);
     setIdx(next);
     setPhase("prepare");
+    setProgress(0);
   }, [idx, phase]);
 
   useEffect(() => {
@@ -312,7 +314,16 @@ function HeroReelsMockup() {
     const v = videoRef.current;
     if (!v) return;
     v.currentTime = 0;
+    setProgress(0);
     v.play().catch(() => {});
+
+    const onTimeUpdate = () => {
+      if (v.duration && v.duration > 0) {
+        setProgress(v.currentTime / v.duration);
+      }
+    };
+    v.addEventListener("timeupdate", onTimeUpdate);
+    return () => v.removeEventListener("timeupdate", onTimeUpdate);
   }, [idx]);
 
   useEffect(() => {
@@ -369,7 +380,43 @@ function HeroReelsMockup() {
           </div>
         </div>
 
-        <div style={{ width: 100, height: 4, borderRadius: 2, background: "rgba(255,255,255,0.18)", margin: "10px auto 0" }} />
+        {/* ── Progress indicator dots ── */}
+        <div style={{ display: "flex", gap: 6, justifyContent: "center", alignItems: "center", margin: "8px auto 4px" }}>
+          {REELS_CLIPS.map((_, i) => {
+            const isActive = i === idx;
+            const isPast   = i < idx;
+            return (
+              <div
+                key={i}
+                style={{
+                  width: isActive ? 48 : 8,
+                  height: 3,
+                  borderRadius: 2,
+                  background: isPast ? "rgba(255,255,255,0.45)" : "rgba(255,255,255,0.15)",
+                  overflow: "hidden",
+                  transition: "width 0.35s ease, background 0.35s ease",
+                  position: "relative",
+                }}
+              >
+                {isActive && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      background: "linear-gradient(90deg, #7c5cfc, #a78bfa)",
+                      transformOrigin: "left center",
+                      transform: `scaleX(${progress})`,
+                      transition: "transform 0.15s linear",
+                      borderRadius: 2,
+                    }}
+                  />
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        <div style={{ width: 100, height: 4, borderRadius: 2, background: "rgba(255,255,255,0.18)", margin: "4px auto 0" }} />
       </div>
     </div>
   );
