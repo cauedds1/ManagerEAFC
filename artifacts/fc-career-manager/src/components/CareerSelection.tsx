@@ -296,24 +296,69 @@ export function CareerSelection({ careers, onSelectCareer, onCreateNew, onCareer
       {/* ── RIGHT CONTENT ── */}
       <div className="flex-1 min-w-0 overflow-y-auto p-5 xl:p-7">
         {!hasCareer ? (
-          /* Empty state */
-          <div className="h-full flex flex-col items-center justify-center gap-5 animate-fade-up">
-            <div className="w-20 h-20 rounded-3xl flex items-center justify-center animate-float"
-              style={{ background: "rgba(var(--club-primary-rgb),0.08)", border: "1px solid rgba(var(--club-primary-rgb),0.15)", boxShadow: "0 0 40px rgba(var(--club-primary-rgb),0.12)" }}>
-              <svg className="w-9 h-9" style={{ color: "var(--club-primary)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 6.75V15m6-6v8.25m.503 3.498l4.875-2.437c.381-.19.622-.58.622-1.006V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0L9.503 3.252a1.125 1.125 0 00-1.006 0L3.622 5.689C3.24 5.88 3 6.27 3 6.695V19.18c0 .836.88 1.38 1.628 1.006l3.869-1.934c.317-.159.69-.159 1.006 0l4.994 2.497c.317.158.69.158 1.006 0z" />
+          /* ── Rich Empty State ── */
+          <div className="h-full flex flex-col items-center justify-center animate-fade-up relative overflow-hidden">
+
+            {/* Pitch SVG watermark */}
+            <svg viewBox="0 0 600 400" className="absolute inset-0 w-full h-full pointer-events-none"
+              preserveAspectRatio="xMidYMid slice"
+              style={{ opacity: 0.04 }}>
+              <rect x="30" y="20" width="540" height="360" rx="10" fill="none" stroke="white" strokeWidth="2" />
+              <line x1="300" y1="20" x2="300" y2="380" stroke="white" strokeWidth="1.5" />
+              <circle cx="300" cy="200" r="60" fill="none" stroke="white" strokeWidth="1.5" />
+              <circle cx="300" cy="200" r="4" fill="white" />
+              <rect x="30" y="140" width="90" height="120" rx="3" fill="none" stroke="white" strokeWidth="1.5" />
+              <rect x="480" y="140" width="90" height="120" rx="3" fill="none" stroke="white" strokeWidth="1.5" />
+            </svg>
+
+            {/* Ambient glow */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full pointer-events-none"
+              style={{ background: "radial-gradient(ellipse, rgba(var(--club-primary-rgb),0.06) 0%, transparent 70%)" }} />
+
+            {/* Icon */}
+            <div className="relative w-24 h-24 rounded-3xl flex items-center justify-center mb-7 animate-float"
+              style={{ background: "rgba(var(--club-primary-rgb),0.08)", border: "1px solid rgba(var(--club-primary-rgb),0.18)", boxShadow: "0 0 60px rgba(var(--club-primary-rgb),0.15)" }}>
+              <div className="absolute inset-2 rounded-2xl" style={{ border: "1px solid rgba(var(--club-primary-rgb),0.1)" }} />
+              <svg className="w-11 h-11 relative" style={{ color: "var(--club-primary)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 6.75V15m6-6v8.25m.503 3.498l4.875-2.437c.381-.19.622-.58.622-1.006V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0L9.503 3.252a1.125 1.125 0 00-1.006 0L3.622 5.689C3.24 5.88 3 6.27 3 6.695V19.18c0 .836.88 1.38 1.628 1.006l3.869-1.934c-.317-.159.69-.159 1.006 0l4.994 2.497c.317.158.69.158 1.006 0z" />
               </svg>
             </div>
-            <div className="text-center">
-              <h3 className="text-white font-black text-xl mb-1.5">Comece sua jornada</h3>
-              <p className="text-white/30 text-sm leading-relaxed max-w-xs">
-                Crie seu primeiro perfil de técnico, escolha um clube e construa um legado no EA FC 26.
+
+            {/* Text */}
+            <div className="text-center mb-7 relative">
+              <p className="text-xs font-bold tracking-widest uppercase mb-3" style={{ color: "var(--club-primary)", opacity: 0.7 }}>
+                Modo Carreira · EA FC 26
+              </p>
+              <h3 className="text-white font-black text-2xl mb-2.5 leading-tight">Comece sua jornada</h3>
+              <p className="text-white/35 text-sm leading-relaxed max-w-[280px] mx-auto">
+                Crie seu técnico, escolha um clube e construa um legado que será lembrado para sempre.
               </p>
             </div>
+
+            {/* Feature chips */}
+            <div className="flex flex-wrap justify-center gap-2 mb-8 max-w-xs relative">
+              {[
+                { icon: "⚽", label: "700+ clubes" },
+                { icon: "📊", label: "Estatísticas" },
+                { icon: "🤖", label: "IA integrada" },
+                { icon: "🏆", label: "Legado" },
+              ].map((chip) => (
+                <div key={chip.label}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold"
+                  style={{ background: "rgba(var(--club-primary-rgb),0.07)", border: "1px solid rgba(var(--club-primary-rgb),0.15)", color: "rgba(255,255,255,0.45)" }}>
+                  <span>{chip.icon}</span>
+                  <span>{chip.label}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* CTA */}
             <button
               onClick={onCreateNew}
-              className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-white text-sm transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
-              style={{ background: "var(--club-gradient)", boxShadow: "0 4px 20px rgba(var(--club-primary-rgb),0.25)" }}
+              className="relative flex items-center gap-2.5 px-8 py-3.5 rounded-2xl font-bold text-white text-sm transition-all duration-300 hover:scale-[1.03] active:scale-[0.98]"
+              style={{ background: "var(--club-gradient)", boxShadow: "0 4px 24px rgba(var(--club-primary-rgb),0.3), 0 1px 0 rgba(255,255,255,0.1) inset" }}
+              onMouseEnter={e => (e.currentTarget as HTMLElement).style.boxShadow = "0 8px 40px rgba(var(--club-primary-rgb),0.45), 0 1px 0 rgba(255,255,255,0.1) inset"}
+              onMouseLeave={e => (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 24px rgba(var(--club-primary-rgb),0.3), 0 1px 0 rgba(255,255,255,0.1) inset"}
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />

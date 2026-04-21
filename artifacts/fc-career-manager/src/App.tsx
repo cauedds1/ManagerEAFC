@@ -7,6 +7,7 @@ import { Dashboard } from "@/components/Dashboard";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { LandingPage } from "@/components/LandingPage";
 import { AuthPage } from "@/components/AuthPage";
+import { WelcomeScreen } from "@/components/WelcomeScreen";
 import { applyTheme, resetTheme, extractColorsFromImage } from "@/lib/themeManager";
 import { getClubColors } from "@/lib/clubColors";
 import { APIFOOTBALL_TO_FC26_NAME } from "@/lib/footballApiMap";
@@ -156,6 +157,7 @@ export default function App() {
   const [checkoutPending, setCheckoutPending] = useState(false);
   const [checkoutConfirmed, setCheckoutConfirmed] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
+  const [showWelcome, setShowWelcome] = useState(false);
 
   useEffect(() => {
     resetTheme();
@@ -237,6 +239,8 @@ export default function App() {
     }, 360);
   }, []);
 
+  const WELCOME_KEY = (userId: number) => `fc_onboarded_${userId}`;
+
   const handleAuthSuccess = useCallback(async (token: string, user: AuthUser) => {
     localStorage.setItem(AUTH_TOKEN_KEY, token);
     localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user));
@@ -244,6 +248,8 @@ export default function App() {
     const fetched = await fetchCareersFromApi();
     setCareers(fetched);
     const hasCareers = fetched.length > 0;
+    const isFirstTime = !localStorage.getItem(`fc_onboarded_${user.id}`);
+    if (isFirstTime) setShowWelcome(true);
     const localCached = getCachedClubList();
     if (localCached && localCached.length > 0) {
       setAllClubs(localCached);
@@ -252,6 +258,11 @@ export default function App() {
     }
     doFetchClubs(() => resolveViewAfterClubs(hasCareers));
   }, [doFetchClubs, resolveViewAfterClubs]);
+
+  const handleWelcomeDismiss = useCallback(() => {
+    if (authUser) localStorage.setItem(WELCOME_KEY(authUser.id), "1");
+    setShowWelcome(false);
+  }, [authUser]);
 
   const handleLogout = useCallback(() => {
     localStorage.removeItem(AUTH_TOKEN_KEY);
@@ -622,6 +633,14 @@ export default function App() {
           {renderView()}
         </div>
       </div>
+
+      {showWelcome && authUser && (
+        <WelcomeScreen
+          userName={authUser.name}
+          plan={authUser.plan ?? "free"}
+          onContinue={handleWelcomeDismiss}
+        />
+      )}
 
       {checkoutPending && (
         <div className="fixed inset-0 z-50 flex items-center justify-center"
