@@ -158,6 +158,13 @@ export default function App() {
   const [checkoutConfirmed, setCheckoutConfirmed] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
+  const [lang, setLangState] = useState<"pt" | "en">(() => {
+    try { return (localStorage.getItem("fc_lang") as "pt" | "en") ?? "pt"; } catch { return "pt"; }
+  });
+  const setLang = useCallback((l: "pt" | "en") => {
+    setLangState(l);
+    try { localStorage.setItem("fc_lang", l); } catch {}
+  }, []);
 
   useEffect(() => {
     resetTheme();
@@ -544,11 +551,11 @@ export default function App() {
     }
 
     if (view === "landing") {
-      return <LandingPage onStart={handleLandingStart} onLogin={handleLandingLogin} onStartWithPlan={handleLandingStartWithPlan} />;
+      return <LandingPage onStart={handleLandingStart} onLogin={handleLandingLogin} onStartWithPlan={handleLandingStartWithPlan} lang={lang} setLang={setLang} />;
     }
 
     if (view === "auth") {
-      return <AuthPage onBack={handleAuthBack} onAuthSuccess={handleAuthSuccess} initialPlan={authInitialPlan} checkoutDraft={authCheckoutDraft} onDraftConsumed={() => setAuthCheckoutDraft(null)} />;
+      return <AuthPage onBack={handleAuthBack} onAuthSuccess={handleAuthSuccess} initialPlan={authInitialPlan} checkoutDraft={authCheckoutDraft} onDraftConsumed={() => setAuthCheckoutDraft(null)} lang={lang} />;
     }
 
     if (view === "loading-clubs") {
