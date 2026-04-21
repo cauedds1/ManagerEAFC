@@ -1,8 +1,10 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import multer from "multer";
+import { eq } from "drizzle-orm";
 import { RequestUploadUrlBody, RequestUploadUrlResponse } from "@workspace/api-zod";
 import { isR2Configured, createPresignedUploadUrl, uploadFileToR2, deleteFileFromR2 } from "../lib/r2Storage";
 import { requireAuth, extractUserIdFromToken, type AuthRequest } from "../middleware/auth";
+import { db, usersTable } from "@workspace/db";
 
 const router: IRouter = Router();
 
@@ -54,13 +56,22 @@ router.post("/storage/uploads/request-url", async (req: Request, res: Response) 
 
   let folder: string;
 
-  const userScopedFolders = new Set(["momentos", "noticias-video"]);
-
-  if (userScopedFolders.has(rawFolder)) {
+  if (rawFolder === "momentos" || rawFolder === "noticias-video") {
     const userId = extractUserIdFromToken(req.headers.authorization);
     if (!userId) {
       res.status(401).json({ error: "Autenticação necessária para upload nesta pasta." });
       return;
+    }
+    if (rawFolder === "noticias-video") {
+      const [dbUser] = await db
+        .select({ plan: usersTable.plan })
+        .from(usersTable)
+        .where(eq(usersTable.id, userId))
+        .limit(1);
+      if (!dbUser || dbUser.plan !== "ultra") {
+        res.status(403).json({ error: "Upload de vídeos em notícias está disponível apenas no plano Ultra." });
+        return;
+      }
     }
     folder = `${rawFolder}/${userId}`;
   } else {
