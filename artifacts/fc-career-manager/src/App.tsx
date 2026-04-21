@@ -154,6 +154,7 @@ export default function App() {
   const [authInitialPlan, setAuthInitialPlan] = useState<"free" | "pro" | "ultra">("free");
   const [checkoutPending, setCheckoutPending] = useState(false);
   const [checkoutConfirmed, setCheckoutConfirmed] = useState(false);
+  const [isExiting, setIsExiting] = useState(false);
 
   useEffect(() => {
     resetTheme();
@@ -233,7 +234,11 @@ export default function App() {
   }, []);
 
   const handleAuthBack = useCallback(() => {
-    setView("landing");
+    setIsExiting(true);
+    setTimeout(() => {
+      setView("landing");
+      requestAnimationFrame(() => requestAnimationFrame(() => setIsExiting(false)));
+    }, 360);
   }, []);
 
   const handleAuthSuccess = useCallback(async (token: string, user: AuthUser) => {
@@ -551,7 +556,16 @@ export default function App() {
     <>
       <AnimatedBackground />
       <div className="relative h-full overflow-hidden">
-        {renderView()}
+        <div
+          style={{
+            height: "100%",
+            transition: "opacity 0.36s ease, transform 0.36s ease",
+            opacity: isExiting ? 0 : 1,
+            transform: isExiting ? "translateX(32px)" : "translateX(0)",
+          }}
+        >
+          {renderView()}
+        </div>
       </div>
 
       {checkoutPending && (
