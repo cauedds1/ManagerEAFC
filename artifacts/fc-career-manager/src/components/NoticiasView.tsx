@@ -1,4 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
+import { NOTICIAS } from "@/lib/i18n";
+import type { Lang } from "@/lib/i18n";
+import { useLang } from "@/hooks/useLang";
 import { createPortal } from "react-dom";
 import type { Career } from "@/types/career";
 import type { NewsPost, NewsSource, NewsCategory } from "@/types/noticias";
@@ -162,6 +165,7 @@ export interface BgGenParams {
   recentPostsContext?: { title?: string; category: string; headline: string }[];
   seasonId: string;
   careerId: string;
+  lang?: Lang;
 }
 
 const LOCATION_LABELS_AI: Record<string, string> = {
@@ -314,6 +318,7 @@ function AddPostModal({
   onGenerateBackground,
   aiUsageToday,
   aiUsageLimit,
+  lang = "pt",
 }: {
   career: Career;
   playerContextStr?: string;
@@ -333,7 +338,9 @@ function AddPostModal({
   onGenerateBackground: (params: BgGenParams) => void;
   aiUsageToday?: number;
   aiUsageLimit?: number;
+  lang?: Lang;
 }) {
+  const tModal = NOTICIAS[lang];
   const [mode, setMode] = useState<AddMode>("auto");
 
   const [aiDesc, setAiDesc] = useState("");
@@ -440,9 +447,9 @@ function AddPostModal({
   const shortClub = career.clubName.split(" ").slice(0, 2).join(" ");
 
   const manSourceHandle =
-    manSource === "tnt" ? "@tntsports" : manSource === "espn" ? "@espnbrasil" : `@${slug}oficial`;
+    manSource === "tnt" ? "@tntsports" : manSource === "espn" ? (lang === "en" ? "@espn" : "@espnbrasil") : `@${slug}oficial`;
   const manSourceName =
-    manSource === "tnt" ? "TNT Sports" : manSource === "espn" ? "ESPN Brasil" : `${shortClub} Oficial`;
+    manSource === "tnt" ? "TNT Sports" : manSource === "espn" ? (lang === "en" ? "ESPN" : "ESPN Brasil") : `${shortClub} Oficial`;
 
   const selectedCustomPortal = aiSource !== "auto" && aiSource !== "tnt" && aiSource !== "espn" && aiSource !== "fanpage"
     ? customPortals?.find((p) => p.id === aiSource)
@@ -483,6 +490,7 @@ function AddPostModal({
       recentPostsContext: recentPostsCtx,
       seasonId,
       careerId,
+      lang,
     });
     onClose();
   };
@@ -543,7 +551,7 @@ function AddPostModal({
           className="flex items-center justify-between px-5 py-4 flex-shrink-0"
           style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}
         >
-          <h3 className="text-white font-bold text-base">Nova Notícia</h3>
+          <h3 className="text-white font-bold text-base">{tModal.modalTitle}</h3>
           <button onClick={onClose} className="text-white/40 hover:text-white/70 transition-colors">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -568,7 +576,7 @@ function AddPostModal({
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
             </svg>
-            Automático (IA)
+            {tModal.modeAuto}
           </button>
           <button
             onClick={() => setMode("manual")}
@@ -582,7 +590,7 @@ function AddPostModal({
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125" />
             </svg>
-            Manual
+            {tModal.modeManual}
           </button>
         </div>
 
@@ -593,12 +601,12 @@ function AddPostModal({
               {/* Description */}
               <div>
                 <label className="text-white/40 text-xs font-semibold uppercase tracking-wider block mb-2">
-                  Descreva a notícia
+                  {tModal.labelDescription}
                 </label>
                 <textarea
                   value={aiDesc}
-                  onChange={(e) => { setAiDesc(e.target.value); setAiPreview(null); setAiError(null); }}
-                  placeholder={`Ex: Jogador estrela se lesionou no treino e vai ficar 3 semanas fora. Detalhe que foi uma lesão muscular na coxa esquerda durante o treino de hoje de manhã.`}
+                  onChange={(e) => { setAiDesc(e.target.value); }}
+                  placeholder={tModal.descPlaceholder}
                   className="w-full px-4 py-3 rounded-xl text-white text-sm focus:outline-none resize-none placeholder:text-white/20 leading-relaxed"
                   style={{
                     background: "rgba(255,255,255,0.05)",
@@ -611,7 +619,7 @@ function AddPostModal({
               {/* Source */}
               <div>
                 <label className="text-white/40 text-xs font-semibold uppercase tracking-wider block mb-2">
-                  Portal
+                  {tModal.labelPortal}
                 </label>
                 <div className="flex gap-2 flex-wrap">
                   <button
@@ -626,7 +634,7 @@ function AddPostModal({
                     <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
                     </svg>
-                    Automático
+                    {tModal.btnAutoPortal}
                   </button>
                   {(["fanpage", "tnt", "espn"] as NewsSource[]).map((s) => (
                     <SourceButton
@@ -650,7 +658,7 @@ function AddPostModal({
               {/* Category */}
               <div>
                 <label className="text-white/40 text-xs font-semibold uppercase tracking-wider block mb-2">
-                  Categoria <span className="text-white/25 normal-case font-normal">(opcional)</span>
+                  {tModal.labelCategory} <span className="text-white/25 normal-case font-normal">{tModal.labelCategoryOptional}</span>
                 </label>
                 <div className="flex gap-2 flex-wrap">
                   <button
@@ -662,12 +670,12 @@ function AddPostModal({
                       border: `1px solid ${aiCategory === "auto" ? "rgba(var(--club-primary-rgb),0.3)" : "rgba(255,255,255,0.06)"}`,
                     }}
                   >
-                    IA escolhe
+                    {tModal.btnAiCategory}
                   </button>
                   {(Object.keys(CATEGORY_LABELS) as NewsCategory[]).map((c) => (
                     <CategoryButton
                       key={c}
-                      label={CATEGORY_LABELS[c]}
+                      label={tModal[`cat${c.charAt(0).toUpperCase() + c.slice(1)}` as keyof typeof tModal] as string ?? CATEGORY_LABELS[c]}
                       active={aiCategory === c}
                       onClick={() => setAiCategory(c)}
                     />
@@ -679,7 +687,7 @@ function AddPostModal({
               {(matches ?? []).length > 0 && (
                 <div>
                   <label className="text-white/40 text-xs font-semibold uppercase tracking-wider block mb-2">
-                    Partida <span className="text-white/25 normal-case font-normal">(opcional)</span>
+                    {tModal.labelAttachMatch} <span className="text-white/25 normal-case font-normal">{tModal.labelAttachMatchOptional}</span>
                   </label>
                   {attachedMatch ? (
                     <div
@@ -721,7 +729,7 @@ function AddPostModal({
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
                         </svg>
-                        Anexar partida
+                        {tModal.btnAttachMatch}
                       </button>
                       {showMatchPicker && (
                         <div
@@ -766,7 +774,7 @@ function AddPostModal({
               {/* Image picker */}
               <div>
                 <label className="text-white/40 text-xs font-semibold uppercase tracking-wider block mb-2">
-                  Foto <span className="text-white/25 normal-case font-normal">(opcional)</span>
+                  {tModal.labelPhoto} <span className="text-white/25 normal-case font-normal">{tModal.labelPhotoOptional}</span>
                 </label>
                 <input
                   ref={imageInputRef}
@@ -791,7 +799,7 @@ function AddPostModal({
                         <svg className="w-3 h-3 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                         </svg>
-                        <span className="text-green-400 text-xs font-semibold">Enviada</span>
+                        <span className="text-green-400 text-xs font-semibold">{tModal.imageUploaded}</span>
                       </div>
                     )}
                     <button
@@ -966,7 +974,7 @@ function AddPostModal({
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
                 </svg>
-                {isUploadingImage ? "Aguardando foto..." : "Gerar com IA"}
+                {isUploadingImage ? `${tModal.btnGenerate}...` : tModal.btnGenerate}
               </button>
               )}
             </div>
@@ -975,7 +983,7 @@ function AddPostModal({
               {/* Source picker */}
               <div>
                 <label className="text-white/40 text-xs font-semibold uppercase tracking-wider block mb-2">
-                  Portal
+                  {tModal.labelPortal}
                 </label>
                 <div className="flex gap-2 flex-wrap">
                   {(["fanpage", "tnt", "espn"] as NewsSource[]).map((s) => (
@@ -992,13 +1000,13 @@ function AddPostModal({
               {/* Category picker */}
               <div>
                 <label className="text-white/40 text-xs font-semibold uppercase tracking-wider block mb-2">
-                  Categoria
+                  {tModal.labelCategory}
                 </label>
                 <div className="flex gap-2 flex-wrap">
                   {(Object.keys(CATEGORY_LABELS) as NewsCategory[]).map((c) => (
                     <CategoryButton
                       key={c}
-                      label={CATEGORY_LABELS[c]}
+                      label={tModal[`cat${c.charAt(0).toUpperCase() + c.slice(1)}` as keyof typeof tModal] as string ?? CATEGORY_LABELS[c]}
                       active={manCategory === c}
                       onClick={() => setManCategory(c)}
                     />
@@ -1009,7 +1017,7 @@ function AddPostModal({
               {/* Title (optional) */}
               <div>
                 <label className="text-white/40 text-xs font-semibold uppercase tracking-wider block mb-2">
-                  Título <span className="text-white/25 normal-case font-normal">(opcional)</span>
+                  {tModal.labelTitle} <span className="text-white/25 normal-case font-normal">{tModal.labelTitleOptional}</span>
                 </label>
                 <input
                   type="text"
@@ -1027,7 +1035,7 @@ function AddPostModal({
               {/* Content */}
               <div>
                 <label className="text-white/40 text-xs font-semibold uppercase tracking-wider block mb-2">
-                  Legenda
+                  {tModal.labelContent}
                 </label>
                 <textarea
                   ref={textareaRef}
@@ -1049,7 +1057,7 @@ function AddPostModal({
               {/* Image picker (manual mode) */}
               <div>
                 <label className="text-white/40 text-xs font-semibold uppercase tracking-wider block mb-2">
-                  Foto <span className="text-white/25 normal-case font-normal">(opcional)</span>
+                  {tModal.labelPhoto} <span className="text-white/25 normal-case font-normal">{tModal.labelPhotoOptional}</span>
                 </label>
                 {imagePreviewUrl ? (
                   <div className="relative rounded-xl overflow-hidden" style={{ maxHeight: 200 }}>
@@ -1067,7 +1075,7 @@ function AddPostModal({
                         <svg className="w-3 h-3 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                         </svg>
-                        <span className="text-green-400 text-xs font-semibold">Enviada</span>
+                        <span className="text-green-400 text-xs font-semibold">{tModal.imageUploaded}</span>
                       </div>
                     )}
                     <button
@@ -1093,7 +1101,7 @@ function AddPostModal({
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
                     </svg>
-                    Adicionar foto ao post
+                    {tModal.menuAddImage}
                   </button>
                 )}
                 {imageError && (
@@ -1199,7 +1207,7 @@ function AddPostModal({
                 className="w-full py-3 rounded-xl text-sm font-bold text-white transition-all duration-200 hover:opacity-90 active:scale-[0.98] disabled:opacity-30 disabled:cursor-not-allowed"
                 style={{ background: "var(--club-gradient)" }}
               >
-                {isUploadingImage ? "Enviando foto..." : videoUploadState === "uploading" ? "Enviando vídeo..." : "Publicar notícia"}
+                {isUploadingImage ? `${lang === "en" ? "Uploading photo..." : "Enviando foto..."}` : videoUploadState === "uploading" ? `${lang === "en" ? "Uploading video..." : "Enviando vídeo..."}` : tModal.btnPublish}
               </button>
             </div>
           )}
@@ -1229,6 +1237,25 @@ const CUSTOM_SIDEBAR_COLOR = { color: "#a78bfa", bg: "rgba(167,139,250,0.15)" };
 
 
 export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matches = [], pastSeasons = [], isReadOnly, onGenerateBackground, userPlan, aiUsageToday, aiUsageLimit }: NoticiasViewProps) {
+  const [lang] = useLang();
+  const t = NOTICIAS[lang];
+
+  const getCategoryLabels = (): Record<NewsCategory, string> => ({
+    resultado: t.catResultado,
+    lesao: t.catLesao,
+    transferencia: t.catTransferencia,
+    renovacao: t.catRenovacao,
+    treino: t.catTreino,
+    conquista: t.catConquista,
+    geral: t.catGeral,
+  });
+  const getSourceLabels = (): Record<NewsSource, string> => ({
+    tnt: "TNT Sports",
+    espn: "ESPN",
+    fanpage: "FanPage",
+    custom: t.srcCustomPortal,
+  });
+
   const [posts, setPosts] = useState<NewsPost[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [filterSource, setFilterSource] = useState<string>("all");
@@ -1325,6 +1352,7 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
           clubLeague: career.clubLeague || undefined,
           clubDescription: career.clubDescription || undefined,
           projeto: career.projeto || undefined,
+          lang: localStorage.getItem("fc_lang") || "pt",
         }),
       })
         .then((r) => r.ok ? r.json() : null)
@@ -1580,7 +1608,7 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
     if (!post?.matchId || refreshingPostId) return;
     const match = _matches.find((m) => m.id === post.matchId);
     if (!match) {
-      window.alert("Não encontrei a partida vinculada a esta notícia.");
+      window.alert(NOTICIAS[localStorage.getItem("fc_lang") as Lang || "pt"]?.alertMatchNotFound ?? "Não encontrei a partida vinculada a esta notícia.");
       return;
     }
     setRefreshingPostId(postId);
@@ -1631,6 +1659,7 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
             description: customPortal.description,
             tone: customPortal.tone,
           } : undefined,
+          lang: localStorage.getItem("fc_lang") || "pt",
         }),
       });
       if (!res.ok) throw new Error("Erro ao atualizar notícia");
@@ -1743,8 +1772,11 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
     return true;
   });
 
+  const catLabels = getCategoryLabels();
+  const srcLabels = getSourceLabels();
+
   const sourceFilters: { id: string; label: string }[] = [
-    { id: "all",     label: "Todos" },
+    { id: "all",     label: t.filterAll },
     { id: "fanpage", label: "FanPage" },
     { id: "tnt",     label: "TNT Sports" },
     { id: "espn",    label: "ESPN" },
@@ -1754,7 +1786,7 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
   const sourceCounts = [
     ...( ["fanpage", "tnt", "espn"] as NewsSource[]).map((s) => ({
       id: s,
-      label: SOURCE_LABELS[s],
+      label: srcLabels[s],
       count: posts.filter((p) => p.source === s).length,
     })),
     ...customPortals.map((cp) => ({
@@ -1771,19 +1803,19 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
     .sort((a, b) => b.count - a.count);
 
   const srcLabel = filterSource !== "all"
-    ? (SOURCE_LABELS[filterSource as NewsSource] ?? customPortals.find((p) => p.id === filterSource)?.name ?? filterSource)
+    ? (srcLabels[filterSource as NewsSource] ?? customPortals.find((p) => p.id === filterSource)?.name ?? filterSource)
     : "";
-  const catLabel = filterCategory !== "all" ? CATEGORY_LABELS[filterCategory] : "";
+  const catLabel = filterCategory !== "all" ? (catLabels[filterCategory] ?? "") : "";
   const withImagesCount = posts.filter((p) => !!p.imageUrl).length;
   const emptyLabel = (() => {
     if (normalizedQuery)
-      return `Nenhuma publicação encontrada para "${searchQuery.trim()}"`;
-    if (filterOnlyWithImages) return "Nenhuma publicação com imagem nos filtros atuais";
+      return `${t.emptySearch} "${searchQuery.trim()}"`;
+    if (filterOnlyWithImages) return t.emptyImages;
     if (filterSource !== "all" && filterCategory !== "all")
-      return `Nenhuma publicação de ${srcLabel} na categoria ${catLabel}`;
-    if (filterSource !== "all") return `Nenhuma publicação de ${srcLabel} ainda`;
-    if (filterCategory !== "all") return `Nenhuma publicação na categoria ${catLabel}`;
-    return "Clique em \"Nova notícia\" para publicar a primeira";
+      return t.emptySrcCat.replace("{src}", srcLabel).replace("{cat}", catLabel);
+    if (filterSource !== "all") return t.emptySrc.replace("{src}", srcLabel);
+    if (filterCategory !== "all") return t.emptyCat.replace("{cat}", catLabel);
+    return t.emptyDefault;
   })();
 
   return (
@@ -1792,7 +1824,7 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
       {/* Top bar */}
       <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
         <div className="flex items-center gap-3">
-          <h2 className="text-white/35 text-xs font-bold tracking-widest uppercase">Notícias</h2>
+          <h2 className="text-white/35 text-xs font-bold tracking-widest uppercase">{t.heading}</h2>
           {posts.length > 0 && (
             <span
               className="text-xs font-bold px-2.5 py-0.5 rounded-full tabular-nums"
@@ -1814,7 +1846,7 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
             </svg>
-            Nova notícia
+            {t.btnNewPost}
           </button>
         )}
       </div>
@@ -1836,7 +1868,7 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Buscar por título ou descrição..."
+            placeholder={t.searchPlaceholder}
             className="w-full pl-9 pr-9 py-2.5 rounded-xl text-sm outline-none transition-all duration-150"
             style={{
               background: "rgba(255,255,255,0.04)",
@@ -1904,7 +1936,7 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
               border: "1px solid rgba(255,255,255,0.10)",
             }}
           >
-            {CATEGORY_LABELS[filterCategory]}
+            {catLabels[filterCategory]}
             <svg className="w-3 h-3 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -1926,7 +1958,7 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
                 📰
               </div>
               <div>
-                <p className="text-white/35 font-semibold text-sm">Nenhuma notícia ainda</p>
+                <p className="text-white/35 font-semibold text-sm">{lang === "en" ? "No news yet" : "Nenhuma notícia ainda"}</p>
                 <p className="text-white/20 text-xs mt-1 max-w-xs">{emptyLabel}</p>
               </div>
               {!isReadOnly && filterSource === "all" && filterCategory === "all" && (
@@ -1935,7 +1967,7 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
                   className="mt-2 px-5 py-2 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90"
                   style={{ background: "var(--club-gradient)" }}
                 >
-                  + Primeira notícia
+                  + {lang === "en" ? "First post" : "Primeira notícia"}
                 </button>
               )}
             </div>
@@ -1952,6 +1984,7 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
                   onDelete={isReadOnly ? undefined : handleDeletePost}
                   onRefresh={isReadOnly ? undefined : handleRefreshPost}
                   isRefreshing={refreshingPostId === post.id}
+                  lang={lang}
                 />
               ))}
             </div>
@@ -1967,7 +2000,7 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
               className="rounded-2xl p-4 flex flex-col gap-3"
               style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
             >
-              <p className="text-white/35 text-xs font-bold uppercase tracking-wider">Por fonte</p>
+              <p className="text-white/35 text-xs font-bold uppercase tracking-wider">{lang === "en" ? "By source" : "Por fonte"}</p>
               <div className="flex flex-col gap-2.5">
                 {sourceCounts.map(({ id, label, count }) => {
                   const cfg = SOURCE_SIDEBAR_COLOR[id] ?? CUSTOM_SIDEBAR_COLOR;
@@ -2017,7 +2050,7 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
                 className="rounded-2xl p-4 flex flex-col gap-3"
                 style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
               >
-                <p className="text-white/35 text-xs font-bold uppercase tracking-wider">Por categoria</p>
+                <p className="text-white/35 text-xs font-bold uppercase tracking-wider">{lang === "en" ? "By category" : "Por categoria"}</p>
                 <div className="flex flex-col gap-1">
                   {categoryCounts.map(({ id, count }) => {
                     const active = filterCategory === id;
@@ -2038,7 +2071,7 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
                             color: active ? "var(--club-primary)" : "rgba(255,255,255,0.45)",
                           }}
                         >
-                          {CATEGORY_LABELS[id]}
+                          {catLabels[id as NewsCategory] ?? CATEGORY_LABELS[id as NewsCategory]}
                         </span>
                         <span
                           className="text-xs font-bold tabular-nums px-1.5 py-0.5 rounded-md"
@@ -2135,6 +2168,7 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
         onGenerateBackground={onGenerateBackground}
         aiUsageToday={aiUsageToday}
         aiUsageLimit={aiUsageLimit}
+        lang={lang}
       />,
       document.body
     )}

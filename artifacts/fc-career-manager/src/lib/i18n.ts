@@ -2482,6 +2482,144 @@ export function matchDateLocale(lang: Lang): string {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Notícias (News tab)
+// ─────────────────────────────────────────────────────────────────────────────
+export const NOTICIAS: Record<Lang, Record<string, string>> = {
+  pt: {
+    // Header
+    heading: "Notícias",
+    btnNewPost: "Nova notícia",
+    // Search
+    searchPlaceholder: "Buscar por título ou descrição...",
+    // Add-post modal
+    modalTitle: "Nova Notícia",
+    labelDescription: "Descreva a notícia",
+    descPlaceholder: "Ex: Jogador estrela se lesionou no treino e vai ficar 3 semanas fora.",
+    labelPortal: "Portal",
+    labelCategory: "Categoria",
+    labelCategoryOptional: "(opcional)",
+    btnAutoPortal: "Automático",
+    btnAiCategory: "IA escolhe",
+    labelAttachMatch: "Partida",
+    labelAttachMatchOptional: "(opcional)",
+    btnAttachMatch: "Anexar partida",
+    labelPhoto: "Foto",
+    labelPhotoOptional: "(opcional)",
+    btnGenerate: "Gerar notícia",
+    btnPublish: "Publicar",
+    modeAuto: "Automático (IA)",
+    modeManual: "Manual",
+    labelTitle: "Título",
+    labelTitleOptional: "(opcional)",
+    labelContent: "Conteúdo",
+    labelSource: "Portal",
+    labelSourceHandle: "Handle",
+    labelSourceName: "Nome do portal",
+    // Filter sidebar
+    filterAll: "Todos",
+    filterCustomPortal: "Portal Customizado",
+    filterSectionContent: "Conteúdo",
+    filterWithImages: "Com imagens",
+    filterCategories: "Categorias",
+    filterSources: "Fontes",
+    // Category labels
+    catResultado: "Resultado",
+    catLesao: "Lesão",
+    catTransferencia: "Transferência",
+    catRenovacao: "Renovação",
+    catTreino: "Treino",
+    catConquista: "Conquista",
+    catGeral: "Geral",
+    // Source labels
+    srcCustomPortal: "Portal Customizado",
+    // Empty / error states
+    emptyDefault: "Clique em \"Nova notícia\" para publicar a primeira",
+    emptySearch: "Nenhuma publicação encontrada para",
+    emptyImages: "Nenhuma publicação com imagem nos filtros atuais",
+    emptySrcCat: "Nenhuma publicação de {src} na categoria {cat}",
+    emptySrc: "Nenhuma publicação de {src} ainda",
+    emptyCat: "Nenhuma publicação na categoria {cat}",
+    // Confirm dialogs
+    confirmDelete: "Excluir esta manchete? Essa ação não pode ser desfeita.",
+    alertMatchNotFound: "Não encontrei a partida vinculada a esta notícia.",
+    // Time ago
+    timeNow: "agora",
+    // NoticiaPost menu
+    menuRefresh: "Atualizar notícia",
+    menuAddImage: "Adicionar imagem",
+    menuRemoveImage: "Remover imagem",
+    menuDelete: "Excluir",
+    imageUploaded: "Enviada",
+  },
+  en: {
+    // Header
+    heading: "News",
+    btnNewPost: "New post",
+    // Search
+    searchPlaceholder: "Search by headline or content...",
+    // Add-post modal
+    modalTitle: "New Post",
+    labelDescription: "Describe the news",
+    descPlaceholder: "E.g. Star player injured in training and will miss 3 weeks.",
+    labelPortal: "Portal",
+    labelCategory: "Category",
+    labelCategoryOptional: "(optional)",
+    btnAutoPortal: "Automatic",
+    btnAiCategory: "AI picks",
+    labelAttachMatch: "Match",
+    labelAttachMatchOptional: "(optional)",
+    btnAttachMatch: "Attach match",
+    labelPhoto: "Photo",
+    labelPhotoOptional: "(optional)",
+    btnGenerate: "Generate post",
+    btnPublish: "Publish",
+    modeAuto: "Automatic (AI)",
+    modeManual: "Manual",
+    labelTitle: "Title",
+    labelTitleOptional: "(optional)",
+    labelContent: "Content",
+    labelSource: "Portal",
+    labelSourceHandle: "Handle",
+    labelSourceName: "Portal name",
+    // Filter sidebar
+    filterAll: "All",
+    filterCustomPortal: "Custom Portal",
+    filterSectionContent: "Content",
+    filterWithImages: "With images",
+    filterCategories: "Categories",
+    filterSources: "Sources",
+    // Category labels
+    catResultado: "Result",
+    catLesao: "Injury",
+    catTransferencia: "Transfer",
+    catRenovacao: "Contract",
+    catTreino: "Training",
+    catConquista: "Trophy",
+    catGeral: "General",
+    // Source labels
+    srcCustomPortal: "Custom Portal",
+    // Empty / error states
+    emptyDefault: "Click \"New post\" to publish the first one",
+    emptySearch: "No posts found for",
+    emptyImages: "No posts with images in current filters",
+    emptySrcCat: "No posts from {src} in category {cat}",
+    emptySrc: "No posts from {src} yet",
+    emptyCat: "No posts in category {cat}",
+    // Confirm dialogs
+    confirmDelete: "Delete this headline? This action cannot be undone.",
+    alertMatchNotFound: "Could not find the match linked to this post.",
+    // Time ago
+    timeNow: "now",
+    // NoticiaPost menu
+    menuRefresh: "Refresh post",
+    menuAddImage: "Add image",
+    menuRemoveImage: "Remove image",
+    menuDelete: "Delete",
+    imageUploaded: "Uploaded",
+  },
+} satisfies Record<Lang, Record<string, string>>;
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Auth — AI News stories
 // ─────────────────────────────────────────────────────────────────────────────
 export function getNewsStories(lang: Lang) {

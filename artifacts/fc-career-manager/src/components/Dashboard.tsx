@@ -411,6 +411,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
           attachedMatchContext: params.attachedMatchContext || undefined,
           fanMoodScore,
           fanMoodLabel: `${getFanMoodLabel(fanMoodScore).emoji} ${getFanMoodLabel(fanMoodScore).label}`,
+          lang: params.lang ?? localStorage.getItem("fc_lang") ?? "pt",
         }),
       });
 
@@ -754,6 +755,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
         currentCompetitions: currentCompetitions.length ? currentCompetitions : undefined,
         clubDescription: career.clubDescription || undefined,
         projeto: career.projeto || undefined,
+        lang: localStorage.getItem("fc_lang") ?? "pt",
       }),
     }).then(async (res) => {
       if (!res.ok) return;
@@ -909,6 +911,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
                   description: jornalistico.description,
                   tone: jornalistico.tone,
                 },
+                lang: localStorage.getItem("fc_lang") ?? "pt",
               }),
             }).then(async (leakRes) => {
               if (!leakRes.ok) return;

@@ -51,6 +51,16 @@ interface GenerateNoticiaBody {
   matchPlayerContext?: string;
   attachedMatchContext?: string;
   currentCompetitions?: string[];
+  lang?: string;
+}
+
+function langInstruction(lang?: string): string {
+  if (lang !== "en") return "";
+  return `\n\nCRITICAL LANGUAGE INSTRUCTION — ABSOLUTE PRIORITY: You MUST write EVERYTHING in English. This includes the title, the caption/content, ALL comments, ALL replies, and ALL displayNames. Use English football vocabulary and natural English phrasing throughout. Do NOT write a single word in Portuguese. Keep JSON keys and internal tags exactly as shown.`;
+}
+
+function isEnglish(lang?: string): boolean {
+  return lang === "en";
 }
 
 function leagueTierLabel(league: string): string {
@@ -282,7 +292,7 @@ router.post("/noticias/generate", requireAuth, async (req: AuthRequest, res) => 
     description, clubName, season, source, category,
     playersContext, squadOvrContext, teamFormContext, startingXIContext, historicalContext, recentPostsContext, customPortal,
     clubLeague, clubTitles, clubDescription, projeto, isClassico, rivalName, fanMoodScore, fanMoodLabel,
-    matchPlayerContext, attachedMatchContext, currentCompetitions,
+    matchPlayerContext, attachedMatchContext, currentCompetitions, lang,
   } = req.body as GenerateNoticiaBody;
 
   if (!description || !description.trim()) {
@@ -295,7 +305,7 @@ router.post("/noticias/generate", requireAuth, async (req: AuthRequest, res) => 
 
   const standardSourceOptions = {
     tnt:     { name: "TNT Sports",        handle: "@tntsports" },
-    espn:    { name: "ESPN Brasil",       handle: "@espnbrasil" },
+    espn:    { name: isEnglish(lang) ? "ESPN" : "ESPN Brasil", handle: isEnglish(lang) ? "@espn" : "@espnbrasil" },
     fanpage: { name: `${shortClub} Oficial`, handle: `@${slug}oficial` },
   } as const;
 
@@ -410,13 +420,13 @@ REGRAS OBRIGATÓRIAS PARA PÊNALTIS:
   const crisisReactionSection = buildCrisisReactionSection(description, fanMoodScore);
   const positiveMomentumRecalibrationSection = buildPositiveMomentumRecalibrationSection(teamFormContext, fanMoodScore);
 
-  const systemPrompt = `Você é um especialista em criar posts de futebol para redes sociais brasileiras no estilo Instagram.
+  const systemPrompt = `Você é um especialista em criar posts de futebol para redes sociais no estilo Instagram.
 Cada post que você cria deve ser ÚNICO e DIFERENTE dos anteriores — varie o estilo, tom, escolha de emojis, estrutura da legenda e perfil dos comentaristas.
-Use linguagem informal, autêntica, com gírias brasileiras do futebol. Seja criativo e específico.
+Use linguagem informal, autêntica, com gírias do futebol. Seja criativo e específico.
 O time é ${clubName}${season ? ` (temporada ${season})` : ""}.
 O portal que publica é ${portalName} (${portalHandle}).
 Semente de unicidade: ${uniqueSeed} — use ela para garantir que este post seja diferente de qualquer outro.
-REGRA ABSOLUTA: NUNCA mencione números de OVR, overall, ratings ou diferenças numéricas de atributos em nenhuma parte do texto gerado (título, legenda, comentários, replies). Em vez disso, use apenas termos qualitativos naturais como "estrela do elenco", "acima da média", "jogador de alto nível", "craque do time", "peça importante", "abaixo da média do elenco", "reforço de qualidade", etc. Os dados numéricos existem apenas para a sua calibração interna — não os exponha no texto.${prestigeSection}${playersSection}${squadOvrSection}${teamFormSection}${startingXISection}${historicalSection}${attachedMatchSection}${matchPlayerSection}${recentPostsSection}${fanMoodSection}${positiveMomentumRecalibrationSection}${crisisReactionSection}${penaltySection}${classicoSection}${customPortalSection}${globalPortalSection}`;
+REGRA ABSOLUTA: NUNCA mencione números de OVR, overall, ratings ou diferenças numéricas de atributos em nenhuma parte do texto gerado (título, legenda, comentários, replies). Em vez disso, use apenas termos qualitativos naturais como "estrela do elenco", "acima da média", "jogador de alto nível", "craque do time", "peça importante", "abaixo da média do elenco", "reforço de qualidade", etc. Os dados numéricos existem apenas para a sua calibração interna — não os exponha no texto.${prestigeSection}${playersSection}${squadOvrSection}${teamFormSection}${startingXISection}${historicalSection}${attachedMatchSection}${matchPlayerSection}${recentPostsSection}${fanMoodSection}${positiveMomentumRecalibrationSection}${crisisReactionSection}${penaltySection}${classicoSection}${customPortalSection}${globalPortalSection}${langInstruction(lang)}`;
 
   const commentPersonalitiesRule = isGlobalPortal
     ? `AUDIÊNCIA DOS COMENTÁRIOS — portal global com seguidores de TODO o mundo e de VÁRIOS clubes:
@@ -436,10 +446,10 @@ REGRAS DE CRIATIVIDADE:
 - Emojis e hashtags devem ser contextuais, não aleatórios
 
 REGRAS OBRIGATÓRIAS PARA COMENTARISTAS:
-- TODOS os comentários e replies DEVEM estar escritos em português (pt-BR), sem excepção — incluindo perfis "internacional" e "rival"
-- displayName DEVE ser um nome de pessoa real e comum (ex: "Lucas Ferreira", "Ana Souza", "Pedro Mendes", "Carla Lima", "João Carlos", "Thiago Rocha")
-- username DEVE ser derivado do nome da pessoa, curto e simples, como uma pessoa real usaria (ex: @lucasferreira, @anasouza22, @pedromendes_fc, @carlamlima, @joaocarlos17)
-- NUNCA use nomes de fanpage, coletivos ou conceitos abstratos — ERRADO: @nossosbonsmomentos, @bolaplenitude, @amantesdacorneta2023
+- TODOS os comentários e replies DEVEM estar escritos ${isEnglish(lang) ? "em inglês (en-GB/en-US)" : "em português (pt-BR)"}, sem exceção — incluindo perfis "internacional" e "rival"
+- displayName DEVE ser um nome de pessoa real e comum ${isEnglish(lang) ? '(ex: "James Wilson", "Sarah Mitchell", "Carlos Rivera", "Emma Thompson")' : '(ex: "Lucas Ferreira", "Ana Souza", "Pedro Mendes", "Carla Lima", "João Carlos", "Thiago Rocha")'}
+- username DEVE ser derivado do nome da pessoa, curto e simples, como uma pessoa real usaria ${isEnglish(lang) ? "(ex: @jameswilson, @sarahmitchell22, @carlosrivera_fc)" : "(ex: @lucasferreira, @anasouza22, @pedromendes_fc, @carlamlima, @joaocarlos17)"}
+- NUNCA use nomes de fanpage, coletivos ou conceitos abstratos
 - Quando a torcida estiver insatisfeita/revoltada e o resultado for ruim, não gere comentários todos moderados com "precisa melhorar"; inclua cobrança forte, concreta e emocional em parte dos comentários, mantendo variedade.
 
 Responda APENAS com JSON puro (sem markdown, sem code block):
@@ -552,10 +562,11 @@ interface GenerateWelcomeBody {
   clubLeague?: string;
   clubDescription?: string;
   projeto?: string;
+  lang?: string;
 }
 
 router.post("/noticias/generate-welcome", async (req, res) => {
-  const { coachName, coachAge, coachNationality, clubName, clubLeague, clubDescription, projeto } =
+  const { coachName, coachAge, coachNationality, clubName, clubLeague, clubDescription, projeto, lang } =
     req.body as GenerateWelcomeBody;
 
   if (!coachName?.trim() || !clubName?.trim()) {
@@ -580,10 +591,17 @@ router.post("/noticias/generate-welcome", async (req, res) => {
   const clubInfo = clubDescription?.trim() ? `\nSobre o clube: ${clubDescription.trim().slice(0, 200)}` : "";
   const projectInfo = projeto?.trim() ? `\nProjeto da temporada: "${projeto.trim()}"` : "";
 
-  const systemPrompt = `Você é um jornalista esportivo especializado em cobertura de futebol para portais brasileiros como ESPN Brasil e TNT Sports.
+  const espnName   = isEnglish(lang) ? "ESPN"        : "ESPN Brasil";
+  const espnHandle = isEnglish(lang) ? "@espn"       : "@espnbrasil";
+
+  const systemPrompt = `Você é um jornalista esportivo especializado em cobertura de futebol para portais esportivos como ${espnName} e TNT Sports.
 Você escreve posts no estilo de redes sociais (Instagram/Twitter) — legendas com impacto, emocionais, com emojis e hashtags.
 O clube é ${clubName} (${shortClub}).${leagueInfo}${clubInfo}${projectInfo}
-Semente de unicidade: ${uniqueSeed}`;
+Semente de unicidade: ${uniqueSeed}${langInstruction(lang)}`;
+
+  const displayNameExample = isEnglish(lang)
+    ? '"James Wilson", "Sarah Mitchell", "Carlos Rivera"'
+    : '"Lucas Ferreira", "Ana Souza", "Pedro Mendes"';
 
   const userPrompt = `Um novo técnico foi anunciado no ${clubName}: **${coachName}**${coachDetails ? ` (${coachDetails})` : ""}.
 
@@ -592,25 +610,25 @@ INSTRUÇÕES IMPORTANTES:
    - Se SIM: mencione explicitamente o histórico real dele — títulos conquistados, clubes anteriores, estilo de jogo característico, reputação, conquistas marcantes. A matéria deve ser muito mais rica com esse contexto.
    - Se NÃO (nome fictício ou desconhecido): escreva uma matéria de apresentação genérica mas coerente com os dados fornecidos (idade, nacionalidade).
 
-2. Escreva como se fosse um post da ESPN Brasil ou TNT Sports anunciando a chegada do técnico ao ${clubName}.
+2. Escreva como se fosse um post da ${espnName} ou TNT Sports anunciando a chegada do técnico ao ${clubName}.
 3. Tom jornalístico mas com energia de rede social — use emojis, impacto, expectativa.
 4. Gere comentários de torcedores variados: otimistas, céticos, zoeiros, saudosistas, fãs internacionais.
 
 Responda APENAS com JSON puro (sem markdown, sem code block):
 {
   "source": "espn",
-  "sourceHandle": "@espnbrasil",
-  "sourceName": "ESPN Brasil",
+  "sourceHandle": "${espnHandle}",
+  "sourceName": "${espnName}",
   "category": "geral",
-  "title": "<título em maiúsculas, máx 6 palavras, ex: MOURINHO É O NOVO TÉCNICO>",
+  "title": "<título em maiúsculas, máx 6 palavras>",
   "content": "<legenda completa no estilo Instagram/portal esportivo, 3-8 parágrafos, com emojis e hashtags>",
   "likes": <5000 a 120000>,
   "commentsCount": <200 a 3000>,
   "sharesCount": <500 a 10000>,
   "comments": [
     {
-      "username": "@<nome_da_pessoa_handle_simples>",
-      "displayName": "<Nome Sobrenome de pessoa brasileira real>",
+      "username": "@<handle_simples>",
+      "displayName": "<Nome Sobrenome, ex: ${displayNameExample}>",
       "content": "<comentário com personalidade>",
       "likes": <10 a 5000>,
       "personality": "<otimista|chato|corneteiro|zoeiro|saudosista|neutro|internacional>",
@@ -633,7 +651,7 @@ Gere 7 a 10 comentários.
 REGRAS DE REPLIES — OBRIGATÓRIO:
 - 3 a 5 comentários DEVEM ter replies
 - Cada thread pode ter 1 a 3 replies
-- Os replies devem ser VARIADOS: concordância entusiasmada, discordância com argumento, zoeira por opinião contrária ("que análise essa", "deixa de ser negativo"), ironia, torcedores de outros clubes se intrometendo com provocações
+- Os replies devem ser VARIADOS: concordância entusiasmada, discordância com argumento, zoeira por opinião contrária, ironia, torcedores de outros clubes se intrometendo com provocações
 - Replies podem gerar subconflitos — duas pessoas discutindo no mesmo thread
 - NUNCA gere replies genéricos como "concordo" sozinhos — sempre adicione personalidade
 - Se o técnico for famoso do mundo real, fãs internacionais são esperados e podem ter replies de outros internacionais`;
@@ -652,8 +670,8 @@ REGRAS DE REPLIES — OBRIGATÓRIO:
 
     const post = {
       source:        (parsed.source as string) ?? "espn",
-      sourceHandle:  (parsed.sourceHandle as string) ?? "@espnbrasil",
-      sourceName:    (parsed.sourceName as string) ?? "ESPN Brasil",
+      sourceHandle:  (parsed.sourceHandle as string) ?? espnHandle,
+      sourceName:    (parsed.sourceName as string) ?? espnName,
       category:      parsed.category ?? "geral",
       title:         (parsed.title as string) || undefined,
       content:       parsed.content as string,
@@ -682,6 +700,7 @@ interface GenerateRumorBody {
   fanMoodScore?: number;
   fanMoodLabel?: string;
   currentCompetitions?: string[];
+  lang?: string;
 }
 
 router.post("/noticias/generate-rumor", requireAuth, async (req: AuthRequest, res) => {
@@ -699,7 +718,7 @@ router.post("/noticias/generate-rumor", requireAuth, async (req: AuthRequest, re
 
   const {
     clubName, season, clubLeague, clubDescription, projeto,
-    playersContext, squadPositionNeeds, customPortal, fanMoodScore, fanMoodLabel, currentCompetitions,
+    playersContext, squadPositionNeeds, customPortal, fanMoodScore, fanMoodLabel, currentCompetitions, lang,
   } = req.body as GenerateRumorBody;
 
   if (!clubName?.trim()) {
@@ -710,14 +729,16 @@ router.post("/noticias/generate-rumor", requireAuth, async (req: AuthRequest, re
   const shortClub = clubName.split(" ").slice(0, 2).join(" ");
   const uniqueSeed = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
+  const rumorEspnName   = isEnglish(lang) ? "ESPN"    : "ESPN Brasil";
+  const rumorEspnHandle = isEnglish(lang) ? "@espn"  : "@espnbrasil";
+
   const isCustomPortal = !!customPortal;
-  const portalName = isCustomPortal
-    ? customPortal.name
-    : (Math.random() < 0.5 ? "TNT Sports" : "ESPN Brasil");
+  const stdPortalName = Math.random() < 0.5 ? "TNT Sports" : rumorEspnName;
+  const portalName = isCustomPortal ? customPortal.name : stdPortalName;
   const portalHandle = isCustomPortal
     ? `@${customPortal.name.toLowerCase().replace(/\s+/g, "").replace(/[^a-z0-9]/g, "")}`
-    : (portalName === "TNT Sports" ? "@tntsports" : "@espnbrasil");
-  const chosenSource = isCustomPortal ? "custom" : (portalName === "TNT Sports" ? "tnt" : "espn");
+    : (stdPortalName === "TNT Sports" ? "@tntsports" : rumorEspnHandle);
+  const chosenSource = isCustomPortal ? "custom" : (stdPortalName === "TNT Sports" ? "tnt" : "espn");
 
   const customPortalSection = isCustomPortal
     ? `\n\nPERFIL DO PORTAL:\nNome: ${customPortal.name}\nDescrição/identidade: ${customPortal.description}\n${TONE_PROMPTS[customPortal.tone] ?? TONE_PROMPTS.serio}\nAdapte TODO o conteúdo ao tom e identidade deste portal.`
@@ -738,11 +759,11 @@ router.post("/noticias/generate-rumor", requireAuth, async (req: AuthRequest, re
     ? buildFanMoodSection(clubName, fanMoodLabel, fanMoodScore)
     : "";
 
-  const systemPrompt = `Você é um jornalista especialista em mercado de transferências do futebol brasileiro e europeu.
-Você escreve posts de RUMORES de transferência no estilo das redes sociais brasileiras — boato, especulação, bastidores.
+  const systemPrompt = `Você é um jornalista especialista em mercado de transferências do futebol.
+Você escreve posts de RUMORES de transferência no estilo das redes sociais — boato, especulação, bastidores.
 Clube: ${clubName}${season ? ` (temporada ${season})` : ""}${leagueSection}${competitionsSection}${descSection}${projectSection}
 Portal: ${portalName} (${portalHandle})
-Semente de unicidade: ${uniqueSeed}${playersSection}${needsSection}${rumorFanMoodSection}${customPortalSection}`;
+Semente de unicidade: ${uniqueSeed}${playersSection}${needsSection}${rumorFanMoodSection}${customPortalSection}${langInstruction(lang)}`;
 
   const rumorTypes = [
     `Um clube estrangeiro está monitorando um dos jogadores em destaque do ${shortClub}`,
@@ -752,6 +773,10 @@ Semente de unicidade: ${uniqueSeed}${playersSection}${needsSection}${rumorFanMoo
     `${shortClub} monitora meio-campista cobiçado por outros clubes`,
   ];
   const chosenType = rumorTypes[Math.floor(Math.random() * rumorTypes.length)];
+
+  const rumorCommentLangRule = isEnglish(lang)
+    ? `- TODOS os comentários em inglês (en-GB/en-US)\n- displayName = real person name (e.g. "James Wilson", "Sarah Mitchell")\n- username = derived from name (@jameswilson, @sarahmitchell22)`
+    : `- TODOS os comentários em português (pt-BR)\n- displayName = nome real de pessoa (ex: "Rafael Cunha", "Beatriz Moura")\n- username = derivado do nome (@rafaelcunha, @biamoura22)`;
 
   const userPrompt = `Crie um post de RUMOR de mercado com o tema: "${chosenType}".
 
@@ -765,9 +790,7 @@ REGRAS OBRIGATÓRIAS:
 - Inclua comentários de torcedores variados: animados, preocupados, céticos, irritados (conforme humor da torcida indicado)
 
 REGRAS DE COMENTARISTAS:
-- TODOS os comentários em português (pt-BR)
-- displayName = nome real de pessoa (ex: "Rafael Cunha", "Beatriz Moura")
-- username = derivado do nome (@rafaelcunha, @biamoura22)
+${rumorCommentLangRule}
 
 Responda APENAS com JSON puro (sem markdown, sem code block):
 {
@@ -849,6 +872,7 @@ interface GenerateLeakBody {
   memberName?: string;
   meetingReason?: string;
   customPortal: CustomPortalPayload;
+  lang?: string;
 }
 
 router.post("/noticias/generate-leak", requireAuth, async (req: AuthRequest, res) => {
@@ -857,7 +881,7 @@ router.post("/noticias/generate-leak", requireAuth, async (req: AuthRequest, res
   const {
     clubName, season, clubLeague, currentCompetitions,
     notificationPreview, memberName, meetingReason,
-    customPortal,
+    customPortal, lang,
   } = req.body as GenerateLeakBody;
 
   if (!clubName?.trim() || !notificationPreview?.trim() || !customPortal) {
@@ -874,11 +898,15 @@ router.post("/noticias/generate-leak", requireAuth, async (req: AuthRequest, res
   const memberSection = memberName ? `\nMembro da diretoria envolvido: ${memberName}` : "";
   const reasonSection = meetingReason ? `\nMotivo/contexto da reunião: ${meetingReason}` : "";
 
-  const systemPrompt = `Você é um jornalista especialista em bastidores de futebol brasileiro. Você escreve posts no estilo de vazamentos internos — como se fosse uma fonte anônima dentro do clube revelando informações sigilosas.
+  const systemPrompt = `Você é um jornalista especialista em bastidores de futebol. Você escreve posts no estilo de vazamentos internos — como se fosse uma fonte anônima dentro do clube revelando informações sigilosas.
 Portal: ${customPortal.name} (${portalHandle})
 ${tonePrompt}
 Clube: ${clubName}${leagueSection}${competitionsLeakSection}${season ? ` — temporada ${season}` : ""}
-Semente de unicidade: ${uniqueSeed}`;
+Semente de unicidade: ${uniqueSeed}${langInstruction(lang)}`;
+
+  const leakCommentLangRule = isEnglish(lang)
+    ? `- ALL comments in English (en-GB/en-US)\n- displayName = real person name (e.g. "James Wilson", "Sarah Mitchell")\n- username = derived from name, short and simple`
+    : `- TODOS em português (pt-BR)\n- displayName = nome real de pessoa\n- username = derivado do nome, simples`;
 
   const userPrompt = `Uma reunião interna da diretoria do ${clubName} vazou para a imprensa.
 
@@ -896,9 +924,7 @@ REGRAS OBRIGATÓRIAS:
 - Inclua comentários de torcedores reagindo: curiosos, preocupados, irônicos
 
 REGRAS DE COMENTARISTAS:
-- TODOS em português (pt-BR)
-- displayName = nome real de pessoa
-- username = derivado do nome, simples
+${leakCommentLangRule}
 
 Responda APENAS com JSON puro (sem markdown, sem code block):
 {

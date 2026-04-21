@@ -6,6 +6,8 @@ import { PORTAL_DEFAULT_PHOTOS } from "@/lib/portalPhotosStorage";
 import type { CustomPortal } from "@/lib/customPortalStorage";
 import { getCommentAvatarUrl } from "@/lib/commentAvatar";
 import { ReelsModal } from "./ReelsModal";
+import { NOTICIAS } from "@/lib/i18n";
+import type { Lang } from "@/lib/i18n";
 
 const SOURCE_CONFIG: Record<NewsSource, { color: string; bgColor: string; verified: boolean; emoji: string }> = {
   tnt: {
@@ -40,13 +42,15 @@ function formatCount(n: number): string {
   return String(n);
 }
 
-function formatTimeAgo(ts: number): string {
+function formatTimeAgo(ts: number, lang: Lang = "pt"): string {
+  const t = NOTICIAS[lang];
   const diff = (Date.now() - ts) / 1000;
-  if (diff < 60) return "agora";
+  if (diff < 60) return t.timeNow;
   if (diff < 3600) return `${Math.floor(diff / 60)}min`;
   if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
   if (diff < 604800) return `${Math.floor(diff / 86400)}d`;
-  return new Date(ts).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+  const locale = lang === "en" ? "en-US" : "pt-BR";
+  return new Date(ts).toLocaleDateString(locale, { day: "2-digit", month: "2-digit" });
 }
 
 function SourceAvatar({
@@ -190,15 +194,19 @@ function CommentItem({ comment }: { comment: NewsComment }) {
   );
 }
 
-const CATEGORY_LABEL: Record<string, string> = {
-  resultado: "Resultado",
-  lesao: "Lesão",
-  transferencia: "Transferência",
-  renovacao: "Renovação",
-  treino: "Treino",
-  conquista: "Conquista",
-  geral: "Geral",
-};
+function getCategoryLabel(lang: Lang, category: string): string {
+  const t = NOTICIAS[lang];
+  const map: Record<string, string> = {
+    resultado: t.catResultado,
+    lesao: t.catLesao,
+    transferencia: t.catTransferencia,
+    renovacao: t.catRenovacao,
+    treino: t.catTreino,
+    conquista: t.catConquista,
+    geral: t.catGeral,
+  };
+  return map[category] ?? t.catGeral;
+}
 
 const CATEGORY_COLOR: Record<string, { bg: string; color: string }> = {
   resultado: { bg: "rgba(52,211,153,0.15)", color: "#34d399" },
@@ -219,9 +227,10 @@ interface NoticiaPostProps {
   onDelete?: (postId: string) => void;
   onRefresh?: (postId: string) => void;
   isRefreshing?: boolean;
+  lang?: Lang;
 }
 
-export function NoticiaPost({ post, portalPhotos, customPortals, onUpdateImage, onUpdateImageFit, onDelete, onRefresh, isRefreshing }: NoticiaPostProps) {
+export function NoticiaPost({ post, portalPhotos, customPortals, onUpdateImage, onUpdateImageFit, onDelete, onRefresh, isRefreshing, lang = "pt" }: NoticiaPostProps) {
   const [liked, setLiked] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -262,10 +271,12 @@ export function NoticiaPost({ post, portalPhotos, customPortals, onUpdateImage, 
 
   const handleDelete = () => {
     setMenuOpen(false);
-    if (window.confirm("Excluir esta manchete? Essa ação não pode ser desfeita.")) {
+    if (window.confirm(NOTICIAS[lang].confirmDelete)) {
       onDelete?.(post.id);
     }
   };
+
+  const t = NOTICIAS[lang];
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -404,7 +415,7 @@ export function NoticiaPost({ post, portalPhotos, customPortals, onUpdateImage, 
                   className="w-full text-left text-sm px-4 py-2.5 transition-colors duration-100 hover:bg-white/[0.06] disabled:opacity-50"
                   style={{ color: "rgba(255,255,255,0.8)" }}
                 >
-                  {isRefreshing ? "Atualizando..." : "Atualizar notícia"}
+                  {isRefreshing ? `${t.menuRefresh}...` : t.menuRefresh}
                 </button>
               )}
               {onUpdateImage && (
@@ -413,13 +424,13 @@ export function NoticiaPost({ post, portalPhotos, customPortals, onUpdateImage, 
                   className="w-full text-left text-sm px-4 py-2.5 transition-colors duration-100 hover:bg-white/[0.06]"
                   style={{ color: "rgba(255,255,255,0.8)", borderTop: onRefresh && post.matchId ? "1px solid rgba(255,255,255,0.06)" : undefined }}
                 >
-                  {displayImageUrl ? "Trocar imagem" : "Adicionar imagem"}
+                  {displayImageUrl ? (lang === "en" ? "Change image" : "Trocar imagem") : t.menuAddImage}
                 </button>
               )}
               {displayImageUrl && onUpdateImageFit && (
                 <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
                   <p className="px-4 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.25)" }}>
-                    Ajuste da imagem
+                    {lang === "en" ? "Image fit" : "Ajuste da imagem"}
                   </p>
                   <div className="flex gap-1.5 px-3 pb-2.5">
                     {(["cover", "contain"] as const).map((fit) => {
@@ -435,7 +446,7 @@ export function NoticiaPost({ post, portalPhotos, customPortals, onUpdateImage, 
                             border: `1px solid ${active ? "rgba(var(--club-primary-rgb),0.45)" : "rgba(255,255,255,0.08)"}`,
                           }}
                         >
-                          {fit === "cover" ? "Preencher" : "Completo"}
+                          {fit === "cover" ? (lang === "en" ? "Fill" : "Preencher") : (lang === "en" ? "Fit" : "Completo")}
                         </button>
                       );
                     })}
@@ -448,7 +459,7 @@ export function NoticiaPost({ post, portalPhotos, customPortals, onUpdateImage, 
                   className="w-full text-left text-sm px-4 py-2.5 transition-colors duration-100 hover:bg-white/[0.06]"
                   style={{ color: "#f87171", borderTop: "1px solid rgba(255,255,255,0.06)" }}
                 >
-                  Remover imagem
+                  {t.menuRemoveImage}
                 </button>
               )}
               {onDelete && (
@@ -457,7 +468,7 @@ export function NoticiaPost({ post, portalPhotos, customPortals, onUpdateImage, 
                   className="w-full text-left text-sm px-4 py-2.5 transition-colors duration-100 hover:bg-white/[0.06]"
                   style={{ color: "#f87171", borderTop: "1px solid rgba(255,255,255,0.06)" }}
                 >
-                  Excluir manchete
+                  {t.menuDelete}
                 </button>
               )}
             </div>
@@ -482,25 +493,25 @@ export function NoticiaPost({ post, portalPhotos, customPortals, onUpdateImage, 
               {post.sourceHandle}
             </span>
             <span className="text-white/20 text-xs">·</span>
-            <span className="text-white/30 text-xs">{formatTimeAgo(post.createdAt)}</span>
+            <span className="text-white/30 text-xs">{formatTimeAgo(post.createdAt, lang)}</span>
           </div>
         </div>
         <div className="flex items-center gap-1.5 flex-shrink-0">
           {post.postTag === "rumor" && (
             <span className="text-xs font-semibold px-2 py-0.5 rounded-full flex-shrink-0" style={{ background: "rgba(251,146,60,0.15)", color: "#fb923c" }}>
-              🔄 Rumor
+              🔄 {lang === "en" ? "Rumour" : "Rumor"}
             </span>
           )}
           {post.postTag === "leak" && (
             <span className="text-xs font-semibold px-2 py-0.5 rounded-full flex-shrink-0" style={{ background: "rgba(167,139,250,0.15)", color: "#a78bfa" }}>
-              🔓 Bastidores
+              🔓 {lang === "en" ? "Insider" : "Bastidores"}
             </span>
           )}
           <span
             className="text-xs font-semibold px-2 py-0.5 rounded-full flex-shrink-0"
             style={{ background: catStyle.bg, color: catStyle.color }}
           >
-            {CATEGORY_LABEL[post.category] ?? "Geral"}
+            {getCategoryLabel(lang, post.category)}
           </span>
         </div>
       </div>
@@ -626,14 +637,14 @@ export function NoticiaPost({ post, portalPhotos, customPortals, onUpdateImage, 
           style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}
         >
           <p className="text-white/25 text-xs font-semibold uppercase tracking-wider pt-1">
-            Comentários
+            {lang === "en" ? "Comments" : "Comentários"}
           </p>
           {(post.comments ?? []).length > 0 ? (
             (post.comments ?? []).map((comment) => (
               <CommentItem key={comment.id} comment={comment} />
             ))
           ) : (
-            <p className="text-white/25 text-xs">Nenhum comentário disponível.</p>
+            <p className="text-white/25 text-xs">{lang === "en" ? "No comments available." : "Nenhum comentário disponível."}</p>
           )}
         </div>
       )}

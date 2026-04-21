@@ -209,6 +209,7 @@ export async function runAutoNews(
                 tone: selectedPortal.tone,
               }
             : undefined,
+          lang: (typeof localStorage !== "undefined" ? localStorage.getItem("fc_lang") : null) ?? "pt",
         };
 
         const res = await fetch("/api/noticias/generate", {
@@ -330,6 +331,7 @@ export async function runPromotionRelegationNews(ctx: PromotionRelegationContext
       clubLeague: newLeague,
       clubDescription: clubDescription || undefined,
       projeto: projeto || undefined,
+      lang: (typeof localStorage !== "undefined" ? localStorage.getItem("fc_lang") : null) ?? "pt",
     };
 
     const res = await fetch("/api/noticias/generate", {
@@ -424,6 +426,7 @@ export async function runRumorNews(ctx: RumorContext): Promise<void> {
       customPortal: selectedPortal
         ? { id: selectedPortal.id, name: selectedPortal.name, description: selectedPortal.description, tone: selectedPortal.tone }
         : undefined,
+      lang: (typeof localStorage !== "undefined" ? localStorage.getItem("fc_lang") : null) ?? "pt",
     };
 
     const res = await fetch("/api/noticias/generate-rumor", {

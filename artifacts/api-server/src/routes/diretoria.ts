@@ -178,7 +178,7 @@ router.post("/diretoria/chat", requireAuth, async (req: AuthRequest, res) => {
     return;
   }
 
-  const { member, message, history, context, squadOvrContext, squadRosterContext, playerPerformanceContext } = req.body as {
+  const { member, message, history, context, squadOvrContext, squadRosterContext, playerPerformanceContext, lang } = req.body as {
     member: MemberProfile;
     message: string;
     history: ChatHistoryItem[];
@@ -186,6 +186,7 @@ router.post("/diretoria/chat", requireAuth, async (req: AuthRequest, res) => {
     squadOvrContext?: string;
     squadRosterContext?: string;
     playerPerformanceContext?: string;
+    lang?: string;
   };
 
   if (!message?.trim()) {
@@ -273,7 +274,7 @@ ${calibratingSection}
 
 ${isAngry || isInsulted ? "⚡ ATENÇÃO: a mensagem atual é desrespeitosa ou o humor está ruim — aplique OBRIGATORIAMENTE a regra 3. NÃO use frases proibidas. Reaja com dureza." : ""}
 
-Ao final: NOVO_HUMOR: <excelente|bom|neutro|tenso|irritado|furioso>`;
+Ao final: NOVO_HUMOR: <excelente|bom|neutro|tenso|irritado|furioso>${lang === "en" ? "\n\n⚠️ LANGUAGE: Write your ENTIRE reply in English. Keep the NOVO_HUMOR: tag exactly as shown (values remain in Portuguese: excelente|bom|neutro|tenso|irritado|furioso). Do NOT write any other text in Portuguese." : ""}`;
 
   const msgs: OpenAI.Chat.ChatCompletionMessageParam[] = [
     { role: "system", content: systemPrompt },
@@ -308,7 +309,7 @@ router.post("/diretoria/meeting", requireAuth, async (req: AuthRequest, res) => 
     return;
   }
 
-  const { speaker, allMembers, history, context, triggerMessage, squadOvrContext, squadRosterContext, playerPerformanceContext } = req.body as {
+  const { speaker, allMembers, history, context, triggerMessage, squadOvrContext, squadRosterContext, playerPerformanceContext, lang } = req.body as {
     speaker: MemberProfile;
     allMembers: MemberProfile[];
     history: { memberId?: string; memberName?: string; role: string; content: string }[];
@@ -317,6 +318,7 @@ router.post("/diretoria/meeting", requireAuth, async (req: AuthRequest, res) => 
     squadOvrContext?: string;
     squadRosterContext?: string;
     playerPerformanceContext?: string;
+    lang?: string;
   };
 
   const clubCtx = buildClubContext(context);
@@ -386,7 +388,7 @@ ${meetingCalibratingSection}
 10. NOMES DOS JOGADORES: Ao citar qualquer jogador, use o identificador COMPLETO como aparece no contexto. Se o nome no contexto for "G. Jesus", diga "G. Jesus" — NUNCA apenas "G.". Se o nome for apenas uma inicial com ponto (ex: "N. (nº8, ATA)"), use o identificador completo "N. (nº8, ATA)" ou refira-se ao jogador pela posição: "o atacante de número 8" ou "nosso atacante nº8". JAMAIS cite apenas a inicial isolada como "N." ou "G." sem mais contexto.
 
 Ao final: NOVO_HUMOR: <excelente|bom|neutro|tenso|irritado|furioso>
-Ao final: SUGERIR_ENCERRAMENTO: <sim|nao> (sim somente se a pauta foi concluída naturalmente)`;
+Ao final: SUGERIR_ENCERRAMENTO: <sim|nao> (sim somente se a pauta foi concluída naturalmente)${lang === "en" ? "\n\n⚠️ LANGUAGE: Write your ENTIRE reply in English. Keep NOVO_HUMOR: and SUGERIR_ENCERRAMENTO: tags exactly as shown (tag values remain in Portuguese). Do NOT write any other text in Portuguese." : ""}`;
 
   const histStr = history
     .slice(-20)
@@ -430,19 +432,24 @@ router.post("/diretoria/generate-member", requireAuth, async (req: AuthRequest, 
     return;
   }
 
-  const { roleLabel, personalityStyle, clubName, clubLeague, extraTraits } = req.body as {
+  const { roleLabel, personalityStyle, clubName, clubLeague, extraTraits, lang: memberLang } = req.body as {
     roleLabel: string;
     personalityStyle: string;
     clubName: string;
     clubLeague: string;
     extraTraits?: string;
+    lang?: string;
   };
 
   const tier = clubTierFromLeague(clubLeague);
 
-  const systemPrompt = `Você é um criador de personagens para simuladores de futebol brasileiro. Crie personagens realistas, complexos e coerentes com o contexto do clube.`;
+  const memberLangInstruction = memberLang === "en"
+    ? "\n\nCRITICAL: Write the description field entirely in English. The name can be any nationality that fits the club. Do NOT write in Portuguese."
+    : "";
 
-  const userPrompt = `Crie um personagem de diretoria de clube de futebol brasileiro:
+  const systemPrompt = `Você é um criador de personagens para simuladores de futebol. Crie personagens realistas, complexos e coerentes com o contexto do clube.${memberLangInstruction}`;
+
+  const userPrompt = `Crie um personagem de diretoria de clube de futebol:
 
 CARGO: ${roleLabel}
 ESTILO DE PERSONALIDADE: ${personalityStyle}
@@ -450,14 +457,14 @@ CLUBE: ${clubName} — ${clubLeague} (${tier})
 ${extraTraits ? `TRAÇOS EXTRAS: ${extraTraits}` : ""}
 
 REGRAS:
-- Nome brasileiro real e comum (não inventar sobrenomes estrangeiros)
+- ${memberLang === "en" ? "Name appropriate for the club's country/league" : "Nome brasileiro real e comum (não inventar sobrenomes estrangeiros)"}
 - A descrição deve ter 3-5 frases: como age, o que prioriza, como reage a resultados ruins/bons, nível de paciência, peculiaridades
 - Paciência coerente com o estilo (conservador/diplomático = mais paciente; agressivo/exigente = menos)
 - O personagem deve ser ÚNICO e ter nuances — evite clichês simples
 
 Responda APENAS com JSON puro (sem markdown):
 {
-  "name": "<Nome Completo Brasileiro>",
+  "name": "<Nome Completo>",
   "description": "<descrição em 3-5 frases>",
   "patience": <0 a 100>
 }`;
@@ -864,11 +871,12 @@ router.post("/diretoria/suggest-transfer", requireAuth, async (req: AuthRequest,
     return;
   }
 
-  const { context, position, currentSquad, estimatedBudget } = req.body as {
+  const { context, position, currentSquad, estimatedBudget, lang: transferLang } = req.body as {
     context: ClubContext;
     position: string;
     currentSquad: Array<{ name: string; position: string }>;
     estimatedBudget?: string;
+    lang?: string;
   };
 
   if (!position?.trim()) {
@@ -879,7 +887,10 @@ router.post("/diretoria/suggest-transfer", requireAuth, async (req: AuthRequest,
   const tier = clubTierFromLeague(context.clubLeague);
   const squadStr = currentSquad.slice(0, 20).map((p) => `${p.name} (${p.position})`).join(", ");
 
-  const systemPrompt = `Você é um diretor de futebol experiente especializado em mercado da bola. Você conhece profundamente o futebol mundial e brasileiro, e faz indicações realistas de reforços baseadas no perfil financeiro e competitivo do clube.`;
+  const transferLangInstruction = transferLang === "en"
+    ? "\n\nCRITICAL: Write all text fields (especially the 'reasoning' field) entirely in English. Do NOT write in Portuguese."
+    : "";
+  const systemPrompt = `Você é um diretor de futebol experiente especializado em mercado da bola. Você conhece profundamente o futebol mundial e faz indicações realistas de reforços baseadas no perfil financeiro e competitivo do clube.${transferLangInstruction}`;
 
   const fmtBudget = (n: number) => {
     if (n >= 1_000_000) return `€${(n / 1_000_000).toFixed(1)}M`;
@@ -950,12 +961,13 @@ Responda APENAS com JSON puro (sem markdown):
 router.post("/generate-projeto", requireAuth, async (req: AuthRequest, res) => {
   const plan = req.user!.plan;
 
-  const { clubName, clubLeague, clubCountry, clubDescription, clubTitles } = req.body as {
+  const { clubName, clubLeague, clubCountry, clubDescription, clubTitles, lang: projetoLang } = req.body as {
     clubName: string;
     clubLeague?: string;
     clubCountry?: string;
     clubDescription?: string;
     clubTitles?: Array<{ name: string; count: number }>;
+    lang?: string;
   };
 
   if (!clubName?.trim()) {
@@ -983,6 +995,10 @@ router.post("/generate-projeto", requireAuth, async (req: AuthRequest, res) => {
     prestigeContext = `CLUBE MENOR OU SEM HISTÓRICO DE TÍTULOS — objetivos modestos: manter categoria, crescer com jovens, eventual conquista de copa regional.`;
   }
 
+  const projetoLangNote = projetoLang === "en"
+    ? "\n\nCRITICAL: Write the project text entirely in English. Use English equivalents of the example phrases (e.g. 'Our goal is...', 'We want...', 'The mission of ${clubName} is...'). Do NOT write in Portuguese."
+    : "";
+
   const userPrompt = `Você é um especialista em futebol com profundo conhecimento do futebol mundial atual e histórico.
 
 Use seu conhecimento sobre o ${clubName} para criar um projeto de carreira coerente com a GRANDEZA REAL do clube.
@@ -998,12 +1014,11 @@ REGRAS OBRIGATÓRIAS baseadas no prestígio:
 - Clube pequeno ou em divisão inferior: objetivos de subir de divisão, consolidar, desenvolver jovens.
 - Se o clube está em uma divisão abaixo do esperado para seu histórico: foco em promoção imediata + reerguer o clube.
 
-Escreva 1 a 2 frases em português brasileiro, primeira pessoa do plural (perspectiva do CLUBE — use "nosso", "queremos", "planejamos", "buscamos"), concisas e específicas para o ${clubName}.
+Escreva 1 a 2 frases em ${projetoLang === "en" ? "inglês" : "português brasileiro"}, primeira pessoa do plural (perspectiva do CLUBE — use "our", "we want", "we plan" if English), concisas e específicas para o ${clubName}.
 O texto deve soar como se fosse a diretoria/clube apresentando o projeto ao técnico, não o técnico falando de si mesmo.
-Exemplos de início: "Nosso objetivo é...", "Queremos...", "A missão do ${clubName} é...".
-Responda APENAS com o texto do projeto, sem JSON, sem aspas.`;
+Responda APENAS com o texto do projeto, sem JSON, sem aspas.${projetoLangNote}`;
 
-  const systemPromptProjeto = "Você é especialista em futebol mundial. Conhece profundamente o nível de cada clube. Para clubes históricos e de elite (Arsenal, Real Madrid, Barcelona, Bayern, Liverpool, Juventus, PSG, etc.), SEMPRE gere objetivos ambiciosos de conquistas de títulos — nunca de permanência ou sobrevivência. Responda apenas com o texto do projeto, sem formatação.";
+  const systemPromptProjeto = `Você é especialista em futebol mundial. Conhece profundamente o nível de cada clube. Para clubes históricos e de elite (Arsenal, Real Madrid, Barcelona, Bayern, Liverpool, Juventus, PSG, etc.), SEMPRE gere objetivos ambiciosos de conquistas de títulos — nunca de permanência ou sobrevivência. Responda apenas com o texto do projeto, sem formatação.${projetoLang === "en" ? " CRITICAL: write in English only." : ""}`;
 
   try {
     const projeto = (await callDiretoriaWithPlan(plan, systemPromptProjeto, userPrompt, 180)).trim();
@@ -1017,10 +1032,11 @@ Responda APENAS com o texto do projeto, sem JSON, sem aspas.`;
 router.post("/club-info", requireAuth, async (req: AuthRequest, res) => {
   const plan = req.user!.plan;
 
-  const { clubName, clubLeague, clubCountry } = req.body as {
+  const { clubName, clubLeague, clubCountry, lang: clubInfoLang } = req.body as {
     clubName: string;
     clubLeague?: string;
     clubCountry?: string;
+    lang?: string;
   };
 
   if (!clubName?.trim()) {
@@ -1028,11 +1044,18 @@ router.post("/club-info", requireAuth, async (req: AuthRequest, res) => {
     return;
   }
 
+  const clubInfoDescLang = clubInfoLang === "en"
+    ? "English. Mention city of origin, founding year and identity."
+    : "português brasileiro. Mencione cidade de origem, fundação e identidade.";
+  const clubInfoTitleLang = clubInfoLang === "en"
+    ? `Use English names where common (e.g. "Champions League", "FA Cup")`
+    : `Use nomes em português quando possível (ex: "Liga dos Campeões", "Copa da FA")`;
+
   const userPrompt = `Forneça informações sobre o clube: ${clubName}${clubLeague ? ` (${clubLeague})` : ""}${clubCountry ? `, ${clubCountry}` : ""}.
 
 Responda APENAS com JSON válido (sem markdown) no formato:
 {
-  "description": "Breve resumo factual do clube em 2-3 frases em português brasileiro. Mencione cidade de origem, fundação e identidade.",
+  "description": "Breve resumo factual do clube em 2-3 frases em ${clubInfoDescLang}",
   "titles": [
     { "name": "Nome da Competição", "count": 0 }
   ]
@@ -1040,11 +1063,11 @@ Responda APENAS com JSON válido (sem markdown) no formato:
 
 REGRAS:
 - Em titles, inclua APENAS competições com count >= 1 (títulos efetivamente conquistados)
-- Use nomes em português quando possível (ex: "Liga dos Campeões", "Copa da FA")
+- ${clubInfoTitleLang}
 - Seja factual e preciso — se não souber com certeza, omita
-- description: 2-3 frases curtas e informativas em pt-BR`;
+- description: 2-3 frases curtas e informativas`;
 
-  const systemPromptClubInfo = "Você é especialista em futebol mundial. Responda SOMENTE com JSON válido, sem markdown.";
+  const systemPromptClubInfo = `Você é especialista em futebol mundial. Responda SOMENTE com JSON válido, sem markdown.${clubInfoLang === "en" ? " CRITICAL: write the description field in English only." : ""}`;
 
   try {
     const raw = await callDiretoriaWithPlan(plan, systemPromptClubInfo, userPrompt, 400);
