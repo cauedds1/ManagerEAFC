@@ -693,7 +693,7 @@ export function MatchDetailPage({
               <div>
                 <p className="text-white font-bold text-base">{t.h2hTitle}</p>
                 <p className="text-white/40 text-xs mt-0.5">
-                  vs {match.opponent} — {h2hMatches.length} {h2hMatches.length !== 1 ? t.confrontoPlural : t.confrontoSingular}
+                  {t.vsLabel} {match.opponent} — {h2hMatches.length} {h2hMatches.length !== 1 ? t.confrontoPlural : t.confrontoSingular}
                 </p>
                 {h2hMatches.length > 0 && (
                   <div className="flex items-center gap-1.5 mt-2 flex-wrap">

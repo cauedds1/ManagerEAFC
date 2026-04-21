@@ -1259,6 +1259,9 @@ export const PARTIDAS: Record<Lang, Record<string, string>> = {
     motmShortBadge: "⭐ MOTM",
     ratingPoor: "Ruim",
     ratingGreat: "Ótimo",
+    vsLabel: "vs",
+    removeTitle: "Remover",
+    swapTitle: "Trocar",
     // PlayerLineupRow & sub-components
     ratingLabel: "Nota",
     goalsSection: "Gols",
@@ -1460,6 +1463,9 @@ export const PARTIDAS: Record<Lang, Record<string, string>> = {
     motmShortBadge: "⭐ MOTM",
     ratingPoor: "Poor",
     ratingGreat: "Great",
+    vsLabel: "vs",
+    removeTitle: "Remove",
+    swapTitle: "Swap",
     // PlayerLineupRow & sub-components
     ratingLabel: "Rating",
     goalsSection: "Goals",

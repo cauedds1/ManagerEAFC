@@ -794,7 +794,7 @@ function SearchablePlayerSelect({
           type="button"
           onClick={() => { onChange(undefined); }}
           className="w-7 h-7 rounded-lg flex items-center justify-center text-white/30 hover:text-white/60 hover:bg-white/08 transition-colors flex-shrink-0"
-          title={t.removeTitle ?? "×"}
+          title={t.removeTitle}
         >
           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -804,7 +804,7 @@ function SearchablePlayerSelect({
           type="button"
           onClick={() => setOpen(true)}
           className="w-7 h-7 rounded-lg flex items-center justify-center text-white/30 hover:text-white/60 hover:bg-white/08 transition-colors flex-shrink-0"
-          title={t.swapTitle ?? "↔"}
+          title={t.swapTitle}
         >
           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
@@ -2041,7 +2041,7 @@ export function RegistrarPartidaModal({
                     <NumericInput value={draft.myShots} onChange={(v) => onChange({ myShots: v ?? 0 })} placeholder="0" className="w-16 text-center" />
                   </div>
                 </div>
-                <span className="text-white/15 text-xs flex-shrink-0">vs</span>
+                <span className="text-white/15 text-xs flex-shrink-0">{t.vsLabel}</span>
                 <div className="flex-1 space-y-1">
                   <p className="text-white/40 text-xs text-center">{t.shotsFor} {draft.opponent || t.opponent}</p>
                   <div className="flex items-center justify-center">
