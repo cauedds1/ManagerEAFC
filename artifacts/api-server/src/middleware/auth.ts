@@ -54,3 +54,14 @@ export function requireAuth(req: AuthRequest, res: Response, next: NextFunction)
 export function signToken(user: AuthUser): string {
   return jwt.sign(user, JWT_SECRET, { expiresIn: "30d" });
 }
+
+export function extractUserIdFromToken(authHeader: string | undefined): number | null {
+  if (!authHeader?.startsWith("Bearer ")) return null;
+  const token = authHeader.slice(7);
+  try {
+    const payload = jwt.verify(token, JWT_SECRET) as { id?: number };
+    return typeof payload.id === "number" ? payload.id : null;
+  } catch {
+    return null;
+  }
+}

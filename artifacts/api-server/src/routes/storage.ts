@@ -2,7 +2,7 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import multer from "multer";
 import { RequestUploadUrlBody, RequestUploadUrlResponse } from "@workspace/api-zod";
 import { isR2Configured, createPresignedUploadUrl, uploadFileToR2, deleteFileFromR2 } from "../lib/r2Storage";
-import { requireAuth, type AuthRequest } from "../middleware/auth";
+import { requireAuth, extractUserIdFromToken, type AuthRequest } from "../middleware/auth";
 
 const router: IRouter = Router();
 
@@ -12,6 +12,7 @@ const ALLOWED_PRESIGNED_MIME_TYPES = new Set([
   ...ALLOWED_IMAGE_MIME_TYPES,
   ...ALLOWED_VIDEO_MIME_TYPES,
 ]);
+
 const ALLOWED_FOLDERS = new Set(["portals", "portal-photos", "uploads", "noticias", "test"]);
 const ALLOWED_PRESIGNED_FOLDERS = new Set([
   ...ALLOWED_FOLDERS,
@@ -50,7 +51,19 @@ router.post("/storage/uploads/request-url", async (req: Request, res: Response) 
   }
 
   const rawFolder = (req.query.folder as string | undefined) ?? "uploads";
-  const folder = ALLOWED_PRESIGNED_FOLDERS.has(rawFolder) ? rawFolder : "uploads";
+
+  let folder: string;
+
+  if (rawFolder === "momentos") {
+    const userId = extractUserIdFromToken(req.headers.authorization);
+    if (!userId) {
+      res.status(401).json({ error: "Autenticação necessária para upload de vídeos em momentos." });
+      return;
+    }
+    folder = `momentos/${userId}`;
+  } else {
+    folder = ALLOWED_PRESIGNED_FOLDERS.has(rawFolder) ? rawFolder : "uploads";
+  }
 
   try {
     const { uploadURL, publicFileUrl, key } = await createPresignedUploadUrl(folder, contentType ?? "image/jpeg");
@@ -111,9 +124,17 @@ router.delete("/storage/objects", requireAuth, async (req: AuthRequest, res: Res
     return;
   }
 
-  const folder = key.split("/")[0];
-  if (!ALLOWED_PRESIGNED_FOLDERS.has(folder)) {
-    res.status(403).json({ error: "Pasta não permitida para exclusão." });
+  const parts = key.split("/");
+  const folder = parts[0];
+
+  if (folder !== "momentos") {
+    res.status(403).json({ error: "Esta rota só permite exclusão de arquivos de momentos." });
+    return;
+  }
+
+  const keyUserId = parts[1] ? parseInt(parts[1], 10) : NaN;
+  if (isNaN(keyUserId) || keyUserId !== req.user?.id) {
+    res.status(403).json({ error: "Acesso negado: arquivo não pertence ao usuário autenticado." });
     return;
   }
 

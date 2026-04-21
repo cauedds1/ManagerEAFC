@@ -233,9 +233,11 @@ function VideoUploadSection({
     onVideoReady(null);
 
     try {
+      const token = localStorage.getItem("fc_auth_token");
+      const authHeader: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
       const metaRes = await fetch("/api/storage/uploads/request-url?folder=momentos", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeader },
         body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }),
       });
       if (!metaRes.ok) {
