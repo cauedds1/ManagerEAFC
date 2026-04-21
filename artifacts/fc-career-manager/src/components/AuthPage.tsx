@@ -450,45 +450,33 @@ export function AuthPage({ onBack, onAuthSuccess, initialPlan }: AuthPageProps) 
 
   const switchMode = () => { setMode(isLogin ? "signup" : "login"); resetSignup(); };
 
-  const handlePaidSignup = async (plan: Plan, token: string, user: { id: number; email: string; name: string; plan?: Plan }) => {
-    setRedirecting(true);
-    try {
-      const priceRes = await fetch(`${API_BASE}/stripe/products-with-plan`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!priceRes.ok) throw new Error("Não foi possível obter os planos disponíveis.");
-      const prices = await priceRes.json() as Array<{ planTier: string; priceId: string }>;
-      const match = prices.find((p) => p.planTier === plan);
-      if (!match?.priceId) throw new Error("Plano selecionado não encontrado.");
-      const checkoutRes = await fetch(`${API_BASE}/stripe/checkout`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ priceId: match.priceId }),
-      });
-      if (!checkoutRes.ok) {
-        const d = await checkoutRes.json() as { error?: string };
-        throw new Error(d.error ?? "Erro ao iniciar pagamento.");
-      }
-      const { url } = await checkoutRes.json() as { url?: string };
-      if (url) {
-        localStorage.setItem("fc_auth_token", token);
-        localStorage.setItem("fc_auth_user", JSON.stringify(user));
-        window.location.href = url;
-        return;
-      }
-      throw new Error("URL de pagamento inválida.");
-    } catch (e) {
-      setRedirecting(false);
-      setError(e instanceof Error ? e.message : "Erro ao iniciar pagamento. Tente novamente.");
-    }
-  };
-
   const handleFormSubmit = async () => {
     setError("");
     if (!email.trim() || !password) { setError("Preencha e-mail e senha."); return; }
     if (!name.trim()) { setError("Informe seu nome."); return; }
+    if (password.length < 6) { setError("Senha deve ter no mínimo 6 caracteres."); return; }
     setLoading(true);
     try {
+      if (selectedPlan !== "free") {
+        setLoading(false);
+        setRedirecting(true);
+        const priceRes = await fetch(`${API_BASE}/stripe/products-with-plan`);
+        if (!priceRes.ok) throw new Error("Não foi possível obter os planos disponíveis.");
+        const prices = await priceRes.json() as Array<{ planTier: string; priceId: string }>;
+        const match = prices.find((p) => p.planTier === selectedPlan);
+        if (!match?.priceId) throw new Error("Plano selecionado não encontrado.");
+        const res = await fetch(`${API_BASE}/stripe/checkout-register`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: name.trim(), email: email.trim(), password, priceId: match.priceId }),
+        });
+        const data = await res.json() as { url?: string; error?: string };
+        if (!res.ok) throw new Error(data.error ?? "Erro ao iniciar pagamento.");
+        if (!data.url) throw new Error("URL de pagamento inválida.");
+        window.location.href = data.url;
+        return;
+      }
+
       const res = await fetch(`${API_BASE}/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -497,15 +485,13 @@ export function AuthPage({ onBack, onAuthSuccess, initialPlan }: AuthPageProps) 
       const data = await res.json() as { token?: string; user?: { id: number; email: string; name: string; plan?: Plan }; error?: string; };
       if (!res.ok) { setError(data.error ?? "Ocorreu um erro. Tente novamente."); return; }
       if (!data.token || !data.user) { setError("Resposta inválida do servidor."); return; }
-      if (selectedPlan !== "free") {
-        await handlePaidSignup(selectedPlan, data.token, data.user);
-      } else {
-        localStorage.setItem("fc_auth_token", data.token);
-        localStorage.setItem("fc_auth_user", JSON.stringify(data.user));
-        onAuthSuccess(data.token, data.user);
-      }
-    } catch { setError("Não foi possível conectar ao servidor."); }
-    finally { setLoading(false); }
+      localStorage.setItem("fc_auth_token", data.token);
+      localStorage.setItem("fc_auth_user", JSON.stringify(data.user));
+      onAuthSuccess(data.token, data.user);
+    } catch (e) {
+      setRedirecting(false);
+      setError(e instanceof Error ? e.message : "Não foi possível conectar ao servidor.");
+    } finally { setLoading(false); }
   };
 
   const handleLoginSubmit = async () => {

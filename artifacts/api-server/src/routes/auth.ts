@@ -3,6 +3,8 @@ import bcrypt from "bcryptjs";
 import { db, usersTable, careersTable } from "@workspace/db";
 import { eq, isNull } from "drizzle-orm";
 import { requireAuth, signToken, type AuthRequest } from "../middleware/auth";
+import { getUncachableStripeClient } from "../lib/stripeClient";
+import type Stripe from "stripe";
 
 const router = Router();
 
@@ -94,6 +96,71 @@ router.get("/auth/me", requireAuth, async (req: AuthRequest, res) => {
   } catch (err) {
     console.error("GET /auth/me error:", err);
     return res.json({ user: req.user });
+  }
+});
+
+router.post("/auth/from-checkout", async (req, res) => {
+  try {
+    const { sessionId } = req.body as { sessionId?: string };
+    if (!sessionId || typeof sessionId !== "string") {
+      return res.status(400).json({ error: "sessionId obrigatório" });
+    }
+
+    const stripe = await getUncachableStripeClient();
+
+    let session: Stripe.Checkout.Session;
+    try {
+      session = await stripe.checkout.sessions.retrieve(sessionId);
+    } catch {
+      return res.status(400).json({ error: "Sessão de pagamento não encontrada" });
+    }
+
+    if (session.payment_status !== "paid" || session.status !== "complete") {
+      return res.status(402).json({ error: "Pagamento ainda não confirmado. Aguarde alguns instantes." });
+    }
+
+    const { userName, userEmail, userPasswordHash, planTier } = session.metadata ?? {};
+    if (!userEmail || !userPasswordHash || !userName) {
+      return res.status(400).json({ error: "Dados de registro não encontrados na sessão" });
+    }
+
+    const validPlan: "pro" | "ultra" = planTier === "ultra" ? "ultra" : "pro";
+    const stripeCustomerId = typeof session.customer === "string" ? session.customer : null;
+
+    const existingRows = await db.select().from(usersTable).where(eq(usersTable.email, userEmail)).limit(1);
+
+    let user: typeof existingRows[0];
+
+    if (existingRows.length > 0) {
+      user = existingRows[0];
+      if (user.plan === "free") {
+        await db.update(usersTable)
+          .set({ plan: validPlan, ...(stripeCustomerId ? { stripeCustomerId } : {}) })
+          .where(eq(usersTable.id, user.id));
+        user = { ...user, plan: validPlan };
+      }
+    } else {
+      const [newUser] = await db.insert(usersTable).values({
+        email: userEmail,
+        passwordHash: userPasswordHash,
+        name: userName,
+        createdAt: Date.now(),
+        plan: validPlan,
+        aiUsageCount: 0,
+        aiUsageResetDate: "",
+        ...(stripeCustomerId ? { stripeCustomerId } : {}),
+      }).returning();
+      user = newUser;
+    }
+
+    const token = signToken({ id: user.id, email: user.email, name: user.name, plan: user.plan });
+    return res.status(200).json({
+      token,
+      user: { id: user.id, email: user.email, name: user.name, plan: user.plan },
+    });
+  } catch (err) {
+    console.error("POST /auth/from-checkout error:", err);
+    return res.status(500).json({ error: "Erro interno do servidor" });
   }
 });
 

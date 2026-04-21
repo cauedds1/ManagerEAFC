@@ -272,49 +272,92 @@ export default function App() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get("checkout") === "success") {
-      window.history.replaceState({}, "", window.location.pathname);
-      const token = localStorage.getItem(AUTH_TOKEN_KEY);
-      if (token) {
-        setCheckoutPending(true);
-        const start = Date.now();
-        const TIMEOUT_MS = 120_000;
-        const INTERVAL_MS = 3_000;
+    if (params.get("checkout") !== "success") return;
 
-        const poll = setInterval(async () => {
-          if (Date.now() - start > TIMEOUT_MS) {
-            clearInterval(poll);
-            setCheckoutPending(false);
+    const sessionId = params.get("session_id");
+    window.history.replaceState({}, "", window.location.pathname);
+    const token = localStorage.getItem(AUTH_TOKEN_KEY);
+
+    if (sessionId && !token) {
+      // New user registration flow — exchange Stripe session for account
+      setCheckoutPending(true);
+      let attempts = 0;
+      const MAX_ATTEMPTS = 12;
+
+      const tryFromCheckout = async () => {
+        if (attempts >= MAX_ATTEMPTS) {
+          setCheckoutPending(false);
+          return;
+        }
+        attempts++;
+        try {
+          const res = await fetch(`${API_BASE}/auth/from-checkout`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ sessionId }),
+          });
+          if (!res.ok) {
+            setTimeout(tryFromCheckout, 3000);
             return;
           }
-          try {
-            const res = await fetch(`${API_BASE}/auth/me`, {
-              headers: { Authorization: `Bearer ${token}` },
-            });
-            if (!res.ok) return;
-            const data = await res.json() as { user?: { plan?: string } };
-            if (data.user?.plan && data.user.plan !== "free") {
-              clearInterval(poll);
-              const stored = localStorage.getItem(AUTH_USER_KEY);
-              if (stored) {
-                try {
-                  const parsed = JSON.parse(stored) as AuthUser;
-                  const updated = { ...parsed, plan: data.user.plan as AuthUser["plan"] };
-                  localStorage.setItem(AUTH_USER_KEY, JSON.stringify(updated));
-                  setAuthUser(updated);
-                } catch {}
-              }
-              setCheckoutPending(false);
-              setCheckoutConfirmed(true);
-              setTimeout(() => setCheckoutConfirmed(false), 4000);
-            }
-          } catch {}
-        }, INTERVAL_MS);
+          const data = await res.json() as { token?: string; user?: AuthUser };
+          if (data.token && data.user) {
+            setCheckoutPending(false);
+            setCheckoutConfirmed(true);
+            setTimeout(() => setCheckoutConfirmed(false), 4000);
+            await handleAuthSuccess(data.token, data.user);
+          } else {
+            setTimeout(tryFromCheckout, 3000);
+          }
+        } catch {
+          setTimeout(tryFromCheckout, 3000);
+        }
+      };
 
-        return () => clearInterval(poll);
-      }
+      tryFromCheckout();
+      return;
     }
-  }, []);
+
+    if (token) {
+      // Existing user upgrade flow — poll for plan change
+      setCheckoutPending(true);
+      const start = Date.now();
+      const TIMEOUT_MS = 120_000;
+      const INTERVAL_MS = 3_000;
+
+      const poll = setInterval(async () => {
+        if (Date.now() - start > TIMEOUT_MS) {
+          clearInterval(poll);
+          setCheckoutPending(false);
+          return;
+        }
+        try {
+          const res = await fetch(`${API_BASE}/auth/me`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (!res.ok) return;
+          const data = await res.json() as { user?: { plan?: string } };
+          if (data.user?.plan && data.user.plan !== "free") {
+            clearInterval(poll);
+            const stored = localStorage.getItem(AUTH_USER_KEY);
+            if (stored) {
+              try {
+                const parsed = JSON.parse(stored) as AuthUser;
+                const updated = { ...parsed, plan: data.user.plan as AuthUser["plan"] };
+                localStorage.setItem(AUTH_USER_KEY, JSON.stringify(updated));
+                setAuthUser(updated);
+              } catch {}
+            }
+            setCheckoutPending(false);
+            setCheckoutConfirmed(true);
+            setTimeout(() => setCheckoutConfirmed(false), 4000);
+          }
+        } catch {}
+      }, INTERVAL_MS);
+
+      return () => clearInterval(poll);
+    }
+  }, [handleAuthSuccess]);
 
   useEffect(() => {
     migrateFromLegacy();

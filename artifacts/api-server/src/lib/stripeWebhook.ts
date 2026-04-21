@@ -13,12 +13,16 @@ async function getPlanTierFromPriceId(priceId: string): Promise<"pro" | "ultra" 
   const stripe = await getUncachableStripeClient();
   const price = await stripe.prices.retrieve(priceId, { expand: ["product"] });
   const product = price.product as Stripe.Product;
-  const planTier = product.metadata?.planTier;
-  if (!planTier || !VALID_PLAN_TIERS[planTier]) {
-    logger.warn({ priceId, planTier }, "Price has no valid planTier metadata");
-    return null;
-  }
-  return VALID_PLAN_TIERS[planTier];
+
+  const metaTier = (product.metadata?.planTier ?? "").toLowerCase();
+  if (VALID_PLAN_TIERS[metaTier]) return VALID_PLAN_TIERS[metaTier];
+
+  const name = product.name.toLowerCase();
+  if (name.includes("ultra")) return "ultra";
+  if (name.includes("pro")) return "pro";
+
+  logger.warn({ priceId, productName: product.name }, "Price has no valid planTier and name doesn't match");
+  return null;
 }
 
 export async function handleStripeEvent(event: Stripe.Event): Promise<void> {
@@ -29,34 +33,63 @@ export async function handleStripeEvent(event: Stripe.Event): Promise<void> {
         if (session.mode !== "subscription") break;
 
         const userId = session.metadata?.userId;
+        const isNewUser = session.metadata?.newUser === "true";
         const stripeCustomerId = typeof session.customer === "string" ? session.customer : null;
 
-        if (!userId) {
-          logger.warn({ sessionId: session.id }, "checkout.session.completed missing userId metadata");
+        if (!userId && !isNewUser) {
+          logger.warn({ sessionId: session.id }, "checkout.session.completed: no userId or newUser metadata");
           break;
         }
 
-        const stripe = await getUncachableStripeClient();
-        const lineItems = await stripe.checkout.sessions.listLineItems(session.id, { limit: 1 });
-        const priceId = lineItems.data?.[0]?.price?.id ?? null;
-
         let plan: "pro" | "ultra" | null = null;
 
-        if (priceId) {
-          plan = await getPlanTierFromPriceId(priceId);
+        const metaPlanTier = (session.metadata?.planTier ?? "").toLowerCase();
+        if (VALID_PLAN_TIERS[metaPlanTier]) {
+          plan = VALID_PLAN_TIERS[metaPlanTier];
+        } else {
+          const stripe = await getUncachableStripeClient();
+          const lineItems = await stripe.checkout.sessions.listLineItems(session.id, { limit: 1 });
+          const priceId = lineItems.data?.[0]?.price?.id ?? null;
+          if (priceId) plan = await getPlanTierFromPriceId(priceId);
         }
 
         if (!plan) {
-          logger.warn({ sessionId: session.id, priceId }, "checkout.session.completed: could not resolve planTier from price_id");
+          logger.warn({ sessionId: session.id }, "checkout.session.completed: could not resolve planTier");
+          break;
+        }
+
+        if (isNewUser) {
+          const { userName, userEmail, userPasswordHash } = session.metadata ?? {};
+          if (!userEmail || !userPasswordHash || !userName) {
+            logger.warn({ sessionId: session.id }, "checkout.session.completed: newUser missing metadata fields");
+            break;
+          }
+
+          const existing = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.email, userEmail)).limit(1);
+          if (existing.length === 0) {
+            const [newUser] = await db.insert(usersTable).values({
+              email: userEmail,
+              passwordHash: userPasswordHash,
+              name: userName,
+              createdAt: Date.now(),
+              plan,
+              aiUsageCount: 0,
+              aiUsageResetDate: "",
+              ...(stripeCustomerId ? { stripeCustomerId } : {}),
+            }).returning();
+            logger.info({ userId: newUser.id, plan, stripeCustomerId }, "New user created via checkout.session.completed");
+          } else {
+            await db.update(usersTable)
+              .set({ plan, ...(stripeCustomerId ? { stripeCustomerId } : {}) })
+              .where(eq(usersTable.id, existing[0].id));
+            logger.info({ userId: existing[0].id, plan }, "Existing user plan updated via checkout.session.completed");
+          }
           break;
         }
 
         await db
           .update(usersTable)
-          .set({
-            plan,
-            ...(stripeCustomerId ? { stripeCustomerId } : {}),
-          })
+          .set({ plan, ...(stripeCustomerId ? { stripeCustomerId } : {}) })
           .where(eq(usersTable.id, Number(userId)));
 
         logger.info({ userId, plan, stripeCustomerId }, "Plan activated via checkout.session.completed");

@@ -4,6 +4,7 @@ import { eq, sql } from "drizzle-orm";
 import { requireAuth, type AuthRequest } from "../middleware/auth";
 import { getUncachableStripeClient } from "../lib/stripeClient";
 import type Stripe from "stripe";
+import bcrypt from "bcryptjs";
 
 const router = Router();
 
@@ -93,7 +94,7 @@ router.post("/stripe/checkout", requireAuth, async (req: AuthRequest, res) => {
       payment_method_types: ["card"],
       line_items: [{ price: priceId, quantity: 1 }],
       mode: "subscription",
-      success_url: `${FRONTEND_URL}/?checkout=success`,
+      success_url: `${FRONTEND_URL}/?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${FRONTEND_URL}/?checkout=cancel`,
       metadata: {
         userId: String(user.id),
@@ -172,7 +173,92 @@ router.get("/stripe/subscription", requireAuth, async (req: AuthRequest, res) =>
   }
 });
 
-router.get("/stripe/products-with-plan", requireAuth, async (_req, res) => {
+router.post("/stripe/checkout-register", async (req, res) => {
+  try {
+    const { name, email, password, priceId } = req.body as {
+      name?: string; email?: string; password?: string; priceId?: string;
+    };
+
+    if (!name?.trim() || !email?.trim() || !password || !priceId) {
+      return res.status(400).json({ error: "Todos os campos são obrigatórios" });
+    }
+    if (password.length < 6) {
+      return res.status(400).json({ error: "Senha deve ter no mínimo 6 caracteres" });
+    }
+    if (!priceId.startsWith("price_")) {
+      return res.status(400).json({ error: "priceId inválido" });
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+
+    const existing = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.email, normalizedEmail)).limit(1);
+    if (existing.length > 0) {
+      return res.status(409).json({ error: "Este e-mail já está em uso" });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 12);
+
+    const stripe = await getUncachableStripeClient();
+
+    let price: Stripe.Price;
+    try {
+      price = await stripe.prices.retrieve(priceId, { expand: ["product"] });
+    } catch {
+      return res.status(400).json({ error: "Preço não encontrado no Stripe" });
+    }
+
+    if (!price.active || price.type !== "recurring") {
+      return res.status(400).json({ error: "Preço inválido para assinatura" });
+    }
+
+    const product = price.product as Stripe.Product;
+    const metaTier = (product.metadata?.planTier ?? "").toLowerCase();
+    let planTier: string | null = ALLOWED_PLAN_TIERS.has(metaTier) ? metaTier : null;
+    if (!planTier) {
+      const pName = product.name.toLowerCase();
+      if (pName.includes("ultra")) planTier = "ultra";
+      else if (pName.includes("pro")) planTier = "pro";
+    }
+    if (!planTier) {
+      return res.status(400).json({ error: "Este preço não corresponde a um plano válido" });
+    }
+
+    const existingCustomers = await stripe.customers.search({
+      query: `email:'${normalizedEmail}'`,
+      limit: 1,
+    });
+    let customerId: string;
+    if (existingCustomers.data.length > 0) {
+      customerId = existingCustomers.data[0].id;
+    } else {
+      const customer = await stripe.customers.create({ email: normalizedEmail, name: name.trim() });
+      customerId = customer.id;
+    }
+
+    const session = await stripe.checkout.sessions.create({
+      customer: customerId,
+      payment_method_types: ["card"],
+      line_items: [{ price: priceId, quantity: 1 }],
+      mode: "subscription",
+      success_url: `${FRONTEND_URL}/?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${FRONTEND_URL}/?checkout=cancel`,
+      metadata: {
+        newUser: "true",
+        userName: name.trim(),
+        userEmail: normalizedEmail,
+        userPasswordHash: passwordHash,
+        planTier,
+      },
+    });
+
+    return res.json({ url: session.url });
+  } catch (err) {
+    console.error("POST /stripe/checkout-register error:", err);
+    return res.status(500).json({ error: "Erro ao criar sessão de pagamento" });
+  }
+});
+
+router.get("/stripe/products-with-plan", async (_req, res) => {
   try {
     const now = Date.now();
 
