@@ -15,6 +15,12 @@ const FRONTEND_URL = process.env.FRONTEND_URL ?? (
 
 const ALLOWED_PLAN_TIERS = new Set(["pro", "ultra"]);
 
+const _parsedTTL = parseInt(process.env.STRIPE_PLANS_CACHE_TTL_MINUTES ?? "5", 10);
+const PLANS_CACHE_TTL_MS = (Number.isFinite(_parsedTTL) && _parsedTTL > 0 ? _parsedTTL : 5) * 60 * 1000;
+
+type PlanEntry = { planTier: string; priceId: string; unitAmount: number; currency: string };
+let plansCache: { data: PlanEntry[]; expiresAt: number } | null = null;
+
 router.post("/stripe/checkout", requireAuth, async (req: AuthRequest, res) => {
   try {
     const { priceId } = req.body as { priceId?: string };
@@ -168,6 +174,13 @@ router.get("/stripe/subscription", requireAuth, async (req: AuthRequest, res) =>
 
 router.get("/stripe/products-with-plan", requireAuth, async (_req, res) => {
   try {
+    const now = Date.now();
+
+    if (plansCache && now < plansCache.expiresAt) {
+      console.log("GET /stripe/products-with-plan — retornando do cache");
+      return res.json(plansCache.data);
+    }
+
     const stripe = await getUncachableStripeClient();
 
     const [productsResp, pricesResp] = await Promise.all([
@@ -177,7 +190,6 @@ router.get("/stripe/products-with-plan", requireAuth, async (_req, res) => {
 
     const productMap = new Map(productsResp.data.map((p) => [p.id, p]));
 
-    type PlanEntry = { planTier: string; priceId: string; unitAmount: number; currency: string };
     const plans: PlanEntry[] = [];
 
     for (const price of pricesResp.data) {
@@ -207,6 +219,7 @@ router.get("/stripe/products-with-plan", requireAuth, async (_req, res) => {
     }
 
     plans.sort((a, b) => a.unitAmount - b.unitAmount);
+    plansCache = { data: plans, expiresAt: now + PLANS_CACHE_TTL_MS };
     console.log("GET /stripe/products-with-plan — planos encontrados:", plans.length, plans.map(p => ({ tier: p.planTier, priceId: p.priceId, amount: p.unitAmount })));
     return res.json(plans);
   } catch (err) {
