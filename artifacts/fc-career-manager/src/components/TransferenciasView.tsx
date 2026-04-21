@@ -931,7 +931,7 @@ export function TransferenciasView({
               className="text-xs font-bold px-2.5 py-0.5 rounded-full tabular-nums"
               style={{ background: "rgba(168,85,247,0.12)", color: "#a855f7" }}
             >
-              {pendingCount} {pendingCount !== 1 ? t.pendenteplural : t.pendenteSingular}
+              {pendingCount} {pendingCount !== 1 ? t.pendentePlural : t.pendenteSingular}
             </span>
           )}
         </div>

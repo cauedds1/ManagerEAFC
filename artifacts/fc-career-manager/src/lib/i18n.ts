@@ -1740,7 +1740,7 @@ export const TRANSFERENCIAS: Record<Lang, Record<string, string>> = {
     saidaSingular: "saída",
     saidaPlural: "saídas",
     pendenteSingular: "pendente",
-    pendenteplural: "pendentes",
+    pendentePlural: "pendentes",
     // Action buttons
     btnRegVenda: "Registrar Venda",
     btnEmprestimo: "Empréstimo",
@@ -1879,7 +1879,7 @@ export const TRANSFERENCIAS: Record<Lang, Record<string, string>> = {
     saidaSingular: "departure",
     saidaPlural: "departures",
     pendenteSingular: "pending",
-    pendenteplural: "pending",
+    pendentePlural: "pending",
     // Action buttons
     btnRegVenda: "Log Sale",
     btnEmprestimo: "Loan",
