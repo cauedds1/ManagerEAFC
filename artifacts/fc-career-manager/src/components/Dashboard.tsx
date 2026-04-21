@@ -410,6 +410,17 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
       });
 
       if (!res.ok) {
+        try {
+          const errData = await res.json() as { code?: string; limit?: number };
+          if (errData.code === "PLAN_LIMIT_REACHED") {
+            if (typeof errData.limit === "number") {
+              setAiUsageToday(errData.limit);
+              setAiUsageLimit(errData.limit);
+            }
+            setBgGenStatus("idle");
+            return;
+          }
+        } catch {}
         setBgGenStatus("error");
         bgGenTimerRef.current = setTimeout(() => setBgGenStatus("idle"), 5000);
         return;
