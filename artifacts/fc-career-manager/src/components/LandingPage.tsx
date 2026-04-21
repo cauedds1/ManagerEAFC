@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, type CSSProperties } from "react";
 import { ClubDemoMockup } from "./ClubDemoMockup";
 
 /* ─── Types ─────────────────────────────────────────────── */
@@ -717,13 +717,17 @@ export function LandingPage({ onStart, onLogin, onStartWithPlan }: LandingPagePr
   const [homeScore, setHomeScore]             = useState(2);
   const [awayScore, setAwayScore]             = useState(1);
 
-  const typedUnknown = clubNotFound && customClubInput.trim().length > 0;
-  const unknownColors = typedUnknown ? hashAccent(customClubInput.trim()) : null;
-  const club = customClub && customClubName
-    ? { ...CLUBS[activeClub], accent: customClub.primary, accentRgb: customClub.accentRgb, secondary: customClub.secondary, name: customClubName, league: "" }
-    : typedUnknown && unknownColors
-    ? { ...CLUBS[activeClub], accent: unknownColors.accent, accentRgb: unknownColors.accentRgb, secondary: unknownColors.secondary, name: customClubInput.trim(), league: "" }
-    : { ...CLUBS[activeClub], secondary: "#888899" };
+  const inputText = customClubInput.trim();
+  const club = (() => {
+    if (inputText.length >= 2) {
+      if (customClub && customClubName) {
+        return { ...CLUBS[activeClub], accent: customClub.primary, accentRgb: customClub.accentRgb, secondary: customClub.secondary, name: customClubName, league: "" };
+      }
+      const fb = hashAccent(inputText);
+      return { ...CLUBS[activeClub], accent: fb.accent, accentRgb: fb.accentRgb, secondary: fb.secondary, name: inputText, league: "" };
+    }
+    return { ...CLUBS[activeClub], secondary: "#888899" };
+  })();
 
   /* ── Live coaches counter ─── */
   useEffect(() => {
@@ -1174,7 +1178,7 @@ export function LandingPage({ onStart, onLogin, onStartWithPlan }: LandingPagePr
           {/* Screenshot */}
           <div style={{ position: "relative", maxWidth: 900, margin: "0 auto" }}>
             <div style={{ transition: "transform 0.4s cubic-bezier(0.34,1.56,0.64,1)" }} onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.transform = "scale(1.015)"; }} onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.transform = "scale(1)"; }}>
-              <div style={{ borderRadius: 20, overflow: "hidden", boxShadow: `0 0 60px rgba(${club.accentRgb},0.18), 0 0 120px rgba(${club.accentRgb},0.08)`, transition: "box-shadow 0.6s ease" }}>
+              <div className="mockup-glow-pulse" style={{ '--mg-rgb': club.accentRgb, borderRadius: 20, overflow: "hidden", transition: "box-shadow 0.6s ease" } as CSSProperties}>
                 {/* Browser chrome */}
                 <div style={{ background: "#080810", padding: "10px 16px", display: "flex", alignItems: "center", gap: 8, borderBottom: `1px solid rgba(${club.accentRgb},0.12)` }}>
                   {[1,2,3].map(d => <span key={d} style={{ width: 12, height: 12, borderRadius: "50%", background: "#1a1a1a" }} />)}

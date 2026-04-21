@@ -31,9 +31,10 @@ function short(name: string): string {
 
 /* ── Static opponent pool ─────────────────────────────────── */
 const OPPS = [
-  "Valencia","Sevilla","Getafe","Betis","Celta","Rayo","Sporting",
-  "United","City SC","Athletic","Dynamo","Lokomotiv","Rapid","Partizan",
-  "Nacional","Estrela","Olimpia","Vitesse","Ferencváros","Slavia",
+  "Rival FC","City SC","United AF","Athletic RK","Metro CF",
+  "Capital SC","Northern FC","Dynamo SC","Eastern CF","Western SK",
+  "Harbor FC","Valley SC","Summit AF","Coastal CF","Forest FC",
+  "Plains SC","Ridge AF","Delta CF","Sunrise SK","Canyon FC",
 ];
 
 const COMPS_POOL = ["Liga","Champions","Copa","Premier","Serie A","Ligue 1","Cups"];
