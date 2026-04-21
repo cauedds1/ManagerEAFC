@@ -94,6 +94,7 @@ router.post("/stripe/checkout", requireAuth, async (req: AuthRequest, res) => {
       payment_method_types: ["card"],
       line_items: [{ price: priceId, quantity: 1 }],
       mode: "subscription",
+      allow_promotion_codes: true,
       success_url: `${FRONTEND_URL}/?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${FRONTEND_URL}/?checkout=cancel`,
       metadata: {
@@ -240,6 +241,7 @@ router.post("/stripe/checkout-register", async (req, res) => {
       payment_method_types: ["card"],
       line_items: [{ price: priceId, quantity: 1 }],
       mode: "subscription",
+      allow_promotion_codes: true,
       success_url: `${FRONTEND_URL}/?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${FRONTEND_URL}/?checkout=cancel`,
       metadata: {
