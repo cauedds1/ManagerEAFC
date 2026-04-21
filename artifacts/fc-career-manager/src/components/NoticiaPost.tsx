@@ -620,7 +620,7 @@ export function NoticiaPost({ post, portalPhotos, customPortals, onUpdateImage, 
       </div>
 
       {/* Comments section */}
-      {showComments && post.comments.length > 0 && (
+      {showComments && (
         <div
           className="flex flex-col gap-4 px-4 pt-2 pb-4"
           style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}
@@ -628,9 +628,13 @@ export function NoticiaPost({ post, portalPhotos, customPortals, onUpdateImage, 
           <p className="text-white/25 text-xs font-semibold uppercase tracking-wider pt-1">
             Comentários
           </p>
-          {post.comments.map((comment) => (
-            <CommentItem key={comment.id} comment={comment} />
-          ))}
+          {(post.comments ?? []).length > 0 ? (
+            (post.comments ?? []).map((comment) => (
+              <CommentItem key={comment.id} comment={comment} />
+            ))
+          ) : (
+            <p className="text-white/25 text-xs">Nenhum comentário disponível.</p>
+          )}
         </div>
       )}
     </article>
