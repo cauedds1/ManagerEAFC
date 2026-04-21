@@ -334,42 +334,68 @@ function VideoUploadSection({
     if (inputRef.current) inputRef.current.value = "";
   };
 
+  const counterColor = isAtLimit ? "#f87171" : videoCount / maxVideos >= 0.8 ? "#f59e0b" : "#34d399";
+  const counterPct = Math.min(100, (videoCount / maxVideos) * 100);
+
+  const CounterBar = () => (
+    <div className="flex flex-col gap-1.5 mb-3">
+      <div className="flex items-center justify-between">
+        <span className="text-white/40 text-xs font-semibold">Vídeos usados</span>
+        <span className="text-sm font-black tabular-nums" style={{ color: counterColor }}>{videoCount}/{maxVideos}</span>
+      </div>
+      <div className="w-full h-1.5 rounded-full" style={{ background: "rgba(255,255,255,0.08)" }}>
+        <div
+          className="h-full rounded-full transition-all duration-500"
+          style={{ width: `${counterPct}%`, background: counterColor }}
+        />
+      </div>
+    </div>
+  );
+
   if (isAtLimit) {
     return (
-      <div className="rounded-xl border border-amber-500/30 bg-amber-500/8 p-4 flex flex-col items-center gap-2 text-center">
-        <svg className="w-6 h-6 text-amber-400/70" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-        </svg>
-        <p className="text-amber-300/80 text-sm font-semibold">Limite atingido ({videoCount}/{maxVideos})</p>
-        <p className="text-white/40 text-xs">Exclua um vídeo existente para adicionar outro.</p>
+      <div className="flex flex-col gap-3">
+        <CounterBar />
+        <div className="rounded-xl border border-amber-500/30 p-4 flex flex-col items-center gap-2 text-center" style={{ background: "rgba(245,158,11,0.06)" }}>
+          <svg className="w-5 h-5 text-amber-400/70" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+          </svg>
+          <p className="text-amber-300/80 text-sm font-semibold">Limite de {maxVideos} vídeos atingido</p>
+          <p className="text-white/40 text-xs">Exclua um vídeo existente para adicionar outro.</p>
+        </div>
       </div>
     );
   }
 
   if (uploadState === "done" && selectedFile) {
     return (
-      <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/8 p-4 flex items-center gap-3">
-        <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "rgba(16,185,129,0.15)" }}>
-          <svg className="w-5 h-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-          </svg>
+      <div className="flex flex-col gap-2">
+        <CounterBar />
+        <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/8 p-4 flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "rgba(16,185,129,0.15)" }}>
+            <svg className="w-5 h-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+            </svg>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-emerald-300 text-sm font-semibold truncate">{selectedFile.name}</p>
+            <p className="text-white/40 text-xs">{formatFileSize(selectedFile.size)} · Pronto para salvar</p>
+          </div>
+          <button onClick={handleReset} className="text-white/30 hover:text-white/60 transition-colors flex-shrink-0 p-1">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-emerald-300 text-sm font-semibold truncate">{selectedFile.name}</p>
-          <p className="text-white/40 text-xs">{formatFileSize(selectedFile.size)} · Pronto para salvar</p>
-        </div>
-        <button onClick={handleReset} className="text-white/30 hover:text-white/60 transition-colors flex-shrink-0 p-1">
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
       </div>
     );
   }
 
   if (uploadState === "uploading" && selectedFile) {
     return (
-      <div className="rounded-xl border border-white/10 bg-white/4 p-4 flex flex-col gap-3">
+      <div className="flex flex-col gap-2">
+        <CounterBar />
+        <div className="rounded-xl border border-white/10 bg-white/4 p-4 flex flex-col gap-3">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "rgba(124,92,252,0.15)" }}>
             <div className="w-4 h-4 border-2 border-purple-400/40 border-t-purple-400 rounded-full animate-spin" />
@@ -386,12 +412,14 @@ function VideoUploadSection({
             style={{ width: `${uploadProgress}%`, background: "var(--club-primary, #7c5cfc)" }}
           />
         </div>
+        </div>
       </div>
     );
   }
 
   return (
     <div>
+      <CounterBar />
       <input
         ref={inputRef}
         type="file"
@@ -409,7 +437,7 @@ function VideoUploadSection({
           <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" />
         </svg>
         <span className="text-white/40 text-sm">Clique ou arraste um vídeo</span>
-        <span className="text-white/25 text-xs">MP4, WebM, MOV · até {maxSizeMb} MB · {videoCount}/{maxVideos} usados</span>
+        <span className="text-white/25 text-xs">MP4, WebM, MOV · até {maxSizeMb} MB</span>
       </div>
       {uploadError && <p className="text-red-400 text-xs mt-1.5">{uploadError}</p>}
     </div>
@@ -578,9 +606,23 @@ function AddMomentoModal({
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" />
               </svg>
               Vídeo
-              {!canUseVideo && (
+              {!canUseVideo ? (
                 <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md ml-0.5" style={{ background: "rgba(124,92,252,0.25)", color: "#a78bfa" }}>
                   PRO
+                </span>
+              ) : (
+                <span
+                  className="text-[9px] font-bold px-1.5 py-0.5 rounded-md ml-0.5 tabular-nums"
+                  style={{
+                    background: videoCount >= planLimits.maxVideoMomentos
+                      ? "rgba(239,68,68,0.2)"
+                      : "rgba(255,255,255,0.08)",
+                    color: videoCount >= planLimits.maxVideoMomentos
+                      ? "#f87171"
+                      : "rgba(255,255,255,0.4)",
+                  }}
+                >
+                  {videoCount}/{planLimits.maxVideoMomentos}
                 </span>
               )}
             </button>
@@ -639,7 +681,7 @@ function AddMomentoModal({
                     </svg>
                   </div>
                   <div>
-                    <p className="text-white/80 font-semibold text-sm">Disponível no plano Pro ou Ultra</p>
+                    <p className="text-white/80 font-semibold text-sm">Importação de vídeo apenas no plano Pro</p>
                     <p className="text-white/40 text-xs mt-1">Faça upgrade para gravar gols, lances e clipes da sua carreira.</p>
                   </div>
                 </div>
@@ -725,7 +767,7 @@ function AddMomentoModal({
                   ))}
                 </div>
               )}
-              <div className="relative" ref={playerDropdownRef}>
+              <div ref={playerDropdownRef}>
                 <button
                   type="button"
                   onClick={() => { setShowPlayerDropdown((v) => !v); setPlayerSearch(""); }}
@@ -737,17 +779,18 @@ function AddMomentoModal({
                   </svg>
                 </button>
                 {showPlayerDropdown && (
-                  <div className="absolute left-0 right-0 top-full mt-1 rounded-xl border border-white/10 overflow-hidden z-10" style={{ background: "var(--app-bg-lighter, #141024)", maxHeight: 200 }}>
+                  <div className="mt-1 rounded-xl border border-white/10 overflow-hidden" style={{ background: "#0f0c1e" }}>
                     <div className="p-2 border-b border-white/10">
                       <input
                         autoFocus
                         value={playerSearch}
                         onChange={(e) => setPlayerSearch(e.target.value)}
                         placeholder="Buscar jogador…"
-                        className="w-full rounded-lg px-2.5 py-1.5 text-sm text-white placeholder-white/30 outline-none bg-white/5 border border-white/10 focus:border-white/25"
+                        className="w-full rounded-lg px-2.5 py-1.5 text-sm text-white placeholder-white/30 outline-none border border-white/10 focus:border-white/25 transition-colors"
+                        style={{ background: "rgba(255,255,255,0.06)" }}
                       />
                     </div>
-                    <div className="overflow-y-auto" style={{ maxHeight: 148 }}>
+                    <div className="overflow-y-auto" style={{ maxHeight: 160 }}>
                       {availablePlayers.length === 0 ? (
                         <p className="text-white/30 text-xs text-center py-4">Nenhum jogador encontrado</p>
                       ) : (
@@ -760,7 +803,10 @@ function AddMomentoModal({
                               setPlayerSearch("");
                               setShowPlayerDropdown(false);
                             }}
-                            className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-sm text-white hover:bg-white/5 transition-colors"
+                            className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left text-sm text-white transition-colors"
+                            style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}
+                            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.06)"; }}
+                            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = ""; }}
                           >
                             <PlayerInitials name={p.name} size={24} />
                             <span className="flex-1 min-w-0 truncate">{p.name}</span>

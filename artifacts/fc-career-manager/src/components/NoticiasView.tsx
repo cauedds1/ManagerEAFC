@@ -150,6 +150,8 @@ export interface BgGenParams {
   source?: string;
   category?: string;
   imageUrl?: string;
+  videoUrl?: string;
+  videoKey?: string;
   customPortal?: { id: string; name: string; description?: string; tone?: string };
   attachedMatchContext?: string;
   playerContextStr?: string;
@@ -461,6 +463,8 @@ function AddPostModal({
       source: !isCustom && aiSource !== "auto" ? aiSource : undefined,
       category: aiCategory !== "auto" ? aiCategory : undefined,
       imageUrl: imageObjectPath || undefined,
+      videoUrl: videoUrl || undefined,
+      videoKey: videoKey ?? undefined,
       customPortal: isCustom ? {
         id: selectedCustomPortal.id,
         name: selectedCustomPortal.name,
@@ -814,6 +818,69 @@ function AddPostModal({
                   <p className="text-red-400/80 text-xs mt-1.5">{imageError}</p>
                 )}
               </div>
+
+              {/* Video picker (auto mode) */}
+              {canUploadVideo && (
+                <div>
+                  <input
+                    ref={videoInputRef}
+                    type="file"
+                    accept="video/mp4,video/webm,video/quicktime"
+                    className="hidden"
+                    onChange={(e) => { const f = e.target.files?.[0]; if (f) handleVideoSelect(f); }}
+                  />
+                  {videoUploadState === "idle" && !videoUrl ? (
+                    <button
+                      onClick={() => videoInputRef.current?.click()}
+                      className="w-full py-3 px-4 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-all duration-150 hover:opacity-80"
+                      style={{
+                        background: "rgba(255,255,255,0.04)",
+                        border: "1px dashed rgba(255,255,255,0.12)",
+                        color: "rgba(255,255,255,0.35)",
+                      }}
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" />
+                      </svg>
+                      Adicionar vídeo ao post (opcional)
+                    </button>
+                  ) : videoUploadState === "done" && videoUrl ? (
+                    <div className="rounded-xl border border-emerald-500/30 p-3 flex items-center gap-3" style={{ background: "rgba(16,185,129,0.06)" }}>
+                      <video
+                        src={`${videoUrl}#t=0.1`}
+                        className="w-14 h-10 rounded-lg object-cover flex-shrink-0"
+                        preload="metadata"
+                        muted
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-emerald-300 text-xs font-semibold">Vídeo pronto</p>
+                        <p className="text-white/40 text-xs truncate">{videoUrl.split("/").pop()}</p>
+                      </div>
+                      <button
+                        onClick={handleVideoRemove}
+                        className="text-white/30 hover:text-white/60 transition-colors flex-shrink-0 p-1"
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  ) : videoUploadState === "uploading" ? (
+                    <div className="rounded-xl border border-white/10 p-3 flex flex-col gap-2" style={{ background: "rgba(255,255,255,0.03)" }}>
+                      <div className="flex items-center justify-between">
+                        <span className="text-white/50 text-xs">Enviando vídeo…</span>
+                        <span className="text-purple-300 text-xs font-bold">{videoUploadProgress}%</span>
+                      </div>
+                      <div className="w-full h-1 rounded-full" style={{ background: "rgba(255,255,255,0.08)" }}>
+                        <div className="h-full rounded-full transition-all duration-300" style={{ width: `${videoUploadProgress}%`, background: "var(--club-primary, #7c5cfc)" }} />
+                      </div>
+                    </div>
+                  ) : null}
+                  {videoUploadError && (
+                    <p className="text-red-400/80 text-xs mt-1.5">{videoUploadError}</p>
+                  )}
+                </div>
+              )}
 
               {/* AI usage counter */}
               {aiUsageLimit !== undefined && aiUsageLimit !== Infinity && (() => {
