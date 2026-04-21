@@ -877,6 +877,17 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
 
   const totalNotifs = notifications.length;
 
+  if (!planLimits.diretoriaEnabled) {
+    return (
+      <UpgradePrompt
+        currentPlan={resolvedPlan}
+        requiredPlan="pro"
+        featureName="Diretoria"
+        description="Converse com os diretores do clube, receba alertas sobre desempenho da equipe e negocie reforços. Disponível a partir do plano Pro."
+      />
+    );
+  }
+
   if (members.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-24 px-4 text-center">
@@ -910,17 +921,6 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
           />
         )}
       </div>
-    );
-  }
-
-  if (!planLimits.diretoriaEnabled) {
-    return (
-      <UpgradePrompt
-        currentPlan={resolvedPlan}
-        requiredPlan="pro"
-        featureName="Diretoria"
-        description="Converse com os diretores do clube, receba alertas sobre desempenho da equipe e negocie reforços. Disponível a partir do plano Pro."
-      />
     );
   }
 
