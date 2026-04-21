@@ -682,14 +682,14 @@ function AddMomentoModal({
           {mediaTab === "video" && (
             <div>
               {!canUseVideo ? (
-                <div className="rounded-xl border border-purple-500/25 p-5 flex flex-col items-center gap-3 text-center" style={{ background: "rgba(124,92,252,0.06)" }}>
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "rgba(124,92,252,0.15)" }}>
-                    <svg className="w-5 h-5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" />
+                <div className="rounded-xl border border-amber-500/25 p-5 flex flex-col items-center gap-3 text-center" style={{ background: "rgba(245,158,11,0.05)" }}>
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "rgba(245,158,11,0.12)" }}>
+                    <svg className="w-5 h-5 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                     </svg>
                   </div>
                   <div>
-                    <p className="text-white/80 font-semibold text-sm">Vídeos disponíveis nos planos Pro e Ultra</p>
+                    <p className="text-white/80 font-semibold text-sm">Uploads de vídeos disponíveis apenas no Pro</p>
                     <p className="text-white/40 text-xs mt-1">Faça upgrade para registrar gols, lances e clipes da sua carreira.</p>
                   </div>
                 </div>

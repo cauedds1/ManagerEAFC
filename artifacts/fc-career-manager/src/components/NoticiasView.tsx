@@ -823,31 +823,40 @@ function AddPostModal({
               </div>
 
               {/* Video picker (auto mode) */}
-              {canUploadVideo && (
-                <div>
-                  <input
-                    ref={videoInputRef}
-                    type="file"
-                    accept="video/mp4,video/webm,video/quicktime"
-                    className="hidden"
-                    onChange={(e) => { const f = e.target.files?.[0]; if (f) handleVideoSelect(f); }}
-                  />
-                  {videoUploadState === "idle" && !videoUrl ? (
-                    <button
-                      onClick={() => videoInputRef.current?.click()}
-                      className="w-full py-3 px-4 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-all duration-150 hover:opacity-80"
-                      style={{
-                        background: "rgba(255,255,255,0.04)",
-                        border: "1px dashed rgba(255,255,255,0.12)",
-                        color: "rgba(255,255,255,0.35)",
-                      }}
-                    >
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" />
-                      </svg>
-                      Adicionar vídeo ao post (opcional)
-                    </button>
-                  ) : videoUploadState === "done" && videoUrl ? (
+              <div>
+                <input
+                  ref={videoInputRef}
+                  type="file"
+                  accept="video/mp4,video/webm,video/quicktime"
+                  className="hidden"
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) handleVideoSelect(f); }}
+                />
+                {!canUploadVideo ? (
+                  <div
+                    className="w-full py-3 px-4 rounded-xl text-xs font-semibold flex items-center justify-center gap-2"
+                    style={{ background: "rgba(245,158,11,0.05)", border: "1px dashed rgba(245,158,11,0.25)", color: "rgba(245,158,11,0.55)", cursor: "not-allowed" }}
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                    Desbloqueie vídeos com o plano Ultra
+                  </div>
+                ) : videoUploadState === "idle" && !videoUrl ? (
+                  <button
+                    onClick={() => videoInputRef.current?.click()}
+                    className="w-full py-3 px-4 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-all duration-150 hover:opacity-80"
+                    style={{
+                      background: "rgba(255,255,255,0.04)",
+                      border: "1px dashed rgba(255,255,255,0.12)",
+                      color: "rgba(255,255,255,0.35)",
+                    }}
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" />
+                    </svg>
+                    Adicionar vídeo ao post (opcional)
+                  </button>
+                ) : videoUploadState === "done" && videoUrl ? (
                     <div className="rounded-xl border border-emerald-500/30 p-3 flex items-center gap-3" style={{ background: "rgba(16,185,129,0.06)" }}>
                       <video
                         src={`${videoUrl}#t=0.1`}
@@ -878,12 +887,11 @@ function AddPostModal({
                         <div className="h-full rounded-full transition-all duration-300" style={{ width: `${videoUploadProgress}%`, background: "var(--club-primary, #7c5cfc)" }} />
                       </div>
                     </div>
-                  ) : null}
-                  {videoUploadError && (
-                    <p className="text-red-400/80 text-xs mt-1.5">{videoUploadError}</p>
-                  )}
-                </div>
-              )}
+                ) : null}
+                {videoUploadError && (
+                  <p className="text-red-400/80 text-xs mt-1.5">{videoUploadError}</p>
+                )}
+              </div>
 
               {/* AI usage counter */}
               {aiUsageLimit !== undefined && aiUsageLimit !== Infinity && (() => {
@@ -1110,12 +1118,12 @@ function AddPostModal({
                 {!canUploadVideo ? (
                   <div
                     className="w-full py-3 px-4 rounded-xl text-xs font-semibold flex items-center justify-center gap-2"
-                    style={{ background: "rgba(245,158,11,0.05)", border: "1px dashed rgba(245,158,11,0.2)", color: "rgba(245,158,11,0.5)", cursor: "not-allowed" }}
+                    style={{ background: "rgba(245,158,11,0.05)", border: "1px dashed rgba(245,158,11,0.25)", color: "rgba(245,158,11,0.55)", cursor: "not-allowed" }}
                   >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" />
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                     </svg>
-                    Disponível apenas no plano Ultra
+                    Desbloqueie vídeos com o plano Ultra
                   </div>
                 ) : videoUploadState === "done" && videoUrl ? (
                   <div
