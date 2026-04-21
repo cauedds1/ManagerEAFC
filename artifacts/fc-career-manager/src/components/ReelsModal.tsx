@@ -304,7 +304,7 @@ export function ReelsModal({ post, portalPhotos, customPortals, onClose }: Reels
             </button>
           </div>
 
-          {showComments && hasComments && (
+          {showComments && (
             <div
               className="absolute right-0 top-0 bottom-0 flex flex-col pointer-events-auto"
               style={{
@@ -335,7 +335,10 @@ export function ReelsModal({ post, portalPhotos, customPortals, onClose }: Reels
                 className="flex-1 overflow-y-auto px-3 py-3 flex flex-col gap-4"
                 style={{ scrollbarWidth: "thin", scrollbarColor: "rgba(255,255,255,0.1) transparent" }}
               >
-                {post.comments.map(c => <CommentRow key={c.id} comment={c} />)}
+                {hasComments
+                  ? post.comments.map(c => <CommentRow key={c.id} comment={c} />)
+                  : <p className="text-white/30 text-xs text-center py-8">Nenhum comentário ainda</p>
+                }
               </div>
             </div>
           )}
@@ -395,12 +398,15 @@ export function ReelsModal({ post, portalPhotos, customPortals, onClose }: Reels
           </div>
         </div>
 
-        {showComments && hasComments ? (
+        {showComments ? (
           <div
             className="flex-1 overflow-y-auto px-4 py-3 flex flex-col gap-4"
             style={{ scrollbarWidth: "thin", scrollbarColor: "rgba(255,255,255,0.1) transparent" }}
           >
-            {post.comments.map(c => <CommentRow key={c.id} comment={c} />)}
+            {hasComments
+              ? post.comments.map(c => <CommentRow key={c.id} comment={c} />)
+              : <p className="text-white/30 text-xs text-center py-8">Nenhum comentário ainda</p>
+            }
           </div>
         ) : (
           <div className="flex-1" />
