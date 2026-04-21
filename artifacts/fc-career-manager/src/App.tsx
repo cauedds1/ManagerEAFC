@@ -555,7 +555,7 @@ export default function App() {
     }
 
     if (view === "auth") {
-      return <AuthPage onBack={handleAuthBack} onAuthSuccess={handleAuthSuccess} initialPlan={authInitialPlan} checkoutDraft={authCheckoutDraft} onDraftConsumed={() => setAuthCheckoutDraft(null)} lang={lang} />;
+      return <AuthPage onBack={handleAuthBack} onAuthSuccess={handleAuthSuccess} initialPlan={authInitialPlan} checkoutDraft={authCheckoutDraft} onDraftConsumed={() => setAuthCheckoutDraft(null)} lang={lang} setLang={setLang} />;
     }
 
     if (view === "loading-clubs") {

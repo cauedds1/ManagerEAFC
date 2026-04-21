@@ -10,6 +10,7 @@ interface AuthPageProps {
   checkoutDraft?: { name: string; email: string; plan: "pro" | "ultra" } | null;
   onDraftConsumed?: () => void;
   lang: Lang;
+  setLang: (l: Lang) => void;
 }
 
 const API_BASE = "/api";
@@ -332,7 +333,7 @@ function FieldLines() {
 }
 
 /* ── Main component ── */
-export function AuthPage({ onBack, onAuthSuccess, initialPlan, checkoutDraft, onDraftConsumed, lang }: AuthPageProps) {
+export function AuthPage({ onBack, onAuthSuccess, initialPlan, checkoutDraft, onDraftConsumed, lang, setLang }: AuthPageProps) {
   const t = AUTH[lang];
   const planCards = getPlanCards(lang);
   const planDetailData = getPlanDetailData(lang);
@@ -483,19 +484,31 @@ export function AuthPage({ onBack, onAuthSuccess, initialPlan, checkoutDraft, on
       {/* ════ LEFT: FORM COLUMN ════ */}
       <div className="auth-form-col" style={{ position: "relative", zIndex: 1, width: "100%", maxWidth: 480, flexShrink: 0, display: "flex", flexDirection: "column", overflowY: "auto", borderRight: "1px solid rgba(255,255,255,0.05)", animation: "authFormEnter 0.45s cubic-bezier(0.25,0.46,0.45,0.94) both" }}>
 
-        <button
-          onClick={() => {
-            if (!isLogin && signupStep === "form") setSignupStep("plan");
-            else onBack();
-          }}
-          style={{ flexShrink: 0, alignSelf: "flex-start", display: "flex", alignItems: "center", gap: 6, color: "#444466", fontSize: 13, background: "none", border: "none", cursor: "pointer", transition: "color 0.2s", padding: "20px 28px 8px" }}
-          onMouseEnter={e => (e.currentTarget.style.color = "#8888aa")}
-          onMouseLeave={e => (e.currentTarget.style.color = "#444466")}>
-          <svg viewBox="0 0 20 20" fill="currentColor" style={{ width: 16, height: 16 }}>
-            <path fillRule="evenodd" d="M17 10a.75.75 0 0 1-.75.75H5.612l4.158 3.96a.75.75 0 1 1-1.04 1.08l-5.5-5.25a.75.75 0 0 1 0-1.08l5.5-5.25a.75.75 0 1 1 1.04 1.08L5.612 9.25H16.25A.75.75 0 0 1 17 10Z" clipRule="evenodd" />
-          </svg>
-          {t.back}
-        </button>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 28px 8px" }}>
+          <button
+            onClick={() => {
+              if (!isLogin && signupStep === "form") setSignupStep("plan");
+              else onBack();
+            }}
+            style={{ display: "flex", alignItems: "center", gap: 6, color: "#444466", fontSize: 13, background: "none", border: "none", cursor: "pointer", transition: "color 0.2s", padding: 0 }}
+            onMouseEnter={e => (e.currentTarget.style.color = "#8888aa")}
+            onMouseLeave={e => (e.currentTarget.style.color = "#444466")}>
+            <svg viewBox="0 0 20 20" fill="currentColor" style={{ width: 16, height: 16 }}>
+              <path fillRule="evenodd" d="M17 10a.75.75 0 0 1-.75.75H5.612l4.158 3.96a.75.75 0 1 1-1.04 1.08l-5.5-5.25a.75.75 0 0 1 0-1.08l5.5-5.25a.75.75 0 1 1 1.04 1.08L5.612 9.25H16.25A.75.75 0 0 1 17 10Z" clipRule="evenodd" />
+            </svg>
+            {t.back}
+          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 2, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 20, padding: 3 }}>
+            {(["pt", "en"] as Lang[]).map(l => (
+              <button
+                key={l}
+                onClick={() => setLang(l)}
+                style={{ fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 16, border: "none", cursor: "pointer", transition: "all 0.2s", letterSpacing: "0.06em", textTransform: "uppercase", background: lang === l ? "rgba(124,92,252,0.85)" : "transparent", color: lang === l ? "#fff" : "#444466" }}>
+                {l.toUpperCase()}
+              </button>
+            ))}
+          </div>
+        </div>
 
         <div key={contentKey} className="auth-content-enter" style={{ margin: "auto 0", padding: "16px 40px 36px" }}>
 

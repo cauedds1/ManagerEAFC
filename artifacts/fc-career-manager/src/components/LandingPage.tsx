@@ -641,7 +641,7 @@ export function LandingPage({ onStart, onLogin, onStartWithPlan, lang, setLang }
     const els = containerRef.current?.querySelectorAll(".lp-reveal, .lp-reveal-left, .lp-reveal-right");
     if (!els) return;
     const obs = new IntersectionObserver(entries => {
-      entries.forEach(e => { if (e.isIntersecting) { (e.target as HTMLElement).classList.add("lp-revealed"); obs.unobserve(e.target); } });
+      entries.forEach(e => { if (e.isIntersecting) { (e.target as HTMLElement).classList.add("lp-visible"); obs.unobserve(e.target); } });
     }, { threshold: 0.12 });
     els.forEach(el => obs.observe(el));
     return () => obs.disconnect();
