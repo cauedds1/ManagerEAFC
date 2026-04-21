@@ -183,10 +183,20 @@ const STEPS = [
     n: "04",
     colorType: "trophies" as FeatureColor,
     iconEl: (
-      <div style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 11, color: "#888", lineHeight: 1.4, textAlign: "left" }}>
-        <div style={{ color: "#f59e0b", fontWeight: 700, fontSize: 12 }}>A GAZETA DO TÉCNICO</div>
-        <div style={{ color: "#888", fontSize: 9, marginTop: 2 }}>TÍTULO|<span style={{ animation: "typewriterBlink 0.8s infinite", display: "inline-block", width: 5, height: 9, background: "#f59e0b", verticalAlign: "middle", marginLeft: 1 }} /></div>
-      </div>
+      <svg viewBox="0 0 40 40" fill="none" style={{ width: 32, height: 32 }}>
+        {/* Newspaper body */}
+        <rect x="6" y="5" width="28" height="30" rx="2" stroke="#f59e0b" strokeWidth={1.2} fill="rgba(245,158,11,0.07)" />
+        {/* Masthead bar */}
+        <rect x="9" y="9" width="22" height="3" rx="1" fill="rgba(245,158,11,0.45)" />
+        {/* Headline */}
+        <rect x="9" y="15" width="22" height="2" rx="0.5" fill="rgba(245,158,11,0.28)" />
+        {/* Body lines */}
+        <rect x="9" y="20" width="16" height="1.5" rx="0.5" fill="rgba(245,158,11,0.18)" />
+        <rect x="9" y="23" width="20" height="1.5" rx="0.5" fill="rgba(245,158,11,0.18)" />
+        <rect x="9" y="26" width="13" height="1.5" rx="0.5" fill="rgba(245,158,11,0.18)" />
+        {/* Blinking cursor */}
+        <rect x="9" y="29.5" width="3" height="2.5" rx="0.4" fill="#f59e0b" style={{ animation: "typewriterBlink 0.8s infinite" }} />
+      </svg>
     ),
     title: "A notícia que só você pode escrever.",
     desc: "A IA gera a cobertura jornalística da sua conquista. Compartilhe. Salve. Lembre-se de cada detalhe daqui a 10 anos.",
