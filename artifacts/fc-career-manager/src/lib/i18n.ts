@@ -2756,3 +2756,255 @@ export function getNewsStories(lang: Lang) {
     { category: "Bundesliga", categoryColor: "#34d399", categoryBg: "rgba(52,211,153,0.1)", categoryBorder: "rgba(52,211,153,0.25)", date: "Abr 2026", headlineParts: ["Bayern demite técnico ", "às vésperas", " da decisão europeia"], highlightColor: "#34d399", lead: "A diretoria do Bayern de Munique confirmou a demissão de Thomas Brauer após sequência de três jogos sem vencer. O auxiliar Schneider assumirá interinamente até o fim da temporada.", timeAgo: "há 44 min" },
   ];
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Diretoria page
+// ─────────────────────────────────────────────────────────────────────────────
+export const DIRETORIA: Record<Lang, Record<string, string>> = {
+  pt: {
+    // Mood labels
+    moodExcelente: "Excelente",
+    moodBom: "Bom",
+    moodNeutro: "Neutro",
+    moodTenso: "Tenso",
+    moodIrritado: "Irritado",
+    moodFurioso: "Furioso",
+    // Role labels
+    rolePresidente: "Presidente",
+    roleAuxiliarTecnico: "Auxiliar Técnico",
+    roleGestorFinanceiro: "Gestor Financeiro",
+    roleCustom: "Personalizado",
+    // Personality labels
+    personalConservador: "Conservador",
+    personalConservadorDesc: "Prudente, avesso a riscos",
+    personalAgressivo: "Agressivo",
+    personalAgressivoDesc: "Impulsivo, exigente imediato",
+    personalAnalitico: "Analítico",
+    personalAnaliticoDesc: "Baseado em dados e fatos",
+    personalEmocional: "Emocional",
+    personalEmocionalDesc: "Reagente, apaixonado",
+    personalDiplomatico: "Diplomático",
+    personalDiplomaticoDesc: "Mediador, busca equilíbrio",
+    personalExigente: "Exigente",
+    personalExigenteDesc: "Alta expectativa constante",
+    // Empty state (no members)
+    emptyHeading: "Montar Diretoria",
+    emptyDesc: "Crie os membros da sua diretoria. Eles terão personalidade própria, reações emocionais e vão te pressionar ou elogiar conforme os resultados.",
+    emptyBtn: "Criar Diretoria",
+    // Urgent meeting banner
+    urgentBannerTitle: "Reunião urgente solicitada",
+    btnStartMeeting: "Iniciar Reunião",
+    // Sidebar header
+    sidebarHeading: "Diretoria",
+    btnCallMeeting: "Convocar Reunião",
+    btnAddMember: "Adicionar membro",
+    planLimitTooltip: "Limite do plano: {n} membros",
+    membersCount: "{n}/{max} membros",
+    // Active meeting row
+    meetingInProgress: "Em andamento",
+    // History nav button
+    closedMeetingsHeading: "Reuniões Finalizadas",
+    meetingSingular: "reunião",
+    meetingPlural: "reuniões",
+    meetingRegistered: "registradas",
+    // Chat panel
+    startConversation: "Comece uma conversa",
+    btnRemoveMember: "Remover membro",
+    chatPlaceholder: "Fale com {name}...",
+    btnSuggestTransfers: "Sugerir Reforços com IA",
+    // Meeting panel
+    meetingHeading: "Reunião de Diretoria",
+    agendaDone: "Pauta concluída",
+    btnCloseMeeting: "Encerrar",
+    meetingStarted: "Reunião iniciada",
+    meetingStartedSub: "Abra a discussão — todos os membros da diretoria vão responder.",
+    agendaDonePill: "Pauta concluída — você pode encerrar a reunião",
+    meetingPlaceholder: "Fale para a reunião...",
+    coachLabel: "Técnico",
+    // List idle pane
+    selectMember: "Selecione um membro",
+    orCallMeeting: "ou convoque uma reunião",
+    // History panel
+    historyHeading: "Reuniões Finalizadas",
+    historyEmpty: "Nenhuma reunião finalizada",
+    historyEmptySub: "As reuniões encerradas aparecerão aqui",
+    messagesWord: "mensagens",
+    systemMeetingBadge: "Convocada pela Diretoria",
+    // History detail
+    historyDetailEmpty: "Reunião sem mensagens registradas",
+    // Meeting title modal
+    callMeetingTitle: "Convocar Reunião",
+    meetingTitleLabel: "Título / pauta da reunião",
+    meetingTitlePlaceholder: "Ex: Análise do primeiro semestre",
+    btnCancel: "Cancelar",
+    // Delete confirm modal
+    deleteMemberTitle: "Remover membro?",
+    deleteMemberBody: "Todo o histórico de conversas será apagado. Esta ação não pode ser desfeita.",
+    btnRemove: "Remover",
+    // Create member modal
+    addMemberTitle: "Adicionar Membro",
+    btnGenerateAi: "✨ Gerar com IA",
+    btnManual: "✏️ Manual",
+    labelRole: "Cargo",
+    placeholderCustomRole: "Nome do cargo personalizado",
+    labelPersonality: "Estilo de Personalidade",
+    labelExtraTraits: "Traços Adicionais (opcional)",
+    placeholderExtraTraits: "Ex: veterano de 60 anos, ex-jogador profissional...",
+    btnGeneratingCharacter: "Gerando personagem...",
+    btnGenerateCharacter: "✨ Gerar Personagem",
+    labelName: "Nome",
+    placeholderName: "Nome completo",
+    labelPersonalityBehavior: "Personalidade e Comportamento",
+    placeholderDescription: "Descreva como este membro age, suas prioridades, nível de paciência...",
+    patienceLabel: "Paciência",
+    patienceMin: "Explosivo",
+    patienceMax: "Paciente",
+    btnAddToBoard: "Adicionar à Diretoria",
+    // Error messages (create member)
+    errFillRole: "Informe o cargo.",
+    errGenerateFailed: "Erro ao gerar personagem. Verifique sua chave OpenAI.",
+    errFillAll: "Preencha nome, cargo e descrição.",
+    // Transfer modal
+    transferTitle: "Sugerir Reforços",
+    transferSubtitle: "IA sugere jogadores reais para {club}",
+    labelPosition: "Posição",
+    labelBudget: "Orçamento (opcional)",
+    placeholderPosition: "Ex: Atacante, Goleiro...",
+    placeholderBudget: "Ex: €5M, €20M...",
+    btnGenerateSuggestions: "Gerar Sugestões com IA",
+    searchingMarket: "Pesquisando mercado...",
+    ageYears: "{age} anos",
+    btnNewSuggestions: "Gerar novas sugestões",
+    errTransferFailed: "Erro ao buscar sugestões. Verifique sua chave OpenAI.",
+    // Typing indicator
+    typing: "digitando",
+    // Age label in transfer suggestions
+    yearsOld: "anos",
+    // Upgrade prompt
+    upgradeFeatureName: "Diretoria",
+    upgradeDescription: "Converse com os diretores do clube, receba alertas sobre desempenho da equipe e negocie reforços. Disponível a partir do plano Pro.",
+  },
+  en: {
+    // Mood labels
+    moodExcelente: "Excellent",
+    moodBom: "Good",
+    moodNeutro: "Neutral",
+    moodTenso: "Tense",
+    moodIrritado: "Angry",
+    moodFurioso: "Furious",
+    // Role labels
+    rolePresidente: "President",
+    roleAuxiliarTecnico: "Assistant Coach",
+    roleGestorFinanceiro: "Financial Manager",
+    roleCustom: "Custom",
+    // Personality labels
+    personalConservador: "Conservative",
+    personalConservadorDesc: "Cautious, risk-averse",
+    personalAgressivo: "Aggressive",
+    personalAgressivoDesc: "Impulsive, demands immediate results",
+    personalAnalitico: "Analytical",
+    personalAnaliticoDesc: "Data-driven and fact-based",
+    personalEmocional: "Emotional",
+    personalEmocionalDesc: "Reactive and passionate",
+    personalDiplomatico: "Diplomatic",
+    personalDiplomaticoDesc: "Mediator, seeks balance",
+    personalExigente: "Demanding",
+    personalExigenteDesc: "Constantly high expectations",
+    // Empty state (no members)
+    emptyHeading: "Build Your Board",
+    emptyDesc: "Create your board members. Each will have their own personality, emotional reactions, and will pressure or praise you based on results.",
+    emptyBtn: "Create Board",
+    // Urgent meeting banner
+    urgentBannerTitle: "Urgent meeting requested",
+    btnStartMeeting: "Start Meeting",
+    // Sidebar header
+    sidebarHeading: "Board",
+    btnCallMeeting: "Call Meeting",
+    btnAddMember: "Add member",
+    planLimitTooltip: "Plan limit: {n} members",
+    membersCount: "{n}/{max} members",
+    // Active meeting row
+    meetingInProgress: "In progress",
+    // History nav button
+    closedMeetingsHeading: "Closed Meetings",
+    meetingSingular: "meeting",
+    meetingPlural: "meetings",
+    meetingRegistered: "on record",
+    // Chat panel
+    startConversation: "Start a conversation",
+    btnRemoveMember: "Remove member",
+    chatPlaceholder: "Talk to {name}...",
+    btnSuggestTransfers: "Suggest Transfers with AI",
+    // Meeting panel
+    meetingHeading: "Board Meeting",
+    agendaDone: "Agenda complete",
+    btnCloseMeeting: "End",
+    meetingStarted: "Meeting started",
+    meetingStartedSub: "Open the discussion — all board members will respond.",
+    agendaDonePill: "Agenda complete — you can end the meeting",
+    meetingPlaceholder: "Address the meeting...",
+    coachLabel: "Coach",
+    // List idle pane
+    selectMember: "Select a member",
+    orCallMeeting: "or call a meeting",
+    // History panel
+    historyHeading: "Closed Meetings",
+    historyEmpty: "No closed meetings",
+    historyEmptySub: "Finished meetings will appear here",
+    messagesWord: "messages",
+    systemMeetingBadge: "Called by the Board",
+    // History detail
+    historyDetailEmpty: "No messages recorded in this meeting",
+    // Meeting title modal
+    callMeetingTitle: "Call Meeting",
+    meetingTitleLabel: "Meeting title / agenda",
+    meetingTitlePlaceholder: "E.g. First-half season review",
+    btnCancel: "Cancel",
+    // Delete confirm modal
+    deleteMemberTitle: "Remove member?",
+    deleteMemberBody: "The entire conversation history will be deleted. This action cannot be undone.",
+    btnRemove: "Remove",
+    // Create member modal
+    addMemberTitle: "Add Member",
+    btnGenerateAi: "✨ Generate with AI",
+    btnManual: "✏️ Manual",
+    labelRole: "Role",
+    placeholderCustomRole: "Custom role name",
+    labelPersonality: "Personality Style",
+    labelExtraTraits: "Additional Traits (optional)",
+    placeholderExtraTraits: "E.g. veteran aged 60, former professional player...",
+    btnGeneratingCharacter: "Generating...",
+    btnGenerateCharacter: "✨ Generate Character",
+    labelName: "Name",
+    placeholderName: "Full name",
+    labelPersonalityBehavior: "Personality & Behaviour",
+    placeholderDescription: "Describe how this member acts, their priorities, patience level...",
+    patienceLabel: "Patience",
+    patienceMin: "Hot-headed",
+    patienceMax: "Patient",
+    btnAddToBoard: "Add to Board",
+    // Error messages (create member)
+    errFillRole: "Please enter a role.",
+    errGenerateFailed: "Failed to generate character. Check your OpenAI key.",
+    errFillAll: "Please fill in name, role, and description.",
+    // Transfer modal
+    transferTitle: "Suggest Transfers",
+    transferSubtitle: "AI suggests real players for {club}",
+    labelPosition: "Position",
+    labelBudget: "Budget (optional)",
+    placeholderPosition: "E.g. Striker, Goalkeeper...",
+    placeholderBudget: "E.g. €5M, €20M...",
+    btnGenerateSuggestions: "Generate AI Suggestions",
+    searchingMarket: "Searching the market...",
+    ageYears: "{age} years old",
+    btnNewSuggestions: "Generate new suggestions",
+    errTransferFailed: "Failed to fetch suggestions. Check your OpenAI key.",
+    // Typing indicator
+    typing: "typing",
+    // Age label in transfer suggestions
+    yearsOld: "y.o.",
+    // Upgrade prompt
+    upgradeFeatureName: "Board",
+    upgradeDescription: "Chat with club directors, receive performance alerts and negotiate transfers. Available from the Pro plan.",
+  },
+} satisfies Record<Lang, Record<string, string>>;

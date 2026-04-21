@@ -1,4 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { DIRETORIA } from "@/lib/i18n";
+import type { Lang } from "@/lib/i18n";
+import { useLang } from "@/hooks/useLang";
 import type { Career } from "@/types/career";
 import type { MatchRecord } from "@/types/match";
 import type { TransferRecord } from "@/types/transfer";
@@ -125,14 +128,24 @@ function renderMarkdown(text: string) {
   });
 }
 
-function MoodBadge({ mood, small }: { mood: MoodLevel; small?: boolean }) {
+const MOOD_LABEL_KEYS: Record<MoodLevel, string> = {
+  excelente: "moodExcelente",
+  bom: "moodBom",
+  neutro: "moodNeutro",
+  tenso: "moodTenso",
+  irritado: "moodIrritado",
+  furioso: "moodFurioso",
+};
+
+function MoodBadge({ mood, small, lang = "pt" }: { mood: MoodLevel; small?: boolean; lang?: Lang }) {
   const cfg = MOOD_CONFIG[mood];
+  const label = DIRETORIA[lang][MOOD_LABEL_KEYS[mood]] ?? cfg.label;
   return (
     <span
       className={`inline-flex items-center gap-1 font-semibold rounded-full ${small ? "text-[10px] px-1.5 py-0.5" : "text-xs px-2 py-0.5"}`}
       style={{ background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.color}22` }}
     >
-      {cfg.emoji} {cfg.label}
+      {cfg.emoji} {label}
     </span>
   );
 }
@@ -155,7 +168,7 @@ function AvatarCircle({ member, size = 44 }: { member: BoardMember; size?: numbe
   );
 }
 
-function TypingDots({ name }: { name: string }) {
+function TypingDots({ name, typingLabel = "está digitando" }: { name: string; typingLabel?: string }) {
   return (
     <div className="flex items-center gap-2 px-4 py-3">
       <div
@@ -165,7 +178,7 @@ function TypingDots({ name }: { name: string }) {
         ...
       </div>
       <div className="flex items-center gap-1.5">
-        <span className="text-xs text-white/40 italic">{name} está digitando</span>
+        <span className="text-xs text-white/40 italic">{name} {typingLabel}</span>
         <span className="flex gap-0.5">
           {[0,1,2].map(i => (
             <span
@@ -186,12 +199,30 @@ interface CreateMemberModalProps {
   onClose: () => void;
   onCreated: (member: BoardMember) => void;
   effectiveLeague?: string;
+  lang?: Lang;
 }
 
-function CreateMemberModal({ career, membersCount, onClose, onCreated, effectiveLeague }: CreateMemberModalProps) {
+const ROLE_LABEL_KEYS: Record<string, string> = {
+  presidente: "rolePresidente",
+  auxiliar_tecnico: "roleAuxiliarTecnico",
+  gestor_financeiro: "roleGestorFinanceiro",
+  custom: "roleCustom",
+};
+
+const PERSONALITY_LABEL_KEYS: Record<string, string> = {
+  conservador: "personalConservador",
+  agressivo: "personalAgressivo",
+  analitico: "personalAnalitico",
+  emocional: "personalEmocional",
+  diplomatico: "personalDiplomatico",
+  exigente: "personalExigente",
+};
+
+function CreateMemberModal({ career, membersCount, onClose, onCreated, effectiveLeague, lang = "pt" }: CreateMemberModalProps) {
+  const t = DIRETORIA[lang];
   const [mode, setMode] = useState<"manual" | "auto">("auto");
   const [role, setRole] = useState<BoardRole>("presidente");
-  const [roleLabel, setRoleLabel] = useState("Presidente");
+  const [roleLabel, setRoleLabel] = useState(t.rolePresidente);
   const [customRoleLabel, setCustomRoleLabel] = useState("");
   const [personalityStyle, setPersonalityStyle] = useState<PersonalityStyle>("conservador");
   const [name, setName] = useState("");
@@ -203,14 +234,14 @@ function CreateMemberModal({ career, membersCount, onClose, onCreated, effective
 
   useEffect(() => {
     if (role !== "custom") {
-      setRoleLabel(ROLE_OPTIONS.find(r => r.value === role)?.label ?? "");
+      setRoleLabel(t[ROLE_LABEL_KEYS[role]] ?? ROLE_OPTIONS.find(r => r.value === role)?.label ?? "");
     }
-  }, [role]);
+  }, [role, lang]);
 
   const finalRoleLabel = role === "custom" ? customRoleLabel : roleLabel;
 
   const handleAutoGenerate = async () => {
-    if (!finalRoleLabel.trim()) { setError("Informe o cargo."); return; }
+    if (!finalRoleLabel.trim()) { setError(t.errFillRole); return; }
     setLoading(true);
     setError("");
     try {
@@ -226,14 +257,14 @@ function CreateMemberModal({ career, membersCount, onClose, onCreated, effective
           lang: localStorage.getItem("fc_lang") ?? "pt",
         }),
       });
-      if (!res.ok) throw new Error("Erro ao gerar");
+      if (!res.ok) throw new Error("generate_failed");
       const data = await res.json() as { name: string; description: string; patience: number };
       setName(data.name);
       setDescription(data.description);
       setPatience(data.patience);
       setMode("manual");
     } catch {
-      setError("Erro ao gerar personagem. Verifique sua chave OpenAI.");
+      setError(t.errGenerateFailed);
     } finally {
       setLoading(false);
     }
@@ -241,7 +272,7 @@ function CreateMemberModal({ career, membersCount, onClose, onCreated, effective
 
   const handleSave = () => {
     if (!name.trim() || !description.trim() || !finalRoleLabel.trim()) {
-      setError("Preencha nome, cargo e descrição.");
+      setError(t.errFillAll);
       return;
     }
     const member: BoardMember = {
@@ -270,7 +301,7 @@ function CreateMemberModal({ career, membersCount, onClose, onCreated, effective
         style={{ border: "1px solid var(--surface-border)", maxHeight: "90vh", display: "flex", flexDirection: "column" }}
       >
         <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom: "1px solid var(--surface-border)" }}>
-          <h2 className="text-white font-bold text-lg">Adicionar Membro</h2>
+          <h2 className="text-white font-bold text-lg">{t.addMemberTitle}</h2>
           <button onClick={onClose} className="text-white/40 hover:text-white/80 transition-colors">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
           </button>
@@ -287,26 +318,26 @@ function CreateMemberModal({ career, membersCount, onClose, onCreated, effective
                   border: `1px solid ${mode === m ? "rgba(var(--club-primary-rgb),0.4)" : "rgba(255,255,255,0.08)"}`,
                 }}
               >
-                {m === "auto" ? "✨ Gerar com IA" : "✏️ Manual"}
+                {m === "auto" ? t.btnGenerateAi : t.btnManual}
               </button>
             ))}
           </div>
 
           <div>
-            <label className="block text-xs text-white/50 mb-1.5 font-semibold uppercase tracking-wide">Cargo</label>
+            <label className="block text-xs text-white/50 mb-1.5 font-semibold uppercase tracking-wide">{t.labelRole}</label>
             <select
               value={role}
               onChange={(e) => setRole(e.target.value as BoardRole)}
               className="w-full px-3 py-2.5 rounded-xl text-sm text-white glass"
               style={{ border: "1px solid var(--surface-border)", outline: "none", background: "rgba(255,255,255,0.06)" }}
             >
-              {ROLE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              {ROLE_OPTIONS.map(o => <option key={o.value} value={o.value}>{t[ROLE_LABEL_KEYS[o.value]] ?? o.label}</option>)}
             </select>
             {role === "custom" && (
               <input
                 value={customRoleLabel}
                 onChange={(e) => setCustomRoleLabel(e.target.value)}
-                placeholder="Nome do cargo personalizado"
+                placeholder={t.placeholderCustomRole}
                 className="w-full mt-2 px-3 py-2.5 rounded-xl text-sm text-white placeholder-white/25 glass"
                 style={{ border: "1px solid var(--surface-border)", outline: "none", background: "rgba(255,255,255,0.06)" }}
               />
@@ -314,7 +345,7 @@ function CreateMemberModal({ career, membersCount, onClose, onCreated, effective
           </div>
 
           <div>
-            <label className="block text-xs text-white/50 mb-1.5 font-semibold uppercase tracking-wide">Estilo de Personalidade</label>
+            <label className="block text-xs text-white/50 mb-1.5 font-semibold uppercase tracking-wide">{t.labelPersonality}</label>
             <div className="grid grid-cols-3 gap-1.5">
               {PERSONALITY_OPTIONS.map(p => (
                 <button key={p.value} onClick={() => setPersonalityStyle(p.value)}
@@ -325,7 +356,7 @@ function CreateMemberModal({ career, membersCount, onClose, onCreated, effective
                     border: `1px solid ${personalityStyle === p.value ? "rgba(var(--club-primary-rgb),0.35)" : "rgba(255,255,255,0.07)"}`,
                   }}
                 >
-                  {p.label}
+                  {t[PERSONALITY_LABEL_KEYS[p.value]] ?? p.label}
                 </button>
               ))}
             </div>
@@ -334,11 +365,11 @@ function CreateMemberModal({ career, membersCount, onClose, onCreated, effective
           {mode === "auto" && (
             <>
               <div>
-                <label className="block text-xs text-white/50 mb-1.5 font-semibold uppercase tracking-wide">Traços Adicionais (opcional)</label>
+                <label className="block text-xs text-white/50 mb-1.5 font-semibold uppercase tracking-wide">{t.labelExtraTraits}</label>
                 <input
                   value={extraTraits}
                   onChange={(e) => setExtraTraits(e.target.value)}
-                  placeholder="Ex: veterano de 60 anos, ex-jogador profissional..."
+                  placeholder={t.placeholderExtraTraits}
                   className="w-full px-3 py-2.5 rounded-xl text-sm text-white placeholder-white/25 glass"
                   style={{ border: "1px solid var(--surface-border)", outline: "none", background: "rgba(255,255,255,0.06)" }}
                 />
@@ -350,7 +381,7 @@ function CreateMemberModal({ career, membersCount, onClose, onCreated, effective
                 className="w-full py-3 rounded-xl font-bold text-sm transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50"
                 style={{ background: "rgba(var(--club-primary-rgb),0.2)", color: "var(--club-primary)", border: "1px solid rgba(var(--club-primary-rgb),0.3)" }}
               >
-                {loading ? "Gerando personagem..." : "✨ Gerar Personagem"}
+                {loading ? t.btnGeneratingCharacter : t.btnGenerateCharacter}
               </button>
             </>
           )}
@@ -358,21 +389,21 @@ function CreateMemberModal({ career, membersCount, onClose, onCreated, effective
           {mode === "manual" && (
             <>
               <div>
-                <label className="block text-xs text-white/50 mb-1.5 font-semibold uppercase tracking-wide">Nome</label>
+                <label className="block text-xs text-white/50 mb-1.5 font-semibold uppercase tracking-wide">{t.labelName}</label>
                 <input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="Nome completo"
+                  placeholder={t.placeholderName}
                   className="w-full px-3 py-2.5 rounded-xl text-sm text-white placeholder-white/25 glass"
                   style={{ border: "1px solid var(--surface-border)", outline: "none", background: "rgba(255,255,255,0.06)" }}
                 />
               </div>
               <div>
-                <label className="block text-xs text-white/50 mb-1.5 font-semibold uppercase tracking-wide">Personalidade e Comportamento</label>
+                <label className="block text-xs text-white/50 mb-1.5 font-semibold uppercase tracking-wide">{t.labelPersonalityBehavior}</label>
                 <textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Descreva como este membro age, suas prioridades, nível de paciência..."
+                  placeholder={t.placeholderDescription}
                   rows={4}
                   className="w-full px-3 py-2.5 rounded-xl text-sm text-white placeholder-white/25 glass resize-none"
                   style={{ border: "1px solid var(--surface-border)", outline: "none", background: "rgba(255,255,255,0.06)" }}
@@ -380,7 +411,7 @@ function CreateMemberModal({ career, membersCount, onClose, onCreated, effective
               </div>
               <div>
                 <label className="block text-xs text-white/50 mb-2 font-semibold uppercase tracking-wide">
-                  Paciência: {patience}/100
+                  {t.patienceLabel}: {patience}/100
                 </label>
                 <input
                   type="range" min={0} max={100} value={patience}
@@ -388,7 +419,7 @@ function CreateMemberModal({ career, membersCount, onClose, onCreated, effective
                   className="w-full accent-[var(--club-primary)]"
                 />
                 <div className="flex justify-between text-[10px] text-white/30 mt-1">
-                  <span>Explosivo</span><span>Paciente</span>
+                  <span>{t.patienceMin}</span><span>{t.patienceMax}</span>
                 </div>
               </div>
               {error && <p className="text-red-400 text-xs">{error}</p>}
@@ -403,7 +434,7 @@ function CreateMemberModal({ career, membersCount, onClose, onCreated, effective
               className="w-full py-3 rounded-xl font-bold text-sm transition-all hover:scale-[1.01] active:scale-[0.99]"
               style={{ background: "rgba(var(--club-primary-rgb),0.2)", color: "var(--club-primary)", border: "1px solid rgba(var(--club-primary-rgb),0.3)" }}
             >
-              Adicionar à Diretoria
+              {t.btnAddToBoard}
             </button>
           </div>
         )}
@@ -415,6 +446,9 @@ function CreateMemberModal({ career, membersCount, onClose, onCreated, effective
 export function DiretoriaView({ career, matches, transfers, squadSize, allPlayers = [], effectiveLeague, currentCompetitions = [], userPlan }: DiretoriaViewProps) {
   const resolvedPlan = userPlan ?? getUserPlan();
   const planLimits = getPlanLimits(resolvedPlan);
+  const [lang] = useLang();
+  const t = DIRETORIA[lang];
+  const dateLocale = lang === "en" ? "en-US" : "pt-BR";
 
   const [members, setMembers] = useState<BoardMember[]>([]);
   const [conversations, setConversations] = useState<Record<string, DiretoriaMessage[]>>({});
@@ -515,11 +549,11 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
           estimatedBudget: transferBudget.trim() || undefined,
         }),
       });
-      if (!res.ok) throw new Error("Erro ao buscar sugestões");
+      if (!res.ok) throw new Error("suggest_failed");
       const data = await res.json() as { suggestions: TransferSuggestion[] };
       setTransferSuggestions(data.suggestions ?? []);
     } catch {
-      setTransferError("Erro ao buscar sugestões. Verifique sua chave OpenAI.");
+      setTransferError(t.errTransferFailed);
     } finally {
       setTransferLoading(false);
     }
@@ -624,7 +658,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
   };
 
   const handleConfirmMeetingTitle = () => {
-    const title = meetingTitleDraft.trim() || "Reunião de Diretoria";
+    const title = meetingTitleDraft.trim() || t.meetingHeading;
     setShowMeetingTitleModal(false);
     setMeetingTitleDraft("");
     handleStartMeeting(title, pendingSystemMeetingReason ? "system" : "user");
@@ -694,8 +728,12 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
     } catch (e) {
       const isAuthErr = (e as { isAuthErr?: boolean })?.isAuthErr;
       const errText = isAuthErr
-        ? "⚠️ Chave OpenAI não configurada. Acesse as configurações (ícone ⚙️) para adicionar sua chave e usar a Diretoria."
-        : "Não consegui responder agora. Verifique sua conexão e tente novamente.";
+        ? (lang === "en"
+            ? "⚠️ OpenAI key not configured. Go to settings (⚙️) to add your key and use the Board."
+            : "⚠️ Chave OpenAI não configurada. Acesse as configurações (ícone ⚙️) para adicionar sua chave e usar a Diretoria.")
+        : (lang === "en"
+            ? "Couldn't respond right now. Check your connection and try again."
+            : "Não consegui responder agora. Verifique sua conexão e tente novamente.");
       const errMsg: DiretoriaMessage = {
         id: generateMessageId(),
         role: "character",
@@ -885,8 +923,8 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
       <UpgradePrompt
         currentPlan={resolvedPlan}
         requiredPlan="pro"
-        featureName="Diretoria"
-        description="Converse com os diretores do clube, receba alertas sobre desempenho da equipe e negocie reforços. Disponível a partir do plano Pro."
+        featureName={t.upgradeFeatureName}
+        description={t.upgradeDescription}
       />
     );
   }
@@ -902,9 +940,9 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
           </svg>
         </div>
-        <h2 className="text-white font-black text-2xl mb-2">Montar Diretoria</h2>
+        <h2 className="text-white font-black text-2xl mb-2">{t.emptyHeading}</h2>
         <p className="text-white/40 text-sm max-w-sm mb-8 leading-relaxed">
-          Crie os membros da sua diretoria. Eles terão personalidade própria, reações emocionais e vão te pressionar ou elogiar conforme os resultados.
+          {t.emptyDesc}
         </p>
         <button
           onClick={() => setShowCreateModal(true)}
@@ -912,13 +950,14 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
           style={{ background: "rgba(var(--club-primary-rgb),0.2)", color: "var(--club-primary)", border: "1px solid rgba(var(--club-primary-rgb),0.3)" }}
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-          Criar Diretoria
+          {t.emptyBtn}
         </button>
         {showCreateModal && (
           <CreateMemberModal
             career={career}
             membersCount={0}
             effectiveLeague={effectiveLeague}
+            lang={lang}
             onClose={() => setShowCreateModal(false)}
             onCreated={handleMemberCreated}
           />
@@ -936,7 +975,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
         >
           <span className="text-2xl flex-shrink-0 mt-0.5">🚨</span>
           <div className="flex-1 min-w-0">
-            <p className="text-white font-semibold text-sm">Reunião urgente solicitada</p>
+            <p className="text-white font-semibold text-sm">{t.urgentBannerTitle}</p>
             <p className="text-white/60 text-xs mt-0.5 leading-relaxed">{meetingTrigger.reason}</p>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
@@ -951,7 +990,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
               className="px-3 py-1.5 rounded-lg font-bold text-xs transition-all hover:scale-[1.02] active:scale-[0.98]"
               style={{ background: "rgba(248,113,113,0.2)", color: "#f87171", border: "1px solid rgba(248,113,113,0.3)" }}
             >
-              Iniciar Reunião
+              {t.btnStartMeeting}
             </button>
           </div>
         </div>
@@ -975,7 +1014,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
             style={{ borderBottom: "1px solid var(--surface-border)", background: "rgba(255,255,255,0.02)" }}
           >
             <div className="flex items-center gap-2">
-              <span className="text-white font-bold text-sm">Diretoria</span>
+              <span className="text-white font-bold text-sm">{t.sidebarHeading}</span>
               {totalNotifs > 0 && (
                 <span
                   className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
@@ -991,10 +1030,10 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
                   onClick={() => handleOpenMeetingTitleModal()}
                   className="flex items-center gap-1 px-2 py-1 rounded-lg font-semibold text-[11px] transition-all hover:scale-[1.02] active:scale-[0.98]"
                   style={{ background: "rgba(var(--club-primary-rgb),0.12)", color: "var(--club-primary)", border: "1px solid rgba(var(--club-primary-rgb),0.2)" }}
-                  title="Convocar reunião"
+                  title={t.btnCallMeeting}
                 >
                   <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                  Convocar Reunião
+                  {t.btnCallMeeting}
                 </button>
               )}
               {members.length < planLimits.maxDiretoriaMembers ? (
@@ -1002,7 +1041,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
                   onClick={() => setShowCreateModal(true)}
                   className="flex items-center justify-center w-7 h-7 rounded-lg transition-all hover:scale-[1.05]"
                   style={{ background: "rgba(var(--club-primary-rgb),0.12)", color: "var(--club-primary)", border: "1px solid rgba(var(--club-primary-rgb),0.2)" }}
-                  title="Adicionar membro"
+                  title={t.btnAddMember}
                 >
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
                 </button>
@@ -1010,9 +1049,9 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
                 <span
                   className="text-[10px] font-semibold px-2 py-1 rounded-lg"
                   style={{ background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.25)", border: "1px solid rgba(255,255,255,0.07)" }}
-                  title={`Limite do plano: ${planLimits.maxDiretoriaMembers} membros`}
+                  title={t.planLimitTooltip.replace("{n}", String(planLimits.maxDiretoriaMembers))}
                 >
-                  {members.length}/{planLimits.maxDiretoriaMembers} membros
+                  {t.membersCount.replace("{n}", String(members.length)).replace("{max}", String(planLimits.maxDiretoriaMembers))}
                 </span>
               ) : null}
             </div>
@@ -1037,7 +1076,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[11px] font-bold" style={{ color: "#34d399" }}>Em andamento</span>
+                    <span className="text-[11px] font-bold" style={{ color: "#34d399" }}>{t.meetingInProgress}</span>
                     <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 animate-pulse" style={{ background: "#34d399" }} />
                   </div>
                   <span className="text-white/35 text-[10px] truncate block">{activeMeeting.reason}</span>
@@ -1077,7 +1116,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
                           className="flex-shrink-0 flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
                           style={{ background: `${mood.color}18`, color: mood.color, border: `1px solid ${mood.color}22` }}
                         >
-                          {mood.emoji} {mood.label}
+                          {mood.emoji} {t[MOOD_LABEL_KEYS[member.mood]] ?? mood.label}
                         </span>
                       </div>
                       <span className="text-white/35 text-[10px] truncate block">{member.roleLabel}</span>
@@ -1106,9 +1145,9 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
                 📋
               </div>
               <div className="flex-1 min-w-0">
-                <span className="text-white/55 text-xs font-semibold block">Reuniões Finalizadas</span>
+                <span className="text-white/55 text-xs font-semibold block">{t.closedMeetingsHeading}</span>
                 {closedMeetings.length > 0 && (
-                  <span className="text-white/25 text-[10px]">{closedMeetings.length} {closedMeetings.length === 1 ? "reunião" : "reuniões"}</span>
+                  <span className="text-white/25 text-[10px]">{closedMeetings.length} {closedMeetings.length === 1 ? t.meetingSingular : t.meetingPlural}</span>
                 )}
               </div>
             </button>
@@ -1131,14 +1170,14 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="text-white font-bold text-sm">{selectedMember.name}</span>
-                  <MoodBadge mood={selectedMember.mood} small />
+                  <MoodBadge mood={selectedMember.mood} small lang={lang} />
                 </div>
                 <span className="text-white/40 text-xs">{selectedMember.roleLabel}</span>
               </div>
               <button
                 onClick={() => setShowDeleteConfirm(selectedMember.id)}
                 className="text-white/20 hover:text-red-400/70 transition-colors p-1"
-                title="Remover membro"
+                title={t.btnRemoveMember}
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
               </button>
@@ -1150,7 +1189,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
                   <AvatarCircle member={selectedMember} size={52} />
                   <p className="text-white/50 text-sm mt-3 font-semibold">{selectedMember.name}</p>
                   <p className="text-white/25 text-xs mt-1 max-w-xs leading-relaxed">{selectedMember.description.slice(0, 120)}...</p>
-                  <p className="text-white/20 text-xs mt-4">Comece uma conversa</p>
+                  <p className="text-white/20 text-xs mt-4">{t.startConversation}</p>
                 </div>
               )}
               {activeConv.map((msg) => (
@@ -1169,7 +1208,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
                   </div>
                 </div>
               ))}
-              {isTyping && <TypingDots name={selectedMember.name} />}
+              {isTyping && <TypingDots name={selectedMember.name} typingLabel={t.typing} />}
               <div ref={chatEndRef} />
             </div>
 
@@ -1181,7 +1220,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
                   style={{ background: "rgba(var(--club-primary-rgb),0.1)", color: "var(--club-primary)", border: "1px solid rgba(var(--club-primary-rgb),0.2)" }}
                 >
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" /></svg>
-                  Sugerir Reforços com IA
+                  {t.btnSuggestTransfers}
                 </button>
               </div>
             )}
@@ -1197,7 +1236,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendChat(); }
                 }}
-                placeholder={`Fale com ${selectedMember.name}...`}
+                placeholder={t.chatPlaceholder.replace("{name}", selectedMember.name)}
                 rows={1}
                 disabled={isTyping}
                 className="flex-1 px-3 py-2.5 rounded-xl text-sm text-white placeholder-white/25 resize-none glass disabled:opacity-50"
@@ -1224,20 +1263,20 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="text-lg">🏢</span>
-                  <span className="text-white font-bold text-sm">Reunião de Diretoria</span>
+                  <span className="text-white font-bold text-sm">{t.meetingHeading}</span>
                 </div>
                 <p className="text-white/35 text-xs truncate mt-0.5">{activeMeeting.reason}</p>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
                 {suggestClose && (
-                  <span className="text-xs text-white/40 italic hidden sm:block">Pauta concluída</span>
+                  <span className="text-xs text-white/40 italic hidden sm:block">{t.agendaDone}</span>
                 )}
                 <button
                   onClick={handleCloseMeeting}
                   className="px-3 py-1.5 rounded-lg font-bold text-xs transition-all hover:scale-[1.02] active:scale-[0.98]"
                   style={{ background: "rgba(248,113,113,0.15)", color: "#f87171", border: "1px solid rgba(248,113,113,0.25)" }}
                 >
-                  Encerrar
+                  {t.btnCloseMeeting}
                 </button>
               </div>
             </div>
@@ -1250,9 +1289,9 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
                       <AvatarCircle key={m.id} member={m} size={36} />
                     ))}
                   </div>
-                  <p className="text-white/40 text-sm">Reunião iniciada</p>
+                  <p className="text-white/40 text-sm">{t.meetingStarted}</p>
                   <p className="text-white/20 text-xs mt-1 max-w-xs">
-                    Abra a discussão — todos os membros da diretoria vão responder.
+                    {t.meetingStartedSub}
                   </p>
                 </div>
               )}
@@ -1276,7 +1315,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
                         className="max-w-[75%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed"
                         style={{ background: "rgba(var(--club-primary-rgb),0.2)", color: "rgba(255,255,255,0.9)", borderBottomRightRadius: 4 }}
                       >
-                        <span className="block text-[10px] opacity-50 mb-1 font-semibold">Técnico {career.coach.name}</span>
+                        <span className="block text-[10px] opacity-50 mb-1 font-semibold">{t.coachLabel} {career.coach.name}</span>
                         {renderMarkdown(msg.content)}
                       </div>
                     </div>
@@ -1305,14 +1344,14 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
                   </div>
                 );
               })}
-              {meetingTypingName && <TypingDots name={meetingTypingName} />}
+              {meetingTypingName && <TypingDots name={meetingTypingName} typingLabel={t.typing} />}
               {suggestClose && !meetingResponding && (
                 <div className="flex justify-center">
                   <span
                     className="text-xs px-3 py-1 rounded-full"
                     style={{ background: "rgba(52,211,153,0.1)", color: "#34d399", border: "1px solid rgba(52,211,153,0.2)" }}
                   >
-                    Pauta concluída — você pode encerrar a reunião
+                    {t.agendaDonePill}
                   </span>
                 </div>
               )}
@@ -1330,7 +1369,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendMeetingMessage(); }
                 }}
-                placeholder="Fale para a reunião..."
+                placeholder={t.meetingPlaceholder}
                 rows={1}
                 disabled={meetingResponding}
                 className="flex-1 px-3 py-2.5 rounded-xl text-sm text-white placeholder-white/25 resize-none glass disabled:opacity-50"
@@ -1363,8 +1402,8 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
             <svg className="w-12 h-12 mb-3 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
             </svg>
-            <p className="text-sm font-medium">Selecione um membro</p>
-            <p className="text-xs mt-1 opacity-70">ou convoque uma reunião</p>
+            <p className="text-sm font-medium">{t.selectMember}</p>
+            <p className="text-xs mt-1 opacity-70">{t.orCallMeeting}</p>
           </div>
         )}
 
@@ -1376,16 +1415,16 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
             >
               <span className="text-lg">📋</span>
               <div className="flex-1 min-w-0">
-                <span className="text-white font-bold text-sm">Reuniões Finalizadas</span>
-                <p className="text-white/35 text-xs">{closedMeetings.length} {closedMeetings.length === 1 ? "reunião" : "reuniões"} registradas</p>
+                <span className="text-white font-bold text-sm">{t.closedMeetingsHeading}</span>
+                <p className="text-white/35 text-xs">{closedMeetings.length} {closedMeetings.length === 1 ? t.meetingSingular : t.meetingPlural} {t.meetingRegistered}</p>
               </div>
             </div>
             <div className="flex-1 overflow-y-auto">
               {closedMeetings.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-center py-12 px-6">
                   <div className="text-4xl mb-3 opacity-30">📋</div>
-                  <p className="text-white/30 text-sm font-medium">Nenhuma reunião finalizada</p>
-                  <p className="text-white/20 text-xs mt-1">As reuniões encerradas aparecerão aqui</p>
+                  <p className="text-white/30 text-sm font-medium">{t.historyEmpty}</p>
+                  <p className="text-white/20 text-xs mt-1">{t.historyEmptySub}</p>
                 </div>
               ) : (
                 <div className="divide-y divide-white/[0.04]">
@@ -1393,8 +1432,8 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
                     const userMsgs = mtg.messages.filter((m) => m.role === "user").length;
                     const charMsgs = mtg.messages.filter((m) => m.role === "character").length;
                     const dateStr = mtg.closedAt
-                      ? new Date(mtg.closedAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })
-                      : new Date(mtg.createdAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" });
+                      ? new Date(mtg.closedAt).toLocaleDateString(dateLocale, { day: "2-digit", month: "short", year: "numeric" })
+                      : new Date(mtg.createdAt).toLocaleDateString(dateLocale, { day: "2-digit", month: "short", year: "numeric" });
                     return (
                       <button
                         key={mtg.id}
@@ -1412,14 +1451,14 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
                           <div className="flex items-center gap-2 mt-0.5">
                             <span className="text-white/30 text-[10px]">{dateStr}</span>
                             <span className="text-white/20 text-[10px]">·</span>
-                            <span className="text-white/30 text-[10px]">{userMsgs + charMsgs} mensagens</span>
+                            <span className="text-white/30 text-[10px]">{userMsgs + charMsgs} {t.messagesWord}</span>
                           </div>
                           {mtg.initiatedBy === "system" && (
                             <span
                               className="inline-block mt-1 text-[10px] px-1.5 py-0.5 rounded-full font-semibold"
                               style={{ background: "rgba(251,191,36,0.1)", color: "#fbbf24" }}
                             >
-                              Convocada pela Diretoria
+                              {t.systemMeetingBadge}
                             </span>
                           )}
                         </div>
@@ -1451,17 +1490,17 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
                 <span className="text-white font-bold text-sm truncate block">{historyMeeting.reason}</span>
                 <p className="text-white/35 text-xs">
                   {historyMeeting.closedAt
-                    ? new Date(historyMeeting.closedAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })
+                    ? new Date(historyMeeting.closedAt).toLocaleDateString(dateLocale, { day: "2-digit", month: "long", year: "numeric" })
                     : ""}
                   {" · "}
-                  {historyMeeting.messages.filter(m => m.role !== "error").length} mensagens
+                  {historyMeeting.messages.filter(m => m.role !== "error").length} {t.messagesWord}
                 </p>
               </div>
             </div>
             <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
               {historyMeeting.messages.length === 0 ? (
                 <div className="flex items-center justify-center h-full">
-                  <p className="text-white/20 text-sm">Reunião sem mensagens registradas</p>
+                  <p className="text-white/20 text-sm">{t.historyDetailEmpty}</p>
                 </div>
               ) : historyMeeting.messages.map((msg) => {
                 if (msg.role === "error") return null;
@@ -1472,7 +1511,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
                         className="max-w-[75%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed"
                         style={{ background: "rgba(var(--club-primary-rgb),0.2)", color: "rgba(255,255,255,0.9)", borderBottomRightRadius: 4 }}
                       >
-                        <span className="block text-[10px] opacity-50 mb-1 font-semibold">Técnico {career.coach.name}</span>
+                        <span className="block text-[10px] opacity-50 mb-1 font-semibold">{t.coachLabel} {career.coach.name}</span>
                         {renderMarkdown(msg.content)}
                       </div>
                     </div>
@@ -1520,7 +1559,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
             <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom: "1px solid var(--surface-border)" }}>
               <div className="flex items-center gap-2">
                 <span className="text-base">🏢</span>
-                <span className="text-white font-bold text-sm">Convocar Reunião</span>
+                <span className="text-white font-bold text-sm">{t.btnCallMeeting}</span>
               </div>
               <button onClick={() => setShowMeetingTitleModal(false)} className="text-white/30 hover:text-white/70 transition-colors">
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
@@ -1528,13 +1567,13 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
             </div>
             <div className="px-5 py-4 space-y-3">
               <div>
-                <label className="block text-white/50 text-xs font-semibold mb-1.5">Título / pauta da reunião</label>
+                <label className="block text-white/50 text-xs font-semibold mb-1.5">{t.meetingTitleLabel}</label>
                 <input
                   type="text"
                   value={meetingTitleDraft}
                   onChange={(e) => setMeetingTitleDraft(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") handleConfirmMeetingTitle(); }}
-                  placeholder="Ex: Análise do primeiro semestre"
+                  placeholder={t.meetingTitlePlaceholder}
                   autoFocus
                   className="w-full px-3 py-2.5 rounded-xl text-sm text-white placeholder-white/25 glass"
                   style={{ border: "1px solid var(--surface-border)", outline: "none", background: "rgba(255,255,255,0.05)" }}
@@ -1547,14 +1586,14 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
                 className="flex-1 py-2.5 rounded-xl font-semibold text-sm text-white/50 hover:text-white/70 glass transition-colors"
                 style={{ border: "1px solid var(--surface-border)" }}
               >
-                Cancelar
+                {t.btnCancel}
               </button>
               <button
                 onClick={handleConfirmMeetingTitle}
                 className="flex-1 py-2.5 rounded-xl font-bold text-sm transition-all hover:scale-[1.01] active:scale-[0.99]"
                 style={{ background: "rgba(var(--club-primary-rgb),0.2)", color: "var(--club-primary)", border: "1px solid rgba(var(--club-primary-rgb),0.3)" }}
               >
-                Iniciar Reunião
+                {t.btnStartMeeting}
               </button>
             </div>
           </div>
@@ -1566,6 +1605,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
           career={career}
           membersCount={members.length}
           effectiveLeague={effectiveLeague}
+          lang={lang}
           onClose={() => setShowCreateModal(false)}
           onCreated={handleMemberCreated}
         />
@@ -1577,9 +1617,9 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
           style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(8px)" }}
         >
           <div className="glass rounded-2xl p-6 max-w-xs w-full text-center" style={{ border: "1px solid var(--surface-border)" }}>
-            <p className="text-white font-bold text-base mb-2">Remover membro?</p>
+            <p className="text-white font-bold text-base mb-2">{t.deleteMemberTitle}</p>
             <p className="text-white/40 text-sm mb-6">
-              Todo o histórico de conversas será apagado. Esta ação não pode ser desfeita.
+              {t.deleteMemberBody}
             </p>
             <div className="flex gap-3">
               <button
@@ -1587,14 +1627,14 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
                 className="flex-1 py-2.5 rounded-xl font-semibold text-sm text-white/60 hover:text-white/80 transition-colors glass"
                 style={{ border: "1px solid var(--surface-border)" }}
               >
-                Cancelar
+                {t.btnCancel}
               </button>
               <button
                 onClick={() => handleDeleteMember(showDeleteConfirm)}
                 className="flex-1 py-2.5 rounded-xl font-bold text-sm transition-all"
                 style={{ background: "rgba(248,113,113,0.2)", color: "#f87171", border: "1px solid rgba(248,113,113,0.3)" }}
               >
-                Remover
+                {t.btnRemove}
               </button>
             </div>
           </div>
@@ -1613,8 +1653,8 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
           >
             <div className="flex items-center justify-between px-5 py-4 flex-shrink-0" style={{ borderBottom: "1px solid var(--surface-border)" }}>
               <div>
-                <h3 className="text-white font-bold text-base">Sugerir Reforços</h3>
-                <p className="text-white/35 text-xs mt-0.5">IA sugere jogadores reais para {career.clubName}</p>
+                <h3 className="text-white font-bold text-base">{t.transferTitle}</h3>
+                <p className="text-white/35 text-xs mt-0.5">{t.transferSubtitle.replace("{club}", career.clubName)}</p>
               </div>
               <button onClick={() => setShowTransferModal(false)} className="text-white/30 hover:text-white/70 transition-colors">
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
@@ -1624,22 +1664,22 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
             <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs text-white/40 font-semibold uppercase tracking-wider mb-2">Posição</label>
+                  <label className="block text-xs text-white/40 font-semibold uppercase tracking-wider mb-2">{t.labelPosition}</label>
                   <input
                     value={transferPosition}
                     onChange={(e) => setTransferPosition(e.target.value)}
                     onKeyDown={(e) => { if (e.key === "Enter") handleSuggestTransfer(); }}
-                    placeholder="Ex: Atacante, Goleiro..."
+                    placeholder={t.placeholderPosition}
                     className="w-full px-3 py-3 rounded-xl text-white text-sm placeholder-white/20 focus:outline-none glass"
                     style={{ border: "1px solid var(--surface-border)", background: "rgba(255,255,255,0.05)" }}
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-white/40 font-semibold uppercase tracking-wider mb-2">Orçamento (opcional)</label>
+                  <label className="block text-xs text-white/40 font-semibold uppercase tracking-wider mb-2">{t.labelBudget}</label>
                   <input
                     value={transferBudget}
                     onChange={(e) => setTransferBudget(e.target.value)}
-                    placeholder="Ex: €5M, €20M..."
+                    placeholder={t.placeholderBudget}
                     className="w-full px-3 py-3 rounded-xl text-white text-sm placeholder-white/20 focus:outline-none glass"
                     style={{ border: "1px solid var(--surface-border)", background: "rgba(255,255,255,0.05)" }}
                   />
@@ -1656,7 +1696,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
                   </svg>
-                  Gerar Sugestões com IA
+                  {t.btnGenerateSuggestions}
                 </button>
               )}
 
@@ -1666,7 +1706,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                   </svg>
-                  <span className="text-white/40 text-sm">Pesquisando mercado...</span>
+                  <span className="text-white/40 text-sm">{t.searchingMarket}</span>
                 </div>
               )}
 
@@ -1683,7 +1723,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
                       <div className="flex items-start justify-between gap-2">
                         <div>
                           <p className="text-white font-bold text-sm">{s.name}</p>
-                          <p className="text-white/40 text-xs">{s.nationality} · {s.age} anos · {s.currentClub}</p>
+                          <p className="text-white/40 text-xs">{s.nationality} · {s.age} {t.yearsOld} · {s.currentClub}</p>
                         </div>
                         <span
                           className="text-xs font-bold px-2 py-0.5 rounded-lg flex-shrink-0"
@@ -1700,7 +1740,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
                     className="w-full py-2 rounded-xl text-xs font-semibold transition-all hover:opacity-80 mt-1"
                     style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.07)" }}
                   >
-                    Gerar novas sugestões
+                    {t.btnNewSuggestions}
                   </button>
                 </div>
               )}
