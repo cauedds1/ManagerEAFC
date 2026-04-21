@@ -24,14 +24,14 @@ function parseBudgetInput(raw: string): number {
   return isNaN(num) ? 0 : num;
 }
 
-function formatMoney(n: number, unit: "k" | "M" | "auto" = "auto"): string {
+function formatMoney(n: number, unit: "k" | "M" | "auto" = "auto", locale = "pt-BR"): string {
   if (unit === "auto") {
-    if (Math.abs(n) >= 1_000_000) return `€${(n / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}M`;
-    if (Math.abs(n) >= 1_000) return `€${(n / 1_000).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}k`;
-    return `€${n.toLocaleString("pt-BR")}`;
+    if (Math.abs(n) >= 1_000_000) return `€${(n / 1_000_000).toLocaleString(locale, { maximumFractionDigits: 1 })}M`;
+    if (Math.abs(n) >= 1_000) return `€${(n / 1_000).toLocaleString(locale, { maximumFractionDigits: 1 })}k`;
+    return `€${n.toLocaleString(locale)}`;
   }
-  if (unit === "M") return `€${(n / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}M`;
-  return `€${n.toLocaleString("pt-BR")}k`;
+  if (unit === "M") return `€${(n / 1_000_000).toLocaleString(locale, { maximumFractionDigits: 1 })}M`;
+  return `€${n.toLocaleString(locale)}k`;
 }
 
 function ProgressBar({ value, max, color }: { value: number; max: number; color: string }) {
@@ -53,9 +53,10 @@ interface BudgetEditorProps {
   label: string;
   value: number;
   onSave: (v: number) => void;
+  locale?: string;
 }
 
-function BudgetEditor({ label, value, onSave }: BudgetEditorProps) {
+function BudgetEditor({ label, value, onSave, locale = "pt-BR" }: BudgetEditorProps) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
 
@@ -93,7 +94,7 @@ function BudgetEditor({ label, value, onSave }: BudgetEditorProps) {
           onClick={startEdit}
           className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-sm font-bold text-white hover:bg-white/10 transition-colors group"
         >
-          <span className="tabular-nums">{value > 0 ? formatMoney(value) : "—"}</span>
+          <span className="tabular-nums">{value > 0 ? formatMoney(value, "auto", locale) : "—"}</span>
           <svg className="w-3 h-3 text-white/30 group-hover:text-white/60 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
           </svg>
@@ -114,6 +115,8 @@ interface FinanceiroViewProps {
 export function FinanceiroView({ careerId, seasonId, transfers, season, isReadOnly }: FinanceiroViewProps) {
   const [lang] = useLang();
   const t = CLUBE[lang];
+  const locale = lang === "pt" ? "pt-BR" : "en-US";
+  const fmt = (n: number, unit: "k" | "M" | "auto" = "auto") => formatMoney(n, unit, locale);
 
   const [settings, setSettings] = useState<FinanceiroSettings>(() => getFinanceiroSettings(seasonId));
   const overrides = useMemo(() => getAllPlayerOverrides(careerId), [careerId]);
@@ -155,39 +158,39 @@ export function FinanceiroView({ careerId, seasonId, transfers, season, isReadOn
   const cards = [
     {
       label: t.remainingBudget,
-      value: settings.transferBudget > 0 ? formatMoney(snapshot.remainingTransferBudget) : "—",
+      value: settings.transferBudget > 0 ? fmt(snapshot.remainingTransferBudget) : "—",
       sub: settings.transferBudget > 0
-        ? t.ofTotal.replace("{n}", formatMoney(snapshot.transferBudget))
+        ? t.ofTotal.replace("{n}", fmt(snapshot.transferBudget))
         : t.budgetNotSet,
       color: snapshot.remainingTransferBudget < 0 ? "#f87171" : "#34d399",
       icon: "🏦",
     },
     {
       label: t.spentOnSignings,
-      value: formatMoney(snapshot.totalSpent),
+      value: fmt(snapshot.totalSpent),
       sub: `${snapshot.signingsCount} ${snapshot.signingsCount !== 1 ? t.signingsPlural : t.signingsSingular}`,
       color: "#f87171",
       icon: "📥",
     },
     {
       label: t.earnedFromSales,
-      value: snapshot.totalEarned > 0 ? formatMoney(snapshot.totalEarned) : "—",
+      value: snapshot.totalEarned > 0 ? fmt(snapshot.totalEarned) : "—",
       sub: `${snapshot.salesCount} ${snapshot.salesCount !== 1 ? t.salePlural : t.saleSingular}`,
       color: "#34d399",
       icon: "📤",
     },
     {
       label: t.netBalance,
-      value: formatMoney(Math.abs(snapshot.netSpend)),
+      value: fmt(Math.abs(snapshot.netSpend)),
       sub: snapshot.netSpend > 0 ? t.netSpent : snapshot.netSpend < 0 ? t.surplus : t.balanced,
       color: snapshot.netSpend > 0 ? "#fbbf24" : snapshot.netSpend < 0 ? "#34d399" : "#94a3b8",
       icon: snapshot.netSpend < 0 ? "💰" : "📊",
     },
     {
       label: t.weeklyWages,
-      value: snapshot.currentWageBill > 0 ? `€${snapshot.currentWageBill.toLocaleString("pt-BR")}k` : "—",
+      value: snapshot.currentWageBill > 0 ? `€${snapshot.currentWageBill.toLocaleString(locale)}k` : "—",
       sub: settings.salaryBudget > 0
-        ? `${t.ofTotal.replace("{n}", `€${settings.salaryBudget.toLocaleString("pt-BR")}k`)} ${lang === "pt" ? "máximo" : "max"}`
+        ? `${t.ofTotal.replace("{n}", `€${settings.salaryBudget.toLocaleString(locale)}k`)} ${lang === "pt" ? "máximo" : "max"}`
         : t.budgetNotSet,
       color: settings.salaryBudget > 0 && snapshot.wageRoom < 0 ? "#f87171" : "#60a5fa",
       icon: "💼",
@@ -195,7 +198,7 @@ export function FinanceiroView({ careerId, seasonId, transfers, season, isReadOn
     {
       label: t.wageRoom,
       value: settings.salaryBudget > 0
-        ? `€${Math.abs(snapshot.wageRoom).toLocaleString("pt-BR")}k`
+        ? `€${Math.abs(snapshot.wageRoom).toLocaleString(locale)}k`
         : "—",
       sub: settings.salaryBudget > 0
         ? snapshot.wageRoom >= 0 ? t.availablePerWeek : t.aboveLimit
@@ -222,13 +225,13 @@ export function FinanceiroView({ careerId, seasonId, transfers, season, isReadOn
             <div className="flex items-center gap-2">
               <span className="text-white/35 text-xs flex-1">{t.transferBudgetLabel}</span>
               <span className="text-white text-sm font-semibold">
-                {settings.transferBudget > 0 ? formatMoney(settings.transferBudget) : "—"}
+                {settings.transferBudget > 0 ? fmt(settings.transferBudget) : "—"}
               </span>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-white/35 text-xs flex-1">{t.wageSheetLabel}</span>
               <span className="text-white text-sm font-semibold">
-                {settings.salaryBudget > 0 ? formatMoney(settings.salaryBudget, "k") : "—"}
+                {settings.salaryBudget > 0 ? fmt(settings.salaryBudget, "k") : "—"}
               </span>
             </div>
           </>
@@ -238,11 +241,13 @@ export function FinanceiroView({ careerId, seasonId, transfers, season, isReadOn
               label={t.transferBudgetLabel}
               value={settings.transferBudget}
               onSave={(v) => updateSettings({ transferBudget: v })}
+              locale={locale}
             />
             <BudgetEditor
               label={t.wageSheetLabel}
               value={settings.salaryBudget}
               onSave={(v) => updateSettings({ salaryBudget: v })}
+              locale={locale}
             />
             {!hasBudget && (
               <p className="text-white/20 text-xs mt-1">{t.setBudgetsHint}</p>
@@ -280,7 +285,7 @@ export function FinanceiroView({ careerId, seasonId, transfers, season, isReadOn
               <div className="flex items-center justify-between text-xs">
                 <span className="text-white/50">{t.transfersLabel}</span>
                 <span className="text-white/50 tabular-nums">
-                  {formatMoney(snapshot.netSpend)} / {formatMoney(snapshot.transferBudget)}
+                  {fmt(snapshot.netSpend)} / {fmt(snapshot.transferBudget)}
                 </span>
               </div>
               <ProgressBar value={snapshot.netSpend} max={snapshot.transferBudget} color="var(--club-primary)" />
@@ -288,8 +293,8 @@ export function FinanceiroView({ careerId, seasonId, transfers, season, isReadOn
                 <span>{budgetUsedPct.toFixed(0)}% {t.percentUsed}</span>
                 <span className={snapshot.remainingTransferBudget < 0 ? "text-red-400/60" : ""}>
                   {snapshot.remainingTransferBudget >= 0
-                    ? `${formatMoney(snapshot.remainingTransferBudget)} ${t.remaining}`
-                    : `${formatMoney(Math.abs(snapshot.remainingTransferBudget))} ${t.aboveLimit}`}
+                    ? `${fmt(snapshot.remainingTransferBudget)} ${t.remaining}`
+                    : `${fmt(Math.abs(snapshot.remainingTransferBudget))} ${t.aboveLimit}`}
                 </span>
               </div>
             </div>
@@ -300,7 +305,7 @@ export function FinanceiroView({ careerId, seasonId, transfers, season, isReadOn
               <div className="flex items-center justify-between text-xs">
                 <span className="text-white/50">{t.wagesBill}</span>
                 <span className="text-white/50 tabular-nums">
-                  €{snapshot.currentWageBill.toLocaleString("pt-BR")}k / €{snapshot.salaryBudget.toLocaleString("pt-BR")}k
+                  €{snapshot.currentWageBill.toLocaleString(locale)}k / €{snapshot.salaryBudget.toLocaleString(locale)}k
                 </span>
               </div>
               <ProgressBar value={snapshot.currentWageBill} max={snapshot.salaryBudget} color="#60a5fa" />
@@ -308,8 +313,8 @@ export function FinanceiroView({ careerId, seasonId, transfers, season, isReadOn
                 <span>{wagePct.toFixed(0)}% {t.percentWagesUsed}</span>
                 <span className={snapshot.wageRoom < 0 ? "text-red-400/60" : ""}>
                   {snapshot.wageRoom >= 0
-                    ? `€${snapshot.wageRoom.toLocaleString("pt-BR")}${t.availablePerWk}`
-                    : `€${Math.abs(snapshot.wageRoom).toLocaleString("pt-BR")}${t.aboveWages}`}
+                    ? `€${snapshot.wageRoom.toLocaleString(locale)}${t.availablePerWk}`
+                    : `€${Math.abs(snapshot.wageRoom).toLocaleString(locale)}${t.aboveWages}`}
                 </span>
               </div>
             </div>
@@ -338,7 +343,7 @@ export function FinanceiroView({ careerId, seasonId, transfers, season, isReadOn
                   <p className="text-white/30 text-xs">{tr.playerPositionPtBr} · {tr.season}</p>
                 </div>
                 <p className="text-white font-bold text-sm tabular-nums">
-                  €{tr.salary.toLocaleString("pt-BR")}k
+                  €{tr.salary.toLocaleString(locale)}k
                   <span className="text-white/25 font-normal text-xs">{t.perWeek}</span>
                 </p>
               </div>
@@ -393,7 +398,7 @@ export function FinanceiroView({ careerId, seasonId, transfers, season, isReadOn
                   <p className="text-white text-sm font-semibold truncate">{biggestCompra.playerName}</p>
                   <p className="text-white/30 text-xs">{biggestCompra.playerPositionPtBr} · {biggestCompra.season}</p>
                 </div>
-                <p className="text-white font-bold text-sm tabular-nums">{formatMoney(biggestCompra.fee)}</p>
+                <p className="text-white font-bold text-sm tabular-nums">{fmt(biggestCompra.fee)}</p>
               </div>
             )}
             {biggestVenda && (
@@ -429,7 +434,7 @@ export function FinanceiroView({ careerId, seasonId, transfers, season, isReadOn
                   <p className="text-white text-sm font-semibold truncate">{biggestVenda.playerName}</p>
                   <p className="text-white/30 text-xs">{biggestVenda.playerPositionPtBr} · {biggestVenda.season}</p>
                 </div>
-                <p className="font-bold text-sm tabular-nums" style={{ color: "#34d399" }}>{formatMoney(biggestVenda.fee)}</p>
+                <p className="font-bold text-sm tabular-nums" style={{ color: "#34d399" }}>{fmt(biggestVenda.fee)}</p>
               </div>
             )}
           </div>

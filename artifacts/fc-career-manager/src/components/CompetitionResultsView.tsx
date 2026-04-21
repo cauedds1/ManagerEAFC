@@ -316,7 +316,7 @@ function BracketBuilder({
             onClick={() => addMatch(round.id)}
             className="mt-2 text-xs text-white/30 hover:text-white/60 transition-colors"
           >
-            + {t.addGame}
+            {t.addGame}
           </button>
         </div>
       ))}
@@ -327,7 +327,7 @@ function BracketBuilder({
           className="flex-1 py-2 rounded-xl text-xs font-semibold transition-colors"
           style={{ background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.4)", border: "1px dashed rgba(255,255,255,0.12)" }}
         >
-          + {t.addRound}
+          {t.addRound}
         </button>
         {onChangeSize && (
           <button
@@ -413,7 +413,7 @@ function StandingsBuilder({
         className="w-full py-2 rounded-xl text-xs font-semibold transition-colors"
         style={{ background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.4)", border: "1px dashed rgba(255,255,255,0.12)" }}
       >
-        + {t.addTeam}
+        {t.addTeam}
       </button>
     </div>
   );

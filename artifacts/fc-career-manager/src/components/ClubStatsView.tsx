@@ -235,6 +235,13 @@ const FORM_STYLE: Record<"V" | "E" | "D", { bg: string; color: string }> = {
   D: { bg: "rgba(239,68,68,0.18)",   color: "#f87171" },
 };
 
+function getResultChip(lang: string, r: "V" | "E" | "D"): string {
+  if (lang === "en") {
+    return r === "V" ? "W" : r === "E" ? "D" : "L";
+  }
+  return r;
+}
+
 function FilterDropdown({
   value,
   onChange,
@@ -403,7 +410,7 @@ export function ClubStatsView({
                   className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black"
                   style={{ background: s.bg, color: s.color, border: `1px solid ${s.color}40` }}
                 >
-                  {r}
+                  {getResultChip(lang, r)}
                 </div>
               );
             })}

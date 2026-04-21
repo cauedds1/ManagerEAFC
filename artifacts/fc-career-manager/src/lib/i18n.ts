@@ -1146,6 +1146,7 @@ export const CLUBE = {
     gameSingular: "jogo",
     gamePlural: "jogos",
     cancel: "Cancelar",
+    cancelSelection: "Cancelar seleção",
     pts: "pts",
     // ClubStatsView
     allComps: "Todas as competições",
@@ -1243,6 +1244,7 @@ export const CLUBE = {
     injuredTab: "Lesionados",
     historyTab: "Histórico",
     releaseModalTitle: "Liberar jogador",
+    releaseModalSubtitle: "voltará a estar disponível para escalação.",
     releaseDateLabel: "Data de liberação",
     absentDays: "Afastado por {n} dias",
     releaseBtn: "Liberar",
@@ -1429,6 +1431,7 @@ export const CLUBE = {
     gameSingular: "match",
     gamePlural: "matches",
     cancel: "Cancel",
+    cancelSelection: "Cancel selection",
     pts: "pts",
     // ClubStatsView
     allComps: "All competitions",
@@ -1526,6 +1529,7 @@ export const CLUBE = {
     injuredTab: "Injured",
     historyTab: "History",
     releaseModalTitle: "Release player",
+    releaseModalSubtitle: "will be available for selection again.",
     releaseDateLabel: "Release date",
     absentDays: "Out for {n} days",
     releaseBtn: "Release",

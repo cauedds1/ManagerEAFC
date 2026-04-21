@@ -114,9 +114,7 @@ function ReleaseModal({
         <div>
           <p className="text-white font-bold text-base">{t.releaseModalTitle}</p>
           <p className="text-white/45 text-xs mt-1">
-            {playerName} {t.releaseModalTitle === "Liberar jogador"
-              ? "voltará a estar disponível para escalação."
-              : "will be available for selection again."}
+            {playerName} {t.releaseModalSubtitle}
           </p>
         </div>
 
