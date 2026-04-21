@@ -585,7 +585,8 @@ function FieldLines() {
 /* ── Main component ── */
 export function AuthPage({ onBack, onAuthSuccess, initialPlan, checkoutDraft, onDraftConsumed }: AuthPageProps) {
   const hasDraft = !!checkoutDraft;
-  const [mode, setMode] = useState<"login" | "signup">("login");
+  const startsWithPlan = hasDraft || (!!initialPlan && initialPlan !== "free");
+  const [mode, setMode] = useState<"login" | "signup">(startsWithPlan ? "signup" : "login");
   const [signupStep, setSignupStep] = useState<"plan" | "form">(
     hasDraft || (initialPlan && initialPlan !== "free") ? "form" : "plan"
   );
