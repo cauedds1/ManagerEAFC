@@ -214,9 +214,9 @@ function LeagueCard({ careerId, isReadOnly }: { careerId: string; isReadOnly?: b
         <span className="text-white/35 text-sm mb-1">/ {data.totalTeams} {t.teams}</span>
       </div>
       <div className="flex items-center gap-3 mt-1">
-        <span className="text-xs font-semibold tabular-nums" style={{ color: "#34d399" }}>{data.wins}V</span>
-        <span className="text-xs font-semibold tabular-nums text-white/40">{data.draws}E</span>
-        <span className="text-xs font-semibold tabular-nums" style={{ color: "#f87171" }}>{data.losses}D</span>
+        <span className="text-xs font-semibold tabular-nums" style={{ color: "#34d399" }}>{data.wins}{t.abbrevWin}</span>
+        <span className="text-xs font-semibold tabular-nums text-white/40">{data.draws}{t.abbrevDraw}</span>
+        <span className="text-xs font-semibold tabular-nums" style={{ color: "#f87171" }}>{data.losses}{t.abbrevLoss}</span>
         <span className="text-white/20 text-xs">·</span>
         <span className="text-xs font-black text-white tabular-nums">{data.points} {t.pts}</span>
       </div>
@@ -261,7 +261,7 @@ function TopPerformers({
 
   return (
     <div className="glass rounded-2xl p-5 flex flex-col gap-3">
-      <SectionTitle>Top 3 {label}</SectionTitle>
+      <SectionTitle>{label}</SectionTitle>
       {ranked.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-5 gap-2 text-center">
           <svg
