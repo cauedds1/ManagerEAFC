@@ -10,6 +10,8 @@ import {
   daysBetween,
   type InjuryRecord,
 } from "@/lib/injuryStorage";
+import { useLang } from "@/hooks/useLang";
+import { CLUBE } from "@/lib/i18n";
 
 interface Props {
   careerId: string;
@@ -94,7 +96,10 @@ function ReleaseModal({
   onConfirm: (date: string) => void;
   onClose: () => void;
 }) {
+  const [lang] = useLang();
+  const t = CLUBE[lang];
   const [date, setDate] = useState(todayISO());
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -107,14 +112,16 @@ function ReleaseModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div>
-          <p className="text-white font-bold text-base">Liberar jogador</p>
+          <p className="text-white font-bold text-base">{t.releaseModalTitle}</p>
           <p className="text-white/45 text-xs mt-1">
-            {playerName} voltará a estar disponível para escalação.
+            {playerName} {t.releaseModalTitle === "Liberar jogador"
+              ? "voltará a estar disponível para escalação."
+              : "will be available for selection again."}
           </p>
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label className="text-white/60 text-xs font-semibold">Data de liberação</label>
+          <label className="text-white/60 text-xs font-semibold">{t.releaseDateLabel}</label>
           <input
             type="date"
             value={date}
@@ -124,7 +131,7 @@ function ReleaseModal({
           />
           {injury.matchDate && date && (
             <p className="text-white/35 text-xs mt-0.5">
-              Afastado por {daysBetween(injury.matchDate, date)} dias
+              {t.absentDays.replace("{n}", String(daysBetween(injury.matchDate, date)))}
             </p>
           )}
         </div>
@@ -135,14 +142,14 @@ function ReleaseModal({
             className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white/50 hover:text-white/70 transition-colors"
             style={{ background: "rgba(255,255,255,0.05)" }}
           >
-            Cancelar
+            {t.cancel}
           </button>
           <button
             onClick={() => onConfirm(date)}
             className="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all hover:opacity-90"
             style={{ background: "rgba(34,197,94,0.18)", color: "#4ade80", border: "1px solid rgba(34,197,94,0.3)" }}
           >
-            Liberar
+            {t.releaseBtn}
           </button>
         </div>
       </div>
@@ -161,6 +168,8 @@ function ActiveInjuryCard({
   seasonId: string;
   onUpdate: () => void;
 }) {
+  const [lang] = useLang();
+  const t = CLUBE[lang];
   const [nameInput, setNameInput] = useState(injury.injuryName);
   const [releasing, setReleasing] = useState(false);
 
@@ -210,7 +219,7 @@ function ActiveInjuryCard({
           </div>
           <div className="flex items-center gap-1.5 flex-shrink-0">
             <span className="text-lg">🤕</span>
-            <span className="text-xs font-semibold" style={{ color: "#f87171" }}>Lesionado</span>
+            <span className="text-xs font-semibold" style={{ color: "#f87171" }}>{t.injuredBadge}</span>
           </div>
         </div>
 
@@ -228,13 +237,13 @@ function ActiveInjuryCard({
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-white/40 text-xs">Nome da lesão (opcional)</label>
+            <label className="text-white/40 text-xs">{t.injuryNameLabel}</label>
             <input
               type="text"
               value={nameInput}
               onChange={(e) => setNameInput(e.target.value)}
               onBlur={handleNameBlur}
-              placeholder="Ex: Torção no tornozelo"
+              placeholder={t.injuryNamePlaceholder}
               className="w-full px-3 py-2 rounded-lg text-white text-xs focus:outline-none"
               style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
             />
@@ -245,7 +254,7 @@ function ActiveInjuryCard({
             className="w-full py-2 rounded-lg text-xs font-bold transition-all hover:opacity-90 active:scale-98"
             style={{ background: "rgba(34,197,94,0.12)", color: "#4ade80", border: "1px solid rgba(34,197,94,0.2)" }}
           >
-            Liberar jogador
+            {t.releasePlayerBtn}
           </button>
         </div>
       </div>
@@ -260,6 +269,9 @@ function HistoryCard({
   injury: InjuryRecord;
   player: SquadPlayer | undefined;
 }) {
+  const [lang] = useLang();
+  const t = CLUBE[lang];
+
   const name = player?.name ?? `Jogador ${injury.playerId}`;
   const photo = player?.photo ?? "";
   const pos = player?.positionPtBr;
@@ -286,9 +298,9 @@ function HistoryCard({
         {days !== null && (
           <div className="flex-shrink-0 text-right">
             <span className="text-xs font-bold" style={{ color: "rgba(255,255,255,0.5)" }}>
-              {days} {days === 1 ? "dia" : "dias"}
+              {days} {days === 1 ? t.daySingular : t.dayPlural}
             </span>
-            <p className="text-white/25 text-xs">afastado</p>
+            <p className="text-white/25 text-xs">{t.awayFromGame}</p>
           </div>
         )}
       </div>
@@ -301,12 +313,12 @@ function HistoryCard({
           <p className="text-white/60 text-xs font-semibold pt-2">🩹 {injury.injuryName}</p>
         )}
         <div className="flex items-center gap-3 text-xs text-white/30 pt-1">
-          <span>Lesão: {fmtDate(injury.matchDate)} vs {injury.opponent}</span>
+          <span>{t.injuryRecord} {fmtDate(injury.matchDate)} vs {injury.opponent}</span>
           {injury.minute != null && <span>• {injury.minute}'</span>}
         </div>
         {injury.releasedAt && (
           <div className="text-xs text-white/30">
-            Liberado: {fmtDate(injury.releasedAt)}
+            {t.releasedLabel} {fmtDate(injury.releasedAt)}
           </div>
         )}
       </div>
@@ -315,6 +327,8 @@ function HistoryCard({
 }
 
 export function LesoesView({ careerId: _careerId, seasonId, allPlayers }: Props) {
+  const [lang] = useLang();
+  const t = CLUBE[lang];
   const [tab, setTab] = useState<"ativos" | "historico">("ativos");
   const { injuries, reload } = useInjuries(seasonId);
 
@@ -341,13 +355,16 @@ export function LesoesView({ careerId: _careerId, seasonId, allPlayers }: Props)
   return (
     <div className="w-full flex flex-col">
       <div className="flex gap-1 px-4 pt-3 pb-1">
-        {(["ativos", "historico"] as const).map((t) => {
-          const label = t === "ativos" ? `Lesionados${active.length > 0 ? ` (${active.length})` : ""}` : "Histórico";
-          const isActive = tab === t;
+        {(["ativos", "historico"] as const).map((tabKey) => {
+          const label =
+            tabKey === "ativos"
+              ? `${t.injuredTab}${active.length > 0 ? ` (${active.length})` : ""}`
+              : t.historyTab;
+          const isActive = tab === tabKey;
           return (
             <button
-              key={t}
-              onClick={() => setTab(t)}
+              key={tabKey}
+              onClick={() => setTab(tabKey)}
               className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
               style={{
                 background: isActive ? "rgba(var(--club-primary-rgb),0.18)" : "rgba(255,255,255,0.04)",
@@ -366,8 +383,8 @@ export function LesoesView({ careerId: _careerId, seasonId, allPlayers }: Props)
           {active.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
               <span className="text-5xl">🏥</span>
-              <p className="text-white/40 text-sm">Nenhum jogador lesionado</p>
-              <p className="text-white/25 text-xs">As lesões aparecem automaticamente ao registrar uma partida</p>
+              <p className="text-white/40 text-sm">{t.noActiveInjuries}</p>
+              <p className="text-white/25 text-xs">{t.injuriesAutoNote}</p>
             </div>
           ) : (
             active.map((inj) => (
@@ -388,8 +405,8 @@ export function LesoesView({ careerId: _careerId, seasonId, allPlayers }: Props)
           {history.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
               <span className="text-5xl">📋</span>
-              <p className="text-white/40 text-sm">Nenhum histórico de lesão</p>
-              <p className="text-white/25 text-xs">Jogadores liberados aparecem aqui com o tempo que ficaram afastados</p>
+              <p className="text-white/40 text-sm">{t.noInjuryHistory}</p>
+              <p className="text-white/25 text-xs">{t.injuryHistoryNote}</p>
             </div>
           ) : (
             history.map((inj) => (

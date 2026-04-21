@@ -3,6 +3,8 @@ import { getMatches } from "@/lib/matchStorage";
 import { getMatchResult } from "@/types/match";
 import type { MatchRecord } from "@/types/match";
 import type { Season } from "@/types/career";
+import { useLang } from "@/hooks/useLang";
+import { CLUBE } from "@/lib/i18n";
 
 interface Props {
   careerId: string;
@@ -164,9 +166,10 @@ interface WDLBarProps {
   draws: number;
   losses: number;
   label: string;
+  t: typeof CLUBE["pt"];
 }
 
-function WDLBar({ wins, draws, losses, label }: WDLBarProps) {
+function WDLBar({ wins, draws, losses, label, t }: WDLBarProps) {
   const total = wins + draws + losses;
   if (total === 0) return null;
   const wPct = (wins / total) * 100;
@@ -177,28 +180,28 @@ function WDLBar({ wins, draws, losses, label }: WDLBarProps) {
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between">
         <span className="text-white/40 text-xs font-semibold">{label}</span>
-        <span className="text-white/25 text-xs">{total} jogos</span>
+        <span className="text-white/25 text-xs">{total} {t.gamePlural}</span>
       </div>
       <div className="flex rounded-full overflow-hidden h-2.5 gap-0.5">
         {wins > 0 && (
           <div
             className="h-full rounded-l-full transition-all duration-500"
             style={{ width: `${wPct}%`, background: "#34d399" }}
-            title={`${wins} vitórias`}
+            title={`${wins} ${t.winsTip}`}
           />
         )}
         {draws > 0 && (
           <div
             className="h-full transition-all duration-500"
             style={{ width: `${dPct}%`, background: "#94a3b8" }}
-            title={`${draws} empates`}
+            title={`${draws} ${t.drawsTip}`}
           />
         )}
         {losses > 0 && (
           <div
             className="h-full rounded-r-full transition-all duration-500"
             style={{ width: `${lPct}%`, background: "#f87171" }}
-            title={`${losses} derrotas`}
+            title={`${losses} ${t.lossesTip}`}
           />
         )}
       </div>
@@ -216,7 +219,7 @@ function WDLBar({ wins, draws, losses, label }: WDLBarProps) {
           <span className="text-white/50 text-xs tabular-nums">{losses}D</span>
         </div>
         <div className="ml-auto flex items-center gap-1">
-          <span className="text-white/20 text-[10px]">aproveit.</span>
+          <span className="text-white/20 text-[10px]">{t.winRateAbbr}</span>
           <span className="text-white/50 text-xs font-semibold tabular-nums">
             {Math.round(aproveitamento)}%
           </span>
@@ -269,6 +272,9 @@ export function ClubStatsView({
   matchesOverride,
   allSeasonMatches,
 }: Props) {
+  const [lang] = useLang();
+  const t = CLUBE[lang];
+
   const hasMultipleSeasons = (seasons?.length ?? 0) > 1;
 
   const [filterSeasonId, setFilterSeasonId] = useState<string>(seasonId);
@@ -303,20 +309,20 @@ export function ClubStatsView({
     const opts: { value: string; label: string }[] = [];
     if (seasons && seasons.length > 0) {
       for (const s of [...seasons].sort((a, b) => b.createdAt - a.createdAt)) {
-        opts.push({ value: s.id, label: s.label + (s.id === seasonId ? " (atual)" : "") });
+        opts.push({ value: s.id, label: s.label + (s.id === seasonId ? ` ${t.currentSeason}` : "") });
       }
-      opts.push({ value: "todas", label: "Todas as temporadas" });
+      opts.push({ value: "todas", label: t.allSeasons });
     }
     return opts;
-  }, [seasons, seasonId]);
+  }, [seasons, seasonId, t]);
 
   const competitionOptions = useMemo(() => {
-    const opts: { value: string; label: string }[] = [{ value: "todas", label: "Todas as competições" }];
+    const opts: { value: string; label: string }[] = [{ value: "todas", label: t.allComps }];
     for (const c of competitions) {
       opts.push({ value: c, label: c });
     }
     return opts;
-  }, [competitions]);
+  }, [competitions, t]);
 
   const showSeasonFilter = hasMultipleSeasons;
   const showCompFilter = competitionOptions.length > 1;
@@ -339,8 +345,8 @@ export function ClubStatsView({
           <span className="text-5xl">🏟️</span>
           <p className="text-white/40 text-sm">
             {filterCompetition !== "todas" || filterSeasonId === "todas"
-              ? "Nenhuma partida encontrada com os filtros selecionados"
-              : "Registre partidas para ver as estatísticas do clube"}
+              ? t.noMatchesFiltered
+              : t.noMatchesEmpty}
           </p>
         </div>
       </div>
@@ -366,7 +372,6 @@ export function ClubStatsView({
 
   return (
     <div className="w-full space-y-6 py-5">
-      {/* Filtros */}
       {showFilters && (
         <div className="flex flex-wrap gap-2">
           {showSeasonFilter && (
@@ -386,10 +391,9 @@ export function ClubStatsView({
         </div>
       )}
 
-      {/* Forma recente */}
       {stats.recentForm.length > 0 && (
         <div>
-          <p className="text-white/25 text-[11px] font-bold tracking-widest uppercase mb-2 px-0.5">Forma recente</p>
+          <p className="text-white/25 text-[11px] font-bold tracking-widest uppercase mb-2 px-0.5">{t.recentForm}</p>
           <div className="flex gap-1.5 flex-wrap">
             {stats.recentForm.map((r, i) => {
               const s = FORM_STYLE[r];
@@ -407,24 +411,22 @@ export function ClubStatsView({
         </div>
       )}
 
-      {/* Resultados */}
       <div>
-        <p className="text-white/25 text-[11px] font-bold tracking-widest uppercase mb-3 px-0.5">Resultados</p>
+        <p className="text-white/25 text-[11px] font-bold tracking-widest uppercase mb-3 px-0.5">{t.resultsSection}</p>
         <div className="space-y-4 px-0.5">
-          <WDLBar wins={stats.wins} draws={stats.draws} losses={stats.losses} label="Geral" />
+          <WDLBar wins={stats.wins} draws={stats.draws} losses={stats.losses} label={t.generalLabel} t={t} />
           {stats.home.total > 0 && (
-            <WDLBar wins={stats.home.wins} draws={stats.home.draws} losses={stats.home.losses} label="🏠 Casa" />
+            <WDLBar wins={stats.home.wins} draws={stats.home.draws} losses={stats.home.losses} label={t.homeLabel} t={t} />
           )}
           {stats.away.total > 0 && (
-            <WDLBar wins={stats.away.wins} draws={stats.away.draws} losses={stats.away.losses} label="✈️ Fora" />
+            <WDLBar wins={stats.away.wins} draws={stats.away.draws} losses={stats.away.losses} label={t.awayLabel} t={t} />
           )}
         </div>
-        {/* % Aproveitamento destaque */}
         <div
           className="mt-3 flex items-center justify-between px-4 py-3 rounded-2xl"
           style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
         >
-          <span className="text-white/35 text-xs font-semibold uppercase tracking-wide">% Aproveitamento</span>
+          <span className="text-white/35 text-xs font-semibold uppercase tracking-wide">{t.winRate}</span>
           <span
             className="text-2xl font-black tabular-nums"
             style={{
@@ -436,32 +438,31 @@ export function ClubStatsView({
         </div>
       </div>
 
-      {/* Gols */}
       <div>
-        <p className="text-white/25 text-[11px] font-bold tracking-widest uppercase mb-3 px-0.5">Gols</p>
+        <p className="text-white/25 text-[11px] font-bold tracking-widest uppercase mb-3 px-0.5">{t.goalsSection}</p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <StatCard
-            label="Marcados"
+            label={t.goalsScored}
             value={stats.goalsFor}
-            sub={`${fmt1(avgGoalsFor)}/jogo`}
+            sub={`${fmt1(avgGoalsFor)}${t.perGameSuffix}`}
             accent="#34d399"
             icon="⚽"
           />
           <StatCard
-            label="Sofridos"
+            label={t.goalsConceded}
             value={stats.goalsAgainst}
-            sub={`${fmt1(avgGoalsAgainst)}/jogo`}
+            sub={`${fmt1(avgGoalsAgainst)}${t.perGameSuffix}`}
             accent="#f87171"
             icon="🥅"
           />
           <StatCard
-            label="Saldo"
+            label={t.goalDiff}
             value={goalDiff > 0 ? `+${goalDiff}` : String(goalDiff)}
             accent={goalDiff > 0 ? "#34d399" : goalDiff < 0 ? "#f87171" : "#94a3b8"}
             icon="⚖️"
           />
           <StatCard
-            label="Gols contra"
+            label={t.ownGoals}
             value={stats.ownGoals}
             accent={stats.ownGoals > 0 ? "#fb923c" : "rgba(255,255,255,0.85)"}
             icon="🤦"
@@ -475,12 +476,12 @@ export function ClubStatsView({
                 className="flex flex-col gap-2 px-4 py-3 rounded-2xl"
                 style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
               >
-                <span className="text-white/30 text-[11px] font-semibold">🏠 Gols em casa</span>
+                <span className="text-white/30 text-[11px] font-semibold">{t.homeGoals}</span>
                 <div className="flex items-center gap-3">
                   <span className="text-xl font-black tabular-nums" style={{ color: "#34d399" }}>{stats.home.goalsFor}</span>
                   <span className="text-white/20 text-sm">·</span>
                   <span className="text-xl font-black tabular-nums" style={{ color: "#f87171" }}>{stats.home.goalsAgainst}</span>
-                  <span className="text-white/30 text-xs ml-auto">pro · contra</span>
+                  <span className="text-white/30 text-xs ml-auto">{t.forAgainst}</span>
                 </div>
               </div>
             )}
@@ -489,12 +490,12 @@ export function ClubStatsView({
                 className="flex flex-col gap-2 px-4 py-3 rounded-2xl"
                 style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
               >
-                <span className="text-white/30 text-[11px] font-semibold">✈️ Gols fora</span>
+                <span className="text-white/30 text-[11px] font-semibold">{t.awayGoals}</span>
                 <div className="flex items-center gap-3">
                   <span className="text-xl font-black tabular-nums" style={{ color: "#34d399" }}>{stats.away.goalsFor}</span>
                   <span className="text-white/20 text-sm">·</span>
                   <span className="text-xl font-black tabular-nums" style={{ color: "#f87171" }}>{stats.away.goalsAgainst}</span>
-                  <span className="text-white/30 text-xs ml-auto">pro · contra</span>
+                  <span className="text-white/30 text-xs ml-auto">{t.forAgainst}</span>
                 </div>
               </div>
             )}
@@ -502,16 +503,15 @@ export function ClubStatsView({
         )}
       </div>
 
-      {/* Ataque */}
       {hasAtaqueData && (
         <div>
-          <p className="text-white/25 text-[11px] font-bold tracking-widest uppercase mb-3 px-0.5">Ataque</p>
+          <p className="text-white/25 text-[11px] font-bold tracking-widest uppercase mb-3 px-0.5">{t.attackSection}</p>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {totalFinalizacoes > 0 && (
               <StatCard
-                label="Finalizações"
+                label={t.shots}
                 value={totalFinalizacoes}
-                sub={stats.shotsFor.length > 0 ? `${fmt1(avgShotsFor)}/jogo` : undefined}
+                sub={stats.shotsFor.length > 0 ? `${fmt1(avgShotsFor)}${t.perGameSuffix}` : undefined}
                 accent="var(--club-primary)"
                 icon="🎯"
               />
@@ -523,7 +523,7 @@ export function ClubStatsView({
               >
                 <div className="flex items-center gap-1.5">
                   <span className="text-sm">🏹</span>
-                  <span className="text-white/35 text-[11px] font-semibold tracking-wide uppercase">% Precisão Fin.</span>
+                  <span className="text-white/35 text-[11px] font-semibold tracking-wide uppercase">{t.shotAccuracy}</span>
                 </div>
                 <div className="flex items-end gap-2">
                   <span
@@ -548,7 +548,7 @@ export function ClubStatsView({
             )}
             {stats.penaltyGoals > 0 && (
               <StatCard
-                label="Gols de Pênalti"
+                label={t.penaltyGoals}
                 value={stats.penaltyGoals}
                 accent="#fbbf24"
                 icon="⚽"
@@ -558,19 +558,18 @@ export function ClubStatsView({
         </div>
       )}
 
-      {/* Passe */}
       <div>
-        <p className="text-white/25 text-[11px] font-bold tracking-widest uppercase mb-3 px-0.5">Passes</p>
+        <p className="text-white/25 text-[11px] font-bold tracking-widest uppercase mb-3 px-0.5">{t.passesSection}</p>
         <div
           className="flex items-center justify-between px-4 py-4 rounded-2xl"
           style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}
         >
           <div>
-            <p className="text-white/35 text-[11px] font-semibold tracking-wide uppercase mb-1">Precisão média</p>
+            <p className="text-white/35 text-[11px] font-semibold tracking-wide uppercase mb-1">{t.passAccLabel}</p>
             <p className="text-white/25 text-[10px]">
               {avgPassAccuracy !== null
-                ? `Média dos jogadores · ${stats.passAccuracyPerMatch.length} partidas com dados`
-                : "Registe a precisão dos passes nas partidas para ver esta métrica"}
+                ? t.passAccData.replace("{n}", String(stats.passAccuracyPerMatch.length))
+                : t.passAccEmpty}
             </p>
           </div>
           {avgPassAccuracy !== null ? (
@@ -584,7 +583,7 @@ export function ClubStatsView({
             </span>
           ) : (
             <span className="text-2xl font-black" style={{ color: "rgba(255,255,255,0.2)" }}>
-              N/D
+              {t.nd}
             </span>
           )}
         </div>
@@ -610,19 +609,18 @@ export function ClubStatsView({
         )}
       </div>
 
-      {/* Posse + Finalizações */}
       {(hasPossession || hasShots) && (
         <div>
           <p className="text-white/25 text-[11px] font-bold tracking-widest uppercase mb-3 px-0.5">
-            Jogo
+            {t.gameSection}
             <span className="text-white/20 font-normal normal-case ml-1.5">
-              (média por jogo — baseado em {stats.possession.length > 0 ? stats.possession.length : stats.shotsFor.length} partidas com dados)
+              {t.gameSubLabel.replace("{n}", String(stats.possession.length > 0 ? stats.possession.length : stats.shotsFor.length))}
             </span>
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {hasPossession && (
               <StatCard
-                label="Posse de bola"
+                label={t.possession}
                 value={`${Math.round(avgPossession)}%`}
                 accent={avgPossession >= 50 ? "#34d399" : "#fbbf24"}
                 icon="🟢"
@@ -631,16 +629,16 @@ export function ClubStatsView({
             {hasShots && (
               <>
                 <StatCard
-                  label="Finalizações"
+                  label={t.shotsPerGame}
                   value={fmt1(avgShotsFor)}
-                  sub="por jogo"
+                  sub={t.perGameLabel}
                   accent="var(--club-primary)"
                   icon="🎯"
                 />
                 <StatCard
-                  label="Fins. cedidas"
+                  label={t.shotsConceded}
                   value={fmt1(avgShotsAgainst)}
-                  sub="por jogo"
+                  sub={t.perGameLabel}
                   accent="#fb923c"
                   icon="🛡️"
                 />
@@ -648,7 +646,6 @@ export function ClubStatsView({
             )}
           </div>
 
-          {/* Barra de posse média */}
           {hasPossession && (
             <div
               className="mt-3 px-4 py-3 rounded-2xl"
@@ -673,17 +670,16 @@ export function ClubStatsView({
                 />
               </div>
               <div className="flex justify-between mt-1">
-                <span className="text-white/20 text-[10px]">Você</span>
-                <span className="text-white/20 text-[10px]">Adversário</span>
+                <span className="text-white/20 text-[10px]">{t.youLabel}</span>
+                <span className="text-white/20 text-[10px]">{t.opponentLabel}</span>
               </div>
             </div>
           )}
         </div>
       )}
 
-      {/* Disciplina */}
       <div>
-        <p className="text-white/25 text-[11px] font-bold tracking-widest uppercase mb-3 px-0.5">Disciplina</p>
+        <p className="text-white/25 text-[11px] font-bold tracking-widest uppercase mb-3 px-0.5">{t.discipline}</p>
         <div className="grid grid-cols-2 gap-3">
           <div
             className="flex items-center gap-3 px-4 py-4 rounded-2xl"
@@ -694,13 +690,13 @@ export function ClubStatsView({
               style={{ background: "#fbbf24" }}
             />
             <div>
-              <p className="text-white/35 text-[11px] font-semibold tracking-wide uppercase">Amarelos</p>
+              <p className="text-white/35 text-[11px] font-semibold tracking-wide uppercase">{t.yellowCards}</p>
               <p className="text-3xl font-black tabular-nums leading-none mt-0.5" style={{ color: "#fbbf24" }}>
                 {stats.yellowCards}
               </p>
               {stats.total > 0 && (
                 <p className="text-white/25 text-[10px] mt-0.5">
-                  {fmt1(stats.yellowCards / stats.total)}/jogo
+                  {fmt1(stats.yellowCards / stats.total)}{t.perGameSuffix}
                 </p>
               )}
             </div>
@@ -714,13 +710,13 @@ export function ClubStatsView({
               style={{ background: "#f87171" }}
             />
             <div>
-              <p className="text-white/35 text-[11px] font-semibold tracking-wide uppercase">Vermelhos</p>
+              <p className="text-white/35 text-[11px] font-semibold tracking-wide uppercase">{t.redCards}</p>
               <p className="text-3xl font-black tabular-nums leading-none mt-0.5" style={{ color: "#f87171" }}>
                 {stats.redCards}
               </p>
               {stats.total > 0 && (
                 <p className="text-white/25 text-[10px] mt-0.5">
-                  {fmt1(stats.redCards / stats.total)}/jogo
+                  {fmt1(stats.redCards / stats.total)}{t.perGameSuffix}
                 </p>
               )}
             </div>

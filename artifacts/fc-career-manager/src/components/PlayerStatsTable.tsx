@@ -3,6 +3,8 @@ import { getAllPlayerStats, getAllPlayerOverrides } from "@/lib/playerStatsStora
 import { getMatches } from "@/lib/matchStorage";
 import type { SquadPlayer } from "@/lib/squadCache";
 import type { PlayerSeasonStats } from "@/types/playerStats";
+import { useLang } from "@/hooks/useLang";
+import { CLUBE } from "@/lib/i18n";
 
 const POS_STYLE: Record<string, { bg: string; color: string }> = {
   GOL: { bg: "rgba(245,158,11,0.18)",  color: "#f59e0b" },
@@ -48,57 +50,6 @@ type SortCol =
   | "recoveries" | "losses" | "yellow" | "red"
   | "saves" | "goalsAgainst" | "penSaved"
   | "overall";
-
-const FILTER_TABS: { id: FilterTab; label: string; icon: string }[] = [
-  { id: "ataque",       label: "Ataque",      icon: "⚽" },
-  { id: "intermediario", label: "Intermediário", icon: "🔄" },
-  { id: "defesa",       label: "Defesa",      icon: "🛡️" },
-  { id: "goleiro",      label: "Goleiro",     icon: "🧤" },
-];
-
-const LEGEND_COMMON: { sigla: string; desc: string }[] = [
-  { sigla: "#",    desc: "Nº da camisa" },
-  { sigla: "Pos",  desc: "Posição" },
-  { sigla: "J",    desc: "Jogos totais" },
-  { sigla: "S11",  desc: "Jogos como titular (Started 11)" },
-  { sigla: "Nota", desc: "Nota média por jogo" },
-  { sigla: "MOTM", desc: "Man of the Match — vezes eleito melhor em campo" },
-];
-
-const LEGEND_BY_TAB: Record<FilterTab, { sigla: string; desc: string }[]> = {
-  ataque: [
-    { sigla: "G",     desc: "Gols" },
-    { sigla: "A",     desc: "Assistências" },
-    { sigla: "G+A",   desc: "Gols + Assistências" },
-    { sigla: "Hat",   desc: "Hat-tricks (3 ou + gols em 1 jogo)" },
-    { sigla: "Pên⚽",  desc: "Gols de pênalti" },
-    { sigla: "Pên✗",  desc: "Pênaltis perdidos" },
-    { sigla: "Fin",   desc: "Finalizações totais na temporada" },
-    { sigla: "Acert%", desc: "% de acerto nas finalizações (média das partidas)" },
-    { sigla: "OVR",   desc: "Overall (nota geral do jogador)" },
-  ],
-  intermediario: [
-    { sigla: "A",      desc: "Assistências" },
-    { sigla: "Passes", desc: "Passes totais" },
-    { sigla: "Prec%",  desc: "Precisão de passes (%)" },
-    { sigla: "PC",     desc: "Passes chave" },
-    { sigla: "Drib",   desc: "Dribles completados" },
-    { sigla: "OVR",    desc: "Overall (nota geral do jogador)" },
-  ],
-  defesa: [
-    { sigla: "Rec", desc: "Recuperações de bola" },
-    { sigla: "Per", desc: "Perdas de posse" },
-    { sigla: "CA",  desc: "Cartão amarelo" },
-    { sigla: "CV",  desc: "Cartão vermelho" },
-    { sigla: "OVR", desc: "Overall (nota geral do jogador)" },
-  ],
-  goleiro: [
-    { sigla: "Def",  desc: "Defesas (finalizações defendidas)" },
-    { sigla: "GS",   desc: "Gols sofridos" },
-    { sigla: "Pên✓", desc: "Pênaltis defendidos" },
-    { sigla: "OVR",  desc: "Overall (nota geral do jogador)" },
-  ],
-};
 
 function PlayerPhoto({ src, name }: { src: string; name: string }) {
   const [err, setErr] = useState(!src);
@@ -185,6 +136,60 @@ interface Props {
 }
 
 export function PlayerStatsTable({ careerId, seasonId, allPlayers, statsOverride, matchesOverride, formerPlayerIds }: Props) {
+  const [lang] = useLang();
+  const t = CLUBE[lang];
+
+  const FILTER_TABS: { id: FilterTab; label: string; icon: string }[] = [
+    { id: "ataque",        label: t.filterAttack, icon: "⚽" },
+    { id: "intermediario", label: t.filterMid,    icon: "🔄" },
+    { id: "defesa",        label: t.filterDef,    icon: "🛡️" },
+    { id: "goleiro",       label: t.filterGK,     icon: "🧤" },
+  ];
+
+  const LEGEND_COMMON: { sigla: string; desc: string }[] = [
+    { sigla: "#",    desc: t.legendShirtNo },
+    { sigla: "Pos",  desc: t.legendPos },
+    { sigla: "J",    desc: t.legendGames },
+    { sigla: "S11",  desc: t.legendStarter },
+    { sigla: "Nota", desc: t.legendRating },
+    { sigla: "MOTM", desc: t.legendMOTM },
+  ];
+
+  const LEGEND_BY_TAB: Record<FilterTab, { sigla: string; desc: string }[]> = {
+    ataque: [
+      { sigla: "G",      desc: t.legendGoals },
+      { sigla: "A",      desc: t.legendAssists },
+      { sigla: "G+A",    desc: t.legendGA },
+      { sigla: "Hat",    desc: t.legendHat },
+      { sigla: "Pên⚽",   desc: t.legendPenScored },
+      { sigla: "Pên✗",   desc: t.legendPenMissed },
+      { sigla: "Fin",    desc: t.legendShots },
+      { sigla: "Acert%", desc: t.legendShotAcc },
+      { sigla: "OVR",    desc: t.legendOVR },
+    ],
+    intermediario: [
+      { sigla: "A",      desc: t.legendAssists },
+      { sigla: "Passes", desc: t.legendPasses },
+      { sigla: "Prec%",  desc: t.legendPassAcc },
+      { sigla: "PC",     desc: t.legendKeyPasses },
+      { sigla: "Drib",   desc: t.legendDribbles },
+      { sigla: "OVR",    desc: t.legendOVR },
+    ],
+    defesa: [
+      { sigla: "Rec", desc: t.legendRecoveries },
+      { sigla: "Per", desc: t.legendLosses },
+      { sigla: "CA",  desc: t.legendYellow },
+      { sigla: "CV",  desc: t.legendRed },
+      { sigla: "OVR", desc: t.legendOVR },
+    ],
+    goleiro: [
+      { sigla: "Def",  desc: t.legendSaves },
+      { sigla: "GS",   desc: t.legendGA2 },
+      { sigla: "Pên✓", desc: t.legendPenSaved },
+      { sigla: "OVR",  desc: t.legendOVR },
+    ],
+  };
+
   const [filter, setFilter] = useState<FilterTab>("ataque");
   const [sortCol, setSortCol] = useState<SortCol>("goals");
   const [asc, setAsc] = useState(false);
@@ -241,14 +246,14 @@ export function PlayerStatsTable({ careerId, seasonId, allPlayers, statsOverride
             totalShots += ps.shots;
             if (ps.shotsOnTargetPct != null) { shotAccSum += ps.shotsOnTargetPct; shotAccCount++; }
           }
-          if (ps.passes != null)           totalPasses     += ps.passes;
-          if (ps.passAccuracy != null)     { passAccSum += ps.passAccuracy; passAccCount++; }
-          if (ps.keyPasses != null)        totalKeyPasses  += ps.keyPasses;
-          if (ps.dribblesCompleted != null) totalDrib      += ps.dribblesCompleted;
-          if (ps.ballRecoveries != null)   totalRecov      += ps.ballRecoveries;
-          if (ps.ballLosses != null)       totalLosses     += ps.ballLosses;
-          if (ps.saves != null)            totalSaves      += ps.saves;
-          if (ps.penaltiesSaved != null)   totalPenSaved   += ps.penaltiesSaved;
+          if (ps.passes != null)            totalPasses     += ps.passes;
+          if (ps.passAccuracy != null)      { passAccSum += ps.passAccuracy; passAccCount++; }
+          if (ps.keyPasses != null)         totalKeyPasses  += ps.keyPasses;
+          if (ps.dribblesCompleted != null)  totalDrib       += ps.dribblesCompleted;
+          if (ps.ballRecoveries != null)    totalRecov       += ps.ballRecoveries;
+          if (ps.ballLosses != null)        totalLosses      += ps.ballLosses;
+          if (ps.saves != null)             totalSaves       += ps.saves;
+          if (ps.penaltiesSaved != null)    totalPenSaved    += ps.penaltiesSaved;
         }
 
         const ov = overrides[p.id];
@@ -331,33 +336,33 @@ export function PlayerStatsTable({ careerId, seasonId, allPlayers, statsOverride
       const tA = a.stats.matchesAsStarter + a.stats.matchesAsSubstitute;
       const tB = b.stats.matchesAsStarter + b.stats.matchesAsSubstitute;
       switch (sortCol) {
-        case "name":        diff = a.player.name.localeCompare(b.player.name); break;
-        case "number":      diff = (a.shirtNumber ?? 99) - (b.shirtNumber ?? 99); break;
-        case "pos":         diff = a.displayPos.localeCompare(b.displayPos); break;
-        case "total":       diff = tA - tB; break;
-        case "starter":     diff = a.stats.matchesAsStarter - b.stats.matchesAsStarter; break;
-        case "rating":      diff = (a.derived.avgRating ?? 0) - (b.derived.avgRating ?? 0); break;
-        case "motm":        diff = a.derived.totalMotm - b.derived.totalMotm; break;
-        case "goals":       diff = a.stats.goals - b.stats.goals; break;
-        case "assists":     diff = a.stats.assists - b.stats.assists; break;
-        case "ga":          diff = (a.stats.goals + a.stats.assists) - (b.stats.goals + b.stats.assists); break;
-        case "hat":         diff = a.derived.hatTricks - b.derived.hatTricks; break;
-        case "penScored":   diff = a.derived.totalPenScored - b.derived.totalPenScored; break;
-        case "penMissed":   diff = a.stats.totalMissedPenalties - b.stats.totalMissedPenalties; break;
-        case "shots":       diff = a.derived.totalShots - b.derived.totalShots; break;
-        case "shotAcc":     diff = (a.derived.shotAccuracy ?? 0) - (b.derived.shotAccuracy ?? 0); break;
-        case "passes":      diff = a.derived.totalPasses - b.derived.totalPasses; break;
-        case "passAcc":     diff = (a.derived.passAccuracy ?? 0) - (b.derived.passAccuracy ?? 0); break;
-        case "keyPasses":   diff = a.derived.totalKeyPasses - b.derived.totalKeyPasses; break;
-        case "dribbles":    diff = a.derived.totalDribblesCompleted - b.derived.totalDribblesCompleted; break;
-        case "recoveries":  diff = a.derived.totalBallRecoveries - b.derived.totalBallRecoveries; break;
-        case "losses":      diff = a.derived.totalBallLosses - b.derived.totalBallLosses; break;
-        case "yellow":      diff = a.stats.yellowCards - b.stats.yellowCards; break;
-        case "red":         diff = a.stats.redCards - b.stats.redCards; break;
-        case "saves":       diff = a.derived.totalSaves - b.derived.totalSaves; break;
-        case "goalsAgainst":diff = a.derived.totalGoalsAgainst - b.derived.totalGoalsAgainst; break;
-        case "penSaved":    diff = a.derived.totalPenaltiesSaved - b.derived.totalPenaltiesSaved; break;
-        case "overall":     diff = (a.overall ?? 0) - (b.overall ?? 0); break;
+        case "name":         diff = a.player.name.localeCompare(b.player.name); break;
+        case "number":       diff = (a.shirtNumber ?? 99) - (b.shirtNumber ?? 99); break;
+        case "pos":          diff = a.displayPos.localeCompare(b.displayPos); break;
+        case "total":        diff = tA - tB; break;
+        case "starter":      diff = a.stats.matchesAsStarter - b.stats.matchesAsStarter; break;
+        case "rating":       diff = (a.derived.avgRating ?? 0) - (b.derived.avgRating ?? 0); break;
+        case "motm":         diff = a.derived.totalMotm - b.derived.totalMotm; break;
+        case "goals":        diff = a.stats.goals - b.stats.goals; break;
+        case "assists":      diff = a.stats.assists - b.stats.assists; break;
+        case "ga":           diff = (a.stats.goals + a.stats.assists) - (b.stats.goals + b.stats.assists); break;
+        case "hat":          diff = a.derived.hatTricks - b.derived.hatTricks; break;
+        case "penScored":    diff = a.derived.totalPenScored - b.derived.totalPenScored; break;
+        case "penMissed":    diff = a.stats.totalMissedPenalties - b.stats.totalMissedPenalties; break;
+        case "shots":        diff = a.derived.totalShots - b.derived.totalShots; break;
+        case "shotAcc":      diff = (a.derived.shotAccuracy ?? 0) - (b.derived.shotAccuracy ?? 0); break;
+        case "passes":       diff = a.derived.totalPasses - b.derived.totalPasses; break;
+        case "passAcc":      diff = (a.derived.passAccuracy ?? 0) - (b.derived.passAccuracy ?? 0); break;
+        case "keyPasses":    diff = a.derived.totalKeyPasses - b.derived.totalKeyPasses; break;
+        case "dribbles":     diff = a.derived.totalDribblesCompleted - b.derived.totalDribblesCompleted; break;
+        case "recoveries":   diff = a.derived.totalBallRecoveries - b.derived.totalBallRecoveries; break;
+        case "losses":       diff = a.derived.totalBallLosses - b.derived.totalBallLosses; break;
+        case "yellow":       diff = a.stats.yellowCards - b.stats.yellowCards; break;
+        case "red":          diff = a.stats.redCards - b.stats.redCards; break;
+        case "saves":        diff = a.derived.totalSaves - b.derived.totalSaves; break;
+        case "goalsAgainst": diff = a.derived.totalGoalsAgainst - b.derived.totalGoalsAgainst; break;
+        case "penSaved":     diff = a.derived.totalPenaltiesSaved - b.derived.totalPenaltiesSaved; break;
+        case "overall":      diff = (a.overall ?? 0) - (b.overall ?? 0); break;
       }
       return diff * factor;
     });
@@ -374,7 +379,7 @@ export function PlayerStatsTable({ careerId, seasonId, allPlayers, statsOverride
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-4 text-center">
         <span className="text-5xl">📋</span>
-        <p className="text-white/40 text-sm">Registre partidas para ver as estatísticas dos jogadores</p>
+        <p className="text-white/40 text-sm">{t.noPlayerStats}</p>
       </div>
     );
   }
@@ -384,19 +389,20 @@ export function PlayerStatsTable({ careerId, seasonId, allPlayers, statsOverride
 
   const ALWAYS_HEADER = (
     <>
-      <Th label="#"      col="number"  {...th} title="Nº camisa" />
-      <Th label="Jogador" col="name"   {...th} left />
-      <Th label="Pos"    col="pos"     {...th} />
-      <Th label="J"      col="total"   {...th} title="Jogos totais" />
-      <Th label="S11"    col="starter" {...th} title="Jogos como titular (Started 11)" />
-      <Th label="Nota"   col="rating"  {...th} title="Nota média" />
-      <Th label="MOTM"   col="motm"    {...th} title="Man of the Match — vezes eleito melhor em campo" accent="#fbbf24" />
+      <Th label="#"       col="number"  {...th} title={t.legendShirtNo} />
+      <Th label={t.playerHeader} col="name" {...th} left />
+      <Th label="Pos"     col="pos"     {...th} />
+      <Th label="J"       col="total"   {...th} title={t.legendGames} />
+      <Th label="S11"     col="starter" {...th} title={t.legendStarter} />
+      <Th label="Nota"    col="rating"  {...th} title={t.legendRating} />
+      <Th label="MOTM"    col="motm"    {...th} title={t.legendMOTM} accent="#fbbf24" />
     </>
   );
 
+  const currentFilterLabel = FILTER_TABS.find((f) => f.id === filter)?.label ?? "";
+
   return (
     <div className="w-full pb-6 pt-1">
-      {/* Filter tabs */}
       <div className="flex items-center gap-1.5 pb-3 flex-wrap">
         {FILTER_TABS.map((f) => {
           const active = filter === f.id;
@@ -419,11 +425,10 @@ export function PlayerStatsTable({ careerId, seasonId, allPlayers, statsOverride
           );
         })}
 
-        {/* Legend button */}
         <div className="relative" ref={legendRef}>
           <button
             onClick={() => setShowLegend((v) => !v)}
-            title="Legenda das siglas"
+            title={t.legendTitle}
             className="flex items-center justify-center w-6 h-6 rounded-md transition-all duration-200"
             style={{
               background: showLegend ? "rgba(var(--club-primary-rgb),0.18)" : "rgba(255,255,255,0.05)",
@@ -447,7 +452,7 @@ export function PlayerStatsTable({ careerId, seasonId, allPlayers, statsOverride
               }}
             >
               <p className="text-white/30 text-[10px] font-bold uppercase tracking-widest mb-2">
-                Siglas — {FILTER_TABS.find((f) => f.id === filter)?.label}
+                {t.legendSiglas} {currentFilterLabel}
               </p>
               <div className="space-y-1">
                 {LEGEND_COMMON.map(({ sigla, desc }) => (
@@ -481,7 +486,7 @@ export function PlayerStatsTable({ careerId, seasonId, allPlayers, statsOverride
         </div>
 
         {filter === "goleiro" && visibleRows.length === 0 && (
-          <span className="text-white/25 text-xs ml-2">Nenhum goleiro com dados</span>
+          <span className="text-white/25 text-xs ml-2">{t.noGKData}</span>
         )}
       </div>
 
@@ -491,45 +496,45 @@ export function PlayerStatsTable({ careerId, seasonId, allPlayers, statsOverride
             {filter === "ataque" && (
               <tr style={THEAD_BG}>
                 {ALWAYS_HEADER}
-                <Th label="G"      col="goals"    {...th} title="Gols" accent="#34d399" />
-                <Th label="A"      col="assists"  {...th} title="Assistências" accent="#60a5fa" />
-                <Th label="G+A"    col="ga"       {...th} title="Gols + Assistências" accent="#a78bfa" />
-                <Th label="Hat"    col="hat"      {...th} title="Hat-tricks (3+ gols em 1 jogo)" accent="#fbbf24" />
-                <Th label="Pên⚽"   col="penScored" {...th} title="Gols de pênalti" accent="#34d399" />
-                <Th label="Pên✗"   col="penMissed" {...th} title="Pênaltis perdidos" accent="#f87171" />
-                <Th label="Fin"    col="shots"    {...th} title="Finalizações totais" />
-                <Th label="Acert%" col="shotAcc"  {...th} title="% de acerto nas finalizações" accent="#fb923c" />
-                <Th label="OVR"    col="overall"  {...th} title="Overall" />
+                <Th label="G"      col="goals"     {...th} title={t.legendGoals}     accent="#34d399" />
+                <Th label="A"      col="assists"   {...th} title={t.legendAssists}   accent="#60a5fa" />
+                <Th label="G+A"    col="ga"        {...th} title={t.legendGA}        accent="#a78bfa" />
+                <Th label="Hat"    col="hat"       {...th} title={t.legendHat}       accent="#fbbf24" />
+                <Th label="Pên⚽"   col="penScored" {...th} title={t.legendPenScored} accent="#34d399" />
+                <Th label="Pên✗"   col="penMissed" {...th} title={t.legendPenMissed} accent="#f87171" />
+                <Th label="Fin"    col="shots"     {...th} title={t.legendShots} />
+                <Th label="Acert%" col="shotAcc"   {...th} title={t.legendShotAcc}  accent="#fb923c" />
+                <Th label="OVR"    col="overall"   {...th} title={t.legendOVR} />
               </tr>
             )}
             {filter === "intermediario" && (
               <tr style={THEAD_BG}>
                 {ALWAYS_HEADER}
-                <Th label="A"      col="assists"  {...th} title="Assistências" accent="#60a5fa" />
-                <Th label="Passes" col="passes"   {...th} title="Passes totais" />
-                <Th label="Prec%"  col="passAcc"  {...th} title="Precisão de passes (%)" />
-                <Th label="PC"     col="keyPasses" {...th} title="Passes chave" accent="#a3e635" />
-                <Th label="Drib"   col="dribbles" {...th} title="Dribles completados" accent="#fbbf24" />
-                <Th label="OVR"    col="overall"  {...th} title="Overall" />
+                <Th label="A"      col="assists"   {...th} title={t.legendAssists}  accent="#60a5fa" />
+                <Th label="Passes" col="passes"    {...th} title={t.legendPasses} />
+                <Th label="Prec%"  col="passAcc"   {...th} title={t.legendPassAcc} />
+                <Th label="PC"     col="keyPasses" {...th} title={t.legendKeyPasses} accent="#a3e635" />
+                <Th label="Drib"   col="dribbles"  {...th} title={t.legendDribbles} accent="#fbbf24" />
+                <Th label="OVR"    col="overall"   {...th} title={t.legendOVR} />
               </tr>
             )}
             {filter === "defesa" && (
               <tr style={THEAD_BG}>
                 {ALWAYS_HEADER}
-                <Th label="Rec"  col="recoveries" {...th} title="Recuperações de bola" accent="#34d399" />
-                <Th label="Per"  col="losses"     {...th} title="Perdas de posse" accent="#f87171" />
-                <Th label="CA"   col="yellow"     {...th} title="Cartões amarelos" accent="#fbbf24" />
-                <Th label="CV"   col="red"        {...th} title="Cartões vermelhos" accent="#f87171" />
-                <Th label="OVR"  col="overall"    {...th} title="Overall" />
+                <Th label="Rec"  col="recoveries" {...th} title={t.legendRecoveries} accent="#34d399" />
+                <Th label="Per"  col="losses"     {...th} title={t.legendLosses}     accent="#f87171" />
+                <Th label="CA"   col="yellow"     {...th} title={t.legendYellow}     accent="#fbbf24" />
+                <Th label="CV"   col="red"        {...th} title={t.legendRed}        accent="#f87171" />
+                <Th label="OVR"  col="overall"    {...th} title={t.legendOVR} />
               </tr>
             )}
             {filter === "goleiro" && (
               <tr style={THEAD_BG}>
                 {ALWAYS_HEADER}
-                <Th label="Def"  col="saves"        {...th} title="Defesas" accent="#34d399" />
-                <Th label="GS"   col="goalsAgainst" {...th} title="Gols sofridos" accent="#f87171" />
-                <Th label="Pên✓" col="penSaved"     {...th} title="Pênaltis defendidos" accent="#60a5fa" />
-                <Th label="OVR"  col="overall"      {...th} title="Overall" />
+                <Th label="Def"  col="saves"        {...th} title={t.legendSaves}    accent="#34d399" />
+                <Th label="GS"   col="goalsAgainst" {...th} title={t.legendGA2}      accent="#f87171" />
+                <Th label="Pên✓" col="penSaved"     {...th} title={t.legendPenSaved} accent="#60a5fa" />
+                <Th label="OVR"  col="overall"      {...th} title={t.legendOVR} />
               </tr>
             )}
           </thead>
@@ -553,7 +558,7 @@ export function PlayerStatsTable({ careerId, seasonId, allPlayers, statsOverride
                       <div className="flex flex-col gap-0.5 min-w-0">
                         <span className={`font-medium text-xs truncate max-w-[130px] ${isFormer ? "text-white/45" : "text-white/80"}`}>{player.name}</span>
                         {isFormer && (
-                          <span className="text-[9px] font-bold uppercase tracking-wider" style={{ color: "rgba(251,146,60,0.6)" }}>saiu do elenco</span>
+                          <span className="text-[9px] font-bold uppercase tracking-wider" style={{ color: "rgba(251,146,60,0.6)" }}>{t.leftSquadBadge}</span>
                         )}
                       </div>
                     </div>

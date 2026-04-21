@@ -17,6 +17,8 @@ import {
   type BracketMatch,
   type StandingsEntry,
 } from "@/lib/competitionResultStorage";
+import { useLang } from "@/hooks/useLang";
+import { CLUBE } from "@/lib/i18n";
 
 interface Props {
   careerId: string;
@@ -85,22 +87,25 @@ function Toggle({ checked, onChange, label }: ToggleProps) {
 const BRACKET_SIZES = [128, 64, 32, 16, 8, 4] as const;
 type BracketSize = (typeof BRACKET_SIZES)[number] | "custom";
 
-function getRoundName(matchCount: number, totalTeams: number): string {
-  if (matchCount === 1) return "Final";
-  if (matchCount === 2) return "Semifinal";
-  if (matchCount === 4) return "Quartas de final";
-  if (matchCount === 8) return "Oitavas de final";
-  return `Rodada de ${matchCount * 2}`;
+type T = (typeof CLUBE)["pt"];
+
+function getRoundName(matchCount: number, totalTeams: number, t: T): string {
+  void totalTeams;
+  if (matchCount === 1) return t.roundFinal;
+  if (matchCount === 2) return t.roundSemi;
+  if (matchCount === 4) return t.roundQuarter;
+  if (matchCount === 8) return t.roundR16;
+  return t.roundOf.replace("{n}", String(matchCount * 2));
 }
 
-function generateBracketRounds(totalTeams: number): BracketRound[] {
+function generateBracketRounds(totalTeams: number, t: T): BracketRound[] {
   const rounds: BracketRound[] = [];
   let teams = totalTeams;
   while (teams > 1) {
     const matchCount = teams / 2;
     rounds.push({
       id: generateRoundId(),
-      name: getRoundName(matchCount, totalTeams),
+      name: getRoundName(matchCount, totalTeams, t),
       matches: Array.from({ length: matchCount }, () => ({
         id: generateMatchId(),
         homeTeam: "",
@@ -115,18 +120,21 @@ function generateBracketRounds(totalTeams: number): BracketRound[] {
 }
 
 function BracketSizeSelector({ onSelect }: { onSelect: (size: BracketSize) => void }) {
+  const [lang] = useLang();
+  const t = CLUBE[lang];
+
   const sizeInfo: Record<number, string[]> = {
-    128: ["Rodada de 128", "Rodada de 64", "Rodada de 32", "Oitavas", "Quartas", "Semi", "Final"],
-    64:  ["Rodada de 64", "Rodada de 32", "Oitavas", "Quartas", "Semifinal", "Final"],
-    32:  ["Rodada de 32", "Oitavas", "Quartas", "Semifinal", "Final"],
-    16:  ["Oitavas de final", "Quartas de final", "Semifinal", "Final"],
-    8:   ["Quartas de final", "Semifinal", "Final"],
-    4:   ["Semifinal", "Final"],
+    128: [t.roundOf.replace("{n}", "128"), t.roundOf.replace("{n}", "64"), t.roundOf.replace("{n}", "32"), t.roundR16, t.roundQuarter, t.roundSemi, t.roundFinal],
+    64:  [t.roundOf.replace("{n}", "64"), t.roundOf.replace("{n}", "32"), t.roundR16, t.roundQuarter, t.roundSemi, t.roundFinal],
+    32:  [t.roundOf.replace("{n}", "32"), t.roundR16, t.roundQuarter, t.roundSemi, t.roundFinal],
+    16:  [t.roundR16, t.roundQuarter, t.roundSemi, t.roundFinal],
+    8:   [t.roundQuarter, t.roundSemi, t.roundFinal],
+    4:   [t.roundSemi, t.roundFinal],
   };
 
   return (
     <div className="space-y-3">
-      <p className="text-white/40 text-xs">Escolha o tamanho do chaveamento para gerar as fases automaticamente:</p>
+      <p className="text-white/40 text-xs">{t.bracketSizeHint}</p>
       <div className="grid grid-cols-2 gap-2">
         {BRACKET_SIZES.map((size) => (
           <button
@@ -139,7 +147,7 @@ function BracketSizeSelector({ onSelect }: { onSelect: (size: BracketSize) => vo
               border: "1px solid rgba(255,255,255,0.1)",
             }}
           >
-            <span className="text-white/80 text-sm font-bold">{size} times</span>
+            <span className="text-white/80 text-sm font-bold">{size} {t.teamsLabel}</span>
             <span className="text-white/30 text-[10px] leading-tight">
               {sizeInfo[size].join(" · ")}
             </span>
@@ -154,8 +162,8 @@ function BracketSizeSelector({ onSelect }: { onSelect: (size: BracketSize) => vo
             border: "1px dashed rgba(255,255,255,0.12)",
           }}
         >
-          <span className="text-white/50 text-sm font-semibold">✏️ Personalizado</span>
-          <span className="text-white/25 text-[10px]">Adicionar rondas manualmente</span>
+          <span className="text-white/50 text-sm font-semibold">{t.customBracket}</span>
+          <span className="text-white/25 text-[10px]">{t.addManually}</span>
         </button>
       </div>
     </div>
@@ -173,10 +181,13 @@ function BracketBuilder({
   clubName: string;
   onChangeSize?: () => void;
 }) {
+  const [lang] = useLang();
+  const t = CLUBE[lang];
+
   function addRound() {
     onChange([
       ...rounds,
-      { id: generateRoundId(), name: `Rodada ${rounds.length + 1}`, matches: [] },
+      { id: generateRoundId(), name: t.roundN.replace("{n}", String(rounds.length + 1)), matches: [] },
     ]);
   }
 
@@ -243,7 +254,7 @@ function BracketBuilder({
             <input
               value={round.name}
               onChange={(e) => updateRoundName(round.id, e.target.value)}
-              placeholder="Nome da rodada"
+              placeholder={t.roundNamePlaceholder}
               className="flex-1 bg-transparent text-sm font-bold text-white/80 outline-none border-b border-white/10 pb-0.5"
             />
             <button
@@ -260,7 +271,7 @@ function BracketBuilder({
                 <input
                   value={match.homeTeam}
                   onChange={(e) => updateMatch(round.id, { ...match, homeTeam: e.target.value })}
-                  placeholder="Casa"
+                  placeholder={t.homeTeamPlaceholder}
                   className="flex-1 bg-white/5 border border-white/8 rounded-lg px-2 py-1 text-xs outline-none"
                   style={{ color: isMyTeam(match.homeTeam) ? "var(--club-primary)" : "rgba(255,255,255,0.7)" }}
                 />
@@ -286,7 +297,7 @@ function BracketBuilder({
                 <input
                   value={match.awayTeam}
                   onChange={(e) => updateMatch(round.id, { ...match, awayTeam: e.target.value })}
-                  placeholder="Fora"
+                  placeholder={t.awayTeamPlaceholder}
                   className="flex-1 bg-white/5 border border-white/8 rounded-lg px-2 py-1 text-xs outline-none"
                   style={{ color: isMyTeam(match.awayTeam) ? "var(--club-primary)" : "rgba(255,255,255,0.7)" }}
                 />
@@ -305,7 +316,7 @@ function BracketBuilder({
             onClick={() => addMatch(round.id)}
             className="mt-2 text-xs text-white/30 hover:text-white/60 transition-colors"
           >
-            + Jogo
+            + {t.addGame}
           </button>
         </div>
       ))}
@@ -316,7 +327,7 @@ function BracketBuilder({
           className="flex-1 py-2 rounded-xl text-xs font-semibold transition-colors"
           style={{ background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.4)", border: "1px dashed rgba(255,255,255,0.12)" }}
         >
-          + Adicionar rodada
+          + {t.addRound}
         </button>
         {onChangeSize && (
           <button
@@ -325,7 +336,7 @@ function BracketBuilder({
             className="py-2 px-3 rounded-xl text-xs font-semibold transition-colors"
             style={{ background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.3)", border: "1px solid rgba(255,255,255,0.08)" }}
           >
-            Trocar tamanho
+            {t.changeSize}
           </button>
         )}
       </div>
@@ -342,6 +353,9 @@ function StandingsBuilder({
   onChange: (entries: StandingsEntry[]) => void;
   clubName: string;
 }) {
+  const [lang] = useLang();
+  const t = CLUBE[lang];
+
   function addEntry() {
     onChange([...entries, { id: generateStandingId(), team: "", points: 0 }]);
   }
@@ -371,7 +385,7 @@ function StandingsBuilder({
           <input
             value={entry.team}
             onChange={(e) => updateEntry({ ...entry, team: e.target.value })}
-            placeholder="Nome do time"
+            placeholder={t.teamNamePlaceholder}
             className="flex-1 bg-white/5 border border-white/8 rounded-lg px-2 py-1 text-xs outline-none"
             style={{ color: isMyTeam(entry.team) ? "var(--club-primary)" : "rgba(255,255,255,0.7)" }}
           />
@@ -399,7 +413,7 @@ function StandingsBuilder({
         className="w-full py-2 rounded-xl text-xs font-semibold transition-colors"
         style={{ background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.4)", border: "1px dashed rgba(255,255,255,0.12)" }}
       >
-        + Adicionar time
+        + {t.addTeam}
       </button>
     </div>
   );
@@ -428,6 +442,9 @@ function ResultModal({
   onClose,
   onSaved,
 }: ModalProps) {
+  const [lang] = useLang();
+  const t = CLUBE[lang];
+
   const season = seasons.find((s) => s.id === selectedSeasonId) ?? seasons.find((s) => s.id === seasonId);
   const [compName, setCompName] = useState(editing?.competitionName ?? "");
   const [customName, setCustomName] = useState(!matchTournaments.includes(editing?.competitionName ?? "") && !!editing?.competitionName);
@@ -439,10 +456,12 @@ function ResultModal({
     editing?.bracket && editing.bracket.length > 0 ? "custom" : null
   );
 
+  const otherLabel = t.otherType;
+
   function handleSelectSize(size: BracketSize) {
     setBracketSize(size);
     if (size !== "custom") {
-      setBracket(generateBracketRounds(size));
+      setBracket(generateBracketRounds(size, t));
     } else {
       setBracket([]);
     }
@@ -454,7 +473,7 @@ function ResultModal({
   }
 
   const tournamentOptions = matchTournaments.length > 0
-    ? [...matchTournaments, "Outra (digitar)"]
+    ? [...matchTournaments, otherLabel]
     : [];
 
   function handleSave() {
@@ -488,25 +507,23 @@ function ResultModal({
         className="w-full max-w-lg rounded-3xl overflow-hidden flex flex-col"
         style={{ background: "rgba(15,15,25,0.98)", border: "1px solid rgba(255,255,255,0.1)", maxHeight: "90vh" }}
       >
-        {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 flex-shrink-0">
           <h2 className="font-bold text-white/90 text-base">
-            {editing ? "Editar competição" : "Resultado da competição"}
+            {editing ? t.editComp : t.compResult}
           </h2>
           <button type="button" onClick={onClose} className="text-white/30 hover:text-white/60 transition-colors text-lg">✕</button>
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 pb-5 space-y-4">
-          {/* Nome da competição */}
           <div>
             <label className="text-white/40 text-[11px] font-semibold uppercase tracking-wide block mb-1.5">
-              Competição
+              {t.competitionLabel}
             </label>
             {tournamentOptions.length > 0 && !customName ? (
               <select
                 value={compName}
                 onChange={(e) => {
-                  if (e.target.value === "Outra (digitar)") {
+                  if (e.target.value === otherLabel) {
                     setCustomName(true);
                     setCompName("");
                   } else {
@@ -516,9 +533,9 @@ function ResultModal({
                 className="w-full rounded-xl px-3 py-2 text-sm outline-none"
                 style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.8)", border: "1px solid rgba(255,255,255,0.12)" }}
               >
-                <option value="" style={{ background: "#1a1a2e" }}>Selecionar...</option>
-                {tournamentOptions.map((t) => (
-                  <option key={t} value={t} style={{ background: "#1a1a2e" }}>{t}</option>
+                <option value="" style={{ background: "#1a1a2e" }}>{t.selectPlaceholder}</option>
+                {tournamentOptions.map((to) => (
+                  <option key={to} value={to} style={{ background: "#1a1a2e" }}>{to}</option>
                 ))}
               </select>
             ) : (
@@ -526,7 +543,7 @@ function ResultModal({
                 <input
                   value={compName}
                   onChange={(e) => setCompName(e.target.value)}
-                  placeholder="Ex: Liga dos Campeões"
+                  placeholder={t.compNamePlaceholder}
                   className="flex-1 rounded-xl px-3 py-2 text-sm outline-none"
                   style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.8)", border: "1px solid rgba(255,255,255,0.12)" }}
                 />
@@ -536,47 +553,44 @@ function ResultModal({
                     onClick={() => { setCustomName(false); setCompName(""); }}
                     className="text-xs text-white/30 hover:text-white/60 transition-colors px-2"
                   >
-                    ← Lista
+                    ← {t.backToList}
                   </button>
                 )}
               </div>
             )}
           </div>
 
-          {/* Tipo */}
           <div>
             <label className="text-white/40 text-[11px] font-semibold uppercase tracking-wide block mb-1.5">
-              Formato
+              {t.formatLabel}
             </label>
             <div className="flex gap-2">
-              {(["mata-mata", "pontos-corridos"] as const).map((t) => (
+              {(["mata-mata", "pontos-corridos"] as const).map((typeKey) => (
                 <button
-                  key={t}
+                  key={typeKey}
                   type="button"
-                  onClick={() => setType(t)}
+                  onClick={() => setType(typeKey)}
                   className="flex-1 py-2 rounded-xl text-xs font-semibold transition-all"
                   style={{
-                    background: type === t ? "rgba(var(--club-primary-rgb),0.15)" : "rgba(255,255,255,0.05)",
-                    color: type === t ? "var(--club-primary)" : "rgba(255,255,255,0.4)",
-                    border: type === t ? "1px solid rgba(var(--club-primary-rgb),0.3)" : "1px solid rgba(255,255,255,0.08)",
+                    background: type === typeKey ? "rgba(var(--club-primary-rgb),0.15)" : "rgba(255,255,255,0.05)",
+                    color: type === typeKey ? "var(--club-primary)" : "rgba(255,255,255,0.4)",
+                    border: type === typeKey ? "1px solid rgba(var(--club-primary-rgb),0.3)" : "1px solid rgba(255,255,255,0.08)",
                   }}
                 >
-                  {t === "mata-mata" ? "🏆 Mata-mata" : "📋 Pontos Corridos"}
+                  {typeKey === "mata-mata" ? t.knockout : t.league}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Campeão */}
           <div className="flex items-center justify-between">
-            <span className="text-sm text-white/60">Meu time foi campeão 🏅</span>
+            <span className="text-sm text-white/60">{t.myTeamChampion}</span>
             <Toggle checked={isChampion} onChange={setIsChampion} />
           </div>
 
-          {/* Builder */}
           <div>
             <label className="text-white/40 text-[11px] font-semibold uppercase tracking-wide block mb-2">
-              {type === "mata-mata" ? "Chaveamento" : "Tabela de classificação"}
+              {type === "mata-mata" ? t.bracketLabel : t.standingsLabel}
             </label>
             {type === "mata-mata" ? (
               bracketSize === null ? (
@@ -595,7 +609,6 @@ function ResultModal({
           </div>
         </div>
 
-        {/* Footer */}
         <div className="flex gap-3 px-5 py-4 flex-shrink-0" style={{ borderTop: "1px solid rgba(255,255,255,0.07)" }}>
           <button
             type="button"
@@ -603,7 +616,7 @@ function ResultModal({
             className="flex-1 py-2.5 rounded-2xl text-sm font-semibold transition-colors"
             style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.5)" }}
           >
-            Cancelar
+            {t.cancel}
           </button>
           <button
             type="button"
@@ -615,7 +628,7 @@ function ResultModal({
               color: compName.trim() ? "#fff" : "rgba(255,255,255,0.3)",
             }}
           >
-            {editing ? "Salvar alterações" : "Registrar"}
+            {editing ? t.saveChanges : t.register}
           </button>
         </div>
       </div>
@@ -752,10 +765,12 @@ function BracketSlot({ match, clubName, clubLogoUrl, isChampFinal }: {
 function BracketVisual({ result, clubName, clubLogoUrl }: {
   result: CompetitionResult; clubName: string; clubLogoUrl?: string | null;
 }) {
+  const [lang] = useLang();
+  const t = CLUBE[lang];
   const rounds = result.bracket;
 
   if (!rounds || rounds.length === 0 || rounds.every((r) => r.matches.length === 0)) {
-    return <p className="text-white/30 text-sm text-center py-4">Nenhum jogo registrado.</p>;
+    return <p className="text-white/30 text-sm text-center py-4">{t.noGamesRegistered}</p>;
   }
 
   const n0 = rounds[0].matches.length;
@@ -770,9 +785,7 @@ function BracketVisual({ result, clubName, clubLogoUrl }: {
           const isLastRound = rIdx === lastRoundIdx;
           return (
             <div key={round.id} style={{ display: "flex", flexShrink: 0 }}>
-              {/* Round column */}
               <div style={{ width: BR_COL_W, flexShrink: 0 }}>
-                {/* Round name header */}
                 <div style={{
                   height: BR_HDR_H, display: "flex", alignItems: "center", justifyContent: "center",
                   fontSize: 9.5, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase",
@@ -781,7 +794,6 @@ function BracketVisual({ result, clubName, clubLogoUrl }: {
                   {round.name}
                 </div>
 
-                {/* Absolute-positioned match slots */}
                 <div style={{ position: "relative", height: totalH, width: "100%" }}>
                   {round.matches.map((match, mIdx) => {
                     const topY = matchTopY(rIdx, mIdx);
@@ -800,7 +812,6 @@ function BracketVisual({ result, clubName, clubLogoUrl }: {
                 </div>
               </div>
 
-              {/* Connector SVG */}
               {!isLastRound && (
                 <div style={{ width: BR_CONN_W, flexShrink: 0 }}>
                   <div style={{ height: BR_HDR_H }} />
@@ -834,11 +845,14 @@ function BracketVisual({ result, clubName, clubLogoUrl }: {
 }
 
 function StandingsDetail({ result, clubName }: { result: CompetitionResult; clubName: string }) {
+  const [lang] = useLang();
+  const t = CLUBE[lang];
+
   const isMyTeam = (name: string) =>
     name.trim().toLowerCase() === clubName.trim().toLowerCase();
 
   if (!result.standings || result.standings.length === 0) {
-    return <p className="text-white/30 text-sm text-center py-4">Nenhum time registrado.</p>;
+    return <p className="text-white/30 text-sm text-center py-4">{t.noTeamsRegistered}</p>;
   }
 
   const sorted = [...result.standings].sort((a, b) => b.points - a.points);
@@ -894,13 +908,15 @@ function DetailView({
   onEdit: () => void;
   onDelete: () => void;
 }) {
+  const [lang] = useLang();
+  const t = CLUBE[lang];
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   return (
     <div className="space-y-4 py-4">
       <div className="flex items-center gap-3">
         <button type="button" onClick={onBack} className="text-white/30 hover:text-white/70 transition-colors text-sm">
-          ← Voltar
+          ← {t.backBtn}
         </button>
       </div>
 
@@ -921,14 +937,14 @@ function DetailView({
               <span className="text-white/35 text-xs">{result.seasonLabel}</span>
               <span className="text-white/15 text-xs">·</span>
               <span className="text-white/35 text-xs capitalize">
-                {result.type === "mata-mata" ? "🏆 Mata-mata" : "📋 Pontos Corridos"}
+                {result.type === "mata-mata" ? t.knockout : t.league}
               </span>
               {result.isChampion && (
                 <span
                   className="text-xs font-bold px-2 py-0.5 rounded-full"
                   style={{ background: "rgba(251,191,36,0.15)", color: "#fbbf24" }}
                 >
-                  Campeão
+                  {t.champion}
                 </span>
               )}
             </div>
@@ -940,7 +956,7 @@ function DetailView({
               className="text-xs font-semibold px-3 py-1.5 rounded-xl transition-colors"
               style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.5)" }}
             >
-              Editar
+              {t.edit}
             </button>
             {!confirmDelete ? (
               <button
@@ -949,7 +965,7 @@ function DetailView({
                 className="text-xs font-semibold px-3 py-1.5 rounded-xl transition-colors"
                 style={{ background: "rgba(248,113,113,0.08)", color: "#f87171" }}
               >
-                Apagar
+                {t.delete}
               </button>
             ) : (
               <div className="flex gap-1">
@@ -959,7 +975,7 @@ function DetailView({
                   className="text-xs font-bold px-3 py-1.5 rounded-xl"
                   style={{ background: "rgba(248,113,113,0.2)", color: "#f87171" }}
                 >
-                  Confirmar
+                  {t.confirm}
                 </button>
                 <button
                   type="button"
@@ -990,6 +1006,9 @@ export function CompetitionResultsView({
   clubName,
   clubLogoUrl,
 }: Props) {
+  const [lang] = useLang();
+  const t = CLUBE[lang];
+
   const [selectedSeasonId, setSelectedSeasonId] = useState(seasonId);
   const [results, setResults] = useState<CompetitionResult[]>(() => getCompetitionResults(careerId));
   const [showModal, setShowModal] = useState(false);
@@ -999,8 +1018,8 @@ export function CompetitionResultsView({
   const seasonOptions = useMemo(() => {
     return [...seasons]
       .sort((a, b) => b.createdAt - a.createdAt)
-      .map((s) => ({ value: s.id, label: s.label + (s.id === seasonId ? " (atual)" : "") }));
-  }, [seasons, seasonId]);
+      .map((s) => ({ value: s.id, label: s.label + (s.id === seasonId ? ` (${t.currentSeason})` : "") }));
+  }, [seasons, seasonId, t]);
 
   const matchTournaments = useMemo(() => {
     const seasonMatches = getMatches(selectedSeasonId);
@@ -1053,7 +1072,6 @@ export function CompetitionResultsView({
         />
       ) : (
         <div className="space-y-4 py-4">
-          {/* Header */}
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div className="flex items-center gap-2">
               {seasons.length > 1 && (
@@ -1071,24 +1089,21 @@ export function CompetitionResultsView({
               style={{ background: "var(--club-primary)", color: "#fff" }}
             >
               <span>+</span>
-              <span>Adicionar resultado</span>
+              <span>{t.addResult}</span>
             </button>
           </div>
 
-          {/* Grid de resultados */}
           {filteredResults.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 gap-4 text-center">
               <span className="text-5xl">🏆</span>
-              <p className="text-white/40 text-sm">
-                Nenhum resultado registrado para esta temporada
-              </p>
+              <p className="text-white/40 text-sm">{t.noResults}</p>
               <button
                 type="button"
                 onClick={() => { setEditingResult(null); setShowModal(true); }}
                 className="text-xs font-semibold px-4 py-2 rounded-xl"
                 style={{ background: "rgba(var(--club-primary-rgb),0.12)", color: "var(--club-primary)", border: "1px solid rgba(var(--club-primary-rgb),0.2)" }}
               >
-                Registrar primeiro resultado
+                {t.registerFirstResult}
               </button>
             </div>
           ) : (
@@ -1114,19 +1129,19 @@ export function CompetitionResultsView({
                         className="text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0"
                         style={{ background: "rgba(251,191,36,0.15)", color: "#fbbf24" }}
                       >
-                        Campeão
+                        {t.champion}
                       </span>
                     )}
                   </div>
                   <div className="flex items-center gap-2 mt-1.5">
                     <span className="text-white/30 text-xs capitalize">
-                      {result.type === "mata-mata" ? "Mata-mata" : "Pontos Corridos"}
+                      {result.type === "mata-mata" ? t.knockout : t.league}
                     </span>
                     {result.type === "mata-mata" && result.bracket && result.bracket.length > 0 && (
                       <>
                         <span className="text-white/15 text-xs">·</span>
                         <span className="text-white/25 text-xs">
-                          {result.bracket.length} rodada{result.bracket.length !== 1 ? "s" : ""}
+                          {result.bracket.length} {result.bracket.length !== 1 ? t.roundPlural : t.roundSingular}
                         </span>
                       </>
                     )}
@@ -1134,7 +1149,7 @@ export function CompetitionResultsView({
                       <>
                         <span className="text-white/15 text-xs">·</span>
                         <span className="text-white/25 text-xs">
-                          {result.standings.length} times
+                          {result.standings.length} {result.standings.length !== 1 ? t.teamsPlural : t.teamsSingular}
                         </span>
                       </>
                     )}
@@ -1146,7 +1161,6 @@ export function CompetitionResultsView({
         </div>
       )}
 
-      {/* Modal */}
       {showModal && (
         <ResultModal
           careerId={careerId}

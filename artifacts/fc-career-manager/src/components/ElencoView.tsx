@@ -1,5 +1,7 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
+import { useLang } from "@/hooks/useLang";
+import { CLUBE } from "@/lib/i18n";
 import type { SquadResult, SquadPlayer, PositionPtBr, PositionGroup } from "@/lib/squadCache";
 import { migratePositionOverride, PT_BR_TO_POSITION } from "@/lib/squadCache";
 import type { PlayerOverride } from "@/types/playerStats";
@@ -142,12 +144,14 @@ function PlayerRow({
   selected,
   onClick,
   dimmed,
+  ageYears,
 }: {
   player: SquadPlayer;
   overrides: Record<number, PlayerOverride>;
   selected?: boolean;
   onClick: (player: SquadPlayer) => void;
   dimmed?: boolean;
+  ageYears: string;
 }) {
   const ov = overrides[player.id];
   const displayName = ov?.nameOverride ?? player.name;
@@ -176,7 +180,7 @@ function PlayerRow({
       <PlayerPhoto src={displayPhoto} name={displayName} />
       <div className="flex-1 min-w-0">
         <p className="text-white text-sm font-semibold leading-tight truncate">{displayName}</p>
-        <p className="text-white/30 text-xs mt-0.5">{player.age > 0 ? `${player.age} anos` : ""}</p>
+        <p className="text-white/30 text-xs mt-0.5">{player.age > 0 ? `${player.age} ${ageYears}` : ""}</p>
       </div>
       <div className="flex items-center gap-2 flex-shrink-0">
         {displayOverall != null && (
@@ -241,6 +245,9 @@ export function ElencoView({
   finalizedLeftIds,
   finalizedSeasonStats,
 }: ElencoViewProps) {
+  const [lang] = useLang();
+  const t = CLUBE[lang];
+
   const [tab, setTab] = useState<SquadTab>("pitch");
   const [pendingSwap, setPendingSwap] = useState<SquadPlayer | null>(null);
   const [pendingSlot, setPendingSlot] = useState<number | null>(null);
@@ -552,7 +559,7 @@ export function ElencoView({
       {/* Toolbar */}
       <div className="flex items-center justify-between px-4 sm:px-6 pt-4 pb-3">
         <div className="flex items-center gap-3">
-          <h2 className="text-white/35 text-xs font-bold tracking-widest uppercase">Elenco</h2>
+          <h2 className="text-white/35 text-xs font-bold tracking-widest uppercase">{t.squadHeading}</h2>
           {squad && !squadLoading && (
             <span
               className="text-xs font-medium px-2 py-0.5 rounded-full"
@@ -571,15 +578,15 @@ export function ElencoView({
             </span>
           )}
           {mergedPlayers.length > 0 && !squadLoading && (
-            <span className="text-white/25 text-xs">{mergedPlayers.length} jogadores</span>
+            <span className="text-white/25 text-xs">{mergedPlayers.length} {t.playersCount}</span>
           )}
           {squadAvgOvr != null && !squadLoading && (
             <span
               className="text-xs font-semibold flex items-center gap-1"
               style={{ color: "rgba(255,255,255,0.30)" }}
-              title="Média de OVR do elenco"
+              title={t.avgLabel}
             >
-              Média <OvrBadge ovr={squadAvgOvr} />
+              {t.avgLabel} <OvrBadge ovr={squadAvgOvr} />
             </span>
           )}
         </div>
@@ -598,12 +605,12 @@ export function ElencoView({
               onClick={handleExportSquad}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all duration-200 hover:opacity-90 active:scale-95"
               style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.55)", border: "1px solid rgba(255,255,255,0.1)" }}
-              title="Exportar elenco como arquivo JSON"
+              title={t.exportLabel}
             >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
-              Exportar
+              {t.exportLabel}
             </button>
           )}
           {/* Import button */}
@@ -628,24 +635,24 @@ export function ElencoView({
                   ? "1px solid rgba(239,68,68,0.3)"
                   : "1px solid rgba(255,255,255,0.1)",
               }}
-              title="Importar elenco de arquivo JSON"
+              title={t.importLabel}
             >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l4-4m0 0l4 4m-4-4v12" />
               </svg>
-              {importFeedback === "success" ? "Importado!" : importFeedback === "error" ? "Erro no arquivo" : "Importar"}
+              {importFeedback === "success" ? t.importSuccess : importFeedback === "error" ? t.importError : t.importLabel}
             </button>
           )}
           <button
             onClick={() => setShowAddPlayer(true)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all duration-200 hover:opacity-90 active:scale-95"
             style={{ background: "rgba(var(--club-primary-rgb),0.15)", color: "var(--club-primary)", border: "1px solid rgba(var(--club-primary-rgb),0.3)" }}
-            title="Adicionar jogador manualmente"
+            title={t.addManualPlayer}
           >
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
             </svg>
-            Adicionar Jogador
+            {t.addPlayerLabel}
           </button>
           {mergedPlayers.length > 0 && !squadLoading && (
             <>
@@ -654,27 +661,27 @@ export function ElencoView({
                   onClick={handleResetLineup}
                   className="flex items-center gap-1 text-xs font-medium transition-colors duration-200"
                   style={{ color: "rgba(248,113,113,0.8)" }}
-                  title="Resetar escalação para o padrão"
+                  title={t.resetLabel}
                 >
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                   </svg>
-                  Resetar
+                  {t.resetLabel}
                 </button>
               )}
               <div className="flex rounded-lg p-0.5" style={{ background: "rgba(255,255,255,0.04)" }}>
-                {(["pitch", "list", "exits"] as SquadTab[]).map((t) => (
+                {(["pitch", "list", "exits"] as SquadTab[]).map((tabKey) => (
                   <button
-                    key={t}
-                    onClick={() => setTab(t)}
+                    key={tabKey}
+                    onClick={() => setTab(tabKey)}
                     className="px-3 py-1.5 rounded-md text-xs font-semibold transition-all duration-200 flex items-center gap-1.5"
                     style={{
-                      background: tab === t ? (t === "exits" ? "rgba(248,113,113,0.12)" : "rgba(var(--club-primary-rgb),0.15)") : "transparent",
-                      color: tab === t ? (t === "exits" ? "#f87171" : "var(--club-primary)") : "rgba(255,255,255,0.35)",
+                      background: tab === tabKey ? (tabKey === "exits" ? "rgba(248,113,113,0.12)" : "rgba(var(--club-primary-rgb),0.15)") : "transparent",
+                      color: tab === tabKey ? (tabKey === "exits" ? "#f87171" : "var(--club-primary)") : "rgba(255,255,255,0.35)",
                     }}
                   >
-                    {t === "pitch" ? "Campo" : t === "list" ? "Lista" : "Saídas"}
-                    {t === "exits" && exitsList.length > 0 && (
+                    {tabKey === "pitch" ? t.tabField : tabKey === "list" ? t.tabList : t.tabExits}
+                    {tabKey === "exits" && exitsList.length > 0 && (
                       <span
                         className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
                         style={{ background: tab === "exits" ? "rgba(248,113,113,0.2)" : "rgba(248,113,113,0.15)", color: "#f87171" }}
@@ -701,7 +708,7 @@ export function ElencoView({
             >
               <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
-            <span className="text-xs">Atualizar</span>
+            <span className="text-xs">{t.refreshLabel}</span>
           </button>
         </div>
       </div>
@@ -724,13 +731,13 @@ export function ElencoView({
             <svg className="w-8 h-8 text-white/15" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
-            <p className="text-white/30 text-sm">Erro ao carregar o elenco</p>
+            <p className="text-white/30 text-sm">{t.squadError}</p>
             <button
               onClick={onRefresh}
               className="px-4 py-2 rounded-xl text-xs font-semibold text-white hover:opacity-80 transition-opacity"
               style={{ background: "var(--club-gradient)" }}
             >
-              Tentar novamente
+              {t.retryLabel}
             </button>
           </div>
         </div>
@@ -741,14 +748,14 @@ export function ElencoView({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
             <p className="text-white/30 text-sm text-center leading-relaxed">
-              Nenhum jogador encontrado para este clube
+              {t.noPlayers}
             </p>
             <button
               onClick={() => setShowAddPlayer(true)}
               className="px-5 py-2 rounded-xl text-xs font-bold text-white transition-all hover:opacity-90"
               style={{ background: "var(--club-gradient)" }}
             >
-              Adicionar jogador manualmente
+              {t.addManualPlayer}
             </button>
           </div>
         </div>
@@ -760,12 +767,12 @@ export function ElencoView({
                 <svg className="w-10 h-10 opacity-20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                 </svg>
-                <p className="text-white/25 text-sm font-medium">Nenhuma saída registrada</p>
-                <p className="text-white/15 text-xs text-center max-w-xs">Jogadores vendidos, emprestados ou removidos do elenco aparecerão aqui.</p>
+                <p className="text-white/25 text-sm font-medium">{t.noExits}</p>
+                <p className="text-white/15 text-xs text-center max-w-xs">{t.exitsSubtext}</p>
               </div>
             ) : (
               <div className="mt-2">
-                <p className="text-white/25 text-xs font-semibold tracking-widest uppercase mb-3">Saídas ({exitsList.length})</p>
+                <p className="text-white/25 text-xs font-semibold tracking-widest uppercase mb-3">{t.exitsSection} ({exitsList.length})</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                   {exitsList.map(({ player, reason }) => {
                     const badgeColors: Record<string, { bg: string; text: string; icon: string }> = {
@@ -774,6 +781,7 @@ export function ElencoView({
                       "Removido do elenco":{ bg: "rgba(248,113,113,0.15)", text: "#f87171", icon: "✕" },
                     };
                     const badge = badgeColors[reason] ?? { bg: "rgba(255,255,255,0.08)", text: "rgba(255,255,255,0.4)", icon: "–" };
+                    const reasonLabel = reason === "Vendido" ? t.reasonSold : reason === "Emprestado" ? t.reasonLoaned : t.reasonRemoved;
                     return (
                       <div key={`exit-fin-${player.id}`} className="flex items-center gap-3 rounded-2xl px-3 py-2.5 cursor-pointer" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", opacity: 0.72 }} onClick={() => setDetailPlayer(player)}>
                         {player.photo ? (
@@ -783,9 +791,9 @@ export function ElencoView({
                         )}
                         <div className="flex-1 min-w-0">
                           <p className="text-white/60 text-sm font-semibold truncate leading-tight">{player.name}</p>
-                          <p className="text-white/30 text-xs truncate">{player.positionPtBr ?? player.position}{player.age ? ` · ${player.age} anos` : ""}</p>
+                          <p className="text-white/30 text-xs truncate">{player.positionPtBr ?? player.position}{player.age ? ` · ${player.age} ${t.ageYears}` : ""}</p>
                         </div>
-                        <span className="text-[10px] font-bold px-2 py-1 rounded-full flex-shrink-0 whitespace-nowrap" style={{ background: badge.bg, color: badge.text }}>{badge.icon} {reason}</span>
+                        <span className="text-[10px] font-bold px-2 py-1 rounded-full flex-shrink-0 whitespace-nowrap" style={{ background: badge.bg, color: badge.text }}>{badge.icon} {reasonLabel}</span>
                       </div>
                     );
                   })}
@@ -804,10 +812,10 @@ export function ElencoView({
           return (
             <div className="px-4 sm:px-6 pb-8">
               <div className="mb-3 flex items-center gap-2">
-                <span className="text-white/20 text-xs font-semibold tracking-widest uppercase">Temporada finalizada</span>
-                <span className="text-white/15 text-xs">· jogadores que atuaram nessa temporada</span>
+                <span className="text-white/20 text-xs font-semibold tracking-widest uppercase">{t.finalizedSeason}</span>
+                <span className="text-white/15 text-xs">{t.playedThisSeason}</span>
                 {finalizedLeftIds && finalizedLeftIds.size > 0 && (
-                  <span className="text-white/15 text-xs">· <span style={{ color: "rgba(255,255,255,0.3)" }}>{finalizedLeftIds.size} saíram do clube</span></span>
+                  <span className="text-white/15 text-xs">· <span style={{ color: "rgba(255,255,255,0.3)" }}>{finalizedLeftIds.size} {t.leftClub}</span></span>
                 )}
               </div>
               <div className="flex flex-col lg:flex-row gap-6 items-start">
@@ -825,7 +833,7 @@ export function ElencoView({
                   {allOthers.length > 0 && (
                     <div className="flex flex-col gap-1">
                       <p className="text-white/25 text-xs font-semibold tracking-widest uppercase mb-2">
-                        Outros que atuaram ({allOthers.length})
+                        {t.othersWhoPlayed} ({allOthers.length})
                       </p>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                         {allOthers.map(player => (
@@ -835,13 +843,14 @@ export function ElencoView({
                             overrides={overrides}
                             onClick={handlePlayerClick}
                             dimmed={finalizedLeftIds?.has(player.id)}
+                            ageYears={t.ageYears}
                           />
                         ))}
                       </div>
                     </div>
                   )}
                   {allOthers.length === 0 && (
-                    <p className="text-white/20 text-xs text-center py-4">Todos os jogadores foram titulares em pelo menos uma partida</p>
+                    <p className="text-white/20 text-xs text-center py-4">{t.allWereStarters}</p>
                   )}
                 </div>
               </div>
@@ -853,12 +862,12 @@ export function ElencoView({
           {/* Header row: titulares count + swap hint */}
           <div className="mb-2 flex items-center justify-between gap-2">
             <p className="text-white/25 text-xs font-semibold tracking-widest uppercase">
-              Titulares ({starters.length})
+              {t.startersLabel} ({starters.length})
             </p>
             {pendingSlot !== null ? (
               <div className="flex items-center gap-2">
                 <p className="text-xs" style={{ color: "var(--club-primary)" }}>
-                  Clique em qualquer jogador para ocupar a vaga
+                  {t.clickFillSlot}
                 </p>
                 <button
                   onClick={() => setPendingSlot(null)}
@@ -874,7 +883,7 @@ export function ElencoView({
               <div className="flex items-center gap-2">
                 <p className="text-xs" style={{ color: "var(--club-primary)" }}>
                   {(() => { const ov = overrides[pendingSwap.id]; return ov?.nameOverride ?? pendingSwap.name; })()}
-                  {" "}· escolha o destino
+                  {" "}{t.chooseTarget}
                 </p>
                 <button
                   onClick={() => setPendingSwap(null)}
@@ -888,7 +897,7 @@ export function ElencoView({
               </div>
             ) : (
               <p className="text-white/20 text-xs">
-                {isCustom ? "Personalizada · " : ""}1 clique seleciona · 2× edita
+                {isCustom ? t.customized : ""}{t.clickSelect}
               </p>
             )}
           </div>
@@ -984,13 +993,13 @@ export function ElencoView({
             <div className="flex-1 min-w-0 w-full">
               {bench.length === 0 ? (
                 <p className="text-white/20 text-xs text-center py-4">
-                  Todos os jogadores estão no time titular
+                  {t.allStartersText}
                 </p>
               ) : (
                 <div className="grid grid-cols-2 gap-x-4 items-start">
                   <div className="flex flex-col gap-1">
                     <p className="text-white/25 text-xs font-semibold tracking-widest uppercase mb-1">
-                      Relacionados ({Math.min(bench.length, 9)})
+                      {t.relatedLabel} ({Math.min(bench.length, 9)})
                     </p>
                     {bench.slice(0, 9).map((player) => (
                       <PlayerRow
@@ -999,12 +1008,13 @@ export function ElencoView({
                         overrides={overrides}
                         selected={pendingSwap?.id === player.id}
                         onClick={handlePlayerClick}
+                        ageYears={t.ageYears}
                       />
                     ))}
                   </div>
                   <div className="flex flex-col gap-1">
                     <p className="text-white/25 text-xs font-semibold tracking-widest uppercase mb-1">
-                      Não relacionados ({Math.max(0, bench.length - 9)})
+                      {t.notRelatedLabel} ({Math.max(0, bench.length - 9)})
                     </p>
                     {bench.slice(9).length === 0 ? (
                       <p className="text-white/15 text-xs text-center py-4">—</p>
@@ -1016,6 +1026,7 @@ export function ElencoView({
                           overrides={overrides}
                           selected={pendingSwap?.id === player.id}
                           onClick={handlePlayerClick}
+                          ageYears={t.ageYears}
                         />
                       ))
                     )}
@@ -1032,13 +1043,13 @@ export function ElencoView({
               <svg className="w-10 h-10 opacity-20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
               </svg>
-              <p className="text-white/25 text-sm font-medium">Nenhuma saída registrada</p>
-              <p className="text-white/15 text-xs text-center max-w-xs">Jogadores vendidos, emprestados ou removidos do elenco aparecerão aqui.</p>
+              <p className="text-white/25 text-sm font-medium">{t.noExits}</p>
+              <p className="text-white/15 text-xs text-center max-w-xs">{t.exitsSubtext}</p>
             </div>
           ) : (
             <div className="mt-2">
               <p className="text-white/25 text-xs font-semibold tracking-widest uppercase mb-3">
-                Saídas ({exitsList.length})
+                {t.exitsSection} ({exitsList.length})
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                 {exitsList.map(({ player, reason }) => {
@@ -1048,6 +1059,7 @@ export function ElencoView({
                     "Removido do elenco":{ bg: "rgba(248,113,113,0.15)", text: "#f87171", icon: "✕" },
                   };
                   const badge = badgeColors[reason] ?? { bg: "rgba(255,255,255,0.08)", text: "rgba(255,255,255,0.4)", icon: "–" };
+                  const reasonLabel = reason === "Vendido" ? t.reasonSold : reason === "Emprestado" ? t.reasonLoaned : t.reasonRemoved;
                   return (
                     <div
                       key={`exit-${player.id}`}
@@ -1079,14 +1091,14 @@ export function ElencoView({
                         <p className="text-white/60 text-sm font-semibold truncate leading-tight">{player.name}</p>
                         <p className="text-white/30 text-xs truncate">
                           {player.positionPtBr ?? player.position}
-                          {player.age ? ` · ${player.age} anos` : ""}
+                          {player.age ? ` · ${player.age} ${t.ageYears}` : ""}
                         </p>
                       </div>
                       <span
                         className="text-[10px] font-bold px-2 py-1 rounded-full flex-shrink-0 whitespace-nowrap"
                         style={{ background: badge.bg, color: badge.text }}
                       >
-                        {badge.icon} {reason}
+                        {badge.icon} {reasonLabel}
                       </span>
                     </div>
                   );
@@ -1100,7 +1112,7 @@ export function ElencoView({
           <div className="flex flex-col gap-2">
             <div className="mb-1">
               <p className="text-white/25 text-xs font-semibold tracking-widest uppercase mb-2">
-                Titulares ({starters.length}) · <span className="normal-case font-normal text-white/20">1 clique seleciona · 2× edita</span>
+                {t.startersLabel} ({starters.length}) · <span className="normal-case font-normal text-white/20">{t.clickSelect}</span>
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5">
                 {starters.map((player) => (
@@ -1110,6 +1122,7 @@ export function ElencoView({
                     overrides={overrides}
                     selected={pendingSwap?.id === player.id}
                     onClick={handlePlayerClick}
+                    ageYears={t.ageYears}
                   />
                 ))}
               </div>
@@ -1117,7 +1130,7 @@ export function ElencoView({
             {bench.length > 0 && (
               <div className="mt-2">
                 <p className="text-white/25 text-xs font-semibold tracking-widest uppercase mb-2">
-                  Reservas ({bench.length})
+                  {t.reservas} ({bench.length})
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5">
                   {bench.map((player) => (
@@ -1127,6 +1140,7 @@ export function ElencoView({
                       overrides={overrides}
                       selected={pendingSwap?.id === player.id}
                       onClick={handlePlayerClick}
+                      ageYears={t.ageYears}
                     />
                   ))}
                 </div>
@@ -1171,8 +1185,8 @@ export function ElencoView({
               style={{ borderBottom: "1px solid var(--surface-border)" }}
             >
               <div>
-                <h3 className="text-white font-black text-lg">Adicionar Jogador</h3>
-                <p className="text-white/35 text-xs mt-0.5">Registre um jogador da base ou contratação não listada</p>
+                <h3 className="text-white font-black text-lg">{t.addPlayerTitle}</h3>
+                <p className="text-white/35 text-xs mt-0.5">{t.addPlayerSub}</p>
               </div>
               <button
                 onClick={() => { setShowAddPlayer(false); setAddForm(DEFAULT_ADD_FORM); }}
@@ -1186,7 +1200,7 @@ export function ElencoView({
 
             <div className="overflow-y-auto p-6 flex flex-col gap-5">
               <div>
-                <label className="text-white/40 text-xs font-medium mb-1 block">Nome *</label>
+                <label className="text-white/40 text-xs font-medium mb-1 block">{t.nameLabel}</label>
                 <input
                   type="text"
                   autoFocus
@@ -1199,7 +1213,7 @@ export function ElencoView({
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-white/40 text-xs font-medium mb-1 block">Posição *</label>
+                  <label className="text-white/40 text-xs font-medium mb-1 block">{t.positionLabel}</label>
                   <select
                     className="w-full px-3 py-2.5 rounded-xl text-white text-sm focus:outline-none glass cursor-pointer"
                     style={{ appearance: "none" }}
@@ -1212,7 +1226,7 @@ export function ElencoView({
                   </select>
                 </div>
                 <div>
-                  <label className="text-white/40 text-xs font-medium mb-1 block">Idade *</label>
+                  <label className="text-white/40 text-xs font-medium mb-1 block">{t.ageLabel}</label>
                   <input
                     type="number"
                     className="w-full px-3 py-2.5 rounded-xl text-white text-sm focus:outline-none glass placeholder:text-white/20"
@@ -1225,7 +1239,7 @@ export function ElencoView({
                 </div>
 
                 <div>
-                  <label className="text-white/40 text-xs font-medium mb-1 block">Overall (OVR)</label>
+                  <label className="text-white/40 text-xs font-medium mb-1 block">{t.overallLabel}</label>
                   <input
                     type="number"
                     className="w-full px-3 py-2.5 rounded-xl text-white text-sm focus:outline-none glass placeholder:text-white/20"
@@ -1237,7 +1251,7 @@ export function ElencoView({
                   />
                 </div>
                 <div>
-                  <label className="text-white/40 text-xs font-medium mb-1 block">Nacionalidade</label>
+                  <label className="text-white/40 text-xs font-medium mb-1 block">{t.nationalityLabel}</label>
                   <input
                     type="text"
                     className="w-full px-3 py-2.5 rounded-xl text-white text-sm focus:outline-none glass placeholder:text-white/20"
@@ -1248,7 +1262,7 @@ export function ElencoView({
                 </div>
 
                 <div className="col-span-2">
-                  <label className="text-white/40 text-xs font-medium mb-1 block">Foto (URL, opcional)</label>
+                  <label className="text-white/40 text-xs font-medium mb-1 block">{t.photoLabel}</label>
                   <input
                     type="url"
                     className="w-full px-3 py-2.5 rounded-xl text-white text-sm focus:outline-none glass placeholder:text-white/20"
@@ -1268,7 +1282,7 @@ export function ElencoView({
                 onClick={() => { setShowAddPlayer(false); setAddForm(DEFAULT_ADD_FORM); }}
                 className="flex-1 py-3 rounded-xl text-sm font-semibold text-white/60 glass glass-hover transition-all"
               >
-                Cancelar
+                {t.cancel}
               </button>
               <button
                 onClick={handleAddPlayer}
@@ -1276,7 +1290,7 @@ export function ElencoView({
                 className="py-3 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
                 style={{ flex: 2, background: "var(--club-gradient)" }}
               >
-                Adicionar ao Elenco
+                {t.addToSquad}
               </button>
             </div>
           </div>

@@ -2,6 +2,8 @@ import { useMemo } from "react";
 import { getMatches } from "@/lib/matchStorage";
 import type { MatchRecord } from "@/types/match";
 import { getMatchResult } from "@/types/match";
+import { useLang } from "@/hooks/useLang";
+import { CLUBE } from "@/lib/i18n";
 
 interface StreakRecord {
   count: number;
@@ -49,10 +51,7 @@ const HOME_ONLY_KEYS: Set<StreakKey> = new Set([
   "semSofrerEmCasa",
 ]);
 
-function computeStreakForKey(
-  sorted: MatchRecord[],
-  key: StreakKey,
-): StreakEntry {
+function computeStreakForKey(sorted: MatchRecord[], key: StreakKey): StreakEntry {
   const stream = HOME_ONLY_KEYS.has(key)
     ? sorted.filter((m) => m.location === "casa")
     : sorted;
@@ -85,7 +84,6 @@ function computeStreakForKey(
 
 export function computeStreaks(matches: MatchRecord[]): AllStreaks {
   const sorted = [...matches].sort((a, b) => a.createdAt - b.createdAt);
-
   return {
     vitorias:        computeStreakForKey(sorted, "vitorias"),
     derrotas:        computeStreakForKey(sorted, "derrotas"),
@@ -98,21 +96,21 @@ export function computeStreaks(matches: MatchRecord[]): AllStreaks {
   };
 }
 
-const STREAK_META: {
+const STREAK_DEFS: {
   key: StreakKey;
+  labelKey: keyof typeof CLUBE["pt"];
   icon: string;
-  label: string;
   color: string;
   border: string;
 }[] = [
-  { key: "vitorias",        icon: "🏆", label: "Maior Série de Vitórias",            color: "#34d399", border: "rgba(16,185,129,0.25)"  },
-  { key: "derrotas",        icon: "💔", label: "Maior Série de Derrotas",             color: "#f87171", border: "rgba(239,68,68,0.25)"   },
-  { key: "invicta",         icon: "🛡️", label: "Maior Série Invicta",                color: "#60a5fa", border: "rgba(59,130,246,0.25)"  },
-  { key: "semSofrer",       icon: "🧤", label: "Maior Série sem Sofrer Gols",         color: "#a78bfa", border: "rgba(139,92,246,0.25)"  },
-  { key: "comGols",         icon: "⚽", label: "Maior Série Marcando Gols",           color: "#fbbf24", border: "rgba(245,158,11,0.25)"  },
-  { key: "vitoriasEmCasa",  icon: "🏠", label: "Maior Série de Vitórias em Casa",    color: "#34d399", border: "rgba(16,185,129,0.25)"  },
-  { key: "invictaEmCasa",   icon: "🔒", label: "Maior Série Invicta em Casa",         color: "#60a5fa", border: "rgba(59,130,246,0.25)"  },
-  { key: "semSofrerEmCasa", icon: "🚫", label: "Maior Série sem Sofrer Gol em Casa",  color: "#a78bfa", border: "rgba(139,92,246,0.25)"  },
+  { key: "vitorias",        labelKey: "streakWins",        icon: "🏆", color: "#34d399", border: "rgba(16,185,129,0.25)"  },
+  { key: "derrotas",        labelKey: "streakLosses",       icon: "💔", color: "#f87171", border: "rgba(239,68,68,0.25)"   },
+  { key: "invicta",         labelKey: "streakUnbeaten",     icon: "🛡️", color: "#60a5fa", border: "rgba(59,130,246,0.25)"  },
+  { key: "semSofrer",       labelKey: "streakCleanSheet",   icon: "🧤", color: "#a78bfa", border: "rgba(139,92,246,0.25)"  },
+  { key: "comGols",         labelKey: "streakScoring",      icon: "⚽", color: "#fbbf24", border: "rgba(245,158,11,0.25)"  },
+  { key: "vitoriasEmCasa",  labelKey: "streakHomeWins",     icon: "🏠", color: "#34d399", border: "rgba(16,185,129,0.25)"  },
+  { key: "invictaEmCasa",   labelKey: "streakHomeUnbeaten", icon: "🔒", color: "#60a5fa", border: "rgba(59,130,246,0.25)"  },
+  { key: "semSofrerEmCasa", labelKey: "streakHomeClean",    icon: "🚫", color: "#a78bfa", border: "rgba(139,92,246,0.25)"  },
 ];
 
 function fmtDate(dateStr: string | null): string {
@@ -134,10 +132,13 @@ interface Props {
   matchesOverride?: MatchRecord[];
 }
 
-export function SequenciasView({ careerId, seasonId, matchesOverride }: Props) {
+export function SequenciasView({ careerId: _careerId, seasonId, matchesOverride }: Props) {
+  const [lang] = useLang();
+  const t = CLUBE[lang];
+
   const matches = useMemo(
     () => matchesOverride ?? getMatches(seasonId),
-    [matchesOverride, seasonId]
+    [matchesOverride, seasonId],
   );
   const streaks = useMemo(() => computeStreaks(matches), [matches]);
 
@@ -145,7 +146,7 @@ export function SequenciasView({ careerId, seasonId, matchesOverride }: Props) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-4 text-center">
         <span className="text-5xl">📊</span>
-        <p className="text-white/40 text-sm">Registre partidas para calcular as sequências</p>
+        <p className="text-white/40 text-sm">{t.noMatchesStreaks}</p>
       </div>
     );
   }
@@ -153,7 +154,8 @@ export function SequenciasView({ careerId, seasonId, matchesOverride }: Props) {
   return (
     <div className="w-full px-4 pb-6 pt-3">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {STREAK_META.map(({ key, icon, label, color, border }) => {
+        {STREAK_DEFS.map(({ key, labelKey, icon, color, border }) => {
+          const label = t[labelKey] as string;
           const entry = streaks[key];
           const hasBest = entry.best.count > 0;
           const hasCurrent = entry.current.count > 0;
@@ -175,14 +177,11 @@ export function SequenciasView({ careerId, seasonId, matchesOverride }: Props) {
               {hasBest ? (
                 <>
                   <div className="px-4 pb-1">
-                    <div
-                      className="text-4xl font-black tabular-nums leading-none"
-                      style={{ color }}
-                    >
+                    <div className="text-4xl font-black tabular-nums leading-none" style={{ color }}>
                       {entry.best.count}
                     </div>
                     <div className="text-[10px] font-medium mt-0.5" style={{ color: "rgba(255,255,255,0.3)" }}>
-                      {entry.best.count === 1 ? "jogo" : "jogos"} — recorde histórico
+                      {entry.best.count === 1 ? t.gameSingular : t.gamePlural} — {t.historicalRecord}
                     </div>
                     <div className="text-[10px] text-white/25 mt-1">
                       {dateRange(entry.best)}
@@ -194,13 +193,13 @@ export function SequenciasView({ careerId, seasonId, matchesOverride }: Props) {
                       className="mx-3 mb-3 mt-2 rounded-lg px-3 py-2"
                       style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}
                     >
-                      <div className="text-[10px] text-white/35 mb-0.5">Sequência atual</div>
+                      <div className="text-[10px] text-white/35 mb-0.5">{t.currentStreak}</div>
                       <div className="flex items-baseline gap-1.5">
                         <span className="text-xl font-bold tabular-nums" style={{ color }}>
                           {entry.current.count}
                         </span>
                         <span className="text-[10px] text-white/30">
-                          {entry.current.count === 1 ? "jogo" : "jogos"}
+                          {entry.current.count === 1 ? t.gameSingular : t.gamePlural}
                         </span>
                       </div>
                     </div>
@@ -212,7 +211,7 @@ export function SequenciasView({ careerId, seasonId, matchesOverride }: Props) {
                         className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
                         style={{ background: `${color}20`, color }}
                       >
-                        EM ANDAMENTO
+                        {t.ongoing}
                       </span>
                     </div>
                   )}

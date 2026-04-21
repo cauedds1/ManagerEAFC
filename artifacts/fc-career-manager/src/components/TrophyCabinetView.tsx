@@ -1,6 +1,8 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { getTrophies, addTrophy, removeTrophy, type Trophy } from "@/lib/trophyStorage";
 import { findTrophyPhoto, findTrophyEntry, TROPHY_ENTRIES } from "@/lib/trophyPhotoMap";
+import { useLang } from "@/hooks/useLang";
+import { CLUBE } from "@/lib/i18n";
 
 interface Props {
   careerId: string;
@@ -41,6 +43,8 @@ function AddTrophyModal({
   onClose: () => void;
   onAdded: () => void;
 }) {
+  const [lang] = useLang();
+  const t = CLUBE[lang];
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<string>("");
   const [season, setSeason] = useState("");
@@ -98,7 +102,7 @@ function AddTrophyModal({
         style={{ background: "#1a1a2e", border: "1px solid rgba(251,191,36,0.2)" }}
       >
         <div className="flex items-center justify-between mb-5">
-          <p className="text-white font-bold text-base">Adicionar troféu</p>
+          <p className="text-white font-bold text-base">{t.addTrophy}</p>
           <button
             onClick={onClose}
             className="text-white/40 hover:text-white/80 text-xl leading-none font-light"
@@ -107,7 +111,6 @@ function AddTrophyModal({
           </button>
         </div>
 
-        {/* Trophy preview */}
         <div
           className="flex items-center justify-center rounded-2xl mb-5"
           style={{
@@ -122,10 +125,9 @@ function AddTrophyModal({
           <p className="text-center text-xs text-white/30 -mt-3 mb-4">{matchedEntry.label}</p>
         )}
 
-        {/* Competition input */}
         <div className="relative mb-3">
           <label className="text-[11px] font-bold uppercase tracking-widest text-white/30 mb-1.5 block">
-            Competição
+            {t.competitionLabel}
           </label>
           <input
             ref={inputRef}
@@ -133,7 +135,7 @@ function AddTrophyModal({
             value={search}
             onChange={(e) => handleSearchChange(e.target.value)}
             onFocus={() => setShowDropdown(true)}
-            placeholder="Champions League, Série A…"
+            placeholder={t.compPlaceholder}
             className="w-full rounded-xl px-4 py-3 text-sm font-medium text-white placeholder-white/20 outline-none"
             style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)" }}
             autoComplete="off"
@@ -175,17 +177,16 @@ function AddTrophyModal({
           )}
         </div>
 
-        {/* Season input */}
         <div className="mb-6">
           <label className="text-[11px] font-bold uppercase tracking-widest text-white/30 mb-1.5 block">
-            Temporada
+            {t.seasonLabel}
           </label>
           <input
             type="text"
             value={season}
             onChange={(e) => setSeason(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(); }}
-            placeholder="ex: 2024/25"
+            placeholder={t.seasonPlaceholder}
             className="w-full rounded-xl px-4 py-3 text-sm font-medium text-white placeholder-white/20 outline-none"
             style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)" }}
           />
@@ -200,14 +201,14 @@ function AddTrophyModal({
             color: competitionName && season.trim() ? "#1a1a2e" : "rgba(255,255,255,0.25)",
           }}
         >
-          Adicionar troféu
+          {t.addTrophy}
         </button>
       </div>
     </div>
   );
 }
 
-function TrophyCard({ trophy, onRemove }: { trophy: Trophy; onRemove: () => void }) {
+function TrophyCard({ trophy, onRemove, removeTip }: { trophy: Trophy; onRemove: () => void; removeTip: string }) {
   const photo = findTrophyPhoto(trophy.competitionName);
 
   return (
@@ -221,7 +222,7 @@ function TrophyCard({ trophy, onRemove }: { trophy: Trophy; onRemove: () => void
       <button
         onClick={onRemove}
         className="absolute top-2 right-2 w-6 h-6 flex items-center justify-center rounded-full text-white/20 hover:text-white/60 hover:bg-white/10 text-sm font-bold leading-none transition-colors"
-        title="Remover troféu"
+        title={removeTip}
       >
         ×
       </button>
@@ -246,6 +247,8 @@ function TrophyCard({ trophy, onRemove }: { trophy: Trophy; onRemove: () => void
 }
 
 export function TrophyCabinetView({ careerId }: Props) {
+  const [lang] = useLang();
+  const t = CLUBE[lang];
   const [trophies, setTrophies] = useState<Trophy[]>(() => getTrophies(careerId));
   const [showModal, setShowModal] = useState(false);
 
@@ -264,16 +267,15 @@ export function TrophyCabinetView({ careerId }: Props) {
 
   const byCompetition = useMemo(() => {
     const map = new Map<string, Trophy[]>();
-    for (const t of trophies) {
-      if (!map.has(t.competitionName)) map.set(t.competitionName, []);
-      map.get(t.competitionName)!.push(t);
+    for (const trophy of trophies) {
+      if (!map.has(trophy.competitionName)) map.set(trophy.competitionName, []);
+      map.get(trophy.competitionName)!.push(trophy);
     }
     return Array.from(map.entries()).sort((a, b) => b[1].length - a[1].length);
   }, [trophies]);
 
   return (
     <div className="px-4 sm:px-6 py-6 space-y-6">
-      {/* Header row */}
       <div className="flex items-center justify-between">
         <div>
           <p className="text-white font-black text-lg">
@@ -281,16 +283,16 @@ export function TrophyCabinetView({ careerId }: Props) {
               <>
                 <span style={{ color: "#fbbf24" }}>{trophies.length}</span>{" "}
                 <span className="text-white/60 font-semibold text-sm">
-                  troféu{trophies.length !== 1 ? "s" : ""}
+                  {trophies.length !== 1 ? t.trophyPlural : t.trophySingular}
                 </span>
               </>
             ) : (
-              <span className="text-white/30 font-medium text-sm">Sem troféus</span>
+              <span className="text-white/30 font-medium text-sm">{t.noTrophies}</span>
             )}
           </p>
           {trophies.length > 0 && (
             <p className="text-white/25 text-xs">
-              {byCompetition.length} competição{byCompetition.length !== 1 ? "ões" : ""}
+              {byCompetition.length} {byCompetition.length !== 1 ? t.compPlural : t.compSingular}
             </p>
           )}
         </div>
@@ -300,42 +302,42 @@ export function TrophyCabinetView({ careerId }: Props) {
           style={{ background: "rgba(251,191,36,0.15)", color: "#fbbf24", border: "1px solid rgba(251,191,36,0.25)" }}
         >
           <span className="text-base leading-none">+</span>
-          Adicionar troféu
+          {t.addTrophy}
         </button>
       </div>
 
-      {/* Empty state */}
       {trophies.length === 0 && (
         <div className="flex flex-col items-center justify-center py-16 gap-4 text-center">
           <span className="text-6xl opacity-20">🏆</span>
-          <p className="text-white/30 text-sm font-medium">Nenhum troféu ainda</p>
-          <p className="text-white/20 text-xs max-w-xs">
-            Clica em "Adicionar troféu" para registar as tuas conquistas
-          </p>
+          <p className="text-white/30 text-sm font-medium">{t.emptyTrophyTitle}</p>
+          <p className="text-white/20 text-xs max-w-xs">{t.emptyTrophyHint}</p>
           <button
             onClick={() => setShowModal(true)}
             className="mt-2 px-6 py-3 rounded-2xl text-sm font-bold"
             style={{ background: "rgba(251,191,36,0.12)", color: "#fbbf24", border: "1px solid rgba(251,191,36,0.2)" }}
           >
-            + Adicionar troféu
+            + {t.addTrophy}
           </button>
         </div>
       )}
 
-      {/* Trophy grid */}
       {trophies.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          {trophies.map((t) => (
-            <TrophyCard key={t.id} trophy={t} onRemove={() => handleRemove(t.id)} />
+          {trophies.map((trophy) => (
+            <TrophyCard
+              key={trophy.id}
+              trophy={trophy}
+              onRemove={() => handleRemove(trophy.id)}
+              removeTip={t.removeTrophyTitle}
+            />
           ))}
         </div>
       )}
 
-      {/* By competition summary */}
       {byCompetition.length > 0 && (
         <div>
           <p className="text-white/25 text-[11px] font-bold tracking-widest uppercase mb-3">
-            Por competição
+            {t.byCompetition}
           </p>
           <div className="space-y-2">
             {byCompetition.map(([comp, wins]) => {
@@ -350,10 +352,7 @@ export function TrophyCabinetView({ careerId }: Props) {
                     <TrophyImage url={photo} size={32} />
                   </div>
                   <p className="flex-1 text-sm font-semibold text-white/75 leading-tight">{comp}</p>
-                  <span
-                    className="text-base font-black flex-shrink-0"
-                    style={{ color: "#fbbf24" }}
-                  >
+                  <span className="text-base font-black flex-shrink-0" style={{ color: "#fbbf24" }}>
                     ×{wins.length}
                   </span>
                   <div className="flex flex-wrap gap-1 justify-end max-w-[100px]">
@@ -379,18 +378,17 @@ export function TrophyCabinetView({ careerId }: Props) {
         </div>
       )}
 
-      {/* Histórico completo */}
       {trophies.length > 0 && (
         <div>
           <p className="text-white/25 text-[11px] font-bold tracking-widest uppercase mb-3">
-            Histórico
+            {t.historySection}
           </p>
           <div className="space-y-2">
-            {trophies.map((t, idx) => {
-              const photo = findTrophyPhoto(t.competitionName);
+            {trophies.map((trophy, idx) => {
+              const photo = findTrophyPhoto(trophy.competitionName);
               return (
                 <div
-                  key={t.id}
+                  key={trophy.id}
                   className="flex items-center gap-3 px-4 py-3 rounded-xl"
                   style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}
                 >
@@ -403,12 +401,12 @@ export function TrophyCabinetView({ careerId }: Props) {
                   <div className="w-7 h-7 flex items-center justify-center flex-shrink-0">
                     <TrophyImage url={photo} size={28} />
                   </div>
-                  <p className="flex-1 text-sm font-semibold text-white/80 leading-tight">{t.competitionName}</p>
+                  <p className="flex-1 text-sm font-semibold text-white/80 leading-tight">{trophy.competitionName}</p>
                   <span
                     className="text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0"
                     style={{ background: "rgba(251,191,36,0.1)", color: "#fbbf24" }}
                   >
-                    {t.seasonLabel}
+                    {trophy.seasonLabel}
                   </span>
                 </div>
               );

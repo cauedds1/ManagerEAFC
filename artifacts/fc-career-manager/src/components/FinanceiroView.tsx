@@ -8,6 +8,8 @@ import {
   type FinanceiroSettings,
 } from "@/lib/financeiroStorage";
 import { getAllPlayerOverrides } from "@/lib/playerStatsStorage";
+import { useLang } from "@/hooks/useLang";
+import { CLUBE } from "@/lib/i18n";
 
 function parseBudgetInput(raw: string): number {
   const trimmed = raw.trim().replace(/\s/g, "");
@@ -110,6 +112,9 @@ interface FinanceiroViewProps {
 }
 
 export function FinanceiroView({ careerId, seasonId, transfers, season, isReadOnly }: FinanceiroViewProps) {
+  const [lang] = useLang();
+  const t = CLUBE[lang];
+
   const [settings, setSettings] = useState<FinanceiroSettings>(() => getFinanceiroSettings(seasonId));
   const overrides = useMemo(() => getAllPlayerOverrides(careerId), [careerId]);
 
@@ -124,18 +129,18 @@ export function FinanceiroView({ careerId, seasonId, transfers, season, isReadOn
     saveFinanceiroSettings(seasonId, next);
   };
 
-  const seasonTransfers = transfers.filter((t) => t.season === season);
-  const compras = transfers.filter((t) => !t.type || t.type === "compra");
-  const vendas = transfers.filter((t) => t.type === "venda");
+  const seasonTransfers = transfers.filter((tr) => tr.season === season);
+  const compras = transfers.filter((tr) => !tr.type || tr.type === "compra");
+  const vendas = transfers.filter((tr) => tr.type === "venda");
   const activeCompras = useMemo(() => getActiveCompras(transfers), [transfers]);
 
   const topEarners = [...activeCompras]
-    .filter((t) => t.salary > 0)
+    .filter((tr) => tr.salary > 0)
     .sort((a, b) => b.salary - a.salary)
     .slice(0, 5);
 
-  const biggestCompra = [...compras].filter((t) => t.fee > 0).sort((a, b) => b.fee - a.fee)[0] ?? null;
-  const biggestVenda = [...vendas].filter((t) => t.fee > 0).sort((a, b) => b.fee - a.fee)[0] ?? null;
+  const biggestCompra = [...compras].filter((tr) => tr.fee > 0).sort((a, b) => b.fee - a.fee)[0] ?? null;
+  const biggestVenda = [...vendas].filter((tr) => tr.fee > 0).sort((a, b) => b.fee - a.fee)[0] ?? null;
 
   const budgetUsedPct = snapshot.transferBudget > 0
     ? Math.min(100, Math.max(0, (snapshot.netSpend / snapshot.transferBudget) * 100))
@@ -147,28 +152,81 @@ export function FinanceiroView({ careerId, seasonId, transfers, season, isReadOn
 
   const hasBudget = settings.transferBudget > 0 || settings.salaryBudget > 0;
 
+  const cards = [
+    {
+      label: t.remainingBudget,
+      value: settings.transferBudget > 0 ? formatMoney(snapshot.remainingTransferBudget) : "—",
+      sub: settings.transferBudget > 0
+        ? t.ofTotal.replace("{n}", formatMoney(snapshot.transferBudget))
+        : t.budgetNotSet,
+      color: snapshot.remainingTransferBudget < 0 ? "#f87171" : "#34d399",
+      icon: "🏦",
+    },
+    {
+      label: t.spentOnSignings,
+      value: formatMoney(snapshot.totalSpent),
+      sub: `${snapshot.signingsCount} ${snapshot.signingsCount !== 1 ? t.signingsPlural : t.signingsSingular}`,
+      color: "#f87171",
+      icon: "📥",
+    },
+    {
+      label: t.earnedFromSales,
+      value: snapshot.totalEarned > 0 ? formatMoney(snapshot.totalEarned) : "—",
+      sub: `${snapshot.salesCount} ${snapshot.salesCount !== 1 ? t.salePlural : t.saleSingular}`,
+      color: "#34d399",
+      icon: "📤",
+    },
+    {
+      label: t.netBalance,
+      value: formatMoney(Math.abs(snapshot.netSpend)),
+      sub: snapshot.netSpend > 0 ? t.netSpent : snapshot.netSpend < 0 ? t.surplus : t.balanced,
+      color: snapshot.netSpend > 0 ? "#fbbf24" : snapshot.netSpend < 0 ? "#34d399" : "#94a3b8",
+      icon: snapshot.netSpend < 0 ? "💰" : "📊",
+    },
+    {
+      label: t.weeklyWages,
+      value: snapshot.currentWageBill > 0 ? `€${snapshot.currentWageBill.toLocaleString("pt-BR")}k` : "—",
+      sub: settings.salaryBudget > 0
+        ? `${t.ofTotal.replace("{n}", `€${settings.salaryBudget.toLocaleString("pt-BR")}k`)} ${lang === "pt" ? "máximo" : "max"}`
+        : t.budgetNotSet,
+      color: settings.salaryBudget > 0 && snapshot.wageRoom < 0 ? "#f87171" : "#60a5fa",
+      icon: "💼",
+    },
+    {
+      label: t.wageRoom,
+      value: settings.salaryBudget > 0
+        ? `€${Math.abs(snapshot.wageRoom).toLocaleString("pt-BR")}k`
+        : "—",
+      sub: settings.salaryBudget > 0
+        ? snapshot.wageRoom >= 0 ? t.availablePerWeek : t.aboveLimit
+        : t.wageNotSet,
+      color: settings.salaryBudget > 0 && snapshot.wageRoom < 0 ? "#f87171" : "#a78bfa",
+      icon: snapshot.wageRoom < 0 ? "⚠️" : "📋",
+    },
+  ];
+
   return (
     <div className="animate-fade-up space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-white/35 text-xs font-bold tracking-widest uppercase">Financeiro</h2>
-        <span className="text-white/25 text-xs">{seasonTransfers.length} mov. esta temporada</span>
+        <h2 className="text-white/35 text-xs font-bold tracking-widest uppercase">{t.financeHeading}</h2>
+        <span className="text-white/25 text-xs">{seasonTransfers.length} {t.movThisSeason}</span>
       </div>
 
       <div
         className="rounded-2xl p-5 space-y-4"
         style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)" }}
       >
-        <p className="text-white/40 text-xs font-semibold uppercase tracking-wider">Orçamentos</p>
+        <p className="text-white/40 text-xs font-semibold uppercase tracking-wider">{t.budgetsSection}</p>
         {isReadOnly ? (
           <>
             <div className="flex items-center gap-2">
-              <span className="text-white/35 text-xs flex-1">Orçamento de transferências</span>
+              <span className="text-white/35 text-xs flex-1">{t.transferBudgetLabel}</span>
               <span className="text-white text-sm font-semibold">
                 {settings.transferBudget > 0 ? formatMoney(settings.transferBudget) : "—"}
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-white/35 text-xs flex-1">Folha salarial máxima (€k/sem)</span>
+              <span className="text-white/35 text-xs flex-1">{t.wageSheetLabel}</span>
               <span className="text-white text-sm font-semibold">
                 {settings.salaryBudget > 0 ? formatMoney(settings.salaryBudget, "k") : "—"}
               </span>
@@ -177,77 +235,24 @@ export function FinanceiroView({ careerId, seasonId, transfers, season, isReadOn
         ) : (
           <>
             <BudgetEditor
-              label="Orçamento de transferências"
+              label={t.transferBudgetLabel}
               value={settings.transferBudget}
               onSave={(v) => updateSettings({ transferBudget: v })}
             />
             <BudgetEditor
-              label="Folha salarial máxima (€k/sem)"
+              label={t.wageSheetLabel}
               value={settings.salaryBudget}
               onSave={(v) => updateSettings({ salaryBudget: v })}
             />
             {!hasBudget && (
-              <p className="text-white/20 text-xs mt-1">
-                Clique nos valores acima para definir os orçamentos do clube.
-              </p>
+              <p className="text-white/20 text-xs mt-1">{t.setBudgetsHint}</p>
             )}
           </>
         )}
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        {[
-          {
-            label: "Verba restante",
-            value: settings.transferBudget > 0 ? formatMoney(snapshot.remainingTransferBudget) : "—",
-            sub: settings.transferBudget > 0
-              ? `de ${formatMoney(snapshot.transferBudget)} total`
-              : "orçamento não definido",
-            color: snapshot.remainingTransferBudget < 0 ? "#f87171" : "#34d399",
-            icon: "🏦",
-          },
-          {
-            label: "Gasto em contratações",
-            value: formatMoney(snapshot.totalSpent),
-            sub: `${snapshot.signingsCount} contratação${snapshot.signingsCount !== 1 ? "ões" : ""}`,
-            color: "#f87171",
-            icon: "📥",
-          },
-          {
-            label: "Arrecadado em vendas",
-            value: snapshot.totalEarned > 0 ? formatMoney(snapshot.totalEarned) : "—",
-            sub: `${snapshot.salesCount} venda${snapshot.salesCount !== 1 ? "s" : ""}`,
-            color: "#34d399",
-            icon: "📤",
-          },
-          {
-            label: "Saldo líquido",
-            value: formatMoney(Math.abs(snapshot.netSpend)),
-            sub: snapshot.netSpend > 0 ? "gasto líquido" : snapshot.netSpend < 0 ? "superávit" : "equilíbrio",
-            color: snapshot.netSpend > 0 ? "#fbbf24" : snapshot.netSpend < 0 ? "#34d399" : "#94a3b8",
-            icon: snapshot.netSpend < 0 ? "💰" : "📊",
-          },
-          {
-            label: "Folha semanal",
-            value: snapshot.currentWageBill > 0 ? `€${snapshot.currentWageBill.toLocaleString("pt-BR")}k` : "—",
-            sub: settings.salaryBudget > 0
-              ? `de €${settings.salaryBudget.toLocaleString("pt-BR")}k máximo`
-              : "orçamento não definido",
-            color: settings.salaryBudget > 0 && snapshot.wageRoom < 0 ? "#f87171" : "#60a5fa",
-            icon: "💼",
-          },
-          {
-            label: "Margem salarial",
-            value: settings.salaryBudget > 0
-              ? `€${Math.abs(snapshot.wageRoom).toLocaleString("pt-BR")}k`
-              : "—",
-            sub: settings.salaryBudget > 0
-              ? snapshot.wageRoom >= 0 ? "disponível por semana" : "acima do limite"
-              : "folha não configurada",
-            color: settings.salaryBudget > 0 && snapshot.wageRoom < 0 ? "#f87171" : "#a78bfa",
-            icon: snapshot.wageRoom < 0 ? "⚠️" : "📋",
-          },
-        ].map((card) => (
+        {cards.map((card) => (
           <div
             key={card.label}
             className="rounded-2xl p-4 flex flex-col gap-1"
@@ -268,23 +273,23 @@ export function FinanceiroView({ careerId, seasonId, transfers, season, isReadOn
           className="rounded-2xl p-5 space-y-5"
           style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)" }}
         >
-          <p className="text-white/40 text-xs font-semibold uppercase tracking-wider">Uso do Orçamento</p>
+          <p className="text-white/40 text-xs font-semibold uppercase tracking-wider">{t.budgetUsage}</p>
 
           {settings.transferBudget > 0 && (
             <div className="space-y-2">
               <div className="flex items-center justify-between text-xs">
-                <span className="text-white/50">Transferências</span>
+                <span className="text-white/50">{t.transfersLabel}</span>
                 <span className="text-white/50 tabular-nums">
                   {formatMoney(snapshot.netSpend)} / {formatMoney(snapshot.transferBudget)}
                 </span>
               </div>
               <ProgressBar value={snapshot.netSpend} max={snapshot.transferBudget} color="var(--club-primary)" />
               <div className="flex justify-between text-[10px] text-white/25">
-                <span>{budgetUsedPct.toFixed(0)}% utilizado</span>
+                <span>{budgetUsedPct.toFixed(0)}% {t.percentUsed}</span>
                 <span className={snapshot.remainingTransferBudget < 0 ? "text-red-400/60" : ""}>
                   {snapshot.remainingTransferBudget >= 0
-                    ? `${formatMoney(snapshot.remainingTransferBudget)} restante`
-                    : `${formatMoney(Math.abs(snapshot.remainingTransferBudget))} acima do limite`}
+                    ? `${formatMoney(snapshot.remainingTransferBudget)} ${t.remaining}`
+                    : `${formatMoney(Math.abs(snapshot.remainingTransferBudget))} ${t.aboveLimit}`}
                 </span>
               </div>
             </div>
@@ -293,18 +298,18 @@ export function FinanceiroView({ careerId, seasonId, transfers, season, isReadOn
           {settings.salaryBudget > 0 && (
             <div className="space-y-2">
               <div className="flex items-center justify-between text-xs">
-                <span className="text-white/50">Folha Salarial</span>
+                <span className="text-white/50">{t.wagesBill}</span>
                 <span className="text-white/50 tabular-nums">
                   €{snapshot.currentWageBill.toLocaleString("pt-BR")}k / €{snapshot.salaryBudget.toLocaleString("pt-BR")}k
                 </span>
               </div>
               <ProgressBar value={snapshot.currentWageBill} max={snapshot.salaryBudget} color="#60a5fa" />
               <div className="flex justify-between text-[10px] text-white/25">
-                <span>{wagePct.toFixed(0)}% da folha utilizada</span>
+                <span>{wagePct.toFixed(0)}% {t.percentWagesUsed}</span>
                 <span className={snapshot.wageRoom < 0 ? "text-red-400/60" : ""}>
                   {snapshot.wageRoom >= 0
-                    ? `€${snapshot.wageRoom.toLocaleString("pt-BR")}k/sem disponível`
-                    : `€${Math.abs(snapshot.wageRoom).toLocaleString("pt-BR")}k acima da folha`}
+                    ? `€${snapshot.wageRoom.toLocaleString("pt-BR")}${t.availablePerWk}`
+                    : `€${Math.abs(snapshot.wageRoom).toLocaleString("pt-BR")}${t.aboveWages}`}
                 </span>
               </div>
             </div>
@@ -322,17 +327,20 @@ export function FinanceiroView({ careerId, seasonId, transfers, season, isReadOn
             style={{ background: "rgba(255,255,255,0.02)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}
           >
             <span className="text-lg">💼</span>
-            <span className="text-white/40 text-xs font-semibold uppercase tracking-wider">Maiores Salários</span>
+            <span className="text-white/40 text-xs font-semibold uppercase tracking-wider">{t.topEarners}</span>
           </div>
           <div className="divide-y" style={{ borderColor: "rgba(255,255,255,0.04)" }}>
-            {topEarners.map((t, i) => (
-              <div key={t.id} className="flex items-center gap-4 px-5 py-3">
+            {topEarners.map((tr, i) => (
+              <div key={tr.id} className="flex items-center gap-4 px-5 py-3">
                 <span className="text-white/20 text-xs font-bold w-4 tabular-nums">{i + 1}</span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-white text-sm font-semibold truncate">{t.playerName}</p>
-                  <p className="text-white/30 text-xs">{t.playerPositionPtBr} · {t.season}</p>
+                  <p className="text-white text-sm font-semibold truncate">{tr.playerName}</p>
+                  <p className="text-white/30 text-xs">{tr.playerPositionPtBr} · {tr.season}</p>
                 </div>
-                <p className="text-white font-bold text-sm tabular-nums">€{t.salary.toLocaleString("pt-BR")}k<span className="text-white/25 font-normal text-xs">/sem</span></p>
+                <p className="text-white font-bold text-sm tabular-nums">
+                  €{tr.salary.toLocaleString("pt-BR")}k
+                  <span className="text-white/25 font-normal text-xs">{t.perWeek}</span>
+                </p>
               </div>
             ))}
           </div>
@@ -349,7 +357,7 @@ export function FinanceiroView({ careerId, seasonId, transfers, season, isReadOn
             style={{ background: "rgba(255,255,255,0.02)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}
           >
             <span className="text-lg">🏆</span>
-            <span className="text-white/40 text-xs font-semibold uppercase tracking-wider">Maiores Negócios</span>
+            <span className="text-white/40 text-xs font-semibold uppercase tracking-wider">{t.biggestDeals}</span>
           </div>
           <div className="divide-y" style={{ borderColor: "rgba(255,255,255,0.04)" }}>
             {biggestCompra && (
@@ -431,8 +439,8 @@ export function FinanceiroView({ careerId, seasonId, transfers, season, isReadOn
       {transfers.length === 0 && (
         <div className="flex flex-col items-center justify-center py-16 rounded-2xl glass text-center gap-3">
           <span className="text-4xl">💰</span>
-          <p className="text-white/50 font-semibold">Nenhuma movimentação registrada</p>
-          <p className="text-white/25 text-sm max-w-xs">Registre contratações e vendas na aba Transferências para visualizar aqui o panorama financeiro.</p>
+          <p className="text-white/50 font-semibold">{t.noTransactions}</p>
+          <p className="text-white/25 text-sm max-w-xs">{t.noTransactionsSub}</p>
         </div>
       )}
     </div>
