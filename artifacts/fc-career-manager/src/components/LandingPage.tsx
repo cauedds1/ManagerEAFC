@@ -894,11 +894,17 @@ export function LandingPage({ onStart, onLogin, onStartWithPlan, lang, setLang }
     if (!audioRef.current) {
       const a = new Audio("/sounds/crowd.mp3");
       a.loop   = true;
-      a.volume = 0.12;
+      a.volume = 0.45;
       audioRef.current = a;
     }
     if (!soundOn) {
-      audioRef.current.play().then(() => setSoundOn(true)).catch(() => {});
+      audioRef.current.volume = 0.45;
+      audioRef.current.play()
+        .then(() => setSoundOn(true))
+        .catch((err) => {
+          console.warn("Audio play failed:", err);
+          setSoundOn(false);
+        });
     } else {
       audioRef.current.pause();
       setSoundOn(false);
