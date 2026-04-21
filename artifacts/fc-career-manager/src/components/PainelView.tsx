@@ -58,6 +58,7 @@ interface PainelViewProps {
   clubName: string;
   clubLogoUrl?: string | null;
   allPlayers: SquadPlayer[];
+  squadSize?: number;
   season: string;
   matches: MatchRecord[];
   transferCount: number;
@@ -555,6 +556,7 @@ export function PainelView({
   clubName,
   clubLogoUrl,
   allPlayers,
+  squadSize,
   season,
   matches,
   transferCount,
@@ -587,7 +589,7 @@ export function PainelView({
     },
     {
       label: "Elenco",
-      value: allPlayers.length,
+      value: squadSize ?? allPlayers.length,
       sub: "jogadores",
       icon: (
         <svg className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>

@@ -1422,6 +1422,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
                 clubName={career.clubName}
                 clubLogoUrl={logoUrl}
                 allPlayers={allTimeCareerPlayers}
+                squadSize={allPlayers.length}
                 season={displayLabel}
                 matches={matches}
                 transferCount={transfers.length}
