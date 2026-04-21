@@ -424,13 +424,13 @@ export function NoticiaPost({ post, portalPhotos, customPortals, onUpdateImage, 
                   className="w-full text-left text-sm px-4 py-2.5 transition-colors duration-100 hover:bg-white/[0.06]"
                   style={{ color: "rgba(255,255,255,0.8)", borderTop: onRefresh && post.matchId ? "1px solid rgba(255,255,255,0.06)" : undefined }}
                 >
-                  {displayImageUrl ? (lang === "en" ? "Change image" : "Trocar imagem") : t.menuAddImage}
+                  {displayImageUrl ? t.menuChangeImage : t.menuAddImage}
                 </button>
               )}
               {displayImageUrl && onUpdateImageFit && (
                 <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
                   <p className="px-4 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.25)" }}>
-                    {lang === "en" ? "Image fit" : "Ajuste da imagem"}
+                    {t.imageFit}
                   </p>
                   <div className="flex gap-1.5 px-3 pb-2.5">
                     {(["cover", "contain"] as const).map((fit) => {
@@ -446,7 +446,7 @@ export function NoticiaPost({ post, portalPhotos, customPortals, onUpdateImage, 
                             border: `1px solid ${active ? "rgba(var(--club-primary-rgb),0.45)" : "rgba(255,255,255,0.08)"}`,
                           }}
                         >
-                          {fit === "cover" ? (lang === "en" ? "Fill" : "Preencher") : (lang === "en" ? "Fit" : "Completo")}
+                          {fit === "cover" ? t.imageFitCover : t.imageFitContain}
                         </button>
                       );
                     })}
@@ -499,12 +499,12 @@ export function NoticiaPost({ post, portalPhotos, customPortals, onUpdateImage, 
         <div className="flex items-center gap-1.5 flex-shrink-0">
           {post.postTag === "rumor" && (
             <span className="text-xs font-semibold px-2 py-0.5 rounded-full flex-shrink-0" style={{ background: "rgba(251,146,60,0.15)", color: "#fb923c" }}>
-              🔄 {lang === "en" ? "Rumour" : "Rumor"}
+              🔄 {t.tagRumor}
             </span>
           )}
           {post.postTag === "leak" && (
             <span className="text-xs font-semibold px-2 py-0.5 rounded-full flex-shrink-0" style={{ background: "rgba(167,139,250,0.15)", color: "#a78bfa" }}>
-              🔓 {lang === "en" ? "Insider" : "Bastidores"}
+              🔓 {t.tagLeak}
             </span>
           )}
           <span
@@ -637,14 +637,14 @@ export function NoticiaPost({ post, portalPhotos, customPortals, onUpdateImage, 
           style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}
         >
           <p className="text-white/25 text-xs font-semibold uppercase tracking-wider pt-1">
-            {lang === "en" ? "Comments" : "Comentários"}
+            {t.commentsHeading}
           </p>
           {(post.comments ?? []).length > 0 ? (
             (post.comments ?? []).map((comment) => (
               <CommentItem key={comment.id} comment={comment} />
             ))
           ) : (
-            <p className="text-white/25 text-xs">{lang === "en" ? "No comments available." : "Nenhum comentário disponível."}</p>
+            <p className="text-white/25 text-xs">{t.commentsEmpty}</p>
           )}
         </div>
       )}

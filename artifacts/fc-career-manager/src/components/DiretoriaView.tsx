@@ -223,6 +223,7 @@ function CreateMemberModal({ career, membersCount, onClose, onCreated, effective
           clubName: career.clubName,
           clubLeague: effectiveLeague ?? career.clubLeague,
           extraTraits: extraTraits.trim() || undefined,
+          lang: localStorage.getItem("fc_lang") ?? "pt",
         }),
       });
       if (!res.ok) throw new Error("Erro ao gerar");
@@ -667,6 +668,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
           squadOvrContext: squadOvrContext || undefined,
           squadRosterContext: squadRosterContext || undefined,
           playerPerformanceContext: playerContextStr || undefined,
+          lang: localStorage.getItem("fc_lang") ?? "pt",
         }),
       });
       if (!res.ok) {
@@ -777,6 +779,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
             squadOvrContext: squadOvrContext || undefined,
             squadRosterContext: squadRosterContext || undefined,
             playerPerformanceContext: playerContextStr || undefined,
+            lang: localStorage.getItem("fc_lang") ?? "pt",
           }),
         });
         if (!res.ok) {

@@ -868,6 +868,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
           rivalName: rivalName || undefined,
           fanMoodScore: fanMood ?? undefined,
           fanMoodLabel: fanMoodLabelStr ?? undefined,
+          lang: localStorage.getItem("fc_lang") ?? "pt",
         }),
       });
       if (!res.ok) return;

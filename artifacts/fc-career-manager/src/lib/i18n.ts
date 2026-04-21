@@ -2547,9 +2547,33 @@ export const NOTICIAS: Record<Lang, Record<string, string>> = {
     // NoticiaPost menu
     menuRefresh: "Atualizar notícia",
     menuAddImage: "Adicionar imagem",
+    menuChangeImage: "Trocar imagem",
     menuRemoveImage: "Remover imagem",
     menuDelete: "Excluir",
     imageUploaded: "Enviada",
+    imageFit: "Ajuste da imagem",
+    imageFitCover: "Preencher",
+    imageFitContain: "Completo",
+    // Post tags
+    tagRumor: "Rumor",
+    tagLeak: "Bastidores",
+    // Comments
+    commentsHeading: "Comentários",
+    commentsEmpty: "Nenhum comentário disponível.",
+    // Empty states
+    emptyNoNews: "Nenhuma notícia ainda",
+    firstPostBtn: "Primeira notícia",
+    sidebarBySource: "Por fonte",
+    sidebarByCategory: "Por categoria",
+    // Video/photo upload
+    videoUnsupportedFormat: "Formato não suportado. Use MP4, MOV ou WebM.",
+    videoServerError: "Resposta inválida do servidor.",
+    videoUploading: "Enviando vídeo…",
+    photoUploading: "Enviando foto...",
+    // AI usage limit
+    aiLimitReached: "Limite diário atingido",
+    aiRemaining: "{remaining} de {total} gerações restantes hoje",
+    aiLimitReachedFull: "Limite diário atingido · Reinicia à meia-noite",
   },
   en: {
     // Header
@@ -2613,9 +2637,33 @@ export const NOTICIAS: Record<Lang, Record<string, string>> = {
     // NoticiaPost menu
     menuRefresh: "Refresh post",
     menuAddImage: "Add image",
+    menuChangeImage: "Change image",
     menuRemoveImage: "Remove image",
     menuDelete: "Delete",
     imageUploaded: "Uploaded",
+    imageFit: "Image fit",
+    imageFitCover: "Fill",
+    imageFitContain: "Fit",
+    // Post tags
+    tagRumor: "Rumour",
+    tagLeak: "Backstage",
+    // Comments
+    commentsHeading: "Comments",
+    commentsEmpty: "No comments available.",
+    // Empty states
+    emptyNoNews: "No news yet",
+    firstPostBtn: "First post",
+    sidebarBySource: "By source",
+    sidebarByCategory: "By category",
+    // Video/photo upload
+    videoUnsupportedFormat: "Unsupported format. Use MP4, MOV or WebM.",
+    videoServerError: "Invalid server response.",
+    videoUploading: "Uploading video…",
+    photoUploading: "Uploading photo...",
+    // AI usage limit
+    aiLimitReached: "Daily limit reached",
+    aiRemaining: "{remaining} of {total} generations left today",
+    aiLimitReachedFull: "Daily limit reached · Resets at midnight",
   },
 } satisfies Record<Lang, Record<string, string>>;
 

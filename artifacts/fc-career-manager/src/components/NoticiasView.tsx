@@ -383,7 +383,7 @@ function AddPostModal({
   const handleVideoSelect = async (file: File) => {
     const MAX_MB = 500;
     if (!["video/mp4", "video/webm", "video/quicktime"].includes(file.type)) {
-      setVideoUploadError("Formato não suportado. Use MP4, MOV ou WebM.");
+      setVideoUploadError(tModal.videoUnsupportedFormat);
       return;
     }
     if (file.size > MAX_MB * 1024 * 1024) {
@@ -406,7 +406,7 @@ function AddPostModal({
             try {
               resolve(JSON.parse(xhr.responseText) as { url: string; key: string });
             } catch {
-              reject(new Error("Resposta inválida do servidor."));
+              reject(new Error(tModal.videoServerError));
             }
           } else {
             let errMsg = `Erro ${xhr.status}`;
@@ -891,7 +891,7 @@ function AddPostModal({
                   ) : videoUploadState === "uploading" ? (
                     <div className="rounded-xl border border-white/10 p-3 flex flex-col gap-2" style={{ background: "rgba(255,255,255,0.03)" }}>
                       <div className="flex items-center justify-between">
-                        <span className="text-white/50 text-xs">Enviando vídeo…</span>
+                        <span className="text-white/50 text-xs">{tModal.videoUploading}</span>
                         <span className="text-purple-300 text-xs font-bold">{videoUploadProgress}%</span>
                       </div>
                       <div className="w-full h-1 rounded-full" style={{ background: "rgba(255,255,255,0.08)" }}>
@@ -915,8 +915,8 @@ function AddPostModal({
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-xs" style={{ color: isAtLimit ? "#f87171" : "rgba(255,255,255,0.4)" }}>
                         {isAtLimit
-                          ? "Limite diário atingido"
-                          : `${remaining} de ${aiUsageLimit} gerações restantes hoje`}
+                          ? tModal.aiLimitReached
+                          : tModal.aiRemaining.replace("{remaining}", String(remaining)).replace("{total}", String(aiUsageLimit))}
                       </span>
                       <span className="text-xs font-semibold" style={{ color: isAtLimit ? "#f87171" : "rgba(255,255,255,0.35)" }}>
                         {used}/{aiUsageLimit}
@@ -936,7 +936,7 @@ function AddPostModal({
               {aiUsageLimit !== undefined && (aiUsageToday ?? 0) >= aiUsageLimit ? (
                 <div className="flex flex-col gap-2">
                   <div className="w-full py-3 rounded-xl text-xs font-semibold text-center" style={{ background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.2)", color: "#f87171" }}>
-                    Limite diário atingido · Reinicia à meia-noite
+                    {tModal.aiLimitReachedFull}
                   </div>
                   <button
                     onClick={async () => {
@@ -1170,7 +1170,7 @@ function AddPostModal({
                     style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="text-white/50 text-xs">Enviando vídeo...</span>
+                      <span className="text-white/50 text-xs">{tModal.videoUploading}</span>
                       <span className="text-white/40 text-xs font-semibold">{videoUploadProgress}%</span>
                     </div>
                     <div className="h-1.5 w-full rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.08)" }}>
@@ -1207,7 +1207,7 @@ function AddPostModal({
                 className="w-full py-3 rounded-xl text-sm font-bold text-white transition-all duration-200 hover:opacity-90 active:scale-[0.98] disabled:opacity-30 disabled:cursor-not-allowed"
                 style={{ background: "var(--club-gradient)" }}
               >
-                {isUploadingImage ? `${lang === "en" ? "Uploading photo..." : "Enviando foto..."}` : videoUploadState === "uploading" ? `${lang === "en" ? "Uploading video..." : "Enviando vídeo..."}` : tModal.btnPublish}
+                {isUploadingImage ? tModal.photoUploading : videoUploadState === "uploading" ? tModal.videoUploading : tModal.btnPublish}
               </button>
             </div>
           )}
@@ -1958,7 +1958,7 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
                 📰
               </div>
               <div>
-                <p className="text-white/35 font-semibold text-sm">{lang === "en" ? "No news yet" : "Nenhuma notícia ainda"}</p>
+                <p className="text-white/35 font-semibold text-sm">{t.emptyNoNews}</p>
                 <p className="text-white/20 text-xs mt-1 max-w-xs">{emptyLabel}</p>
               </div>
               {!isReadOnly && filterSource === "all" && filterCategory === "all" && (
@@ -1967,7 +1967,7 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
                   className="mt-2 px-5 py-2 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90"
                   style={{ background: "var(--club-gradient)" }}
                 >
-                  + {lang === "en" ? "First post" : "Primeira notícia"}
+                  + {t.firstPostBtn}
                 </button>
               )}
             </div>
@@ -2000,7 +2000,7 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
               className="rounded-2xl p-4 flex flex-col gap-3"
               style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
             >
-              <p className="text-white/35 text-xs font-bold uppercase tracking-wider">{lang === "en" ? "By source" : "Por fonte"}</p>
+              <p className="text-white/35 text-xs font-bold uppercase tracking-wider">{t.sidebarBySource}</p>
               <div className="flex flex-col gap-2.5">
                 {sourceCounts.map(({ id, label, count }) => {
                   const cfg = SOURCE_SIDEBAR_COLOR[id] ?? CUSTOM_SIDEBAR_COLOR;
@@ -2050,7 +2050,7 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
                 className="rounded-2xl p-4 flex flex-col gap-3"
                 style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
               >
-                <p className="text-white/35 text-xs font-bold uppercase tracking-wider">{lang === "en" ? "By category" : "Por categoria"}</p>
+                <p className="text-white/35 text-xs font-bold uppercase tracking-wider">{t.sidebarByCategory}</p>
                 <div className="flex flex-col gap-1">
                   {categoryCounts.map(({ id, count }) => {
                     const active = filterCategory === id;

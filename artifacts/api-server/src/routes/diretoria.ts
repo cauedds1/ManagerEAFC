@@ -496,7 +496,7 @@ router.post("/diretoria/check-triggers", requireAuth, async (req: AuthRequest, r
     res.status(403).json({ error: "Diretoria não está disponível no plano Free", code: "PLAN_LIMIT_REACHED", plan });
     return;
   }
-  const { context, members, lastCheckedAt, playerPerformance, squadOvrContext, isClassico, rivalName, fanMoodScore, fanMoodLabel } = req.body as {
+  const { context, members, lastCheckedAt, playerPerformance, squadOvrContext, isClassico, rivalName, fanMoodScore, fanMoodLabel, lang } = req.body as {
     context: ClubContext;
     members: MemberProfile[];
     lastCheckedAt: number;
@@ -506,7 +506,10 @@ router.post("/diretoria/check-triggers", requireAuth, async (req: AuthRequest, r
     rivalName?: string;
     fanMoodScore?: number;
     fanMoodLabel?: string;
+    lang?: string;
   };
+
+  const isEn = lang === "en";
 
   const recentMatches = context.recentMatches.slice(0, 8);
   const notifications: { memberId: string; preview: string }[] = [];
@@ -562,12 +565,16 @@ router.post("/diretoria/check-triggers", requireAuth, async (req: AuthRequest, r
       if (presidente && !notifications.find((n) => n.memberId === presidente.id)) {
         notifications.push({
           memberId: presidente.id,
-          preview: `Derrota no clássico contra o ${rivalName}. Isso dói mais do que qualquer resultado normal — precisamos de uma resposta imediata.`,
+          preview: isEn
+            ? `Derby defeat against ${rivalName}. This hurts more than any regular result — we need an immediate response.`
+            : `Derrota no clássico contra o ${rivalName}. Isso dói mais do que qualquer resultado normal — precisamos de uma resposta imediata.`,
         });
       }
       if (lossStreak >= 2 && !meetingTrigger) {
         meetingTrigger = {
-          reason: `Derrota no clássico contra o ${rivalName} com ${lossStreak} derrotas consecutivas — a torcida está revoltada e exige posicionamento`,
+          reason: isEn
+            ? `Derby loss against ${rivalName} with ${lossStreak} consecutive defeats — fans are furious and demanding answers`
+            : `Derrota no clássico contra o ${rivalName} com ${lossStreak} derrotas consecutivas — a torcida está revoltada e exige posicionamento`,
           severity: "high",
         };
       }
@@ -576,13 +583,17 @@ router.post("/diretoria/check-triggers", requireAuth, async (req: AuthRequest, r
     if (typeof fanMoodScore === "number" && fanMoodScore < 20 && fanMoodLabel) {
       if (!meetingTrigger) {
         meetingTrigger = {
-          reason: `Torcida ${fanMoodLabel} (${fanMoodScore}/100) — a pressão popular atingiu nível crítico. A diretoria precisa se posicionar publicamente`,
+          reason: isEn
+            ? `Fan mood: ${fanMoodLabel} (${fanMoodScore}/100) — public pressure has reached a critical level. The board must make a public statement`
+            : `Torcida ${fanMoodLabel} (${fanMoodScore}/100) — a pressão popular atingiu nível crítico. A diretoria precisa se posicionar publicamente`,
           severity: "high",
         };
       } else if (presidente && !notifications.find((n) => n.memberId === presidente.id)) {
         notifications.push({
           memberId: presidente.id,
-          preview: `A torcida está ${fanMoodLabel.toLowerCase()}. Precisamos agir antes que a situação saia de controle.`,
+          preview: isEn
+            ? `The fans are ${fanMoodLabel.toLowerCase()}. We need to act before things spiral out of control.`
+            : `A torcida está ${fanMoodLabel.toLowerCase()}. Precisamos agir antes que a situação saia de controle.`,
         });
       }
     }
@@ -591,7 +602,9 @@ router.post("/diretoria/check-triggers", requireAuth, async (req: AuthRequest, r
       const opponentNote = lossStreakOpponents ? ` (vs ${lossStreakOpponents})` : "";
       const ovrPart = ovrNote ? ` | ${ovrNote}` : "";
       meetingTrigger = {
-        reason: `${lossStreak} derrotas consecutivas${opponentNote} — avalie a dificuldade dos adversários${ovrPart}`,
+        reason: isEn
+          ? `${lossStreak} consecutive defeats${opponentNote} — assess the quality of opposition${ovrPart}`
+          : `${lossStreak} derrotas consecutivas${opponentNote} — avalie a dificuldade dos adversários${ovrPart}`,
         severity: "high",
       };
     } else if (lossStreak >= 3) {
@@ -599,13 +612,17 @@ router.post("/diretoria/check-triggers", requireAuth, async (req: AuthRequest, r
       if (presidente) {
         notifications.push({
           memberId: presidente.id,
-          preview: `${lossStreak} derrotas seguidas${opponentNote}. Precisamos conversar...`,
+          preview: isEn
+            ? `${lossStreak} losses in a row${opponentNote}. We need to talk...`
+            : `${lossStreak} derrotas seguidas${opponentNote}. Precisamos conversar...`,
         });
       }
       if (auxTecnico) {
         notifications.push({
           memberId: auxTecnico.id,
-          preview: `Tenho análises táticas sobre essas ${lossStreak} partidas${opponentNote} para discutir.`,
+          preview: isEn
+            ? `I have tactical analysis on these ${lossStreak} games${opponentNote} I'd like to discuss.`
+            : `Tenho análises táticas sobre essas ${lossStreak} partidas${opponentNote} para discutir.`,
         });
       }
     }
@@ -613,7 +630,9 @@ router.post("/diretoria/check-triggers", requireAuth, async (req: AuthRequest, r
     if (winStreak >= 4 && presidente) {
       notifications.push({
         memberId: presidente.id,
-        preview: `${winStreak} vitórias consecutivas! Que sequência incrível!`,
+        preview: isEn
+          ? `${winStreak} wins in a row! What an incredible run!`
+          : `${winStreak} vitórias consecutivas! Que sequência incrível!`,
       });
     }
 
@@ -623,13 +642,17 @@ router.post("/diretoria/check-triggers", requireAuth, async (req: AuthRequest, r
         const relegOpponents = lossStreakOpponents ? ` vs ${lossStreakOpponents}` : "";
         const relegOvrPart = ovrNote ? ` | ${ovrNote}` : "";
         meetingTrigger = meetingTrigger ?? {
-          reason: `${leaguePos.position}º lugar — zona de rebaixamento com ${lossStreak} derrotas seguidas${relegOpponents}${relegOvrPart}`,
+          reason: isEn
+            ? `${leaguePos.position}th place — relegation zone with ${lossStreak} losses in a row${relegOpponents}${relegOvrPart}`
+            : `${leaguePos.position}º lugar — zona de rebaixamento com ${lossStreak} derrotas seguidas${relegOpponents}${relegOvrPart}`,
           severity: "high",
         };
       } else if (leaguePos.position <= 4 && winCount >= 3 && presidente) {
         notifications.push({
           memberId: presidente.id,
-          preview: `${leaguePos.position}º lugar! Estamos na briga pelo acesso/título!`,
+          preview: isEn
+            ? `${leaguePos.position}th place! We're in contention for promotion/title!`
+            : `${leaguePos.position}º lugar! Estamos na briga pelo acesso/título!`,
         });
       }
     }
@@ -637,7 +660,9 @@ router.post("/diretoria/check-triggers", requireAuth, async (req: AuthRequest, r
     if (context.transfersCount >= 5 && gestor && !notifications.find((n) => n.memberId === gestor.id)) {
       notifications.push({
         memberId: gestor.id,
-        preview: "Preciso revisar o orçamento com você — as contratações estão pesando.",
+        preview: isEn
+          ? "I need to go over the budget with you — the signings are adding up."
+          : "Preciso revisar o orçamento com você — as contratações estão pesando.",
       });
     }
 
@@ -651,17 +676,23 @@ router.post("/diretoria/check-triggers", requireAuth, async (req: AuthRequest, r
 
       if (worstPlayers.length >= 2 && auxTecnico && !notifications.find((n) => n.memberId === auxTecnico.id)) {
         const names = worstPlayers.map((p) => playerLabel(p)).join(", ");
-        const seqNote = lossStreakOpponents ? ` Precisamos ver isso no contexto da sequência recente.` : "";
+        const seqNote = lossStreakOpponents
+          ? isEn ? ` We need to look at this in the context of the recent run.` : ` Precisamos ver isso no contexto da sequência recente.`
+          : "";
         notifications.push({
           memberId: auxTecnico.id,
-          preview: `Precisamos conversar sobre ${names} — o desempenho preocupa.${seqNote}`,
+          preview: isEn
+            ? `We need to talk about ${names} — their performances are a concern.${seqNote}`
+            : `Precisamos conversar sobre ${names} — o desempenho preocupa.${seqNote}`,
         });
       }
 
       if (vaiados.length >= 1 && presidente && !notifications.find((n) => n.memberId === presidente.id)) {
         notifications.push({
           memberId: presidente.id,
-          preview: `${playerLabel(vaiados[0])} está sendo vaiado. A torcida está insatisfeita.`,
+          preview: isEn
+            ? `${playerLabel(vaiados[0])} is being booed by the fans. They're not happy.`
+            : `${playerLabel(vaiados[0])} está sendo vaiado. A torcida está insatisfeita.`,
         });
       }
 
@@ -670,7 +701,9 @@ router.post("/diretoria/check-triggers", requireAuth, async (req: AuthRequest, r
         if (topScorer && !notifications.find((n) => n.memberId === presidente.id)) {
           notifications.push({
             memberId: presidente.id,
-            preview: `${playerLabel(topScorer)} está brilhando mas o time vai mal — precisamos de reforços?`,
+            preview: isEn
+              ? `${playerLabel(topScorer)} is shining but the team is struggling — do we need reinforcements?`
+              : `${playerLabel(topScorer)} está brilhando mas o time vai mal — precisamos de reforços?`,
           });
         }
       }
@@ -686,7 +719,9 @@ router.post("/diretoria/check-triggers", requireAuth, async (req: AuthRequest, r
       if (positionsUnderperforming.length > 0 && gestor && !notifications.find((n) => n.memberId === gestor.id)) {
         notifications.push({
           memberId: gestor.id,
-          preview: `Temos lacunas em ${positionsUnderperforming.join(", ")} — devo pesquisar reforços?`,
+          preview: isEn
+            ? `We have gaps at ${positionsUnderperforming.join(", ")} — should I look into reinforcements?`
+            : `Temos lacunas em ${positionsUnderperforming.join(", ")} — devo pesquisar reforços?`,
         });
       }
 
@@ -705,10 +740,14 @@ router.post("/diretoria/check-triggers", requireAuth, async (req: AuthRequest, r
             p.isBench,
         );
         if (auxTecnico && !notifications.find((n) => n.memberId === auxTecnico.id)) {
-          const subNote = substitute ? ` ${playerLabel(substitute)} está bem e pode assumir a vaga.` : "";
+          const subNote = substitute
+            ? isEn ? ` ${playerLabel(substitute)} is in good form and could step in.` : ` ${playerLabel(substitute)} está bem e pode assumir a vaga.`
+            : "";
           notifications.push({
             memberId: auxTecnico.id,
-            preview: `${playerLabel(poor)} leva ${poor.consecutivePoorRatings} jogos seguidos em baixo rendimento como titular.${subNote}`,
+            preview: isEn
+              ? `${playerLabel(poor)} has had ${poor.consecutivePoorRatings} straight poor performances as a starter.${subNote}`
+              : `${playerLabel(poor)} leva ${poor.consecutivePoorRatings} jogos seguidos em baixo rendimento como titular.${subNote}`,
           });
         }
       }
@@ -723,13 +762,14 @@ router.post("/diretoria/check-triggers", requireAuth, async (req: AuthRequest, r
       for (const star of starOnBench.slice(0, 1)) {
         const member = presidente ?? auxTecnico;
         if (member && !notifications.find((n) => n.memberId === member.id)) {
-          const reason = (p: typeof star) =>
-            (p.overall ?? 0) >= 80
-              ? `estrela do elenco`
-              : `um dos melhores do elenco`;
+          const starLabel = isEn
+            ? (p: typeof star) => (p.overall ?? 0) >= 80 ? `squad star` : `one of the best in the squad`
+            : (p: typeof star) => (p.overall ?? 0) >= 80 ? `estrela do elenco` : `um dos melhores do elenco`;
           notifications.push({
             memberId: member.id,
-            preview: `${playerLabel(star)} (${reason(star)}) está quase sempre no banco — por que um jogador assim não é titular?`,
+            preview: isEn
+              ? `${playerLabel(star)} (${starLabel(star)}) is almost always on the bench — why isn't a player like this starting?`
+              : `${playerLabel(star)} (${starLabel(star)}) está quase sempre no banco — por que um jogador assim não é titular?`,
           });
         }
       }
@@ -746,7 +786,9 @@ router.post("/diretoria/check-triggers", requireAuth, async (req: AuthRequest, r
         if (member && !notifications.find((n) => n.memberId === member.id)) {
           notifications.push({
             memberId: member.id,
-            preview: `${playerLabel(star)}, estrela do elenco, vai mal há ${star.consecutivePoorRatings} jogos seguidos como titular — a torcida está impaciente.`,
+            preview: isEn
+              ? `${playerLabel(star)}, a squad star, has had ${star.consecutivePoorRatings} straight poor games as a starter — the fans are running out of patience.`
+              : `${playerLabel(star)}, estrela do elenco, vai mal há ${star.consecutivePoorRatings} jogos seguidos como titular — a torcida está impaciente.`,
           });
         }
       }
@@ -762,7 +804,9 @@ router.post("/diretoria/check-triggers", requireAuth, async (req: AuthRequest, r
         if (member && !notifications.find((n) => n.memberId === member.id)) {
           notifications.push({
             memberId: member.id,
-            preview: `${playerLabel(v)} é vaiado pela torcida mas segue sendo titular. Em ${v.appearances} jogos a situação não mudou.`,
+            preview: isEn
+              ? `${playerLabel(v)} is being booed but keeps starting. After ${v.appearances} games the situation hasn't changed.`
+              : `${playerLabel(v)} é vaiado pela torcida mas segue sendo titular. Em ${v.appearances} jogos a situação não mudou.`,
           });
         }
       }
@@ -780,7 +824,9 @@ router.post("/diretoria/check-triggers", requireAuth, async (req: AuthRequest, r
         if (member && !notifications.find((n) => n.memberId === member.id)) {
           notifications.push({
             memberId: member.id,
-            preview: `${playerLabel(prom)} tem ${prom.appearances} jogos com média ${prom.avgRating} mas passa quase tudo no banco — é uma promessa sub-21 que pode se perder.`,
+            preview: isEn
+              ? `${playerLabel(prom)} has ${prom.appearances} games with a ${prom.avgRating} avg but spends almost all the time on the bench — this u21 prospect could be wasted.`
+              : `${playerLabel(prom)} tem ${prom.appearances} jogos com média ${prom.avgRating} mas passa quase tudo no banco — é uma promessa sub-21 que pode se perder.`,
           });
         }
       }
@@ -789,9 +835,9 @@ router.post("/diretoria/check-triggers", requireAuth, async (req: AuthRequest, r
 
   if (hasNewMatch && context.projeto && leaguePos) {
     const projetoLower = context.projeto.toLowerCase();
-    const isTitleProject = /título|campeão|campeon|ganhar.*campe|primeiro lugar/i.test(projetoLower);
-    const isPromotionProject = /acesso|promoção|promoçao|subir|primeira divisão/i.test(projetoLower);
-    const isSurvivalProject = /rebaixar|rebaixamento|permanecer|evitar.*rebaixamento|não cair/i.test(projetoLower);
+    const isTitleProject = /título|campeão|campeon|ganhar.*campe|primeiro lugar|title|champion/i.test(projetoLower);
+    const isPromotionProject = /acesso|promoção|promoçao|subir|primeira divisão|promotion|promoted/i.test(projetoLower);
+    const isSurvivalProject = /rebaixar|rebaixamento|permanecer|evitar.*rebaixamento|não cair|relegation|survive/i.test(projetoLower);
 
     const totalGames = leaguePos.wins + leaguePos.draws + leaguePos.losses;
     const relegZone = leaguePos.totalTeams - 3;
@@ -801,21 +847,27 @@ router.post("/diretoria/check-triggers", requireAuth, async (req: AuthRequest, r
       if (presidente && !notifications.find((n) => n.memberId === presidente.id)) {
         notifications.push({
           memberId: presidente.id,
-          preview: `${leaguePos.position}º lugar com ${leaguePos.losses} derrotas em ${totalGames} jogos — a disputa pelo título está seriamente comprometida.`,
+          preview: isEn
+            ? `${leaguePos.position}th place with ${leaguePos.losses} defeats in ${totalGames} games — the title race looks seriously in doubt.`
+            : `${leaguePos.position}º lugar com ${leaguePos.losses} derrotas em ${totalGames} jogos — a disputa pelo título está seriamente comprometida.`,
         });
       }
     } else if (isPromotionProject && totalGames >= 8 && leaguePos.position > 8 && lossStreak >= 3) {
       if (presidente && !notifications.find((n) => n.memberId === presidente.id)) {
         notifications.push({
           memberId: presidente.id,
-          preview: `${leaguePos.position}º lugar e ${lossStreak} derrotas seguidas — o acesso está escorregando. Precisamos de uma reação.`,
+          preview: isEn
+            ? `${leaguePos.position}th place and ${lossStreak} losses in a row — promotion is slipping away. We need a reaction.`
+            : `${leaguePos.position}º lugar e ${lossStreak} derrotas seguidas — o acesso está escorregando. Precisamos de uma reação.`,
         });
       }
     }
 
     if (isSurvivalProject && isInRelZone && (lossStreak >= 3 || leaguePos.losses >= 10) && !meetingTrigger) {
       meetingTrigger = {
-        reason: `${leaguePos.position}º lugar — zona de rebaixamento com ${leaguePos.losses} derrotas. O objetivo de permanência está seriamente em risco!`,
+        reason: isEn
+          ? `${leaguePos.position}th place — relegation zone with ${leaguePos.losses} defeats. Survival objective is seriously at risk!`
+          : `${leaguePos.position}º lugar — zona de rebaixamento com ${leaguePos.losses} derrotas. O objetivo de permanência está seriamente em risco!`,
         severity: "high",
       };
     }
@@ -827,13 +879,15 @@ router.post("/diretoria/check-triggers", requireAuth, async (req: AuthRequest, r
       notifications.push({
         memberId: gestor.id,
         preview: context.remainingTransferBudget < 0
-          ? "Ultrapassamos o orçamento de transferências! Precisamos conversar urgente."
-          : `Já usamos ${Math.round(pct)}% do orçamento. Temos margem mínima para mais reforços.`,
+          ? (isEn ? "We've exceeded the transfer budget! We need to talk urgently." : "Ultrapassamos o orçamento de transferências! Precisamos conversar urgente.")
+          : (isEn ? `We've used ${Math.round(pct)}% of the budget. Very little room for more signings.` : `Já usamos ${Math.round(pct)}% do orçamento. Temos margem mínima para mais reforços.`),
       });
     }
     if (context.remainingTransferBudget < 0 && !meetingTrigger && presidente) {
       meetingTrigger = {
-        reason: "Orçamento de transferências excedido — situação financeira crítica",
+        reason: isEn
+          ? "Transfer budget exceeded — critical financial situation"
+          : "Orçamento de transferências excedido — situação financeira crítica",
         severity: "high",
       };
     }
@@ -845,13 +899,17 @@ router.post("/diretoria/check-triggers", requireAuth, async (req: AuthRequest, r
       if (gestor && !notifications.find((n) => n.memberId === gestor.id)) {
         notifications.push({
           memberId: gestor.id,
-          preview: "A folha salarial excedeu o limite do clube. Precisamos agir!",
+          preview: isEn
+            ? "The wage bill has exceeded the club's limit. We need to act!"
+            : "A folha salarial excedeu o limite do clube. Precisamos agir!",
         });
       }
     } else if (wagePct >= 85 && gestor && !notifications.find((n) => n.memberId === gestor.id)) {
       notifications.push({
         memberId: gestor.id,
-        preview: `Folha salarial em ${Math.round(wagePct)}% da capacidade — pouca margem para novos contratos.`,
+        preview: isEn
+          ? `Wage bill at ${Math.round(wagePct)}% of capacity — very little room for new contracts.`
+          : `Folha salarial em ${Math.round(wagePct)}% da capacidade — pouca margem para novos contratos.`,
       });
     }
   }
