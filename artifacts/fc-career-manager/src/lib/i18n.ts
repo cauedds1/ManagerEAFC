@@ -978,6 +978,7 @@ export const WIZARD = {
     noCountry: "Nenhum país encontrado",
     nameError: "Informe o nome do técnico",
     ageError: "Idade entre 18 e 80",
+    namePlaceholder: "Ex.: José Mourinho",
     nextChooseClub: "Próximo — Escolher clube",
     // ClubPicker
     step2of4: "Etapa 2 de 4",
@@ -1056,6 +1057,7 @@ export const WIZARD = {
     noCountry: "No country found",
     nameError: "Enter the coach's name",
     ageError: "Age between 18 and 80",
+    namePlaceholder: "E.g.: José Mourinho",
     nextChooseClub: "Next — Choose club",
     // ClubPicker
     step2of4: "Step 2 of 4",

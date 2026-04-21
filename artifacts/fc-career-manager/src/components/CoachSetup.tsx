@@ -110,7 +110,7 @@ export function CoachSetup({ onNext, initial }: CoachSetupProps) {
               value={name}
               onChange={(e) => { setName(e.target.value); setErrors((p) => ({ ...p, name: undefined })); }}
               onKeyDown={(e) => e.key === "Enter" && handleNext()}
-              placeholder="Ex.: José Mourinho"
+              placeholder={t.namePlaceholder}
               className="w-full px-4 py-3 rounded-xl text-white placeholder-white/20 focus:outline-none transition-all duration-300 text-sm glass"
               style={{ borderColor: errors.name ? "rgba(239,68,68,0.5)" : undefined }}
               onFocus={(e) => { if (!errors.name) e.currentTarget.style.borderColor = `rgba(var(--club-primary-rgb),0.4)`; }}
