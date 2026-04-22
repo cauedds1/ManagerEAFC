@@ -181,7 +181,17 @@ export function MissionWidget({
 }: MissionWidgetProps) {
   const [lang] = useLang();
   const t = ONBOARDING[lang];
-  const [collapsed, setCollapsed] = useState(false);
+
+  const collapsedKey = `fc_widget_collapsed_${careerId}`;
+  const [collapsed, setCollapsedRaw] = useState<boolean>(() => {
+    if (allMissionsForPlanDone(careerId, plan)) return true;
+    return localStorage.getItem(collapsedKey) === "1";
+  });
+  const setCollapsed = useCallback((val: boolean) => {
+    setCollapsedRaw(val);
+    localStorage.setItem(collapsedKey, val ? "1" : "0");
+  }, [collapsedKey]);
+
   const [, forceUpdate] = useState(0);
   const [lastCompletedId, setLastCompletedId] = useState<MissionId | null>(null);
 
@@ -195,7 +205,6 @@ export function MissionWidget({
         setTimeout(() => {
           setLastCompletedId(null);
           forceUpdate((n) => n + 1);
-          // Auto-collapse to compact button once all missions are done
           if (allMissionsForPlanDone(careerId, plan)) {
             setCollapsed(true);
           }
@@ -204,7 +213,7 @@ export function MissionWidget({
     };
     window.addEventListener(FC_MISSION_COMPLETE_EVENT, handler);
     return () => window.removeEventListener(FC_MISSION_COMPLETE_EVENT, handler);
-  }, [collapsed, careerId, plan]);
+  }, [collapsed, careerId, plan, setCollapsed]);
 
   const missions = getMissionsForPlan(plan);
   const allDone = allMissionsForPlanDone(careerId, plan);
