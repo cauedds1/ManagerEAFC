@@ -74,7 +74,7 @@ export async function uploadFileToR2(
   folder: string,
   buffer: Buffer,
   contentType: string,
-): Promise<string> {
+): Promise<{ url: string; key: string }> {
   const { R2_BUCKET_NAME, R2_PUBLIC_URL } = process.env;
   if (!R2_BUCKET_NAME || !R2_PUBLIC_URL) {
     throw new Error("R2_BUCKET_NAME or R2_PUBLIC_URL not configured");
@@ -95,7 +95,7 @@ export async function uploadFileToR2(
   );
 
   const base = R2_PUBLIC_URL.replace(/\/$/, "");
-  return `${base}/${key}`;
+  return { url: `${base}/${key}`, key };
 }
 
 export async function uploadStreamToR2(

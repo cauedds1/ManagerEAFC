@@ -5,7 +5,7 @@ import { useLang } from "@/hooks/useLang";
 import { createPortal } from "react-dom";
 import type { Career } from "@/types/career";
 import type { NewsPost, NewsSource, NewsCategory } from "@/types/noticias";
-import { getPosts, savePosts, addPost, updatePost, removePost, generatePostId, generateCommentId } from "@/lib/noticiaStorage";
+import { getPosts, savePosts, addPost, updatePost, removePost, generatePostId, generateCommentId, deleteMediaFromR2 } from "@/lib/noticiaStorage";
 import { getAiHeaders } from "@/lib/apiStorage";
 import { seedPosts } from "@/lib/noticiaSeed";
 import { NoticiaPost } from "./NoticiaPost";
@@ -29,7 +29,6 @@ import { getAllPlayerStats, getAllPlayerOverrides } from "@/lib/playerStatsStora
 import { getLeaguePosition } from "@/lib/leagueStorage";
 import { getTransfers } from "@/lib/transferStorage";
 import { getFanMood, getFanMoodLabel } from "@/lib/fanMoodStorage";
-import { deleteVideoFromR2 } from "@/lib/momentoStorage";
 import { getPlanLimits } from "@/lib/userPlan";
 
 import type { Season } from "@/types/career";
@@ -358,6 +357,7 @@ function AddPostModal({
   const {
     previewUrl: imagePreviewUrl,
     objectPath: imageObjectPath,
+    objectKey: imageObjectKey,
     isUploading: isUploadingImage,
     error: imageError,
     pendingFile: imagePendingFile,
@@ -508,7 +508,7 @@ function AddPostModal({
       sourceName: manSourceName,
       ...(manTitle.trim() ? { title: manTitle.trim() } : {}),
       content: manContent.trim(),
-      ...(imageObjectPath ? { imageUrl: imageObjectPath } : {}),
+      ...(imageObjectPath ? { imageUrl: imageObjectPath, imageKey: imageObjectKey ?? undefined } : {}),
       ...(videoUrl ? { videoUrl, videoKey: videoKey ?? undefined } : {}),
       likes: Math.floor(Math.random() * 5000) + 500,
       commentsCount: Math.floor(Math.random() * 300) + 20,
@@ -1589,9 +1589,13 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
     return `Histórico de temporadas anteriores do clube:\n${lines.join("\n")}`;
   }, [pastSeasons]);
 
-  const handleUpdateImage = (postId: string, imageUrl: string | null) => {
-    updatePost(seasonId, postId, { imageUrl: imageUrl ?? undefined });
-    setPosts((prev) => prev.map((p) => p.id === postId ? { ...p, imageUrl: imageUrl ?? undefined } : p));
+  const handleUpdateImage = (postId: string, imageUrl: string | null, imageKey?: string | null) => {
+    const post = posts.find((p) => p.id === postId);
+    if (post?.imageKey) {
+      deleteMediaFromR2(post.imageKey);
+    }
+    updatePost(seasonId, postId, { imageUrl: imageUrl ?? undefined, imageKey: imageKey ?? undefined });
+    setPosts((prev) => prev.map((p) => p.id === postId ? { ...p, imageUrl: imageUrl ?? undefined, imageKey: imageKey ?? undefined } : p));
   };
 
   const handleUpdateImageFit = (postId: string, fit: "cover" | "contain") => {
@@ -1601,8 +1605,8 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
 
   const handleDeletePost = async (postId: string) => {
     const post = posts.find((p) => p.id === postId);
-    if (post?.videoKey) {
-      await deleteVideoFromR2(post.videoKey);
+    if (post?.videoKey || post?.imageKey) {
+      await deleteMediaFromR2(post.imageKey, post.videoKey);
     }
     removePost(seasonId, postId);
     setPosts((prev) => prev.filter((p) => p.id !== postId));

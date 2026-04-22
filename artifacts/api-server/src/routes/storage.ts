@@ -137,8 +137,8 @@ router.post("/storage/uploads/file", (req: Request, res: Response) => {
     const folder = ALLOWED_FOLDERS.has(rawFolder) ? rawFolder : "uploads";
 
     try {
-      const url = await uploadFileToR2(folder, file.buffer, file.mimetype);
-      res.json({ url });
+      const { url, key } = await uploadFileToR2(folder, file.buffer, file.mimetype);
+      res.json({ url, key });
     } catch (error) {
       req.log.error({ err: error }, "Error uploading file to R2");
       res.status(500).json({ error: "Falha ao fazer upload do arquivo." });
@@ -228,16 +228,18 @@ router.delete("/storage/objects", requireAuth, async (req: AuthRequest, res: Res
   const parts = key.split("/");
   const folder = parts[0];
 
-  const deletableFolders = new Set(["momentos", "noticias-video"]);
+  const deletableFolders = new Set(["momentos", "noticias-video", "noticias"]);
   if (!deletableFolders.has(folder)) {
     res.status(403).json({ error: "Esta rota só permite exclusão de arquivos de momentos e notícias." });
     return;
   }
 
-  const keyUserId = parts[1] ? parseInt(parts[1], 10) : NaN;
-  if (isNaN(keyUserId) || keyUserId !== req.user?.id) {
-    res.status(403).json({ error: "Acesso negado: arquivo não pertence ao usuário autenticado." });
-    return;
+  if (folder !== "noticias") {
+    const keyUserId = parts[1] ? parseInt(parts[1], 10) : NaN;
+    if (isNaN(keyUserId) || keyUserId !== req.user?.id) {
+      res.status(403).json({ error: "Acesso negado: arquivo não pertence ao usuário autenticado." });
+      return;
+    }
   }
 
   try {

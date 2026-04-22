@@ -50,3 +50,20 @@ export function updatePost(seasonId: string, postId: string, updates: Partial<Ne
 export function generateNoticia(_career: Career, _trigger: string): null {
   return null;
 }
+
+function getAuthHeader(): Record<string, string> {
+  const token = localStorage.getItem("fc_auth_token");
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+export async function deleteMediaFromR2(imageKey?: string, videoKey?: string): Promise<void> {
+  const keys = [imageKey, videoKey].filter((k): k is string => !!k);
+  await Promise.allSettled(
+    keys.map((key) =>
+      fetch(`/api/storage/objects?key=${encodeURIComponent(key)}`, {
+        method: "DELETE",
+        headers: { ...getAuthHeader() },
+      }),
+    ),
+  );
+}

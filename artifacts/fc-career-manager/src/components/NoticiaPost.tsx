@@ -225,7 +225,7 @@ interface NoticiaPostProps {
   post: NewsPost;
   portalPhotos?: PortalPhotos;
   customPortals?: CustomPortal[];
-  onUpdateImage?: (postId: string, imageUrl: string | null) => void;
+  onUpdateImage?: (postId: string, imageUrl: string | null, imageKey?: string | null) => void;
   onUpdateImageFit?: (postId: string, fit: "cover" | "contain") => void;
   onDelete?: (postId: string) => void;
   onRefresh?: (postId: string) => void;
@@ -264,7 +264,7 @@ export function NoticiaPost({ post, portalPhotos, customPortals, onUpdateImage, 
 
   const handleRemoveImage = () => {
     setMenuOpen(false);
-    onUpdateImage?.(post.id, null);
+    onUpdateImage?.(post.id, null, null);
   };
 
   const handleRefresh = () => {
@@ -293,9 +293,9 @@ export function NoticiaPost({ post, portalPhotos, customPortals, onUpdateImage, 
       form.append("file", file);
       const res = await fetch(`/api/storage/uploads/file?folder=noticias`, { method: "POST", body: form });
       if (!res.ok) throw new Error("upload failed");
-      const { url } = (await res.json()) as { url: string };
+      const { url, key } = (await res.json()) as { url: string; key?: string };
       if (!url) throw new Error("no url");
-      onUpdateImage?.(post.id, url);
+      onUpdateImage?.(post.id, url, key ?? null);
       URL.revokeObjectURL(blobUrl);
       setLocalImageUrl(null);
     } catch {

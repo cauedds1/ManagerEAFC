@@ -40,6 +40,7 @@ export interface NewsPost {
   title?: string;
   content: string;
   imageUrl?: string;
+  imageKey?: string;
   imageFit?: "cover" | "contain";
   videoUrl?: string;
   videoKey?: string;

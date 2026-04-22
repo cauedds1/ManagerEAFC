@@ -3,6 +3,7 @@ import { useState, useRef } from "react";
 export interface ImageUploadState {
   previewUrl: string | null;
   objectPath: string | null;
+  objectKey: string | null;
   isUploading: boolean;
   error: string | null;
   pendingFile: { file: File; localUrl: string } | null;
@@ -20,6 +21,7 @@ export interface UseImageUploadReturn extends ImageUploadState {
 export function useImageUpload(): UseImageUploadReturn {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [objectPath, setObjectPath] = useState<string | null>(null);
+  const [objectKey, setObjectKey] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pendingFile, setPendingFile] = useState<{ file: File; localUrl: string } | null>(null);
@@ -56,9 +58,10 @@ export function useImageUpload(): UseImageUploadReturn {
         body: form,
       });
       if (!res.ok) throw new Error("Falha no upload da imagem");
-      const { url } = (await res.json()) as { url: string };
+      const { url, key } = (await res.json()) as { url: string; key?: string };
       if (!url) throw new Error("URL não retornada pelo servidor");
       setObjectPath(url);
+      setObjectKey(key ?? null);
     } catch {
       setError("Erro no upload da imagem. Tente novamente.");
       setPreviewUrl(null);
@@ -75,6 +78,7 @@ export function useImageUpload(): UseImageUploadReturn {
   const reset = () => {
     setPreviewUrl(null);
     setObjectPath(null);
+    setObjectKey(null);
     setError(null);
     setPendingFile(null);
     if (inputRef.current) inputRef.current.value = "";
@@ -83,6 +87,7 @@ export function useImageUpload(): UseImageUploadReturn {
   return {
     previewUrl,
     objectPath,
+    objectKey,
     isUploading,
     error,
     pendingFile,
