@@ -8,6 +8,8 @@ import { getUserPlan, getPlanLimits, getPlanLabel, type Plan } from "@/lib/userP
 import { UpgradePrompt } from "@/components/UpgradePrompt";
 import { useLang } from "@/hooks/useLang";
 import { CAREER_SEL } from "@/lib/i18n";
+import { getAllCareersAgg } from "@/lib/careerAggregateStats";
+import { getSeasons } from "@/lib/seasonStorage";
 
 interface CareerSelectionProps {
   careers: Career[];
@@ -63,6 +65,131 @@ function CoachAvatar({ career, rgb }: { career: Career; rgb: string }) {
         <div className="w-full h-full flex items-center justify-center text-[10px] font-black text-white/50"
           style={{ background: `rgba(${rgb},0.1)` }}>{initials}</div>
       )}
+    </div>
+  );
+}
+
+function ClubLogoSmall({ logo, name }: { logo: string; name: string }) {
+  const [err, setErr] = useState(false);
+  if (logo && !err) {
+    return <img src={logo} alt={name} className="w-full h-full object-contain p-0.5" onError={() => setErr(true)} />;
+  }
+  return <span className="text-[9px] font-black text-white/50">{name.slice(0, 2).toUpperCase()}</span>;
+}
+
+function ClubMosaicRow({ careers, onSelectCareer, label }: {
+  careers: Career[];
+  onSelectCareer: (c: Career) => void;
+  label: string;
+}) {
+  const max = 7;
+  const shown = careers.slice(0, max);
+  const rest = careers.length - max;
+
+  return (
+    <div className="hidden sm:block">
+      <p className="text-[9px] font-bold tracking-widest uppercase text-white/20 mb-2">{label}</p>
+      <div className="flex items-center">
+        {shown.map((career, i) => (
+          <button
+            key={career.id}
+            onClick={() => onSelectCareer(career)}
+            title={career.clubName}
+            className="relative w-8 h-8 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center transition-all duration-150 hover:scale-110 hover:z-10 focus:outline-none"
+            style={{
+              marginLeft: i === 0 ? 0 : -8,
+              zIndex: shown.length - i,
+              border: "2px solid rgba(10,10,20,0.9)",
+              background: "rgba(255,255,255,0.05)",
+            }}
+          >
+            <ClubLogoSmall logo={career.clubLogo} name={career.clubName} />
+          </button>
+        ))}
+        {rest > 0 && (
+          <div
+            className="w-8 h-8 rounded-full flex items-center justify-center text-[9px] font-black text-white/40 flex-shrink-0"
+            style={{ marginLeft: -8, background: "rgba(255,255,255,0.06)", border: "2px solid rgba(10,10,20,0.9)" }}
+          >
+            +{rest}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function PlanBadge({ plan, label }: { plan: Plan; label: string }) {
+  const isUltra = plan === "ultra";
+  const isPro = plan === "pro";
+
+  const badgeBg = isUltra
+    ? "rgba(245,158,11,0.08)"
+    : isPro
+    ? "rgba(124,92,252,0.08)"
+    : "rgba(255,255,255,0.04)";
+  const badgeBorder = isUltra
+    ? "1px solid rgba(245,158,11,0.22)"
+    : isPro
+    ? "1px solid rgba(124,92,252,0.22)"
+    : "1px solid rgba(255,255,255,0.07)";
+  const planColor = isUltra ? "#f59e0b" : isPro ? "#a78bfa" : "rgba(255,255,255,0.35)";
+  const planIcon = isUltra ? (
+    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.957a1 1 0 00.95.69h4.162c.969 0 1.371 1.24.588 1.81l-3.37 2.448a1 1 0 00-.364 1.118l1.287 3.957c.3.921-.755 1.688-1.54 1.118L10 15.347l-3.95 2.878c-.784.57-1.838-.197-1.539-1.118l1.287-3.957a1 1 0 00-.364-1.118L2.063 9.384c-.783-.57-.38-1.81.588-1.81h4.162a1 1 0 00.95-.69L9.05 2.927z" />
+    </svg>
+  ) : isPro ? (
+    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+    </svg>
+  ) : (
+    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+    </svg>
+  );
+
+  return (
+    <div
+      className="flex items-center gap-2 px-3 py-2 rounded-xl"
+      style={{ background: badgeBg, border: badgeBorder }}
+    >
+      <span style={{ color: planColor }}>{planIcon}</span>
+      <div className="flex items-center gap-1.5 flex-1 min-w-0">
+        <span className="text-[9px] font-bold tracking-widest uppercase text-white/25">
+          {label}
+        </span>
+        <span className="text-xs font-black" style={{ color: planColor }}>
+          {getPlanLabel(plan)}
+        </span>
+      </div>
+      {isUltra && (
+        <span className="text-[9px] font-bold text-amber-400/60 tracking-wide">PREMIUM</span>
+      )}
+    </div>
+  );
+}
+
+function TrajectStat({
+  value,
+  label,
+  accent,
+  loading,
+}: {
+  value: number | string;
+  label: string;
+  accent?: string;
+  loading?: boolean;
+}) {
+  const displayColor = loading ? "rgba(255,255,255,0.18)" : (accent ?? "rgba(255,255,255,0.75)");
+  return (
+    <div
+      className="rounded-xl p-2.5 flex flex-col gap-0.5"
+      style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}
+    >
+      <p className="text-[15px] font-black leading-none tabular-nums" style={{ color: displayColor }}>
+        {loading ? "—" : value}
+      </p>
+      <p className="text-[9px] font-medium text-white/22 leading-tight mt-0.5">{label}</p>
     </div>
   );
 }
@@ -198,6 +325,7 @@ export function CareerSelection({ careers, onSelectCareer, onCreateNew, onCareer
   const planLimits = getPlanLimits(resolvedPlan);
   const atCareerLimit = isFinite(planLimits.maxCareers) && careers.length >= planLimits.maxCareers;
   const [localCareers, setLocalCareers] = useState(careers);
+  const [seasonCount, setSeasonCount] = useState<number | null>(null);
 
   useEffect(() => { setLocalCareers(careers); }, [careers]);
 
@@ -209,36 +337,53 @@ export function CareerSelection({ careers, onSelectCareer, onCreateNew, onCareer
   };
 
   const hasCareer = localCareers.length > 0;
-
   const leagueCount = [...new Set(localCareers.map(c => c.clubLeague))].length;
   const careerLabel = localCareers.length === 1 ? t.statCareer : t.statCareers;
   const leagueLabel = leagueCount === 1 ? t.statLeague : t.statLeagues;
 
+  const totalAgg = useMemo(
+    () => getAllCareersAgg(localCareers.map(c => c.id)),
+    [localCareers],
+  );
+
+  useEffect(() => {
+    if (localCareers.length === 0) { setSeasonCount(0); return; }
+    let cancelled = false;
+    Promise.all(localCareers.map(c => getSeasons(c.id))).then(results => {
+      if (!cancelled) setSeasonCount(results.reduce((sum, ss) => sum + ss.length, 0));
+    });
+    return () => { cancelled = true; };
+  }, [localCareers]);
+
   return (
     <div className="h-full flex flex-col sm:flex-row overflow-hidden">
 
-      <div
-        className="career-sidebar w-full sm:w-64 xl:w-72 flex-shrink-0 flex flex-col justify-between p-5 sm:p-7 relative overflow-hidden"
-      >
+      <div className="career-sidebar w-full sm:w-64 xl:w-72 flex-shrink-0 flex flex-col p-5 sm:p-7 relative overflow-hidden gap-0">
+
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute -bottom-20 -left-20 w-64 h-64 rounded-full blur-3xl opacity-10"
             style={{ background: "var(--club-primary)" }} />
+          {hasCareer && (
+            <div className="absolute -top-16 -right-16 w-48 h-48 rounded-full blur-3xl opacity-5"
+              style={{ background: "var(--club-primary)" }} />
+          )}
         </div>
 
-        <div className="relative">
-          <div className="hidden sm:flex w-12 h-12 rounded-2xl items-center justify-center mb-7 animate-float"
+        <div className="relative flex-1 min-h-0 overflow-y-auto flex flex-col gap-4" style={{ scrollbarWidth: "none" }}>
+
+          <div className="hidden sm:flex w-12 h-12 rounded-2xl items-center justify-center animate-float flex-shrink-0"
             style={{ background: "rgba(var(--club-primary-rgb),0.12)", border: "1px solid rgba(var(--club-primary-rgb),0.2)", boxShadow: "0 0 30px rgba(var(--club-primary-rgb),0.15)" }}>
             <svg className="w-6 h-6" style={{ color: "var(--club-primary)" }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 6.75V15m6-6v8.25m.503 3.498l4.875-2.437c.381-.19.622-.58.622-1.006V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0L9.503 3.252a1.125 1.125 0 00-1.006 0L3.622 5.689C3.24 5.88 3 6.27 3 6.695V19.18c0 .836.88 1.38 1.628 1.006l3.869-1.934c.317-.159.69-.159 1.006 0l4.994 2.497c.317.158.69.158 1.006 0z" />
             </svg>
           </div>
 
-          <div className="flex sm:block items-center justify-between gap-3 mb-2 sm:mb-0">
+          <div className="flex sm:block items-center justify-between gap-3">
             <div>
               <p className="text-[10px] font-bold tracking-widest uppercase sm:mb-2" style={{ color: "var(--club-primary)" }}>
                 {t.eaLabel}
               </p>
-              <h1 className="text-lg sm:text-2xl font-black text-white leading-tight sm:mb-3" style={{ whiteSpace: "pre-line" }}>
+              <h1 className="text-lg sm:text-2xl font-black text-white leading-tight" style={{ whiteSpace: "pre-line" }}>
                 {hasCareer ? t.headingExisting : t.headingNew}
               </h1>
             </div>
@@ -270,25 +415,55 @@ export function CareerSelection({ careers, onSelectCareer, onCreateNew, onCareer
             </div>
           </div>
 
-          <p className="text-white/30 text-xs leading-relaxed hidden sm:block">
+          <PlanBadge plan={resolvedPlan} label={t.planBadgeLabel} />
+
+          <p className="text-white/30 text-xs leading-relaxed hidden sm:block -mt-1">
             {hasCareer ? t.descExisting : t.descNew}
           </p>
 
           {hasCareer && (
-            <div className="mt-3 sm:mt-5 grid grid-cols-2 gap-2">
-              <div className="rounded-xl p-3" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                <p className="text-2xl font-black text-white">{localCareers.length}</p>
-                <p className="text-white/30 text-[10px] font-medium mt-0.5">{careerLabel}</p>
+            <>
+              <ClubMosaicRow
+                careers={localCareers}
+                onSelectCareer={onSelectCareer}
+                label={t.clubsLabel}
+              />
+
+              <div style={{ height: "1px", background: "rgba(255,255,255,0.05)" }} className="hidden sm:block" />
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="rounded-xl p-3" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                  <p className="text-2xl font-black text-white">{localCareers.length}</p>
+                  <p className="text-white/30 text-[10px] font-medium mt-0.5">{careerLabel}</p>
+                </div>
+                <div className="rounded-xl p-3" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                  <p className="text-2xl font-black text-white">{leagueCount}</p>
+                  <p className="text-white/30 text-[10px] font-medium mt-0.5">{leagueLabel}</p>
+                </div>
               </div>
-              <div className="rounded-xl p-3" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                <p className="text-2xl font-black text-white">{leagueCount}</p>
-                <p className="text-white/30 text-[10px] font-medium mt-0.5">{leagueLabel}</p>
+
+              <div className="hidden sm:block">
+                <div style={{ height: "1px", background: "rgba(255,255,255,0.05)" }} className="mb-4" />
+                <p className="text-[9px] font-bold tracking-widest uppercase text-white/20 mb-2.5">{t.sectionTrajectory}</p>
+                <div className="grid grid-cols-3 gap-1.5">
+                  <TrajectStat value={totalAgg.matches} label={t.statMatches} />
+                  <TrajectStat value={totalAgg.wins} label={t.statWins} accent="#34d399" />
+                  <TrajectStat value={totalAgg.draws} label={t.statDraws} accent="rgba(148,163,184,0.8)" />
+                  <TrajectStat value={totalAgg.losses} label={t.statLosses} accent="#f87171" />
+                  <TrajectStat value={totalAgg.goals} label={t.statGoals} accent="#fbbf24" />
+                  <TrajectStat
+                    value={seasonCount ?? 0}
+                    label={t.statSeasons}
+                    accent="rgba(var(--club-primary-rgb),1)"
+                    loading={seasonCount === null}
+                  />
+                </div>
               </div>
-            </div>
+            </>
           )}
         </div>
 
-        <div className="relative flex-col gap-2 hidden sm:flex">
+        <div className="relative flex-col gap-2 hidden sm:flex pt-4 flex-shrink-0">
           {atCareerLimit ? (
             <UpgradePrompt
               currentPlan={resolvedPlan}
@@ -298,16 +473,16 @@ export function CareerSelection({ careers, onSelectCareer, onCreateNew, onCareer
               compact
             />
           ) : (
-          <button
-            onClick={onCreateNew}
-            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-white text-sm transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
-            style={{ background: "var(--club-gradient)", boxShadow: "0 4px 20px rgba(var(--club-primary-rgb),0.25)" }}
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-            </svg>
-            {t.newCareer}
-          </button>
+            <button
+              onClick={onCreateNew}
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-white text-sm transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+              style={{ background: "var(--club-gradient)", boxShadow: "0 4px 20px rgba(var(--club-primary-rgb),0.25)" }}
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+              </svg>
+              {t.newCareer}
+            </button>
           )}
         </div>
       </div>
@@ -334,7 +509,7 @@ export function CareerSelection({ careers, onSelectCareer, onCreateNew, onCareer
               style={{ background: "rgba(var(--club-primary-rgb),0.08)", border: "1px solid rgba(var(--club-primary-rgb),0.18)", boxShadow: "0 0 60px rgba(var(--club-primary-rgb),0.15)" }}>
               <div className="absolute inset-2 rounded-2xl" style={{ border: "1px solid rgba(var(--club-primary-rgb),0.1)" }} />
               <svg className="w-11 h-11 relative" style={{ color: "var(--club-primary)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 6.75V15m6-6v8.25m.503 3.498l4.875-2.437c.381-.19.622-.58.622-1.006V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0L9.503 3.252a1.125 1.125 0 00-1.006 0L3.622 5.689C3.24 5.88 3 6.27 3 6.695V19.18c0 .836.88 1.38 1.628 1.006l3.869-1.934c.317-.159.69-.159 1.006 0l4.994 2.497c.317.158.69.158 1.006 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 6.75V15m6-6v8.25m.503 3.498l4.875-2.437c.381-.19.622-.58.622-1.006V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0L9.503 3.252a1.125 1.125 0 00-1.006 0L3.622 5.689C3.24 5.88 3 6.27 3 6.695V19.18c0 .836.88 1.38 1.628 1.006l3.869-1.934c-.317-.159.69-.159 1.006 0l4.994 2.497c.317.158.69.158 1.006 0z" />
               </svg>
             </div>
 
