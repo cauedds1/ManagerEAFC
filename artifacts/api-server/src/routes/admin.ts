@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { db, clubsTable, squadPlayersTable } from "@workspace/db";
-import { sql, eq } from "drizzle-orm";
+import { db, clubsTable, squadPlayersTable, careersTable, seasonsTable, careerDataTable, seasonDataTable } from "@workspace/db";
+import { sql, eq, notInArray } from "drizzle-orm";
 import { mapPosition, AF_TO_FC26 } from "../lib/positions";
 
 const router = Router();
@@ -419,6 +419,205 @@ router.get("/admin/reenrich-positions", async (req, res) => {
     console.error("GET /admin/reenrich-positions error:", err);
     emit({ type: "error", message: "Erro interno no servidor." });
     res.end();
+  }
+});
+
+// POST /admin/recover-career
+//
+// Recovers a career that was accidentally deleted by reconstructing the `careers` row
+// from caller-supplied metadata and auto-discovering orphaned seasons from `season_data`.
+//
+// Requires header: x-admin-secret: <ADMIN_SECRET env var>
+//
+// Example (curl):
+//   curl -X POST https://your-api/api/admin/recover-career \
+//     -H "Content-Type: application/json" \
+//     -H "x-admin-secret: YOUR_ADMIN_SECRET" \
+//     -d '{
+//       "career_id": "mc2j4k5xyz",
+//       "user_id": 42,
+//       "club_name": "Manchester City",
+//       "club_id": 50,
+//       "club_logo": "https://media.api-sports.io/football/teams/50.png",
+//       "club_league": "Premier League",
+//       "club_country": "England",
+//       "club_primary": "#6CABDD",
+//       "club_secondary": "#FFFFFF",
+//       "coach": { "name": "João Silva", "nationality": "Brasil", "nationalityFlag": "🇧🇷", "age": 45 },
+//       "season": "2024/25",
+//       "season_ids": ["mc2j4k5xyz", "s-abc123-def"]
+//     }'
+//
+// Fields:
+//   career_id   (required) – the ID of the deleted career
+//   user_id     (optional) – numeric user ID to own the career; defaults to null (shared)
+//   coach       (optional) – coach object; defaults to placeholder
+//   club_name   (optional) – club name; defaults to "Unknown Club"
+//   club_id     (optional) – numeric club ID; defaults to 0
+//   club_logo   (optional) – logo URL
+//   club_league (optional) – league name
+//   club_country/club_stadium/club_founded/club_primary/club_secondary/club_description – all optional
+//   season      (optional) – career season label (e.g. "2024/25")
+//   season_ids  (optional) – explicit list of season IDs to recover; if omitted, all orphaned
+//                            season_ids found in season_data (not in seasons table) are used
+router.post("/admin/recover-career", async (req, res) => {
+  const adminSecret = process.env.ADMIN_SECRET;
+  if (!adminSecret || req.headers["x-admin-secret"] !== adminSecret) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  const body = req.body as {
+    career_id?: string;
+    user_id?: number | null;
+    coach?: object;
+    club_name?: string;
+    club_id?: number;
+    club_logo?: string;
+    club_league?: string;
+    club_country?: string;
+    club_stadium?: string;
+    club_founded?: number;
+    club_primary?: string;
+    club_secondary?: string;
+    club_description?: string;
+    club_titles?: object[];
+    season?: string;
+    projeto?: string;
+    competitions?: string[];
+    season_ids?: string[];
+  };
+
+  const careerId = body.career_id?.trim();
+  if (!careerId) {
+    return res.status(400).json({ error: "career_id is required" });
+  }
+
+  try {
+    // 1. Verify there are orphaned records in career_data for this career_id
+    const orphanedCareerData = await db
+      .select({ key: careerDataTable.key })
+      .from(careerDataTable)
+      .where(eq(careerDataTable.careerId, careerId))
+      .limit(1);
+
+    if (orphanedCareerData.length === 0) {
+      return res.status(404).json({
+        error: `Nenhum dado encontrado em career_data para career_id="${careerId}". Recuperação impossível sem dados.`,
+      });
+    }
+
+    const now = Date.now();
+
+    // 2. Reconstruct the careers row
+    const coachFallback = { name: "Técnico", nationality: "Brasil", nationalityFlag: "🇧🇷", age: 40 };
+    await db
+      .insert(careersTable)
+      .values({
+        id: careerId,
+        coachJson: JSON.stringify(body.coach ?? coachFallback),
+        clubId: body.club_id ?? 0,
+        clubName: body.club_name ?? "Unknown Club",
+        clubLogo: body.club_logo ?? "",
+        clubLeague: body.club_league ?? "",
+        clubCountry: body.club_country ?? null,
+        clubStadium: body.club_stadium ?? null,
+        clubFounded: body.club_founded ?? null,
+        clubPrimary: body.club_primary ?? null,
+        clubSecondary: body.club_secondary ?? null,
+        clubDescription: body.club_description ?? null,
+        clubTitlesJson: body.club_titles ? JSON.stringify(body.club_titles) : null,
+        season: body.season ?? "",
+        projeto: body.projeto ?? null,
+        competitionsJson: body.competitions ? JSON.stringify(body.competitions) : null,
+        currentSeasonId: null,
+        userId: body.user_id ?? null,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .onConflictDoNothing();
+
+    // 3. Find season IDs to recover
+    let targetSeasonIds: string[];
+
+    if (body.season_ids && body.season_ids.length > 0) {
+      targetSeasonIds = body.season_ids;
+    } else {
+      // Auto-discover: find all distinct season_ids in season_data that are not in seasons table
+      const existingSeasonRows = await db.select({ id: seasonsTable.id }).from(seasonsTable);
+      const existingSeasonIds = existingSeasonRows.map((r) => r.id);
+
+      if (existingSeasonIds.length > 0) {
+        const orphanedSeasons = await db
+          .selectDistinct({ seasonId: seasonDataTable.seasonId })
+          .from(seasonDataTable)
+          .where(notInArray(seasonDataTable.seasonId, existingSeasonIds));
+        targetSeasonIds = orphanedSeasons.map((r) => r.seasonId);
+      } else {
+        const orphanedSeasons = await db
+          .selectDistinct({ seasonId: seasonDataTable.seasonId })
+          .from(seasonDataTable);
+        targetSeasonIds = orphanedSeasons.map((r) => r.seasonId);
+      }
+    }
+
+    // 4. Sort season IDs by embedded timestamp (IDs are base36 timestamps or "s-<base36>-<random>")
+    function extractTimestamp(id: string): number {
+      const sMatch = id.match(/^s-([0-9a-z]+)-/);
+      if (sMatch) return parseInt(sMatch[1], 36);
+      const plain = id.match(/^([0-9a-z]+)/);
+      if (plain) return parseInt(plain[1], 36);
+      return 0;
+    }
+    targetSeasonIds.sort((a, b) => extractTimestamp(a) - extractTimestamp(b));
+
+    // 5. Reconstruct seasons rows
+    let recoveredSeasons = 0;
+    let activatedSeasonId: string | null = null;
+
+    for (let i = 0; i < targetSeasonIds.length; i++) {
+      const seasonId = targetSeasonIds[i];
+      const isLast = i === targetSeasonIds.length - 1;
+      const label = `Temporada ${i + 1}`;
+
+      const inserted = await db
+        .insert(seasonsTable)
+        .values({
+          id: seasonId,
+          careerId,
+          label,
+          competitionsJson: body.competitions ? JSON.stringify(body.competitions) : null,
+          isActive: isLast,
+          finalized: !isLast,
+          createdAt: extractTimestamp(seasonId) || now,
+        })
+        .onConflictDoNothing()
+        .returning({ id: seasonsTable.id });
+
+      if (inserted.length > 0) {
+        recoveredSeasons++;
+        if (isLast) activatedSeasonId = seasonId;
+      }
+    }
+
+    // 6. Update currentSeasonId on the careers row if we recovered at least one season
+    if (activatedSeasonId) {
+      await db
+        .update(careersTable)
+        .set({ currentSeasonId: activatedSeasonId, updatedAt: now })
+        .where(eq(careersTable.id, careerId));
+    }
+
+    return res.json({
+      ok: true,
+      career_id: careerId,
+      career_created: true,
+      seasons_recovered: recoveredSeasons,
+      active_season_id: activatedSeasonId,
+      message: `Carreira "${body.club_name ?? careerId}" recuperada. ${recoveredSeasons} temporada(s) restaurada(s).`,
+    });
+  } catch (err) {
+    console.error("POST /admin/recover-career error:", err);
+    return res.status(500).json({ error: "Erro interno ao recuperar carreira", details: String(err) });
   }
 });
 
