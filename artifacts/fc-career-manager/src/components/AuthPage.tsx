@@ -503,12 +503,14 @@ export function AuthPage({ onBack, onAuthSuccess, initialPlan, checkoutDraft, on
             </svg>
             {t.back}
           </button>
-          <div style={{ display: "flex", alignItems: "center", gap: 2, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 20, padding: 3 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
             {(["pt", "en"] as Lang[]).map(l => (
               <button
                 key={l}
                 onClick={() => setLang(l)}
-                style={{ fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 16, border: "none", cursor: "pointer", transition: "all 0.2s", letterSpacing: "0.06em", textTransform: "uppercase", background: lang === l ? "rgba(124,92,252,0.85)" : "transparent", color: lang === l ? "#fff" : "#444466" }}>
+                onMouseEnter={e => { if (lang !== l) (e.currentTarget as HTMLButtonElement).style.opacity = "0.55"; }}
+                onMouseLeave={e => { if (lang !== l) (e.currentTarget as HTMLButtonElement).style.opacity = "0.22"; }}
+                style={{ fontSize: 10, fontWeight: 700, padding: "3px 6px", borderRadius: 6, border: "none", cursor: "pointer", transition: "opacity 0.2s", letterSpacing: "0.07em", textTransform: "uppercase", background: "transparent", color: "#d0ccff", opacity: lang === l ? 0.75 : 0.22 }}>
                 {l.toUpperCase()}
               </button>
             ))}

@@ -981,12 +981,14 @@ export function LandingPage({ onStart, onLogin, onStartWithPlan, lang, setLang }
           ))}
 
           {/* ── Language toggle ─── */}
-          <div style={{ display: "flex", alignItems: "center", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 20, padding: "3px 4px", gap: 2 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
             {(["pt", "en"] as Lang[]).map(l => (
               <button
                 key={l}
                 onClick={() => setLang(l)}
-                style={{ padding: "4px 10px", borderRadius: 16, fontSize: 11, fontWeight: 700, border: "none", cursor: "pointer", transition: "all 0.2s", background: lang === l ? "rgba(124,92,252,0.3)" : "transparent", color: lang === l ? "#c8b8ff" : "#555577", letterSpacing: "0.05em" }}
+                onMouseEnter={e => { if (lang !== l) (e.currentTarget as HTMLButtonElement).style.opacity = "0.55"; }}
+                onMouseLeave={e => { if (lang !== l) (e.currentTarget as HTMLButtonElement).style.opacity = "0.22"; }}
+                style={{ padding: "3px 6px", borderRadius: 6, fontSize: 10, fontWeight: 700, border: "none", cursor: "pointer", transition: "opacity 0.2s", background: "transparent", color: "#d0ccff", opacity: lang === l ? 0.75 : 0.22, letterSpacing: "0.07em" }}
               >
                 {l.toUpperCase()}
               </button>
