@@ -45,6 +45,7 @@ interface ClubeViewProps {
   finalizedPlayers?: SquadPlayer[];
   finalizedLeftIds?: Set<number>;
   finalizedSeasonStats?: Record<number, { matchesAsStarter: number; totalMinutes: number }>;
+  isCustomClub?: boolean;
 }
 
 type SeqScope = "atual" | "todas";
@@ -91,6 +92,7 @@ export function ClubeView({
   finalizedPlayers,
   finalizedLeftIds,
   finalizedSeasonStats,
+  isCustomClub,
 }: ClubeViewProps) {
   const [lang] = useLang();
   const t = CLUBE[lang];
@@ -248,6 +250,7 @@ export function ClubeView({
             finalizedPlayers={finalizedPlayers}
             finalizedLeftIds={finalizedLeftIds}
             finalizedSeasonStats={finalizedSeasonStats}
+            isCustomClub={isCustomClub}
           />
         )}
 

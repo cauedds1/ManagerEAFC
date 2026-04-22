@@ -29,6 +29,7 @@ export interface Career {
   projeto?: string;
   competitions?: string[];
   currentSeasonId?: string;
+  isCustomClub?: boolean;
   createdAt: number;
   updatedAt: number;
 }

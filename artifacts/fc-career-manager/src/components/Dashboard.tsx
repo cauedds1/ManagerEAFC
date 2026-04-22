@@ -1620,6 +1620,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
             finalizedPlayers={finalizedSquadData?.finalizedPlayers}
             finalizedLeftIds={finalizedSquadData?.finalizedLeftIds}
             finalizedSeasonStats={finalizedSquadData?.finalizedSeasonStats}
+            isCustomClub={career.isCustomClub}
           />
         )}
         {activeTab !== "clube" && (

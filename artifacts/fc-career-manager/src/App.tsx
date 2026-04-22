@@ -482,8 +482,11 @@ export default function App() {
           clubFounded: newCareer.clubFounded,
           clubPrimary: newCareer.clubPrimary,
           clubSecondary: newCareer.clubSecondary,
+          isCustomClub: newCareer.clubId === 0 ? true : undefined,
           updatedAt: Date.now(),
         };
+      } else if (newCareer.clubId === 0) {
+        careerToEnter = { ...newCareer, isCustomClub: true };
       }
 
       if (careerToEnter.clubId > 0) {

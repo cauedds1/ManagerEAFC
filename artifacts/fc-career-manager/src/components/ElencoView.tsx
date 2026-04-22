@@ -225,6 +225,7 @@ interface ElencoViewProps {
   finalizedPlayers?: SquadPlayer[];
   finalizedLeftIds?: Set<number>;
   finalizedSeasonStats?: Record<number, { matchesAsStarter: number; totalMinutes: number }>;
+  isCustomClub?: boolean;
 }
 
 export function ElencoView({
@@ -245,6 +246,7 @@ export function ElencoView({
   finalizedPlayers,
   finalizedLeftIds,
   finalizedSeasonStats,
+  isCustomClub,
 }: ElencoViewProps) {
   const [lang] = useLang();
   const t = CLUBE[lang];
@@ -749,19 +751,45 @@ export function ElencoView({
       ) : mergedPlayers.length === 0 && !(isFinalized && finalizedPlayers && finalizedPlayers.length > 0) ? (
         <div className="px-4 sm:px-6 pb-6">
           <div className="flex flex-col items-center justify-center py-16 rounded-2xl gap-4 glass w-full">
-            <svg className="w-8 h-8 text-white/15" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-            <p className="text-white/30 text-sm text-center leading-relaxed">
-              {t.noPlayers}
-            </p>
-            <button
-              onClick={() => setShowAddPlayer(true)}
-              className="px-5 py-2 rounded-xl text-xs font-bold text-white transition-all hover:opacity-90"
-              style={{ background: "var(--club-gradient)" }}
-            >
-              {t.addManualPlayer}
-            </button>
+            {isCustomClub ? (
+              <>
+                <div
+                  className="w-14 h-14 rounded-2xl flex items-center justify-center"
+                  style={{ background: "rgba(var(--club-primary-rgb),0.12)", border: "1.5px dashed rgba(var(--club-primary-rgb),0.3)" }}
+                >
+                  <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} style={{ color: "var(--club-primary)" }}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                  </svg>
+                </div>
+                <div className="flex flex-col items-center gap-1 text-center max-w-xs">
+                  <p className="text-white/70 text-sm font-semibold">{t.customClubEmptySquad ?? "Nenhum jogador cadastrado ainda"}</p>
+                  <p className="text-white/30 text-xs leading-relaxed">{t.customClubEmptySquadDesc ?? "Este clube foi criado do zero — adicione os jogadores manualmente"}</p>
+                </div>
+                <button
+                  onClick={() => setShowAddPlayer(true)}
+                  className="px-6 py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90 active:scale-95"
+                  style={{ background: "var(--club-gradient)" }}
+                >
+                  {t.addPlayerLabel ?? t.addManualPlayer}
+                </button>
+              </>
+            ) : (
+              <>
+                <svg className="w-8 h-8 text-white/15" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <p className="text-white/30 text-sm text-center leading-relaxed">
+                  {t.noPlayers}
+                </p>
+                <button
+                  onClick={() => setShowAddPlayer(true)}
+                  className="px-5 py-2 rounded-xl text-xs font-bold text-white transition-all hover:opacity-90"
+                  style={{ background: "var(--club-gradient)" }}
+                >
+                  {t.addManualPlayer}
+                </button>
+              </>
+            )}
           </div>
         </div>
       ) : isFinalized && finalizedPlayers && finalizedPlayers.length > 0 ? (
