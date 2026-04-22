@@ -103,3 +103,11 @@ export const customPortalsTable = pgTable("custom_portals", {
   photoUrl: text("photo_url"),
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
 });
+
+export const clubInfoCacheTable = pgTable("club_info_cache", {
+  id: serial("id").primaryKey(),
+  cacheKey: text("cache_key").notNull().unique(),
+  description: text("description").notNull().default(""),
+  titlesJson: text("titles_json").notNull().default("[]"),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+});

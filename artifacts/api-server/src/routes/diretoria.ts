@@ -1,8 +1,10 @@
 import { Router } from "express";
 import OpenAI from "openai";
+import { eq } from "drizzle-orm";
 import { requireAuth, type AuthRequest } from "../middleware/auth";
 import { callDiretoriaWithPlan, callDiretoriaChatWithPlan } from "../lib/aiProvider";
 import { getPlanLimits } from "../lib/planLimits";
+import { db, clubInfoCacheTable } from "@workspace/db";
 
 const router = Router();
 
@@ -1102,14 +1104,36 @@ router.post("/club-info", requireAuth, async (req: AuthRequest, res) => {
     return;
   }
 
-  const clubInfoDescLang = clubInfoLang === "en"
-    ? "English. Mention city of origin, founding year and identity."
-    : "português brasileiro. Mencione cidade de origem, fundação e identidade.";
-  const clubInfoTitleLang = clubInfoLang === "en"
-    ? `Use English names where common (e.g. "Champions League", "FA Cup")`
-    : `Use nomes em português quando possível (ex: "Liga dos Campeões", "Copa da FA")`;
+  const lang = clubInfoLang === "en" ? "en" : "pt";
+  const cacheKey = [
+    clubName.trim().toLowerCase(),
+    (clubLeague ?? "").trim().toLowerCase(),
+    lang,
+  ].join("|");
 
-  const userPrompt = `Forneça informações sobre o clube: ${clubName}${clubLeague ? ` (${clubLeague})` : ""}${clubCountry ? `, ${clubCountry}` : ""}.
+  try {
+    // ── Cache hit ──────────────────────────────────────────────────────────
+    const [cached] = await db
+      .select({ description: clubInfoCacheTable.description, titlesJson: clubInfoCacheTable.titlesJson })
+      .from(clubInfoCacheTable)
+      .where(eq(clubInfoCacheTable.cacheKey, cacheKey))
+      .limit(1);
+
+    if (cached) {
+      const titles = JSON.parse(cached.titlesJson) as Array<{ name: string; count: number }>;
+      res.json({ description: cached.description, titles });
+      return;
+    }
+
+    // ── Cache miss — call AI ───────────────────────────────────────────────
+    const clubInfoDescLang = lang === "en"
+      ? "English. Mention city of origin, founding year and identity."
+      : "português brasileiro. Mencione cidade de origem, fundação e identidade.";
+    const clubInfoTitleLang = lang === "en"
+      ? `Use English names where common (e.g. "Champions League", "FA Cup")`
+      : `Use nomes em português quando possível (ex: "Liga dos Campeões", "Copa da FA")`;
+
+    const userPrompt = `Forneça informações sobre o clube: ${clubName}${clubLeague ? ` (${clubLeague})` : ""}${clubCountry ? `, ${clubCountry}` : ""}.
 
 Responda APENAS com JSON válido (sem markdown) no formato:
 {
@@ -1125,9 +1149,8 @@ REGRAS:
 - Seja factual e preciso — se não souber com certeza, omita
 - description: 2-3 frases curtas e informativas`;
 
-  const systemPromptClubInfo = `Você é especialista em futebol mundial. Responda SOMENTE com JSON válido, sem markdown.${clubInfoLang === "en" ? " CRITICAL: write the description field in English only." : ""}`;
+    const systemPromptClubInfo = `Você é especialista em futebol mundial. Responda SOMENTE com JSON válido, sem markdown.${lang === "en" ? " CRITICAL: write the description field in English only." : ""}`;
 
-  try {
     const raw = await callDiretoriaWithPlan(plan, systemPromptClubInfo, userPrompt, 400);
     const jsonStr = raw
       .replace(/^```json\s*/i, "")
@@ -1140,10 +1163,18 @@ REGRAS:
       titles?: Array<{ name: string; count: number }>;
     };
 
-    res.json({
-      description: data.description ?? "",
-      titles: Array.isArray(data.titles) ? data.titles.filter((t) => t.count >= 1) : [],
-    });
+    const description = data.description ?? "";
+    const titles = Array.isArray(data.titles) ? data.titles.filter((t) => t.count >= 1) : [];
+
+    // ── Persist to cache (best-effort, don't fail the request if it errors) ─
+    db.insert(clubInfoCacheTable).values({
+      cacheKey,
+      description,
+      titlesJson: JSON.stringify(titles),
+      createdAt: Date.now(),
+    }).onConflictDoNothing().catch(() => {});
+
+    res.json({ description, titles });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     res.status(500).json({ error: "Erro ao gerar info do clube", details: msg });
