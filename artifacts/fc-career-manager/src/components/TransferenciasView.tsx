@@ -1056,7 +1056,7 @@ export function TransferenciasView({
           </button>
         </div>
       ) : (
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3 overflow-x-auto">
           {sortedTransfers.map((tr) => (
             <TransferCard
               key={tr.id}

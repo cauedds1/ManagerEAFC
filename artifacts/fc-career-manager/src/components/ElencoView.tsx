@@ -974,9 +974,9 @@ export function ElencoView({
           </div>
 
           {/* Main layout: pitch + bench side by side on desktop */}
-          <div className="flex flex-col lg:flex-row gap-6 items-start">
+          <div className="flex flex-col lg:flex-row gap-6 items-start overflow-x-auto">
             {/* Left: pitch */}
-            <div className="w-full lg:w-[420px] flex-shrink-0">
+            <div className="w-full lg:w-[420px] flex-shrink-0 min-w-0">
               <FootballPitch
                 players={mergedPlayers}
                 starterIds={starterIds}

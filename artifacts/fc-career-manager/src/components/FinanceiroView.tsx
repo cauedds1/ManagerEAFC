@@ -92,7 +92,7 @@ function BudgetEditor({ label, value, onSave, locale = "pt-BR" }: BudgetEditorPr
       ) : (
         <button
           onClick={startEdit}
-          className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-sm font-bold text-white hover:bg-white/10 transition-colors group"
+          className="flex items-center gap-1.5 px-3 py-2 min-h-[44px] rounded-lg text-sm font-bold text-white hover:bg-white/10 transition-colors group"
         >
           <span className="tabular-nums">{value > 0 ? formatMoney(value, "auto", locale) : "—"}</span>
           <svg className="w-3 h-3 text-white/30 group-hover:text-white/60 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -260,15 +260,15 @@ export function FinanceiroView({ careerId, seasonId, transfers, season, isReadOn
         {cards.map((card) => (
           <div
             key={card.label}
-            className="rounded-2xl p-4 flex flex-col gap-1"
+            className="rounded-2xl p-3 sm:p-4 flex flex-col gap-1"
             style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}
           >
-            <span className="text-lg mb-1">{card.icon}</span>
-            <p className="text-white font-black text-base tabular-nums" style={{ color: card.color }}>
+            <span className="text-base sm:text-lg mb-0.5">{card.icon}</span>
+            <p className="text-white font-black text-sm sm:text-base tabular-nums" style={{ color: card.color }}>
               {card.value}
             </p>
-            <p className="text-white/35 text-[11px] leading-tight">{card.label}</p>
-            <p className="text-white/20 text-[10px]">{card.sub}</p>
+            <p className="text-white/35 text-[10px] sm:text-[11px] leading-tight">{card.label}</p>
+            <p className="text-white/20 text-[9px] sm:text-[10px]">{card.sub}</p>
           </div>
         ))}
       </div>
@@ -328,15 +328,16 @@ export function FinanceiroView({ careerId, seasonId, transfers, season, isReadOn
           style={{ border: "1px solid rgba(255,255,255,0.07)" }}
         >
           <div
-            className="px-5 py-3 flex items-center gap-2"
+            className="px-3 sm:px-5 py-3 flex items-center gap-2"
             style={{ background: "rgba(255,255,255,0.02)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}
           >
             <span className="text-lg">💼</span>
             <span className="text-white/40 text-xs font-semibold uppercase tracking-wider">{t.topEarners}</span>
           </div>
-          <div className="divide-y" style={{ borderColor: "rgba(255,255,255,0.04)" }}>
+          <div className="overflow-x-auto">
+          <div className="divide-y min-w-0" style={{ borderColor: "rgba(255,255,255,0.04)" }}>
             {topEarners.map((tr, i) => (
-              <div key={tr.id} className="flex items-center gap-4 px-5 py-3">
+              <div key={tr.id} className="flex items-center gap-3 sm:gap-4 px-3 sm:px-5 py-3">
                 <span className="text-white/20 text-xs font-bold w-4 tabular-nums">{i + 1}</span>
                 <div className="flex-1 min-w-0">
                   <p className="text-white text-sm font-semibold truncate">{tr.playerName}</p>
@@ -349,6 +350,7 @@ export function FinanceiroView({ careerId, seasonId, transfers, season, isReadOn
               </div>
             ))}
           </div>
+          </div>
         </div>
       )}
 
@@ -358,15 +360,16 @@ export function FinanceiroView({ careerId, seasonId, transfers, season, isReadOn
           style={{ border: "1px solid rgba(255,255,255,0.07)" }}
         >
           <div
-            className="px-5 py-3 flex items-center gap-2"
+            className="px-3 sm:px-5 py-3 flex items-center gap-2"
             style={{ background: "rgba(255,255,255,0.02)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}
           >
             <span className="text-lg">🏆</span>
             <span className="text-white/40 text-xs font-semibold uppercase tracking-wider">{t.biggestDeals}</span>
           </div>
-          <div className="divide-y" style={{ borderColor: "rgba(255,255,255,0.04)" }}>
+          <div className="overflow-x-auto">
+          <div className="divide-y min-w-0" style={{ borderColor: "rgba(255,255,255,0.04)" }}>
             {biggestCompra && (
-              <div className="flex items-center gap-3 px-5 py-3">
+              <div className="flex items-center gap-3 px-3 sm:px-5 py-3">
                 <div className="relative flex-shrink-0">
                   {biggestCompra.playerPhoto ? (
                     <img
@@ -402,7 +405,7 @@ export function FinanceiroView({ careerId, seasonId, transfers, season, isReadOn
               </div>
             )}
             {biggestVenda && (
-              <div className="flex items-center gap-3 px-5 py-3">
+              <div className="flex items-center gap-3 px-3 sm:px-5 py-3">
                 <div className="relative flex-shrink-0">
                   {biggestVenda.playerPhoto ? (
                     <img
@@ -437,6 +440,7 @@ export function FinanceiroView({ careerId, seasonId, transfers, season, isReadOn
                 <p className="font-bold text-sm tabular-nums" style={{ color: "#34d399" }}>{fmt(biggestVenda.fee)}</p>
               </div>
             )}
+          </div>
           </div>
         </div>
       )}
