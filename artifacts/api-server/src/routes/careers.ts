@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { db, careersTable, seasonsTable, usersTable } from "@workspace/db";
-import { eq, isNull, or } from "drizzle-orm";
+import { db, careersTable, seasonsTable, usersTable, careerDataTable, seasonDataTable, customPortalsTable } from "@workspace/db";
+import { eq, isNull, or, inArray } from "drizzle-orm";
 import { requireAuth, type AuthRequest } from "../middleware/auth";
 import { getPlanLimits } from "../lib/planLimits";
 
@@ -192,6 +192,14 @@ router.delete("/careers/:id", requireAuth, async (req: AuthRequest, res) => {
       return res.status(404).json({ error: "Carreira não encontrada" });
     }
 
+    const seasonRows = await db.select({ id: seasonsTable.id }).from(seasonsTable).where(eq(seasonsTable.careerId, id));
+    const seasonIds = seasonRows.map((r) => r.id);
+
+    if (seasonIds.length > 0) {
+      await db.delete(seasonDataTable).where(inArray(seasonDataTable.seasonId, seasonIds));
+    }
+    await db.delete(careerDataTable).where(eq(careerDataTable.careerId, id));
+    await db.delete(customPortalsTable).where(eq(customPortalsTable.careerId, id));
     await db.delete(seasonsTable).where(eq(seasonsTable.careerId, id));
     await db.delete(careersTable).where(eq(careersTable.id, id));
     return res.json({ ok: true });

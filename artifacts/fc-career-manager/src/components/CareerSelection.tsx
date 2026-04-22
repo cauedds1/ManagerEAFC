@@ -211,30 +211,83 @@ function TrajectStat({
   );
 }
 
-function CareerCard({ career, onSelect, onDelete, index, t }: {
+function DeleteConfirmModal({ career, t, onConfirm, onCancel }: {
+  career: Career;
+  t: typeof CAREER_SEL["pt"];
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  const cc = useMemo(() => resolveCareerColors(career.clubName, career.clubPrimary, career.clubSecondary), [career.clubName, career.clubPrimary, career.clubSecondary]);
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(6px)" }}
+      onClick={onCancel}
+    >
+      <div
+        className="w-full max-w-sm rounded-2xl p-6 flex flex-col gap-4"
+        style={{
+          background: "rgba(14,14,28,0.97)",
+          border: `1px solid rgba(${cc.rgb},0.2)`,
+          boxShadow: `0 24px 64px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04)`,
+        }}
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+            style={{ background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.2)" }}>
+            <svg className="w-4 h-4 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+          </div>
+          <div>
+            <p className="text-white font-black text-sm">{t.confirmDeleteTitle}</p>
+            <p className="text-white/40 text-xs mt-0.5 truncate">{career.clubName}</p>
+          </div>
+        </div>
+        <p className="text-white/50 text-xs leading-relaxed">{t.confirmDeleteBody}</p>
+        <div className="flex gap-2 mt-1">
+          <button
+            onClick={onCancel}
+            className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150 active:scale-[0.98]"
+            style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.08)" }}
+          >
+            {t.confirmDeleteCancel}
+          </button>
+          <button
+            onClick={onConfirm}
+            className="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all duration-150 active:scale-[0.98]"
+            style={{ background: "rgba(239,68,68,0.15)", color: "#f87171", border: "1px solid rgba(239,68,68,0.25)" }}
+          >
+            {t.confirmDeleteBtn}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CareerCard({ career, onSelect, onRequestDelete, index, t }: {
   career: Career;
   onSelect: () => void;
-  onDelete: () => void;
+  onRequestDelete: () => void;
   index: number;
   t: typeof CAREER_SEL["pt"];
 }) {
-  const [deleting, setDeleting] = useState(false);
   const cc = useMemo(() => resolveCareerColors(career.clubName, career.clubPrimary, career.clubSecondary), [career.clubName, career.clubPrimary, career.clubSecondary]);
 
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setDeleting(true);
-    setTimeout(() => onDelete(), 280);
+    onRequestDelete();
   };
 
   return (
     <div
       className="relative group animate-slide-up"
-      style={{ animationDelay: `${Math.min(index * 60, 300)}ms`, animationFillMode: "both", opacity: deleting ? 0 : 1, transform: deleting ? "scale(0.97)" : "scale(1)", transition: "opacity 280ms, transform 280ms" }}
+      style={{ animationDelay: `${Math.min(index * 60, 300)}ms`, animationFillMode: "both" }}
     >
       <button
         onClick={onSelect}
-        disabled={deleting}
         className="w-full text-left rounded-2xl overflow-hidden transition-all duration-200 hover:scale-[1.02] hover:-translate-y-0.5"
         style={{
           background: `rgba(${cc.rgb},0.06)`,
@@ -343,10 +396,14 @@ export function CareerSelection({ careers, onSelectCareer, onCreateNew, onCareer
   const atCareerLimit = isFinite(planLimits.maxCareers) && careers.length >= planLimits.maxCareers;
   const [localCareers, setLocalCareers] = useState(careers);
   const [seasonCount, setSeasonCount] = useState<number | null>(null);
+  const [pendingDeleteCareer, setPendingDeleteCareer] = useState<Career | null>(null);
 
   useEffect(() => { setLocalCareers(careers); }, [careers]);
 
-  const handleDelete = (id: string) => {
+  const handleConfirmDelete = () => {
+    if (!pendingDeleteCareer) return;
+    const id = pendingDeleteCareer.id;
+    setPendingDeleteCareer(null);
     deleteCareer(id);
     const updated = localCareers.filter((c) => c.id !== id);
     setLocalCareers(updated);
@@ -374,6 +431,7 @@ export function CareerSelection({ careers, onSelectCareer, onCreateNew, onCareer
   }, [localCareers]);
 
   return (
+    <>
     <div className="h-full flex flex-col sm:flex-row overflow-hidden">
 
       <div className="career-sidebar w-full sm:w-64 xl:w-72 flex-shrink-0 flex flex-col p-5 sm:p-7 relative overflow-hidden gap-0">
@@ -591,7 +649,7 @@ export function CareerSelection({ careers, onSelectCareer, onCreateNew, onCareer
                 key={career.id}
                 career={career}
                 onSelect={() => onSelectCareer(career)}
-                onDelete={() => handleDelete(career.id)}
+                onRequestDelete={() => setPendingDeleteCareer(career)}
                 index={i}
                 t={t}
               />
@@ -601,5 +659,15 @@ export function CareerSelection({ careers, onSelectCareer, onCreateNew, onCareer
         )}
       </div>
     </div>
+
+    {pendingDeleteCareer && (
+      <DeleteConfirmModal
+        career={pendingDeleteCareer}
+        t={t}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setPendingDeleteCareer(null)}
+      />
+    )}
+    </>
   );
 }

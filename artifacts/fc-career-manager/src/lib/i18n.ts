@@ -950,6 +950,10 @@ export const CAREER_SEL = {
     planBadgeLabel: "Plano",
     planUpgradeLink: "Fazer upgrade →",
     clubsLabel: "Clubes treinados",
+    confirmDeleteTitle: "Excluir carreira?",
+    confirmDeleteBody: "Todo o progresso desta carreira será apagado permanentemente. Esta ação não pode ser desfeita.",
+    confirmDeleteBtn: "Sim, excluir",
+    confirmDeleteCancel: "Cancelar",
   },
   en: {
     eaLabel: "EA FC 26 · Career Mode",
@@ -985,6 +989,10 @@ export const CAREER_SEL = {
     planBadgeLabel: "Plan",
     planUpgradeLink: "Upgrade →",
     clubsLabel: "Clubs managed",
+    confirmDeleteTitle: "Delete career?",
+    confirmDeleteBody: "All progress in this career will be permanently deleted. This action cannot be undone.",
+    confirmDeleteBtn: "Yes, delete",
+    confirmDeleteCancel: "Cancel",
   },
 } satisfies Record<Lang, Record<string, string>>;
 
