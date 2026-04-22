@@ -617,32 +617,35 @@ router.post("/admin/recover-career", async (req, res) => {
       // Explicit override from caller
       targetSeasonIds = body.season_ids;
     } else {
-      // Auto-discover seasons scoped to this career:
-      // a) Season IDs extracted from comp_results (career-scoped via careerId field)
-      const fromCompResults = [...seasonLabelMap.keys()];
+      // Auto-discover orphaned seasons scoped to this career using two sources:
+      //
+      // Source A — career-scoped season IDs from career_data:
+      //   - comp_results key contains {careerId, seasonId, ...} entries that directly
+      //     link seasons to this career. seasonLabelMap is already keyed by these IDs.
+      //   - The first season always has season_id == career_id (ensureCareerAndSeason1
+      //     passes career.id as the explicit ID when creating the first season).
+      const careerScopedIds = new Set<string>(seasonLabelMap.keys());
+      careerScopedIds.add(careerId); // always include; filtered below if not in season_data
 
-      // b) The first season always has season_id == career_id (ensureCareerAndSeason1 passes career.id)
-      //    Check if career_id itself has orphaned season_data
-      const firstSeasonCheck = await db
-        .select({ seasonId: seasonDataTable.seasonId })
-        .from(seasonDataTable)
-        .where(eq(seasonDataTable.seasonId, careerId))
-        .limit(1);
-      const firstSeasonOrphaned = firstSeasonCheck.length > 0;
+      // Source B — globally orphaned season_data rows (season_id NOT IN seasons table).
+      // These are orphaned because their parent career row was deleted without cascade.
+      const allExistingSeasons = await db.select({ id: seasonsTable.id }).from(seasonsTable);
+      const orphanedFromData: string[] = allExistingSeasons.length > 0
+        ? (await db
+            .selectDistinct({ seasonId: seasonDataTable.seasonId })
+            .from(seasonDataTable)
+            .where(notInArray(seasonDataTable.seasonId, allExistingSeasons.map((r) => r.id))))
+            .map((r) => r.seasonId)
+        : (await db
+            .selectDistinct({ seasonId: seasonDataTable.seasonId })
+            .from(seasonDataTable))
+            .map((r) => r.seasonId);
 
-      // Merge: deduplicate, always include career_id if orphaned
-      const combined = new Set<string>(fromCompResults);
-      if (firstSeasonOrphaned) combined.add(careerId);
-
-      // Filter out season IDs that already exist in the seasons table for this career.
-      // Since the career row was deleted, its seasons were also cascade-deleted, so
-      // this will normally return 0 rows. But we check anyway for idempotency.
-      const existingCareerSeasons = await db
-        .select({ id: seasonsTable.id })
-        .from(seasonsTable)
-        .where(eq(seasonsTable.careerId, careerId));
-      const existingSet = new Set(existingCareerSeasons.map((r) => r.id));
-      targetSeasonIds = [...combined].filter((id) => !existingSet.has(id));
+      // Intersection: only recover sessions that are both:
+      //   1. Orphaned in season_data (not in seasons table)
+      //   2. Scoped to this career (present in comp_results or is the first season)
+      const orphanedSet = new Set(orphanedFromData);
+      targetSeasonIds = [...careerScopedIds].filter((id) => orphanedSet.has(id));
     }
 
     // Sort by embedded timestamp (oldest first → most recent last = active)
