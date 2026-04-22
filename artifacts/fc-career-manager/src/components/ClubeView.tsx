@@ -18,6 +18,8 @@ import { useLang } from "@/hooks/useLang";
 import { CLUBE } from "@/lib/i18n";
 import { SectionHelp } from "./SectionHelp";
 
+export const FC_ELENCO_TAB_VIEWED_EVENT = "fc:elenco_tab_viewed";
+
 type ClubeSubTab = "elenco" | "estatisticas" | "lesoes" | "sequencias" | "financeiro" | "competicoes" | "trofeus";
 type StatsMiniTab = "jogadores" | "clube";
 
@@ -110,6 +112,13 @@ export function ClubeView({
     return new Set(historicalPlayers.filter((p) => !currentPlayerIds.has(p.id)).map((p) => p.id));
   }, [historicalPlayers, currentPlayerIds]);
   const [sub, setSub] = useState<ClubeSubTab>("elenco");
+
+  useEffect(() => {
+    if (sub === "elenco") {
+      window.dispatchEvent(new CustomEvent(FC_ELENCO_TAB_VIEWED_EVENT));
+    }
+  }, [sub]);
+
   const [statsMini, setStatsMini] = useState<StatsMiniTab>("jogadores");
   const [seqScope, setSeqScope] = useState<SeqScope>("atual");
   const [statsScope, setStatsScope] = useState<SeqScope>("atual");

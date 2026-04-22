@@ -31,7 +31,7 @@ import { getLeaguePosition } from "@/lib/leagueStorage";
 import { runAutoNews, runRumorNews, runPromotionRelegationNews, leagueTierLevel } from "@/lib/autoNewsService";
 import type { NewsPost, NewsSource, NewsCategory } from "@/types/noticias";
 import { PainelView } from "./PainelView";
-import { ClubeView } from "./ClubeView";
+import { ClubeView, FC_ELENCO_TAB_VIEWED_EVENT } from "./ClubeView";
 import { TransferenciasView } from "./TransferenciasView";
 import { PartidasView } from "./PartidasView";
 import { NoticiasView, type BgGenParams, type AiPreview, type NoticiaGeneratedDetail, FC_NOTICIA_GENERATED_EVENT } from "./NoticiasView";
@@ -556,16 +556,20 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
       markNoticiasRead(activeSeasonId);
       setNoticiasUnread(0);
     }
-    if (tab === "clube") {
+  }, [career.id, activeSeasonId, userPlan]);
+
+  useEffect(() => {
+    const handler = () => {
       if (!isMissionComplete(career.id, "free_view_squad")) {
         completeMission(career.id, "free_view_squad");
       }
-      // Teaser: rumor for non-ultra
       if (userPlan !== "ultra") {
         setActiveTeaserTrigger("after_squad_rumor");
       }
-    }
-  }, [career.id, activeSeasonId, userPlan]);
+    };
+    window.addEventListener(FC_ELENCO_TAB_VIEWED_EVENT, handler);
+    return () => window.removeEventListener(FC_ELENCO_TAB_VIEWED_EVENT, handler);
+  }, [career.id, userPlan]);
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -1549,7 +1553,11 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
               {/* Persistent mission "?" reopen button */}
               {showMissions && !showOnboardingEntry && !showUpgradeEntry && (
                 <button
-                  onClick={() => { setShowMissions(true); setMissionKey((k) => k + 1); }}
+                  onClick={() => {
+                    localStorage.setItem(`fc_widget_collapsed_${career.id}`, "0");
+                    setShowMissions(true);
+                    setMissionKey((k) => k + 1);
+                  }}
                   className="ml-auto my-auto mr-1 flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all hover:scale-105 active:scale-95"
                   style={{
                     background: "rgba(var(--club-primary-rgb),0.15)",
@@ -1558,7 +1566,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
                   }}
                   title={lang === "en" ? "Missions" : "Missões"}
                 >
-                  🎯
+                  ?
                 </button>
               )}
             </div>

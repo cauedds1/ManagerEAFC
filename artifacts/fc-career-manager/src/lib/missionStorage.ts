@@ -26,14 +26,14 @@ export interface MissionDef {
   descKey: string;
   tab: string;
   rewardKey: string;
-  trigger: "match_added" | "news_generated_auto" | "news_generated" | "club_tab_visited" | "board_member_added" | "momento_saved" | "news_count_3" | "rumor_post_generated" | "portal_created";
+  trigger: "match_added" | "news_generated_auto" | "news_generated" | "elenco_tab_viewed" | "board_member_added" | "momento_saved" | "news_count_3" | "rumor_post_generated" | "portal_created";
   teaserKey?: TeaserKey;
 }
 
 export const MISSIONS: MissionDef[] = [
   { id: "free_log_match",        plan: "free",  titleKey: "m_free1_title", descKey: "m_free1_desc", tab: "partidas",      rewardKey: "m_free1_reward", trigger: "match_added",            teaserKey: "after_match_diretoria" },
   { id: "free_gen_news",         plan: "free",  titleKey: "m_free2_title", descKey: "m_free2_desc", tab: "noticias",      rewardKey: "m_free2_reward", trigger: "news_generated",         teaserKey: "after_news_auto" },
-  { id: "free_view_squad",       plan: "free",  titleKey: "m_free3_title", descKey: "m_free3_desc", tab: "clube",         rewardKey: "m_free3_reward", trigger: "club_tab_visited",       teaserKey: "after_squad_rumor" },
+  { id: "free_view_squad",       plan: "free",  titleKey: "m_free3_title", descKey: "m_free3_desc", tab: "clube",         rewardKey: "m_free3_reward", trigger: "elenco_tab_viewed",      teaserKey: "after_squad_rumor" },
   { id: "pro_setup_diretoria",   plan: "pro",   titleKey: "m_pro1_title",  descKey: "m_pro1_desc",  tab: "diretoria",     rewardKey: "m_pro1_reward",  trigger: "board_member_added" },
   { id: "pro_save_momento",      plan: "pro",   titleKey: "m_pro2_title",  descKey: "m_pro2_desc",  tab: "momentos",      rewardKey: "m_pro2_reward",  trigger: "momento_saved",          teaserKey: "after_momento_videonews" },
   { id: "pro_gen_3_news",        plan: "pro",   titleKey: "m_pro3_title",  descKey: "m_pro3_desc",  tab: "noticias",      rewardKey: "m_pro3_reward",  trigger: "news_count_3" },
