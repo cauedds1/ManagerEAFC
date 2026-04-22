@@ -3602,3 +3602,95 @@ export const SETTINGS: Record<Lang, Record<string, string>> = {
     toneAgressivoDesc: "No filter. Criticises, gets emotional — but also celebrates when deserved.",
   },
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Season Summary View
+// ─────────────────────────────────────────────────────────────────────────────
+export const SEASON_SUMMARY: Record<Lang, {
+  headerSeasonBadge: string;
+  headerFinished: string;
+  headerWins: string;
+  sectionTrophies: string;
+  sectionLeague: string;
+  leagueTeamsSuffix: string;
+  abbrevW: string;
+  abbrevD: string;
+  abbrevL: string;
+  abbrevGF: string;
+  abbrevGS: string;
+  abbrevGD: string;
+  sectionMatches: string;
+  statMatches: string;
+  statWins: string;
+  statDraws: string;
+  statLosses: string;
+  statGoalsFor: string;
+  statGoalsAgainst: string;
+  sectionScorers: string;
+  sectionAssisters: string;
+  statGoalsSuffix: string;
+  statAssistsSuffix: string;
+  emptyState: string;
+  labelBestWin: string;
+  labelWorstLoss: string;
+  dateLocale: string;
+}> = {
+  pt: {
+    headerSeasonBadge: "Temporada",
+    headerFinished: "🏁 Finalizada",
+    headerWins: "vitórias",
+    sectionTrophies: "Títulos Conquistados",
+    sectionLeague: "Desempenho na Liga",
+    leagueTeamsSuffix: "times",
+    abbrevW: "V",
+    abbrevD: "E",
+    abbrevL: "D",
+    abbrevGF: "GF",
+    abbrevGS: "GS",
+    abbrevGD: "SG",
+    sectionMatches: "Temporada nas Partidas",
+    statMatches: "Jogos",
+    statWins: "Vitórias",
+    statDraws: "Empates",
+    statLosses: "Derrotas",
+    statGoalsFor: "Gols feitos",
+    statGoalsAgainst: "Gols sofridos",
+    sectionScorers: "Artilheiros",
+    sectionAssisters: "Assistentes",
+    statGoalsSuffix: "gols",
+    statAssistsSuffix: "assist.",
+    emptyState: "Nenhum registro",
+    labelBestWin: "Maior Vitória",
+    labelWorstLoss: "Pior Derrota",
+    dateLocale: "pt-BR",
+  },
+  en: {
+    headerSeasonBadge: "Season",
+    headerFinished: "🏁 Finished",
+    headerWins: "wins",
+    sectionTrophies: "Trophies Won",
+    sectionLeague: "League Performance",
+    leagueTeamsSuffix: "teams",
+    abbrevW: "W",
+    abbrevD: "D",
+    abbrevL: "L",
+    abbrevGF: "GF",
+    abbrevGS: "GA",
+    abbrevGD: "GD",
+    sectionMatches: "Season in Matches",
+    statMatches: "Matches",
+    statWins: "Wins",
+    statDraws: "Draws",
+    statLosses: "Losses",
+    statGoalsFor: "Goals scored",
+    statGoalsAgainst: "Goals conceded",
+    sectionScorers: "Top Scorers",
+    sectionAssisters: "Top Assisters",
+    statGoalsSuffix: "goals",
+    statAssistsSuffix: "assists",
+    emptyState: "No records",
+    labelBestWin: "Biggest Win",
+    labelWorstLoss: "Worst Defeat",
+    dateLocale: "en-US",
+  },
+};

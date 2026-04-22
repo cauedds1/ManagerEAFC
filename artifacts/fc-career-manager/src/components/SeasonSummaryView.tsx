@@ -8,6 +8,8 @@ import { getSeasonSummary } from "@/lib/seasonSummaryStorage";
 import { getMatchResultFull } from "@/types/match";
 import { getCachedClubList } from "@/lib/clubListCache";
 import { searchStaticClubs } from "@/lib/staticClubList";
+import { useLang } from "@/hooks/useLang";
+import { SEASON_SUMMARY } from "@/lib/i18n";
 
 const POS_STYLE: Record<PositionPtBr, { bg: string; color: string }> = {
   GOL: { bg: "rgba(245,158,11,0.18)", color: "#f59e0b" },
@@ -85,6 +87,9 @@ interface SeasonSummaryViewProps {
 }
 
 export function SeasonSummaryView({ careerId, seasonId, seasonLabel, career, allPlayers, clubLogoUrl }: SeasonSummaryViewProps) {
+  const [lang] = useLang();
+  const t = SEASON_SUMMARY[lang];
+
   const summary = getSeasonSummary(seasonId);
   const matches = useMemo(() => getMatches(seasonId), [seasonId]);
   const allStats = useMemo(() => getAllPlayerStats(seasonId), [seasonId]);
@@ -156,7 +161,7 @@ export function SeasonSummaryView({ careerId, seasonId, seasonLabel, career, all
 
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return "";
-    return new Date(dateStr + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+    return new Date(dateStr + "T12:00:00").toLocaleDateString(t.dateLocale, { day: "2-digit", month: "2-digit" });
   };
 
   return (
@@ -191,13 +196,13 @@ export function SeasonSummaryView({ careerId, seasonId, seasonLabel, career, all
                 className="text-xs font-black px-2 py-0.5 rounded-full"
                 style={{ background: "rgba(var(--club-primary-rgb),0.2)", color: "var(--club-primary)" }}
               >
-                Temporada {seasonLabel}
+                {t.headerSeasonBadge} {seasonLabel}
               </span>
               <span
                 className="text-xs font-semibold px-2 py-0.5 rounded-full"
                 style={{ background: "rgba(16,185,129,0.15)", color: "#34d399" }}
               >
-                🏁 Finalizada
+                {t.headerFinished}
               </span>
             </div>
             <h1 className="text-xl font-black text-white">{career.clubName}</h1>
@@ -206,7 +211,7 @@ export function SeasonSummaryView({ careerId, seasonId, seasonLabel, career, all
           {matches.length > 0 && (
             <div className="text-right flex-shrink-0">
               <span className="text-3xl font-black text-white tabular-nums">{seasonTotals.wins}</span>
-              <p className="text-white/30 text-xs">vitórias</p>
+              <p className="text-white/30 text-xs">{t.headerWins}</p>
             </div>
           )}
         </div>
@@ -225,11 +230,11 @@ export function SeasonSummaryView({ careerId, seasonId, seasonLabel, career, all
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
             </svg>
-          }>Títulos Conquistados</SectionTitle>
+          }>{t.sectionTrophies}</SectionTitle>
           <div className="flex flex-wrap gap-3">
-            {trophies.map((t) => (
+            {trophies.map((trophy) => (
               <div
-                key={t.id}
+                key={trophy.id}
                 className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl"
                 style={{
                   background: "rgba(234,179,8,0.10)",
@@ -237,7 +242,7 @@ export function SeasonSummaryView({ careerId, seasonId, seasonLabel, career, all
                 }}
               >
                 <span className="text-xl">🏆</span>
-                <span className="text-white font-bold text-sm">{t.competitionName}</span>
+                <span className="text-white font-bold text-sm">{trophy.competitionName}</span>
               </div>
             ))}
           </div>
@@ -254,24 +259,24 @@ export function SeasonSummaryView({ careerId, seasonId, seasonLabel, career, all
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
             </svg>
-          }>Desempenho na Liga</SectionTitle>
+          }>{t.sectionLeague}</SectionTitle>
           <div className="flex flex-wrap items-end gap-6">
             <div className="flex items-end gap-2">
               <span className="text-5xl font-black text-white tabular-nums leading-none">{league.position}°</span>
-              <span className="text-white/30 text-sm mb-1">/ {league.totalTeams} times</span>
+              <span className="text-white/30 text-sm mb-1">/ {league.totalTeams} {t.leagueTeamsSuffix}</span>
             </div>
             <div className="flex items-center gap-4">
               <div className="text-center">
                 <div className="text-2xl font-black tabular-nums" style={{ color: "#34d399" }}>{league.wins}</div>
-                <div className="text-white/30 text-xs">V</div>
+                <div className="text-white/30 text-xs">{t.abbrevW}</div>
               </div>
               <div className="text-center">
                 <div className="text-2xl font-black tabular-nums text-white/50">{league.draws}</div>
-                <div className="text-white/30 text-xs">E</div>
+                <div className="text-white/30 text-xs">{t.abbrevD}</div>
               </div>
               <div className="text-center">
                 <div className="text-2xl font-black tabular-nums" style={{ color: "#f87171" }}>{league.losses}</div>
-                <div className="text-white/30 text-xs">D</div>
+                <div className="text-white/30 text-xs">{t.abbrevL}</div>
               </div>
               <div
                 className="px-4 py-2 rounded-xl text-center"
@@ -285,12 +290,12 @@ export function SeasonSummaryView({ careerId, seasonId, seasonLabel, career, all
               <div className="flex items-center gap-3 text-sm">
                 {league.goalsFor != null && (
                   <span className="text-white/60">
-                    <span className="font-black text-white tabular-nums">{league.goalsFor}</span> GF
+                    <span className="font-black text-white tabular-nums">{league.goalsFor}</span> {t.abbrevGF}
                   </span>
                 )}
                 {league.goalsAgainst != null && (
                   <span className="text-white/60">
-                    <span className="font-black text-white tabular-nums">{league.goalsAgainst}</span> GS
+                    <span className="font-black text-white tabular-nums">{league.goalsAgainst}</span> {t.abbrevGS}
                   </span>
                 )}
                 {league.goalsFor != null && league.goalsAgainst != null && (
@@ -301,7 +306,7 @@ export function SeasonSummaryView({ careerId, seasonId, seasonLabel, career, all
                       color: (league.goalsFor - league.goalsAgainst) >= 0 ? "#34d399" : "#f87171",
                     }}
                   >
-                    {(league.goalsFor - league.goalsAgainst) >= 0 ? "+" : ""}{league.goalsFor - league.goalsAgainst} SG
+                    {(league.goalsFor - league.goalsAgainst) >= 0 ? "+" : ""}{league.goalsFor - league.goalsAgainst} {t.abbrevGD}
                   </span>
                 )}
               </div>
@@ -321,15 +326,15 @@ export function SeasonSummaryView({ careerId, seasonId, seasonLabel, career, all
               <circle cx="12" cy="12" r="10" />
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 2c0 0 2.5 4 2.5 10S12 22 12 22M12 2c0 0-2.5 4-2.5 10s2.5 10 2.5 10M2 12h20" />
             </svg>
-          }>Temporada nas Partidas</SectionTitle>
+          }>{t.sectionMatches}</SectionTitle>
           <div className="flex flex-wrap gap-4">
             {[
-              { label: "Jogos", value: seasonTotals.total, color: "rgba(255,255,255,0.7)" },
-              { label: "Vitórias", value: seasonTotals.wins, color: "#34d399" },
-              { label: "Empates", value: seasonTotals.draws, color: "#facc15" },
-              { label: "Derrotas", value: seasonTotals.losses, color: "#f87171" },
-              { label: "Gols feitos", value: seasonTotals.gf, color: "rgba(var(--club-primary-rgb),1)" },
-              { label: "Gols sofridos", value: seasonTotals.ga, color: "rgba(255,255,255,0.4)" },
+              { label: t.statMatches,      value: seasonTotals.total,  color: "rgba(255,255,255,0.7)" },
+              { label: t.statWins,         value: seasonTotals.wins,   color: "#34d399" },
+              { label: t.statDraws,        value: seasonTotals.draws,  color: "#facc15" },
+              { label: t.statLosses,       value: seasonTotals.losses, color: "#f87171" },
+              { label: t.statGoalsFor,     value: seasonTotals.gf,     color: "rgba(var(--club-primary-rgb),1)" },
+              { label: t.statGoalsAgainst, value: seasonTotals.ga,     color: "rgba(255,255,255,0.4)" },
             ].map(({ label, value, color }) => (
               <div
                 key={label}
@@ -347,8 +352,8 @@ export function SeasonSummaryView({ careerId, seasonId, seasonLabel, career, all
       {/* Top performers */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {[
-          { type: "goals" as const, label: "Artilheiros", statLabel: "gols", data: topScorers },
-          { type: "assists" as const, label: "Assistentes", statLabel: "assist.", data: topAssisters },
+          { type: "goals" as const, label: t.sectionScorers, statLabel: t.statGoalsSuffix, data: topScorers },
+          { type: "assists" as const, label: t.sectionAssisters, statLabel: t.statAssistsSuffix, data: topAssisters },
         ].map(({ type, label, statLabel, data }) => (
           <div
             key={type}
@@ -367,7 +372,7 @@ export function SeasonSummaryView({ careerId, seasonId, seasonLabel, career, all
               )
             }>Top 3 {label}</SectionTitle>
             {data.length === 0 ? (
-              <p className="text-white/20 text-xs text-center py-4">Nenhum registro</p>
+              <p className="text-white/20 text-xs text-center py-4">{t.emptyState}</p>
             ) : (
               <div className="flex flex-col gap-3">
                 {data.map(({ stats, player }, idx) => {
@@ -400,8 +405,8 @@ export function SeasonSummaryView({ careerId, seasonId, seasonLabel, career, all
       {(bestWin || worstLoss) && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {[
-            { match: bestWin, label: "Maior Vitória", color: "#34d399", border: "rgba(16,185,129,0.2)", bg: "rgba(16,185,129,0.06)" },
-            { match: worstLoss, label: "Pior Derrota", color: "#f87171", border: "rgba(239,68,68,0.2)", bg: "rgba(239,68,68,0.06)" },
+            { match: bestWin,   label: t.labelBestWin,   color: "#34d399", border: "rgba(16,185,129,0.2)", bg: "rgba(16,185,129,0.06)" },
+            { match: worstLoss, label: t.labelWorstLoss, color: "#f87171", border: "rgba(239,68,68,0.2)",  bg: "rgba(239,68,68,0.06)" },
           ].map(({ match, label, color, border, bg }) => {
             if (!match) return <div key={label} />;
             const isHome = match.location !== "fora";
