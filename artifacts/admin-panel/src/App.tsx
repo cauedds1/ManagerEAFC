@@ -40,7 +40,7 @@ interface Stats {
   users: { total: number; free: number; pro: number; ultra: number };
   careers: { total: number };
   seasons: { total: number };
-  aiUsage: { allTime: number };
+  aiUsage: { allTime: number; today: number };
   bugReports: { total: number; open: number };
 }
 
@@ -134,8 +134,9 @@ function OverviewTab() {
       </div>
       <div>
         <h3 className="text-white/60 text-xs font-semibold uppercase tracking-wider mb-3">IA</h3>
-        <div className="grid grid-cols-1 gap-3">
-          <StatCard label="Gerações de IA (total acumulado)" value={data.aiUsage.allTime} color="#fb923c" />
+        <div className="grid grid-cols-2 gap-3">
+          <StatCard label="Gerações hoje" value={data.aiUsage.today} color="#fb923c" />
+          <StatCard label="Gerações total" value={data.aiUsage.allTime} color="#fb923c" sub="acumulado" />
         </div>
       </div>
     </div>
@@ -354,10 +355,26 @@ function BugReportsTab() {
   );
 }
 
+interface RecoveryResult {
+  ok?: boolean;
+  career_id?: string;
+  career_created?: boolean;
+  seasons_recovered?: number;
+  active_season_id?: string | null;
+  career_data_keys?: string[];
+  metadata_inferred_from_career_data?: Record<string, unknown>;
+  competitions_inferred?: string[];
+  warnings?: string[];
+  message?: string;
+  error?: string;
+}
+
 function CareerRecoveryTab() {
   const [careerId, setCareerId] = useState("");
   const [userId, setUserId] = useState("");
-  const [result, setResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [clubName, setClubName] = useState("");
+  const [clubLeague, setClubLeague] = useState("");
+  const [result, setResult] = useState<{ success: boolean; data: RecoveryResult } | null>(null);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
@@ -366,32 +383,22 @@ function CareerRecoveryTab() {
     setLoading(true);
     setResult(null);
     try {
-      const token = getToken();
-      const res = await fetch("/api/admin/recover-career", {
+      const body: Record<string, unknown> = { career_id: careerId.trim() };
+      if (userId.trim()) body.user_id = Number(userId.trim());
+      if (clubName.trim()) body.club_name = clubName.trim();
+      if (clubLeague.trim()) body.club_league = clubLeague.trim();
+
+      const data = await apiFetch<RecoveryResult>("/admin-panel/recover-career", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-admin-secret": token ?? "",
-        },
-        body: JSON.stringify({
-          careerId: careerId.trim(),
-          userId: userId.trim() ? Number(userId.trim()) : undefined,
-        }),
+        body: JSON.stringify(body),
       });
-      const body = await res.json() as { message?: string; error?: string };
-      if (res.ok) {
-        setResult({ success: true, message: body.message ?? "Carreira recuperada com sucesso!" });
-        setCareerId("");
-        setUserId("");
-      } else {
-        setResult({ success: false, message: body.error ?? `Erro HTTP ${res.status}` });
-      }
+      setResult({ success: true, data });
     } catch (err) {
-      setResult({ success: false, message: err instanceof Error ? err.message : "Erro de conexão" });
+      setResult({ success: false, data: { error: err instanceof Error ? err.message : "Erro de conexão" } });
     } finally {
       setLoading(false);
     }
-  }, [careerId, userId]);
+  }, [careerId, userId, clubName, clubLeague]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -403,40 +410,62 @@ function CareerRecoveryTab() {
       </div>
       <div className="rounded-2xl p-6 flex flex-col gap-5" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-white/50 uppercase tracking-wider">
-              Career ID <span className="text-red-400">*</span>
-            </label>
-            <input
-              type="text"
-              value={careerId}
-              onChange={(e) => setCareerId(e.target.value)}
-              placeholder="Ex: mnvq8wxifkh6c"
-              required
-              className="w-full px-4 py-3 rounded-xl text-white text-sm focus:outline-none placeholder:text-white/20"
-              style={{
-                background: "rgba(255,255,255,0.05)",
-                border: "1px solid rgba(255,255,255,0.12)",
-              }}
-            />
-            <p className="text-white/30 text-xs">O ID da carreira no banco de dados.</p>
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-white/50 uppercase tracking-wider">
-              User ID <span className="text-white/30 font-normal normal-case">(opcional)</span>
-            </label>
-            <input
-              type="number"
-              value={userId}
-              onChange={(e) => setUserId(e.target.value)}
-              placeholder="Ex: 1"
-              className="w-full px-4 py-3 rounded-xl text-white text-sm focus:outline-none placeholder:text-white/20"
-              style={{
-                background: "rgba(255,255,255,0.05)",
-                border: "1px solid rgba(255,255,255,0.12)",
-              }}
-            />
-            <p className="text-white/30 text-xs">Se omitido, usa o menor user_id disponível no banco.</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-semibold text-white/50 uppercase tracking-wider">
+                Career ID <span className="text-red-400">*</span>
+              </label>
+              <input
+                type="text"
+                value={careerId}
+                onChange={(e) => setCareerId(e.target.value)}
+                placeholder="Ex: mnvq8wxifkh6c"
+                required
+                className="w-full px-4 py-3 rounded-xl text-white text-sm focus:outline-none placeholder:text-white/20"
+                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)" }}
+              />
+              <p className="text-white/30 text-xs">ID da carreira no banco de dados.</p>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-semibold text-white/50 uppercase tracking-wider">
+                User ID <span className="text-white/30 font-normal normal-case">(opcional)</span>
+              </label>
+              <input
+                type="number"
+                value={userId}
+                onChange={(e) => setUserId(e.target.value)}
+                placeholder="Ex: 1"
+                className="w-full px-4 py-3 rounded-xl text-white text-sm focus:outline-none placeholder:text-white/20"
+                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)" }}
+              />
+              <p className="text-white/30 text-xs">Dono da carreira a restaurar.</p>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-semibold text-white/50 uppercase tracking-wider">
+                Nome do Clube <span className="text-white/30 font-normal normal-case">(opcional)</span>
+              </label>
+              <input
+                type="text"
+                value={clubName}
+                onChange={(e) => setClubName(e.target.value)}
+                placeholder="Ex: Watford FC"
+                className="w-full px-4 py-3 rounded-xl text-white text-sm focus:outline-none placeholder:text-white/20"
+                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)" }}
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-semibold text-white/50 uppercase tracking-wider">
+                Liga <span className="text-white/30 font-normal normal-case">(opcional)</span>
+              </label>
+              <input
+                type="text"
+                value={clubLeague}
+                onChange={(e) => setClubLeague(e.target.value)}
+                placeholder="Ex: Championship"
+                className="w-full px-4 py-3 rounded-xl text-white text-sm focus:outline-none placeholder:text-white/20"
+                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)" }}
+              />
+            </div>
           </div>
           <button
             type="submit"
@@ -452,26 +481,62 @@ function CareerRecoveryTab() {
             {loading ? "Recuperando..." : "Recuperar Carreira"}
           </button>
         </form>
+
         {result && (
-          <div
-            className="rounded-xl px-4 py-3 text-sm"
-            style={{
-              background: result.success ? "rgba(16,185,129,0.1)" : "rgba(239,68,68,0.1)",
-              border: `1px solid ${result.success ? "rgba(16,185,129,0.25)" : "rgba(239,68,68,0.25)"}`,
-              color: result.success ? "#34d399" : "#f87171",
-            }}
-          >
-            {result.message}
+          <div className="flex flex-col gap-3">
+            <div
+              className="rounded-xl px-4 py-3 text-sm font-semibold"
+              style={{
+                background: result.success ? "rgba(16,185,129,0.1)" : "rgba(239,68,68,0.1)",
+                border: `1px solid ${result.success ? "rgba(16,185,129,0.25)" : "rgba(239,68,68,0.25)"}`,
+                color: result.success ? "#34d399" : "#f87171",
+              }}
+            >
+              {result.data.message ?? result.data.error}
+            </div>
+
+            {result.success && result.data.warnings && result.data.warnings.length > 0 && (
+              <div className="rounded-xl px-4 py-3 flex flex-col gap-2" style={{ background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.2)" }}>
+                <span className="text-amber-400 text-xs font-bold uppercase tracking-wide">Avisos</span>
+                {result.data.warnings.map((w, i) => (
+                  <p key={i} className="text-amber-200/70 text-xs leading-relaxed">{w}</p>
+                ))}
+              </div>
+            )}
+
+            {result.success && (
+              <div className="rounded-xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
+                <div className="px-4 py-2 text-white/40 text-xs font-semibold uppercase tracking-wide" style={{ background: "rgba(255,255,255,0.04)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                  Resultado detalhado
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-px" style={{ background: "rgba(255,255,255,0.06)" }}>
+                  {[
+                    { label: "Career criada", value: result.data.career_created ? "Sim" : "Não (já existia)" },
+                    { label: "Temporadas recuperadas", value: String(result.data.seasons_recovered ?? 0) },
+                    { label: "Temporada ativa", value: result.data.active_season_id ?? "—" },
+                    { label: "Chaves career_data", value: String(result.data.career_data_keys?.length ?? 0) },
+                    { label: "Competições inferidas", value: String(result.data.competitions_inferred?.length ?? 0) },
+                  ].map((item) => (
+                    <div key={item.label} className="px-4 py-3 flex flex-col gap-0.5" style={{ background: "rgba(255,255,255,0.02)" }}>
+                      <span className="text-white/35 text-xs">{item.label}</span>
+                      <span className="text-white text-sm font-semibold font-mono">{item.value}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
+
       <div className="rounded-2xl p-5 flex flex-col gap-3" style={{ background: "rgba(255,159,28,0.06)", border: "1px solid rgba(255,159,28,0.15)" }}>
         <h3 className="text-amber-400 text-sm font-bold">Como usar</h3>
         <ul className="flex flex-col gap-2">
           {[
             "Consulte o banco para encontrar o career_id da carreira órfã (sem user_id).",
             "Informe o career_id e o user_id do usuário que deve ser o dono.",
-            "O sistema verifica se a carreira existe, se o usuário existe, e faz a associação.",
+            "Preencha nome do clube e liga se quiser sobrescrever os valores inferidos.",
+            "O sistema verifica os dados, reconstrói a carreira e ativa a temporada mais recente.",
             "A carreira aparecerá automaticamente na tela do usuário após o próximo login.",
           ].map((item, i) => (
             <li key={i} className="flex gap-2 text-amber-200/60 text-xs leading-relaxed">

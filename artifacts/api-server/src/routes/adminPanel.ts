@@ -8,7 +8,11 @@ import type { Request, Response } from "express";
 const router = Router();
 
 const ADMIN_SECRET = () => process.env.ADMIN_SECRET ?? "";
-const ADMIN_JWT_SECRET = () => `admin-${process.env.ADMIN_SECRET ?? "dev-admin-secret"}`;
+const ADMIN_JWT_SECRET = () => {
+  const secret = process.env.ADMIN_SECRET;
+  if (!secret) throw new Error("ADMIN_SECRET environment variable is not set");
+  return `admin-${secret}`;
+};
 
 function signAdminToken(): string {
   return jwt.sign({ role: "admin" }, ADMIN_JWT_SECRET(), { expiresIn: "12h" });
@@ -21,7 +25,8 @@ function validateAdminToken(req: Request, res: Response): boolean {
     return false;
   }
   try {
-    const payload = jwt.verify(header.slice(7), ADMIN_JWT_SECRET()) as { role?: string };
+    const secret = ADMIN_JWT_SECRET();
+    const payload = jwt.verify(header.slice(7), secret) as { role?: string };
     if (payload.role !== "admin") throw new Error("not admin");
     return true;
   } catch {
@@ -71,7 +76,12 @@ router.get("/admin-panel/stats", async (req: Request, res: Response) => {
 
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
-    const todayMs = todayStart.getTime();
+    const todayDateStr = todayStart.toISOString().slice(0, 10);
+
+    const [todayAiStats] = await db
+      .select({ todayUsage: sum(usersTable.aiUsageCount) })
+      .from(usersTable)
+      .where(sql`${usersTable.aiUsageResetDate} = ${todayDateStr}`);
 
     return res.json({
       users: {
@@ -84,7 +94,7 @@ router.get("/admin-panel/stats", async (req: Request, res: Response) => {
       seasons: { total: Number(seasonStats?.total ?? 0) },
       aiUsage: {
         allTime: Number(userStats?.totalAiUsage ?? 0),
-        todayApprox: todayMs,
+        today: Number(todayAiStats?.todayUsage ?? 0),
       },
       bugReports: {
         total: Number(bugStats?.total ?? 0),
@@ -175,6 +185,32 @@ router.patch("/admin-panel/bug-reports/:id", async (req: Request, res: Response)
   } catch (err) {
     console.error("PATCH /admin-panel/bug-reports/:id error:", err);
     return res.status(500).json({ error: "Erro interno" });
+  }
+});
+
+// POST /api/admin-panel/recover-career — admin JWT authenticated proxy to recover-career logic
+router.post("/admin-panel/recover-career", async (req: Request, res: Response) => {
+  if (!validateAdminToken(req, res)) return;
+  const adminSecret = ADMIN_SECRET();
+  if (!adminSecret) {
+    return res.status(503).json({ error: "ADMIN_SECRET não configurado no servidor" });
+  }
+  try {
+    // Forward the request internally to /api/admin/recover-career with x-admin-secret header
+    const baseUrl = `http://localhost:${process.env.PORT ?? 8080}`;
+    const forwardRes = await fetch(`${baseUrl}/api/admin/recover-career`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-admin-secret": adminSecret,
+      },
+      body: JSON.stringify(req.body),
+    });
+    const body = await forwardRes.json();
+    return res.status(forwardRes.status).json(body);
+  } catch (err) {
+    console.error("POST /admin-panel/recover-career proxy error:", err);
+    return res.status(500).json({ error: "Erro interno ao encaminhar pedido de recuperação" });
   }
 });
 

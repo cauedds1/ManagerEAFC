@@ -476,7 +476,7 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ description: bugDesc.trim(), page: section }),
+        body: JSON.stringify({ description: bugDesc.trim(), page: window.location.pathname }),
       });
       if (res.ok) {
         setBugState("done");

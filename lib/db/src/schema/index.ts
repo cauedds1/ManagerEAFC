@@ -114,7 +114,7 @@ export const clubInfoCacheTable = pgTable("club_info_cache", {
 
 export const bugReportsTable = pgTable("bug_reports", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id"),
+  userId: integer("user_id").references(() => usersTable.id, { onDelete: "set null" }),
   userEmail: text("user_email"),
   description: text("description").notNull(),
   page: text("page").notNull().default(""),
