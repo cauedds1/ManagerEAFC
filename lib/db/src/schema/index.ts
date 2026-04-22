@@ -111,3 +111,13 @@ export const clubInfoCacheTable = pgTable("club_info_cache", {
   titlesJson: text("titles_json").notNull().default("[]"),
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
 });
+
+export const bugReportsTable = pgTable("bug_reports", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id"),
+  userEmail: text("user_email"),
+  description: text("description").notNull(),
+  page: text("page").notNull().default(""),
+  status: text("status").notNull().default("open"),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+});

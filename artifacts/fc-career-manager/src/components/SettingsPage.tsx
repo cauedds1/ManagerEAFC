@@ -412,6 +412,11 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [soundEnabled, setSoundEnabledState] = useState(() => isSoundEnabled());
 
+  /* ── Bug report ── */
+  const [bugDesc, setBugDesc] = useState("");
+  const [bugState, setBugState] = useState<"idle" | "sending" | "done" | "error">("idle");
+  const [bugMsg, setBugMsg] = useState("");
+
   /* ── Player sync ── */
   const [syncState, setSyncState]     = useState<SyncState>("idle");
   const [syncMsg, setSyncMsg]         = useState("");
@@ -458,6 +463,35 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
   }, [careerId]);
 
   /* ─── Handlers ─── */
+
+  const handleSendBugReport = async () => {
+    if (!bugDesc.trim()) return;
+    setBugState("sending");
+    setBugMsg("");
+    try {
+      const token = localStorage.getItem(AUTH_TOKEN_KEY);
+      const res = await fetch("/api/bug-reports", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ description: bugDesc.trim(), page: section }),
+      });
+      if (res.ok) {
+        setBugState("done");
+        setBugMsg(lang === "pt" ? "Bug reportado com sucesso! Obrigado." : "Bug reported successfully! Thank you.");
+        setBugDesc("");
+      } else {
+        const d = await res.json() as { error?: string };
+        setBugState("error");
+        setBugMsg(d.error ?? (lang === "pt" ? "Erro ao enviar." : "Failed to send."));
+      }
+    } catch {
+      setBugState("error");
+      setBugMsg(lang === "pt" ? "Erro de conexão." : "Connection error.");
+    }
+  };
 
   const handleReloadClubs = () => {
     clearClubCache();
@@ -1280,6 +1314,53 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
                   >
                     🇺🇸 EN
                   </button>
+                </div>
+              </SectionCard>
+
+              <SectionCard
+                title={lang === "pt" ? "Reportar Bug" : "Report a Bug"}
+                subtitle={lang === "pt" ? "Encontrou algo errado? Descreva o problema e envie — vamos corrigir." : "Found something broken? Describe the issue and send it — we'll fix it."}
+              >
+                <div className="flex flex-col gap-3">
+                  <textarea
+                    value={bugDesc}
+                    onChange={(e) => { setBugDesc(e.target.value); if (bugState !== "idle") { setBugState("idle"); setBugMsg(""); } }}
+                    maxLength={2000}
+                    rows={4}
+                    placeholder={lang === "pt" ? "Descreva o que aconteceu, em qual tela, e o que você esperava que acontecesse..." : "Describe what happened, on which screen, and what you expected to happen..."}
+                    className="w-full px-4 py-3 rounded-xl text-white text-sm focus:outline-none placeholder:text-white/20 resize-none"
+                    style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}
+                  />
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-white/25 text-xs">{bugDesc.length}/2000</span>
+                    <button
+                      disabled={!bugDesc.trim() || bugState === "sending"}
+                      onClick={handleSendBugReport}
+                      className="px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 active:scale-95"
+                      style={{
+                        background: !bugDesc.trim() || bugState === "sending" ? "rgba(255,255,255,0.05)" : "var(--club-gradient)",
+                        color: !bugDesc.trim() || bugState === "sending" ? "rgba(255,255,255,0.2)" : "#fff",
+                        cursor: !bugDesc.trim() || bugState === "sending" ? "not-allowed" : "pointer",
+                        boxShadow: !bugDesc.trim() || bugState === "sending" ? "none" : "0 4px 12px rgba(var(--club-primary-rgb),0.3)",
+                      }}
+                    >
+                      {bugState === "sending"
+                        ? (lang === "pt" ? "Enviando..." : "Sending...")
+                        : (lang === "pt" ? "Enviar" : "Send")}
+                    </button>
+                  </div>
+                  {bugMsg && (
+                    <div
+                      className="rounded-xl px-4 py-3 text-xs leading-relaxed"
+                      style={{
+                        background: bugState === "done" ? "rgba(16,185,129,0.1)" : "rgba(239,68,68,0.1)",
+                        border: `1px solid ${bugState === "done" ? "rgba(16,185,129,0.2)" : "rgba(239,68,68,0.2)"}`,
+                        color: bugState === "done" ? "#34d399" : "#f87171",
+                      }}
+                    >
+                      {bugMsg}
+                    </div>
+                  )}
                 </div>
               </SectionCard>
             </div>
