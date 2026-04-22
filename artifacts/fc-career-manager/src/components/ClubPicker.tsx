@@ -530,6 +530,31 @@ export function ClubPicker({ allClubs, onSelectClub, initialLeague }: ClubPicker
         )}
       </div>
 
+      {/* Create own club — pinned above the scrollable list, hidden when searching or inside a league */}
+      {!isSearching && !selectedLeague && (
+        <button
+          onClick={handleOpenCustomForm}
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl mb-3 text-left transition-all hover:opacity-90 active:scale-98 flex-shrink-0"
+          style={{ background: "rgba(var(--club-primary-rgb),0.1)", border: "1.5px dashed rgba(var(--club-primary-rgb),0.35)" }}
+        >
+          <div
+            className="w-9 h-9 rounded-lg flex-shrink-0 flex items-center justify-center"
+            style={{ background: "rgba(var(--club-primary-rgb),0.18)" }}
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} style={{ color: "var(--club-primary)" }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-white font-bold text-sm leading-tight">{t.createOwnClub}</p>
+            <p className="text-white/40 text-[11px] mt-0.5 leading-snug">{t.createOwnClubDesc}</p>
+          </div>
+          <svg className="w-4 h-4 text-white/20 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+      )}
+
       <div className="flex-1 overflow-y-auto -mx-1 px-1 min-h-0">
         {isSearching && !selectedLeague ? (
           <div>
@@ -576,29 +601,6 @@ export function ClubPicker({ allClubs, onSelectClub, initialLeague }: ClubPicker
           </div>
         ) : (
           <div>
-            {/* Create own club button */}
-            <button
-              onClick={handleOpenCustomForm}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl mb-4 text-left transition-all hover:opacity-90 active:scale-98"
-              style={{ background: "rgba(var(--club-primary-rgb),0.1)", border: "1.5px dashed rgba(var(--club-primary-rgb),0.35)" }}
-            >
-              <div
-                className="w-9 h-9 rounded-lg flex-shrink-0 flex items-center justify-center"
-                style={{ background: "rgba(var(--club-primary-rgb),0.18)" }}
-              >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} style={{ color: "var(--club-primary)" }}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                </svg>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-white font-bold text-sm leading-tight">{t.createOwnClub}</p>
-                <p className="text-white/40 text-[11px] mt-0.5 leading-snug">{t.createOwnClubDesc}</p>
-              </div>
-              <svg className="w-4 h-4 text-white/20 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
-
             <p className="text-white/25 text-[10px] font-semibold tracking-widest uppercase mb-1.5">
               {t.domesticLeagues}
             </p>
