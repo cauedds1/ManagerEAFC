@@ -115,7 +115,7 @@ export function ClubSelection({ allClubs, onSelectClub, selecting }: ClubSelecti
     <div className="h-full flex flex-col" style={{ background: "var(--app-bg, #0a0a0a)" }}>
       {/* Hero */}
       <div
-        className="w-full py-14 px-4 text-center relative overflow-hidden"
+        className="w-full py-8 sm:py-14 px-4 text-center relative overflow-hidden"
         style={{ background: "var(--club-gradient)" }}
       >
         <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.6)" }} />
@@ -123,7 +123,7 @@ export function ClubSelection({ allClubs, onSelectClub, selecting }: ClubSelecti
           {selectedLeague ? (
             <button
               onClick={handleBack}
-              className="inline-flex items-center gap-2 text-white/50 hover:text-white text-sm font-medium mb-4 transition-colors duration-200"
+              className="inline-flex items-center gap-2 text-white/50 hover:text-white text-sm font-medium mb-3 transition-colors duration-200"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -138,12 +138,12 @@ export function ClubSelection({ allClubs, onSelectClub, selecting }: ClubSelecti
               EA FC 26 · Modo Carreira
             </p>
           )}
-          <h1 className="text-4xl md:text-5xl font-black text-white tracking-tight">
+          <h1 className="text-2xl sm:text-4xl md:text-5xl font-black text-white tracking-tight">
             {selectedLeague
               ? selectedLeague.flag + " " + (selectedLeague.displayName ?? selectedLeague.name)
               : "Selecione seu clube"}
           </h1>
-          <p className="text-white/50 text-base mt-3">
+          <p className="text-white/50 text-sm sm:text-base mt-2 sm:mt-3">
             {selectedLeague
               ? selectedLeague.country
               : "Escolha a liga e depois o time que vai gerir"}

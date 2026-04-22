@@ -207,6 +207,29 @@
 
 input[type="search"]::-webkit-search-cancel-button { display: none; }
 
+/* Scrollbar hide utility */
+.scrollbar-none { scrollbar-width: none; -ms-overflow-style: none; }
+.scrollbar-none::-webkit-scrollbar { display: none; }
+
+/* Career selection sidebar — bottom border on mobile, right border on sm+ */
+.career-sidebar {
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  border-right: none;
+}
+@media (min-width: 640px) {
+  .career-sidebar {
+    border-bottom: none;
+    border-right: 1px solid rgba(255,255,255,0.05);
+  }
+}
+
+/* Prevent iOS input zoom: all text inputs/textareas use at least 16px */
+@media (max-width: 640px) {
+  input, textarea, select {
+    font-size: 16px !important;
+  }
+}
+
 option {
   background-color: #1a1a1a;
   color: #ffffff;

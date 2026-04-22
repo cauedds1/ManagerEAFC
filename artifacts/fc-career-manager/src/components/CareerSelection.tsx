@@ -215,11 +215,10 @@ export function CareerSelection({ careers, onSelectCareer, onCreateNew, onCareer
   const leagueLabel = leagueCount === 1 ? t.statLeague : t.statLeagues;
 
   return (
-    <div className="h-full flex overflow-hidden">
+    <div className="h-full flex flex-col sm:flex-row overflow-hidden">
 
       <div
-        className="w-64 xl:w-72 flex-shrink-0 flex flex-col justify-between p-7 relative overflow-hidden"
-        style={{ borderRight: "1px solid rgba(255,255,255,0.05)" }}
+        className="career-sidebar w-full sm:w-64 xl:w-72 flex-shrink-0 flex flex-col justify-between p-5 sm:p-7 relative overflow-hidden"
       >
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute -bottom-20 -left-20 w-64 h-64 rounded-full blur-3xl opacity-10"
@@ -227,25 +226,42 @@ export function CareerSelection({ careers, onSelectCareer, onCreateNew, onCareer
         </div>
 
         <div className="relative">
-          <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-7 animate-float"
+          <div className="hidden sm:flex w-12 h-12 rounded-2xl items-center justify-center mb-7 animate-float"
             style={{ background: "rgba(var(--club-primary-rgb),0.12)", border: "1px solid rgba(var(--club-primary-rgb),0.2)", boxShadow: "0 0 30px rgba(var(--club-primary-rgb),0.15)" }}>
             <svg className="w-6 h-6" style={{ color: "var(--club-primary)" }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 6.75V15m6-6v8.25m.503 3.498l4.875-2.437c.381-.19.622-.58.622-1.006V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0L9.503 3.252a1.125 1.125 0 00-1.006 0L3.622 5.689C3.24 5.88 3 6.27 3 6.695V19.18c0 .836.88 1.38 1.628 1.006l3.869-1.934c.317-.159.69-.159 1.006 0l4.994 2.497c.317.158.69.158 1.006 0z" />
             </svg>
           </div>
 
-          <p className="text-[10px] font-bold tracking-widest uppercase mb-2" style={{ color: "var(--club-primary)" }}>
-            {t.eaLabel}
-          </p>
-          <h1 className="text-2xl font-black text-white leading-tight mb-3" style={{ whiteSpace: "pre-line" }}>
-            {hasCareer ? t.headingExisting : t.headingNew}
-          </h1>
-          <p className="text-white/30 text-xs leading-relaxed">
+          <div className="flex sm:block items-center justify-between gap-3 mb-2 sm:mb-0">
+            <div>
+              <p className="text-[10px] font-bold tracking-widest uppercase sm:mb-2" style={{ color: "var(--club-primary)" }}>
+                {t.eaLabel}
+              </p>
+              <h1 className="text-lg sm:text-2xl font-black text-white leading-tight sm:mb-3" style={{ whiteSpace: "pre-line" }}>
+                {hasCareer ? t.headingExisting : t.headingNew}
+              </h1>
+            </div>
+            {!atCareerLimit && (
+              <button
+                onClick={onCreateNew}
+                className="sm:hidden flex items-center justify-center gap-2 min-h-[44px] px-4 py-2 rounded-xl font-bold text-white text-sm transition-all duration-200 active:scale-[0.98] flex-shrink-0"
+                style={{ background: "var(--club-gradient)", boxShadow: "0 4px 20px rgba(var(--club-primary-rgb),0.25)" }}
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                </svg>
+                {t.newCareer}
+              </button>
+            )}
+          </div>
+
+          <p className="text-white/30 text-xs leading-relaxed hidden sm:block">
             {hasCareer ? t.descExisting : t.descNew}
           </p>
 
           {hasCareer && (
-            <div className="mt-5 grid grid-cols-2 gap-2">
+            <div className="mt-3 sm:mt-5 grid grid-cols-2 gap-2 hidden sm:grid">
               <div className="rounded-xl p-3" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
                 <p className="text-2xl font-black text-white">{localCareers.length}</p>
                 <p className="text-white/30 text-[10px] font-medium mt-0.5">{careerLabel}</p>
@@ -258,7 +274,7 @@ export function CareerSelection({ careers, onSelectCareer, onCreateNew, onCareer
           )}
         </div>
 
-        <div className="relative flex flex-col gap-2">
+        <div className="relative flex-col gap-2 hidden sm:flex">
           {atCareerLimit ? (
             <UpgradePrompt
               currentPlan={resolvedPlan}

@@ -1234,7 +1234,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
                 rows={1}
                 disabled={isTyping}
                 className="flex-1 px-3 py-2.5 rounded-xl text-sm text-white placeholder-white/25 resize-none glass disabled:opacity-50"
-                style={{ border: "1px solid var(--surface-border)", outline: "none", background: "rgba(255,255,255,0.05)", maxHeight: 100 }}
+                style={{ border: "1px solid var(--surface-border)", outline: "none", background: "rgba(255,255,255,0.05)", maxHeight: 100, fontSize: 16 }}
               />
               <button
                 onClick={handleSendChat}
