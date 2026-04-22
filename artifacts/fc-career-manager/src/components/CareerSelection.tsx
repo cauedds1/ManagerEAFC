@@ -242,18 +242,32 @@ export function CareerSelection({ careers, onSelectCareer, onCreateNew, onCareer
                 {hasCareer ? t.headingExisting : t.headingNew}
               </h1>
             </div>
-            {!atCareerLimit && (
-              <button
-                onClick={onCreateNew}
-                className="sm:hidden flex items-center justify-center gap-2 min-h-[44px] px-4 py-2 rounded-xl font-bold text-white text-sm transition-all duration-200 active:scale-[0.98] flex-shrink-0"
-                style={{ background: "var(--club-gradient)", boxShadow: "0 4px 20px rgba(var(--club-primary-rgb),0.25)" }}
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                </svg>
-                {t.newCareer}
-              </button>
-            )}
+            <div className="sm:hidden flex items-center gap-2 flex-shrink-0">
+              {!atCareerLimit && (
+                <button
+                  onClick={onCreateNew}
+                  className="flex items-center justify-center gap-2 min-h-[44px] px-4 py-2 rounded-xl font-bold text-white text-sm transition-all duration-200 active:scale-[0.98]"
+                  style={{ background: "var(--club-gradient)", boxShadow: "0 4px 20px rgba(var(--club-primary-rgb),0.25)" }}
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                  </svg>
+                  {t.newCareer}
+                </button>
+              )}
+              {onLogout && (
+                <button
+                  onClick={onLogout}
+                  aria-label={t.logout}
+                  className="flex items-center justify-center min-h-[44px] min-w-[44px] rounded-xl transition-all duration-200 active:scale-[0.97]"
+                  style={{ color: "rgba(255,255,255,0.35)", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 9V5.25A2.25 2.25 0 0 1 10.5 3h6a2.25 2.25 0 0 1 2.25 2.25v13.5A2.25 2.25 0 0 1 16.5 21h-6a2.25 2.25 0 0 1-2.25-2.25V15M12 9l3 3m0 0-3 3m3-3H2.25" />
+                  </svg>
+                </button>
+              )}
+            </div>
           </div>
 
           <p className="text-white/30 text-xs leading-relaxed hidden sm:block">
@@ -261,7 +275,7 @@ export function CareerSelection({ careers, onSelectCareer, onCreateNew, onCareer
           </p>
 
           {hasCareer && (
-            <div className="mt-3 sm:mt-5 grid grid-cols-2 gap-2 hidden sm:grid">
+            <div className="mt-3 sm:mt-5 grid grid-cols-2 gap-2">
               <div className="rounded-xl p-3" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
                 <p className="text-2xl font-black text-white">{localCareers.length}</p>
                 <p className="text-white/30 text-[10px] font-medium mt-0.5">{careerLabel}</p>
