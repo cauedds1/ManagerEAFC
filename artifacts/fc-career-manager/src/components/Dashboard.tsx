@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useLang } from "@/hooks/useLang";
+import { useIsNarrow } from "@/hooks/use-mobile";
 import { PAINEL, DASHBOARD } from "@/lib/i18n";
 import type { Career, Season } from "@/types/career";
 import { SettingsPage } from "./SettingsPage";
@@ -199,6 +200,7 @@ function CoachAvatar({ career }: { career: Career }) {
 
 export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub, onReloadClubs, onDeleteCareer }: DashboardProps) {
   const [lang] = useLang();
+  const isNarrow = useIsNarrow();
   const painelTabLabel = PAINEL[lang].tabLabel;
   const t = DASHBOARD[lang];
   const tabLabels: Record<string, string> = {
@@ -1222,7 +1224,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
               <div className="flex items-center gap-1.5 sm:hidden flex-shrink-0">
                 <button
                   onClick={() => setActiveTab("configuracoes")}
-                  className="flex items-center justify-center w-9 h-9 rounded-xl text-white/50 hover:text-white transition-all duration-200 glass glass-hover"
+                  className="flex items-center justify-center w-11 h-11 rounded-xl text-white/50 hover:text-white transition-all duration-200 glass glass-hover"
                   title={t.settingsTooltip}
                   style={activeTab === "configuracoes" ? { color: "var(--club-primary)", background: "rgba(var(--club-primary-rgb),0.1)" } : {}}
                 >
@@ -1334,14 +1336,14 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
           style={{ background: "rgba(var(--club-primary-rgb), 0.06)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", borderBottom: "1px solid var(--surface-border)" }}
         >
           <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
-            <div className="flex overflow-x-auto scrollbar-none" style={{ WebkitOverflowScrolling: "touch" }}>
+            <div className="flex overflow-x-auto scrollbar-none snap-x" style={{ WebkitOverflowScrolling: "touch" }}>
               {isFinalized && (() => {
                 const active = activeTab === "resumo";
                 return (
                   <button
                     key="resumo"
                     onClick={() => handleTabChange("resumo")}
-                    className="relative flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-3.5 text-xs sm:text-sm font-semibold transition-all duration-200 whitespace-nowrap flex-shrink-0"
+                    className="relative flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-3.5 text-xs sm:text-sm font-semibold transition-all duration-200 whitespace-nowrap flex-shrink-0 snap-start"
                     style={{ color: active ? "var(--club-primary)" : "rgba(255,255,255,0.35)" }}
                   >
                     <span style={{ color: active ? "var(--club-primary)" : "rgba(255,255,255,0.3)" }}>
@@ -1349,7 +1351,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
                         <path strokeLinecap="round" strokeLinejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                       </svg>
                     </span>
-                    {t.tabResumo}
+                    {!isNarrow && t.tabResumo}
                     {active && (
                       <span
                         className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full"
@@ -1369,7 +1371,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
                   <button
                     key={tab.id}
                     onClick={() => handleTabChange(tab.id)}
-                    className="relative flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-3.5 text-xs sm:text-sm font-semibold transition-all duration-200 whitespace-nowrap flex-shrink-0"
+                    className="relative flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-3.5 text-xs sm:text-sm font-semibold transition-all duration-200 whitespace-nowrap flex-shrink-0 snap-start"
                     style={{
                       color: active ? "var(--club-primary)" : "rgba(255,255,255,0.35)",
                     }}
@@ -1377,7 +1379,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
                     <span style={{ color: active ? "var(--club-primary)" : "rgba(255,255,255,0.3)" }}>
                       {tab.icon}
                     </span>
-                    {tab.id === "painel" ? painelTabLabel : (tabLabels[tab.id] ?? tab.label)}
+                    {!isNarrow && (tab.id === "painel" ? painelTabLabel : (tabLabels[tab.id] ?? tab.label))}
                     {tab.id === "transferencias" && transfers.length > 0 && (
                       <span
                         className="text-xs font-bold px-1.5 py-0.5 rounded-full tabular-nums min-w-[20px] text-center"

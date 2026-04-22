@@ -603,21 +603,21 @@ export function ElencoView({
           {mergedPlayers.length > 0 && !squadLoading && (
             <button
               onClick={handleExportSquad}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all duration-200 hover:opacity-90 active:scale-95"
+              className="flex items-center gap-1.5 px-3 py-2 min-h-[44px] rounded-xl text-xs font-semibold transition-all duration-200 hover:opacity-90 active:scale-95"
               style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.55)", border: "1px solid rgba(255,255,255,0.1)" }}
               title={t.exportLabel}
             >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
-              {t.exportLabel}
+              <span className="hidden sm:inline">{t.exportLabel}</span>
             </button>
           )}
           {/* Import button */}
           {onImportSquad && (
             <button
               onClick={() => importInputRef.current?.click()}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all duration-200 hover:opacity-90 active:scale-95"
+              className="flex items-center gap-1.5 px-3 py-2 min-h-[44px] rounded-xl text-xs font-semibold transition-all duration-200 hover:opacity-90 active:scale-95"
               style={{
                 background: importFeedback === "success"
                   ? "rgba(16,185,129,0.15)"
@@ -640,19 +640,19 @@ export function ElencoView({
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l4-4m0 0l4 4m-4-4v12" />
               </svg>
-              {importFeedback === "success" ? t.importSuccess : importFeedback === "error" ? t.importError : t.importLabel}
+              <span className="hidden sm:inline">{importFeedback === "success" ? t.importSuccess : importFeedback === "error" ? t.importError : t.importLabel}</span>
             </button>
           )}
           <button
             onClick={() => setShowAddPlayer(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all duration-200 hover:opacity-90 active:scale-95"
+            className="flex items-center gap-1.5 px-3 py-2 min-h-[44px] rounded-xl text-xs font-semibold transition-all duration-200 hover:opacity-90 active:scale-95"
             style={{ background: "rgba(var(--club-primary-rgb),0.15)", color: "var(--club-primary)", border: "1px solid rgba(var(--club-primary-rgb),0.3)" }}
             title={t.addManualPlayer}
           >
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
             </svg>
-            {t.addPlayerLabel}
+            <span className="hidden sm:inline">{t.addPlayerLabel}</span>
           </button>
           {mergedPlayers.length > 0 && !squadLoading && (
             <>

@@ -939,32 +939,32 @@ export function TransferenciasView({
           <div className="flex items-center gap-2">
             <button
               onClick={() => openForm("venda")}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-white/80 transition-all duration-200 hover:opacity-90 active:scale-95 glass glass-hover"
+              className="flex items-center gap-2 px-3 sm:px-4 py-2 min-h-[44px] rounded-xl text-sm font-bold text-white/80 transition-all duration-200 hover:opacity-90 active:scale-95 glass glass-hover"
             >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7" />
               </svg>
-              {t.btnRegVenda}
+              <span className="hidden sm:inline">{t.btnRegVenda}</span>
             </button>
             <button
               onClick={() => openForm("emprestimo")}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all duration-200 hover:opacity-90 active:scale-95 glass glass-hover"
+              className="flex items-center gap-2 px-3 sm:px-4 py-2 min-h-[44px] rounded-xl text-sm font-bold transition-all duration-200 hover:opacity-90 active:scale-95 glass glass-hover"
               style={{ color: "#fb923c", border: "1px solid rgba(251,146,60,0.25)" }}
             >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
               </svg>
-              {t.btnEmprestimo}
+              <span className="hidden sm:inline">{t.btnEmprestimo}</span>
             </button>
             <button
               onClick={() => openForm("compra")}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-white transition-all duration-200 hover:opacity-90 active:scale-95"
+              className="flex items-center gap-2 px-3 sm:px-4 py-2 min-h-[44px] rounded-xl text-sm font-bold text-white transition-all duration-200 hover:opacity-90 active:scale-95"
               style={{ background: "var(--club-gradient)" }}
             >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
               </svg>
-              {t.btnRegContratacao}
+              <span className="hidden sm:inline">{t.btnRegContratacao}</span>
             </button>
           </div>
         )}

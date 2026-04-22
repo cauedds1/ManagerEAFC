@@ -482,6 +482,21 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
   const chatInputRef = useRef<HTMLTextAreaElement>(null);
   const meetingInputRef = useRef<HTMLTextAreaElement>(null);
 
+  const [keyboardOffset, setKeyboardOffset] = useState(0);
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const onResize = () => {
+      const offset = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      setKeyboardOffset(offset);
+      setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
+      setTimeout(() => meetingEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
+    };
+    vv.addEventListener("resize", onResize);
+    vv.addEventListener("scroll", onResize);
+    return () => { vv.removeEventListener("resize", onResize); vv.removeEventListener("scroll", onResize); };
+  }, []);
+
   const selectedMember = members.find((m) => m.id === selectedMemberId) ?? null;
   const activeConv = selectedMemberId ? (conversations[selectedMemberId] ?? []) : [];
 
@@ -1221,7 +1236,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
 
             <div
               className="flex items-end gap-2 px-4 py-3 flex-shrink-0"
-              style={{ borderTop: "1px solid var(--surface-border)" }}
+              style={{ borderTop: "1px solid var(--surface-border)", paddingBottom: keyboardOffset > 0 ? keyboardOffset + 12 : "calc(12px + env(safe-area-inset-bottom))" }}
             >
               <textarea
                 ref={chatInputRef}
@@ -1354,7 +1369,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
 
             <div
               className="flex items-end gap-2 px-4 py-3 flex-shrink-0"
-              style={{ borderTop: "1px solid var(--surface-border)" }}
+              style={{ borderTop: "1px solid var(--surface-border)", paddingBottom: keyboardOffset > 0 ? keyboardOffset + 12 : "calc(12px + env(safe-area-inset-bottom))" }}
             >
               <textarea
                 ref={meetingInputRef}
