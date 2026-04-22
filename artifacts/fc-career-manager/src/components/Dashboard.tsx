@@ -20,7 +20,7 @@ import { getTransfers, addTransfer, updateTransfer, saveTransfers } from "@/lib/
 import { getTransferWindow, saveTransferWindow, type TransferWindowState } from "@/lib/transferWindowStorage";
 import { getRivals } from "@/lib/rivalsStorage";
 import { fetchPortals } from "@/lib/customPortalStorage";
-import { addPost as addNewsPost, generatePostId, generateCommentId } from "@/lib/noticiaStorage";
+import { addPost as addNewsPost, getPosts as getNoticiaPosts, generatePostId, generateCommentId } from "@/lib/noticiaStorage";
 import { getFanMood, setFanMood, computeFanMoodDelta, getFanMoodLabel } from "@/lib/fanMoodStorage";
 import type { TransferRecord } from "@/types/transfer";
 import { getMatches } from "@/lib/matchStorage";
@@ -67,6 +67,18 @@ import {
   markDiretoriaRead,
 } from "@/lib/unreadStorage";
 import { NotificationToast, type ToastItem } from "./NotificationToast";
+import { OnboardingEntry, PlanUpgradeEntry } from "./OnboardingEntry";
+import { MissionWidget } from "./MissionWidget";
+import { CuriosityTeaser, type TeaserKey } from "./CuriosityTeaser";
+import {
+  isOnboardingSeen,
+  markOnboardingSeen,
+  getSeenPlan,
+  setSeenPlan,
+  completeMission,
+  isMissionComplete,
+  getPlanDeltaMissions,
+} from "@/lib/missionStorage";
 
 interface DashboardProps {
   career: Career;
@@ -354,9 +366,42 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
   const [aiUsageToday, setAiUsageToday] = useState<number | undefined>(undefined);
   const [aiUsageLimit, setAiUsageLimit] = useState<number | undefined>(undefined);
 
+  // ─── Onboarding state ───────────────────────────────────────────────────────
+  const [showOnboardingEntry, setShowOnboardingEntry] = useState(false);
+  const [showUpgradeEntry, setShowUpgradeEntry] = useState(false);
+  const [upgradedFromPlan, setUpgradedFromPlan] = useState<"free" | "pro" | "ultra">("free");
+  const [showMissions, setShowMissions] = useState(false);
+  const [activeTeaserTrigger, setActiveTeaserTrigger] = useState<TeaserKey | null>(null);
+
   useEffect(() => {
     return () => { if (bgGenTimerRef.current) clearTimeout(bgGenTimerRef.current); };
   }, []);
+
+  // ─── Onboarding initialization ──────────────────────────────────────────────
+  useEffect(() => {
+    if (!dbSynced) return;
+    const seenPlan = getSeenPlan(career.id);
+    if (!seenPlan) {
+      // First time ever for this career
+      if (!isOnboardingSeen(career.id)) {
+        setShowOnboardingEntry(true);
+      } else {
+        setShowMissions(true);
+      }
+      setSeenPlan(career.id, userPlan);
+      return;
+    }
+    if (seenPlan !== userPlan) {
+      // Plan changed — show upgrade card
+      const delta = getPlanDeltaMissions(seenPlan, userPlan);
+      if (delta.length > 0) {
+        setUpgradedFromPlan(seenPlan);
+        setShowUpgradeEntry(true);
+      }
+      setSeenPlan(career.id, userPlan);
+    }
+    setShowMissions(true);
+  }, [dbSynced, career.id, userPlan]);
 
   useEffect(() => {
     setFanMoodScore(getFanMood(activeSeasonId));
@@ -502,12 +547,36 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     if (tab === "diretoria") {
       markDiretoriaRead(career.id);
       setDiretoriaUnread(0);
+      // Pro mission 1: visited diretoria
+      if (!isMissionComplete(career.id, "pro_setup_diretoria")) {
+        completeMission(career.id, "pro_setup_diretoria");
+      }
     }
     if (tab === "noticias") {
       markNoticiasRead(activeSeasonId);
       setNoticiasUnread(0);
     }
-  }, [career.id, activeSeasonId]);
+    if (tab === "clube") {
+      // Free mission 3: viewed squad
+      if (!isMissionComplete(career.id, "free_view_squad")) {
+        completeMission(career.id, "free_view_squad");
+      }
+      // Teaser: rumor for non-ultra
+      if (userPlan !== "ultra") {
+        setActiveTeaserTrigger("after_squad_rumor");
+      }
+    }
+    if (tab === "momentos") {
+      // Pro mission 2: viewed momentos
+      if (!isMissionComplete(career.id, "pro_save_momento")) {
+        completeMission(career.id, "pro_save_momento");
+      }
+      // Teaser: video-news for non-ultra
+      if (userPlan !== "ultra") {
+        setActiveTeaserTrigger("after_momento_videonews");
+      }
+    }
+  }, [career.id, activeSeasonId, userPlan]);
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -520,6 +589,34 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     document.addEventListener("fc:open-momentos", handler);
     return () => document.removeEventListener("fc:open-momentos", handler);
   }, []);
+
+  // ─── Mission completion via news generation event ────────────────────────────
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { seasonId } = (e as CustomEvent<NoticiaGeneratedDetail>).detail ?? {};
+      if (seasonId !== activeSeasonId) return;
+
+      // Free mission 2: first news post
+      if (!isMissionComplete(career.id, "free_gen_news")) {
+        completeMission(career.id, "free_gen_news");
+      }
+
+      // Pro mission 3: 3 news posts
+      if (userPlan === "pro" || userPlan === "ultra") {
+        const posts = getNoticiaPosts(activeSeasonId);
+        if (posts.length >= 3 && !isMissionComplete(career.id, "pro_gen_3_news")) {
+          completeMission(career.id, "pro_gen_3_news");
+        }
+      }
+
+      // Teaser: auto-news for non-ultra
+      if (userPlan !== "ultra") {
+        setActiveTeaserTrigger("after_news_auto");
+      }
+    };
+    window.addEventListener(FC_NOTICIA_GENERATED_EVENT, handler);
+    return () => window.removeEventListener(FC_NOTICIA_GENERATED_EVENT, handler);
+  }, [activeSeasonId, career.id, userPlan]);
 
   const cachedPhotoMap = useMemo(() => {
     const map = new Map<number, string>();
@@ -978,6 +1075,16 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
   }, []);
 
   const handleMatchAdded = useCallback((match: MatchRecord) => {
+    // Mission: free_log_match
+    if (!isMissionComplete(career.id, "free_log_match")) {
+      completeMission(career.id, "free_log_match");
+    }
+    // Teaser: show diretoria reaction for Free users
+    const planLimitsCheck = getPlanLimits(userPlan);
+    if (!planLimitsCheck.diretoriaEnabled) {
+      setActiveTeaserTrigger("after_match_diretoria");
+    }
+
     const updatedMatches = [...matches, match];
     setMatches(updatedMatches);
     setTimeout(() => runPerformanceEngine(activeSeasonId), 50);
@@ -1614,6 +1721,51 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
         </div>
       )}
       <NotificationToast toasts={toasts} onDismiss={dismissToast} />
+
+      {/* Onboarding Entry — first time */}
+      {showOnboardingEntry && (
+        <OnboardingEntry
+          plan={userPlan}
+          clubName={career.clubName}
+          clubLogoUrl={logoUrl}
+          onDone={() => {
+            markOnboardingSeen(career.id);
+            setShowOnboardingEntry(false);
+            setShowMissions(true);
+          }}
+        />
+      )}
+
+      {/* Plan Upgrade Entry */}
+      {showUpgradeEntry && (
+        <PlanUpgradeEntry
+          oldPlan={upgradedFromPlan}
+          newPlan={userPlan}
+          onDone={() => {
+            setShowUpgradeEntry(false);
+            setShowMissions(true);
+          }}
+        />
+      )}
+
+      {/* Mission Widget */}
+      {showMissions && !showOnboardingEntry && !showUpgradeEntry && (
+        <MissionWidget
+          careerId={career.id}
+          plan={userPlan}
+          onNavigateTab={(tab) => handleTabChange(tab as CareerTab)}
+          onMissionComplete={(_missionId, _rewardKey) => {}}
+        />
+      )}
+
+      {/* Curiosity Teasers */}
+      {activeTeaserTrigger && (
+        <CuriosityTeaser
+          careerId={career.id}
+          trigger={activeTeaserTrigger}
+          onDismiss={() => setActiveTeaserTrigger(null)}
+        />
+      )}
     </div>
   );
 }

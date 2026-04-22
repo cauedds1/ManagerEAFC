@@ -12,6 +12,7 @@ import {
 import { getUserPlan, getPlanLimits, type FrontendPlanLimits } from "@/lib/userPlan";
 import type { SquadPlayer } from "@/lib/squadCache";
 import { useLang } from "@/hooks/useLang";
+import { SectionHelp } from "./SectionHelp";
 import { MOMENTOS } from "@/lib/i18n";
 import type { Lang } from "@/lib/i18n";
 
@@ -1041,6 +1042,7 @@ export function MomentosView({ seasonId, allSeasonIds, isReadOnly, allPlayers, h
           <p className="text-white/40 text-sm mt-0.5">{t.subtitle}</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          <SectionHelp section="momentos" />
           {hasMultipleSeasons && (
             <div className="flex rounded-xl overflow-hidden border border-white/10">
               {(["atual", "todas"] as const).map((s) => (

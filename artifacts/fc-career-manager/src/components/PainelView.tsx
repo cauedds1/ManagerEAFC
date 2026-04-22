@@ -14,6 +14,7 @@ import { isRival } from "@/lib/rivalsStorage";
 import { MatchDetailPage } from "./MatchDetailPage";
 import { useLang } from "@/hooks/useLang";
 import { PAINEL } from "@/lib/i18n";
+import { SectionHelp } from "./SectionHelp";
 
 function resolveOpponentLogo(name: string, stored?: string): string | undefined {
   if (stored) return stored;
@@ -639,6 +640,9 @@ export function PainelView({
 
   return (
     <div className="space-y-5 animate-fade-up">
+      <div className="flex items-center justify-end pb-0">
+        <SectionHelp section="painel" />
+      </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {quickStats.map((s) => (
           <div

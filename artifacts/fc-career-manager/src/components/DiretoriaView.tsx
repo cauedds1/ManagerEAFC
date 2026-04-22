@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { DIRETORIA } from "@/lib/i18n";
 import type { Lang } from "@/lib/i18n";
 import { useLang } from "@/hooks/useLang";
+import { SectionHelp } from "./SectionHelp";
 import type { Career } from "@/types/career";
 import type { MatchRecord } from "@/types/match";
 import type { TransferRecord } from "@/types/transfer";
@@ -977,6 +978,9 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
 
   return (
     <div className="flex flex-col gap-4">
+      <div className="flex justify-end">
+        <SectionHelp section="diretoria" />
+      </div>
       {meetingTrigger && panel !== "meeting" && (
         <div
           className="flex items-start gap-4 px-5 py-4 rounded-2xl"

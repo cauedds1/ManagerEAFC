@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { NOTICIAS } from "@/lib/i18n";
 import type { Lang } from "@/lib/i18n";
 import { useLang } from "@/hooks/useLang";
+import { SectionHelp } from "./SectionHelp";
 import { createPortal } from "react-dom";
 import type { Career } from "@/types/career";
 import type { NewsPost, NewsSource, NewsCategory } from "@/types/noticias";
@@ -1835,6 +1836,7 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
       <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
         <div className="flex items-center gap-3">
           <h2 className="text-white/35 text-xs font-bold tracking-widest uppercase">{t.heading}</h2>
+          <SectionHelp section="noticias" />
           {posts.length > 0 && (
             <span
               className="text-xs font-bold px-2.5 py-0.5 rounded-full tabular-nums"

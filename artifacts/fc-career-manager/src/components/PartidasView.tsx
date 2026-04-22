@@ -9,6 +9,7 @@ import { MatchDetailPage } from "./MatchDetailPage";
 import { isRival } from "@/lib/rivalsStorage";
 import { useLang } from "@/hooks/useLang";
 import { PARTIDAS, getLocationLabel, getResultPill, matchDateLocale } from "@/lib/i18n";
+import { SectionHelp } from "./SectionHelp";
 
 function resolveOpponentLogo(name: string, stored?: string): string | undefined {
   if (stored) return stored;
@@ -764,6 +765,7 @@ export function PartidasView({ careerId, seasonId, season, clubName, clubLogoUrl
   return (
     <div className="space-y-5 animate-fade-up">
       <div className="flex items-center justify-between gap-3">
+        <SectionHelp section="partidas" />
         <h2 className="text-white/35 text-xs font-bold tracking-widest uppercase">{t.matchesTitle} — {season}</h2>
         <div className="flex items-center gap-2">
           {/* View mode toggle */}

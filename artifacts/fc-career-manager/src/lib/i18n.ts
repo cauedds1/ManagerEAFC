@@ -3726,3 +3726,441 @@ export const SEASON_SUMMARY: Record<Lang, {
     dateLocale: "en-US",
   },
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Section Help (ⓘ buttons) — per-section content
+// ─────────────────────────────────────────────────────────────────────────────
+export interface SectionHelpContent {
+  title: string;
+  desc: string;
+  steps: { icon: string; text: string }[];
+  tip: string;
+  limit?: string;
+}
+
+export const SECTION_HELP: Record<Lang, Record<string, SectionHelpContent>> = {
+  pt: {
+    painel: {
+      title: "Painel",
+      desc: "Resumo visual da temporada: forma recente, artilheiros e posição na liga.",
+      steps: [
+        { icon: "📊", text: "Veja o aproveitamento e a forma recente da temporada" },
+        { icon: "⚽", text: "Acompanhe os artilheiros e assistentes do elenco" },
+        { icon: "🏆", text: "Confira a posição na liga e nos torneios" },
+        { icon: "🔄", text: "Navegue para outras abas para adicionar partidas e dados" },
+      ],
+      tip: "Dica: O painel atualiza automaticamente quando você registra partidas.",
+    },
+    partidas: {
+      title: "Partidas",
+      desc: "Registre cada jogo da temporada com resultado, gols e estatísticas dos jogadores.",
+      steps: [
+        { icon: "➕", text: "Toque em 'Registrar Partida' para adicionar um jogo" },
+        { icon: "📝", text: "Informe o placar, adversário e local da partida" },
+        { icon: "🎯", text: "Adicione estatísticas individuais: gols, assistências, cartões" },
+        { icon: "🔍", text: "Toque em qualquer partida para ver ou editar os detalhes" },
+      ],
+      tip: "Dica: Registrar lesões nas stats dos jogadores atualiza a aba de Lesões automaticamente.",
+    },
+    elenco: {
+      title: "Elenco",
+      desc: "Visualize e gerencie todos os jogadores do clube, incluindo titulares e reservas.",
+      steps: [
+        { icon: "👁️", text: "Alterne entre visão de campo e lista completa" },
+        { icon: "✏️", text: "Toque em um jogador para editar nome, posição e overall" },
+        { icon: "➕", text: "Adicione jogadores personalizados que não estão no banco de dados" },
+        { icon: "🔀", text: "Arraste e troque jogadores na visão de campo" },
+      ],
+      tip: "Dica: O elenco é carregado da API de futebol — use 'Atualizar' se os dados estiverem desatualizados.",
+    },
+    estatisticas: {
+      title: "Estatísticas",
+      desc: "Análise completa de desempenho do clube: resultados, gols, forma e mais.",
+      steps: [
+        { icon: "📈", text: "Veja o aproveitamento geral, em casa e fora" },
+        { icon: "⚽", text: "Analise médias de gols, chutes e posse de bola" },
+        { icon: "🔢", text: "Filtre por competição ou temporada" },
+        { icon: "📊", text: "Confira a forma recente nos últimos 10 jogos" },
+      ],
+      tip: "Dica: Quanto mais partidas você registrar, mais precisas ficam as estatísticas.",
+    },
+    lesoes: {
+      title: "Lesões",
+      desc: "Acompanhe jogadores lesionados e o histórico de lesões da temporada.",
+      steps: [
+        { icon: "🤕", text: "Lesões são detectadas automaticamente quando você marca 'Lesionado' nas stats" },
+        { icon: "🏥", text: "Veja os jogadores atualmente fora de combate" },
+        { icon: "📋", text: "Registre o nome da lesão e a data de alta" },
+        { icon: "📜", text: "Consulte o histórico de lesões da temporada" },
+      ],
+      tip: "Dica: Defina a data de alta corretamente para acompanhar o tempo fora de jogo.",
+    },
+    sequencias: {
+      title: "Sequências",
+      desc: "Recordes de sequências: vitórias consecutivas, invicta, zero a zero e mais.",
+      steps: [
+        { icon: "🏆", text: "Veja o recorde histórico de cada sequência" },
+        { icon: "📅", text: "Confira o intervalo de datas de cada recorde" },
+        { icon: "⚡", text: "Sequências ativas mostram o streak atual em andamento" },
+        { icon: "🏠", text: "Sequências em casa são calculadas separadamente" },
+      ],
+      tip: "Dica: Todas as sequências são calculadas automaticamente com base nas partidas registradas.",
+    },
+    financeiro: {
+      title: "Financeiro",
+      desc: "Gerencie o orçamento de transferências, folha salarial e movimentações financeiras.",
+      steps: [
+        { icon: "💰", text: "Defina o orçamento de transferências e a folha máxima" },
+        { icon: "📥", text: "Registre compras e contratações na aba Transferências" },
+        { icon: "📊", text: "Acompanhe o saldo líquido e a margem salarial restante" },
+        { icon: "🏆", text: "Veja os maiores negócios e os maiores salários do elenco" },
+      ],
+      tip: "Dica: Os valores da folha salarial são em €k por semana, como no jogo.",
+    },
+    competicoes: {
+      title: "Competições",
+      desc: "Acompanhe classificações e resultados em todas as competições da temporada.",
+      steps: [
+        { icon: "🏆", text: "Veja cada competição que o clube participa" },
+        { icon: "📊", text: "Acompanhe vitórias, empates e derrotas por torneio" },
+        { icon: "🥇", text: "Identifique o desempenho em cada campeonato" },
+        { icon: "⚙️", text: "Configure as competições da temporada nas Configurações" },
+      ],
+      tip: "Dica: Informe o torneio ao registrar cada partida para que as stats sejam separadas.",
+    },
+    trofeus: {
+      title: "Troféus",
+      desc: "Armário de troféus com todas as conquistas da carreira.",
+      steps: [
+        { icon: "🏆", text: "Veja todos os títulos conquistados" },
+        { icon: "📅", text: "Cada troféu mostra a temporada e a competição" },
+        { icon: "➕", text: "Adicione troféus nas Configurações da carreira" },
+        { icon: "🌟", text: "O total de títulos aparece no card da carreira" },
+      ],
+      tip: "Dica: Troféus ficam registrados para sempre na carreira, mesmo após novas temporadas.",
+    },
+    transferencias: {
+      title: "Transferências",
+      desc: "Registre contratações, vendas e empréstimos da janela de transferências.",
+      steps: [
+        { icon: "📥", text: "Adicione compras com valor e salário do jogador" },
+        { icon: "📤", text: "Registre vendas para calcular o saldo líquido" },
+        { icon: "🔄", text: "Empréstimos de entrada e saída ficam separados" },
+        { icon: "🪟", text: "Abra ou feche a janela de transferências conforme o calendário" },
+      ],
+      tip: "Dica: O saldo da janela é calculado automaticamente no Financeiro.",
+    },
+    noticias: {
+      title: "Notícias",
+      desc: "Notícias e posts gerados por IA sobre a sua carreira — como uma imprensa real.",
+      steps: [
+        { icon: "✍️", text: "Toque em 'Gerar Notícia' e descreva o que aconteceu" },
+        { icon: "🎭", text: "Escolha o portal e o tom editorial" },
+        { icon: "💬", text: "Cada post vem com comentários e reações gerados automaticamente" },
+        { icon: "📸", text: "Adicione imagem ou vídeo para enriquecer o post" },
+      ],
+      tip: "Dica: Mencione jogadores, adversários e contexto para notícias mais detalhadas.",
+      limit: "Free: 3 posts/dia · Pro: 20/dia · Ultra: ilimitado + automático",
+    },
+    diretoria: {
+      title: "Diretoria",
+      desc: "Interaja com os membros da diretoria — eles comentam resultados e cobram metas.",
+      steps: [
+        { icon: "👔", text: "Adicione membros da diretoria com personalidade e cargo" },
+        { icon: "💬", text: "Inicie reuniões para ouvir a opinião deles" },
+        { icon: "📊", text: "Eles reagem automaticamente a resultados e transferências" },
+        { icon: "🎯", text: "Mantenha a confiança alta com bons resultados" },
+      ],
+      tip: "Dica: Cada membro tem uma personalidade — alguns são mais exigentes que outros.",
+      limit: "Pro: até 2 membros · Ultra: ilimitado",
+    },
+    momentos: {
+      title: "Momentos",
+      desc: "Salve clipes e destaques memoráveis da sua carreira para rever depois.",
+      steps: [
+        { icon: "🎬", text: "Faça upload de vídeos e clipes do jogo" },
+        { icon: "✏️", text: "Adicione título, descrição e jogadores destacados" },
+        { icon: "🔍", text: "Filtre por temporada ou jogador" },
+        { icon: "▶️", text: "Reveja os momentos diretamente no app" },
+      ],
+      tip: "Dica: Limite de tamanho por arquivo: Pro 200 MB · Ultra 500 MB.",
+      limit: "Pro: 25 momentos · Ultra: 60 momentos",
+    },
+  },
+  en: {
+    painel: {
+      title: "Dashboard",
+      desc: "Visual season summary: recent form, top scorers, and league position.",
+      steps: [
+        { icon: "📊", text: "Check win rate and recent form for the season" },
+        { icon: "⚽", text: "Track top scorers and assisters in your squad" },
+        { icon: "🏆", text: "See your current league and cup positions" },
+        { icon: "🔄", text: "Navigate to other tabs to add matches and data" },
+      ],
+      tip: "Tip: The dashboard updates automatically as you log matches.",
+    },
+    partidas: {
+      title: "Matches",
+      desc: "Log every match with result, goals, and player stats.",
+      steps: [
+        { icon: "➕", text: "Tap 'Log Match' to add a new game" },
+        { icon: "📝", text: "Enter the score, opponent, and venue" },
+        { icon: "🎯", text: "Add individual stats: goals, assists, cards" },
+        { icon: "🔍", text: "Tap any match to view or edit details" },
+      ],
+      tip: "Tip: Marking a player as injured in stats updates the Injuries tab automatically.",
+    },
+    elenco: {
+      title: "Squad",
+      desc: "View and manage all your club's players, including starters and bench.",
+      steps: [
+        { icon: "👁️", text: "Switch between pitch view and full list" },
+        { icon: "✏️", text: "Tap a player to edit name, position, and overall" },
+        { icon: "➕", text: "Add custom players not in the database" },
+        { icon: "🔀", text: "Drag and swap players in the pitch view" },
+      ],
+      tip: "Tip: The squad loads from the football API — use 'Refresh' if data seems outdated.",
+    },
+    estatisticas: {
+      title: "Statistics",
+      desc: "Full club performance analysis: results, goals, form, and more.",
+      steps: [
+        { icon: "📈", text: "See overall, home, and away win rates" },
+        { icon: "⚽", text: "Analyze average goals, shots, and possession" },
+        { icon: "🔢", text: "Filter by competition or season" },
+        { icon: "📊", text: "Review recent form across the last 10 games" },
+      ],
+      tip: "Tip: The more matches you log, the more accurate the stats become.",
+    },
+    lesoes: {
+      title: "Injuries",
+      desc: "Track injured players and the season's injury history.",
+      steps: [
+        { icon: "🤕", text: "Injuries are auto-detected when you mark 'Injured' in match stats" },
+        { icon: "🏥", text: "See players currently sidelined" },
+        { icon: "📋", text: "Record the injury name and return date" },
+        { icon: "📜", text: "Review the full injury history for the season" },
+      ],
+      tip: "Tip: Set the return date accurately to track days away from the game.",
+    },
+    sequencias: {
+      title: "Streaks",
+      desc: "Streak records: consecutive wins, unbeaten runs, clean sheets, and more.",
+      steps: [
+        { icon: "🏆", text: "See the all-time record for each streak type" },
+        { icon: "📅", text: "Check the date range of each record" },
+        { icon: "⚡", text: "Active streaks show the current ongoing run" },
+        { icon: "🏠", text: "Home streaks are tracked separately" },
+      ],
+      tip: "Tip: All streaks are calculated automatically from logged matches.",
+    },
+    financeiro: {
+      title: "Finances",
+      desc: "Manage transfer budget, wage bill, and financial movements.",
+      steps: [
+        { icon: "💰", text: "Set the transfer budget and maximum wage sheet" },
+        { icon: "📥", text: "Log signings and sales in the Transfers tab" },
+        { icon: "📊", text: "Track net spend and remaining wage room" },
+        { icon: "🏆", text: "See biggest deals and top earners in your squad" },
+      ],
+      tip: "Tip: Wage values are in €k per week, matching the game's format.",
+    },
+    competicoes: {
+      title: "Competitions",
+      desc: "Track standings and results across all season competitions.",
+      steps: [
+        { icon: "🏆", text: "See each competition your club is in" },
+        { icon: "📊", text: "Track wins, draws, and losses by tournament" },
+        { icon: "🥇", text: "Identify performance in each championship" },
+        { icon: "⚙️", text: "Configure season competitions in Settings" },
+      ],
+      tip: "Tip: Select the tournament when logging each match to keep stats separate.",
+    },
+    trofeus: {
+      title: "Trophies",
+      desc: "Trophy cabinet with all career achievements.",
+      steps: [
+        { icon: "🏆", text: "See all trophies won" },
+        { icon: "📅", text: "Each trophy shows the season and competition" },
+        { icon: "➕", text: "Add trophies in Career Settings" },
+        { icon: "🌟", text: "Total titles appear on the career card" },
+      ],
+      tip: "Tip: Trophies persist across seasons — they're forever in your career.",
+    },
+    transferencias: {
+      title: "Transfers",
+      desc: "Log signings, sales, and loans during the transfer window.",
+      steps: [
+        { icon: "📥", text: "Add purchases with player fee and salary" },
+        { icon: "📤", text: "Log sales to calculate net spend" },
+        { icon: "🔄", text: "Incoming and outgoing loans are tracked separately" },
+        { icon: "🪟", text: "Open or close the transfer window by calendar" },
+      ],
+      tip: "Tip: Net spend is automatically calculated in the Finances tab.",
+    },
+    noticias: {
+      title: "News",
+      desc: "AI-generated news and posts about your career — like a real press.",
+      steps: [
+        { icon: "✍️", text: "Tap 'Generate News' and describe what happened" },
+        { icon: "🎭", text: "Choose the portal and editorial tone" },
+        { icon: "💬", text: "Each post gets auto-generated comments and reactions" },
+        { icon: "📸", text: "Add an image or video to enrich the post" },
+      ],
+      tip: "Tip: Mention players, opponents, and context for more detailed news.",
+      limit: "Free: 3 posts/day · Pro: 20/day · Ultra: unlimited + auto",
+    },
+    diretoria: {
+      title: "Board",
+      desc: "Interact with board members — they comment on results and set targets.",
+      steps: [
+        { icon: "👔", text: "Add board members with personality and role" },
+        { icon: "💬", text: "Start meetings to hear their opinions" },
+        { icon: "📊", text: "They react automatically to results and transfers" },
+        { icon: "🎯", text: "Keep confidence high with strong results" },
+      ],
+      tip: "Tip: Each member has a personality — some are more demanding than others.",
+      limit: "Pro: up to 2 members · Ultra: unlimited",
+    },
+    momentos: {
+      title: "Moments",
+      desc: "Save memorable clips and highlights from your career to revisit.",
+      steps: [
+        { icon: "🎬", text: "Upload videos and game clips" },
+        { icon: "✏️", text: "Add title, description, and featured players" },
+        { icon: "🔍", text: "Filter by season or player" },
+        { icon: "▶️", text: "Replay moments directly in the app" },
+      ],
+      tip: "Tip: File size limit: Pro 200 MB · Ultra 500 MB.",
+      limit: "Pro: 25 moments · Ultra: 60 moments",
+    },
+  },
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Onboarding / Missions
+// ─────────────────────────────────────────────────────────────────────────────
+export const ONBOARDING: Record<Lang, Record<string, string>> = {
+  pt: {
+    welcomeTitle: "Bem-vindo ao FC Career Manager",
+    welcomeSub: "Tudo que um técnico precisa para viver a carreira de verdade.",
+    welcomeCta: "Ver missões",
+    missionsPanelTitle: "Missões",
+    missionsDone: "Todas as missões concluídas!",
+    missionsDoneSub: "Você já conhece o app. Continue explorando!",
+    missionGo: "Ir",
+    missionDoneLabel: "Feito",
+    missionLockedLabel: "Bloqueada",
+    upgradeTitle: "Novas funcionalidades desbloqueadas!",
+    upgradeSub: "Você acabou de fazer o upgrade. Veja o que ganhou:",
+    upgradeCta: "Ver novas missões",
+    rewardTitle: "Missão concluída!",
+    // Free missions
+    m_free1_title: "Registre sua primeira partida",
+    m_free1_desc: "Vá até Partidas e registre um resultado. A temporada começa aqui.",
+    m_free1_reward: "Partida registrada! O painel já mostra seus dados.",
+    m_free2_title: "Gere sua primeira notícia",
+    m_free2_desc: "Vá até Notícias e gere um post sobre o que aconteceu.",
+    m_free2_reward: "Notícia publicada! Comentários e reações aparecem automaticamente.",
+    m_free3_title: "Conheça seu elenco",
+    m_free3_desc: "Vá até Clube e explore os jogadores disponíveis.",
+    m_free3_reward: "Elenco visualizado! Edite os jogadores e monte sua escalação.",
+    // Pro missions
+    m_pro1_title: "Configure sua Diretoria",
+    m_pro1_desc: "Adicione um membro da diretoria — ele vai opinar sobre os resultados.",
+    m_pro1_reward: "Diretoria configurada! Ela já tem uma opinião sobre o seu trabalho.",
+    m_pro2_title: "Salve seu primeiro Momento",
+    m_pro2_desc: "Faça upload de um clipe memorável em Momentos.",
+    m_pro2_reward: "Momento salvo! Reviva esse lance sempre que quiser.",
+    m_pro3_title: "Gere 3 notícias",
+    m_pro3_desc: "Publique 3 posts na aba Notícias esta temporada.",
+    m_pro3_reward: "Sua fanbase está crescendo! A imprensa está de olho.",
+    // Ultra missions
+    m_ultra1_title: "Ative o motor automático",
+    m_ultra1_desc: "Habilite o Auto-News em Notícias — posts gerados após cada jogo.",
+    m_ultra1_reward: "Motor ativado! Notícias serão geradas automaticamente após cada partida.",
+    m_ultra2_title: "Explore um rumor de transferência",
+    m_ultra2_desc: "Gere um post de rumor em Notícias.",
+    m_ultra2_reward: "Rumor publicado! A imprensa está especulando sobre o seu elenco.",
+    m_ultra3_title: "Crie seu primeiro portal",
+    m_ultra3_desc: "Crie um portal personalizado nas Configurações.",
+    m_ultra3_reward: "Portal criado! Suas notícias agora têm identidade própria.",
+    // Teasers
+    t_match_diretoria: "🔥 A diretoria teria reagido a esse placar…",
+    t_match_diretoria_sub: "Com Pro, seus diretores comentariam cada resultado.",
+    t_match_diretoria_cta: "Disponível no Pro",
+    t_news_auto: "🤖 O motor automático geraria um post enquanto você jogava…",
+    t_news_auto_sub: "Com Ultra, notícias são criadas automaticamente após cada jogo.",
+    t_news_auto_cta: "Disponível no Ultra",
+    t_squad_rumor: "💰 Há rumores de interesse nesse jogador…",
+    t_squad_rumor_sub: "Com Ultra, você recebe rumores de transferência em tempo real.",
+    t_squad_rumor_cta: "Disponível no Ultra",
+    t_momento_videonews: "📺 Esse momento poderia virar uma vídeo-notícia…",
+    t_momento_videonews_sub: "Com Ultra, momentos podem ser transformados em posts de vídeo.",
+    t_momento_videonews_cta: "Disponível no Ultra",
+    // Help button tooltip
+    helpBtn: "Ajuda desta seção",
+    closeHelp: "Fechar",
+  },
+  en: {
+    welcomeTitle: "Welcome to FC Career Manager",
+    welcomeSub: "Everything a manager needs to live the career for real.",
+    welcomeCta: "See missions",
+    missionsPanelTitle: "Missions",
+    missionsDone: "All missions complete!",
+    missionsDoneSub: "You know the app. Keep exploring!",
+    missionGo: "Go",
+    missionDoneLabel: "Done",
+    missionLockedLabel: "Locked",
+    upgradeTitle: "New features unlocked!",
+    upgradeSub: "You just upgraded. Here's what you gained:",
+    upgradeCta: "See new missions",
+    rewardTitle: "Mission complete!",
+    // Free missions
+    m_free1_title: "Log your first match",
+    m_free1_desc: "Go to Matches and log a result. The season starts here.",
+    m_free1_reward: "Match logged! The dashboard now shows your data.",
+    m_free2_title: "Generate your first news post",
+    m_free2_desc: "Go to News and generate a post about what happened.",
+    m_free2_reward: "Post published! Comments and reactions appear automatically.",
+    m_free3_title: "Meet your squad",
+    m_free3_desc: "Go to Club and explore your available players.",
+    m_free3_reward: "Squad viewed! Edit players and set up your lineup.",
+    // Pro missions
+    m_pro1_title: "Set up your Board",
+    m_pro1_desc: "Add a board member — they'll weigh in on your results.",
+    m_pro1_reward: "Board set up! They already have opinions about your work.",
+    m_pro2_title: "Save your first Moment",
+    m_pro2_desc: "Upload a memorable clip in Moments.",
+    m_pro2_reward: "Moment saved! Relive it whenever you want.",
+    m_pro3_title: "Generate 3 news posts",
+    m_pro3_desc: "Publish 3 posts in the News tab this season.",
+    m_pro3_reward: "Your fanbase is growing! The press is watching.",
+    // Ultra missions
+    m_ultra1_title: "Activate auto-news engine",
+    m_ultra1_desc: "Enable Auto-News in News — posts generated after every game.",
+    m_ultra1_reward: "Engine activated! News will be generated automatically after each match.",
+    m_ultra2_title: "Explore a transfer rumour",
+    m_ultra2_desc: "Generate a rumour post in News.",
+    m_ultra2_reward: "Rumour published! The press is speculating about your squad.",
+    m_ultra3_title: "Create your first portal",
+    m_ultra3_desc: "Create a custom portal in Settings.",
+    m_ultra3_reward: "Portal created! Your news now has its own identity.",
+    // Teasers
+    t_match_diretoria: "🔥 The board would have reacted to this score…",
+    t_match_diretoria_sub: "With Pro, your directors comment on every result.",
+    t_match_diretoria_cta: "Available on Pro",
+    t_news_auto: "🤖 The auto-engine would have posted while you played…",
+    t_news_auto_sub: "With Ultra, news is created automatically after every game.",
+    t_news_auto_cta: "Available on Ultra",
+    t_squad_rumor: "💰 There are rumours of interest in this player…",
+    t_squad_rumor_sub: "With Ultra, you get live transfer rumours.",
+    t_squad_rumor_cta: "Available on Ultra",
+    t_momento_videonews: "📺 This moment could become a video-news post…",
+    t_momento_videonews_sub: "With Ultra, moments can be turned into video posts.",
+    t_momento_videonews_cta: "Available on Ultra",
+    // Help button tooltip
+    helpBtn: "Section help",
+    closeHelp: "Close",
+  },
+};

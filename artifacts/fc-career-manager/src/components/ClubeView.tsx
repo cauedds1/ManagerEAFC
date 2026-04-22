@@ -16,6 +16,7 @@ import { CompetitionResultsView } from "./CompetitionResultsView";
 import { TrophyCabinetView } from "./TrophyCabinetView";
 import { useLang } from "@/hooks/useLang";
 import { CLUBE } from "@/lib/i18n";
+import { SectionHelp } from "./SectionHelp";
 
 type ClubeSubTab = "elenco" | "estatisticas" | "lesoes" | "sequencias" | "financeiro" | "competicoes" | "trofeus";
 type StatsMiniTab = "jogadores" | "clube";
@@ -205,6 +206,17 @@ export function ClubeView({
             </button>
           );
         })}
+        <div className="ml-auto flex items-center pl-2 pb-1">
+          <SectionHelp section={
+            sub === "elenco" ? "elenco"
+            : sub === "estatisticas" ? "estatisticas"
+            : sub === "lesoes" ? "lesoes"
+            : sub === "sequencias" ? "sequencias"
+            : sub === "financeiro" ? "financeiro"
+            : sub === "competicoes" ? "competicoes"
+            : "trofeus"
+          } />
+        </div>
       </div>
 
       <div className="w-full">
