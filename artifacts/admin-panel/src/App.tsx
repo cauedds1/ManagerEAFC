@@ -374,6 +374,10 @@ function CareerRecoveryTab() {
   const [userId, setUserId] = useState("");
   const [clubName, setClubName] = useState("");
   const [clubLeague, setClubLeague] = useState("");
+  const [coachName, setCoachName] = useState("");
+  const [coachNationality, setCoachNationality] = useState("");
+  const [coachFlag, setCoachFlag] = useState("");
+  const [coachAge, setCoachAge] = useState("");
   const [result, setResult] = useState<{ success: boolean; data: RecoveryResult } | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -387,6 +391,14 @@ function CareerRecoveryTab() {
       if (userId.trim()) body.user_id = Number(userId.trim());
       if (clubName.trim()) body.club_name = clubName.trim();
       if (clubLeague.trim()) body.club_league = clubLeague.trim();
+      if (coachName.trim() || coachNationality.trim()) {
+        body.coach = {
+          name: coachName.trim() || "Técnico",
+          nationality: coachNationality.trim() || "Brasil",
+          nationalityFlag: coachFlag.trim() || "🇧🇷",
+          age: coachAge.trim() ? Number(coachAge.trim()) : 40,
+        };
+      }
 
       const data = await apiFetch<RecoveryResult>("/admin-panel/recover-career", {
         method: "POST",
@@ -398,7 +410,7 @@ function CareerRecoveryTab() {
     } finally {
       setLoading(false);
     }
-  }, [careerId, userId, clubName, clubLeague]);
+  }, [careerId, userId, clubName, clubLeague, coachName, coachNationality, coachFlag, coachAge]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -465,6 +477,56 @@ function CareerRecoveryTab() {
                 className="w-full px-4 py-3 rounded-xl text-white text-sm focus:outline-none placeholder:text-white/20"
                 style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)" }}
               />
+            </div>
+          </div>
+
+          <div className="pt-1">
+            <p className="text-white/30 text-xs font-semibold uppercase tracking-wider mb-3">Técnico <span className="font-normal normal-case text-white/20">(opcional — preenchido com valores padrão se omitido)</span></p>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs text-white/40">Nome</label>
+                <input
+                  type="text"
+                  value={coachName}
+                  onChange={(e) => setCoachName(e.target.value)}
+                  placeholder="Ex: Eusebio Di Francesco"
+                  className="w-full px-3 py-2.5 rounded-xl text-white text-xs focus:outline-none placeholder:text-white/15"
+                  style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.10)" }}
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs text-white/40">Nacionalidade</label>
+                <input
+                  type="text"
+                  value={coachNationality}
+                  onChange={(e) => setCoachNationality(e.target.value)}
+                  placeholder="Ex: Itália"
+                  className="w-full px-3 py-2.5 rounded-xl text-white text-xs focus:outline-none placeholder:text-white/15"
+                  style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.10)" }}
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs text-white/40">Bandeira (emoji)</label>
+                <input
+                  type="text"
+                  value={coachFlag}
+                  onChange={(e) => setCoachFlag(e.target.value)}
+                  placeholder="🇮🇹"
+                  className="w-full px-3 py-2.5 rounded-xl text-white text-xs focus:outline-none placeholder:text-white/15"
+                  style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.10)" }}
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs text-white/40">Idade</label>
+                <input
+                  type="number"
+                  value={coachAge}
+                  onChange={(e) => setCoachAge(e.target.value)}
+                  placeholder="55"
+                  className="w-full px-3 py-2.5 rounded-xl text-white text-xs focus:outline-none placeholder:text-white/15"
+                  style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.10)" }}
+                />
+              </div>
             </div>
           </div>
           <button

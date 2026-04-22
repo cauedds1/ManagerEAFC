@@ -413,9 +413,10 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
   const [soundEnabled, setSoundEnabledState] = useState(() => isSoundEnabled());
 
   /* ── Bug report ── */
+  const [showBugModal, setShowBugModal] = useState(false);
   const [bugDesc, setBugDesc] = useState("");
   const [bugState, setBugState] = useState<"idle" | "sending" | "done" | "error">("idle");
-  const [bugMsg, setBugMsg] = useState("");
+  const [bugToast, setBugToast] = useState<{ msg: string; ok: boolean } | null>(null);
 
   /* ── Player sync ── */
   const [syncState, setSyncState]     = useState<SyncState>("idle");
@@ -464,10 +465,14 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
 
   /* ─── Handlers ─── */
 
+  const showBugToast = (msg: string, ok: boolean) => {
+    setBugToast({ msg, ok });
+    setTimeout(() => setBugToast(null), 4000);
+  };
+
   const handleSendBugReport = async () => {
     if (!bugDesc.trim()) return;
     setBugState("sending");
-    setBugMsg("");
     try {
       const token = localStorage.getItem(AUTH_TOKEN_KEY);
       const res = await fetch("/api/bug-reports", {
@@ -479,17 +484,18 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
         body: JSON.stringify({ description: bugDesc.trim(), page: window.location.pathname }),
       });
       if (res.ok) {
-        setBugState("done");
-        setBugMsg(lang === "pt" ? "Bug reportado com sucesso! Obrigado." : "Bug reported successfully! Thank you.");
+        setBugState("idle");
         setBugDesc("");
+        setShowBugModal(false);
+        showBugToast(lang === "pt" ? "Bug reportado com sucesso! Obrigado." : "Bug reported successfully! Thank you.", true);
       } else {
         const d = await res.json() as { error?: string };
         setBugState("error");
-        setBugMsg(d.error ?? (lang === "pt" ? "Erro ao enviar." : "Failed to send."));
+        showBugToast(d.error ?? (lang === "pt" ? "Erro ao enviar." : "Failed to send."), false);
       }
     } catch {
       setBugState("error");
-      setBugMsg(lang === "pt" ? "Erro de conexão." : "Connection error.");
+      showBugToast(lang === "pt" ? "Erro de conexão." : "Connection error.", false);
     }
   };
 
@@ -1319,49 +1325,19 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
 
               <SectionCard
                 title={lang === "pt" ? "Reportar Bug" : "Report a Bug"}
-                subtitle={lang === "pt" ? "Encontrou algo errado? Descreva o problema e envie — vamos corrigir." : "Found something broken? Describe the issue and send it — we'll fix it."}
+                subtitle={lang === "pt" ? "Encontrou algo errado? Avise-nos para que possamos corrigir." : "Found something broken? Let us know so we can fix it."}
               >
-                <div className="flex flex-col gap-3">
-                  <textarea
-                    value={bugDesc}
-                    onChange={(e) => { setBugDesc(e.target.value); if (bugState !== "idle") { setBugState("idle"); setBugMsg(""); } }}
-                    maxLength={2000}
-                    rows={4}
-                    placeholder={lang === "pt" ? "Descreva o que aconteceu, em qual tela, e o que você esperava que acontecesse..." : "Describe what happened, on which screen, and what you expected to happen..."}
-                    className="w-full px-4 py-3 rounded-xl text-white text-sm focus:outline-none placeholder:text-white/20 resize-none"
-                    style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}
-                  />
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-white/25 text-xs">{bugDesc.length}/2000</span>
-                    <button
-                      disabled={!bugDesc.trim() || bugState === "sending"}
-                      onClick={handleSendBugReport}
-                      className="px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 active:scale-95"
-                      style={{
-                        background: !bugDesc.trim() || bugState === "sending" ? "rgba(255,255,255,0.05)" : "var(--club-gradient)",
-                        color: !bugDesc.trim() || bugState === "sending" ? "rgba(255,255,255,0.2)" : "#fff",
-                        cursor: !bugDesc.trim() || bugState === "sending" ? "not-allowed" : "pointer",
-                        boxShadow: !bugDesc.trim() || bugState === "sending" ? "none" : "0 4px 12px rgba(var(--club-primary-rgb),0.3)",
-                      }}
-                    >
-                      {bugState === "sending"
-                        ? (lang === "pt" ? "Enviando..." : "Sending...")
-                        : (lang === "pt" ? "Enviar" : "Send")}
-                    </button>
-                  </div>
-                  {bugMsg && (
-                    <div
-                      className="rounded-xl px-4 py-3 text-xs leading-relaxed"
-                      style={{
-                        background: bugState === "done" ? "rgba(16,185,129,0.1)" : "rgba(239,68,68,0.1)",
-                        border: `1px solid ${bugState === "done" ? "rgba(16,185,129,0.2)" : "rgba(239,68,68,0.2)"}`,
-                        color: bugState === "done" ? "#34d399" : "#f87171",
-                      }}
-                    >
-                      {bugMsg}
-                    </div>
-                  )}
-                </div>
+                <button
+                  onClick={() => { setShowBugModal(true); setBugState("idle"); }}
+                  className="w-full py-3 rounded-xl text-sm font-bold transition-all duration-200 active:scale-95"
+                  style={{
+                    background: "var(--club-gradient)",
+                    color: "#fff",
+                    boxShadow: "0 4px 12px rgba(var(--club-primary-rgb),0.25)",
+                  }}
+                >
+                  🐛 {lang === "pt" ? "Reportar Bug" : "Report a Bug"}
+                </button>
               </SectionCard>
             </div>
           )}
@@ -1376,6 +1352,87 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
         onSave={handleSavePortal}
         onClose={() => { setShowPortalModal(false); setEditingPortal(null); }}
       />
+    )}
+
+    {showBugModal && (
+      <div
+        className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
+        style={{ background: "rgba(0,0,0,0.65)", backdropFilter: "blur(4px)" }}
+        onClick={(e) => { if (e.target === e.currentTarget) { setShowBugModal(false); setBugDesc(""); setBugState("idle"); } }}
+      >
+        <div
+          className="w-full max-w-md rounded-2xl p-5 flex flex-col gap-4"
+          style={{ background: "hsl(222,20%,12%)", border: "1px solid rgba(255,255,255,0.1)" }}
+        >
+          <div className="flex items-center justify-between">
+            <h3 className="text-white font-bold text-base">
+              {lang === "pt" ? "Reportar Bug" : "Report a Bug"}
+            </h3>
+            <button
+              onClick={() => { setShowBugModal(false); setBugDesc(""); setBugState("idle"); }}
+              className="text-white/40 hover:text-white/70 transition-colors text-xl leading-none"
+            >
+              ×
+            </button>
+          </div>
+          <p className="text-white/40 text-xs leading-relaxed">
+            {lang === "pt"
+              ? "Descreva o que aconteceu, em qual tela, e o que você esperava que acontecesse."
+              : "Describe what happened, on which screen, and what you expected to happen."}
+          </p>
+          <textarea
+            value={bugDesc}
+            onChange={(e) => { setBugDesc(e.target.value); if (bugState === "error") setBugState("idle"); }}
+            maxLength={2000}
+            rows={5}
+            autoFocus
+            placeholder={lang === "pt" ? "Ex: ao clicar em 'Simular Rodada', a tela ficou em branco..." : "Ex: clicking 'Simulate Round' made the screen go blank..."}
+            className="w-full px-4 py-3 rounded-xl text-white text-sm focus:outline-none placeholder:text-white/20 resize-none"
+            style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}
+          />
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-white/25 text-xs">{bugDesc.length}/2000</span>
+            <div className="flex gap-2">
+              <button
+                onClick={() => { setShowBugModal(false); setBugDesc(""); setBugState("idle"); }}
+                className="px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200"
+                style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.45)" }}
+              >
+                {lang === "pt" ? "Cancelar" : "Cancel"}
+              </button>
+              <button
+                disabled={!bugDesc.trim() || bugState === "sending"}
+                onClick={handleSendBugReport}
+                className="px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 active:scale-95"
+                style={{
+                  background: !bugDesc.trim() || bugState === "sending" ? "rgba(255,255,255,0.05)" : "var(--club-gradient)",
+                  color: !bugDesc.trim() || bugState === "sending" ? "rgba(255,255,255,0.2)" : "#fff",
+                  cursor: !bugDesc.trim() || bugState === "sending" ? "not-allowed" : "pointer",
+                  boxShadow: !bugDesc.trim() || bugState === "sending" ? "none" : "0 4px 12px rgba(var(--club-primary-rgb),0.3)",
+                }}
+              >
+                {bugState === "sending"
+                  ? (lang === "pt" ? "Enviando..." : "Sending...")
+                  : (lang === "pt" ? "Enviar" : "Send")}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {bugToast && (
+      <div
+        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-2xl text-sm font-medium shadow-xl transition-all duration-300"
+        style={{
+          background: bugToast.ok ? "rgba(16,185,129,0.92)" : "rgba(239,68,68,0.92)",
+          color: "#fff",
+          backdropFilter: "blur(8px)",
+          maxWidth: "90vw",
+        }}
+      >
+        {bugToast.msg}
+      </div>
     )}
     </>
   );
