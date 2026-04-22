@@ -945,8 +945,10 @@ function AddPostModal({
                       try {
                         const priceRes = await fetch("/api/stripe/products-with-plan", { headers: { Authorization: `Bearer ${token}` } });
                         if (!priceRes.ok) return;
-                        const prices = await priceRes.json() as Array<{ planTier: string; priceId: string }>;
-                        const match = prices.find(p => p.planTier === "pro");
+                        const prices = await priceRes.json() as Array<{ planTier: string; priceId: string; currency: string }>;
+                        const targetCurrency = (lang ?? "pt") === "pt" ? "brl" : "usd";
+                        const match = prices.find(p => p.planTier === "pro" && p.currency === targetCurrency)
+                          ?? prices.find(p => p.planTier === "pro");
                         if (!match?.priceId) return;
                         const checkoutRes = await fetch("/api/stripe/checkout", {
                           method: "POST",

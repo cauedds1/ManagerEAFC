@@ -8,7 +8,8 @@ const LANG_KEY = "fc_lang";
 function readLang(): Lang {
   try {
     const s = localStorage.getItem(LANG_KEY);
-    return s === "pt" || s === "en" ? s : "pt";
+    if (s === "pt" || s === "en") return s;
+    return navigator.language?.startsWith("pt") ? "pt" : "en";
   } catch {
     return "pt";
   }

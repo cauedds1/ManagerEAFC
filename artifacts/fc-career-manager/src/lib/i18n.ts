@@ -559,7 +559,7 @@ export function getPlanCards(lang: Lang) {
     {
       plan: "pro" as const,
       label: "Pro",
-      price: "R$ 14,90",
+      price: lang === "en" ? "$4.99" : "R$ 14,90",
       period: t.periodMonth,
       accentRgb: "124,92,252",
       accentColor: "#7c5cfc",
@@ -570,7 +570,7 @@ export function getPlanCards(lang: Lang) {
     {
       plan: "ultra" as const,
       label: "Ultra",
-      price: "R$ 39,90",
+      price: lang === "en" ? "$9.99" : "R$ 39,90",
       period: t.periodMonth,
       accentRgb: "245,158,11",
       accentColor: "#f59e0b",
@@ -601,7 +601,7 @@ export function getPlanDetailData(lang: Lang): Record<Plan, {
         { label: "Multiple careers", nextPlan: "Pro" },
         { label: "Locker room rumours", nextPlan: "Ultra" },
       ],
-      upsell: { plan: "Pro", color: "#7c5cfc", rgb: "124,92,252", price: "R$ 14.90/mo", msg: "Unlock the full potential of your career" },
+      upsell: { plan: "Pro", color: "#7c5cfc", rgb: "124,92,252", price: "$4.99/mo", msg: "Unlock the full potential of your career" },
     },
     pro: {
       tagline: "For the manager who takes it seriously",
@@ -613,7 +613,7 @@ export function getPlanDetailData(lang: Lang): Record<Plan, {
         { label: "AI with dramatic news", nextPlan: "Ultra" },
         { label: "Automatic news", nextPlan: "Ultra" },
       ],
-      upsell: { plan: "Ultra", color: "#f59e0b", rgb: "245,158,11", price: "R$ 39.90/mo", msg: "Live the full career mode experience" },
+      upsell: { plan: "Ultra", color: "#f59e0b", rgb: "245,158,11", price: "$9.99/mo", msg: "Live the full career mode experience" },
     },
     ultra: {
       tagline: "The ultimate career mode experience",

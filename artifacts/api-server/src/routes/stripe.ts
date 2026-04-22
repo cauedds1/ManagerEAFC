@@ -62,8 +62,9 @@ router.post("/stripe/checkout", requireAuth, async (req: AuthRequest, res) => {
       return res.status(400).json({ error: "Este preço não está mais disponível" });
     }
 
-    if (price.currency !== "brl" || price.type !== "recurring") {
-      return res.status(400).json({ error: "Preço inválido para assinatura BRL" });
+    const ALLOWED_CURRENCIES = new Set(["brl", "usd"]);
+    if (!ALLOWED_CURRENCIES.has(price.currency) || price.type !== "recurring") {
+      return res.status(400).json({ error: "Preço inválido para assinatura" });
     }
 
     if (price.recurring?.interval !== "month") {

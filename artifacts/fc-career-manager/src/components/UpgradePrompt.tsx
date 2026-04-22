@@ -13,6 +13,10 @@ interface UpgradePromptProps {
 const API_BASE = "/api";
 const AUTH_TOKEN_KEY = "fc_auth_token";
 
+function readStoredLang(): string {
+  try { return localStorage.getItem("fc_lang") ?? ""; } catch { return ""; }
+}
+
 async function startStripeCheckout(requiredPlan: "pro" | "ultra"): Promise<void> {
   const token = localStorage.getItem(AUTH_TOKEN_KEY);
   if (!token) { return; }
@@ -23,8 +27,10 @@ async function startStripeCheckout(requiredPlan: "pro" | "ultra"): Promise<void>
 
   if (!pricesRes.ok) { throw new Error("Não foi possível obter os planos disponíveis."); }
 
-  const prices = await pricesRes.json() as Array<{ planTier: string; priceId: string }>;
-  const match = prices.find((p) => p.planTier === requiredPlan);
+  const prices = await pricesRes.json() as Array<{ planTier: string; priceId: string; currency: string }>;
+  const targetCurrency = readStoredLang() === "en" ? "usd" : "brl";
+  const match = prices.find((p) => p.planTier === requiredPlan && p.currency === targetCurrency)
+    ?? prices.find((p) => p.planTier === requiredPlan);
   if (!match?.priceId) { throw new Error("Plano não encontrado. Verifique sua conexão."); }
 
   const checkoutRes = await fetch(`${API_BASE}/stripe/checkout`, {
