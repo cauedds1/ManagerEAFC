@@ -1360,7 +1360,7 @@ export function LandingPage({ onStart, onLogin, onStartWithPlan, lang, setLang }
             {/* Free */}
             <div className="lp-reveal lp-delay-1 lp-pricing-card" style={{ background: "#0d0d1a", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 20, padding: "36px 32px" }}>
               <p style={{ color: "#666688", fontSize: 12, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 12 }}>{t.pricingFreeForever}</p>
-              <div className="font-bebas" style={{ fontSize: 48, color: "#f0f0ff", lineHeight: 1 }}>R$0</div>
+              <div className="font-bebas" style={{ fontSize: 48, color: "#f0f0ff", lineHeight: 1 }}>{t.pricingFreePriceWhole}</div>
               <p style={{ color: "#555577", fontSize: 13, marginTop: 8, marginBottom: 28 }}>{t.pricingFreeForWho}</p>
               <button onClick={onLogin} style={{ width: "100%", padding: "12px 0", borderRadius: 12, fontWeight: 700, fontSize: 14, color: "#888", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", cursor: "none", transition: "all 0.2s" }} onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.08)"; (e.currentTarget as HTMLButtonElement).style.color = "#f0f0ff"; }} onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.05)"; (e.currentTarget as HTMLButtonElement).style.color = "#888"; }}>
                 {t.pricingFreeBtn}
@@ -1379,7 +1379,7 @@ export function LandingPage({ onStart, onLogin, onStartWithPlan, lang, setLang }
               <div style={{ position: "absolute", bottom: -1, left: 0, right: 0, height: "60%", background: "linear-gradient(to top, rgba(124,92,252,0.1) 0%, transparent 100%)", borderRadius: "0 0 20px 20px", pointerEvents: "none" }} />
               <div style={{ position: "absolute", top: -12, left: "50%", transform: "translateX(-50%)", background: "linear-gradient(135deg,#7c5cfc,#5b3fd1)", borderRadius: 20, padding: "4px 16px", fontSize: 11, fontWeight: 700, color: "#fff", whiteSpace: "nowrap" }}>{t.pricingProBadge}</div>
               <p style={{ color: "#7c5cfc", fontSize: 12, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 12 }}>{t.pricingProForWho}</p>
-              <div className="font-bebas" style={{ fontSize: 48, color: "#f0f0ff", lineHeight: 1 }}>R$14<span style={{ fontSize: 24 }}>,90</span></div>
+              <div className="font-bebas" style={{ fontSize: 48, color: "#f0f0ff", lineHeight: 1 }}>{t.pricingProPriceWhole}<span style={{ fontSize: 24 }}>{t.pricingProPriceDec}</span></div>
               <p style={{ color: "#555577", fontSize: 13, marginTop: 8, marginBottom: 28 }}>{t.pricingPerMonth}</p>
               <button data-cursor="ball" onClick={() => onStartWithPlan("pro")} style={{ width: "100%", padding: "12px 0", borderRadius: 12, fontWeight: 700, fontSize: 14, color: "#fff", background: "linear-gradient(135deg,rgba(124,92,252,0.9),rgba(91,63,209,0.85))", border: "none", cursor: "none", boxShadow: "0 4px 24px rgba(124,92,252,0.4)", transition: "all 0.2s" }} onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 40px rgba(124,92,252,0.6), 0 4px 24px rgba(124,92,252,0.4)"; }} onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 4px 24px rgba(124,92,252,0.4)"; }}>
                 {t.pricingProBtn}
@@ -1396,7 +1396,7 @@ export function LandingPage({ onStart, onLogin, onStartWithPlan, lang, setLang }
             {/* Ultra */}
             <div className="lp-reveal lp-delay-3 lp-pricing-card" style={{ background: "#0d0d1a", border: "1px solid rgba(245,158,11,0.2)", borderRadius: 20, padding: "36px 32px" }}>
               <p style={{ color: "#f59e0b", fontSize: 12, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 12 }}>{t.pricingUltraForWho}</p>
-              <div className="font-bebas" style={{ fontSize: 48, color: "#f0f0ff", lineHeight: 1 }}>R$39<span style={{ fontSize: 24 }}>,90</span></div>
+              <div className="font-bebas" style={{ fontSize: 48, color: "#f0f0ff", lineHeight: 1 }}>{t.pricingUltraPriceWhole}<span style={{ fontSize: 24 }}>{t.pricingUltraPriceDec}</span></div>
               <p style={{ color: "#555577", fontSize: 13, marginTop: 8, marginBottom: 28 }}>{t.pricingPerMonth}</p>
               <button data-cursor="ball" onClick={() => onStartWithPlan("ultra")} style={{ width: "100%", padding: "12px 0", borderRadius: 12, fontWeight: 700, fontSize: 14, color: "#fff", background: "linear-gradient(135deg,rgba(245,158,11,0.85),rgba(200,110,0,0.8))", border: "none", cursor: "none", boxShadow: "0 4px 24px rgba(245,158,11,0.3)", transition: "all 0.2s" }} onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 40px rgba(245,158,11,0.5), 0 4px 24px rgba(245,158,11,0.3)"; }} onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 4px 24px rgba(245,158,11,0.3)"; }}>
                 {t.pricingUltraBtn}
