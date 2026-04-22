@@ -539,16 +539,59 @@ router.post("/admin/recover-career", async (req, res) => {
       });
     }
 
-    // 2. Parse career_data for useful metadata hints
-    interface CompResult { seasonId?: string; seasonLabel?: string; competitionName?: string; }
+    // 2. Parse career_data for metadata hints
+    interface CompResult { seasonId?: string; seasonLabel?: string; competitionName?: string; careerId?: string; }
     interface Trophy { competitionName?: string; seasonLabel?: string; }
 
+    // Parse all career_data values as JSON
     const parsed: Record<string, unknown> = {};
     for (const row of careerDataRows) {
       try { parsed[row.key] = JSON.parse(row.valueJson); } catch { /* skip unparseable */ }
     }
 
-    // comp_results: [{careerId, seasonId, seasonLabel, competitionName, ...}]
+    // 2a. Best-effort extraction of Career metadata fields from any career_data value.
+    // The Career type fields (clubName, coach, etc.) are normally stored in the careers
+    // table and NOT in career_data. However, we deep-scan all parsed values to pick up
+    // any matching fields in case the data model is extended or legacy data exists.
+    // Fields found here are used as fallbacks, overridden by request body values.
+    interface CareerHint {
+      coach?: object;
+      clubName?: string;
+      clubId?: number;
+      clubLogo?: string;
+      clubLeague?: string;
+      clubCountry?: string;
+      clubStadium?: string;
+      clubFounded?: number;
+      clubPrimary?: string;
+      clubSecondary?: string;
+      clubDescription?: string;
+    }
+    const CAREER_HINT_FIELDS: (keyof CareerHint)[] = [
+      "coach", "clubName", "clubId", "clubLogo", "clubLeague",
+      "clubCountry", "clubStadium", "clubFounded", "clubPrimary",
+      "clubSecondary", "clubDescription",
+    ];
+    const inferred: CareerHint = {};
+    function deepScan(value: unknown): void {
+      if (!value || typeof value !== "object") return;
+      if (Array.isArray(value)) { for (const item of value) deepScan(item); return; }
+      const obj = value as Record<string, unknown>;
+      for (const field of CAREER_HINT_FIELDS) {
+        if (obj[field] !== undefined && inferred[field] === undefined) {
+          (inferred as Record<string, unknown>)[field] = obj[field];
+        }
+      }
+      // Also check camelCase alternatives (e.g., "club_name" → clubName)
+      if (obj["club_name"] !== undefined && inferred.clubName === undefined) inferred.clubName = String(obj["club_name"]);
+      if (obj["club_id"] !== undefined && inferred.clubId === undefined) inferred.clubId = Number(obj["club_id"]);
+      if (obj["coachJson"] !== undefined && inferred.coach === undefined) {
+        try { inferred.coach = JSON.parse(String(obj["coachJson"])) as object; } catch { /* ignore */ }
+      }
+    }
+    for (const value of Object.values(parsed)) deepScan(value);
+
+    // 2b. comp_results: [{careerId, seasonId, seasonLabel, competitionName, ...}]
     const compResults: CompResult[] = Array.isArray(parsed["comp_results"])
       ? (parsed["comp_results"] as CompResult[])
       : [];
@@ -566,15 +609,12 @@ router.post("/admin/recover-career", async (req, res) => {
       compResults.map((cr) => cr.competitionName).filter(Boolean) as string[]
     )];
 
-    // Trophies as secondary hint for season labels / competition names
+    // 2c. Trophies as secondary hint for competition names
     const trophies: Trophy[] = Array.isArray(parsed["trophies"])
       ? (parsed["trophies"] as Trophy[])
       : [];
     for (const t of trophies) {
-      if (t.seasonLabel && t.competitionName) {
-        // Can't scope trophy to a season_id, but useful for context
-        compNamesFromData.push(t.competitionName);
-      }
+      if (t.competitionName) compNamesFromData.push(t.competitionName);
     }
     const uniqueCompNames = [...new Set(compNamesFromData)];
 
@@ -633,25 +673,26 @@ router.post("/admin/recover-career", async (req, res) => {
     let activatedSeasonId: string | null = null;
 
     await db.transaction(async (tx) => {
-      // 5a. Reconstruct the careers row
-      // Club/coach data is NOT in career_data — it only lived in the deleted careers row.
-      // career_data-inferred hints: competition names (from comp_results and trophies).
-      // Request body fields take priority; defaults are last resort.
+      // 5a. Reconstruct the careers row.
+      // Priority: request body fields > career_data deep-scan inferences > safe defaults.
+      // The deep scan (step 2a) looks for Career-type field names in all career_data values.
+      // In the current app design, club/coach are stored only in the careers table and not
+      // in career_data, so inferred values will typically be empty and defaults apply.
       const careerInsert = await tx
         .insert(careersTable)
         .values({
           id: careerId,
-          coachJson: JSON.stringify(body.coach ?? coachFallback),
-          clubId: body.club_id ?? 0,
-          clubName: body.club_name ?? "Unknown Club",
-          clubLogo: body.club_logo ?? "",
-          clubLeague: body.club_league ?? "",
-          clubCountry: body.club_country ?? null,
-          clubStadium: body.club_stadium ?? null,
-          clubFounded: body.club_founded ?? null,
-          clubPrimary: body.club_primary ?? null,
-          clubSecondary: body.club_secondary ?? null,
-          clubDescription: body.club_description ?? null,
+          coachJson: JSON.stringify(body.coach ?? inferred.coach ?? coachFallback),
+          clubId: body.club_id ?? inferred.clubId ?? 0,
+          clubName: body.club_name ?? inferred.clubName ?? "Unknown Club",
+          clubLogo: body.club_logo ?? inferred.clubLogo ?? "",
+          clubLeague: body.club_league ?? inferred.clubLeague ?? "",
+          clubCountry: body.club_country ?? inferred.clubCountry ?? null,
+          clubStadium: body.club_stadium ?? inferred.clubStadium ?? null,
+          clubFounded: body.club_founded ?? inferred.clubFounded ?? null,
+          clubPrimary: body.club_primary ?? inferred.clubPrimary ?? null,
+          clubSecondary: body.club_secondary ?? inferred.clubSecondary ?? null,
+          clubDescription: body.club_description ?? inferred.clubDescription ?? null,
           clubTitlesJson: body.club_titles ? JSON.stringify(body.club_titles) : null,
           season: body.season ?? "",
           projeto: body.projeto ?? null,
@@ -708,8 +749,9 @@ router.post("/admin/recover-career", async (req, res) => {
       seasons_recovered: recoveredSeasons,
       active_season_id: activatedSeasonId,
       career_data_keys: Object.keys(parsed),
+      metadata_inferred_from_career_data: inferred,
       competitions_inferred: uniqueCompNames,
-      message: `Carreira "${body.club_name ?? careerId}" recuperada. ${recoveredSeasons} temporada(s) restaurada(s). Se faltar temporadas, chame novamente com "season_ids" explícitos.`,
+      message: `Carreira "${body.club_name ?? inferred.clubName ?? careerId}" recuperada. ${recoveredSeasons} temporada(s) restaurada(s). Se faltar temporadas, chame novamente com "season_ids" explícitos.`,
     });
   } catch (err) {
     console.error("POST /admin/recover-career error:", err);
