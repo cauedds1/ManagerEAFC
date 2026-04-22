@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo, type CSSProperties } from "react";
 import { ClubDemoMockup } from "./ClubDemoMockup";
+import { LangToggle } from "./LangToggle";
 import { LP, getAiTexts, getHeadlineTemplates, getBodyTemplates, getSteps, getFaqItems, getFeaturesExplorer, getTestimonials, type Lang } from "@/lib/i18n";
 
 /* ─── Types ─────────────────────────────────────────────── */
@@ -981,19 +982,7 @@ export function LandingPage({ onStart, onLogin, onStartWithPlan, lang, setLang }
           ))}
 
           {/* ── Language toggle ─── */}
-          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-            {(["pt", "en"] as Lang[]).map(l => (
-              <button
-                key={l}
-                onClick={() => setLang(l)}
-                onMouseEnter={e => { if (lang !== l) (e.currentTarget as HTMLButtonElement).style.opacity = "0.55"; }}
-                onMouseLeave={e => { if (lang !== l) (e.currentTarget as HTMLButtonElement).style.opacity = "0.22"; }}
-                style={{ padding: "3px 6px", borderRadius: 6, fontSize: 10, fontWeight: 700, border: "none", cursor: "pointer", transition: "opacity 0.2s", background: "transparent", color: "#d0ccff", opacity: lang === l ? 0.75 : 0.22, letterSpacing: "0.07em" }}
-              >
-                {l.toUpperCase()}
-              </button>
-            ))}
-          </div>
+          <LangToggle lang={lang} setLang={setLang} />
 
           <button data-cursor="ball" onClick={onLogin} style={{ background: "linear-gradient(135deg,#7c5cfc,#5b3fd1)", color: "#fff", border: "none", borderRadius: 10, padding: "9px 20px", fontSize: 13, fontWeight: 600, cursor: "none", transition: "all 0.25s", boxShadow: "0 4px 20px rgba(124,92,252,0.3)" }} onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 30px rgba(124,92,252,0.6)"; (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-1px) scale(1.03)"; }} onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 4px 20px rgba(124,92,252,0.3)"; (e.currentTarget as HTMLButtonElement).style.transform = "none"; }}>
             {t.navCta}

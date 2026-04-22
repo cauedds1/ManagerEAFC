@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { AUTH, getPlanCards, getPlanDetailData, getPlanWelcome, getNewsStories, type Lang } from "@/lib/i18n";
+import { LangToggle } from "./LangToggle";
 
 type Plan = "free" | "pro" | "ultra";
 
@@ -503,18 +504,7 @@ export function AuthPage({ onBack, onAuthSuccess, initialPlan, checkoutDraft, on
             </svg>
             {t.back}
           </button>
-          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-            {(["pt", "en"] as Lang[]).map(l => (
-              <button
-                key={l}
-                onClick={() => setLang(l)}
-                onMouseEnter={e => { if (lang !== l) (e.currentTarget as HTMLButtonElement).style.opacity = "0.55"; }}
-                onMouseLeave={e => { if (lang !== l) (e.currentTarget as HTMLButtonElement).style.opacity = "0.22"; }}
-                style={{ fontSize: 10, fontWeight: 700, padding: "3px 6px", borderRadius: 6, border: "none", cursor: "pointer", transition: "opacity 0.2s", letterSpacing: "0.07em", textTransform: "uppercase", background: "transparent", color: "#d0ccff", opacity: lang === l ? 0.75 : 0.22 }}>
-                {l.toUpperCase()}
-              </button>
-            ))}
-          </div>
+          <LangToggle lang={lang} setLang={setLang} />
         </div>
 
         <div key={contentKey} className="auth-content-enter" style={{ margin: "auto 0", padding: "16px 40px 36px" }}>
