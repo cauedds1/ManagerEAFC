@@ -126,7 +126,7 @@ export function Settings({ isOpen, onClose, onReloadClubs }: SettingsProps) {
       });
       const data = await res.json() as { message?: string; remaining?: number; error?: string };
       if (!res.ok) { setSyncMsg(data.error ?? t.syncError); setSyncState("error"); }
-      else { setSyncMsg(data.message ?? ""); setSyncRemaining(data.remaining ?? 0); setSyncState("done"); }
+      else { setSyncMsg(data.message ?? t.doneSingle); setSyncRemaining(data.remaining ?? 0); setSyncState("done"); }
     } catch { setSyncMsg(t.connectionError); setSyncState("error"); }
   };
 
@@ -162,18 +162,18 @@ export function Settings({ isOpen, onClose, onReloadClubs }: SettingsProps) {
           });
         } else if (type === "rate_limit") {
           setupFinishedRef.current = true;
-          setSetupMsg(String(ev.message ?? ""));
+          setSetupMsg(String(ev.message ?? t.rateLimitReached));
           setSetupState("error");
           es.close();
         } else if (type === "done") {
           setupFinishedRef.current = true;
-          setSetupMsg(String(ev.message ?? ""));
+          setSetupMsg(String(ev.message ?? t.doneExclaim));
           setSetupState("done");
           setSetupProgress(null);
           es.close();
         } else if (type === "error") {
           setupFinishedRef.current = true;
-          setSetupMsg(String(ev.message ?? ""));
+          setSetupMsg(String(ev.message ?? t.errorFallback));
           setSetupState("error");
           es.close();
         }
@@ -217,13 +217,13 @@ export function Settings({ isOpen, onClose, onReloadClubs }: SettingsProps) {
           });
         } else if (type === "done") {
           reenrichFinishedRef.current = true;
-          setReenrichMsg(String(ev.message ?? ""));
+          setReenrichMsg(String(ev.message ?? t.doneExclaim));
           setReenrichState("done");
           setReenrichProgress(null);
           es.close();
         } else if (type === "error") {
           reenrichFinishedRef.current = true;
-          setReenrichMsg(String(ev.message ?? ""));
+          setReenrichMsg(String(ev.message ?? t.errorFallback));
           setReenrichState("error");
           es.close();
         }

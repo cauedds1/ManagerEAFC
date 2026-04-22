@@ -1051,7 +1051,7 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
                         {subscription.cancel_at_period_end ? t.cancelAt : t.renewAt}
                       </span>
                       <span className={`text-xs font-semibold ${subscription.cancel_at_period_end ? "text-amber-400" : "text-white/80"}`}>
-                        {new Date(subscription.current_period_end).toLocaleDateString()}
+                        {new Date(subscription.current_period_end).toLocaleDateString(lang === "pt" ? "pt-BR" : "en-US")}
                       </span>
                     </div>
                   )}
