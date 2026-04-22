@@ -566,12 +566,6 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
         setActiveTeaserTrigger("after_squad_rumor");
       }
     }
-    if (tab === "momentos") {
-      // Teaser: video-news for non-ultra
-      if (userPlan !== "ultra") {
-        setActiveTeaserTrigger("after_momento_videonews");
-      }
-    }
   }, [career.id, activeSeasonId, userPlan]);
 
   useEffect(() => {
@@ -634,16 +628,20 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     return () => window.removeEventListener(FC_BOARD_MEMBER_ADDED_EVENT, handler);
   }, [career.id]);
 
-  // ─── Mission completion via momento saved ────────────────────────────────────
+  // ─── Mission completion + teaser via momento saved ───────────────────────────
   useEffect(() => {
     const handler = () => {
       if (!isMissionComplete(career.id, "pro_save_momento")) {
         completeMission(career.id, "pro_save_momento");
       }
+      // Teaser: video-news for non-ultra — fires after the user actually uploads a momento
+      if (userPlan !== "ultra") {
+        setActiveTeaserTrigger("after_momento_videonews");
+      }
     };
     window.addEventListener(FC_MOMENTO_SAVED_EVENT, handler);
     return () => window.removeEventListener(FC_MOMENTO_SAVED_EVENT, handler);
-  }, [career.id]);
+  }, [career.id, userPlan]);
 
   // ─── Mission completion via custom portal created ────────────────────────────
   useEffect(() => {
@@ -656,12 +654,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     return () => window.removeEventListener(CUSTOM_PORTALS_EVENT, handler);
   }, [career.id, userPlan]);
 
-  // ─── Ultra mission 1: auto-news always enabled for Ultra (complete on first entry) ──
-  useEffect(() => {
-    if (userPlan === "ultra" && !isMissionComplete(career.id, "ultra_auto_news")) {
-      completeMission(career.id, "ultra_auto_news");
-    }
-  }, [career.id, userPlan]);
+  // ultra_auto_news: completed when runAutoNews is actually triggered (see handleMatchAdded)
 
   const cachedPhotoMap = useMemo(() => {
     const map = new Map<number, string>();
@@ -1163,6 +1156,10 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     const planLimits = getPlanLimits(userPlan);
 
     if (planLimits.autoNewsEnabled) {
+      // Ultra mission: complete ultra_auto_news the first time auto-news runs
+      if (!isMissionComplete(career.id, "ultra_auto_news")) {
+        completeMission(career.id, "ultra_auto_news");
+      }
       void runAutoNews(match, {
         careerId: career.id,
         seasonId: activeSeasonId,

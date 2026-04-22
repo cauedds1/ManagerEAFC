@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useLang } from "@/hooks/useLang";
 import { ONBOARDING } from "@/lib/i18n";
 import type { Plan } from "@/lib/userPlan";
@@ -6,7 +6,9 @@ import {
   getMissionsForPlan,
   isMissionComplete,
   allMissionsForPlanDone,
+  FC_MISSION_COMPLETE_EVENT,
   type MissionDef,
+  type MissionId,
 } from "@/lib/missionStorage";
 
 interface MissionWidgetProps {
@@ -54,12 +56,14 @@ function MissionRow({
   mission,
   done,
   active,
+  justCompleted,
   t,
   onGo,
 }: {
   mission: MissionDef;
   done: boolean;
   active: boolean;
+  justCompleted: boolean;
   t: Record<string, string>;
   onGo: () => void;
 }) {
@@ -67,17 +71,23 @@ function MissionRow({
     <div
       className="flex items-start gap-3 px-3 py-2.5 rounded-xl transition-all"
       style={{
-        background: done
+        background: justCompleted
+          ? "rgba(52,211,153,0.14)"
+          : done
           ? "rgba(52,211,153,0.05)"
           : active
           ? "rgba(var(--club-primary-rgb),0.07)"
           : "rgba(255,255,255,0.02)",
-        border: done
+        border: justCompleted
+          ? "1px solid rgba(52,211,153,0.45)"
+          : done
           ? "1px solid rgba(52,211,153,0.12)"
           : active
           ? "1px solid rgba(var(--club-primary-rgb),0.18)"
           : "1px solid rgba(255,255,255,0.05)",
         opacity: !done && !active ? 0.45 : 1,
+        transform: justCompleted ? "scale(1.02)" : "scale(1)",
+        transition: "all 0.4s ease",
       }}
     >
       <MissionIcon done={done} active={active} />
@@ -105,7 +115,12 @@ function MissionRow({
           {t.missionGo}
         </button>
       )}
-      {done && (
+      {done && justCompleted && (
+        <span className="flex-shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded-md animate-pulse" style={{ background: "rgba(52,211,153,0.25)", color: "#34d399" }}>
+          ✓ {t.missionDoneLabel}
+        </span>
+      )}
+      {done && !justCompleted && (
         <span className="flex-shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded-md" style={{ background: "rgba(52,211,153,0.12)", color: "#34d399" }}>
           {t.missionDoneLabel}
         </span>
@@ -124,6 +139,24 @@ export function MissionWidget({
   const t = ONBOARDING[lang];
   const [collapsed, setCollapsed] = useState(false);
   const [, forceUpdate] = useState(0);
+  const [lastCompletedId, setLastCompletedId] = useState<MissionId | null>(null);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const missionId = (e as CustomEvent<{ missionId: MissionId }>).detail?.missionId;
+      if (missionId) {
+        setLastCompletedId(missionId);
+        forceUpdate((n) => n + 1);
+        if (collapsed) setCollapsed(false);
+        setTimeout(() => {
+          setLastCompletedId(null);
+          forceUpdate((n) => n + 1);
+        }, 3000);
+      }
+    };
+    window.addEventListener(FC_MISSION_COMPLETE_EVENT, handler);
+    return () => window.removeEventListener(FC_MISSION_COMPLETE_EVENT, handler);
+  }, [collapsed]);
 
   const missions = getMissionsForPlan(plan);
   const allDone = allMissionsForPlanDone(careerId, plan);
@@ -218,12 +251,14 @@ export function MissionWidget({
           missions.map((mission, i) => {
             const done = isMissionComplete(careerId, mission.id);
             const active = i === activeIndex;
+            const justCompleted = lastCompletedId === mission.id;
             return (
               <MissionRow
                 key={mission.id}
                 mission={mission}
                 done={done}
                 active={active}
+                justCompleted={justCompleted}
                 t={t}
                 onGo={() => handleGo(mission)}
               />

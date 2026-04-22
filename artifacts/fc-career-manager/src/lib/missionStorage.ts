@@ -1,5 +1,7 @@
 import type { Plan } from "./userPlan";
 
+export const FC_MISSION_COMPLETE_EVENT = "fc:mission_complete";
+
 export type MissionId =
   | "free_log_match"
   | "free_gen_news"
@@ -59,7 +61,9 @@ export function isMissionComplete(careerId: string, missionId: MissionId): boole
 }
 
 export function completeMission(careerId: string, missionId: MissionId): void {
+  if (localStorage.getItem(missionKey(careerId, missionId)) === "1") return;
   localStorage.setItem(missionKey(careerId, missionId), "1");
+  window.dispatchEvent(new CustomEvent<{ missionId: MissionId }>(FC_MISSION_COMPLETE_EVENT, { detail: { missionId } }));
 }
 
 export function getSeenPlan(careerId: string): Plan | null {
