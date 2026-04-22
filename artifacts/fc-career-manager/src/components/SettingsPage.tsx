@@ -145,6 +145,14 @@ function CustomPortalModal({
 }) {
   const [lang] = useLang();
   const t = SETTINGS[lang];
+  const TONE_LABELS: Record<string, string> = {
+    humoristico: t.toneHumoristico, apaixonado: t.toneApaixonado, critico: t.toneCritico,
+    ironico: t.toneIronico, jornalistico: t.toneJornalistico, serio: t.toneSerio, agressivo: t.toneAgressivo,
+  };
+  const TONE_DESCS: Record<string, string> = {
+    humoristico: t.toneHumoristicoDesc, apaixonado: t.toneApaixonadoDesc, critico: t.toneCriticoDesc,
+    ironico: t.toneIronicoDesc, jornalistico: t.toneJornalisticoDesc, serio: t.toneSeriooDesc, agressivo: t.toneAgressivoDesc,
+  };
   const [name, setName] = useState(initial?.name ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
   const [tone, setTone] = useState<PortalTone>(initial?.tone ?? "jornalistico");
@@ -307,8 +315,8 @@ function CustomPortalModal({
                     }}
                   >
                     <span className="text-base leading-none">{pt.emoji}</span>
-                    <span className="text-xs font-bold" style={{ color: active ? "var(--club-primary)" : "rgba(255,255,255,0.7)" }}>{pt.label}</span>
-                    <span className="text-xs leading-tight" style={{ color: active ? "rgba(var(--club-primary-rgb),0.7)" : "rgba(255,255,255,0.3)" }}>{pt.description}</span>
+                    <span className="text-xs font-bold" style={{ color: active ? "var(--club-primary)" : "rgba(255,255,255,0.7)" }}>{TONE_LABELS[pt.id] ?? pt.label}</span>
+                    <span className="text-xs leading-tight" style={{ color: active ? "rgba(var(--club-primary-rgb),0.7)" : "rgba(255,255,255,0.3)" }}>{TONE_DESCS[pt.id] ?? pt.description}</span>
                   </button>
                 );
               })}
@@ -351,6 +359,11 @@ const AUTH_TOKEN_KEY = "fc_auth_token";
 export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer, userPlan }: SettingsPageProps) {
   const [lang, setLang] = useLang();
   const t = SETTINGS[lang];
+  const TONE_LABELS: Record<string, string> = {
+    humoristico: t.toneHumoristico, apaixonado: t.toneApaixonado, critico: t.toneCritico,
+    ironico: t.toneIronico, jornalistico: t.toneJornalistico, serio: t.toneSerio, agressivo: t.toneAgressivo,
+  };
+  const PORTAL_META_LABELS: Record<string, string> = { fanpage: t.fanPageLabel };
   const NAV_LABELS: Record<Section, string> = {
     temporada: t.navTemporada,
     api:       t.navApi,
@@ -470,7 +483,7 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
       const res  = await fetch("/api/players/sync", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({}) });
       const data = await res.json() as { message?: string; remaining?: number; error?: string };
       if (!res.ok) { setSyncMsg(data.error ?? SETTINGS[lang].syncError); setSyncState("error"); }
-      else         { setSyncMsg(data.message ?? "Concluído."); setSyncRemaining(data.remaining ?? 0); setSyncState("done"); }
+      else         { setSyncMsg(data.message ?? t.doneSingle); setSyncRemaining(data.remaining ?? 0); setSyncState("done"); }
     } catch { setSyncMsg(SETTINGS[lang].connectionError); setSyncState("error"); }
   };
 
@@ -486,9 +499,9 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
         if (type === "phase" || type === "phase1_done") setSetupMsg(String(ev.message ?? ""));
         else if (type === "squads_start") setSetupProgress({ processed: 0, total: Number(ev.total ?? 0), playersSaved: 0, clubName: "", message: String(ev.message ?? "") });
         else if (type === "progress") setSetupProgress({ processed: Number(ev.processed ?? 0), total: Number(ev.total ?? 0), playersSaved: Number(ev.playersSaved ?? 0), clubName: String(ev.clubName ?? ""), message: String(ev.message ?? "") });
-        else if (type === "rate_limit") { setupFinishedRef.current = true; setSetupMsg(String(ev.message ?? "Limite atingido.")); setSetupState("error"); es.close(); }
-        else if (type === "done")       { setupFinishedRef.current = true; setSetupMsg(String(ev.message ?? "Concluído!")); setSetupState("done"); setSetupProgress(null); es.close(); }
-        else if (type === "error")      { setupFinishedRef.current = true; setSetupMsg(String(ev.message ?? "Erro.")); setSetupState("error"); es.close(); }
+        else if (type === "rate_limit") { setupFinishedRef.current = true; setSetupMsg(String(ev.message ?? t.rateLimitReached)); setSetupState("error"); es.close(); }
+        else if (type === "done")       { setupFinishedRef.current = true; setSetupMsg(String(ev.message ?? t.doneExclaim)); setSetupState("done"); setSetupProgress(null); es.close(); }
+        else if (type === "error")      { setupFinishedRef.current = true; setSetupMsg(String(ev.message ?? t.errorFallback)); setSetupState("error"); es.close(); }
       } catch { /* ignore */ }
     };
     es.onerror = () => { if (!setupFinishedRef.current) { setSetupMsg(SETTINGS[lang].connectionLost); setSetupState("error"); } es.close(); };
@@ -505,8 +518,8 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
         const type = ev.type as string;
         if (type === "start")    setReenrichMsg(String(ev.message ?? ""));
         else if (type === "progress") setReenrichProgress({ processed: Number(ev.processed ?? 0), total: Number(ev.total ?? 0), teamsEnriched: Number(ev.teamsEnriched ?? 0), playersUpdated: Number(ev.playersUpdated ?? 0), clubName: String(ev.clubName ?? ""), message: String(ev.message ?? "") });
-        else if (type === "done")  { reenrichFinishedRef.current = true; setReenrichMsg(String(ev.message ?? "Concluído!")); setReenrichState("done"); setReenrichProgress(null); es.close(); }
-        else if (type === "error") { reenrichFinishedRef.current = true; setReenrichMsg(String(ev.message ?? "Erro.")); setReenrichState("error"); es.close(); }
+        else if (type === "done")  { reenrichFinishedRef.current = true; setReenrichMsg(String(ev.message ?? t.doneExclaim)); setReenrichState("done"); setReenrichProgress(null); es.close(); }
+        else if (type === "error") { reenrichFinishedRef.current = true; setReenrichMsg(String(ev.message ?? t.errorFallback)); setReenrichState("error"); es.close(); }
       } catch { /* ignore */ }
     };
     es.onerror = () => { if (!reenrichFinishedRef.current) { setReenrichMsg(SETTINGS[lang].connectionLostSimple); setReenrichState("error"); } es.close(); };
@@ -809,7 +822,7 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
                     <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                       {toneInfo && (
                         <span className="text-xs px-1.5 py-0.5 rounded-md font-semibold" style={{ background: "rgba(var(--club-primary-rgb),0.15)", color: "var(--club-primary)" }}>
-                          {toneInfo.emoji} {toneInfo.label}
+                          {toneInfo.emoji} {TONE_LABELS[toneInfo.id] ?? toneInfo.label}
                         </span>
                       )}
                       <span className="text-white/30 text-xs truncate">{portal.description.slice(0, 50)}{portal.description.length > 50 ? "…" : ""}</span>
@@ -900,6 +913,7 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
             const draft = draftUrls[source];
             const isSaving = savingPortal === source;
             const isSaved = savedPortal === source;
+            const displayLabel = PORTAL_META_LABELS[source] ?? label;
             return (
               <div
                 key={source}
@@ -913,12 +927,12 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
                     style={{ width: 52, height: 52, background: displayPhoto ? "transparent" : bgColor, border: `2.5px solid ${color}`, color, fontSize: 20 }}
                   >
                     {displayPhoto
-                      ? <img src={displayPhoto} alt={label} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-                      : label.charAt(0).toUpperCase()
+                      ? <img src={displayPhoto} alt={displayLabel} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                      : displayLabel.charAt(0).toUpperCase()
                     }
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-white font-semibold text-sm">{label}</p>
+                    <p className="text-white font-semibold text-sm">{displayLabel}</p>
                     <p className="text-xs mt-0.5" style={{ color: isSaved ? "#34d399" : photo ? "#34d399" : defaultPhoto ? "rgba(255,255,255,0.45)" : "rgba(255,255,255,0.3)" }}>
                       {isSaved ? t.photoSaved : photo ? t.photoActive : defaultPhoto ? t.photoDefault : t.photoInitial}
                     </p>
