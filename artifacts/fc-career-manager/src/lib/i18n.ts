@@ -4208,3 +4208,47 @@ export const ONBOARDING: Record<Lang, Record<string, string>> = {
     closeHelp: "Close",
   },
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Season Select Modal
+// ─────────────────────────────────────────────────────────────────────────────
+export const SEASON_SELECT_MODAL: Record<Lang, Record<string, string>> = {
+  pt: {
+    title: "Temporadas",
+    countOne: "temporada",
+    countMany: "temporadas",
+    empty: "Nenhuma temporada encontrada",
+    noMatches: "Sem partidas",
+    matchesSuffix: "partidas",
+    abbrevW: "V",
+    abbrevD: "E",
+    abbrevL: "D",
+    badgeCurrent: "Atual",
+    badgeFinalized: "🏁 Finalizada",
+    btnView: "Ver",
+    btnViewSummary: "Ver Resumo",
+    btnFinalize: "Finalizar Temporada",
+    btnNewSeason: "Nova Temporada",
+    renameTitle: "Renomear temporada",
+    renamePlaceholder: "ex: 2025/26",
+  },
+  en: {
+    title: "Seasons",
+    countOne: "season",
+    countMany: "seasons",
+    empty: "No seasons found",
+    noMatches: "No matches",
+    matchesSuffix: "matches",
+    abbrevW: "W",
+    abbrevD: "D",
+    abbrevL: "L",
+    badgeCurrent: "Current",
+    badgeFinalized: "🏁 Finished",
+    btnView: "View",
+    btnViewSummary: "View Summary",
+    btnFinalize: "Finalize Season",
+    btnNewSeason: "New Season",
+    renameTitle: "Rename season",
+    renamePlaceholder: "e.g. 2025/26",
+  },
+};

@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import type { Season } from "@/types/career";
 import { getMatches } from "@/lib/matchStorage";
+import { useLang } from "@/hooks/useLang";
+import { SEASON_SELECT_MODAL } from "@/lib/i18n";
 
 interface SeasonSelectModalProps {
   seasons: Season[];
@@ -12,20 +14,20 @@ interface SeasonSelectModalProps {
   onClose: () => void;
 }
 
-function SeasonStats({ seasonId }: { seasonId: string }) {
+function SeasonStats({ seasonId, t }: { seasonId: string; t: Record<string, string> }) {
   const matches = getMatches(seasonId);
   const wins = matches.filter((m) => m.myScore > m.opponentScore).length;
   const draws = matches.filter((m) => m.myScore === m.opponentScore).length;
   const losses = matches.filter((m) => m.myScore < m.opponentScore).length;
-  if (!matches.length) return <span className="text-xs text-white/25">Sem partidas</span>;
+  if (!matches.length) return <span className="text-xs text-white/25">{t.noMatches}</span>;
   return (
     <div className="flex items-center gap-2 text-xs">
-      <span className="text-emerald-400 font-semibold">{wins}V</span>
+      <span className="text-emerald-400 font-semibold">{wins}{t.abbrevW}</span>
       <span className="text-white/30">·</span>
-      <span className="text-yellow-400 font-semibold">{draws}E</span>
+      <span className="text-yellow-400 font-semibold">{draws}{t.abbrevD}</span>
       <span className="text-white/30">·</span>
-      <span className="text-red-400 font-semibold">{losses}D</span>
-      <span className="text-white/25 ml-1">{matches.length} partidas</span>
+      <span className="text-red-400 font-semibold">{losses}{t.abbrevL}</span>
+      <span className="text-white/25 ml-1">{matches.length} {t.matchesSuffix}</span>
     </div>
   );
 }
@@ -34,10 +36,12 @@ function EditLabelInline({
   currentLabel,
   onSave,
   onCancel,
+  placeholder,
 }: {
   currentLabel: string;
   onSave: (label: string) => void;
   onCancel: () => void;
+  placeholder: string;
 }) {
   const [value, setValue] = useState(currentLabel);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -70,7 +74,7 @@ function EditLabelInline({
           color: "var(--club-primary)",
           caretColor: "var(--club-primary)",
         }}
-        placeholder="ex: 2025/26"
+        placeholder={placeholder}
         maxLength={20}
       />
       <button
@@ -105,6 +109,8 @@ export function SeasonSelectModal({
   onClose,
 }: SeasonSelectModalProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [lang] = useLang();
+  const t = SEASON_SELECT_MODAL[lang];
 
   return (
     <div
@@ -125,8 +131,10 @@ export function SeasonSelectModal({
           style={{ borderBottom: "1px solid rgba(var(--club-primary-rgb),0.1)" }}
         >
           <div>
-            <h2 className="text-white font-black text-base">Temporadas</h2>
-            <p className="text-white/35 text-xs mt-0.5">{seasons.length} temporada{seasons.length !== 1 ? "s" : ""}</p>
+            <h2 className="text-white font-black text-base">{t.title}</h2>
+            <p className="text-white/35 text-xs mt-0.5">
+              {seasons.length} {seasons.length !== 1 ? t.countMany : t.countOne}
+            </p>
           </div>
           <button
             onClick={onClose}
@@ -141,7 +149,7 @@ export function SeasonSelectModal({
         <div className="flex-1 overflow-y-auto py-3 px-3 space-y-1.5">
           {seasons.length === 0 && (
             <div className="text-center py-10 text-white/25 text-sm">
-              Nenhuma temporada encontrada
+              {t.empty}
             </div>
           )}
           {[...seasons].reverse().map((season) => {
@@ -166,6 +174,7 @@ export function SeasonSelectModal({
                   {isEditing ? (
                     <EditLabelInline
                       currentLabel={season.label}
+                      placeholder={t.renamePlaceholder}
                       onSave={(newLabel) => {
                         onRenameSeason(season.id, newLabel);
                         setEditingId(null);
@@ -186,7 +195,7 @@ export function SeasonSelectModal({
                             {season.label}
                           </span>
                           {isFinalized && (
-                            <span className="text-xs flex-shrink-0" title="Temporada finalizada">🏁</span>
+                            <span className="text-xs flex-shrink-0" title={t.badgeFinalized}>🏁</span>
                           )}
                         </div>
                       </button>
@@ -195,7 +204,7 @@ export function SeasonSelectModal({
                           <button
                             onClick={(e) => { e.stopPropagation(); setEditingId(season.id); }}
                             className="w-6 h-6 flex items-center justify-center rounded text-white/20 hover:text-white/70 hover:bg-white/10 transition-all opacity-0 group-hover:opacity-100"
-                            title="Renomear temporada"
+                            title={t.renameTitle}
                           >
                             <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
                               <path d="M7.5 1.5L9.5 3.5L3.5 9.5H1.5V7.5L7.5 1.5Z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/>
@@ -210,7 +219,7 @@ export function SeasonSelectModal({
                               color: "var(--club-primary)",
                             }}
                           >
-                            {isFinalized ? "🏁 Finalizada" : "Atual"}
+                            {isFinalized ? t.badgeFinalized : t.badgeCurrent}
                           </span>
                         ) : (
                           <button
@@ -221,16 +230,15 @@ export function SeasonSelectModal({
                               : { background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.25)" }
                             }
                           >
-                            {isFinalized ? "Ver Resumo" : "Ver"}
+                            {isFinalized ? t.btnViewSummary : t.btnView}
                           </button>
                         )}
                       </div>
                     </>
                   )}
                 </div>
-                {!isEditing && <SeasonStats seasonId={season.id} />}
+                {!isEditing && <SeasonStats seasonId={season.id} t={t} />}
 
-                {/* Finalizar button — only for active non-finalized season */}
                 {isActive && !isFinalized && !isEditing && (
                   <button
                     onClick={(e) => {
@@ -246,7 +254,7 @@ export function SeasonSelectModal({
                     }}
                   >
                     <span>🏁</span>
-                    Finalizar Temporada
+                    {t.btnFinalize}
                   </button>
                 )}
               </div>
@@ -269,7 +277,7 @@ export function SeasonSelectModal({
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
             </svg>
-            Nova Temporada
+            {t.btnNewSeason}
           </button>
         </div>
       </div>
