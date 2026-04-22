@@ -151,7 +151,7 @@ function CustomPortalModal({
   };
   const TONE_DESCS: Record<string, string> = {
     humoristico: t.toneHumoristicoDesc, apaixonado: t.toneApaixonadoDesc, critico: t.toneCriticoDesc,
-    ironico: t.toneIronicoDesc, jornalistico: t.toneJornalisticoDesc, serio: t.toneSeriooDesc, agressivo: t.toneAgressivoDesc,
+    ironico: t.toneIronicoDesc, jornalistico: t.toneJornalisticoDesc, serio: t.toneSerioDesc, agressivo: t.toneAgressivoDesc,
   };
   const [name, setName] = useState(initial?.name ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");

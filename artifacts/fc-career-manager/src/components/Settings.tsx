@@ -465,7 +465,8 @@ export function Settings({ isOpen, onClose, onReloadClubs }: SettingsProps) {
             <div className="space-y-3">
               {PORTAL_META.map(({ source, label, color, bgColor }) => {
                 const photo = portalPhotos[source];
-                const initial = label.charAt(0).toUpperCase();
+                const displayLabel = source === "fanpage" ? t.fanPageLabel : label;
+                const initial = displayLabel.charAt(0).toUpperCase();
                 return (
                   <div key={source} className="flex items-center gap-3 rounded-xl px-3 py-2.5" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
                     <div
@@ -473,14 +474,14 @@ export function Settings({ isOpen, onClose, onReloadClubs }: SettingsProps) {
                       style={{ width: 44, height: 44, background: photo ? "transparent" : bgColor, border: `2px solid ${color}`, color, fontSize: 17 }}
                     >
                       {photo ? (
-                        <img src={photo} alt={label} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                        <img src={photo} alt={displayLabel} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
                       ) : (
                         initial
                       )}
                     </div>
 
                     <div className="flex-1 min-w-0">
-                      <p className="text-white/80 text-sm font-semibold truncate">{label}</p>
+                      <p className="text-white/80 text-sm font-semibold truncate">{displayLabel}</p>
                       <p className="text-white/30 text-xs">{photo ? t.customPhoto : t.usingInitial}</p>
                     </div>
 
