@@ -8,6 +8,8 @@ import {
   type PortalPhotos,
   type PortalSource,
 } from "@/lib/portalPhotosStorage";
+import { useLang } from "@/hooks/useLang";
+import { SETTINGS } from "@/lib/i18n";
 
 interface SettingsProps {
   isOpen: boolean;
@@ -42,26 +44,25 @@ const PORTAL_META: { source: PortalSource; label: string; color: string; bgColor
 ];
 
 export function Settings({ isOpen, onClose, onReloadClubs }: SettingsProps) {
-  // Player sync (existing button)
+  const [lang] = useLang();
+  const t = SETTINGS[lang];
+
   const [syncState, setSyncState] = useState<SyncState>("idle");
   const [syncMsg, setSyncMsg] = useState("");
   const [syncRemaining, setSyncRemaining] = useState(0);
 
-  // Full initial setup (SSE button)
   const [setupState, setSetupState] = useState<SyncState>("idle");
   const [setupProgress, setSetupProgress] = useState<SeedProgress | null>(null);
   const [setupMsg, setSetupMsg] = useState("");
   const esRef = useRef<EventSource | null>(null);
   const setupFinishedRef = useRef(false);
 
-  // Re-enrich positions (SSE button)
   const [reenrichState, setReenrichState] = useState<SyncState>("idle");
   const [reenrichProgress, setReenrichProgress] = useState<ReenrichProgress | null>(null);
   const [reenrichMsg, setReenrichMsg] = useState("");
   const reenrichEsRef = useRef<EventSource | null>(null);
   const reenrichFinishedRef = useRef(false);
 
-  // Portal photos
   const [portalPhotos, setPortalPhotosState] = useState<PortalPhotos>(() => getPortalPhotos());
   const photoInputRef = useRef<HTMLInputElement>(null);
   const pendingSourceRef = useRef<PortalSource | null>(null);
@@ -101,7 +102,6 @@ export function Settings({ isOpen, onClose, onReloadClubs }: SettingsProps) {
     window.dispatchEvent(new CustomEvent(PORTAL_PHOTOS_EVENT));
   };
 
-  // Cleanup SSE on unmount
   useEffect(() => () => {
     esRef.current?.close();
     reenrichEsRef.current?.close();
@@ -117,7 +117,7 @@ export function Settings({ isOpen, onClose, onReloadClubs }: SettingsProps) {
 
   const handleSyncPlayers = async () => {
     setSyncState("running");
-    setSyncMsg("Buscando jogadores na API...");
+    setSyncMsg(t.syncingPlayers);
     try {
       const res = await fetch("/api/players/sync", {
         method: "POST",
@@ -125,14 +125,14 @@ export function Settings({ isOpen, onClose, onReloadClubs }: SettingsProps) {
         body: JSON.stringify({}),
       });
       const data = await res.json() as { message?: string; remaining?: number; error?: string };
-      if (!res.ok) { setSyncMsg(data.error ?? "Erro ao sincronizar."); setSyncState("error"); }
-      else { setSyncMsg(data.message ?? "Concluído."); setSyncRemaining(data.remaining ?? 0); setSyncState("done"); }
-    } catch { setSyncMsg("Erro de conexão. Tente novamente."); setSyncState("error"); }
+      if (!res.ok) { setSyncMsg(data.error ?? t.syncError); setSyncState("error"); }
+      else { setSyncMsg(data.message ?? ""); setSyncRemaining(data.remaining ?? 0); setSyncState("done"); }
+    } catch { setSyncMsg(t.connectionError); setSyncState("error"); }
   };
 
   const handleFullSetup = () => {
     setSetupState("running");
-    setSetupMsg("Conectando...");
+    setSetupMsg(t.connectingMsg);
     setSetupProgress(null);
     setupFinishedRef.current = false;
 
@@ -162,18 +162,18 @@ export function Settings({ isOpen, onClose, onReloadClubs }: SettingsProps) {
           });
         } else if (type === "rate_limit") {
           setupFinishedRef.current = true;
-          setSetupMsg(String(ev.message ?? "Limite de req. atingido."));
+          setSetupMsg(String(ev.message ?? ""));
           setSetupState("error");
           es.close();
         } else if (type === "done") {
           setupFinishedRef.current = true;
-          setSetupMsg(String(ev.message ?? "Concluído!"));
+          setSetupMsg(String(ev.message ?? ""));
           setSetupState("done");
           setSetupProgress(null);
           es.close();
         } else if (type === "error") {
           setupFinishedRef.current = true;
-          setSetupMsg(String(ev.message ?? "Erro."));
+          setSetupMsg(String(ev.message ?? ""));
           setSetupState("error");
           es.close();
         }
@@ -182,7 +182,7 @@ export function Settings({ isOpen, onClose, onReloadClubs }: SettingsProps) {
 
     es.onerror = () => {
       if (!setupFinishedRef.current) {
-        setSetupMsg("Conexão perdida. Verifique a chave de API e tente novamente.");
+        setSetupMsg(t.connectionLost);
         setSetupState("error");
       }
       es.close();
@@ -191,7 +191,7 @@ export function Settings({ isOpen, onClose, onReloadClubs }: SettingsProps) {
 
   const handleReenrich = () => {
     setReenrichState("running");
-    setReenrichMsg("Conectando...");
+    setReenrichMsg(t.connectingMsg);
     setReenrichProgress(null);
     reenrichFinishedRef.current = false;
 
@@ -217,13 +217,13 @@ export function Settings({ isOpen, onClose, onReloadClubs }: SettingsProps) {
           });
         } else if (type === "done") {
           reenrichFinishedRef.current = true;
-          setReenrichMsg(String(ev.message ?? "Concluído!"));
+          setReenrichMsg(String(ev.message ?? ""));
           setReenrichState("done");
           setReenrichProgress(null);
           es.close();
         } else if (type === "error") {
           reenrichFinishedRef.current = true;
-          setReenrichMsg(String(ev.message ?? "Erro."));
+          setReenrichMsg(String(ev.message ?? ""));
           setReenrichState("error");
           es.close();
         }
@@ -232,7 +232,7 @@ export function Settings({ isOpen, onClose, onReloadClubs }: SettingsProps) {
 
     es.onerror = () => {
       if (!reenrichFinishedRef.current) {
-        setReenrichMsg("Conexão perdida. Tente novamente.");
+        setReenrichMsg(t.connectionLostSimple);
         setReenrichState("error");
       }
       es.close();
@@ -251,7 +251,6 @@ export function Settings({ isOpen, onClose, onReloadClubs }: SettingsProps) {
       <div className="w-full max-w-md rounded-2xl overflow-hidden animate-slide-up"
         style={{ background: "var(--app-bg-lighter, #141414)", border: "1px solid var(--surface-border)", boxShadow: "0 25px 50px rgba(0,0,0,0.6)" }}>
 
-        {/* Header */}
         <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: "1px solid var(--surface-border)" }}>
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "rgba(var(--club-primary-rgb),0.12)" }}>
@@ -260,7 +259,7 @@ export function Settings({ isOpen, onClose, onReloadClubs }: SettingsProps) {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
             </div>
-            <h2 className="text-white font-bold text-base">Configurações</h2>
+            <h2 className="text-white font-bold text-base">{t.settingsHeader}</h2>
           </div>
           <button onClick={onClose} className="w-8 h-8 rounded-lg flex items-center justify-center text-white/40 hover:text-white hover:bg-white/[0.08] transition-all duration-150">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
@@ -272,11 +271,11 @@ export function Settings({ isOpen, onClose, onReloadClubs }: SettingsProps) {
           {/* ── Setup inicial ── */}
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <p className="text-white/50 text-xs font-semibold tracking-widest uppercase">Configuração inicial do sistema</p>
+              <p className="text-white/50 text-xs font-semibold tracking-widest uppercase">{t.sysSetupLabel}</p>
               <span className="px-1.5 py-0.5 rounded text-[10px] font-bold" style={{ background: "rgba(var(--club-primary-rgb),0.15)", color: "var(--club-primary)" }}>ADMIN</span>
             </div>
             <p className="text-white/30 text-xs leading-relaxed mb-3">
-              Importa <strong className="text-white/50">todos os times e jogadores</strong> de todas as ligas via API-Football em uma única operação (~3 min, ~700 req). Execute uma vez antes de compartilhar o sistema — após isso todos os usuários têm tudo disponível sem configurar nada.
+              {t.sysSetupDesc}
             </p>
 
             <button
@@ -289,23 +288,22 @@ export function Settings({ isOpen, onClose, onReloadClubs }: SettingsProps) {
                 {setupState === "running" ? (
                   <>
                     <div className="w-4 h-4 border-2 border-current/20 border-t-current rounded-full animate-spin" />
-                    <span>Importando...</span>
+                    <span>{t.importing}</span>
                   </>
                 ) : setupState === "done" ? (
                   <>
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                    <span>Importação concluída</span>
+                    <span>{t.importDone}</span>
                   </>
                 ) : (
                   <>
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                    <span>Importar tudo agora</span>
+                    <span>{t.importAllNow}</span>
                   </>
                 )}
               </span>
             </button>
 
-            {/* Live progress */}
             {setupState === "running" && (
               <div className="mt-3 rounded-xl p-3 space-y-2" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
                 <p className="text-white/60 text-xs">{setupMsg}</p>
@@ -317,14 +315,18 @@ export function Settings({ isOpen, onClose, onReloadClubs }: SettingsProps) {
                         style={{ width: `${setupProgress.total > 0 ? Math.round((setupProgress.processed / setupProgress.total) * 100) : 0}%`, background: "var(--club-primary)" }}
                       />
                     </div>
-                    <p className="text-white/40 text-xs">{setupProgress.processed}/{setupProgress.total} times · {setupProgress.playersSaved.toLocaleString("pt-BR")} jogadores salvos</p>
+                    <p className="text-white/40 text-xs">
+                      {t.progressTeamsPlayers
+                        .replace("{processed}", String(setupProgress.processed))
+                        .replace("{total}", String(setupProgress.total))
+                        .replace("{players}", setupProgress.playersSaved.toLocaleString())}
+                    </p>
                     {setupProgress.clubName && <p className="text-white/25 text-xs truncate">↳ {setupProgress.clubName}</p>}
                   </>
                 )}
               </div>
             )}
 
-            {/* Done / error message */}
             {(setupState === "done" || setupState === "error") && setupMsg && (
               <div className="mt-2 rounded-xl px-3 py-2.5 text-xs leading-relaxed" style={{ background: syncColor(setupState), color: "#fff" }}>
                 {setupMsg}
@@ -334,14 +336,14 @@ export function Settings({ isOpen, onClose, onReloadClubs }: SettingsProps) {
 
           <div style={{ height: "1px", background: "var(--surface-border)" }} />
 
-          {/* ── Corrigir posições (msmc.cc) ── */}
+          {/* ── Corrigir posições ── */}
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <p className="text-white/50 text-xs font-semibold tracking-widest uppercase">Corrigir posições dos jogadores</p>
+              <p className="text-white/50 text-xs font-semibold tracking-widest uppercase">{t.fixPositionsLabel}</p>
               <span className="px-1.5 py-0.5 rounded text-[10px] font-bold" style={{ background: "rgba(var(--club-primary-rgb),0.15)", color: "var(--club-primary)" }}>ADMIN</span>
             </div>
             <p className="text-white/30 text-xs leading-relaxed mb-3">
-              Atualiza as posições de todos os jogadores usando dados do EA FC 26 (msmc.cc). Corrige mapeamentos incorretos de times como Milan, Inter, Newcastle etc.
+              {t.fixPositionsDesc}
             </p>
 
             <button
@@ -354,17 +356,17 @@ export function Settings({ isOpen, onClose, onReloadClubs }: SettingsProps) {
                 {reenrichState === "running" ? (
                   <>
                     <div className="w-4 h-4 border-2 border-current/20 border-t-current rounded-full animate-spin" />
-                    <span>Corrigindo posições...</span>
+                    <span>{t.fixingPositions}</span>
                   </>
                 ) : reenrichState === "done" ? (
                   <>
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                    <span>Posições atualizadas</span>
+                    <span>{t.positionsUpdated}</span>
                   </>
                 ) : (
                   <>
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                    <span>Corrigir posições agora</span>
+                    <span>{t.fixPositionsNow}</span>
                   </>
                 )}
               </span>
@@ -381,7 +383,12 @@ export function Settings({ isOpen, onClose, onReloadClubs }: SettingsProps) {
                         style={{ width: `${reenrichProgress.total > 0 ? Math.round((reenrichProgress.processed / reenrichProgress.total) * 100) : 0}%`, background: "var(--club-primary)" }}
                       />
                     </div>
-                    <p className="text-white/40 text-xs">{reenrichProgress.processed}/{reenrichProgress.total} times · {reenrichProgress.playersUpdated.toLocaleString("pt-BR")} posições corrigidas</p>
+                    <p className="text-white/40 text-xs">
+                      {t.progressTeamsPositions
+                        .replace("{processed}", String(reenrichProgress.processed))
+                        .replace("{total}", String(reenrichProgress.total))
+                        .replace("{positions}", reenrichProgress.playersUpdated.toLocaleString())}
+                    </p>
                     {reenrichProgress.clubName && <p className="text-white/25 text-xs truncate">↳ {reenrichProgress.clubName}</p>}
                   </>
                 )}
@@ -397,11 +404,11 @@ export function Settings({ isOpen, onClose, onReloadClubs }: SettingsProps) {
 
           <div style={{ height: "1px", background: "var(--surface-border)" }} />
 
-          {/* ── Atualizar dados de jogadores ── */}
+          {/* ── Dados de Jogadores ── */}
           <div>
-            <p className="text-white/50 text-xs font-semibold tracking-widest uppercase mb-1">Dados de Jogadores</p>
+            <p className="text-white/50 text-xs font-semibold tracking-widest uppercase mb-1">{t.playerDataLabel}</p>
             <p className="text-white/30 text-xs leading-relaxed mb-3">
-              Sincroniza jogadores de times ainda não importados (90 por vez).
+              {t.playerDataDesc}
             </p>
             <button
               onClick={handleSyncPlayers}
@@ -410,10 +417,10 @@ export function Settings({ isOpen, onClose, onReloadClubs }: SettingsProps) {
             >
               <span className="flex items-center justify-center gap-2">
                 {syncState === "running" ? (
-                  <><div className="w-4 h-4 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" /><span className="text-white/70">Sincronizando...</span></>
+                  <><div className="w-4 h-4 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" /><span className="text-white/70">{t.syncing}</span></>
                 ) : (
                   <><svg className="w-4 h-4 text-white/60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-                  <span className="text-white/70">{syncState === "done" && syncRemaining > 0 ? `Continuar (${syncRemaining} restantes)` : "Atualizar dados de jogadores"}</span></>
+                  <span className="text-white/70">{syncState === "done" && syncRemaining > 0 ? t.syncContinue2.replace("{n}", String(syncRemaining)) : t.syncPlayersBtn}</span></>
                 )}
               </span>
             </button>
@@ -428,12 +435,12 @@ export function Settings({ isOpen, onClose, onReloadClubs }: SettingsProps) {
 
           {/* ── Lista de Clubes ── */}
           <div>
-            <p className="text-white/50 text-xs font-semibold tracking-widest uppercase mb-1">Lista de Clubes</p>
-            <p className="text-white/30 text-xs leading-relaxed mb-3">Limpa o cache local e busca novamente todos os clubes.</p>
+            <p className="text-white/50 text-xs font-semibold tracking-widest uppercase mb-1">{t.clubListLabel}</p>
+            <p className="text-white/30 text-xs leading-relaxed mb-3">{t.clubListDesc}</p>
             <button onClick={handleReloadClubs} className="w-full py-2.5 rounded-xl font-semibold text-sm text-white/70 hover:text-white transition-all duration-200 glass glass-hover">
               <span className="flex items-center justify-center gap-2">
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-                Atualizar lista de clubes
+                {t.updateClubList}
               </span>
             </button>
           </div>
@@ -442,9 +449,9 @@ export function Settings({ isOpen, onClose, onReloadClubs }: SettingsProps) {
 
           {/* ── Fotos dos Portais ── */}
           <div>
-            <p className="text-white/50 text-xs font-semibold tracking-widest uppercase mb-1">Fotos dos Portais de Notícias</p>
+            <p className="text-white/50 text-xs font-semibold tracking-widest uppercase mb-1">{t.portalPhotosLabel}</p>
             <p className="text-white/30 text-xs leading-relaxed mb-4">
-              Personalize a foto de perfil de cada portal. A imagem aparece no feed de Notícias.
+              {t.portalPhotosDesc}
             </p>
 
             <input
@@ -461,7 +468,6 @@ export function Settings({ isOpen, onClose, onReloadClubs }: SettingsProps) {
                 const initial = label.charAt(0).toUpperCase();
                 return (
                   <div key={source} className="flex items-center gap-3 rounded-xl px-3 py-2.5" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
-                    {/* Avatar preview */}
                     <div
                       className="flex-shrink-0 rounded-full overflow-hidden flex items-center justify-center font-black"
                       style={{ width: 44, height: 44, background: photo ? "transparent" : bgColor, border: `2px solid ${color}`, color, fontSize: 17 }}
@@ -473,27 +479,25 @@ export function Settings({ isOpen, onClose, onReloadClubs }: SettingsProps) {
                       )}
                     </div>
 
-                    {/* Label */}
                     <div className="flex-1 min-w-0">
                       <p className="text-white/80 text-sm font-semibold truncate">{label}</p>
-                      <p className="text-white/30 text-xs">{photo ? "Foto personalizada" : "Usando inicial"}</p>
+                      <p className="text-white/30 text-xs">{photo ? t.customPhoto : t.usingInitial}</p>
                     </div>
 
-                    {/* Actions */}
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <button
                         onClick={() => { pendingSourceRef.current = source; photoInputRef.current?.click(); }}
                         className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150 hover:opacity-90 active:scale-95"
                         style={{ background: `color-mix(in srgb, ${color} 15%, transparent)`, border: `1px solid color-mix(in srgb, ${color} 30%, transparent)`, color }}
                       >
-                        {photo ? "Trocar" : "Adicionar"}
+                        {photo ? t.changeBtn : t.addBtn2}
                       </button>
                       {photo && (
                         <button
                           onClick={() => handleClearPortalPhoto(source)}
                           className="w-7 h-7 rounded-lg flex items-center justify-center transition-all duration-150 hover:bg-white/[0.08] active:scale-95"
                           style={{ color: "rgba(255,255,255,0.35)" }}
-                          title="Remover foto"
+                          title={t.removePhotoTitle}
                         >
                           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -509,7 +513,7 @@ export function Settings({ isOpen, onClose, onReloadClubs }: SettingsProps) {
         </div>
 
         <div className="px-6 py-4" style={{ borderTop: "1px solid var(--surface-border)" }}>
-          <button onClick={onClose} className="w-full py-2.5 rounded-xl font-semibold text-sm text-white/50 hover:text-white transition-all duration-200">Fechar</button>
+          <button onClick={onClose} className="w-full py-2.5 rounded-xl font-semibold text-sm text-white/50 hover:text-white transition-all duration-200">{t.closeBtn}</button>
         </div>
       </div>
     </div>

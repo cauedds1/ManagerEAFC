@@ -8,6 +8,8 @@ import {
 } from "@/lib/rivalsStorage";
 import { getCachedClubList, searchClubs } from "@/lib/clubListCache";
 import { ClubEntry } from "@/types/club";
+import { useLang } from "@/hooks/useLang";
+import { SETTINGS } from "@/lib/i18n";
 
 interface RivaisViewProps {
   seasonId: string;
@@ -40,6 +42,9 @@ function ClubLogo({ logo, name }: { logo: string; name: string }) {
 const MAX_SUGGESTIONS = 8;
 
 export function RivaisView({ seasonId, isReadOnly }: RivaisViewProps) {
+  const [lang] = useLang();
+  const t = SETTINGS[lang];
+
   const [rivals, setRivals] = useState<string[]>([]);
   const [locked, setLocked] = useState(false);
   const [input, setInput] = useState("");
@@ -78,18 +83,18 @@ export function RivaisView({ seasonId, isReadOnly }: RivaisViewProps) {
     if (clubs.length > 0) {
       const match = clubs.find((c) => c.name.toLowerCase() === trimmed.toLowerCase());
       if (!match) {
-        setError("Selecione um time da lista de sugestões.");
+        setError(t.selectFromList);
         return;
       }
       resolvedName = match.name;
     }
 
     if (rivals.length >= MAX_RIVALS) {
-      setError(`Máximo de ${MAX_RIVALS} rivais por temporada.`);
+      setError(t.maxRivalsError.replace("{max}", String(MAX_RIVALS)));
       return;
     }
     if (rivals.some((r) => r.toLowerCase() === resolvedName.toLowerCase())) {
-      setError("Este rival já foi adicionado.");
+      setError(t.rivalAlreadyAdded);
       return;
     }
     const next = [...rivals, resolvedName];
@@ -104,9 +109,9 @@ export function RivaisView({ seasonId, isReadOnly }: RivaisViewProps) {
       setIsOpen(false);
       setActiveIdx(-1);
     } else {
-      setError("Rivais bloqueados — não é possível editar.");
+      setError(t.rivalsLockedError);
     }
-  }, [rivals, seasonId, clubs]);
+  }, [rivals, seasonId, clubs, t]);
 
   const handleInputChange = (value: string) => {
     setInput(value);
@@ -168,7 +173,7 @@ export function RivaisView({ seasonId, isReadOnly }: RivaisViewProps) {
 
   const handleLock = async () => {
     if (rivals.length === 0) {
-      setError("Adicione pelo menos um rival antes de confirmar.");
+      setError(t.addBeforeLock);
       return;
     }
     setSaving(true);
@@ -185,22 +190,22 @@ export function RivaisView({ seasonId, isReadOnly }: RivaisViewProps) {
     <div className="space-y-5">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h3 className="text-sm font-bold text-white/90">Rivais da Temporada</h3>
+          <h3 className="text-sm font-bold text-white/90">{t.rivaisTitle}</h3>
           <p className="text-xs text-white/40 mt-0.5">
             {locked
-              ? "Rivais confirmados e bloqueados para esta temporada."
-              : `Adicione até ${MAX_RIVALS} rivais. Após confirmar, não poderão ser alterados.`}
+              ? t.rivaisLockedDesc
+              : t.rivaisUnlockedDesc.replace("{max}", String(MAX_RIVALS))}
           </p>
         </div>
         {locked && (
           <span className="flex items-center gap-1 text-xs font-semibold text-amber-400 bg-amber-400/10 border border-amber-400/20 px-2 py-1 rounded-lg shrink-0">
-            🔒 Bloqueado
+            {t.lockedBadge}
           </span>
         )}
       </div>
 
       {rivals.length === 0 && locked && (
-        <p className="text-xs text-white/30 italic">Nenhum rival definido para esta temporada.</p>
+        <p className="text-xs text-white/30 italic">{t.noRivals}</p>
       )}
 
       {rivals.length > 0 && (
@@ -221,7 +226,7 @@ export function RivaisView({ seasonId, isReadOnly }: RivaisViewProps) {
                   onClick={() => void handleRemove(r)}
                   disabled={saving}
                   className="ml-1 text-white/30 hover:text-red-400 transition-colors text-xs leading-none disabled:opacity-40"
-                  title="Remover"
+                  title={t.removeRivalTitle}
                 >
                   ✕
                 </button>
@@ -243,7 +248,7 @@ export function RivaisView({ seasonId, isReadOnly }: RivaisViewProps) {
                 onFocus={() => {
                   if (suggestions.length > 0) setIsOpen(true);
                 }}
-                placeholder={clubs.length > 0 ? "Pesquise um time do sistema..." : "Nome do time rival..."}
+                placeholder={clubs.length > 0 ? t.searchPlaceholderSystem : t.searchPlaceholderFree}
                 disabled={isDisabled}
                 className="flex-1 rounded-xl px-3 py-2 text-sm bg-white/5 border border-white/10 text-white placeholder-white/25 focus:outline-none focus:border-white/25 disabled:opacity-40"
               />
@@ -257,7 +262,7 @@ export function RivaisView({ seasonId, isReadOnly }: RivaisViewProps) {
                   color: "var(--club-primary)",
                 }}
               >
-                {saving ? "..." : "Adicionar"}
+                {saving ? "..." : t.addBtn}
               </button>
             </div>
 
@@ -309,7 +314,7 @@ export function RivaisView({ seasonId, isReadOnly }: RivaisViewProps) {
                   })
                 ) : (
                   <div className="px-4 py-3 text-xs text-white/35">
-                    Nenhum time encontrado para "{input}"
+                    {t.noTeamFound.replace("{query}", input)}
                   </div>
                 )}
               </div>
@@ -329,20 +334,20 @@ export function RivaisView({ seasonId, isReadOnly }: RivaisViewProps) {
                 color: "var(--club-primary)",
               }}
             >
-              🔒 Confirmar rivais da temporada
+              {t.lockBtn}
             </button>
           )}
         </div>
       )}
 
       <div className="rounded-xl p-3 space-y-1.5" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
-        <p className="text-xs font-semibold text-white/50">Como funciona</p>
+        <p className="text-xs font-semibold text-white/50">{t.rivaisHowTitle}</p>
         <ul className="text-xs text-white/35 space-y-1 list-disc list-inside">
-          <li>Partidas contra rivais são reconhecidas como <strong className="text-white/50">clássicos</strong></li>
-          <li>Notícias de clássicos têm tom mais intenso e maior impacto</li>
-          <li>Derrotas em clássicos geram comentários dos torcedores rivais zoando</li>
-          <li>A Diretoria reage com mais severidade a derrotas em clássicos</li>
-          <li>Rivais bloqueados valem apenas para esta temporada</li>
+          <li>{t.rivaisHowBullet1}</li>
+          <li>{t.rivaisHowBullet2}</li>
+          <li>{t.rivaisHowBullet3}</li>
+          <li>{t.rivaisHowBullet4}</li>
+          <li>{t.rivaisHowBullet5}</li>
         </ul>
       </div>
     </div>

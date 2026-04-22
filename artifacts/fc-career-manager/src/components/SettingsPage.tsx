@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useLang } from "@/hooks/useLang";
+import { SETTINGS } from "@/lib/i18n";
 import { clearClubCache } from "@/lib/clubListCache";
 import {
   fetchPortalPhotos,
@@ -142,6 +143,8 @@ function CustomPortalModal({
   onSave: (data: { name: string; description: string; tone: PortalTone; photo?: string }) => void;
   onClose: () => void;
 }) {
+  const [lang] = useLang();
+  const t = SETTINGS[lang];
   const [name, setName] = useState(initial?.name ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
   const [tone, setTone] = useState<PortalTone>(initial?.tone ?? "jornalistico");
@@ -193,8 +196,8 @@ function CustomPortalModal({
         {/* Header */}
         <div className="flex items-center justify-between px-6 pt-6 pb-4" style={{ borderBottom: "1px solid rgba(var(--club-primary-rgb),0.1)" }}>
           <div>
-            <h2 className="text-white font-bold text-base">{initial ? "Editar Portal" : "Novo Portal"}</h2>
-            <p className="text-white/40 text-xs mt-0.5">A IA usará o tom escolhido ao escrever as notícias.</p>
+            <h2 className="text-white font-bold text-base">{initial ? t.editPortalHeader : t.newPortalHeader}</h2>
+            <p className="text-white/40 text-xs mt-0.5">{t.portalModalSubtitle}</p>
           </div>
           <button onClick={onClose} className="w-8 h-8 rounded-xl flex items-center justify-center hover:bg-white/[0.07] transition-colors" style={{ color: "rgba(255,255,255,0.4)" }}>
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
@@ -206,7 +209,7 @@ function CustomPortalModal({
 
           {/* Photo */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-white/60 uppercase tracking-wider">Foto do Portal</label>
+            <label className="text-xs font-semibold text-white/60 uppercase tracking-wider">{t.photoLabel}</label>
             <div className="flex items-center gap-4">
               <button
                 type="button"
@@ -220,7 +223,7 @@ function CustomPortalModal({
                   fontSize: 26,
                   fontWeight: 900,
                 }}
-                title="Clique para adicionar foto"
+                title={t.clickToAddPhoto}
               >
                 {photo
                   ? <img src={photo} alt="foto" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
@@ -237,7 +240,7 @@ function CustomPortalModal({
                   className="text-xs font-semibold px-3 py-1.5 rounded-lg transition-all hover:opacity-80"
                   style={{ background: "rgba(var(--club-primary-rgb),0.12)", color: "var(--club-primary)", border: "1px solid rgba(var(--club-primary-rgb),0.25)" }}
                 >
-                  {photo ? "Alterar foto" : "Adicionar foto"}
+                  {photo ? t.changePhoto : t.addPhoto}
                 </button>
                 {photo && (
                   <button
@@ -246,23 +249,23 @@ function CustomPortalModal({
                     className="text-xs font-semibold px-3 py-1.5 rounded-lg transition-all hover:opacity-80"
                     style={{ background: "rgba(239,68,68,0.1)", color: "#f87171", border: "1px solid rgba(239,68,68,0.2)" }}
                   >
-                    Remover
+                    {t.removePhoto}
                   </button>
                 )}
-                <p className="text-white/30 text-xs">Foto opcional do portal</p>
+                <p className="text-white/30 text-xs">{t.optionalPhoto}</p>
               </div>
             </div>
           </div>
 
           {/* Name */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-white/60 uppercase tracking-wider">Nome do Portal</label>
+            <label className="text-xs font-semibold text-white/60 uppercase tracking-wider">{t.nameLabel}</label>
             <input
               autoFocus
               value={name}
               onChange={(e) => setName(e.target.value)}
               maxLength={40}
-              placeholder="Ex: Baldasso Internacional"
+              placeholder={t.namePlaceholder}
               className="w-full px-4 py-3 rounded-xl text-white text-sm focus:outline-none placeholder:text-white/20"
               style={{
                 background: "rgba(255,255,255,0.05)",
@@ -274,13 +277,13 @@ function CustomPortalModal({
 
           {/* Description */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-white/60 uppercase tracking-wider">Descrição / Quem é?</label>
+            <label className="text-xs font-semibold text-white/60 uppercase tracking-wider">{t.descLabel}</label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               maxLength={200}
               rows={3}
-              placeholder="Ex: Jornalista apaixonado pelo Grêmio, especialista em futebol gaúcho, escreve com emoção e fidelidade ao clube."
+              placeholder={t.descPlaceholder}
               className="w-full px-4 py-3 rounded-xl text-white text-sm focus:outline-none placeholder:text-white/20 resize-none"
               style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(var(--club-primary-rgb),0.2)" }}
             />
@@ -289,23 +292,23 @@ function CustomPortalModal({
 
           {/* Tone */}
           <div className="flex flex-col gap-2">
-            <label className="text-xs font-semibold text-white/60 uppercase tracking-wider">Tom do Portal</label>
+            <label className="text-xs font-semibold text-white/60 uppercase tracking-wider">{t.toneLabel}</label>
             <div className="grid grid-cols-2 gap-2">
-              {PORTAL_TONES.map((t) => {
-                const active = tone === t.id;
+              {PORTAL_TONES.map((pt) => {
+                const active = tone === pt.id;
                 return (
                   <button
-                    key={t.id}
-                    onClick={() => setTone(t.id)}
+                    key={pt.id}
+                    onClick={() => setTone(pt.id)}
                     className="flex flex-col gap-1 px-3 py-2.5 rounded-xl text-left transition-all duration-150"
                     style={{
                       background: active ? "rgba(var(--club-primary-rgb),0.15)" : "rgba(255,255,255,0.03)",
                       border: active ? "1px solid rgba(var(--club-primary-rgb),0.45)" : "1px solid rgba(255,255,255,0.07)",
                     }}
                   >
-                    <span className="text-base leading-none">{t.emoji}</span>
-                    <span className="text-xs font-bold" style={{ color: active ? "var(--club-primary)" : "rgba(255,255,255,0.7)" }}>{t.label}</span>
-                    <span className="text-xs leading-tight" style={{ color: active ? "rgba(var(--club-primary-rgb),0.7)" : "rgba(255,255,255,0.3)" }}>{t.description}</span>
+                    <span className="text-base leading-none">{pt.emoji}</span>
+                    <span className="text-xs font-bold" style={{ color: active ? "var(--club-primary)" : "rgba(255,255,255,0.7)" }}>{pt.label}</span>
+                    <span className="text-xs leading-tight" style={{ color: active ? "rgba(var(--club-primary-rgb),0.7)" : "rgba(255,255,255,0.3)" }}>{pt.description}</span>
                   </button>
                 );
               })}
@@ -320,7 +323,7 @@ function CustomPortalModal({
             className="flex-1 py-3 rounded-2xl text-sm font-semibold transition-all duration-150 hover:opacity-80"
             style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.08)" }}
           >
-            Cancelar
+            {t.cancelBtn}
           </button>
           <button
             disabled={!valid}
@@ -334,7 +337,7 @@ function CustomPortalModal({
               boxShadow: valid ? "0 4px 16px rgba(var(--club-primary-rgb),0.25)" : "none",
             }}
           >
-            {initial ? "Salvar alterações" : "Criar portal"}
+            {initial ? t.saveChanges : t.createPortal}
           </button>
         </div>
       </div>
@@ -347,6 +350,14 @@ const AUTH_TOKEN_KEY = "fc_auth_token";
 
 export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer, userPlan }: SettingsPageProps) {
   const [lang, setLang] = useLang();
+  const t = SETTINGS[lang];
+  const NAV_LABELS: Record<Section, string> = {
+    temporada: t.navTemporada,
+    api:       t.navApi,
+    portais:   t.navPortais,
+    ia:        t.navIa,
+    idioma:    t.navIdioma,
+  };
   const resolvedPlan = userPlan ?? getUserPlan();
   const planLimits = getPlanLimits(resolvedPlan);
 
@@ -387,12 +398,12 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
       });
       if (!res.ok) {
         const d = await res.json() as { error?: string };
-        throw new Error(d.error ?? "Erro ao abrir portal");
+        throw new Error(d.error ?? SETTINGS[lang].openPortalError);
       }
       const { url } = await res.json() as { url?: string };
       if (url) { window.location.href = url; }
     } catch (e) {
-      setPortalError(e instanceof Error ? e.message : "Erro inesperado.");
+      setPortalError(e instanceof Error ? e.message : SETTINGS[lang].unexpectedError);
     } finally {
       setPortalLoading(false);
     }
@@ -454,17 +465,17 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
   };
 
   const handleSyncPlayers = async () => {
-    setSyncState("running"); setSyncMsg("Buscando jogadores na API...");
+    setSyncState("running"); setSyncMsg(SETTINGS[lang].syncingPlayers);
     try {
       const res  = await fetch("/api/players/sync", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({}) });
       const data = await res.json() as { message?: string; remaining?: number; error?: string };
-      if (!res.ok) { setSyncMsg(data.error ?? "Erro ao sincronizar."); setSyncState("error"); }
+      if (!res.ok) { setSyncMsg(data.error ?? SETTINGS[lang].syncError); setSyncState("error"); }
       else         { setSyncMsg(data.message ?? "Concluído."); setSyncRemaining(data.remaining ?? 0); setSyncState("done"); }
-    } catch { setSyncMsg("Erro de conexão. Tente novamente."); setSyncState("error"); }
+    } catch { setSyncMsg(SETTINGS[lang].connectionError); setSyncState("error"); }
   };
 
   const handleFullSetup = () => {
-    setSetupState("running"); setSetupMsg("Conectando..."); setSetupProgress(null); setupFinishedRef.current = false;
+    setSetupState("running"); setSetupMsg(SETTINGS[lang].connectingMsg); setSetupProgress(null); setupFinishedRef.current = false;
     esRef.current?.close();
     const es = new EventSource("/api/admin/seed");
     esRef.current = es;
@@ -480,11 +491,11 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
         else if (type === "error")      { setupFinishedRef.current = true; setSetupMsg(String(ev.message ?? "Erro.")); setSetupState("error"); es.close(); }
       } catch { /* ignore */ }
     };
-    es.onerror = () => { if (!setupFinishedRef.current) { setSetupMsg("Conexão perdida. Verifique a chave e tente novamente."); setSetupState("error"); } es.close(); };
+    es.onerror = () => { if (!setupFinishedRef.current) { setSetupMsg(SETTINGS[lang].connectionLost); setSetupState("error"); } es.close(); };
   };
 
   const handleReenrich = () => {
-    setReenrichState("running"); setReenrichMsg("Conectando..."); setReenrichProgress(null); reenrichFinishedRef.current = false;
+    setReenrichState("running"); setReenrichMsg(SETTINGS[lang].connectingMsg); setReenrichProgress(null); reenrichFinishedRef.current = false;
     reenrichEsRef.current?.close();
     const es = new EventSource("/api/admin/reenrich-positions");
     reenrichEsRef.current = es;
@@ -498,7 +509,7 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
         else if (type === "error") { reenrichFinishedRef.current = true; setReenrichMsg(String(ev.message ?? "Erro.")); setReenrichState("error"); es.close(); }
       } catch { /* ignore */ }
     };
-    es.onerror = () => { if (!reenrichFinishedRef.current) { setReenrichMsg("Conexão perdida. Tente novamente."); setReenrichState("error"); } es.close(); };
+    es.onerror = () => { if (!reenrichFinishedRef.current) { setReenrichMsg(SETTINGS[lang].connectionLostSimple); setReenrichState("error"); } es.close(); };
   };
 
   const uploadToR2 = async (file: File, folder: string): Promise<string | null> => {
@@ -634,8 +645,8 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
 
       {/* Importação completa */}
       <SectionCard
-        title="Configuração Inicial do Sistema"
-        subtitle="Importa todos os times e jogadores de todas as ligas via API-Football (~3 min, ~700 requisições). Execute uma vez — após isso todos os usuários têm os dados sem precisar configurar nada."
+        title={t.apiSetupTitle}
+        subtitle={t.apiSetupSubtitle}
       >
         <div className="flex flex-wrap gap-3 items-start">
           <button
@@ -649,11 +660,11 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
             }}
           >
             {setupState === "running" ? (
-              <><div className="w-4 h-4 border-2 border-current/20 border-t-current rounded-full animate-spin" /> Importando...</>
+              <><div className="w-4 h-4 border-2 border-current/20 border-t-current rounded-full animate-spin" /> {t.importing}</>
             ) : setupState === "done" ? (
-              <><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg> Importação concluída</>
+              <><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg> {t.importDone}</>
             ) : (
-              <><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg> Importar tudo</>
+              <><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg> {t.importAll}</>
             )}
           </button>
 
@@ -668,7 +679,7 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
                 <div className="w-full rounded-full overflow-hidden" style={{ height: 5, background: "rgba(255,255,255,0.08)" }}>
                   <div className="h-full rounded-full transition-all duration-300" style={{ width: `${setupProgress.total > 0 ? Math.round((setupProgress.processed / setupProgress.total) * 100) : 0}%`, background: "var(--club-primary)" }} />
                 </div>
-                <p className="text-white/40 text-xs">{setupProgress.processed}/{setupProgress.total} times · {setupProgress.playersSaved.toLocaleString("pt-BR")} jogadores salvos</p>
+                <p className="text-white/40 text-xs">{t.progressTeamsPlayers.replace("{processed}", String(setupProgress.processed)).replace("{total}", String(setupProgress.total)).replace("{players}", setupProgress.playersSaved.toLocaleString())}</p>
                 {setupProgress.clubName && <p className="text-white/25 text-xs truncate">↳ {setupProgress.clubName}</p>}
               </>
             )}
@@ -679,8 +690,8 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
 
       {/* Re-enrich */}
       <SectionCard
-        title="Corrigir Posições dos Jogadores"
-        subtitle="Atualiza as posições de todos os jogadores usando dados do EA FC 26 (msmc.cc). Corrige mapeamentos incorretos de times como Milan, Inter, Newcastle etc."
+        title={t.reenrichTitle}
+        subtitle={t.reenrichSubtitle}
       >
         <div className="flex flex-wrap gap-3 items-start">
           <button
@@ -694,11 +705,11 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
             }}
           >
             {reenrichState === "running" ? (
-              <><div className="w-4 h-4 border-2 border-current/20 border-t-current rounded-full animate-spin" /> Corrigindo...</>
+              <><div className="w-4 h-4 border-2 border-current/20 border-t-current rounded-full animate-spin" /> {t.reenriching}</>
             ) : reenrichState === "done" ? (
-              <><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg> Posições atualizadas</>
+              <><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg> {t.reenrichDone}</>
             ) : (
-              <><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg> Corrigir posições</>
+              <><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg> {t.reenrichBtn}</>
             )}
           </button>
           <span className="px-2 py-0.5 rounded text-[10px] font-bold self-center" style={{ background: "rgba(var(--club-primary-rgb),0.12)", color: "var(--club-primary)" }}>ADMIN</span>
@@ -712,7 +723,7 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
                 <div className="w-full rounded-full overflow-hidden" style={{ height: 5, background: "rgba(255,255,255,0.08)" }}>
                   <div className="h-full rounded-full transition-all duration-300" style={{ width: `${reenrichProgress.total > 0 ? Math.round((reenrichProgress.processed / reenrichProgress.total) * 100) : 0}%`, background: "var(--club-primary)" }} />
                 </div>
-                <p className="text-white/40 text-xs">{reenrichProgress.processed}/{reenrichProgress.total} times · {reenrichProgress.playersUpdated.toLocaleString("pt-BR")} corrigidas</p>
+                <p className="text-white/40 text-xs">{t.progressTeamsPositions.replace("{processed}", String(reenrichProgress.processed)).replace("{total}", String(reenrichProgress.total)).replace("{positions}", reenrichProgress.playersUpdated.toLocaleString())}</p>
                 {reenrichProgress.clubName && <p className="text-white/25 text-xs truncate">↳ {reenrichProgress.clubName}</p>}
               </>
             )}
@@ -723,28 +734,28 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
 
       {/* Sync players + club list side by side */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-        <SectionCard title="Dados de Jogadores" subtitle="Sincroniza jogadores de times ainda não importados (90 por vez).">
+        <SectionCard title={t.syncTitle} subtitle={t.syncSubtitle}>
           <button
             onClick={handleSyncPlayers}
             disabled={syncState === "running"}
             className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm transition-all duration-200 glass glass-hover disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {syncState === "running"
-              ? <><div className="w-4 h-4 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" /><span className="text-white/70">Sincronizando...</span></>
+              ? <><div className="w-4 h-4 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" /><span className="text-white/70">{t.syncing}</span></>
               : <><svg className="w-4 h-4 text-white/60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-                <span className="text-white/70">{syncState === "done" && syncRemaining > 0 ? `Continuar (${syncRemaining} restantes)` : "Atualizar jogadores"}</span></>
+                <span className="text-white/70">{syncState === "done" && syncRemaining > 0 ? t.syncContinue.replace("{n}", String(syncRemaining)) : t.syncBtn}</span></>
             }
           </button>
           <StatusMsg state={syncState} msg={syncMsg} />
         </SectionCard>
 
-        <SectionCard title="Lista de Clubes" subtitle="Limpa o cache local e busca novamente todos os clubes.">
+        <SectionCard title={t.clubListTitle} subtitle={t.clubListSubtitle}>
           <button
             onClick={handleReloadClubs}
             className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm text-white/70 hover:text-white transition-all duration-200 glass glass-hover"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-            Atualizar lista
+            {t.reloadClubsBtn}
           </button>
         </SectionCard>
       </div>
@@ -761,12 +772,12 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
       {/* Portais Personalizados */}
       {careerId && (
         <SectionCard
-          title="Portais Personalizados"
-          subtitle="Crie perfis únicos — jornalistas, torcedores, criadores de conteúdo — que a IA vai imitar ao gerar notícias. Máximo 3 portais por carreira."
+          title={t.customPortaisTitle}
+          subtitle={t.customPortaisSubtitle}
         >
           <div className="flex flex-col gap-3">
             {customPortals.map((portal) => {
-              const toneInfo = PORTAL_TONES.find((t) => t.id === portal.tone);
+              const toneInfo = PORTAL_TONES.find((pt) => pt.id === portal.tone);
               return (
                 <div
                   key={portal.id}
@@ -784,7 +795,7 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
                       fontSize: 18,
                     }}
                     onClick={() => { pendingCustomPortalIdRef.current = portal.id; customPhotoInputRef.current?.click(); }}
-                    title="Clique para alterar a foto"
+                    title={t.clickToAddPhoto}
                   >
                     {portal.photo
                       ? <img src={portal.photo} alt={portal.name} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
@@ -812,7 +823,7 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
                         onClick={() => handleClearCustomPortalPhoto(portal.id)}
                         className="w-8 h-8 rounded-xl flex items-center justify-center transition-colors hover:bg-white/[0.08]"
                         style={{ color: "rgba(255,255,255,0.3)", border: "1px solid rgba(255,255,255,0.08)" }}
-                        title="Remover foto"
+                        title={t.removePhotoTitle}
                       >
                         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909" />
@@ -823,7 +834,7 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
                       onClick={() => { setEditingPortal(portal); setShowPortalModal(true); }}
                       className="w-8 h-8 rounded-xl flex items-center justify-center transition-colors hover:bg-white/[0.08]"
                       style={{ color: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.08)" }}
-                      title="Editar portal"
+                      title={t.editPortalTitle}
                     >
                       <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" />
@@ -833,7 +844,7 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
                       onClick={() => handleDeletePortal(portal.id)}
                       className="w-8 h-8 rounded-xl flex items-center justify-center transition-colors hover:bg-red-500/10"
                       style={{ color: "rgba(248,113,113,0.6)", border: "1px solid rgba(248,113,113,0.15)" }}
-                      title="Deletar portal"
+                      title={t.deletePortalTitle}
                     >
                       <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
@@ -848,8 +859,8 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
               <UpgradePrompt
                 currentPlan={resolvedPlan}
                 requiredPlan="ultra"
-                featureName="Portais Personalizados"
-                description="Crie até 3 portais de notícias com nome, tom editorial e personalidade únicos. Exclusivo do plano Ultra."
+                featureName={t.upgradeCustomPortais}
+                description={t.upgradeCustomPortaisDesc}
                 compact
               />
             ) : customPortals.length < planLimits.maxCustomPortals && (
@@ -865,13 +876,13 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
                 </svg>
-                Adicionar portal ({customPortals.length}/3)
+                {t.addPortalBtn.replace("{count}", String(customPortals.length))}
               </button>
             )}
 
             {customPortals.length === 0 && (
               <p className="text-white/25 text-xs text-center -mt-1">
-                Ex: "Baldasso Internacional", "Farid Grêmio", seu jornalista favorito…
+                {t.customPortaisExamples}
               </p>
             )}
           </div>
@@ -879,8 +890,8 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
       )}
 
       <SectionCard
-        title="Fotos dos Portais"
-        subtitle="Cole a URL de uma imagem (JPG, PNG, WebP) e clique em Confirmar para salvar."
+        title={t.portalPhotosTitle}
+        subtitle={t.portalPhotosSubtitle}
       >
         <div className="space-y-3">
           {PORTAL_META.map(({ source, label, color, bgColor, defaultPhoto }) => {
@@ -909,7 +920,7 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
                   <div className="flex-1 min-w-0">
                     <p className="text-white font-semibold text-sm">{label}</p>
                     <p className="text-xs mt-0.5" style={{ color: isSaved ? "#34d399" : photo ? "#34d399" : defaultPhoto ? "rgba(255,255,255,0.45)" : "rgba(255,255,255,0.3)" }}>
-                      {isSaved ? "Foto salva com sucesso!" : photo ? "Foto personalizada ativa" : defaultPhoto ? "Usando logo padrão" : "Usando inicial do nome"}
+                      {isSaved ? t.photoSaved : photo ? t.photoActive : defaultPhoto ? t.photoDefault : t.photoInitial}
                     </p>
                   </div>
                   {photo && (
@@ -917,7 +928,7 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
                       onClick={() => handleClearPortalPhoto(source)}
                       className="w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-150 hover:bg-white/[0.08] active:scale-95 flex-shrink-0"
                       style={{ color: "rgba(255,255,255,0.35)", border: "1px solid rgba(255,255,255,0.08)" }}
-                      title="Remover foto"
+                      title={t.removePhotoTitle}
                     >
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -930,7 +941,7 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
                 <div className="flex gap-2">
                   <input
                     type="url"
-                    placeholder="Cole a URL da imagem aqui..."
+                    placeholder={t.urlPlaceholder}
                     value={draft}
                     onChange={(e) => setDraftUrls((prev) => ({ ...prev, [source]: e.target.value }))}
                     onKeyDown={(e) => { if (e.key === "Enter") handleConfirmPortalUrl(source); }}
@@ -947,7 +958,7 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
                       color,
                     }}
                   >
-                    {isSaving ? "Salvando..." : "Confirmar"}
+                    {isSaving ? t.savingMsg : t.confirmBtn}
                   </button>
                 </div>
               </div>
@@ -956,9 +967,9 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
         </div>
       </SectionCard>
 
-      <SectionCard title="Dica de uso">
+      <SectionCard title={t.tipTitle}>
         <p className="text-white/40 text-sm leading-relaxed">
-          Use logotipos quadrados ou circulares do portal para melhor resultado. A imagem é recortada automaticamente no centro para caber no círculo. Para remover uma foto e voltar à inicial, clique no botão <strong className="text-white/60">×</strong> ao lado do portal.
+          {t.tipText}
         </p>
       </SectionCard>
     </div>
@@ -966,7 +977,7 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
 
   const sectionIA = (
     <div className="flex flex-col gap-5">
-      <SectionCard title="Seu Plano" subtitle="Recursos de IA disponíveis com o seu plano atual.">
+      <SectionCard title={t.planTitle} subtitle={t.planSubtitle}>
         <div className="flex flex-col gap-4">
           <div className="flex items-center gap-3">
             <div
@@ -979,17 +990,17 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
             </div>
             <div>
               <p className="text-white font-bold text-sm">{getPlanLabel(resolvedPlan)}</p>
-              <p className="text-white/35 text-xs mt-0.5">Plano ativo</p>
+              <p className="text-white/35 text-xs mt-0.5">{t.activePlan}</p>
             </div>
           </div>
 
           <div className="grid grid-cols-1 gap-2">
             {[
-              { label: "Gerações de IA por dia", value: planLimits.aiGenerationsPerDay === Infinity ? "Ilimitado" : String(planLimits.aiGenerationsPerDay) },
-              { label: "Modelo de IA", value: resolvedPlan === "ultra" ? "GPT-4o" : "Gemini Flash" },
-              { label: "Diretoria", value: planLimits.diretoriaEnabled ? "Ativada" : "Bloqueada" },
-              { label: "Portais personalizados", value: planLimits.maxCustomPortals === 0 ? "Bloqueado" : `Até ${planLimits.maxCustomPortals}` },
-              { label: "Notícias automáticas", value: planLimits.autoNewsEnabled ? "Ativadas" : "Bloqueadas" },
+              { label: t.aiGenerationsLabel, value: planLimits.aiGenerationsPerDay === Infinity ? t.unlimited : String(planLimits.aiGenerationsPerDay) },
+              { label: t.aiModelLabel, value: resolvedPlan === "ultra" ? "GPT-4o" : "Gemini Flash" },
+              { label: t.diretoriaLabel, value: planLimits.diretoriaEnabled ? t.enabled : t.lockedSingle },
+              { label: t.customPortaisLabel, value: planLimits.maxCustomPortals === 0 ? t.blockedSingle : t.upTo.replace("{n}", String(planLimits.maxCustomPortals)) },
+              { label: t.autoNewsLabel, value: planLimits.autoNewsEnabled ? t.enabledPl : t.lockedPl },
             ].map(({ label, value }) => (
               <div key={label} className="flex items-center justify-between gap-3 rounded-xl px-4 py-2.5" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
                 <span className="text-white/45 text-xs">{label}</span>
@@ -1001,8 +1012,8 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
           {resolvedPlan === "free" && (
             <div className="rounded-xl px-4 py-3 flex flex-col gap-1" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
               <div className="flex items-center justify-between">
-                <span className="text-white/40 text-xs">Status</span>
-                <span className="text-white/80 text-xs font-semibold">Gratuito — sem assinatura ativa</span>
+                <span className="text-white/40 text-xs">{t.statusLabel}</span>
+                <span className="text-white/80 text-xs font-semibold">{t.freeStatus}</span>
               </div>
             </div>
           )}
@@ -1014,29 +1025,29 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                   </svg>
-                  Carregando dados da assinatura...
+                  {t.loadingSub}
                 </div>
               )}
               {!subLoading && subscription && (
                 <div className="rounded-xl px-4 py-3 flex flex-col gap-1" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
                   {subscription.product_name && (
                     <div className="flex items-center justify-between">
-                      <span className="text-white/40 text-xs">Plano ativo</span>
+                      <span className="text-white/40 text-xs">{t.activePlanLabel}</span>
                       <span className="text-white/80 text-xs font-semibold">{subscription.product_name}</span>
                     </div>
                   )}
                   {subscription.current_period_end && (
                     <div className="flex items-center justify-between">
                       <span className="text-white/40 text-xs">
-                        {subscription.cancel_at_period_end ? "Cancela em" : "Renova em"}
+                        {subscription.cancel_at_period_end ? t.cancelAt : t.renewAt}
                       </span>
                       <span className={`text-xs font-semibold ${subscription.cancel_at_period_end ? "text-amber-400" : "text-white/80"}`}>
-                        {new Date(subscription.current_period_end).toLocaleDateString("pt-BR")}
+                        {new Date(subscription.current_period_end).toLocaleDateString()}
                       </span>
                     </div>
                   )}
                   {subscription.cancel_at_period_end && (
-                    <p className="text-amber-400/70 text-xs mt-0.5">Sua assinatura não será renovada automaticamente.</p>
+                    <p className="text-amber-400/70 text-xs mt-0.5">{t.cancelNote}</p>
                   )}
                 </div>
               )}
@@ -1053,14 +1064,14 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                       </svg>
-                      Abrindo portal...
+                      {t.openingPortal}
                     </>
                   ) : (
                     <>
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" />
                       </svg>
-                      Gerenciar assinatura
+                      {t.manageSubBtn}
                     </>
                   )}
                 </button>
@@ -1075,10 +1086,8 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
         <UpgradePrompt
           currentPlan={resolvedPlan}
           requiredPlan={resolvedPlan === "free" ? "pro" : "ultra"}
-          featureName={resolvedPlan === "free" ? "Desbloqueie mais recursos" : "Vá para o Ultra"}
-          description={resolvedPlan === "free"
-            ? "Com o Pro você tem Diretoria, mais gerações de IA por dia e até 5 carreiras simultâneas."
-            : "Com o Ultra você tem gerações ilimitadas de IA, GPT-4o, portais personalizados e notícias automáticas."}
+          featureName={resolvedPlan === "free" ? t.upgradeMore : t.upgradeUltra}
+          description={resolvedPlan === "free" ? t.upgradeMoreDesc : t.upgradeUltraDesc}
           compact
         />
       )}
@@ -1091,8 +1100,8 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
     <div className="animate-fade-up">
       {/* Page heading */}
       <div className="mb-6">
-        <h2 className="text-xl font-black text-white">Configurações</h2>
-        <p className="text-white/35 text-sm mt-0.5">API, sincronização de dados e personalização</p>
+        <h2 className="text-xl font-black text-white">{t.pageTitle}</h2>
+        <p className="text-white/35 text-sm mt-0.5">{t.pageSubtitle}</p>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-6 items-start">
@@ -1114,7 +1123,7 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
                   }}
                 >
                   <span style={{ color: active ? "var(--club-primary)" : "rgba(255,255,255,0.3)" }}>{item.icon}</span>
-                  {item.label}
+                  {NAV_LABELS[item.id]}
                 </button>
               );
             })}
@@ -1126,14 +1135,14 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
           {section === "temporada" && (
             <div className="space-y-5">
               <SectionCard
-                title="Notificações"
-                subtitle="Configurações de som e alertas do aplicativo."
+                title={t.sNotificacoesTitle}
+                subtitle={t.sNotificacoesSubtitle}
               >
                 <div className="flex items-center justify-between gap-4">
                   <div>
-                    <p className="text-white/80 text-sm font-semibold">Som de notificação</p>
+                    <p className="text-white/80 text-sm font-semibold">{t.soundLabel}</p>
                     <p className="text-white/35 text-xs mt-0.5 leading-relaxed">
-                      Toca um som quando uma notícia é gerada ou a Diretoria envia mensagem.
+                      {t.soundDesc}
                     </p>
                   </div>
                   <button
@@ -1162,12 +1171,12 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
               </SectionCard>
 
               <SectionCard
-                title="Rivais da Temporada"
-                subtitle="Defina até 3 rivais para a temporada atual. Clássicos têm tom diferenciado nas notícias e na Diretoria."
+                title={t.sRivaisTitle}
+                subtitle={t.sRivaisSubtitle}
               >
                 {seasonId
                   ? <RivaisView seasonId={seasonId} />
-                  : <p className="text-xs text-white/30">Nenhuma temporada ativa.</p>
+                  : <p className="text-xs text-white/30">{t.noActiveSeason}</p>
                 }
               </SectionCard>
 
@@ -1177,18 +1186,18 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
                   style={{ background: "rgba(239,68,68,0.04)", border: "1px solid rgba(239,68,68,0.15)" }}
                 >
                   <div className="px-6 py-4" style={{ borderBottom: "1px solid rgba(239,68,68,0.1)" }}>
-                    <h3 className="text-sm font-bold" style={{ color: "#f87171" }}>Zona de Perigo</h3>
+                    <h3 className="text-sm font-bold" style={{ color: "#f87171" }}>{t.dangerZoneTitle}</h3>
                     <p className="text-white/35 text-xs mt-0.5 leading-relaxed">
-                      Ações irreversíveis que afetam permanentemente esta carreira.
+                      {t.dangerZoneSubtitle}
                     </p>
                   </div>
                   <div className="px-6 py-5">
                     {!deleteConfirm ? (
                       <div className="flex items-start gap-4">
                         <div className="flex-1 min-w-0">
-                          <p className="text-white/70 text-sm font-semibold">Excluir carreira</p>
+                          <p className="text-white/70 text-sm font-semibold">{t.deleteCareerLabel}</p>
                           <p className="text-white/35 text-xs mt-0.5 leading-relaxed">
-                            Remove permanentemente todos os dados: elenco, transferências, notícias, temporadas e configurações. Essa ação não pode ser desfeita.
+                            {t.deleteCareerDesc}
                           </p>
                         </div>
                         <button
@@ -1199,7 +1208,7 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
                           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                           </svg>
-                          Excluir
+                          {t.deleteBtn}
                         </button>
                       </div>
                     ) : (
@@ -1212,7 +1221,7 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
                             <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                           </svg>
                           <p className="text-xs leading-relaxed" style={{ color: "#f87171" }}>
-                            Tem certeza? Todos os dados desta carreira serão <strong>permanentemente excluídos</strong> e não poderão ser recuperados.
+                            {t.deleteConfirmMsg}
                           </p>
                         </div>
                         <div className="flex gap-2">
@@ -1221,14 +1230,14 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
                             className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150 hover:opacity-80"
                             style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.08)" }}
                           >
-                            Cancelar
+                            {t.cancelBtn}
                           </button>
                           <button
                             onClick={onDeleteCareer}
                             className="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all duration-150 hover:opacity-90 active:scale-[0.98]"
                             style={{ background: "rgba(239,68,68,0.85)", color: "white" }}
                           >
-                            Sim, excluir carreira
+                            {t.deleteConfirmBtn}
                           </button>
                         </div>
                       </div>
@@ -1244,8 +1253,8 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
           {section === "idioma"  && (
             <div className="flex flex-col gap-6">
               <SectionCard
-                title="Idioma / Language"
-                subtitle="Tradução disponível: Painel · Translation available: Dashboard"
+                title={t.idiomaSectionTitle}
+                subtitle={t.idiomaSectionSubtitle}
               >
                 <div className="flex gap-3">
                   <button
