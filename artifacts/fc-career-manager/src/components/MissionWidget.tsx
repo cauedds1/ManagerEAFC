@@ -5,7 +5,6 @@ import type { Plan } from "@/lib/userPlan";
 import {
   getMissionsForPlan,
   isMissionComplete,
-  completeMission,
   allMissionsForPlanDone,
   type MissionDef,
 } from "@/lib/missionStorage";
@@ -140,12 +139,6 @@ export function MissionWidget({
     onNavigateTab(mission.tab);
   }, [onNavigateTab]);
 
-  const handleManualComplete = useCallback((mission: MissionDef) => {
-    completeMission(careerId, mission.id);
-    onMissionComplete?.(mission.id, mission.rewardKey);
-    forceUpdate((n) => n + 1);
-  }, [careerId, onMissionComplete]);
-
   const activeIndex = getFirstActiveMissionIndex();
 
   if (allDone && collapsed) {
@@ -232,12 +225,7 @@ export function MissionWidget({
                 done={done}
                 active={active}
                 t={t}
-                onGo={() => {
-                  handleGo(mission);
-                  if (active) {
-                    handleManualComplete(mission);
-                  }
-                }}
+                onGo={() => handleGo(mission)}
               />
             );
           })

@@ -35,10 +35,13 @@ export function saveMomentos(seasonId: string, list: Momento[]): void {
   void putSeasonData(seasonId, "momentos", withoutPhoto);
 }
 
+export const FC_MOMENTO_SAVED_EVENT = "fc-momento-saved";
+
 export function addMomento(seasonId: string, momento: Momento): void {
   const list = getMomentos(seasonId);
   list.unshift(momento);
   saveMomentos(seasonId, list);
+  window.dispatchEvent(new CustomEvent(FC_MOMENTO_SAVED_EVENT, { detail: { seasonId, momentoId: momento.id } }));
 }
 
 export function deleteMomento(seasonId: string, id: string): void {

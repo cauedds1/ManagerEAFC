@@ -53,7 +53,10 @@ import {
   setMemberCooldown,
   setPendingMeetingTrigger,
   generateMessageId,
+  FC_BOARD_MEMBER_ADDED_EVENT,
 } from "@/lib/diretoriaStorage";
+import { FC_MOMENTO_SAVED_EVENT } from "@/lib/momentoStorage";
+import { CUSTOM_PORTALS_EVENT } from "@/lib/customPortalStorage";
 import { getFinanceiroSettings, computeFinancialSnapshot } from "@/lib/financeiroStorage";
 import { getFormerPlayers, addFormerPlayer, saveFormerPlayers } from "@/lib/customPlayersStorage";
 import { buildPlayerPerformanceContext, buildSquadOvrContext } from "@/lib/playerContext";
@@ -372,6 +375,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
   const [upgradedFromPlan, setUpgradedFromPlan] = useState<"free" | "pro" | "ultra">("free");
   const [showMissions, setShowMissions] = useState(false);
   const [activeTeaserTrigger, setActiveTeaserTrigger] = useState<TeaserKey | null>(null);
+  const [missionKey, setMissionKey] = useState(0);
 
   useEffect(() => {
     return () => { if (bgGenTimerRef.current) clearTimeout(bgGenTimerRef.current); };
@@ -547,17 +551,13 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     if (tab === "diretoria") {
       markDiretoriaRead(career.id);
       setDiretoriaUnread(0);
-      // Pro mission 1: visited diretoria
-      if (!isMissionComplete(career.id, "pro_setup_diretoria")) {
-        completeMission(career.id, "pro_setup_diretoria");
-      }
     }
     if (tab === "noticias") {
       markNoticiasRead(activeSeasonId);
       setNoticiasUnread(0);
     }
     if (tab === "clube") {
-      // Free mission 3: viewed squad
+      // Free mission 3: viewed squad (completing on tab visit is correct per spec)
       if (!isMissionComplete(career.id, "free_view_squad")) {
         completeMission(career.id, "free_view_squad");
       }
@@ -567,10 +567,6 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
       }
     }
     if (tab === "momentos") {
-      // Pro mission 2: viewed momentos
-      if (!isMissionComplete(career.id, "pro_save_momento")) {
-        completeMission(career.id, "pro_save_momento");
-      }
       // Teaser: video-news for non-ultra
       if (userPlan !== "ultra") {
         setActiveTeaserTrigger("after_momento_videonews");
@@ -593,7 +589,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
   // ─── Mission completion via news generation event ────────────────────────────
   useEffect(() => {
     const handler = (e: Event) => {
-      const { seasonId } = (e as CustomEvent<NoticiaGeneratedDetail>).detail ?? {};
+      const { seasonId, post } = (e as CustomEvent<NoticiaGeneratedDetail>).detail ?? {};
       if (seasonId !== activeSeasonId) return;
 
       // Free mission 2: first news post
@@ -609,6 +605,13 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
         }
       }
 
+      // Ultra mission 2: generate a rumor post (transfer category)
+      if (userPlan === "ultra" && post?.category === "transferencia") {
+        if (!isMissionComplete(career.id, "ultra_rumor")) {
+          completeMission(career.id, "ultra_rumor");
+        }
+      }
+
       // Teaser: auto-news for non-ultra
       if (userPlan !== "ultra") {
         setActiveTeaserTrigger("after_news_auto");
@@ -617,6 +620,48 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     window.addEventListener(FC_NOTICIA_GENERATED_EVENT, handler);
     return () => window.removeEventListener(FC_NOTICIA_GENERATED_EVENT, handler);
   }, [activeSeasonId, career.id, userPlan]);
+
+  // ─── Mission completion via board member added ───────────────────────────────
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<{ careerId: string }>).detail;
+      if (detail?.careerId !== career.id) return;
+      if (!isMissionComplete(career.id, "pro_setup_diretoria")) {
+        completeMission(career.id, "pro_setup_diretoria");
+      }
+    };
+    window.addEventListener(FC_BOARD_MEMBER_ADDED_EVENT, handler);
+    return () => window.removeEventListener(FC_BOARD_MEMBER_ADDED_EVENT, handler);
+  }, [career.id]);
+
+  // ─── Mission completion via momento saved ────────────────────────────────────
+  useEffect(() => {
+    const handler = () => {
+      if (!isMissionComplete(career.id, "pro_save_momento")) {
+        completeMission(career.id, "pro_save_momento");
+      }
+    };
+    window.addEventListener(FC_MOMENTO_SAVED_EVENT, handler);
+    return () => window.removeEventListener(FC_MOMENTO_SAVED_EVENT, handler);
+  }, [career.id]);
+
+  // ─── Mission completion via custom portal created ────────────────────────────
+  useEffect(() => {
+    const handler = () => {
+      if (userPlan === "ultra" && !isMissionComplete(career.id, "ultra_portal")) {
+        completeMission(career.id, "ultra_portal");
+      }
+    };
+    window.addEventListener(CUSTOM_PORTALS_EVENT, handler);
+    return () => window.removeEventListener(CUSTOM_PORTALS_EVENT, handler);
+  }, [career.id, userPlan]);
+
+  // ─── Ultra mission 1: auto-news always enabled for Ultra (complete on first entry) ──
+  useEffect(() => {
+    if (userPlan === "ultra" && !isMissionComplete(career.id, "ultra_auto_news")) {
+      completeMission(career.id, "ultra_auto_news");
+    }
+  }, [career.id, userPlan]);
 
   const cachedPhotoMap = useMemo(() => {
     const map = new Map<number, string>();
@@ -1507,6 +1552,21 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
                   </button>
                 );
               })}
+              {/* Persistent mission "?" reopen button */}
+              {showMissions && !showOnboardingEntry && !showUpgradeEntry && (
+                <button
+                  onClick={() => { setShowMissions(true); setMissionKey((k) => k + 1); }}
+                  className="ml-auto my-auto mr-1 flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all hover:scale-105 active:scale-95"
+                  style={{
+                    background: "rgba(var(--club-primary-rgb),0.15)",
+                    border: "1px solid rgba(var(--club-primary-rgb),0.3)",
+                    color: "var(--club-primary)",
+                  }}
+                  title={lang === "en" ? "Missions" : "Missões"}
+                >
+                  🎯
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -1751,10 +1811,10 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
       {/* Mission Widget */}
       {showMissions && !showOnboardingEntry && !showUpgradeEntry && (
         <MissionWidget
+          key={missionKey}
           careerId={career.id}
           plan={userPlan}
           onNavigateTab={(tab) => handleTabChange(tab as CareerTab)}
-          onMissionComplete={(_missionId, _rewardKey) => {}}
         />
       )}
 

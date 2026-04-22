@@ -22,8 +22,11 @@ export function saveMembers(careerId: string, members: BoardMember[]): void {
   void putCareerData(careerId, "diretoria_members", members);
 }
 
+export const FC_BOARD_MEMBER_ADDED_EVENT = "fc-board-member-added";
+
 export function addMember(careerId: string, member: BoardMember): void {
   saveMembers(careerId, [...getMembers(careerId), member]);
+  window.dispatchEvent(new CustomEvent(FC_BOARD_MEMBER_ADDED_EVENT, { detail: { careerId } }));
 }
 
 export function updateMember(

@@ -16,6 +16,7 @@ import { getCachedClubList } from "@/lib/clubListCache";
 import { searchStaticClubs } from "@/lib/staticClubList";
 import { useLang } from "@/hooks/useLang";
 import { TRANSFERENCIAS, LOAN_DURATION_LABELS, LOAN_DURATION_DISPLAY } from "@/lib/i18n";
+import { SectionHelp } from "./SectionHelp";
 
 const ALL_POSITIONS: PositionPtBr[] = ["GOL","DEF","MID","ATA"];
 
@@ -902,6 +903,7 @@ export function TransferenciasView({
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
           <h2 className="text-white/35 text-xs font-bold tracking-widest uppercase">{t.heading}</h2>
+          <SectionHelp section="transferencias" />
           {comprasCount > 0 && (
             <span
               className="text-xs font-bold px-2.5 py-0.5 rounded-full tabular-nums"
