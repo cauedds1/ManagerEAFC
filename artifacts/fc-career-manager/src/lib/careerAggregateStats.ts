@@ -57,6 +57,28 @@ export function recomputeCareerAgg(
   saveAgg(careerId, agg);
 }
 
+export function adjustCareerAgg(
+  careerId: string,
+  oldMyScore: number,
+  oldOppScore: number,
+  newMyScore: number,
+  newOppScore: number,
+): void {
+  const agg = loadAgg(careerId);
+
+  agg.goals = Math.max(0, agg.goals - oldMyScore) + newMyScore;
+
+  if (oldMyScore > oldOppScore) agg.wins = Math.max(0, agg.wins - 1);
+  else if (oldMyScore < oldOppScore) agg.losses = Math.max(0, agg.losses - 1);
+  else agg.draws = Math.max(0, agg.draws - 1);
+
+  if (newMyScore > newOppScore) agg.wins += 1;
+  else if (newMyScore < newOppScore) agg.losses += 1;
+  else agg.draws += 1;
+
+  saveAgg(careerId, agg);
+}
+
 export function getAllCareersAgg(careerIds: string[]): CareerAggregateStats {
   const total: CareerAggregateStats = { matches: 0, wins: 0, draws: 0, losses: 0, goals: 0 };
   for (const id of careerIds) {

@@ -3,7 +3,7 @@ import { getPlayerStats, setPlayerStats, syncAllPlayerStats } from "@/lib/player
 import type { PlayerSeasonStats } from "@/types/playerStats";
 import { putSeasonData } from "@/lib/apiStorage";
 import { sessionGet, sessionSet, sessionKeys } from "@/lib/sessionStore";
-import { recordMatchInAgg, recomputeCareerAgg } from "@/lib/careerAggregateStats";
+import { recordMatchInAgg, adjustCareerAgg } from "@/lib/careerAggregateStats";
 
 function matchesKey(seasonId: string): string {
   return `fc-career-manager-matches-${seasonId}`;
@@ -23,11 +23,13 @@ export function addMatch(seasonId: string, match: MatchRecord): void {
 }
 
 export function updateMatch(seasonId: string, updated: MatchRecord): void {
-  const list = getMatches(seasonId).map((m) => m.id === updated.id ? updated : m);
+  const existing = getMatches(seasonId);
+  const old = existing.find((m) => m.id === updated.id);
+  const list = existing.map((m) => m.id === updated.id ? updated : m);
   sessionSet(matchesKey(seasonId), list);
   void putSeasonData(seasonId, "matches", list);
-  if (updated.careerId) {
-    recomputeCareerAgg(updated.careerId, list.filter(m => m.careerId === updated.careerId));
+  if (updated.careerId && old) {
+    adjustCareerAgg(updated.careerId, old.myScore, old.opponentScore, updated.myScore, updated.opponentScore);
   }
 }
 
