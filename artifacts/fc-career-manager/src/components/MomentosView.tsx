@@ -602,7 +602,7 @@ function AddMomentoModal({
           </button>
         </div>
 
-        <div className="flex flex-col gap-4 px-5 pb-5 overflow-y-auto">
+        <div className="flex flex-col gap-4 px-5 pb-5 overflow-y-auto flex-1 min-h-0">
           {/* Media type toggle */}
           <div className="flex rounded-xl overflow-hidden border border-white/10 self-start">
             <button
