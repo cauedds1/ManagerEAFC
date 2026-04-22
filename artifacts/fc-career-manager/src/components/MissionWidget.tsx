@@ -268,14 +268,17 @@ export function MissionWidget({
 
   return (
     <div
-      className="fixed bottom-6 right-4 z-[440] w-72 rounded-2xl flex flex-col overflow-hidden shadow-2xl relative"
+      className="fixed bottom-6 right-4 z-[440] w-72 rounded-2xl flex flex-col overflow-hidden shadow-2xl"
       style={{
         background: "rgba(14,12,24,0.97)",
         border: "1px solid rgba(255,255,255,0.1)",
         backdropFilter: "blur(20px)",
+        position: "fixed",
       }}
     >
-      <ConfettiBurst active={lastCompletedId !== null} />
+      <div className="relative">
+        <ConfettiBurst active={lastCompletedId !== null} />
+      </div>
       <div
         className="flex items-center justify-between px-3.5 py-3 cursor-pointer"
         style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
