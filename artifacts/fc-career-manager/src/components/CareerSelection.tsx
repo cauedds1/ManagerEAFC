@@ -242,11 +242,11 @@ export function CareerSelection({ careers, onSelectCareer, onCreateNew, onCareer
                 {hasCareer ? t.headingExisting : t.headingNew}
               </h1>
             </div>
-            <div className="sm:hidden flex items-center gap-2 flex-shrink-0">
+            <div className="flex items-center gap-2 flex-shrink-0">
               {!atCareerLimit && (
                 <button
                   onClick={onCreateNew}
-                  className="flex items-center justify-center gap-2 min-h-[44px] px-4 py-2 rounded-xl font-bold text-white text-sm transition-all duration-200 active:scale-[0.98]"
+                  className="sm:hidden flex items-center justify-center gap-2 min-h-[44px] px-4 py-2 rounded-xl font-bold text-white text-sm transition-all duration-200 active:scale-[0.98]"
                   style={{ background: "var(--club-gradient)", boxShadow: "0 4px 20px rgba(var(--club-primary-rgb),0.25)" }}
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -308,18 +308,6 @@ export function CareerSelection({ careers, onSelectCareer, onCreateNew, onCareer
             </svg>
             {t.newCareer}
           </button>
-          )}
-          {onLogout && (
-            <button
-              onClick={onLogout}
-              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 hover:opacity-80"
-              style={{ color: "rgba(255,255,255,0.3)", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 9V5.25A2.25 2.25 0 0 1 10.5 3h6a2.25 2.25 0 0 1 2.25 2.25v13.5A2.25 2.25 0 0 1 16.5 21h-6a2.25 2.25 0 0 1-2.25-2.25V15M12 9l3 3m0 0-3 3m3-3H2.25" />
-              </svg>
-              {t.logout}
-            </button>
           )}
         </div>
       </div>

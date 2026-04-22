@@ -320,44 +320,4 @@ router.get("/stripe/products-with-plan", async (_req, res) => {
   }
 });
 
-router.post("/stripe/admin/seed-usd-prices", async (req, res) => {
-  if (req.headers["x-admin-secret"] !== "fc-seed-usd-2026") {
-    return res.status(403).json({ error: "Forbidden" });
-  }
-  try {
-    const stripe = await getUncachableStripeClient();
-
-    async function ensureUsd(productId: string, unitAmount: number, label: string) {
-      const list = await stripe.prices.list({ product: productId, active: true, currency: "usd", type: "recurring" });
-      const existing = list.data.find((p: Stripe.Price) => p.recurring?.interval === "month");
-      if (existing) return { id: existing.id, created: false };
-      const price = await stripe.prices.create({ product: productId, unit_amount: unitAmount, currency: "usd", recurring: { interval: "month" } });
-      console.log(`[seed] ✓ USD price created (${label}): ${price.id}`);
-      return { id: price.id, created: true };
-    }
-
-    const [proResp, ultraResp] = await Promise.all([
-      stripe.products.search({ query: "name:'FC Career Pro' AND active:'true'" }),
-      stripe.products.search({ query: "name:'FC Career Ultra' AND active:'true'" }),
-    ]);
-
-    const results: Record<string, unknown> = {};
-    if (proResp.data.length === 0) {
-      results.pro = { error: "FC Career Pro not found" };
-    } else {
-      results.pro = { productId: proResp.data[0].id, usd: await ensureUsd(proResp.data[0].id, 499, "Pro $4.99") };
-    }
-    if (ultraResp.data.length === 0) {
-      results.ultra = { error: "FC Career Ultra not found" };
-    } else {
-      results.ultra = { productId: ultraResp.data[0].id, usd: await ensureUsd(ultraResp.data[0].id, 999, "Ultra $9.99") };
-    }
-
-    plansCache = null;
-    return res.json({ ok: true, results });
-  } catch (err) {
-    return res.status(500).json({ error: String(err) });
-  }
-});
-
 export default router;
