@@ -8,6 +8,7 @@ import { getUserPlan, getPlanLimits, getPlanLabel, type Plan } from "@/lib/userP
 import { UpgradePrompt } from "@/components/UpgradePrompt";
 import { useLang } from "@/hooks/useLang";
 import { CAREER_SEL } from "@/lib/i18n";
+import { LangToggle } from "@/components/LangToggle";
 import { getAllCareersAgg } from "@/lib/careerAggregateStats";
 import { getSeasons } from "@/lib/seasonStorage";
 
@@ -334,7 +335,7 @@ function NewCareerCard({ onClick, index, label }: { onClick: () => void; index: 
 }
 
 export function CareerSelection({ careers, onSelectCareer, onCreateNew, onCareersChange, onLogout, onUpgrade, userPlan }: CareerSelectionProps) {
-  const [lang] = useLang();
+  const [lang, setLang] = useLang();
   const t = CAREER_SEL[lang];
 
   const resolvedPlan = userPlan ?? getUserPlan();
@@ -417,6 +418,7 @@ export function CareerSelection({ careers, onSelectCareer, onCreateNew, onCareer
                   {t.newCareer}
                 </button>
               )}
+              <LangToggle lang={lang} setLang={setLang} />
               {onLogout && (
                 <button
                   onClick={onLogout}

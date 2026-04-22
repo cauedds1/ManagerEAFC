@@ -14,6 +14,7 @@ import { APIFOOTBALL_TO_FC26_NAME, LeagueInfo } from "@/lib/footballApiMap";
 import type { ClubTitle } from "@/types/career";
 import { useLang } from "@/hooks/useLang";
 import { WIZARD } from "@/lib/i18n";
+import { LangToggle } from "@/components/LangToggle";
 
 interface CreateCareerWizardProps {
   allClubs: ClubEntry[];
@@ -85,7 +86,7 @@ export function CreateCareerWizard({
   initialStep = 0,
   initialCoach,
 }: CreateCareerWizardProps) {
-  const [lang] = useLang();
+  const [lang, setLang] = useLang();
   const t = WIZARD[lang];
 
   const [step, setStep] = useState<0 | 1 | 2 | 3>(initialStep as 0 | 1 | 2 | 3);
@@ -175,7 +176,9 @@ export function CreateCareerWizard({
         <span className="text-white/25 text-xs font-semibold tracking-widest uppercase">
           {t.newCareer}
         </span>
-        <div style={{ width: 80 }} />
+        <div style={{ width: 80 }} className="flex justify-end">
+          <LangToggle lang={lang} setLang={setLang} />
+        </div>
       </div>
 
       {isPreviewStep && selectedClub && (

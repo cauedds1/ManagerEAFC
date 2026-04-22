@@ -168,6 +168,7 @@ export default function App() {
   const setLang = useCallback((l: "pt" | "en") => {
     setLangState(l);
     try { localStorage.setItem("fc_lang", l); } catch {}
+    window.dispatchEvent(new StorageEvent("storage", { key: "fc_lang", newValue: l }));
   }, []);
 
   useEffect(() => {
