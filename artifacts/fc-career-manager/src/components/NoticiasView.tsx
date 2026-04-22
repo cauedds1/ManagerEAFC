@@ -1604,7 +1604,8 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
   };
 
   const handleDeletePost = async (postId: string) => {
-    const post = posts.find((p) => p.id === postId);
+    const freshPosts = getPosts(seasonId);
+    const post = freshPosts.find((p) => p.id === postId);
     if (post?.videoKey || post?.imageKey) {
       await deleteMediaFromR2(post.imageKey, post.videoKey);
     }
