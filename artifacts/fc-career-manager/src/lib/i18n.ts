@@ -3268,6 +3268,9 @@ export const DASHBOARD: Record<Lang, Record<string, string>> = {
     moodNeutra: "Neutra",
     moodAnimada: "Animada",
     moodEuforica: "Eufórica",
+    bgGenGenerating: "Gerando notícia em segundo plano...",
+    bgGenDone: "Notícia publicada!",
+    bgGenError: "Erro ao gerar notícia",
   },
   en: {
     // breadcrumb
@@ -3300,6 +3303,9 @@ export const DASHBOARD: Record<Lang, Record<string, string>> = {
     moodNeutra: "Neutral",
     moodAnimada: "Excited",
     moodEuforica: "Euphoric",
+    bgGenGenerating: "Generating news in the background...",
+    bgGenDone: "News published!",
+    bgGenError: "Error generating news",
   },
 } satisfies Record<Lang, Record<string, string>>;
 

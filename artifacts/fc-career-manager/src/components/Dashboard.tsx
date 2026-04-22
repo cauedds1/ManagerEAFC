@@ -1765,9 +1765,9 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
           )}
           <div className="flex-1 min-w-0">
             <p className="text-white/90 text-sm font-semibold leading-tight">
-              {bgGenStatus === "generating" && "Gerando notícia em segundo plano..."}
-              {bgGenStatus === "done" && "Notícia publicada!"}
-              {bgGenStatus === "error" && "Erro ao gerar notícia"}
+              {bgGenStatus === "generating" && t.bgGenGenerating}
+              {bgGenStatus === "done" && t.bgGenDone}
+              {bgGenStatus === "error" && t.bgGenError}
             </p>
             {bgGenLabel && (
               <p className="text-white/40 text-xs mt-0.5 truncate">{bgGenLabel}</p>
