@@ -587,6 +587,7 @@ export default function App() {
           onCreateNew={handleCreateNew}
           onCareersChange={handleCareersChange}
           onLogout={handleLogout}
+          onUpgrade={() => setView("landing")}
           userPlan={authUser?.plan ?? "free"}
         />
       );
@@ -624,6 +625,7 @@ export default function App() {
         onCreateNew={handleCreateNew}
         onCareersChange={handleCareersChange}
         onLogout={handleLogout}
+        onUpgrade={() => setView("landing")}
         userPlan={authUser?.plan ?? "free"}
       />
     );

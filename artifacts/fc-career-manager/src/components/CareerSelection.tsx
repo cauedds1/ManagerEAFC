@@ -17,6 +17,7 @@ interface CareerSelectionProps {
   onCreateNew: () => void;
   onCareersChange: (careers: Career[]) => void;
   onLogout?: () => void;
+  onUpgrade?: () => void;
   userPlan?: Plan;
 }
 
@@ -119,9 +120,10 @@ function ClubMosaicRow({ careers, onSelectCareer, label }: {
   );
 }
 
-function PlanBadge({ plan, label }: { plan: Plan; label: string }) {
+function PlanBadge({ plan, label, upgradeLabel, onUpgrade }: { plan: Plan; label: string; upgradeLabel: string; onUpgrade?: () => void }) {
   const isUltra = plan === "ultra";
   const isPro = plan === "pro";
+  const canUpgrade = !isUltra && onUpgrade;
 
   const badgeBg = isUltra
     ? "rgba(245,158,11,0.08)"
@@ -165,6 +167,15 @@ function PlanBadge({ plan, label }: { plan: Plan; label: string }) {
       {isUltra && (
         <span className="text-[9px] font-bold text-amber-400/60 tracking-wide">PREMIUM</span>
       )}
+      {canUpgrade && (
+        <button
+          onClick={onUpgrade}
+          className="text-[10px] font-semibold transition-colors duration-150 hover:text-white/70 flex-shrink-0"
+          style={{ color: isPro ? "rgba(167,139,250,0.5)" : "rgba(255,255,255,0.22)" }}
+        >
+          {upgradeLabel}
+        </button>
+      )}
     </div>
   );
 }
@@ -174,22 +185,27 @@ function TrajectStat({
   label,
   accent,
   loading,
+  icon,
 }: {
   value: number | string;
   label: string;
   accent?: string;
   loading?: boolean;
+  icon: React.ReactNode;
 }) {
   const displayColor = loading ? "rgba(255,255,255,0.18)" : (accent ?? "rgba(255,255,255,0.75)");
   return (
     <div
-      className="rounded-xl p-2.5 flex flex-col gap-0.5"
+      className="rounded-xl p-2.5 flex flex-col gap-1"
       style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}
     >
-      <p className="text-[15px] font-black leading-none tabular-nums" style={{ color: displayColor }}>
-        {loading ? "—" : value}
-      </p>
-      <p className="text-[9px] font-medium text-white/22 leading-tight mt-0.5">{label}</p>
+      <div className="flex items-center justify-between">
+        <p className="text-[15px] font-black leading-none tabular-nums" style={{ color: displayColor }}>
+          {loading ? "—" : value}
+        </p>
+        <span style={{ color: displayColor, opacity: 0.5 }}>{icon}</span>
+      </div>
+      <p className="text-[9px] font-medium text-white/22 leading-tight">{label}</p>
     </div>
   );
 }
@@ -317,7 +333,7 @@ function NewCareerCard({ onClick, index, label }: { onClick: () => void; index: 
   );
 }
 
-export function CareerSelection({ careers, onSelectCareer, onCreateNew, onCareersChange, onLogout, userPlan }: CareerSelectionProps) {
+export function CareerSelection({ careers, onSelectCareer, onCreateNew, onCareersChange, onLogout, onUpgrade, userPlan }: CareerSelectionProps) {
   const [lang] = useLang();
   const t = CAREER_SEL[lang];
 
@@ -374,7 +390,7 @@ export function CareerSelection({ careers, onSelectCareer, onCreateNew, onCareer
           <div className="hidden sm:flex w-12 h-12 rounded-2xl items-center justify-center animate-float flex-shrink-0"
             style={{ background: "rgba(var(--club-primary-rgb),0.12)", border: "1px solid rgba(var(--club-primary-rgb),0.2)", boxShadow: "0 0 30px rgba(var(--club-primary-rgb),0.15)" }}>
             <svg className="w-6 h-6" style={{ color: "var(--club-primary)" }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 6.75V15m6-6v8.25m.503 3.498l4.875-2.437c.381-.19.622-.58.622-1.006V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0L9.503 3.252a1.125 1.125 0 00-1.006 0L3.622 5.689C3.24 5.88 3 6.27 3 6.695V19.18c0 .836.88 1.38 1.628 1.006l3.869-1.934c.317-.159.69-.159 1.006 0l4.994 2.497c.317.158.69.158 1.006 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 6.75V15m6-6v8.25m.503 3.498l4.875-2.437c.381-.19.622-.58.622-1.006V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0L9.503 3.252a1.125 1.125 0 00-1.006 0L3.622 5.689C3.24 5.88 3 6.27 3 6.695V19.18c0 .836.88 1.38 1.628 1.006l3.869-1.934c-.317-.159-.69-.159-1.006 0l4.994 2.497c.317.158.69.158 1.006 0z" />
             </svg>
           </div>
 
@@ -415,7 +431,7 @@ export function CareerSelection({ careers, onSelectCareer, onCreateNew, onCareer
             </div>
           </div>
 
-          <PlanBadge plan={resolvedPlan} label={t.planBadgeLabel} />
+          <PlanBadge plan={resolvedPlan} label={t.planBadgeLabel} upgradeLabel={t.planUpgradeLink} onUpgrade={onUpgrade} />
 
           <p className="text-white/30 text-xs leading-relaxed hidden sm:block -mt-1">
             {hasCareer ? t.descExisting : t.descNew}
@@ -446,16 +462,29 @@ export function CareerSelection({ careers, onSelectCareer, onCreateNew, onCareer
                 <div style={{ height: "1px", background: "rgba(255,255,255,0.05)" }} className="mb-4" />
                 <p className="text-[9px] font-bold tracking-widest uppercase text-white/20 mb-2.5">{t.sectionTrajectory}</p>
                 <div className="grid grid-cols-3 gap-1.5">
-                  <TrajectStat value={totalAgg.matches} label={t.statMatches} />
-                  <TrajectStat value={totalAgg.wins} label={t.statWins} accent="#34d399" />
-                  <TrajectStat value={totalAgg.draws} label={t.statDraws} accent="rgba(148,163,184,0.8)" />
-                  <TrajectStat value={totalAgg.losses} label={t.statLosses} accent="#f87171" />
-                  <TrajectStat value={totalAgg.goals} label={t.statGoals} accent="#fbbf24" />
+                  <TrajectStat value={totalAgg.matches} label={t.statMatches} icon={
+                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="12" r="10" /><path strokeLinecap="round" d="M12 8v4l3 3" /></svg>
+                  } />
+                  <TrajectStat value={totalAgg.wins} label={t.statWins} accent="#34d399" icon={
+                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" /></svg>
+                  } />
+                  <TrajectStat value={totalAgg.draws} label={t.statDraws} accent="rgba(148,163,184,0.8)" icon={
+                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14" /></svg>
+                  } />
+                  <TrajectStat value={totalAgg.losses} label={t.statLosses} accent="#f87171" icon={
+                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                  } />
+                  <TrajectStat value={totalAgg.goals} label={t.statGoals} accent="#fbbf24" icon={
+                    <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth={2} /><circle cx="12" cy="12" r="3" /></svg>
+                  } />
                   <TrajectStat
                     value={seasonCount ?? 0}
                     label={t.statSeasons}
                     accent="rgba(var(--club-primary-rgb),1)"
                     loading={seasonCount === null}
+                    icon={
+                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                    }
                   />
                 </div>
               </div>

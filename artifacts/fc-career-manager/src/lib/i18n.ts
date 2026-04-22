@@ -948,6 +948,7 @@ export const CAREER_SEL = {
     statGoals: "Gols",
     statSeasons: "Temporadas",
     planBadgeLabel: "Plano",
+    planUpgradeLink: "Fazer upgrade →",
     clubsLabel: "Clubes treinados",
   },
   en: {
@@ -982,6 +983,7 @@ export const CAREER_SEL = {
     statGoals: "Goals",
     statSeasons: "Seasons",
     planBadgeLabel: "Plan",
+    planUpgradeLink: "Upgrade →",
     clubsLabel: "Clubs managed",
   },
 } satisfies Record<Lang, Record<string, string>>;
