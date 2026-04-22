@@ -9,6 +9,7 @@ import {
 } from "@/lib/financeiroStorage";
 import { getAllPlayerOverrides } from "@/lib/playerStatsStorage";
 import { useLang } from "@/hooks/useLang";
+import { SectionHelp } from "./SectionHelp";
 import { CLUBE } from "@/lib/i18n";
 
 function parseBudgetInput(raw: string): number {
@@ -211,7 +212,10 @@ export function FinanceiroView({ careerId, seasonId, transfers, season, isReadOn
   return (
     <div className="animate-fade-up space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-white/35 text-xs font-bold tracking-widest uppercase">{t.financeHeading}</h2>
+        <div className="flex items-center gap-2">
+          <h2 className="text-white/35 text-xs font-bold tracking-widest uppercase">{t.financeHeading}</h2>
+          <SectionHelp section="financeiro" />
+        </div>
         <span className="text-white/25 text-xs">{seasonTransfers.length} {t.movThisSeason}</span>
       </div>
 

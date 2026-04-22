@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useLang } from "@/hooks/useLang";
 import { CLUBE } from "@/lib/i18n";
+import { SectionHelp } from "./SectionHelp";
 import type { SquadResult, SquadPlayer, PositionPtBr, PositionGroup } from "@/lib/squadCache";
 import { migratePositionOverride, PT_BR_TO_POSITION } from "@/lib/squadCache";
 import type { PlayerOverride } from "@/types/playerStats";
@@ -560,6 +561,7 @@ export function ElencoView({
       <div className="flex items-center justify-between px-4 sm:px-6 pt-4 pb-3">
         <div className="flex items-center gap-3">
           <h2 className="text-white/35 text-xs font-bold tracking-widest uppercase">{t.squadHeading}</h2>
+          <SectionHelp section="elenco" />
           {squad && !squadLoading && (
             <span
               className="text-xs font-medium px-2 py-0.5 rounded-full"

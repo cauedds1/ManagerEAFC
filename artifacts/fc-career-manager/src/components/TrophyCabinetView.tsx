@@ -3,6 +3,7 @@ import { getTrophies, addTrophy, removeTrophy, type Trophy } from "@/lib/trophyS
 import { findTrophyPhoto, findTrophyEntry, TROPHY_ENTRIES } from "@/lib/trophyPhotoMap";
 import { useLang } from "@/hooks/useLang";
 import { CLUBE } from "@/lib/i18n";
+import { SectionHelp } from "./SectionHelp";
 
 interface Props {
   careerId: string;
@@ -277,7 +278,9 @@ export function TrophyCabinetView({ careerId }: Props) {
   return (
     <div className="px-4 sm:px-6 py-6 space-y-6">
       <div className="flex items-center justify-between">
-        <div>
+        <div className="flex items-start gap-2">
+          <SectionHelp section="trofeus" />
+          <div>
           <p className="text-white font-black text-lg">
             {trophies.length > 0 ? (
               <>
@@ -295,6 +298,7 @@ export function TrophyCabinetView({ careerId }: Props) {
               {byCompetition.length} {byCompetition.length !== 1 ? t.compPlural : t.compSingular}
             </p>
           )}
+          </div>
         </div>
         <button
           onClick={() => setShowModal(true)}

@@ -12,6 +12,7 @@ import {
 } from "@/lib/injuryStorage";
 import { useLang } from "@/hooks/useLang";
 import { CLUBE } from "@/lib/i18n";
+import { SectionHelp } from "./SectionHelp";
 
 interface Props {
   careerId: string;
@@ -352,7 +353,8 @@ export function LesoesView({ careerId: _careerId, seasonId, allPlayers }: Props)
 
   return (
     <div className="w-full flex flex-col">
-      <div className="flex gap-1 px-4 pt-3 pb-1">
+      <div className="flex gap-1 items-center px-4 pt-3 pb-1">
+        <SectionHelp section="lesoes" />
         {(["ativos", "historico"] as const).map((tabKey) => {
           const label =
             tabKey === "ativos"

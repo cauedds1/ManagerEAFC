@@ -4,6 +4,7 @@ import { getMatchResult } from "@/types/match";
 import type { MatchRecord } from "@/types/match";
 import type { Season } from "@/types/career";
 import { useLang } from "@/hooks/useLang";
+import { SectionHelp } from "./SectionHelp";
 import { CLUBE, getResultChip } from "@/lib/i18n";
 
 interface Props {
@@ -372,6 +373,9 @@ export function ClubStatsView({
 
   return (
     <div className="w-full space-y-6 py-5">
+      <div className="flex items-center gap-2 px-1">
+        <SectionHelp section="estatisticas" />
+      </div>
       {showFilters && (
         <div className="flex flex-wrap gap-2">
           {showSeasonFilter && (

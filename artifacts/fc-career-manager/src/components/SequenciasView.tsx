@@ -3,6 +3,7 @@ import { getMatches } from "@/lib/matchStorage";
 import type { MatchRecord } from "@/types/match";
 import { getMatchResult } from "@/types/match";
 import { useLang } from "@/hooks/useLang";
+import { SectionHelp } from "./SectionHelp";
 import { CLUBE } from "@/lib/i18n";
 
 interface StreakRecord {
@@ -153,6 +154,9 @@ export function SequenciasView({ careerId: _careerId, seasonId, matchesOverride 
 
   return (
     <div className="w-full px-4 pb-6 pt-3">
+      <div className="flex items-center gap-2 mb-3">
+        <SectionHelp section="sequencias" />
+      </div>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {STREAK_DEFS.map(({ key, labelKey, icon, color, border }) => {
           const label = t[labelKey] as string;

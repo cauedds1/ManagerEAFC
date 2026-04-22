@@ -18,6 +18,7 @@ import {
   type StandingsEntry,
 } from "@/lib/competitionResultStorage";
 import { useLang } from "@/hooks/useLang";
+import { SectionHelp } from "./SectionHelp";
 import { CLUBE } from "@/lib/i18n";
 
 interface Props {
@@ -1074,6 +1075,7 @@ export function CompetitionResultsView({
         <div className="space-y-4 py-4">
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div className="flex items-center gap-2">
+              <SectionHelp section="competicoes" />
               {seasons.length > 1 && (
                 <FilterDropdown
                   value={selectedSeasonId}

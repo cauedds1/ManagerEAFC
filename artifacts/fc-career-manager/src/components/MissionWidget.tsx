@@ -195,12 +195,16 @@ export function MissionWidget({
         setTimeout(() => {
           setLastCompletedId(null);
           forceUpdate((n) => n + 1);
+          // Auto-collapse to compact button once all missions are done
+          if (allMissionsForPlanDone(careerId, plan)) {
+            setCollapsed(true);
+          }
         }, 3000);
       }
     };
     window.addEventListener(FC_MISSION_COMPLETE_EVENT, handler);
     return () => window.removeEventListener(FC_MISSION_COMPLETE_EVENT, handler);
-  }, [collapsed]);
+  }, [collapsed, careerId, plan]);
 
   const missions = getMissionsForPlan(plan);
   const allDone = allMissionsForPlanDone(careerId, plan);
