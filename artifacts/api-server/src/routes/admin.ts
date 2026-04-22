@@ -424,12 +424,32 @@ router.get("/admin/reenrich-positions", async (req, res) => {
 
 // POST /admin/recover-career
 //
-// Recovers a career that was accidentally deleted by reconstructing the `careers` row
-// from caller-supplied metadata and auto-discovering orphaned seasons from `season_data`.
+// Recovers an accidentally deleted career by reconstructing `careers` + `seasons` rows
+// from orphaned data in `career_data` and `season_data`.
+//
+// How it works:
+//   1. Loads all `career_data` rows for career_id and parses them to extract hints:
+//      - "comp_results" key contains {seasonId, seasonLabel, competitionName} entries
+//        that directly map orphaned seasons to this career and provide real season labels.
+//      - "trophies" key contains {competitionName, seasonLabel} entries as a fallback hint.
+//   2. Reconstructs the `careers` row. Club/coach metadata are NOT stored in career_data
+//      (they only lived in the deleted `careers` row), so the caller must supply them.
+//      All fields are optional — request body values take priority, defaults are used as
+//      a last resort. career_data-derived hints (e.g. competition names) are used where
+//      useful (competitions field fallback).
+//   3. Discovers orphaned seasons scoped to THIS career:
+//      - From parsed "comp_results": extracts distinct seasonIds that belong to this career.
+//      - Checks if career_id itself is an orphaned season_id (first season always has
+//        season_id == career_id, set by ensureCareerAndSeason1).
+//      - If explicit season_ids provided in body, uses those instead (override).
+//   4. Inserts orphaned season rows with onConflictDoNothing. Season labels come from
+//      comp_results when available, otherwise generic "Temporada N". All are finalized
+//      except the most recent which is isActive=true.
+//   5. Sets careers.currentSeasonId to the most recent recovered season.
 //
 // Requires header: x-admin-secret: <ADMIN_SECRET env var>
 //
-// Example (curl):
+// Minimal example — supply only what you know:
 //   curl -X POST https://your-api/api/admin/recover-career \
 //     -H "Content-Type: application/json" \
 //     -H "x-admin-secret: YOUR_ADMIN_SECRET" \
@@ -444,9 +464,11 @@ router.get("/admin/reenrich-positions", async (req, res) => {
 //       "club_primary": "#6CABDD",
 //       "club_secondary": "#FFFFFF",
 //       "coach": { "name": "João Silva", "nationality": "Brasil", "nationalityFlag": "🇧🇷", "age": 45 },
-//       "season": "2024/25",
-//       "season_ids": ["mc2j4k5xyz", "s-abc123-def"]
+//       "season": "2024/25"
 //     }'
+//
+// Optionally pass "season_ids" to recover specific seasons when auto-discovery is insufficient:
+//   "season_ids": ["mc2j4k5xyz", "s-abc123-def45"]
 //
 // Fields:
 //   career_id   (required) – the ID of the deleted career
@@ -454,12 +476,10 @@ router.get("/admin/reenrich-positions", async (req, res) => {
 //   coach       (optional) – coach object; defaults to placeholder
 //   club_name   (optional) – club name; defaults to "Unknown Club"
 //   club_id     (optional) – numeric club ID; defaults to 0
-//   club_logo   (optional) – logo URL
-//   club_league (optional) – league name
-//   club_country/club_stadium/club_founded/club_primary/club_secondary/club_description – all optional
+//   club_logo/club_league/club_country/club_stadium/club_founded/
+//   club_primary/club_secondary/club_description – all optional
 //   season      (optional) – career season label (e.g. "2024/25")
-//   season_ids  (optional) – explicit list of season IDs to recover; if omitted, all orphaned
-//                            season_ids found in season_data (not in seasons table) are used
+//   season_ids  (optional) – explicit season IDs; overrides auto-discovery if provided
 router.post("/admin/recover-career", async (req, res) => {
   const adminSecret = process.env.ADMIN_SECRET;
   if (!adminSecret || req.headers["x-admin-secret"] !== adminSecret) {
@@ -492,25 +512,76 @@ router.post("/admin/recover-career", async (req, res) => {
     return res.status(400).json({ error: "career_id is required" });
   }
 
-  try {
-    // 1. Verify there are orphaned records in career_data for this career_id
-    const orphanedCareerData = await db
-      .select({ key: careerDataTable.key })
-      .from(careerDataTable)
-      .where(eq(careerDataTable.careerId, careerId))
-      .limit(1);
+  // Extract timestamp embedded in an ID: "s-<base36ts>-<random>" or "<base36ts><random>"
+  function extractTimestamp(id: string): number {
+    const sMatch = id.match(/^s-([0-9a-z]+)-/);
+    if (sMatch) return parseInt(sMatch[1], 36);
+    const plain = id.match(/^([0-9a-z]+)/);
+    if (plain) return parseInt(plain[1], 36);
+    return 0;
+  }
 
-    if (orphanedCareerData.length === 0) {
+  try {
+    // 1. Load all career_data rows for this career — fail early if there's nothing to recover
+    const careerDataRows = await db
+      .select({ key: careerDataTable.key, valueJson: careerDataTable.valueJson })
+      .from(careerDataTable)
+      .where(eq(careerDataTable.careerId, careerId));
+
+    if (careerDataRows.length === 0) {
       return res.status(404).json({
         error: `Nenhum dado encontrado em career_data para career_id="${careerId}". Recuperação impossível sem dados.`,
       });
     }
 
+    // 2. Parse career_data for useful metadata hints
+    interface CompResult { seasonId?: string; seasonLabel?: string; competitionName?: string; }
+    interface Trophy { competitionName?: string; seasonLabel?: string; }
+
+    const parsed: Record<string, unknown> = {};
+    for (const row of careerDataRows) {
+      try { parsed[row.key] = JSON.parse(row.valueJson); } catch { /* skip unparseable */ }
+    }
+
+    // comp_results: [{careerId, seasonId, seasonLabel, competitionName, ...}]
+    const compResults: CompResult[] = Array.isArray(parsed["comp_results"])
+      ? (parsed["comp_results"] as CompResult[])
+      : [];
+
+    // Build a map: seasonId → seasonLabel extracted from comp_results (career-scoped)
+    const seasonLabelMap = new Map<string, string>();
+    for (const cr of compResults) {
+      if (cr.seasonId && cr.seasonLabel && !seasonLabelMap.has(cr.seasonId)) {
+        seasonLabelMap.set(cr.seasonId, cr.seasonLabel);
+      }
+    }
+
+    // Extract distinct competition names as a fallback for the competitions field
+    const compNamesFromData = [...new Set(
+      compResults.map((cr) => cr.competitionName).filter(Boolean) as string[]
+    )];
+
+    // Trophies as secondary hint for season labels / competition names
+    const trophies: Trophy[] = Array.isArray(parsed["trophies"])
+      ? (parsed["trophies"] as Trophy[])
+      : [];
+    for (const t of trophies) {
+      if (t.seasonLabel && t.competitionName) {
+        // Can't scope trophy to a season_id, but useful for context
+        compNamesFromData.push(t.competitionName);
+      }
+    }
+    const uniqueCompNames = [...new Set(compNamesFromData)];
+
     const now = Date.now();
 
-    // 2. Reconstruct the careers row
+    // 3. Reconstruct the careers row
+    // Club/coach data is NOT in career_data — it only lived in the deleted careers row.
+    // Use request body overrides first, fall back to safe defaults.
     const coachFallback = { name: "Técnico", nationality: "Brasil", nationalityFlag: "🇧🇷", age: 40 };
-    await db
+    const competitionsFinal = body.competitions ?? (uniqueCompNames.length > 0 ? uniqueCompNames : undefined);
+
+    const careerInsert = await db
       .insert(careersTable)
       .values({
         id: careerId,
@@ -528,46 +599,53 @@ router.post("/admin/recover-career", async (req, res) => {
         clubTitlesJson: body.club_titles ? JSON.stringify(body.club_titles) : null,
         season: body.season ?? "",
         projeto: body.projeto ?? null,
-        competitionsJson: body.competitions ? JSON.stringify(body.competitions) : null,
+        competitionsJson: competitionsFinal ? JSON.stringify(competitionsFinal) : null,
         currentSeasonId: null,
         userId: body.user_id ?? null,
         createdAt: now,
         updatedAt: now,
       })
-      .onConflictDoNothing();
+      .onConflictDoNothing()
+      .returning({ id: careersTable.id });
 
-    // 3. Find season IDs to recover
+    const careerCreated = careerInsert.length > 0;
+
+    // 4. Determine which season IDs to recover
     let targetSeasonIds: string[];
 
     if (body.season_ids && body.season_ids.length > 0) {
+      // Explicit override from caller
       targetSeasonIds = body.season_ids;
     } else {
-      // Auto-discover: find all distinct season_ids in season_data that are not in seasons table
-      const existingSeasonRows = await db.select({ id: seasonsTable.id }).from(seasonsTable);
-      const existingSeasonIds = existingSeasonRows.map((r) => r.id);
+      // Auto-discover seasons scoped to this career:
+      // a) Season IDs extracted from comp_results (career-scoped via careerId field)
+      const fromCompResults = [...seasonLabelMap.keys()];
 
-      if (existingSeasonIds.length > 0) {
-        const orphanedSeasons = await db
-          .selectDistinct({ seasonId: seasonDataTable.seasonId })
-          .from(seasonDataTable)
-          .where(notInArray(seasonDataTable.seasonId, existingSeasonIds));
-        targetSeasonIds = orphanedSeasons.map((r) => r.seasonId);
-      } else {
-        const orphanedSeasons = await db
-          .selectDistinct({ seasonId: seasonDataTable.seasonId })
-          .from(seasonDataTable);
-        targetSeasonIds = orphanedSeasons.map((r) => r.seasonId);
-      }
+      // b) The first season always has season_id == career_id (ensureCareerAndSeason1 passes career.id)
+      //    Check if career_id itself has orphaned season_data
+      const firstSeasonCheck = await db
+        .select({ seasonId: seasonDataTable.seasonId })
+        .from(seasonDataTable)
+        .where(eq(seasonDataTable.seasonId, careerId))
+        .limit(1);
+      const firstSeasonOrphaned = firstSeasonCheck.length > 0;
+
+      // Merge: deduplicate, always include career_id if orphaned
+      const combined = new Set<string>(fromCompResults);
+      if (firstSeasonOrphaned) combined.add(careerId);
+
+      // Filter out season IDs that already exist in the seasons table for this career.
+      // Since the career row was deleted, its seasons were also cascade-deleted, so
+      // this will normally return 0 rows. But we check anyway for idempotency.
+      const existingCareerSeasons = await db
+        .select({ id: seasonsTable.id })
+        .from(seasonsTable)
+        .where(eq(seasonsTable.careerId, careerId));
+      const existingSet = new Set(existingCareerSeasons.map((r) => r.id));
+      targetSeasonIds = [...combined].filter((id) => !existingSet.has(id));
     }
 
-    // 4. Sort season IDs by embedded timestamp (IDs are base36 timestamps or "s-<base36>-<random>")
-    function extractTimestamp(id: string): number {
-      const sMatch = id.match(/^s-([0-9a-z]+)-/);
-      if (sMatch) return parseInt(sMatch[1], 36);
-      const plain = id.match(/^([0-9a-z]+)/);
-      if (plain) return parseInt(plain[1], 36);
-      return 0;
-    }
+    // Sort by embedded timestamp (oldest first → most recent last = active)
     targetSeasonIds.sort((a, b) => extractTimestamp(a) - extractTimestamp(b));
 
     // 5. Reconstruct seasons rows
@@ -577,7 +655,8 @@ router.post("/admin/recover-career", async (req, res) => {
     for (let i = 0; i < targetSeasonIds.length; i++) {
       const seasonId = targetSeasonIds[i];
       const isLast = i === targetSeasonIds.length - 1;
-      const label = `Temporada ${i + 1}`;
+      // Use real season label from comp_results if available, otherwise generic
+      const label = seasonLabelMap.get(seasonId) ?? `Temporada ${i + 1}`;
 
       const inserted = await db
         .insert(seasonsTable)
@@ -585,7 +664,7 @@ router.post("/admin/recover-career", async (req, res) => {
           id: seasonId,
           careerId,
           label,
-          competitionsJson: body.competitions ? JSON.stringify(body.competitions) : null,
+          competitionsJson: competitionsFinal ? JSON.stringify(competitionsFinal) : null,
           isActive: isLast,
           finalized: !isLast,
           createdAt: extractTimestamp(seasonId) || now,
@@ -599,21 +678,25 @@ router.post("/admin/recover-career", async (req, res) => {
       }
     }
 
-    // 6. Update currentSeasonId on the careers row if we recovered at least one season
+    // 6. Update currentSeasonId on the career if we recovered at least one season
     if (activatedSeasonId) {
       await db
         .update(careersTable)
         .set({ currentSeasonId: activatedSeasonId, updatedAt: now })
         .where(eq(careersTable.id, careerId));
+    } else if (careerCreated && targetSeasonIds.length === 0) {
+      // No seasons recovered — note in response; admin can re-call with explicit season_ids
     }
 
     return res.json({
       ok: true,
       career_id: careerId,
-      career_created: true,
+      career_created: careerCreated,
       seasons_recovered: recoveredSeasons,
       active_season_id: activatedSeasonId,
-      message: `Carreira "${body.club_name ?? careerId}" recuperada. ${recoveredSeasons} temporada(s) restaurada(s).`,
+      career_data_keys: Object.keys(parsed),
+      competitions_inferred: uniqueCompNames,
+      message: `Carreira "${body.club_name ?? careerId}" recuperada. ${recoveredSeasons} temporada(s) restaurada(s). Se faltar temporadas, chame novamente com "season_ids" explícitos.`,
     });
   } catch (err) {
     console.error("POST /admin/recover-career error:", err);
