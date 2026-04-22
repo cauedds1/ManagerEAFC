@@ -1,6 +1,8 @@
 import { useState } from "react";
 import type { Season } from "@/types/career";
 import { suggestNextSeasonLabel } from "@/lib/seasonStorage";
+import { useLang } from "@/hooks/useLang";
+import { NEW_SEASON_WIZARD } from "@/lib/i18n";
 
 const COMPETITIONS = [
   "Campeonato Brasileiro",
@@ -44,6 +46,9 @@ export function NewSeasonWizard({
   onCancel,
   isLoading,
 }: NewSeasonWizardProps) {
+  const [lang] = useLang();
+  const t = NEW_SEASON_WIZARD[lang];
+
   const [step, setStep] = useState<1 | 2>(1);
   const suggestedLabel = suggestNextSeasonLabel(existingSeasons.map((s) => s.label));
   const [label, setLabel] = useState(suggestedLabel);
@@ -115,13 +120,11 @@ export function NewSeasonWizard({
 
         {step === 1 && (
           <div className="p-6">
-            <h2 className="text-white font-black text-lg mb-1">Nova Temporada</h2>
-            <p className="text-white/40 text-sm mb-5">
-              Confirme o rótulo e avance para escolher as competições.
-            </p>
+            <h2 className="text-white font-black text-lg mb-1">{t.step1Title}</h2>
+            <p className="text-white/40 text-sm mb-5">{t.step1Desc}</p>
 
             <label className="block text-white/50 text-xs font-semibold uppercase tracking-wider mb-2">
-              Rótulo da temporada
+              {t.seasonLabelField}
             </label>
             <input
               value={label}
@@ -131,26 +134,26 @@ export function NewSeasonWizard({
                 background: "rgba(255,255,255,0.05)",
                 border: "1px solid rgba(255,255,255,0.1)",
               }}
-              placeholder="ex: 2026/27"
+              placeholder={t.labelPlaceholder}
             />
 
             <div
               className="rounded-xl p-4 mb-5 text-sm"
               style={{ background: "rgba(var(--club-primary-rgb),0.06)", border: "1px solid rgba(var(--club-primary-rgb),0.12)" }}
             >
-              <p className="text-white/60 font-semibold mb-2">O que é zerado:</p>
+              <p className="text-white/60 font-semibold mb-2">{t.resetTitle}</p>
               <ul className="space-y-1 text-white/45">
-                <li className="flex items-center gap-2"><span className="text-red-400">✕</span> Partidas e estatísticas</li>
-                <li className="flex items-center gap-2"><span className="text-red-400">✕</span> Posição na liga</li>
-                <li className="flex items-center gap-2"><span className="text-red-400">✕</span> Finanças e orçamento</li>
-                <li className="flex items-center gap-2"><span className="text-red-400">✕</span> Notícias</li>
+                <li className="flex items-center gap-2"><span className="text-red-400">✕</span> {t.resetItem1}</li>
+                <li className="flex items-center gap-2"><span className="text-red-400">✕</span> {t.resetItem2}</li>
+                <li className="flex items-center gap-2"><span className="text-red-400">✕</span> {t.resetItem3}</li>
+                <li className="flex items-center gap-2"><span className="text-red-400">✕</span> {t.resetItem4}</li>
               </ul>
-              <p className="text-white/60 font-semibold mt-3 mb-2">O que permanece:</p>
+              <p className="text-white/60 font-semibold mt-3 mb-2">{t.keepTitle}</p>
               <ul className="space-y-1 text-white/45">
-                <li className="flex items-center gap-2"><span className="text-emerald-400">✓</span> Humor e moral dos jogadores</li>
-                <li className="flex items-center gap-2"><span className="text-emerald-400">✓</span> Histórico da Diretoria</li>
-                <li className="flex items-center gap-2"><span className="text-emerald-400">✓</span> Elenco e contratos</li>
-                <li className="flex items-center gap-2"><span className="text-emerald-400">✓</span> Overrides e numeração</li>
+                <li className="flex items-center gap-2"><span className="text-emerald-400">✓</span> {t.keepItem1}</li>
+                <li className="flex items-center gap-2"><span className="text-emerald-400">✓</span> {t.keepItem2}</li>
+                <li className="flex items-center gap-2"><span className="text-emerald-400">✓</span> {t.keepItem3}</li>
+                <li className="flex items-center gap-2"><span className="text-emerald-400">✓</span> {t.keepItem4}</li>
               </ul>
             </div>
 
@@ -159,7 +162,7 @@ export function NewSeasonWizard({
                 onClick={onCancel}
                 className="flex-1 py-3 rounded-xl font-semibold text-sm text-white/50 hover:text-white glass glass-hover transition-all"
               >
-                Cancelar
+                {t.btnCancel}
               </button>
               <button
                 onClick={() => setStep(2)}
@@ -167,7 +170,7 @@ export function NewSeasonWizard({
                 className="flex-1 py-3 rounded-xl font-bold text-sm text-white transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40"
                 style={{ background: "var(--club-gradient)" }}
               >
-                Próximo
+                {t.btnNext}
               </button>
             </div>
           </div>
@@ -175,9 +178,9 @@ export function NewSeasonWizard({
 
         {step === 2 && (
           <div className="p-6">
-            <h2 className="text-white font-black text-lg mb-1">Competições</h2>
+            <h2 className="text-white font-black text-lg mb-1">{t.step2Title}</h2>
             <p className="text-white/40 text-sm mb-4">
-              Selecione as competições da temporada <span className="text-white/70 font-semibold">{label}</span>.
+              {t.step2Desc} <span className="text-white/70 font-semibold">{label}</span>.
             </p>
 
             <div className="flex flex-wrap gap-2 mb-4 max-h-52 overflow-y-auto pr-1">
@@ -205,7 +208,7 @@ export function NewSeasonWizard({
                 value={custom}
                 onChange={(e) => setCustom(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addCustom(); } }}
-                placeholder="Outra competição..."
+                placeholder={t.customPlaceholder}
                 className="flex-1 px-3 py-2 rounded-lg text-white text-sm focus:outline-none"
                 style={{
                   background: "rgba(255,255,255,0.04)",
@@ -224,7 +227,7 @@ export function NewSeasonWizard({
 
             {selected.length > 0 && (
               <p className="text-white/35 text-xs mb-4">
-                {selected.length} competição{selected.length !== 1 ? "ões" : ""} selecionada{selected.length !== 1 ? "s" : ""}
+                {selected.length} {selected.length !== 1 ? t.selectedMany : t.selectedOne}
               </p>
             )}
 
@@ -233,7 +236,7 @@ export function NewSeasonWizard({
                 onClick={() => setStep(1)}
                 className="flex-1 py-3 rounded-xl font-semibold text-sm text-white/50 hover:text-white glass glass-hover transition-all"
               >
-                Voltar
+                {t.btnBack}
               </button>
               <button
                 onClick={() => onConfirm(label.trim(), selected)}
@@ -247,7 +250,7 @@ export function NewSeasonWizard({
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                   </svg>
                 ) : null}
-                Iniciar Temporada
+                {t.btnStart}
               </button>
             </div>
           </div>

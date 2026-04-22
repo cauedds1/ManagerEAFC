@@ -4210,6 +4210,62 @@ export const ONBOARDING: Record<Lang, Record<string, string>> = {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
+// New Season Wizard
+// ─────────────────────────────────────────────────────────────────────────────
+export const NEW_SEASON_WIZARD: Record<Lang, Record<string, string>> = {
+  pt: {
+    step1Title: "Nova Temporada",
+    step1Desc: "Confirme o rótulo e avance para escolher as competições.",
+    seasonLabelField: "Rótulo da temporada",
+    labelPlaceholder: "ex: 2026/27",
+    resetTitle: "O que é zerado:",
+    resetItem1: "Partidas e estatísticas",
+    resetItem2: "Posição na liga",
+    resetItem3: "Finanças e orçamento",
+    resetItem4: "Notícias",
+    keepTitle: "O que permanece:",
+    keepItem1: "Humor e moral dos jogadores",
+    keepItem2: "Histórico da Diretoria",
+    keepItem3: "Elenco e contratos",
+    keepItem4: "Overrides e numeração",
+    btnCancel: "Cancelar",
+    btnNext: "Próximo",
+    step2Title: "Competições",
+    step2Desc: "Selecione as competições da temporada",
+    customPlaceholder: "Outra competição...",
+    selectedOne: "competição selecionada",
+    selectedMany: "competições selecionadas",
+    btnBack: "Voltar",
+    btnStart: "Iniciar Temporada",
+  },
+  en: {
+    step1Title: "New Season",
+    step1Desc: "Confirm the label and proceed to choose competitions.",
+    seasonLabelField: "Season label",
+    labelPlaceholder: "e.g. 2026/27",
+    resetTitle: "What gets reset:",
+    resetItem1: "Matches and statistics",
+    resetItem2: "League position",
+    resetItem3: "Finances and budget",
+    resetItem4: "News",
+    keepTitle: "What carries over:",
+    keepItem1: "Player mood and morale",
+    keepItem2: "Board history",
+    keepItem3: "Squad and contracts",
+    keepItem4: "Overrides and numbers",
+    btnCancel: "Cancel",
+    btnNext: "Next",
+    step2Title: "Competitions",
+    step2Desc: "Select competitions for season",
+    customPlaceholder: "Other competition...",
+    selectedOne: "competition selected",
+    selectedMany: "competitions selected",
+    btnBack: "Back",
+    btnStart: "Start Season",
+  },
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Season Select Modal
 // ─────────────────────────────────────────────────────────────────────────────
 export const SEASON_SELECT_MODAL: Record<Lang, Record<string, string>> = {
