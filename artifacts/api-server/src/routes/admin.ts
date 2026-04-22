@@ -742,6 +742,21 @@ router.post("/admin/recover-career", async (req, res) => {
       }
     });
 
+    const warnings: string[] = [];
+    if (targetSeasonIds.length === 0) {
+      warnings.push(
+        "Nenhuma temporada foi descoberta automaticamente. " +
+        "Isso pode ocorrer se comp_results estiver vazio e não houver season_data órfão ligado a esta carreira. " +
+        "Chame novamente com 'season_ids' explícitos para recuperar as temporadas manualmente."
+      );
+    }
+    if (!body.user_id) {
+      warnings.push(
+        "user_id não informado — a carreira foi criada sem owner (userId=null) e ficará visível para todos os usuários. " +
+        "Recomendado: reenviar com user_id correto para restaurar o ownership original."
+      );
+    }
+
     return res.json({
       ok: true,
       career_id: careerId,
@@ -751,6 +766,7 @@ router.post("/admin/recover-career", async (req, res) => {
       career_data_keys: Object.keys(parsed),
       metadata_inferred_from_career_data: inferred,
       competitions_inferred: uniqueCompNames,
+      warnings: warnings.length > 0 ? warnings : undefined,
       message: `Carreira "${body.club_name ?? inferred.clubName ?? careerId}" recuperada. ${recoveredSeasons} temporada(s) restaurada(s). Se faltar temporadas, chame novamente com "season_ids" explícitos.`,
     });
   } catch (err) {
