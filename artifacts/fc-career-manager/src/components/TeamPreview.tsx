@@ -323,7 +323,7 @@ export function TeamPreview({ club, season, onNext, onBack, onClubInfoLoaded }: 
       const res = await fetch("/api/club-info", {
         method: "POST",
         headers: getAiHeaders(),
-        body: JSON.stringify({ clubId: club.id, clubName: club.name, clubLeague: club.league, clubCountry: club.country }),
+        body: JSON.stringify({ clubId: club.id, clubName: club.name, clubLeague: club.league, clubCountry: club.country, lang }),
       });
       if (!res.ok) throw new Error("Falha");
       const data = await res.json() as ClubInfo;

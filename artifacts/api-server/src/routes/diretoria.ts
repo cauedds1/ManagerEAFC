@@ -1124,7 +1124,8 @@ router.post("/club-info", requireAuth, async (req: AuthRequest, res) => {
         .limit(1);
 
       if (cached) {
-        const titles = JSON.parse(cached.titlesJson) as Array<{ name: string; count: number }>;
+        let titles: Array<{ name: string; count: number }> = [];
+        try { titles = JSON.parse(cached.titlesJson); } catch {}
         res.json({ description: cached.description, titles });
         return;
       }
