@@ -579,114 +579,127 @@ router.post("/admin/recover-career", async (req, res) => {
     const uniqueCompNames = [...new Set(compNamesFromData)];
 
     const now = Date.now();
-
-    // 3. Reconstruct the careers row
-    // Club/coach data is NOT in career_data — it only lived in the deleted careers row.
-    // Use request body overrides first, fall back to safe defaults.
     const coachFallback = { name: "Técnico", nationality: "Brasil", nationalityFlag: "🇧🇷", age: 40 };
     const competitionsFinal = body.competitions ?? (uniqueCompNames.length > 0 ? uniqueCompNames : undefined);
 
-    const careerInsert = await db
-      .insert(careersTable)
-      .values({
-        id: careerId,
-        coachJson: JSON.stringify(body.coach ?? coachFallback),
-        clubId: body.club_id ?? 0,
-        clubName: body.club_name ?? "Unknown Club",
-        clubLogo: body.club_logo ?? "",
-        clubLeague: body.club_league ?? "",
-        clubCountry: body.club_country ?? null,
-        clubStadium: body.club_stadium ?? null,
-        clubFounded: body.club_founded ?? null,
-        clubPrimary: body.club_primary ?? null,
-        clubSecondary: body.club_secondary ?? null,
-        clubDescription: body.club_description ?? null,
-        clubTitlesJson: body.club_titles ? JSON.stringify(body.club_titles) : null,
-        season: body.season ?? "",
-        projeto: body.projeto ?? null,
-        competitionsJson: competitionsFinal ? JSON.stringify(competitionsFinal) : null,
-        currentSeasonId: null,
-        userId: body.user_id ?? null,
-        createdAt: now,
-        updatedAt: now,
-      })
-      .onConflictDoNothing()
-      .returning({ id: careersTable.id });
-
-    const careerCreated = careerInsert.length > 0;
-
-    // 4. Determine which season IDs to recover
+    // 3 + 4. Determine target season IDs (reads only — done before the write transaction)
     let targetSeasonIds: string[];
 
     if (body.season_ids && body.season_ids.length > 0) {
-      // Explicit override from caller
+      // Explicit override from caller — trust the provided list.
+      // onConflictDoNothing protects against bad inserts.
       targetSeasonIds = body.season_ids;
     } else {
-      // Auto-discover ALL orphaned season_ids: season_data rows whose season_id does not
-      // exist in the seasons table. These exist because the old delete code removed the
-      // careers/seasons rows but left season_data intact (fixed in Task #2 for new deletes).
+      // Auto-discover seasons scoped to this career by intersecting two sets:
       //
-      // We attach all orphaned seasons to this career because:
-      //   a) The admin has explicitly called recovery for this career_id.
-      //   b) For single-user deployments the orphans will all be from this career.
-      //   c) seasons from career_data.comp_results provide labels; others get generic labels.
-      //   d) If there are orphans from multiple deleted careers, admin can pass explicit
-      //      season_ids on a second call to refine the recovery.
+      // Set A (career-scoped): season IDs verifiably linked to this career.
+      //   - comp_results in career_data: each entry has {careerId, seasonId}, so seasonId
+      //     values here are definitively from this career.
+      //   - career_id itself: the first season always uses career_id as its season_id
+      //     (ensureCareerAndSeason1 passes career.id as the explicit season ID).
+      const careerScopedIds = new Set<string>(seasonLabelMap.keys());
+      careerScopedIds.add(careerId);
+      //
+      // Set B (globally orphaned): season_ids in season_data WHERE season_id NOT IN seasons.
+      //   Represents seasons whose parent careers/seasons rows were deleted.
       const allExistingSeasons = await db.select({ id: seasonsTable.id }).from(seasonsTable);
-      targetSeasonIds = allExistingSeasons.length > 0
-        ? (await db
-            .selectDistinct({ seasonId: seasonDataTable.seasonId })
-            .from(seasonDataTable)
-            .where(notInArray(seasonDataTable.seasonId, allExistingSeasons.map((r) => r.id))))
-            .map((r) => r.seasonId)
-        : (await db
-            .selectDistinct({ seasonId: seasonDataTable.seasonId })
-            .from(seasonDataTable))
-            .map((r) => r.seasonId);
+      const orphanedIds: Set<string> = allExistingSeasons.length > 0
+        ? new Set(
+            (await db
+              .selectDistinct({ seasonId: seasonDataTable.seasonId })
+              .from(seasonDataTable)
+              .where(notInArray(seasonDataTable.seasonId, allExistingSeasons.map((r) => r.id))))
+              .map((r) => r.seasonId)
+          )
+        : new Set(
+            (await db
+              .selectDistinct({ seasonId: seasonDataTable.seasonId })
+              .from(seasonDataTable))
+              .map((r) => r.seasonId)
+          );
+      //
+      // Intersection: only seasons that are BOTH career-scoped AND orphaned.
+      // This prevents attaching orphaned seasons from other deleted careers to this one.
+      // The career_id == season_id check (Set A) covers seasons with no comp_results.
+      targetSeasonIds = [...careerScopedIds].filter((id) => orphanedIds.has(id));
     }
 
-    // Sort by embedded timestamp (oldest first → most recent last = active)
+    // Sort by embedded timestamp (oldest first → most recent = active)
     targetSeasonIds.sort((a, b) => extractTimestamp(a) - extractTimestamp(b));
 
-    // 5. Reconstruct seasons rows
+    // 5 + 6. Write everything in a single transaction to avoid partial recovery states
+    let careerCreated = false;
     let recoveredSeasons = 0;
     let activatedSeasonId: string | null = null;
 
-    for (let i = 0; i < targetSeasonIds.length; i++) {
-      const seasonId = targetSeasonIds[i];
-      const isLast = i === targetSeasonIds.length - 1;
-      // Use real season label from comp_results if available, otherwise generic
-      const label = seasonLabelMap.get(seasonId) ?? `Temporada ${i + 1}`;
-
-      const inserted = await db
-        .insert(seasonsTable)
+    await db.transaction(async (tx) => {
+      // 5a. Reconstruct the careers row
+      // Club/coach data is NOT in career_data — it only lived in the deleted careers row.
+      // career_data-inferred hints: competition names (from comp_results and trophies).
+      // Request body fields take priority; defaults are last resort.
+      const careerInsert = await tx
+        .insert(careersTable)
         .values({
-          id: seasonId,
-          careerId,
-          label,
+          id: careerId,
+          coachJson: JSON.stringify(body.coach ?? coachFallback),
+          clubId: body.club_id ?? 0,
+          clubName: body.club_name ?? "Unknown Club",
+          clubLogo: body.club_logo ?? "",
+          clubLeague: body.club_league ?? "",
+          clubCountry: body.club_country ?? null,
+          clubStadium: body.club_stadium ?? null,
+          clubFounded: body.club_founded ?? null,
+          clubPrimary: body.club_primary ?? null,
+          clubSecondary: body.club_secondary ?? null,
+          clubDescription: body.club_description ?? null,
+          clubTitlesJson: body.club_titles ? JSON.stringify(body.club_titles) : null,
+          season: body.season ?? "",
+          projeto: body.projeto ?? null,
           competitionsJson: competitionsFinal ? JSON.stringify(competitionsFinal) : null,
-          isActive: isLast,
-          finalized: !isLast,
-          createdAt: extractTimestamp(seasonId) || now,
+          currentSeasonId: null,
+          userId: body.user_id ?? null,
+          createdAt: now,
+          updatedAt: now,
         })
         .onConflictDoNothing()
-        .returning({ id: seasonsTable.id });
+        .returning({ id: careersTable.id });
 
-      if (inserted.length > 0) {
-        recoveredSeasons++;
-        if (isLast) activatedSeasonId = seasonId;
+      careerCreated = careerInsert.length > 0;
+
+      // 5b. Reconstruct seasons rows
+      for (let i = 0; i < targetSeasonIds.length; i++) {
+        const seasonId = targetSeasonIds[i];
+        const isLast = i === targetSeasonIds.length - 1;
+        const label = seasonLabelMap.get(seasonId) ?? `Temporada ${i + 1}`;
+
+        const inserted = await tx
+          .insert(seasonsTable)
+          .values({
+            id: seasonId,
+            careerId,
+            label,
+            competitionsJson: competitionsFinal ? JSON.stringify(competitionsFinal) : null,
+            isActive: isLast,
+            finalized: !isLast,
+            createdAt: extractTimestamp(seasonId) || now,
+          })
+          .onConflictDoNothing()
+          .returning({ id: seasonsTable.id });
+
+        if (inserted.length > 0) {
+          recoveredSeasons++;
+          if (isLast) activatedSeasonId = seasonId;
+        }
       }
-    }
 
-    // 6. Update currentSeasonId on the career if we recovered at least one season
-    if (activatedSeasonId) {
-      await db
-        .update(careersTable)
-        .set({ currentSeasonId: activatedSeasonId, updatedAt: now })
-        .where(eq(careersTable.id, careerId));
-    } else if (careerCreated && targetSeasonIds.length === 0) {
-      // No seasons recovered — note in response; admin can re-call with explicit season_ids
-    }
+      // 5c. Update currentSeasonId on the career to the most recently recovered season
+      if (activatedSeasonId) {
+        await tx
+          .update(careersTable)
+          .set({ currentSeasonId: activatedSeasonId, updatedAt: now })
+          .where(eq(careersTable.id, careerId));
+      }
+    });
 
     return res.json({
       ok: true,
