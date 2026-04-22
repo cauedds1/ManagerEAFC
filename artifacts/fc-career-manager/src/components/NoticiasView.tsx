@@ -947,8 +947,11 @@ function AddPostModal({
                         if (!priceRes.ok) return;
                         const prices = await priceRes.json() as Array<{ planTier: string; priceId: string; currency: string }>;
                         const targetCurrency = (lang ?? "pt") === "pt" ? "brl" : "usd";
-                        const match = prices.find(p => p.planTier === "pro" && p.currency === targetCurrency)
-                          ?? prices.find(p => p.planTier === "pro");
+                        const exactMatch = prices.find(p => p.planTier === "pro" && p.currency === targetCurrency);
+                        if (!exactMatch && targetCurrency === "usd") {
+                          console.warn("[NoticiasView] No USD price found for pro, falling back to BRL");
+                        }
+                        const match = exactMatch ?? prices.find(p => p.planTier === "pro");
                         if (!match?.priceId) return;
                         const checkoutRes = await fetch("/api/stripe/checkout", {
                           method: "POST",

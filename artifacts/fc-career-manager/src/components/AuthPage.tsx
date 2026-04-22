@@ -386,8 +386,11 @@ export function AuthPage({ onBack, onAuthSuccess, initialPlan, checkoutDraft, on
         if (!priceRes.ok) throw new Error(t.errPlans);
         const prices = await priceRes.json() as Array<{ planTier: string; priceId: string; currency: string }>;
         const targetCurrency = lang === "pt" ? "brl" : "usd";
-        const match = prices.find((p) => p.planTier === selectedPlan && p.currency === targetCurrency)
-          ?? prices.find((p) => p.planTier === selectedPlan);
+        const exactMatch = prices.find((p) => p.planTier === selectedPlan && p.currency === targetCurrency);
+        if (!exactMatch && targetCurrency === "usd") {
+          console.warn(`[AuthPage] No USD price found for ${selectedPlan}, falling back to BRL`);
+        }
+        const match = exactMatch ?? prices.find((p) => p.planTier === selectedPlan);
         if (!match?.priceId) throw new Error(t.errPlanNotFound);
         const res = await fetch(`${API_BASE}/stripe/checkout-register`, {
           method: "POST",

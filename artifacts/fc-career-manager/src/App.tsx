@@ -159,7 +159,11 @@ export default function App() {
   const [isExiting, setIsExiting] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
   const [lang, setLangState] = useState<"pt" | "en">(() => {
-    try { const s = localStorage.getItem("fc_lang"); return s === "pt" || s === "en" ? s : "pt"; } catch { return "pt"; }
+    try {
+      const s = localStorage.getItem("fc_lang");
+      if (s === "pt" || s === "en") return s;
+      return navigator.language?.startsWith("pt") ? "pt" : "en";
+    } catch { return "pt"; }
   });
   const setLang = useCallback((l: "pt" | "en") => {
     setLangState(l);
