@@ -1092,7 +1092,8 @@ Responda APENAS com o texto do projeto, sem JSON, sem aspas.${projetoLangNote}`;
 router.post("/club-info", requireAuth, async (req: AuthRequest, res) => {
   const plan = req.user!.plan;
 
-  const { clubName, clubLeague, clubCountry, lang: clubInfoLang } = req.body as {
+  const { clubId, clubName, clubLeague, clubCountry, lang: clubInfoLang } = req.body as {
+    clubId?: number;
     clubName: string;
     clubLeague?: string;
     clubCountry?: string;
@@ -1105,6 +1106,8 @@ router.post("/club-info", requireAuth, async (req: AuthRequest, res) => {
   }
 
   const lang = clubInfoLang === "en" ? "en" : "pt";
+  // Custom clubs (clubId === 0) are never cached — they don't exist in reality
+  const isCustomClub = clubId === 0;
   const cacheKey = [
     clubName.trim().toLowerCase(),
     (clubLeague ?? "").trim().toLowerCase(),
@@ -1112,17 +1115,19 @@ router.post("/club-info", requireAuth, async (req: AuthRequest, res) => {
   ].join("|");
 
   try {
-    // ── Cache hit ──────────────────────────────────────────────────────────
-    const [cached] = await db
-      .select({ description: clubInfoCacheTable.description, titlesJson: clubInfoCacheTable.titlesJson })
-      .from(clubInfoCacheTable)
-      .where(eq(clubInfoCacheTable.cacheKey, cacheKey))
-      .limit(1);
+    // ── Cache hit (real clubs only) ────────────────────────────────────────
+    if (!isCustomClub) {
+      const [cached] = await db
+        .select({ description: clubInfoCacheTable.description, titlesJson: clubInfoCacheTable.titlesJson })
+        .from(clubInfoCacheTable)
+        .where(eq(clubInfoCacheTable.cacheKey, cacheKey))
+        .limit(1);
 
-    if (cached) {
-      const titles = JSON.parse(cached.titlesJson) as Array<{ name: string; count: number }>;
-      res.json({ description: cached.description, titles });
-      return;
+      if (cached) {
+        const titles = JSON.parse(cached.titlesJson) as Array<{ name: string; count: number }>;
+        res.json({ description: cached.description, titles });
+        return;
+      }
     }
 
     // ── Cache miss — call AI ───────────────────────────────────────────────
@@ -1166,13 +1171,19 @@ REGRAS:
     const description = data.description ?? "";
     const titles = Array.isArray(data.titles) ? data.titles.filter((t) => t.count >= 1) : [];
 
-    // ── Persist to cache (best-effort, don't fail the request if it errors) ─
-    db.insert(clubInfoCacheTable).values({
-      cacheKey,
-      description,
-      titlesJson: JSON.stringify(titles),
-      createdAt: Date.now(),
-    }).onConflictDoNothing().catch(() => {});
+    // ── Persist to cache for real clubs ───────────────────────────────────
+    if (!isCustomClub) {
+      try {
+        await db.insert(clubInfoCacheTable).values({
+          cacheKey,
+          description,
+          titlesJson: JSON.stringify(titles),
+          createdAt: Date.now(),
+        }).onConflictDoNothing();
+      } catch {
+        // Non-fatal — cache write failure does not affect the response
+      }
+    }
 
     res.json({ description, titles });
   } catch (err) {
