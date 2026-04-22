@@ -364,6 +364,7 @@ export function CareerSelection({ careers, onSelectCareer, onCreateNew, onCareer
 
   useEffect(() => {
     if (localCareers.length === 0) { setSeasonCount(0); return; }
+    setSeasonCount(null);
     let cancelled = false;
     Promise.all(localCareers.map(c => getSeasons(c.id))).then(results => {
       if (!cancelled) setSeasonCount(results.reduce((sum, ss) => sum + ss.length, 0));
