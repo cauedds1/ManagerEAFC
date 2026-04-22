@@ -1,0 +1,82 @@
+[players/search] no club match for team: "Trabzonspor"
+request completed
+request completed
+request completed
+[players/search] no club match for team: "Olympiacos FC"
+[players/search] no club match for team: "Levante Badalona"
+[players/search] no club match for team: "Badalona Women"
+request completed
+request completed
+request completed
+request completed
+request completed
+request completed
+[players/search] no club match for team: "Ferencvárosi TC"
+[players/search] no club match for team: "Millonarios"
+[players/search] no club match for team: "Laval MFC"
+[players/search] no club match for team: "Hearts"
+[players/search] no club match for team: "Dep. Táchira"
+[players/search] no club match for team: "Dep. Garcilaso"
+[players/search] no club match for team: "Sepsi OSK"
+[players/search] no club match for team: "Huachipato"
+[players/search] no club match for team: "Cerro Porteño"
+[players/search] no club match for team: "Kerala Blasters"
+request completed
+request completed
+request completed
+[players/search] no club match for team: "Montpellier"
+[players/search] no club match for team: "F.C. København"
+[players/search] no club match for team: "Stade Rennais FC"
+request completed
+[players/search] no club match for team: "D. Alavés"
+[players/search] no club match for team: "Montpellier"
+[players/search] no club match for team: "F.C. København"
+request completed
+request completed
+request completed
+request completed
+request completed
+request completed
+request completed
+request completed
+request completed
+request completed
+request completed
+request completed
+[players/search] no club match for team: "Grenoble Foot 38"
+request completed
+request completed
+request completed
+request completed
+request completed
+request completed
+request completed
+request completed
+request completed
+request completed
+request completed
+request completed
+request completed
+request completed
+request completed
+request completed
+request completed
+request completed
+request completed
+request completed
+request completed
+request completed
+request completed
+request completed
+request completed
+request completed
+request completed
+request completed
+request completed
+[players/search] no club match for team: "Lausanne-Sport"
+[players/search] no club match for team: "Al Najmah"
+request completed
+request completed
+request completed
+request completed
+request completed
