@@ -1,0 +1,210 @@
+s
+Network Flow Logs
+Filter and search logs
+
+	       VALUES ($1::jsonb, ARRAY[$2], now(), now())
+	       ON CONFLICT (id)
+	       DO UPDATE SET
+	         "_raw_data" = EXCLUDED."_raw_data",
+	         "api_key_hashes" = (
+	           SELECT ARRAY(
+	             SELECT DISTINCT unnest(
+	               COALESCE("stripe"."accounts"."api_key_hashes", '{}') || ARRAY[$2]
+	             )
+	           )
+	         ),
+	         "_last_synced_at" = now(),
+	         "_updated_at" = now()
+2026-04-20 21:50:14.473 UTC [44759] ERROR:  relation "stripe.accounts" does not exist at character 16
+2026-04-20 21:50:14.473 UTC [44759] STATEMENT:  SELECT id FROM "stripe"."accounts"
+	       WHERE $1 = ANY(api_key_hashes)
+	       LIMIT 1
+2026-04-20 21:50:14.862 UTC [44760] ERROR:  relation "stripe.accounts" does not exist at character 13
+2026-04-20 21:50:14.862 UTC [44760] STATEMENT:  INSERT INTO "stripe"."accounts" ("_raw_data", "api_key_hashes", "first_synced_at", "_last_synced_at")
+	       VALUES ($1::jsonb, ARRAY[$2], now(), now())
+	       ON CONFLICT (id)
+	       DO UPDATE SET
+	         "_raw_data" = EXCLUDED."_raw_data",
+	         "api_key_hashes" = (
+	           SELECT ARRAY(
+	             SELECT DISTINCT unnest(
+	               COALESCE("stripe"."accounts"."api_key_hashes", '{}') || ARRAY[$2]
+	             )
+	           )
+	         ),
+	         "_last_synced_at" = now(),
+	         "_updated_at" = now()
+2026-04-20 21:52:45.884 UTC [82] LOG:  checkpoint starting: time
+2026-04-20 21:52:47.088 UTC [82] LOG:  checkpoint complete: wrote 11 buffers (0.1%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=1.129 s, sync=0.014 s, total=1.204 s; sync files=12, longest=0.013 s, average=0.002 s; distance=18 kB, estimate=330 kB; lsn=0/79BA068, redo lsn=0/79B9FF8
+	          AND pr.metadata->>'planTier' IS NOT NULL
+	        ORDER BY p.unit_amount ASC
+	      
+2026-04-20 22:33:00.067 UTC [44892] ERROR:  relation "stripe.products" does not exist at character 153
+2026-04-20 22:33:00.067 UTC [44892] STATEMENT:  
+	        SELECT
+	          pr.metadata->>'planTier' AS plan_tier,
+	          p.id AS price_id,
+	          p.unit_amount,
+	          p.currency
+	        FROM stripe.products pr
+	        JOIN stripe.prices p ON p.product = pr.id AND p.active = true
+	        WHERE pr.active = true
+2026-04-20 22:37:45.982 UTC [82] LOG:  checkpoint starting: time
+2026-04-20 22:37:46.500 UTC [82] LOG:  checkpoint complete: wrote 5 buffers (0.0%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.503 s, sync=0.006 s, total=0.519 s; sync files=6, longest=0.005 s, average=0.001 s; distance=8 kB, estimate=298 kB; lsn=0/79BC2D0, redo lsn=0/79BC278
+2026-04-21 00:09:41.875 UTC [45191] ERROR:  relation "stripe.products" does not exist at character 153
+2026-04-21 00:09:41.875 UTC [45191] STATEMENT:  
+	        SELECT
+	          pr.metadata->>'planTier' AS plan_tier,
+	          p.id AS price_id,
+	          p.unit_amount,
+	          p.currency
+	        FROM stripe.products pr
+	        JOIN stripe.prices p ON p.product = pr.id AND p.active = true
+	        WHERE pr.active = true
+	          AND pr.metadata->>'planTier' IS NOT NULL
+	        ORDER BY p.unit_amount ASC
+	      
+2026-04-21 00:12:47.362 UTC [82] LOG:  checkpoint starting: time
+2026-04-21 00:12:47.840 UTC [82] LOG:  checkpoint complete: wrote 4 buffers (0.0%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.408 s, sync=0.008 s, total=0.478 s; sync files=5, longest=0.007 s, average=0.002 s; distance=1 kB, estimate=268 kB; lsn=0/79BC9F8, redo lsn=0/79BC9A0
+2026-04-21 00:45:35.616 UTC [45302] ERROR:  relation "stripe.products" does not exist at character 153
+2026-04-21 00:45:35.616 UTC [45302] STATEMENT:  
+	        SELECT
+	          pr.metadata->>'planTier' AS plan_tier,
+	          p.id AS price_id,
+	          p.unit_amount,
+	          p.currency
+	        FROM stripe.products pr
+	        JOIN stripe.prices p ON p.product = pr.id AND p.active = true
+	        WHERE pr.active = true
+	          AND pr.metadata->>'planTier' IS NOT NULL
+	        ORDER BY p.unit_amount ASC
+	      
+2026-04-21 00:47:48.517 UTC [82] LOG:  checkpoint starting: time
+2026-04-21 00:47:49.364 UTC [82] LOG:  checkpoint complete: wrote 8 buffers (0.0%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.806 s, sync=0.012 s, total=0.847 s; sync files=8, longest=0.011 s, average=0.002 s; distance=12 kB, estimate=242 kB; lsn=0/79BFCE0, redo lsn=0/79BFC88
+2026-04-21 01:03:46.736 UTC [45360] ERROR:  relation "stripe.accounts" does not exist at character 16
+2026-04-21 01:03:46.736 UTC [45360] STATEMENT:  SELECT id FROM "stripe"."accounts"
+	       WHERE $1 = ANY(api_key_hashes)
+	       LIMIT 1
+2026-04-21 01:03:47.103 UTC [45361] ERROR:  relation "stripe.accounts" does not exist at character 13
+2026-04-21 01:03:47.103 UTC [45361] STATEMENT:  INSERT INTO "stripe"."accounts" ("_raw_data", "api_key_hashes", "first_synced_at", "_last_synced_at")
+	       VALUES ($1::jsonb, ARRAY[$2], now(), now())
+	       ON CONFLICT (id)
+	       DO UPDATE SET
+	         "_raw_data" = EXCLUDED."_raw_data",
+	         "api_key_hashes" = (
+	           SELECT ARRAY(
+	             SELECT DISTINCT unnest(
+	               COALESCE("stripe"."accounts"."api_key_hashes", '{}') || ARRAY[$2]
+	             )
+	           )
+	         ),
+	         "_last_synced_at" = now(),
+	         "_updated_at" = now()
+	          p.currency
+2026-04-21 01:04:44.582 UTC [45366] ERROR:  relation "stripe.products" does not exist at character 153
+	        FROM stripe.products pr
+2026-04-21 01:04:44.582 UTC [45366] STATEMENT:  
+	        JOIN stripe.prices p ON p.product = pr.id AND p.active = true
+	        SELECT
+	        WHERE pr.active = true
+	          pr.metadata->>'planTier' AS plan_tier,
+	          AND pr.metadata->>'planTier' IS NOT NULL
+	          p.id AS price_id,
+	        ORDER BY p.unit_amount ASC
+	          p.unit_amount,
+	      
+2026-04-21 01:07:48.760 UTC [82] LOG:  checkpoint starting: time
+2026-04-21 01:07:49.189 UTC [82] LOG:  checkpoint complete: wrote 4 buffers (0.0%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.408 s, sync=0.008 s, total=0.430 s; sync files=5, longest=0.007 s, average=0.002 s; distance=2 kB, estimate=218 kB; lsn=0/79C05F0, redo lsn=0/79C0598
+2026-04-21 01:12:32.917 UTC [45394] ERROR:  relation "stripe.accounts" does not exist at character 16
+2026-04-21 01:12:32.917 UTC [45394] STATEMENT:  SELECT id FROM "stripe"."accounts"
+	       WHERE $1 = ANY(api_key_hashes)
+	       LIMIT 1
+2026-04-21 01:12:33.267 UTC [45395] ERROR:  relation "stripe.accounts" does not exist at character 13
+2026-04-21 01:12:33.267 UTC [45395] STATEMENT:  INSERT INTO "stripe"."accounts" ("_raw_data", "api_key_hashes", "first_synced_at", "_last_synced_at")
+	       VALUES ($1::jsonb, ARRAY[$2], now(), now())
+	       ON CONFLICT (id)
+	       DO UPDATE SET
+	         "_raw_data" = EXCLUDED."_raw_data",
+	         "api_key_hashes" = (
+	           SELECT ARRAY(
+	             SELECT DISTINCT unnest(
+	               COALESCE("stripe"."accounts"."api_key_hashes", '{}') || ARRAY[$2]
+	             )
+	           )
+	         ),
+	         "_last_synced_at" = now(),
+	         "_updated_at" = now()
+2026-04-21 01:13:00.234 UTC [45398] ERROR:  relation "stripe.products" does not exist at character 153
+2026-04-21 01:13:00.234 UTC [45398] STATEMENT:  
+	        SELECT
+	          pr.metadata->>'planTier' AS plan_tier,
+	          p.id AS price_id,
+	          p.unit_amount,
+	          p.currency
+	        FROM stripe.products pr
+	        JOIN stripe.prices p ON p.product = pr.id AND p.active = true
+	        WHERE pr.active = true
+	          AND pr.metadata->>'planTier' IS NOT NULL
+	        ORDER BY p.unit_amount ASC
+	      
+2026-04-21 01:15:17.476 UTC [45407] ERROR:  relation "stripe.accounts" does not exist at character 16
+2026-04-21 01:15:17.476 UTC [45407] STATEMENT:  SELECT id FROM "stripe"."accounts"
+	       WHERE $1 = ANY(api_key_hashes)
+	       LIMIT 1
+2026-04-21 01:15:17.782 UTC [45408] ERROR:  relation "stripe.accounts" does not exist at character 13
+2026-04-21 01:15:17.782 UTC [45408] STATEMENT:  INSERT INTO "stripe"."accounts" ("_raw_data", "api_key_hashes", "first_synced_at", "_last_synced_at")
+	       VALUES ($1::jsonb, ARRAY[$2], now(), now())
+	       ON CONFLICT (id)
+	       DO UPDATE SET
+	         "_raw_data" = EXCLUDED."_raw_data",
+	         "api_key_hashes" = (
+	           SELECT ARRAY(
+	             SELECT DISTINCT unnest(
+	               COALESCE("stripe"."accounts"."api_key_hashes", '{}') || ARRAY[$2]
+	             )
+	           )
+	         ),
+	         "_last_synced_at" = now(),
+	         "_updated_at" = now()
+2026-04-21 01:16:46.541 UTC [45415] ERROR:  relation "stripe.products" does not exist at character 153
+2026-04-21 01:16:46.541 UTC [45415] STATEMENT:  
+	        SELECT
+	          pr.metadata->>'planTier' AS plan_tier,
+	          p.id AS price_id,
+	          p.unit_amount,
+	          p.currency
+	        FROM stripe.products pr
+	        JOIN stripe.prices p ON p.product = pr.id AND p.active = true
+	        WHERE pr.active = true
+	          AND pr.metadata->>'planTier' IS NOT NULL
+	        ORDER BY p.unit_amount ASC
+	      
+2026-04-21 01:17:48.385 UTC [82] LOG:  checkpoint starting: time
+2026-04-21 01:17:48.808 UTC [82] LOG:  checkpoint complete: wrote 4 buffers (0.0%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.404 s, sync=0.006 s, total=0.423 s; sync files=5, longest=0.006 s, average=0.002 s; distance=2 kB, estimate=197 kB; lsn=0/79C1160, redo lsn=0/79C1108
+2026-04-21 01:22:48.641 UTC [82] LOG:  checkpoint starting: time
+2026-04-21 01:27:19.581 UTC [82] LOG:  checkpoint complete: wrote 3297 buffers (20.1%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 3 recycled; write=269.404 s, sync=1.489 s, total=270.941 s; sync files=4482, longest=0.024 s, average=0.001 s; distance=51250 kB, estimate=51250 kB; lsn=0/ABFCE20, redo lsn=0/ABCD928
+2026-04-21 01:37:48.804 UTC [82] LOG:  checkpoint starting: time
+2026-04-21 01:37:50.134 UTC [82] LOG:  checkpoint complete: wrote 13 buffers (0.1%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=1.305 s, sync=0.013 s, total=1.330 s; sync files=9, longest=0.012 s, average=0.002 s; distance=198 kB, estimate=46144 kB; lsn=0/ABFF4C8, redo lsn=0/ABFF470
+2026-04-21 01:42:48.232 UTC [82] LOG:  checkpoint starting: time
+2026-04-21 01:42:48.651 UTC [82] LOG:  checkpoint complete: wrote 4 buffers (0.0%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.403 s, sync=0.004 s, total=0.419 s; sync files=5, longest=0.004 s, average=0.001 s; distance=3 kB, estimate=41530 kB; lsn=0/AC001F0, redo lsn=0/AC00198
+2026-04-21 01:57:48.944 UTC [82] LOG:  checkpoint starting: time
+2026-04-21 01:57:49.371 UTC [82] LOG:  checkpoint complete: wrote 4 buffers (0.0%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.405 s, sync=0.012 s, total=0.427 s; sync files=5, longest=0.010 s, average=0.003 s; distance=3 kB, estimate=37378 kB; lsn=0/AC01058, redo lsn=0/AC01000
+2026-04-21 02:02:48.468 UTC [82] LOG:  checkpoint starting: time
+2026-04-21 02:02:48.610 UTC [82] LOG:  checkpoint complete: wrote 1 buffers (0.0%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.119 s, sync=0.004 s, total=0.142 s; sync files=2, longest=0.002 s, average=0.002 s; distance=3 kB, estimate=33640 kB; lsn=0/AC01EF0, redo lsn=0/AC01E98
+2026-04-21 02:07:48.696 UTC [82] LOG:  checkpoint starting: time
+2026-04-21 02:07:48.833 UTC [82] LOG:  checkpoint complete: wrote 1 buffers (0.0%), wrote 0 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.101 s, sync=0.010 s, total=0.137 s; sync files=1, longest=0.010 s, average=0.010 s; distance=0 kB, estimate=30276 kB; lsn=0/AC02180, redo lsn=0/AC02128
+2026-04-21 02:32:49.322 UTC [82] LOG:  checkpoint starting: time
+2026-04-21 02:32:49.745 UTC [82] LOG:  checkpoint complete: wrote 4 buffers (0.0%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.403 s, sync=0.005 s, total=0.424 s; sync files=5, longest=0.004 s, average=0.001 s; distance=3 kB, estimate=27249 kB; lsn=0/AC030E0, redo lsn=0/AC03088
+2026-04-21 02:42:49.944 UTC [82] LOG:  checkpoint starting: time
+2026-04-21 02:42:52.622 UTC [82] LOG:  checkpoint complete: wrote 26 buffers (0.2%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=2.636 s, sync=0.005 s, total=2.678 s; sync files=19, longest=0.004 s, average=0.001 s; distance=118 kB, estimate=24536 kB; lsn=0/AC20B20, redo lsn=0/AC20AC8
+2026-04-21 02:47:49.722 UTC [82] LOG:  checkpoint starting: time
+2026-04-21 02:47:50.343 UTC [82] LOG:  checkpoint complete: wrote 6 buffers (0.0%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.605 s, sync=0.009 s, total=0.622 s; sync files=7, longest=0.007 s, average=0.002 s; distance=9 kB, estimate=22083 kB; lsn=0/AC23058, redo lsn=0/AC23000
+2026-04-21 03:02:49.641 UTC [82] LOG:  checkpoint starting: time
+2026-04-21 03:02:49.773 UTC [82] LOG:  checkpoint complete: wrote 1 buffers (0.0%), wrote 0 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.101 s, sync=0.003 s, total=0.133 s; sync files=1, longest=0.003 s, average=0.003 s; distance=2 kB, estimate=19875 kB; lsn=0/AC238E0, redo lsn=0/AC23888
+2026-04-21 03:12:49.969 UTC [82] LOG:  checkpoint starting: time
+2026-04-21 03:12:53.213 UTC [82] LOG:  checkpoint complete: wrote 32 buffers (0.2%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=3.217 s, sync=0.015 s, total=3.244 s; sync files=17, longest=0.014 s, average=0.001 s; distance=180 kB, estimate=17905 kB; lsn=0/AC50A90, redo lsn=0/AC50A38
+2026-04-21 03:17:49.312 UTC [82] LOG:  checkpoint starting: time
+2026-04-21 03:17:49.931 UTC [82] LOG:  checkpoint complete: wrote 6 buffers (0.0%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.603 s, sync=0.004 s, total=0.619 s; sync files=3, longest=0.003 s, average=0.002 s; distance=28 kB, estimate=16118 kB; lsn=0/AC57BF0, redo lsn=0/AC57B98
+2026-04-21 03:22:50.031 UTC [82] LOG:  checkpoint starting: time
+2026-04-21 03:22:50.258 UTC [82] LOG:  checkpoint complete: wrote 2 buffers (0.0%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.204 s, sync=0.005 s, total=0.228 s; sync files=3, longest=0.003 s, average=0.002 s; distance=7 kB, estimate=14507 kB; lsn=0/AC59AE0, redo lsn=0/AC59A88
+2026-04-21 03:37:50.556 UTC [82] LOG:  checkpoint starting: time
