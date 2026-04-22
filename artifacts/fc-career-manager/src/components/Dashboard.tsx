@@ -557,7 +557,6 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
       setNoticiasUnread(0);
     }
     if (tab === "clube") {
-      // Free mission 3: viewed squad (completing on tab visit is correct per spec)
       if (!isMissionComplete(career.id, "free_view_squad")) {
         completeMission(career.id, "free_view_squad");
       }
@@ -580,7 +579,6 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     return () => document.removeEventListener("fc:open-momentos", handler);
   }, []);
 
-  // ─── Mission completion via news generation event ────────────────────────────
   useEffect(() => {
     const handler = (e: Event) => {
       const { seasonId, post } = (e as CustomEvent<NoticiaGeneratedDetail>).detail ?? {};
@@ -596,6 +594,13 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
         const posts = getNoticiaPosts(activeSeasonId);
         if (posts.length >= 3 && !isMissionComplete(career.id, "pro_gen_3_news")) {
           completeMission(career.id, "pro_gen_3_news");
+        }
+      }
+
+      // Ultra mission 1: first auto-generated post confirms the engine is active
+      if (userPlan === "ultra") {
+        if (!isMissionComplete(career.id, "ultra_auto_news")) {
+          completeMission(career.id, "ultra_auto_news");
         }
       }
 
@@ -615,7 +620,6 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     return () => window.removeEventListener(FC_NOTICIA_GENERATED_EVENT, handler);
   }, [activeSeasonId, career.id, userPlan]);
 
-  // ─── Mission completion via board member added ───────────────────────────────
   useEffect(() => {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent<{ careerId: string }>).detail;
@@ -628,7 +632,6 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     return () => window.removeEventListener(FC_BOARD_MEMBER_ADDED_EVENT, handler);
   }, [career.id]);
 
-  // ─── Mission completion + teaser via momento saved ───────────────────────────
   useEffect(() => {
     const handler = () => {
       if (!isMissionComplete(career.id, "pro_save_momento")) {
@@ -643,7 +646,6 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     return () => window.removeEventListener(FC_MOMENTO_SAVED_EVENT, handler);
   }, [career.id, userPlan]);
 
-  // ─── Mission completion via custom portal created ────────────────────────────
   useEffect(() => {
     const handler = () => {
       if (userPlan === "ultra" && !isMissionComplete(career.id, "ultra_portal")) {
@@ -653,8 +655,6 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     window.addEventListener(CUSTOM_PORTALS_EVENT, handler);
     return () => window.removeEventListener(CUSTOM_PORTALS_EVENT, handler);
   }, [career.id, userPlan]);
-
-  // ultra_auto_news: completed when runAutoNews is actually triggered (see handleMatchAdded)
 
   const cachedPhotoMap = useMemo(() => {
     const map = new Map<number, string>();
@@ -1156,10 +1156,6 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     const planLimits = getPlanLimits(userPlan);
 
     if (planLimits.autoNewsEnabled) {
-      // Ultra mission: complete ultra_auto_news the first time auto-news runs
-      if (!isMissionComplete(career.id, "ultra_auto_news")) {
-        completeMission(career.id, "ultra_auto_news");
-      }
       void runAutoNews(match, {
         careerId: career.id,
         seasonId: activeSeasonId,

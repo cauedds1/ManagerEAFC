@@ -11,6 +11,50 @@ import {
   type MissionId,
 } from "@/lib/missionStorage";
 
+const CONFETTI_COLORS = ["#34d399","#6ee7b7","#a78bfa","#818cf8","#fbbf24","#fb923c","#f472b6"];
+const CONFETTI_COUNT = 18;
+
+function ConfettiBurst({ active }: { active: boolean }) {
+  if (!active) return null;
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl" style={{ zIndex: 1 }}>
+      {Array.from({ length: CONFETTI_COUNT }).map((_, i) => {
+        const angle = (360 / CONFETTI_COUNT) * i;
+        const distance = 40 + Math.random() * 30;
+        const dx = Math.cos((angle * Math.PI) / 180) * distance;
+        const dy = Math.sin((angle * Math.PI) / 180) * distance;
+        const color = CONFETTI_COLORS[i % CONFETTI_COLORS.length];
+        const size = 4 + Math.floor(Math.random() * 4);
+        return (
+          <div
+            key={i}
+            style={{
+              position: "absolute",
+              left: "50%",
+              top: "50%",
+              width: size,
+              height: size,
+              borderRadius: Math.random() > 0.5 ? "50%" : "2px",
+              background: color,
+              opacity: 0,
+              animation: `confetti-particle 0.8s ease-out ${i * 18}ms forwards`,
+              ["--dx" as string]: `${dx}px`,
+              ["--dy" as string]: `${dy}px`,
+            }}
+          />
+        );
+      })}
+      <style>{`
+        @keyframes confetti-particle {
+          0%   { transform: translate(-50%,-50%) translate(0,0) scale(1); opacity: 1; }
+          80%  { opacity: 0.8; }
+          100% { transform: translate(-50%,-50%) translate(var(--dx), var(--dy)) scale(0.3); opacity: 0; }
+        }
+      `}</style>
+    </div>
+  );
+}
+
 interface MissionWidgetProps {
   careerId: string;
   plan: Plan;
@@ -211,13 +255,14 @@ export function MissionWidget({
 
   return (
     <div
-      className="fixed bottom-6 right-4 z-[440] w-72 rounded-2xl flex flex-col overflow-hidden shadow-2xl"
+      className="fixed bottom-6 right-4 z-[440] w-72 rounded-2xl flex flex-col overflow-hidden shadow-2xl relative"
       style={{
         background: "rgba(14,12,24,0.97)",
         border: "1px solid rgba(255,255,255,0.1)",
         backdropFilter: "blur(20px)",
       }}
     >
+      <ConfettiBurst active={lastCompletedId !== null} />
       <div
         className="flex items-center justify-between px-3.5 py-3 cursor-pointer"
         style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
