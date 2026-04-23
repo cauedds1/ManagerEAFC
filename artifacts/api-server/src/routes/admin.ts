@@ -683,7 +683,13 @@ router.post("/admin/recover-career", async (req, res) => {
         coachJson: JSON.stringify(body.coach ?? inferred.coach ?? coachFallback),
         clubId: body.club_id ?? inferred.clubId ?? 0,
         clubName: body.club_name ?? inferred.clubName ?? "Unknown Club",
-        clubLogo: body.club_logo ?? inferred.clubLogo ?? "",
+        clubLogo: (() => {
+          const explicit = body.club_logo ?? inferred.clubLogo;
+          if (explicit) return String(explicit);
+          const id = body.club_id ?? inferred.clubId;
+          if (id) return `https://media.api-sports.io/football/teams/${id}.png`;
+          return "";
+        })(),
         clubLeague: body.club_league ?? inferred.clubLeague ?? "",
         clubCountry: body.club_country ?? inferred.clubCountry ?? null,
         clubStadium: body.club_stadium ?? inferred.clubStadium ?? null,

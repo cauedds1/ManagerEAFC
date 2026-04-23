@@ -659,6 +659,8 @@ function CareerRecoveryTab() {
   const [userId, setUserId] = useState("");
   const [clubName, setClubName] = useState("");
   const [clubLeague, setClubLeague] = useState("");
+  const [clubLogo, setClubLogo] = useState("");
+  const [clubId, setClubId] = useState("");
   const [coachName, setCoachName] = useState("");
   const [coachNationality, setCoachNationality] = useState("");
   const [coachFlag, setCoachFlag] = useState("");
@@ -676,6 +678,8 @@ function CareerRecoveryTab() {
       if (userId.trim()) body.user_id = Number(userId.trim());
       if (clubName.trim()) body.club_name = clubName.trim();
       if (clubLeague.trim()) body.club_league = clubLeague.trim();
+      if (clubLogo.trim()) body.club_logo = clubLogo.trim();
+      if (clubId.trim()) body.club_id = Number(clubId.trim());
       if (coachName.trim() || coachNationality.trim()) {
         body.coach = {
           name: coachName.trim() || "Técnico",
@@ -695,7 +699,7 @@ function CareerRecoveryTab() {
     } finally {
       setLoading(false);
     }
-  }, [careerId, userId, clubName, clubLeague, coachName, coachNationality, coachFlag, coachAge]);
+  }, [careerId, userId, clubName, clubLeague, clubLogo, clubId, coachName, coachNationality, coachFlag, coachAge]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -759,6 +763,33 @@ function CareerRecoveryTab() {
                 value={clubLeague}
                 onChange={(e) => setClubLeague(e.target.value)}
                 placeholder="Ex: Championship"
+                className="w-full px-4 py-3 rounded-xl text-white text-sm focus:outline-none placeholder:text-white/20"
+                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)" }}
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-semibold text-white/50 uppercase tracking-wider">
+                Club ID <span className="text-white/30 font-normal normal-case">(opcional — API Sports)</span>
+              </label>
+              <input
+                type="number"
+                value={clubId}
+                onChange={(e) => setClubId(e.target.value)}
+                placeholder="Ex: 50 (Watford)"
+                className="w-full px-4 py-3 rounded-xl text-white text-sm focus:outline-none placeholder:text-white/20"
+                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)" }}
+              />
+              <p className="text-white/30 text-xs">Se informado, a logo é gerada automaticamente.</p>
+            </div>
+            <div className="flex flex-col gap-1.5 md:col-span-2">
+              <label className="text-xs font-semibold text-white/50 uppercase tracking-wider">
+                URL da Logo <span className="text-white/30 font-normal normal-case">(opcional — sobrepõe o Club ID)</span>
+              </label>
+              <input
+                type="url"
+                value={clubLogo}
+                onChange={(e) => setClubLogo(e.target.value)}
+                placeholder="https://media.api-sports.io/football/teams/50.png"
                 className="w-full px-4 py-3 rounded-xl text-white text-sm focus:outline-none placeholder:text-white/20"
                 style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)" }}
               />
