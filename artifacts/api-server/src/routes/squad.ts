@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { db, squadPlayersTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
+import { isR2Configured, cacheExternalImage } from "../lib/r2Storage";
 
 const router = Router();
 
@@ -100,7 +101,33 @@ async function buildAndSaveSquad(teamId: number): Promise<SquadPlayerBody[] | nu
     }
   });
 
+  if (isR2Configured()) {
+    cacheSquadPhotosInBackground(teamId, players).catch(() => {});
+  }
+
   return players;
+}
+
+const PHOTO_CACHE_DELAY_MS = 100;
+
+async function cacheSquadPhotosInBackground(teamId: number, players: SquadPlayerBody[]): Promise<void> {
+  for (const player of players) {
+    if (!player.photo || !player.photo.includes("media.api-sports.io")) continue;
+    try {
+      const r2Url = await cacheExternalImage(player.photo, `cached-images/players/${player.id}.png`);
+      if (r2Url) {
+        await db
+          .update(squadPlayersTable)
+          .set({ photo: r2Url })
+          .where(
+            sql`team_id = ${teamId} AND player_id = ${player.id}`,
+          );
+      }
+    } catch {
+      // ignore individual failures
+    }
+    await new Promise((r) => setTimeout(r, PHOTO_CACHE_DELAY_MS));
+  }
 }
 
 function rowsToResponse(rows: typeof squadPlayersTable.$inferSelect[]) {

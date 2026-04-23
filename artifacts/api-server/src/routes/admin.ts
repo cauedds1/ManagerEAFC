@@ -2,6 +2,7 @@ import { Router } from "express";
 import { db, clubsTable, squadPlayersTable, careersTable, seasonsTable, careerDataTable, seasonDataTable } from "@workspace/db";
 import { sql, eq, notInArray } from "drizzle-orm";
 import { mapPosition, AF_TO_FC26 } from "../lib/positions";
+import { isR2Configured, cacheExternalImage } from "../lib/r2Storage";
 
 const router = Router();
 
@@ -809,6 +810,131 @@ router.post("/admin/recover-career", async (req, res) => {
     console.error("POST /admin/recover-career error:", err);
     return res.status(500).json({ error: "Erro interno ao recuperar carreira", details: String(err) });
   }
+});
+
+// GET /admin/cache-league-logos — SSE stream that caches all known league logos to R2
+router.get("/admin/cache-league-logos", async (req, res) => {
+  const adminSecret = process.env.ADMIN_SECRET;
+  if (!adminSecret || req.headers["x-admin-secret"] !== adminSecret) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  if (!isR2Configured()) {
+    res.status(503).json({ error: "R2 storage not configured on server" });
+    return;
+  }
+
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no");
+  res.flushHeaders();
+
+  const emit = (data: object) => {
+    res.write(`data: ${JSON.stringify(data)}\n\n`);
+    if (typeof (res as unknown as { flush?: () => void }).flush === "function") {
+      (res as unknown as { flush: () => void }).flush();
+    }
+  };
+
+  const leagueIds = Object.keys(LEAGUE_MAP).map(Number);
+  const total = leagueIds.length;
+  let cached = 0;
+  let skipped = 0;
+  let failed = 0;
+
+  emit({ type: "start", total, message: `Iniciando cache de ${total} logos de ligas no R2...` });
+
+  for (const leagueId of leagueIds) {
+    const sourceUrl = `https://media.api-sports.io/football/leagues/${leagueId}.png`;
+    const r2Key = `cached-images/leagues/${leagueId}.png`;
+    try {
+      const r2Url = await cacheExternalImage(sourceUrl, r2Key);
+      if (r2Url) {
+        cached++;
+        emit({ type: "cached", leagueId, r2Url, leagueName: LEAGUE_MAP[leagueId] });
+      } else {
+        failed++;
+        emit({ type: "failed", leagueId, leagueName: LEAGUE_MAP[leagueId] });
+      }
+    } catch {
+      failed++;
+      emit({ type: "failed", leagueId, leagueName: LEAGUE_MAP[leagueId] });
+    }
+    await sleep(DELAY_MS);
+  }
+
+  emit({ type: "done", cached, skipped, failed, total, message: `Concluído! ${cached} logos salvos, ${failed} falhas.` });
+  res.end();
+});
+
+// GET /admin/cache-club-logos — SSE stream that caches all club logos from DB to R2
+router.get("/admin/cache-club-logos", async (req, res) => {
+  const adminSecret = process.env.ADMIN_SECRET;
+  if (!adminSecret || req.headers["x-admin-secret"] !== adminSecret) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  if (!isR2Configured()) {
+    res.status(503).json({ error: "R2 storage not configured on server" });
+    return;
+  }
+
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no");
+  res.flushHeaders();
+
+  const emit = (data: object) => {
+    res.write(`data: ${JSON.stringify(data)}\n\n`);
+    if (typeof (res as unknown as { flush?: () => void }).flush === "function") {
+      (res as unknown as { flush: () => void }).flush();
+    }
+  };
+
+  const clubs = await db.select({ id: clubsTable.id, name: clubsTable.name, logoUrl: clubsTable.logoUrl }).from(clubsTable);
+  const total = clubs.length;
+  let cached = 0;
+  let skipped = 0;
+  let failed = 0;
+
+  emit({ type: "start", total, message: `Iniciando cache de logos de ${total} clubes no R2...` });
+
+  for (let i = 0; i < clubs.length; i++) {
+    const club = clubs[i];
+    if (!club.logoUrl || !club.logoUrl.includes("media.api-sports.io")) {
+      skipped++;
+      continue;
+    }
+    const r2Key = `cached-images/teams/${club.id}.png`;
+    try {
+      const r2Url = await cacheExternalImage(club.logoUrl, r2Key);
+      if (r2Url) {
+        await db.update(clubsTable).set({ logoUrl: r2Url }).where(eq(clubsTable.id, club.id));
+        cached++;
+      } else {
+        failed++;
+      }
+    } catch {
+      failed++;
+    }
+    if ((i + 1) % 50 === 0 || i + 1 === total) {
+      emit({
+        type: "progress",
+        processed: i + 1,
+        total,
+        cached,
+        failed,
+        skipped,
+        message: `${i + 1}/${total} — ${cached} salvos, ${failed} falhas`,
+      });
+    }
+    await sleep(DELAY_MS);
+  }
+
+  emit({ type: "done", cached, skipped, failed, total, message: `Concluído! ${cached} logos salvos, ${skipped} já no R2, ${failed} falhas.` });
+  res.end();
 });
 
 export default router;

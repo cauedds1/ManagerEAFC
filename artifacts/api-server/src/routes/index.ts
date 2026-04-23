@@ -14,6 +14,7 @@ import gamedataRouter from "./gamedata";
 import portalsRouter from "./portals";
 import authRouter from "./auth";
 import stripeRouter from "./stripe";
+import leaguesRouter from "./leagues";
 
 const router: IRouter = Router();
 
@@ -32,5 +33,6 @@ router.use(diretoriaRouter);
 router.use(careersRouter);
 router.use(gamedataRouter);
 router.use(portalsRouter);
+router.use(leaguesRouter);
 
 export default router;

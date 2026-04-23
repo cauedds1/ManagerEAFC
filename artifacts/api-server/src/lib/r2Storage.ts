@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, DeleteObjectCommand, HeadObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { randomUUID } from "crypto";
 import type { Readable } from "stream";
@@ -139,4 +139,52 @@ export async function deleteFileFromR2(key: string): Promise<void> {
       Key: key,
     }),
   );
+}
+
+/**
+ * Downloads an external image and stores it in R2 under the given key.
+ * If the key already exists in R2, returns the existing public URL immediately (no re-download).
+ * Returns the R2 public URL on success, or null on any failure (caller should use original URL as fallback).
+ */
+export async function cacheExternalImage(
+  sourceUrl: string,
+  r2Key: string,
+): Promise<string | null> {
+  if (!isR2Configured()) return null;
+  const { R2_BUCKET_NAME, R2_PUBLIC_URL } = process.env;
+  if (!R2_BUCKET_NAME || !R2_PUBLIC_URL) return null;
+
+  const base = R2_PUBLIC_URL.replace(/\/$/, "");
+  const r2Url = `${base}/${r2Key}`;
+  const client = createR2Client();
+
+  try {
+    await client.send(new HeadObjectCommand({ Bucket: R2_BUCKET_NAME, Key: r2Key }));
+    return r2Url;
+  } catch {
+    // Key does not exist yet — fall through to download
+  }
+
+  try {
+    const response = await fetch(sourceUrl, { signal: AbortSignal.timeout(10000) });
+    if (!response.ok) return null;
+
+    const contentType = response.headers.get("content-type") ?? "image/png";
+    const buffer = Buffer.from(await response.arrayBuffer());
+    if (buffer.length === 0) return null;
+
+    await client.send(
+      new PutObjectCommand({
+        Bucket: R2_BUCKET_NAME,
+        Key: r2Key,
+        Body: buffer,
+        ContentType: contentType,
+        ContentLength: buffer.length,
+      }),
+    );
+    return r2Url;
+  } catch (err) {
+    console.error(`[r2Cache] Failed to cache ${sourceUrl} → ${r2Key}:`, err);
+    return null;
+  }
 }

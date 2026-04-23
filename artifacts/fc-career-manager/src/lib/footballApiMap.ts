@@ -8,8 +8,40 @@ export interface LeagueInfo {
   logo: string;
 }
 
+const _leagueLogoOverrides = new Map<number, string>();
+
+/**
+ * Returns the logo URL for a given league.
+ * Uses R2 URL when available (populated by prefetchLeagueLogos), falls back to api-sports.io.
+ */
 export function getLeagueLogoUrl(leagueId: number): string {
-  return `https://media.api-sports.io/football/leagues/${leagueId}.png`;
+  return _leagueLogoOverrides.get(leagueId) ?? `https://media.api-sports.io/football/leagues/${leagueId}.png`;
+}
+
+/**
+ * Fetches league logo URLs from the backend (prefers R2 when configured) and caches them.
+ * Also updates the `logo` field in ALL_LEAGUES in-place so components that reference the
+ * static arrays will pick up R2 URLs on their next render.
+ * Safe to call multiple times — subsequent calls are no-ops if already loaded.
+ * Fire-and-forget from app startup; display never blocks on this.
+ */
+export async function prefetchLeagueLogos(apiBase = "/api"): Promise<void> {
+  if (_leagueLogoOverrides.size > 0) return;
+  try {
+    const res = await fetch(`${apiBase}/league-logos`);
+    if (!res.ok) return;
+    const map = (await res.json()) as Record<string, string>;
+    for (const [idStr, url] of Object.entries(map)) {
+      const id = Number(idStr);
+      if (id && url) _leagueLogoOverrides.set(id, url);
+    }
+    for (const league of ALL_LEAGUES) {
+      const override = _leagueLogoOverrides.get(league.id);
+      if (override) league.logo = override;
+    }
+  } catch {
+    // Silently ignore — app works fine with api-sports.io fallback URLs
+  }
 }
 
 function leaguelogo(id: number): string {

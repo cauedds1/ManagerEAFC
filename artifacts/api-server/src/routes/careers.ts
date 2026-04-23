@@ -1,13 +1,31 @@
 import { Router } from "express";
-import { db, careersTable, seasonsTable, usersTable, careerDataTable, seasonDataTable, customPortalsTable } from "@workspace/db";
+import { db, careersTable, seasonsTable, usersTable, careerDataTable, seasonDataTable, customPortalsTable, clubsTable } from "@workspace/db";
 import { eq, isNull, or, inArray } from "drizzle-orm";
 import { requireAuth, type AuthRequest } from "../middleware/auth";
 import { getPlanLimits } from "../lib/planLimits";
+import { isR2Configured, cacheExternalImage } from "../lib/r2Storage";
 
 const router = Router();
 
 function generateId(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+}
+
+function isApiSportsUrl(url: string): boolean {
+  return url.includes("media.api-sports.io");
+}
+
+async function cacheClubLogoInBackground(careerId: string, clubId: number, logoUrl: string): Promise<void> {
+  if (!isR2Configured() || !logoUrl || !isApiSportsUrl(logoUrl) || !clubId) return;
+  try {
+    const r2Url = await cacheExternalImage(logoUrl, `cached-images/teams/${clubId}.png`);
+    if (r2Url) {
+      await db.update(careersTable).set({ clubLogo: r2Url }).where(eq(careersTable.id, careerId));
+      await db.update(clubsTable).set({ logoUrl: r2Url }).where(eq(clubsTable.id, clubId));
+    }
+  } catch {
+    // ignore — fallback to original URL already in DB
+  }
 }
 
 router.get("/careers", requireAuth, async (req: AuthRequest, res) => {
@@ -120,6 +138,10 @@ router.post("/careers", requireAuth, async (req: AuthRequest, res) => {
       })
       .onConflictDoNothing();
 
+    if (body.clubLogo && body.clubId) {
+      cacheClubLogoInBackground(id, body.clubId, body.clubLogo).catch(() => {});
+    }
+
     return res.status(201).json({ id });
   } catch (err) {
     console.error("POST /careers error:", err);
@@ -175,6 +197,11 @@ router.put("/careers/:id", requireAuth, async (req: AuthRequest, res) => {
     if (body.currentSeasonId !== undefined) patch.currentSeasonId = body.currentSeasonId;
 
     await db.update(careersTable).set(patch).where(eq(careersTable.id, id));
+
+    if (body.clubLogo && body.clubId) {
+      cacheClubLogoInBackground(id, body.clubId, body.clubLogo).catch(() => {});
+    }
+
     return res.json({ ok: true });
   } catch (err) {
     console.error("PUT /careers/:id error:", err);
