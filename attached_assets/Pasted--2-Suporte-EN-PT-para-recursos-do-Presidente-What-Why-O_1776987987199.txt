@@ -1,0 +1,27 @@
+#2 - Suporte EN/PT para recursos do Presidente
+What & Why
+Os seis recursos implementados na Tarefa #1 (presidente automático, cap de mensagens, parabéns, post de boas-vindas) ficaram com textos fixos apenas em português. O app já suporta PT e EN via useLang() e i18n.ts. Esta tarefa traduz todos esses textos para inglês e adapta as mensagens dinâmicas ao idioma ativo do usuário.
+
+Done looks like
+Post de boas-vindas no feed aparece em EN quando o idioma do app é inglês, PT quando é português — mesmo conteúdo estruturado, traduzido
+Mensagem de introdução do Presidente ("Olá, treinador!" / "Hello, coach!") respeita o idioma do usuário
+Mensagens de parabéns ao concluir missões Pro e Ultra aparecem no idioma correto
+Contador de limite de mensagens ("X mensagens restantes" / "X messages remaining") traduzido — incluindo o aviso de limite atingido e o placeholder do campo desabilitado
+Descrições dos presidentes em clubPresidents.ts têm versão em EN e PT (campo description vira descriptionPt + descriptionEn, ou objeto { pt, en })
+A chamada à API de fallback de presidente já passa o lang correto (pt ou en) baseado no idioma ativo
+Out of scope
+Traduzir os nomes dos presidentes (nomes próprios reais não são traduzidos)
+Traduzir outras partes do app além dos recursos listados
+Adicionar novos idiomas além de PT e EN
+Steps
+Strings do contador de mensagens — Adicionar as chaves de tradução do contador de limite (messagesRemaining, messageLimitReached, messageLimitPlaceholder) ao mapa DIRETORIA em i18n.ts, depois substituir os textos hardcoded em DiretoriaView.tsx pelas chaves traduzidas usando o lang já disponível no componente.
+Mensagens dinâmicas do Presidente — Tornar o texto da mensagem de introdução e das mensagens de parabéns (Pro e Ultra) sensíveis ao idioma: ler localStorage.getItem("fc_lang") em Dashboard.tsx e usar a string correta (PT ou EN) para cada caso.
+Post de boas-vindas bilíngue — Definir as duas versões do conteúdo do post (PT e EN) como constantes fixas e usar a versão correta conforme o lang ativo no momento do disparo do evento em Dashboard.tsx.
+Descrições dos presidentes em EN — Atualizar a interface ClubPresidentData para suportar descriptionEn opcional ao lado de description (PT). Adicionar as descrições em inglês para todos os 191 clubes em clubPresidents.ts. Atualizar os locais que consomem a descrição para escolher o campo correto conforme o lang.
+Fallback da API com lang dinâmico — Na chamada de fallback de generate-member em Dashboard.tsx, passar o lang atual (localStorage.getItem("fc_lang") ?? "pt") em vez do valor hardcoded "pt".
+Relevant files
+artifacts/fc-career-manager/src/lib/i18n.ts
+artifacts/fc-career-manager/src/components/DiretoriaView.tsx:1255-1295
+artifacts/fc-career-manager/src/components/Dashboard.tsx:672-800
+artifacts/fc-career-manager/src/lib/clubPresidents.ts
+artifacts/fc-career-manager/src/hooks/useLang.ts
