@@ -23,7 +23,7 @@ import { fetchPortals } from "@/lib/customPortalStorage";
 import { addPost as addNewsPost, getPosts as getNoticiaPosts, generatePostId, generateCommentId } from "@/lib/noticiaStorage";
 import { getFanMood, setFanMood, computeFanMoodDelta, getFanMoodLabel } from "@/lib/fanMoodStorage";
 import type { TransferRecord } from "@/types/transfer";
-import { getMatches } from "@/lib/matchStorage";
+import { getMatches, updateMatch } from "@/lib/matchStorage";
 import type { MatchRecord } from "@/types/match";
 import { runPerformanceEngine } from "@/lib/playerPerformanceEngine";
 import { copyPlayerMoodsToNewSeason, getAllPlayerStats } from "@/lib/playerStatsStorage";
@@ -288,6 +288,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
 
   useEffect(() => {
     setDbSynced(false);
+    backfillDoneRef.current = false;
     (async () => {
       const initialSeasonId = await ensureCareerAndSeason1(career);
       await syncCareerFromDb(career.id);
@@ -366,6 +367,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
   const [bgGenStatus, setBgGenStatus] = useState<BgGenStatus>("idle");
   const [bgGenLabel, setBgGenLabel] = useState("");
   const bgGenTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const backfillDoneRef = useRef(false);
   const [aiUsageToday, setAiUsageToday] = useState<number | undefined>(undefined);
   const [aiUsageLimit, setAiUsageLimit] = useState<number | undefined>(undefined);
 
@@ -800,6 +802,48 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     }
     return Array.from(map.values());
   }, [allPlayersWithFormer, allCareerTransfers]);
+
+  // ─── Best-effort backfill: add playerSnapshot to old matches that lack it ───
+  useEffect(() => {
+    if (!dbSynced || seasons.length === 0 || backfillDoneRef.current) return;
+    if (allTimeCareerPlayers.length === 0) return;
+    backfillDoneRef.current = true;
+
+    const playerMap = new Map<number, { name: string; photo: string; positionPtBr: string; number?: number }>(
+      allTimeCareerPlayers.map((p) => [
+        p.id,
+        { name: p.name, photo: p.photo ?? "", positionPtBr: p.positionPtBr ?? "", number: p.number },
+      ])
+    );
+
+    let activeSeasonNeedsRefresh = false;
+
+    for (const season of seasons) {
+      const seasonMatches = getMatches(season.id);
+      for (const match of seasonMatches) {
+        const hasSnapshot = match.playerSnapshot && Object.keys(match.playerSnapshot).length > 0;
+        if (hasSnapshot) continue;
+
+        const allPlayerIds = [...(match.starterIds ?? []), ...(match.subIds ?? [])];
+        const snapshot: Record<number, { name: string; photo: string; positionPtBr: string; number?: number }> = {};
+
+        for (const pid of allPlayerIds) {
+          const player = playerMap.get(pid);
+          if (!player) continue;
+          snapshot[pid] = player;
+        }
+
+        if (Object.keys(snapshot).length === 0) continue;
+
+        updateMatch(season.id, { ...match, playerSnapshot: snapshot });
+        if (season.id === activeSeasonId) activeSeasonNeedsRefresh = true;
+      }
+    }
+
+    if (activeSeasonNeedsRefresh) {
+      setMatches(getMatches(activeSeasonId));
+    }
+  }, [dbSynced, seasons, allTimeCareerPlayers, activeSeasonId]);
 
   // For the elenco (squad) display in historical (read-only) seasons, include former
   // players who were NOT sold/loaned out in that specific season — they were still
