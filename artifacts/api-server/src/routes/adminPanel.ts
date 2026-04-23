@@ -107,6 +107,74 @@ router.get("/admin-panel/stats", async (req: Request, res: Response) => {
   }
 });
 
+// GET /api/admin-panel/analytics
+router.get("/admin-panel/analytics", async (req: Request, res: Response) => {
+  if (!validateAdminToken(req, res)) return;
+  try {
+    const [growthRows, topClubRows, planRows, matchRow, active7Row, active30Row] = await Promise.all([
+      db.execute(sql`
+        SELECT DATE(to_timestamp(created_at / 1000.0)) as date, COUNT(*) as count
+        FROM users
+        WHERE created_at >= (EXTRACT(EPOCH FROM NOW()) - 30*86400) * 1000
+        GROUP BY date ORDER BY date
+      `),
+      db.execute(sql`
+        SELECT club_name, COUNT(*) as count
+        FROM careers
+        GROUP BY club_name
+        ORDER BY count DESC
+        LIMIT 15
+      `),
+      db.execute(sql`
+        SELECT
+          COUNT(*) FILTER (WHERE plan = 'free') as free,
+          COUNT(*) FILTER (WHERE plan = 'pro') as pro,
+          COUNT(*) FILTER (WHERE plan = 'ultra') as ultra
+        FROM users
+      `),
+      db.execute(sql`
+        SELECT COALESCE(SUM(jsonb_array_length(value_json::jsonb)), 0) as total
+        FROM season_data
+        WHERE key = 'matches'
+      `),
+      db.execute(sql`
+        SELECT COUNT(*) as count FROM users
+        WHERE last_login_at >= (EXTRACT(EPOCH FROM NOW()) - 7*86400) * 1000
+      `),
+      db.execute(sql`
+        SELECT COUNT(*) as count FROM users
+        WHERE last_login_at >= (EXTRACT(EPOCH FROM NOW()) - 30*86400) * 1000
+      `),
+    ]);
+
+    const userGrowth = (growthRows.rows as Array<{ date: string; count: string }>).map((r) => ({
+      date: r.date,
+      count: Number(r.count),
+    }));
+
+    const topClubs = (topClubRows.rows as Array<{ club_name: string; count: string }>).map((r) => ({
+      clubName: r.club_name,
+      count: Number(r.count),
+    }));
+
+    const planRow = planRows.rows[0] as { free: string; pro: string; ultra: string } | undefined;
+    const planDistribution = {
+      free: Number(planRow?.free ?? 0),
+      pro: Number(planRow?.pro ?? 0),
+      ultra: Number(planRow?.ultra ?? 0),
+    };
+
+    const totalMatches = Number((matchRow.rows[0] as { total: string } | undefined)?.total ?? 0);
+    const activeUsersLast7Days = Number((active7Row.rows[0] as { count: string } | undefined)?.count ?? 0);
+    const activeUsersLast30Days = Number((active30Row.rows[0] as { count: string } | undefined)?.count ?? 0);
+
+    return res.json({ userGrowth, topClubs, planDistribution, totalMatches, activeUsersLast7Days, activeUsersLast30Days });
+  } catch (err) {
+    console.error("GET /admin-panel/analytics error:", err);
+    return res.status(500).json({ error: "Erro interno" });
+  }
+});
+
 // GET /api/admin-panel/users?page=1&limit=20
 router.get("/admin-panel/users", async (req: Request, res: Response) => {
   if (!validateAdminToken(req, res)) return;
@@ -115,26 +183,110 @@ router.get("/admin-panel/users", async (req: Request, res: Response) => {
     const limit = Math.min(100, Math.max(1, Number(req.query["limit"] ?? 20)));
     const offset = (page - 1) * limit;
 
-    const users = await db
-      .select({
-        id: usersTable.id,
-        email: usersTable.email,
-        name: usersTable.name,
-        plan: usersTable.plan,
-        aiUsageCount: usersTable.aiUsageCount,
-        createdAt: usersTable.createdAt,
-        careerCount: sql<number>`(select count(*) from careers where user_id = ${usersTable.id})`,
-      })
-      .from(usersTable)
-      .orderBy(desc(usersTable.createdAt))
-      .limit(limit)
-      .offset(offset);
+    const rows = await db.execute(sql`
+      SELECT
+        u.id, u.email, u.name, u.plan, u.ai_usage_count as "aiUsageCount",
+        u.last_login_at as "lastLoginAt", u.created_at as "createdAt",
+        COUNT(DISTINCT c.id) as "careerCount",
+        COUNT(DISTINCT s.id) as "seasonCount",
+        COALESCE(SUM(jsonb_array_length(sd.value_json::jsonb)), 0) as "matchCount",
+        ARRAY_AGG(DISTINCT c.club_name) FILTER (WHERE c.club_name IS NOT NULL) as clubs
+      FROM users u
+      LEFT JOIN careers c ON c.user_id = u.id
+      LEFT JOIN seasons s ON s.career_id = c.id
+      LEFT JOIN season_data sd ON sd.season_id = s.id AND sd.key = 'matches'
+      GROUP BY u.id, u.email, u.name, u.plan, u.ai_usage_count, u.last_login_at, u.created_at
+      ORDER BY u.created_at DESC
+      LIMIT ${limit} OFFSET ${offset}
+    `);
+
+    const users = rows.rows.map((r: Record<string, unknown>) => ({
+      id: Number(r.id),
+      email: r.email,
+      name: r.name,
+      plan: r.plan,
+      aiUsageCount: Number(r.aiUsageCount ?? 0),
+      lastLoginAt: r.lastLoginAt != null ? Number(r.lastLoginAt) : null,
+      createdAt: Number(r.createdAt),
+      careerCount: Number(r.careerCount ?? 0),
+      seasonCount: Number(r.seasonCount ?? 0),
+      matchCount: Number(r.matchCount ?? 0),
+      clubs: Array.isArray(r.clubs) ? (r.clubs as string[]).filter(Boolean) : [],
+    }));
 
     const [{ total }] = await db.select({ total: count(usersTable.id) }).from(usersTable);
 
     return res.json({ users, total: Number(total), page, limit });
   } catch (err) {
     console.error("GET /admin-panel/users error:", err);
+    return res.status(500).json({ error: "Erro interno" });
+  }
+});
+
+// GET /api/admin-panel/users/:id
+router.get("/admin-panel/users/:id", async (req: Request, res: Response) => {
+  if (!validateAdminToken(req, res)) return;
+  try {
+    const userId = Number(req.params["id"]);
+    if (!Number.isFinite(userId)) return res.status(400).json({ error: "ID inválido" });
+
+    const [user] = await db
+      .select({
+        id: usersTable.id,
+        email: usersTable.email,
+        name: usersTable.name,
+        plan: usersTable.plan,
+        aiUsageCount: usersTable.aiUsageCount,
+        lastLoginAt: usersTable.lastLoginAt,
+        createdAt: usersTable.createdAt,
+      })
+      .from(usersTable)
+      .where(eq(usersTable.id, userId))
+      .limit(1);
+
+    if (!user) return res.status(404).json({ error: "Usuário não encontrado" });
+
+    const careerRows = await db.execute(sql`
+      SELECT
+        c.id, c.club_name, c.club_id, c.season, c.created_at,
+        COUNT(DISTINCT s.id) as season_count,
+        COALESCE(SUM(jsonb_array_length(sd.value_json::jsonb)), 0) as match_count,
+        MAX(CASE WHEN s.is_active THEN s.label END) as active_season_label
+      FROM careers c
+      LEFT JOIN seasons s ON s.career_id = c.id
+      LEFT JOIN season_data sd ON sd.season_id = s.id AND sd.key = 'matches'
+      WHERE c.user_id = ${userId}
+      GROUP BY c.id, c.club_name, c.club_id, c.season, c.created_at
+      ORDER BY c.created_at DESC
+    `);
+
+    const careers = careerRows.rows.map((r: Record<string, unknown>) => ({
+      id: r.id,
+      clubName: r.club_name,
+      clubId: r.club_id,
+      season: r.season,
+      createdAt: Number(r.created_at),
+      seasonCount: Number(r.season_count ?? 0),
+      matchCount: Number(r.match_count ?? 0),
+      activeSeasonLabel: r.active_season_label ?? null,
+    }));
+
+    const bugReports = await db
+      .select({
+        id: bugReportsTable.id,
+        description: bugReportsTable.description,
+        page: bugReportsTable.page,
+        status: bugReportsTable.status,
+        createdAt: bugReportsTable.createdAt,
+      })
+      .from(bugReportsTable)
+      .where(eq(bugReportsTable.userId, userId))
+      .orderBy(desc(bugReportsTable.createdAt))
+      .limit(20);
+
+    return res.json({ user, careers, bugReports });
+  } catch (err) {
+    console.error("GET /admin-panel/users/:id error:", err);
     return res.status(500).json({ error: "Erro interno" });
   }
 });

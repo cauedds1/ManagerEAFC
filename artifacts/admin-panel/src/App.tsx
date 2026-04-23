@@ -44,14 +44,55 @@ interface Stats {
   bugReports: { total: number; open: number };
 }
 
+interface Analytics {
+  userGrowth: Array<{ date: string; count: number }>;
+  topClubs: Array<{ clubName: string; count: number }>;
+  planDistribution: { free: number; pro: number; ultra: number };
+  totalMatches: number;
+  activeUsersLast7Days: number;
+  activeUsersLast30Days: number;
+}
+
 interface User {
   id: number;
   email: string;
   name: string;
   plan: string;
   aiUsageCount: number;
+  lastLoginAt: number | null;
   createdAt: number;
   careerCount: number;
+  seasonCount: number;
+  matchCount: number;
+  clubs: string[];
+}
+
+interface UserDetailCareer {
+  id: string;
+  clubName: string;
+  clubId: number;
+  season: string;
+  createdAt: number;
+  seasonCount: number;
+  matchCount: number;
+  activeSeasonLabel: string | null;
+}
+
+interface UserDetailBug {
+  id: number;
+  description: string;
+  page: string;
+  status: string;
+  createdAt: number;
+}
+
+interface UserDetail {
+  user: {
+    id: number; email: string; name: string; plan: string;
+    aiUsageCount: number; lastLoginAt: number | null; createdAt: number;
+  };
+  careers: UserDetailCareer[];
+  bugReports: UserDetailBug[];
 }
 
 interface BugReport {
@@ -102,15 +143,54 @@ function StatCard({ label, value, sub, color }: { label: string; value: number |
   );
 }
 
+function GrowthChart({ data }: { data: Array<{ date: string; count: number }> }) {
+  if (!data.length) return <div className="text-white/20 text-xs text-center py-6">Sem cadastros nos últimos 30 dias</div>;
+  const max = Math.max(...data.map((d) => d.count), 1);
+  return (
+    <div className="flex items-end gap-1 h-24 w-full">
+      {data.map((d) => {
+        const h = Math.max(4, Math.round((d.count / max) * 96));
+        const label = d.date.slice(5);
+        return (
+          <div key={d.date} className="flex-1 flex flex-col items-center gap-1 group relative" title={`${d.date}: ${d.count}`}>
+            <div
+              style={{ height: `${h}px`, background: "rgba(74,222,128,0.6)", borderRadius: "3px 3px 0 0" }}
+              className="w-full transition-all group-hover:opacity-80"
+            />
+            {data.length <= 15 && (
+              <span className="text-white/20 text-[9px] rotate-45 origin-left">{label}</span>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function OverviewTab() {
-  const { data, isLoading, error } = useQuery<Stats>({
+  const { data: stats, isLoading: statsLoading, error: statsError } = useQuery<Stats>({
     queryKey: ["stats"],
     queryFn: () => apiFetch<Stats>("/admin-panel/stats"),
   });
+  const { data: analytics, isLoading: analyticsLoading, error: analyticsError } = useQuery<Analytics>({
+    queryKey: ["analytics"],
+    queryFn: () => apiFetch<Analytics>("/admin-panel/analytics"),
+  });
+
+  const isLoading = statsLoading || analyticsLoading;
+  const error = statsError || analyticsError;
 
   if (isLoading) return <div className="text-white/40 text-sm py-8 text-center">Carregando...</div>;
   if (error) return <div className="text-red-400 text-sm py-8 text-center">{String((error as Error).message)}</div>;
-  if (!data) return null;
+  if (!stats || !analytics) return null;
+
+  const totalPlans = analytics.planDistribution.free + analytics.planDistribution.pro + analytics.planDistribution.ultra || 1;
+  const planPct = {
+    free: Math.round((analytics.planDistribution.free / totalPlans) * 100),
+    pro: Math.round((analytics.planDistribution.pro / totalPlans) * 100),
+    ultra: Math.round((analytics.planDistribution.ultra / totalPlans) * 100),
+  };
+  const topMax = analytics.topClubs[0]?.count ?? 1;
 
   return (
     <div className="flex flex-col gap-6">
@@ -118,25 +198,189 @@ function OverviewTab() {
         <h2 className="text-white font-bold text-base mb-1">Visão Geral</h2>
         <p className="text-white/40 text-xs">Dados em tempo real do banco de produção.</p>
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <StatCard label="Usuários" value={data.users.total} color="#4ade80" />
-        <StatCard label="Carreiras" value={data.careers.total} />
-        <StatCard label="Temporadas" value={data.seasons.total} />
-        <StatCard label="Bug Reports" value={data.bugReports.total} sub={`${data.bugReports.open} abertos`} color={data.bugReports.open > 0 ? "#f87171" : "white"} />
+
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        <StatCard label="Total Usuários" value={stats.users.total} color="#4ade80" />
+        <StatCard label="Ativos (7d)" value={analytics.activeUsersLast7Days} color="#34d399" sub="último login" />
+        <StatCard label="Total Carreiras" value={stats.careers.total} />
+        <StatCard label="Total Partidas" value={analytics.totalMatches} color="#60a5fa" />
+        <StatCard label="Gerações de IA" value={stats.aiUsage.allTime} color="#fb923c" sub="acumulado" />
+        <StatCard label="Bugs em Aberto" value={stats.bugReports.open} color={stats.bugReports.open > 0 ? "#f87171" : "white"} sub={`${stats.bugReports.total} total`} />
       </div>
-      <div>
-        <h3 className="text-white/60 text-xs font-semibold uppercase tracking-wider mb-3">Planos</h3>
-        <div className="grid grid-cols-3 gap-3">
-          <StatCard label="Free" value={data.users.free} color="#94a3b8" />
-          <StatCard label="Pro" value={data.users.pro} color="#60a5fa" />
-          <StatCard label="Ultra" value={data.users.ultra} color="#c084fc" />
+
+      <div className="rounded-2xl p-5 flex flex-col gap-4" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+        <div>
+          <h3 className="text-white font-semibold text-sm">Crescimento de Usuários</h3>
+          <p className="text-white/30 text-xs">Novos cadastros nos últimos 30 dias</p>
+        </div>
+        <GrowthChart data={analytics.userGrowth} />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="rounded-2xl p-5 flex flex-col gap-3" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+          <div>
+            <h3 className="text-white font-semibold text-sm">Top Times</h3>
+            <p className="text-white/30 text-xs">Times mais selecionados nas carreiras</p>
+          </div>
+          <div className="flex flex-col gap-2">
+            {analytics.topClubs.length === 0 && <div className="text-white/20 text-xs text-center py-4">Sem dados</div>}
+            {analytics.topClubs.map((c, i) => (
+              <div key={c.clubName} className="flex items-center gap-3">
+                <span className="text-white/25 text-xs font-mono w-4 text-right flex-shrink-0">{i + 1}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between mb-0.5">
+                    <span className="text-white/80 text-xs truncate">{c.clubName}</span>
+                    <span className="text-white/40 text-xs flex-shrink-0 ml-2">{c.count}</span>
+                  </div>
+                  <div className="w-full rounded-full overflow-hidden" style={{ height: "3px", background: "rgba(255,255,255,0.06)" }}>
+                    <div
+                      style={{ width: `${Math.round((c.count / topMax) * 100)}%`, height: "100%", background: "rgba(74,222,128,0.5)", borderRadius: "9999px" }}
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded-2xl p-5 flex flex-col gap-4" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+          <div>
+            <h3 className="text-white font-semibold text-sm">Distribuição de Planos</h3>
+            <p className="text-white/30 text-xs">Percentual por tipo de plano</p>
+          </div>
+          <div className="flex flex-col gap-3">
+            {[
+              { key: "free" as const, label: "Free", color: "#94a3b8", pct: planPct.free, val: analytics.planDistribution.free },
+              { key: "pro" as const, label: "Pro", color: "#60a5fa", pct: planPct.pro, val: analytics.planDistribution.pro },
+              { key: "ultra" as const, label: "Ultra", color: "#c084fc", pct: planPct.ultra, val: analytics.planDistribution.ultra },
+            ].map((p) => (
+              <div key={p.key} className="flex flex-col gap-1.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: p.color }} />
+                    <span className="text-white/70 text-xs font-medium">{p.label}</span>
+                  </div>
+                  <span className="text-white/40 text-xs">{p.val} usuários · {p.pct}%</span>
+                </div>
+                <div className="w-full rounded-full overflow-hidden" style={{ height: "6px", background: "rgba(255,255,255,0.06)" }}>
+                  <div style={{ width: `${p.pct}%`, height: "100%", background: p.color, borderRadius: "9999px", opacity: 0.7 }} />
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-2">
+            <StatCard label="Gerações Hoje" value={stats.aiUsage.today} color="#fb923c" sub="reset diário" />
+          </div>
         </div>
       </div>
-      <div>
-        <h3 className="text-white/60 text-xs font-semibold uppercase tracking-wider mb-3">IA</h3>
-        <div className="grid grid-cols-2 gap-3">
-          <StatCard label="Gerações hoje" value={data.aiUsage.today} color="#fb923c" />
-          <StatCard label="Gerações total" value={data.aiUsage.allTime} color="#fb923c" sub="acumulado" />
+    </div>
+  );
+}
+
+function UserDetailModal({ userId, onClose }: { userId: number; onClose: () => void }) {
+  const { data, isLoading, error } = useQuery<UserDetail>({
+    queryKey: ["user-detail", userId],
+    queryFn: () => apiFetch(`/admin-panel/users/${userId}`),
+  });
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-start justify-end"
+      style={{ background: "rgba(0,0,0,0.65)" }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div
+        className="h-full w-full max-w-lg overflow-y-auto flex flex-col"
+        style={{ background: "hsl(222 22% 10%)", borderLeft: "1px solid rgba(255,255,255,0.1)" }}
+      >
+        <div className="flex items-center justify-between px-6 py-4 flex-shrink-0" style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
+          <h2 className="text-white font-bold text-sm">Detalhe do Usuário</h2>
+          <button
+            onClick={onClose}
+            className="w-7 h-7 rounded-lg flex items-center justify-center text-white/40 hover:text-white/80 transition-colors"
+            style={{ background: "rgba(255,255,255,0.05)" }}
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="flex-1 p-6 flex flex-col gap-5">
+          {isLoading && <div className="text-white/40 text-sm text-center py-8">Carregando...</div>}
+          {error && <div className="text-red-400 text-sm text-center py-8">{(error as Error).message}</div>}
+          {data && (
+            <>
+              <div className="rounded-2xl p-4 flex flex-col gap-3" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex flex-col gap-0.5 min-w-0">
+                    <span className="text-white font-bold text-base truncate">{data.user.name}</span>
+                    <span className="text-white/50 text-xs truncate">{data.user.email}</span>
+                  </div>
+                  <PlanBadge plan={data.user.plan} />
+                </div>
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  {[
+                    { label: "ID", value: `#${data.user.id}` },
+                    { label: "Gerações IA", value: String(data.user.aiUsageCount) },
+                    { label: "Cadastro", value: formatDate(data.user.createdAt) },
+                    { label: "Último Login", value: data.user.lastLoginAt ? formatDate(data.user.lastLoginAt) : "—" },
+                  ].map((item) => (
+                    <div key={item.label} className="flex flex-col gap-0.5">
+                      <span className="text-white/30 text-[10px] uppercase tracking-wider">{item.label}</span>
+                      <span className="text-white/80 text-xs font-mono">{item.value}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-3">
+                <h3 className="text-white/50 text-xs font-semibold uppercase tracking-wider">
+                  Carreiras ({data.careers.length})
+                </h3>
+                {data.careers.length === 0 && <div className="text-white/20 text-xs text-center py-4">Sem carreiras</div>}
+                {data.careers.map((c) => (
+                  <div key={c.id} className="rounded-xl p-3 flex flex-col gap-2" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-white/85 text-sm font-semibold truncate">{c.clubName}</span>
+                      {c.activeSeasonLabel && (
+                        <span className="text-xs px-2 py-0.5 rounded-full flex-shrink-0" style={{ background: "rgba(74,222,128,0.15)", color: "#4ade80" }}>
+                          {c.activeSeasonLabel}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex gap-4">
+                      <span className="text-white/35 text-xs">{c.seasonCount} temp.</span>
+                      <span className="text-white/35 text-xs">{c.matchCount} partidas</span>
+                      <span className="text-white/25 text-xs">{new Date(c.createdAt).toLocaleDateString("pt-BR")}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {data.bugReports.length > 0 && (
+                <div className="flex flex-col gap-3">
+                  <h3 className="text-white/50 text-xs font-semibold uppercase tracking-wider">
+                    Bugs Reportados ({data.bugReports.length})
+                  </h3>
+                  {data.bugReports.map((b) => (
+                    <div key={b.id} className="rounded-xl p-3 flex flex-col gap-1.5" style={{
+                      background: b.status === "open" ? "rgba(239,68,68,0.07)" : "rgba(255,255,255,0.03)",
+                      border: `1px solid ${b.status === "open" ? "rgba(239,68,68,0.2)" : "rgba(255,255,255,0.06)"}`,
+                    }}>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-white/25 text-xs font-mono">#{b.id}</span>
+                        <span className="text-xs px-1.5 py-0.5 rounded-full" style={{
+                          background: b.status === "open" ? "rgba(239,68,68,0.2)" : "rgba(16,185,129,0.15)",
+                          color: b.status === "open" ? "#f87171" : "#34d399",
+                        }}>{b.status === "open" ? "Aberto" : "Resolvido"}</span>
+                        {b.page && <span className="text-white/30 text-xs truncate">{b.page}</span>}
+                      </div>
+                      <p className="text-white/65 text-xs leading-relaxed">{b.description}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -145,7 +389,9 @@ function OverviewTab() {
 
 function UsersTab() {
   const [page, setPage] = useState(1);
-  const limit = 20;
+  const [search, setSearch] = useState("");
+  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+  const limit = 50;
   const { data, isLoading, error } = useQuery<{ users: User[]; total: number; page: number; limit: number }>({
     queryKey: ["users", page],
     queryFn: () => apiFetch(`/admin-panel/users?page=${page}&limit=${limit}`),
@@ -155,84 +401,123 @@ function UsersTab() {
   if (error) return <div className="text-red-400 text-sm py-8 text-center">{String((error as Error).message)}</div>;
   if (!data) return null;
 
+  const filtered = search.trim()
+    ? data.users.filter((u) =>
+        u.name.toLowerCase().includes(search.toLowerCase()) ||
+        u.email.toLowerCase().includes(search.toLowerCase())
+      )
+    : data.users;
+
   const totalPages = Math.ceil(data.total / limit);
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-white font-bold text-base">Usuários</h2>
-          <p className="text-white/40 text-xs mt-0.5">{data.total} usuários cadastrados</p>
-        </div>
-      </div>
-      <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr style={{ background: "rgba(255,255,255,0.04)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                <th className="text-left px-4 py-3 text-white/50 text-xs font-semibold uppercase tracking-wide">ID</th>
-                <th className="text-left px-4 py-3 text-white/50 text-xs font-semibold uppercase tracking-wide">Nome</th>
-                <th className="text-left px-4 py-3 text-white/50 text-xs font-semibold uppercase tracking-wide">Email</th>
-                <th className="text-left px-4 py-3 text-white/50 text-xs font-semibold uppercase tracking-wide">Plano</th>
-                <th className="text-left px-4 py-3 text-white/50 text-xs font-semibold uppercase tracking-wide">Carreiras</th>
-                <th className="text-left px-4 py-3 text-white/50 text-xs font-semibold uppercase tracking-wide">IA</th>
-                <th className="text-left px-4 py-3 text-white/50 text-xs font-semibold uppercase tracking-wide">Cadastro</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.users.map((u, i) => (
-                <tr
-                  key={u.id}
-                  style={{
-                    background: i % 2 === 0 ? "rgba(255,255,255,0.01)" : "transparent",
-                    borderBottom: "1px solid rgba(255,255,255,0.04)",
-                  }}
-                >
-                  <td className="px-4 py-3 text-white/30 font-mono text-xs">{u.id}</td>
-                  <td className="px-4 py-3 text-white font-medium">{u.name}</td>
-                  <td className="px-4 py-3 text-white/60 text-xs">{u.email}</td>
-                  <td className="px-4 py-3"><PlanBadge plan={u.plan} /></td>
-                  <td className="px-4 py-3 text-white/60">{u.careerCount}</td>
-                  <td className="px-4 py-3 text-white/60">{u.aiUsageCount}</td>
-                  <td className="px-4 py-3 text-white/40 text-xs whitespace-nowrap">{formatDate(u.createdAt)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-      {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2">
-          <button
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={page === 1}
-            className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
-            style={{
-              background: page === 1 ? "rgba(255,255,255,0.03)" : "rgba(255,255,255,0.08)",
-              color: page === 1 ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.7)",
-              border: "1px solid rgba(255,255,255,0.08)",
-              cursor: page === 1 ? "not-allowed" : "pointer",
-            }}
-          >
-            ← Anterior
-          </button>
-          <span className="text-white/40 text-xs">{page} / {totalPages}</span>
-          <button
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            disabled={page === totalPages}
-            className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
-            style={{
-              background: page === totalPages ? "rgba(255,255,255,0.03)" : "rgba(255,255,255,0.08)",
-              color: page === totalPages ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.7)",
-              border: "1px solid rgba(255,255,255,0.08)",
-              cursor: page === totalPages ? "not-allowed" : "pointer",
-            }}
-          >
-            Próxima →
-          </button>
-        </div>
+    <>
+      {selectedUserId !== null && (
+        <UserDetailModal userId={selectedUserId} onClose={() => setSelectedUserId(null)} />
       )}
-    </div>
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <h2 className="text-white font-bold text-base">Usuários</h2>
+            <p className="text-white/40 text-xs mt-0.5">{data.total} usuários cadastrados</p>
+          </div>
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar por nome ou email..."
+            className="px-3 py-2 rounded-xl text-white text-xs focus:outline-none placeholder:text-white/20 w-60"
+            style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)" }}
+          />
+        </div>
+        <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr style={{ background: "rgba(255,255,255,0.04)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                  <th className="text-left px-4 py-3 text-white/50 text-xs font-semibold uppercase tracking-wide whitespace-nowrap">Nome</th>
+                  <th className="text-left px-4 py-3 text-white/50 text-xs font-semibold uppercase tracking-wide whitespace-nowrap">Plano</th>
+                  <th className="text-left px-4 py-3 text-white/50 text-xs font-semibold uppercase tracking-wide whitespace-nowrap">Clube(s)</th>
+                  <th className="text-left px-4 py-3 text-white/50 text-xs font-semibold uppercase tracking-wide whitespace-nowrap">Partidas</th>
+                  <th className="text-left px-4 py-3 text-white/50 text-xs font-semibold uppercase tracking-wide whitespace-nowrap">IA</th>
+                  <th className="text-left px-4 py-3 text-white/50 text-xs font-semibold uppercase tracking-wide whitespace-nowrap">Temp.</th>
+                  <th className="text-left px-4 py-3 text-white/50 text-xs font-semibold uppercase tracking-wide whitespace-nowrap">Último Login</th>
+                  <th className="text-left px-4 py-3 text-white/50 text-xs font-semibold uppercase tracking-wide whitespace-nowrap">Cadastro</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.length === 0 && (
+                  <tr>
+                    <td colSpan={8} className="px-4 py-8 text-center text-white/25 text-xs">Nenhum usuário encontrado</td>
+                  </tr>
+                )}
+                {filtered.map((u, i) => (
+                  <tr
+                    key={u.id}
+                    onClick={() => setSelectedUserId(u.id)}
+                    style={{
+                      background: i % 2 === 0 ? "rgba(255,255,255,0.01)" : "transparent",
+                      borderBottom: "1px solid rgba(255,255,255,0.04)",
+                      cursor: "pointer",
+                    }}
+                    className="hover:bg-white/5 transition-colors"
+                  >
+                    <td className="px-4 py-3">
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-white font-medium text-xs">{u.name}</span>
+                        <span className="text-white/35 text-[10px]">{u.email}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3"><PlanBadge plan={u.plan} /></td>
+                    <td className="px-4 py-3 text-white/55 text-xs max-w-[120px]">
+                      <span className="truncate block">{u.clubs.length > 0 ? u.clubs.slice(0, 2).join(", ") + (u.clubs.length > 2 ? ` +${u.clubs.length - 2}` : "") : "—"}</span>
+                    </td>
+                    <td className="px-4 py-3 text-white/60 text-xs">{u.matchCount}</td>
+                    <td className="px-4 py-3 text-white/60 text-xs">{u.aiUsageCount}</td>
+                    <td className="px-4 py-3 text-white/60 text-xs">{u.seasonCount}</td>
+                    <td className="px-4 py-3 text-white/40 text-xs whitespace-nowrap">
+                      {u.lastLoginAt ? formatDate(u.lastLoginAt) : <span className="text-white/20">—</span>}
+                    </td>
+                    <td className="px-4 py-3 text-white/40 text-xs whitespace-nowrap">{formatDate(u.createdAt)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center gap-2">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+              style={{
+                background: page === 1 ? "rgba(255,255,255,0.03)" : "rgba(255,255,255,0.08)",
+                color: page === 1 ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.7)",
+                border: "1px solid rgba(255,255,255,0.08)",
+                cursor: page === 1 ? "not-allowed" : "pointer",
+              }}
+            >
+              ← Anterior
+            </button>
+            <span className="text-white/40 text-xs">{page} / {totalPages}</span>
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+              style={{
+                background: page === totalPages ? "rgba(255,255,255,0.03)" : "rgba(255,255,255,0.08)",
+                color: page === totalPages ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.7)",
+                border: "1px solid rgba(255,255,255,0.08)",
+                cursor: page === totalPages ? "not-allowed" : "pointer",
+              }}
+            >
+              Próxima →
+            </button>
+          </div>
+        )}
+      </div>
+    </>
   );
 }
 
