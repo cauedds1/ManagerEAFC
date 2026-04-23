@@ -232,10 +232,11 @@ export function ReelsModal({ post, portalPhotos, customPortals, onClose }: Reels
 
           {/* Tap-to-play fallback — shown when autoplay is blocked by browser policy */}
           {autoplayFailed && (
-            <div
-              className="absolute inset-0 flex items-center justify-center z-20 cursor-pointer"
-              style={{ background: "rgba(0,0,0,0.45)" }}
+            <button
               onClick={handleManualPlay}
+              aria-label="Reproduzir vídeo"
+              className="absolute inset-0 flex items-center justify-center z-20 w-full border-0"
+              style={{ background: "rgba(0,0,0,0.45)", cursor: "pointer" }}
             >
               <div
                 className="flex items-center justify-center rounded-full transition-transform duration-200 active:scale-90"
@@ -245,7 +246,7 @@ export function ReelsModal({ post, portalPhotos, customPortals, onClose }: Reels
                   <path d="M8 5v14l11-7z" />
                 </svg>
               </div>
-            </div>
+            </button>
           )}
 
           {/* Mute button — bottom-left to avoid overlap with action buttons */}
