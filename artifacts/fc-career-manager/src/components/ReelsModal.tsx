@@ -130,6 +130,7 @@ export function ReelsModal({ post, portalPhotos, customPortals, onClose }: Reels
   const [muted, setMuted] = useState(true);
   const [showComments, setShowComments] = useState(false);
   const [autoplayFailed, setAutoplayFailed] = useState(false);
+  const [buffering, setBuffering] = useState(true);
 
   const customPortal = post.source === "custom" && post.customPortalId
     ? customPortals?.find(p => p.id === post.customPortalId) : undefined;
@@ -162,29 +163,40 @@ export function ReelsModal({ post, portalPhotos, customPortals, onClose }: Reels
     // Set muted imperatively — avoids React's known muted-prop sync issues
     v.muted = true;
 
+    // If already ready, no need to show spinner
+    if (v.readyState >= 3) setBuffering(false);
+
     let played = false;
 
     const attemptPlay = () => {
       if (played) return;
       played = true;
       v.muted = true;
-      // If play() is rejected (autoplay policy), show manual play button immediately
-      v.play().catch(() => setAutoplayFailed(true));
+      v.play().catch(() => {
+        // Autoplay blocked — hide spinner, show play button
+        setBuffering(false);
+        setAutoplayFailed(true);
+      });
     };
 
-    // canplay/loadeddata both signal the video is ready enough to play.
-    // If readyState >= HAVE_FUTURE_DATA (3) the event already fired — play now.
-    // Otherwise register both listeners (whichever fires first wins; `played`
-    // guard prevents double invocation).
+    // Spinner off as soon as the video starts rendering frames
+    const onPlaying = () => setBuffering(false);
+    // Spinner back on if browser pauses mid-playback to rebuffer
+    const onWaiting = () => setBuffering(true);
+
+    v.addEventListener("playing", onPlaying);
+    v.addEventListener("waiting", onWaiting);
+
     if (v.readyState >= 3) {
       attemptPlay();
-      return;
+    } else {
+      v.addEventListener("canplay", attemptPlay, { once: true });
+      v.addEventListener("loadeddata", attemptPlay, { once: true });
     }
 
-    v.addEventListener("canplay", attemptPlay, { once: true });
-    v.addEventListener("loadeddata", attemptPlay, { once: true });
-
     return () => {
+      v.removeEventListener("playing", onPlaying);
+      v.removeEventListener("waiting", onWaiting);
       v.removeEventListener("canplay", attemptPlay);
       v.removeEventListener("loadeddata", attemptPlay);
     };
@@ -229,6 +241,25 @@ export function ReelsModal({ post, portalPhotos, customPortals, onClose }: Reels
             className="w-full h-full object-cover sm:object-contain"
             style={{ display: "block" }}
           />
+
+          {/* Buffering spinner — shown while video is loading or rebuffering */}
+          {buffering && !autoplayFailed && (
+            <div
+              className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none"
+              style={{ background: "rgba(0,0,0,0.35)" }}
+            >
+              <svg
+                className="animate-spin"
+                style={{ width: 44, height: 44, color: "rgba(255,255,255,0.85)" }}
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+            </div>
+          )}
 
           {/* Tap-to-play fallback — shown when autoplay is blocked by browser policy */}
           {autoplayFailed && (
