@@ -34,7 +34,7 @@ interface SettingsPageProps {
 }
 
 type SyncState = "idle" | "running" | "done" | "error";
-type Section = "api" | "portais" | "ia" | "temporada" | "idioma";
+type Section = "api" | "portais" | "ia" | "temporada" | "idioma" | "suporte";
 
 interface SeedProgress {
   processed: number;
@@ -89,6 +89,14 @@ const NAV_ITEMS: { id: Section; icon: React.ReactNode }[] = [
     icon: (
       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-1.605.42-3.113 1.157-4.418" />
+      </svg>
+    ),
+  },
+  {
+    id: "suporte",
+    icon: (
+      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" />
       </svg>
     ),
   },
@@ -357,6 +365,7 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
     portais:   t.navPortais,
     ia:        t.navIa,
     idioma:    t.navIdioma,
+    suporte:   lang === "pt" ? "Suporte" : "Support",
   };
   const resolvedPlan = userPlan ?? getUserPlan();
   const planLimits = getPlanLimits(resolvedPlan);
@@ -1323,9 +1332,14 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
                 </div>
               </SectionCard>
 
+            </div>
+          )}
+
+          {section === "suporte" && (
+            <div className="flex flex-col gap-6">
               <SectionCard
-                title={lang === "pt" ? "Reportar Bug" : "Report a Bug"}
-                subtitle={lang === "pt" ? "Encontrou algo errado? Avise-nos para que possamos corrigir." : "Found something broken? Let us know so we can fix it."}
+                title={lang === "pt" ? "Reportar Bug / Feedback" : "Report a Bug / Feedback"}
+                subtitle={lang === "pt" ? "Encontrou um problema ou tem uma sugestão? Envie direto para a equipe." : "Found an issue or have a suggestion? Send it straight to the team."}
               >
                 <button
                   onClick={() => { setShowBugModal(true); setBugState("idle"); }}
@@ -1336,8 +1350,40 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
                     boxShadow: "0 4px 12px rgba(var(--club-primary-rgb),0.25)",
                   }}
                 >
-                  🐛 {lang === "pt" ? "Reportar Bug" : "Report a Bug"}
+                  🐛 {lang === "pt" ? "Reportar Bug / Feedback" : "Report a Bug / Feedback"}
                 </button>
+              </SectionCard>
+
+              <SectionCard
+                title={lang === "pt" ? "Perguntas Frequentes" : "Frequently Asked Questions"}
+              >
+                <div className="flex flex-col gap-4">
+                  {([
+                    {
+                      q: lang === "pt" ? "O que é o FC Career Manager?" : "What is FC Career Manager?",
+                      a: lang === "pt"
+                        ? "É um app para acompanhar e enriquecer sua carreira no EA Sports FC — com notícias geradas por IA, controle de elenco, finanças e muito mais."
+                        : "It's an app to track and enrich your EA Sports FC career — with AI-generated news, squad management, finances, and much more.",
+                    },
+                    {
+                      q: lang === "pt" ? "Meus dados ficam salvos?" : "Is my data saved?",
+                      a: lang === "pt"
+                        ? "Sim. Sua carreira fica salva na nuvem e sincronizada com sua conta. Você pode acessar de qualquer dispositivo."
+                        : "Yes. Your career is saved in the cloud and synced to your account. You can access it from any device.",
+                    },
+                    {
+                      q: lang === "pt" ? "Como mudo o idioma do app?" : "How do I change the app language?",
+                      a: lang === "pt"
+                        ? "Vá em Configurações → Idioma e escolha entre Português (PT) e English (EN)."
+                        : "Go to Settings → Language and choose between Português (PT) and English (EN).",
+                    },
+                  ] as { q: string; a: string }[]).map(({ q, a }) => (
+                    <div key={q} className="flex flex-col gap-1.5">
+                      <p className="text-white text-sm font-semibold leading-snug">{q}</p>
+                      <p className="text-white/45 text-xs leading-relaxed">{a}</p>
+                    </div>
+                  ))}
+                </div>
               </SectionCard>
             </div>
           )}
