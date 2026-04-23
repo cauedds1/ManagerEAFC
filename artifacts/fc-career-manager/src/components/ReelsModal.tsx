@@ -129,6 +129,7 @@ export function ReelsModal({ post, portalPhotos, customPortals, onClose }: Reels
   const [liked, setLiked] = useState(false);
   const [muted, setMuted] = useState(true);
   const [showComments, setShowComments] = useState(false);
+  const [autoplayFailed, setAutoplayFailed] = useState(false);
 
   const customPortal = post.source === "custom" && post.customPortalId
     ? customPortals?.find(p => p.id === post.customPortalId) : undefined;
@@ -157,15 +158,25 @@ export function ReelsModal({ post, portalPhotos, customPortals, onClose }: Reels
   useEffect(() => {
     const v = videoRef.current;
     if (!v) return;
+
+    // Always set muted imperatively — React's muted prop has known sync issues
     v.muted = true;
-    setMuted(true);
-    const playPromise = v.play();
-    if (playPromise !== undefined) {
-      playPromise.catch(() => {
-        v.muted = true;
-        v.play().catch(() => {});
+
+    const tryPlay = () => {
+      v.muted = true;
+      v.play().catch(() => {
+        // Autoplay blocked by browser policy — show manual play button
+        setAutoplayFailed(true);
       });
+    };
+
+    // Wait for enough data before attempting play (avoids failed play on empty buffer)
+    if (v.readyState >= HTMLMediaElement.HAVE_ENOUGH_DATA) {
+      tryPlay();
+      return;
     }
+    v.addEventListener("canplay", tryPlay, { once: true });
+    return () => v.removeEventListener("canplay", tryPlay);
   }, []);
 
   const handleMuteToggle = () => {
@@ -173,6 +184,14 @@ export function ReelsModal({ post, portalPhotos, customPortals, onClose }: Reels
       videoRef.current.muted = !videoRef.current.muted;
       setMuted(videoRef.current.muted);
     }
+  };
+
+  const handleManualPlay = () => {
+    const v = videoRef.current;
+    if (!v) return;
+    v.muted = true;
+    setMuted(true);
+    v.play().then(() => setAutoplayFailed(false)).catch(() => {});
   };
 
   const modal = (
@@ -193,13 +212,31 @@ export function ReelsModal({ post, portalPhotos, customPortals, onClose }: Reels
           <video
             ref={videoRef}
             src={post.videoUrl}
-            autoPlay
             loop
             playsInline
+            preload="auto"
             muted={muted}
             className="w-full h-full object-cover sm:object-contain"
             style={{ display: "block" }}
           />
+
+          {/* Tap-to-play fallback — shown when autoplay is blocked by browser policy */}
+          {autoplayFailed && (
+            <div
+              className="absolute inset-0 flex items-center justify-center z-20 cursor-pointer"
+              style={{ background: "rgba(0,0,0,0.45)" }}
+              onClick={handleManualPlay}
+            >
+              <div
+                className="flex items-center justify-center rounded-full transition-transform duration-200 active:scale-90"
+                style={{ width: 64, height: 64, background: "rgba(255,255,255,0.92)", boxShadow: "0 4px 32px rgba(0,0,0,0.55)" }}
+              >
+                <svg viewBox="0 0 24 24" fill="#111" style={{ width: 28, height: 28, marginLeft: 4 }}>
+                  <path d="M8 5v14l11-7z" />
+                </svg>
+              </div>
+            </div>
+          )}
 
           {/* Mute button — bottom-left to avoid overlap with action buttons */}
           <button
