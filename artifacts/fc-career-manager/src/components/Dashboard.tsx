@@ -1918,6 +1918,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
                 effectiveLeague={effectiveLeague}
                 currentCompetitions={currentCompetitions}
                 userPlan={userPlan}
+                freeMissionsDone={allMissionsForPlanDone(career.id, "free")}
               />
             )}
             {activeTab === "momentos" && (

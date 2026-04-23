@@ -53,6 +53,7 @@ interface DiretoriaViewProps {
   effectiveLeague?: string;
   currentCompetitions?: string[];
   userPlan?: "free" | "pro" | "ultra";
+  freeMissionsDone?: boolean;
 }
 
 interface TransferSuggestion {
@@ -445,9 +446,10 @@ function CreateMemberModal({ career, membersCount, onClose, onCreated, effective
   );
 }
 
-export function DiretoriaView({ career, matches, transfers, squadSize, allPlayers = [], effectiveLeague, currentCompetitions = [], userPlan }: DiretoriaViewProps) {
+export function DiretoriaView({ career, matches, transfers, squadSize, allPlayers = [], effectiveLeague, currentCompetitions = [], userPlan, freeMissionsDone }: DiretoriaViewProps) {
   const resolvedPlan = userPlan ?? getUserPlan();
-  const planLimits = getPlanLimits(resolvedPlan);
+  const effectivePlan = resolvedPlan === "free" && freeMissionsDone ? "pro" : resolvedPlan;
+  const planLimits = getPlanLimits(effectivePlan);
   const [lang] = useLang();
   const t = DIRETORIA[lang];
   const dateLocale = lang === "en" ? "en-US" : "pt-BR";
@@ -943,12 +945,24 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
 
   if (!planLimits.diretoriaEnabled) {
     return (
-      <UpgradePrompt
-        currentPlan={resolvedPlan}
-        requiredPlan="pro"
-        featureName={t.upgradeFeatureName}
-        description={t.upgradeDescription}
-      />
+      <div className="flex flex-col items-center justify-center py-24 px-4 text-center">
+        <div
+          className="w-20 h-20 rounded-2xl flex items-center justify-center mb-6"
+          style={{ background: "rgba(var(--club-primary-rgb),0.08)", border: "1px solid rgba(var(--club-primary-rgb),0.15)" }}
+        >
+          <svg className="w-10 h-10" style={{ color: "var(--club-primary)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+          </svg>
+        </div>
+        <h2 className="text-white font-black text-2xl mb-3">
+          {lang === "en" ? "Board Locked" : "Diretoria Bloqueada"}
+        </h2>
+        <p className="text-white/40 text-sm max-w-sm leading-relaxed">
+          {lang === "en"
+            ? "Complete all the starter missions to unlock the Board. Once done, your club president will be waiting here to talk."
+            : "Complete todas as missões iniciais para desbloquear a Diretoria. Quando terminar, o presidente do clube estará aqui para conversar."}
+        </p>
+      </div>
     );
   }
 
