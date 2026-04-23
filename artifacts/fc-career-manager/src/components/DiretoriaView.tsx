@@ -688,8 +688,8 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
     if (!member) return;
 
     if (member.messageLimit !== undefined) {
-      const sentCount = (conversations[selectedMemberId] ?? []).filter((m) => m.role === "user").length;
-      if (sentCount >= member.messageLimit) return;
+      const alreadySent = member.userMessagesSent ?? 0;
+      if (alreadySent >= member.messageLimit) return;
     }
 
     const userMsg: DiretoriaMessage = {
@@ -702,6 +702,13 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
     const updatedConvs = { ...conversations, [selectedMemberId]: newConv };
     setConversations(updatedConvs);
     saveConversation(career.id, selectedMemberId, newConv);
+
+    if (member.messageLimit !== undefined) {
+      const newSentCount = (member.userMessagesSent ?? 0) + 1;
+      updateMember(career.id, selectedMemberId, { userMessagesSent: newSentCount });
+      setMembers((prev) => prev.map((m) => m.id === selectedMemberId ? { ...m, userMessagesSent: newSentCount } : m));
+    }
+
     setChatInput("");
     setIsTyping(true);
 
@@ -1245,8 +1252,8 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
             )}
 
             {(() => {
-              const sentCount = selectedMemberId ? (conversations[selectedMemberId] ?? []).filter((m) => m.role === "user").length : 0;
               const msgLimit = selectedMember?.messageLimit;
+              const sentCount = msgLimit !== undefined ? (selectedMember?.userMessagesSent ?? 0) : 0;
               const limitReached = msgLimit !== undefined && sentCount >= msgLimit;
               const remaining = msgLimit !== undefined ? Math.max(0, msgLimit - sentCount) : null;
               return (

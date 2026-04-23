@@ -691,6 +691,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
               avatarColor: `#8B5CF6`,
               createdAt: Date.now(),
               messageLimit: 15,
+              userMessagesSent: 0,
             };
             addMember(career.id, newMember);
 
@@ -712,10 +713,10 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
             sourceHandle: "@fccareerapp",
             sourceName: "FC Career Manager",
             sourcePhotoUrl: "/fcm-logo.png",
-            content: `🎉 Bem-vindo ao FC Career Manager!\n\nVocê acaba de completar as missões iniciais e está oficialmente dentro da experiência completa. A partir de agora, você pode acompanhar resultados, gerenciar transferências, gerar notícias, interagir com a diretoria do clube e muito mais.\n\nEssa é só o começo da sua carreira. Continue evoluindo, treinador — o futebol espera por você! ⚽`,
-            likes: Math.floor(Math.random() * 300) + 150,
+            content: `Bem-vindo ao FC Career Manager! 🎉\n\nVocê completou todas as missões iniciais e desbloqueou a experiência completa do app. A partir de agora, você tem acesso à diretoria do clube, pode gerar notícias com IA, registrar transferências, documentar momentos e muito mais.\n\nO presidente do ${career.clubName} já está na sua diretoria esperando para conversar. Boa sorte na carreira, treinador! ⚽`,
+            likes: 0,
             commentsCount: 0,
-            sharesCount: Math.floor(Math.random() * 50) + 10,
+            sharesCount: 0,
             comments: [],
             createdAt: Date.now(),
             category: "conquista",
@@ -724,7 +725,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
         }
       }
 
-      if ((userPlan === "pro" || userPlan === "ultra") && allMissionsForPlanDone(career.id, "pro")) {
+      if (userPlan === "pro" && allMissionsForPlanDone(career.id, "pro")) {
         const proGuardKey = `fc_pro_congrats_fired_${career.id}`;
         if (!localStorage.getItem(proGuardKey)) {
           localStorage.setItem(proGuardKey, "1");
