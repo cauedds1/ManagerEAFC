@@ -159,36 +159,35 @@ export function ReelsModal({ post, portalPhotos, customPortals, onClose }: Reels
     const v = videoRef.current;
     if (!v) return;
 
-    // Always set muted imperatively — React's muted prop has known sync issues
+    // Set muted imperatively — avoids React's known muted-prop sync issues
     v.muted = true;
 
-    let settled = false;
+    let played = false;
 
-    const doPlay = () => {
-      if (settled) return;
+    const attemptPlay = () => {
+      if (played) return;
+      played = true;
       v.muted = true;
-      v.play()
-        .then(() => { settled = true; })
-        .catch(() => {
-          // First attempt failed — wait for canplay and retry once
-          const onCanPlay = () => {
-            if (settled) return;
-            v.muted = true;
-            v.play()
-              .then(() => { settled = true; })
-              .catch(() => {
-                // Both attempts blocked — show manual play button
-                settled = true;
-                setAutoplayFailed(true);
-              });
-          };
-          v.addEventListener("canplay", onCanPlay, { once: true });
-        });
+      // If play() is rejected (autoplay policy), show manual play button immediately
+      v.play().catch(() => setAutoplayFailed(true));
     };
 
-    // Attempt immediately: if readyState >= HAVE_FUTURE_DATA (3), browser can
-    // start playing; otherwise the call is queued and may reject — canplay retry handles it
-    doPlay();
+    // canplay/loadeddata both signal the video is ready enough to play.
+    // If readyState >= HAVE_FUTURE_DATA (3) the event already fired — play now.
+    // Otherwise register both listeners (whichever fires first wins; `played`
+    // guard prevents double invocation).
+    if (v.readyState >= 3) {
+      attemptPlay();
+      return;
+    }
+
+    v.addEventListener("canplay", attemptPlay, { once: true });
+    v.addEventListener("loadeddata", attemptPlay, { once: true });
+
+    return () => {
+      v.removeEventListener("canplay", attemptPlay);
+      v.removeEventListener("loadeddata", attemptPlay);
+    };
   }, []);
 
   const handleMuteToggle = () => {
