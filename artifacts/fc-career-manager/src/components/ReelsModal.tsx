@@ -162,21 +162,33 @@ export function ReelsModal({ post, portalPhotos, customPortals, onClose }: Reels
     // Always set muted imperatively — React's muted prop has known sync issues
     v.muted = true;
 
-    const tryPlay = () => {
+    let settled = false;
+
+    const doPlay = () => {
+      if (settled) return;
       v.muted = true;
-      v.play().catch(() => {
-        // Autoplay blocked by browser policy — show manual play button
-        setAutoplayFailed(true);
-      });
+      v.play()
+        .then(() => { settled = true; })
+        .catch(() => {
+          // First attempt failed — wait for canplay and retry once
+          const onCanPlay = () => {
+            if (settled) return;
+            v.muted = true;
+            v.play()
+              .then(() => { settled = true; })
+              .catch(() => {
+                // Both attempts blocked — show manual play button
+                settled = true;
+                setAutoplayFailed(true);
+              });
+          };
+          v.addEventListener("canplay", onCanPlay, { once: true });
+        });
     };
 
-    // Wait for enough data before attempting play (avoids failed play on empty buffer)
-    if (v.readyState >= HTMLMediaElement.HAVE_ENOUGH_DATA) {
-      tryPlay();
-      return;
-    }
-    v.addEventListener("canplay", tryPlay, { once: true });
-    return () => v.removeEventListener("canplay", tryPlay);
+    // Attempt immediately: if readyState >= HAVE_FUTURE_DATA (3), browser can
+    // start playing; otherwise the call is queued and may reject — canplay retry handles it
+    doPlay();
   }, []);
 
   const handleMuteToggle = () => {
@@ -215,7 +227,6 @@ export function ReelsModal({ post, portalPhotos, customPortals, onClose }: Reels
             loop
             playsInline
             preload="auto"
-            muted={muted}
             className="w-full h-full object-cover sm:object-contain"
             style={{ display: "block" }}
           />
