@@ -14,7 +14,14 @@ const app: Express = express();
 
 const isProd = process.env.NODE_ENV === "production";
 
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+      "img-src": ["'self'", "data:", "https:"],
+    },
+  },
+}));
 
 const allowedOrigins = isProd
   ? [process.env.FRONTEND_URL, process.env.ADMIN_URL].filter(Boolean) as string[]
