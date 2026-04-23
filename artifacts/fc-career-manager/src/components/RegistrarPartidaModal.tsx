@@ -914,6 +914,7 @@ function PlayerLineupRow({
   const [lang] = useLang();
   const t = PARTIDAS[lang];
   const [expanded, setExpanded] = useState(false);
+  const [showStatsHelp, setShowStatsHelp] = useState(false);
   const isGK = player.positionPtBr === "GOL";
   const rc = getRatingColor(stats.rating);
 
@@ -1019,7 +1020,35 @@ function PlayerLineupRow({
           </div>
 
           <div>
-            <span className="text-white/50 text-xs font-medium uppercase tracking-wider block mb-2">{t.statsSection}</span>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-white/50 text-xs font-medium uppercase tracking-wider">{t.statsSection}</span>
+              {!isGK && (
+                <button
+                  type="button"
+                  onClick={() => setShowStatsHelp((v) => !v)}
+                  className="w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold transition-colors flex-shrink-0"
+                  style={{
+                    background: showStatsHelp ? "rgba(var(--club-primary-rgb),0.25)" : "rgba(255,255,255,0.10)",
+                    color: showStatsHelp ? "var(--club-primary)" : "rgba(255,255,255,0.45)",
+                    border: showStatsHelp ? "1px solid rgba(var(--club-primary-rgb),0.4)" : "1px solid rgba(255,255,255,0.12)",
+                  }}
+                  title={t.statsHelpTitle}
+                >
+                  i
+                </button>
+              )}
+            </div>
+            {!isGK && showStatsHelp && (
+              <div
+                className="rounded-xl px-3 py-2.5 mb-2 space-y-1"
+                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
+              >
+                <p className="text-white/60 text-[10px] font-semibold uppercase tracking-wider mb-1.5">{t.statsHelpTitle}</p>
+                {[t.statsHelpShots, t.statsHelpPasses, t.statsHelpDribbles, t.statsHelpRecLoss].map((line) => (
+                  <p key={line} className="text-white/45 text-[11px] leading-snug">{line}</p>
+                ))}
+              </div>
+            )}
             <div className="space-y-0">
               {[
                 ...(!isGK ? [
