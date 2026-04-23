@@ -8,6 +8,7 @@ COPY tsconfig.json tsconfig.base.json ./
 COPY lib/ ./lib/
 COPY artifacts/api-server/ ./artifacts/api-server/
 COPY artifacts/fc-career-manager/ ./artifacts/fc-career-manager/
+COPY artifacts/admin-panel/ ./artifacts/admin-panel/
 
 RUN pnpm install --frozen-lockfile
 
