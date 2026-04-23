@@ -1,5 +1,6 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
+import { rateLimit } from "express-rate-limit";
 import { db, usersTable, careersTable } from "@workspace/db";
 import { eq, isNull } from "drizzle-orm";
 import { requireAuth, signToken, type AuthRequest } from "../middleware/auth";
@@ -8,7 +9,15 @@ import type Stripe from "stripe";
 
 const router = Router();
 
-router.post("/auth/register", async (req, res) => {
+const authRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: { error: "Muitas tentativas. Tente novamente em 15 minutos." },
+});
+
+router.post("/auth/register", authRateLimit, async (req, res) => {
   try {
     const { email, password, name } = req.body as { email?: string; password?: string; name?: string };
 
@@ -51,7 +60,7 @@ router.post("/auth/register", async (req, res) => {
   }
 });
 
-router.post("/auth/login", async (req, res) => {
+router.post("/auth/login", authRateLimit, async (req, res) => {
   try {
     const { email, password } = req.body as { email?: string; password?: string };
 

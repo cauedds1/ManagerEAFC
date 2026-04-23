@@ -1,5 +1,6 @@
 import express, { type Express } from "express";
 import cors from "cors";
+import helmet from "helmet";
 import pinoHttp from "pino-http";
 import path from "path";
 import { existsSync } from "fs";
@@ -10,6 +11,14 @@ import { handleStripeEvent } from "./lib/stripeWebhook";
 import type Stripe from "stripe";
 
 const app: Express = express();
+
+const isProd = process.env.NODE_ENV === "production";
+
+app.use(helmet());
+
+const allowedOrigins = isProd
+  ? [process.env.FRONTEND_URL, process.env.ADMIN_URL].filter(Boolean) as string[]
+  : true;
 
 app.use(
   pinoHttp({
@@ -30,7 +39,7 @@ app.use(
     },
   }),
 );
-app.use(cors());
+app.use(cors({ origin: allowedOrigins, credentials: true }));
 
 app.post(
   "/api/stripe/webhook",
