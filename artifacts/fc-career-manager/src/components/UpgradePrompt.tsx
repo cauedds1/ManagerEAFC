@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Plan, getPlanLabel } from "@/lib/userPlan";
+import { useLang } from "@/hooks/useLang";
 
 interface UpgradePromptProps {
   currentPlan: Plan;
@@ -29,7 +30,7 @@ async function startStripeCheckout(requiredPlan: "pro" | "ultra"): Promise<void>
     headers: { Authorization: `Bearer ${token}` },
   });
 
-  if (!pricesRes.ok) { throw new Error("Não foi possível obter os planos disponíveis."); }
+  if (!pricesRes.ok) { throw new Error(readEffectiveLang() === "en" ? "Could not retrieve available plans." : "Não foi possível obter os planos disponíveis."); }
 
   const prices = await pricesRes.json() as Array<{ planTier: string; priceId: string; currency: string }>;
   const targetCurrency = readEffectiveLang() === "en" ? "usd" : "brl";
@@ -38,7 +39,7 @@ async function startStripeCheckout(requiredPlan: "pro" | "ultra"): Promise<void>
     console.warn(`[UpgradePrompt] No USD price found for ${requiredPlan}, falling back to BRL`);
   }
   const match = exactMatch ?? prices.find((p) => p.planTier === requiredPlan);
-  if (!match?.priceId) { throw new Error("Plano não encontrado. Verifique sua conexão."); }
+  if (!match?.priceId) { throw new Error(readEffectiveLang() === "en" ? "Plan not found. Check your connection." : "Plano não encontrado. Verifique sua conexão."); }
 
   const checkoutRes = await fetch(`${API_BASE}/stripe/checkout`, {
     method: "POST",
@@ -46,10 +47,10 @@ async function startStripeCheckout(requiredPlan: "pro" | "ultra"): Promise<void>
     body: JSON.stringify({ priceId: match.priceId }),
   });
 
-  if (!checkoutRes.ok) { throw new Error("Erro ao criar sessão de pagamento."); }
+  if (!checkoutRes.ok) { throw new Error(readEffectiveLang() === "en" ? "Error creating payment session." : "Erro ao criar sessão de pagamento."); }
 
   const { url } = await checkoutRes.json() as { url?: string };
-  if (!url) { throw new Error("URL de pagamento inválida."); }
+  if (!url) { throw new Error(readEffectiveLang() === "en" ? "Invalid payment URL." : "URL de pagamento inválida."); }
 
   window.location.href = url;
 }
@@ -61,6 +62,7 @@ function UpgradeButton({ accentColor, accentRgb, requiredPlan, requiredLabel, on
   requiredLabel: string;
   onUpgrade?: () => void;
 }) {
+  const [lang] = useLang();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -71,7 +73,7 @@ function UpgradeButton({ accentColor, accentRgb, requiredPlan, requiredLabel, on
     try {
       await startStripeCheckout(requiredPlan);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Erro inesperado. Tente novamente.");
+      setError(e instanceof Error ? e.message : (lang === "en" ? "Unexpected error. Try again." : "Erro inesperado. Tente novamente."));
       setLoading(false);
     }
   };
@@ -94,11 +96,11 @@ function UpgradeButton({ accentColor, accentRgb, requiredPlan, requiredLabel, on
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
             </svg>
-            Aguarde...
+            {lang === "en" ? "Please wait..." : "Aguarde..."}
           </>
         ) : (
           <>
-            Fazer upgrade para {requiredLabel}
+            {lang === "en" ? `Upgrade to ${requiredLabel}` : `Fazer upgrade para ${requiredLabel}`}
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
             </svg>
@@ -111,6 +113,7 @@ function UpgradeButton({ accentColor, accentRgb, requiredPlan, requiredLabel, on
 }
 
 export function UpgradePrompt({ currentPlan, requiredPlan, featureName, description, compact = false, onUpgrade }: UpgradePromptProps) {
+  const [lang] = useLang();
   const [compactLoading, setCompactLoading] = useState(false);
   const [compactError, setCompactError] = useState("");
   const requiredLabel = getPlanLabel(requiredPlan);
@@ -124,7 +127,7 @@ export function UpgradePrompt({ currentPlan, requiredPlan, featureName, descript
     try {
       await startStripeCheckout(requiredPlan);
     } catch (e) {
-      setCompactError(e instanceof Error ? e.message : "Erro. Tente novamente.");
+      setCompactError(e instanceof Error ? e.message : (lang === "en" ? "Error. Try again." : "Erro. Tente novamente."));
       setCompactLoading(false);
     }
   };
@@ -149,7 +152,11 @@ export function UpgradePrompt({ currentPlan, requiredPlan, featureName, descript
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-white/80 text-sm font-semibold leading-tight">{featureName}</p>
-            <p className="text-white/35 text-xs mt-0.5">Disponível no plano <span style={{ color: accentColor }} className="font-bold">{requiredLabel}</span></p>
+            <p className="text-white/35 text-xs mt-0.5">
+              {lang === "en"
+                ? <>Available on the <span style={{ color: accentColor }} className="font-bold">{requiredLabel}</span> plan</>
+                : <>Disponível no plano <span style={{ color: accentColor }} className="font-bold">{requiredLabel}</span></>}
+            </p>
           </div>
           <button
             onClick={handleCompactClick}
@@ -185,11 +192,13 @@ export function UpgradePrompt({ currentPlan, requiredPlan, featureName, descript
           className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold mb-3"
           style={{ background: `rgba(${accentRgb},0.12)`, color: accentColor, border: `1px solid rgba(${accentRgb},0.25)` }}
         >
-          Plano {requiredLabel}
+          {lang === "en" ? `${requiredLabel} plan` : `Plano ${requiredLabel}`}
         </div>
         <h3 className="text-white font-black text-xl mb-2">{featureName}</h3>
         <p className="text-white/35 text-sm leading-relaxed max-w-xs">
-          {description ?? `Esta funcionalidade está disponível a partir do plano ${requiredLabel}.`}
+          {description ?? (lang === "en"
+            ? `This feature is available from the ${requiredLabel} plan.`
+            : `Esta funcionalidade está disponível a partir do plano ${requiredLabel}.`)}
         </p>
       </div>
 
@@ -199,7 +208,9 @@ export function UpgradePrompt({ currentPlan, requiredPlan, featureName, descript
         className="rounded-2xl px-5 py-4 text-left w-full max-w-sm"
         style={{ background: `rgba(${accentRgb},0.06)`, border: `1px solid rgba(${accentRgb},0.15)` }}
       >
-        <p className="text-white/40 text-xs font-semibold uppercase tracking-wider mb-2">Seu plano atual</p>
+        <p className="text-white/40 text-xs font-semibold uppercase tracking-wider mb-2">
+          {lang === "en" ? "Your current plan" : "Seu plano atual"}
+        </p>
         <p className="text-white font-bold text-sm">{getPlanLabel(currentPlan)}</p>
       </div>
     </div>
