@@ -678,34 +678,65 @@ router.post("/admin/recover-career", async (req, res) => {
       // The deep scan (step 2a) looks for Career-type field names in all career_data values.
       // In the current app design, club/coach are stored only in the careers table and not
       // in career_data, so inferred values will typically be empty and defaults apply.
-      const careerInsert = await tx
-        .insert(careersTable)
-        .values({
-          id: careerId,
-          coachJson: JSON.stringify(body.coach ?? inferred.coach ?? coachFallback),
-          clubId: body.club_id ?? inferred.clubId ?? 0,
-          clubName: body.club_name ?? inferred.clubName ?? "Unknown Club",
-          clubLogo: body.club_logo ?? inferred.clubLogo ?? "",
-          clubLeague: body.club_league ?? inferred.clubLeague ?? "",
-          clubCountry: body.club_country ?? inferred.clubCountry ?? null,
-          clubStadium: body.club_stadium ?? inferred.clubStadium ?? null,
-          clubFounded: body.club_founded ?? inferred.clubFounded ?? null,
-          clubPrimary: body.club_primary ?? inferred.clubPrimary ?? null,
-          clubSecondary: body.club_secondary ?? inferred.clubSecondary ?? null,
-          clubDescription: body.club_description ?? inferred.clubDescription ?? null,
-          clubTitlesJson: body.club_titles ? JSON.stringify(body.club_titles) : null,
-          season: body.season ?? "",
-          projeto: body.projeto ?? null,
-          competitionsJson: competitionsFinal ? JSON.stringify(competitionsFinal) : null,
-          currentSeasonId: null,
-          userId: body.user_id ?? null,
-          createdAt: now,
-          updatedAt: now,
-        })
-        .onConflictDoNothing()
-        .returning({ id: careersTable.id });
+      const careerValues = {
+        id: careerId,
+        coachJson: JSON.stringify(body.coach ?? inferred.coach ?? coachFallback),
+        clubId: body.club_id ?? inferred.clubId ?? 0,
+        clubName: body.club_name ?? inferred.clubName ?? "Unknown Club",
+        clubLogo: body.club_logo ?? inferred.clubLogo ?? "",
+        clubLeague: body.club_league ?? inferred.clubLeague ?? "",
+        clubCountry: body.club_country ?? inferred.clubCountry ?? null,
+        clubStadium: body.club_stadium ?? inferred.clubStadium ?? null,
+        clubFounded: body.club_founded ?? inferred.clubFounded ?? null,
+        clubPrimary: body.club_primary ?? inferred.clubPrimary ?? null,
+        clubSecondary: body.club_secondary ?? inferred.clubSecondary ?? null,
+        clubDescription: body.club_description ?? inferred.clubDescription ?? null,
+        clubTitlesJson: body.club_titles ? JSON.stringify(body.club_titles) : null,
+        season: body.season ?? "",
+        projeto: body.projeto ?? null,
+        competitionsJson: competitionsFinal ? JSON.stringify(competitionsFinal) : null,
+        currentSeasonId: null as string | null,
+        userId: body.user_id ?? null,
+        createdAt: now,
+        updatedAt: now,
+      };
 
-      careerCreated = careerInsert.length > 0;
+      // Use upsert so re-running the recovery updates an existing (possibly incomplete) record.
+      // onConflictDoUpdate overwrites all mutable fields; createdAt is preserved from the original.
+      const existingBefore = await tx
+        .select({ id: careersTable.id })
+        .from(careersTable)
+        .where(eq(careersTable.id, careerId))
+        .limit(1);
+      const alreadyExists = existingBefore.length > 0;
+
+      await tx
+        .insert(careersTable)
+        .values(careerValues)
+        .onConflictDoUpdate({
+          target: careersTable.id,
+          set: {
+            coachJson: careerValues.coachJson,
+            clubId: careerValues.clubId,
+            clubName: careerValues.clubName,
+            clubLogo: careerValues.clubLogo,
+            clubLeague: careerValues.clubLeague,
+            clubCountry: careerValues.clubCountry,
+            clubStadium: careerValues.clubStadium,
+            clubFounded: careerValues.clubFounded,
+            clubPrimary: careerValues.clubPrimary,
+            clubSecondary: careerValues.clubSecondary,
+            clubDescription: careerValues.clubDescription,
+            clubTitlesJson: careerValues.clubTitlesJson,
+            season: careerValues.season,
+            projeto: careerValues.projeto,
+            competitionsJson: careerValues.competitionsJson,
+            userId: careerValues.userId,
+            updatedAt: now,
+          },
+        });
+
+      careerCreated = !alreadyExists;
 
       // 5b. Reconstruct seasons rows
       for (let i = 0; i < targetSeasonIds.length; i++) {
