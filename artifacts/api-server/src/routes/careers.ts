@@ -15,10 +15,21 @@ function isApiSportsUrl(url: string): boolean {
   return url.includes("media.api-sports.io");
 }
 
-async function cacheClubLogoInBackground(careerId: string, clubId: number, logoUrl: string): Promise<void> {
-  if (!isR2Configured() || !logoUrl || !isApiSportsUrl(logoUrl) || !clubId) return;
+async function cacheClubLogoInBackground(careerId: string, clubId: number, hintLogoUrl: string): Promise<void> {
+  if (!isR2Configured() || !clubId) return;
   try {
-    const r2Url = await cacheExternalImage(logoUrl, `cached-images/teams/${clubId}.png`);
+    // Use DB as source-of-truth for the logo URL (prevents caching incorrect client-provided URLs)
+    const [clubRow] = await db
+      .select({ logoUrl: clubsTable.logoUrl })
+      .from(clubsTable)
+      .where(eq(clubsTable.id, clubId))
+      .limit(1);
+
+    // Resolve: DB URL takes precedence over the client hint
+    const sourceUrl = clubRow?.logoUrl ?? hintLogoUrl;
+    if (!sourceUrl || !isApiSportsUrl(sourceUrl)) return; // Already R2 or empty
+
+    const r2Url = await cacheExternalImage(sourceUrl, `cached-images/teams/${clubId}.png`);
     if (r2Url) {
       await db.update(careersTable).set({ clubLogo: r2Url }).where(eq(careersTable.id, careerId));
       await db.update(clubsTable).set({ logoUrl: r2Url }).where(eq(clubsTable.id, clubId));

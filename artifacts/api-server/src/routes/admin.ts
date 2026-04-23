@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, clubsTable, squadPlayersTable, careersTable, seasonsTable, careerDataTable, seasonDataTable } from "@workspace/db";
+import { db, clubsTable, squadPlayersTable, careersTable, seasonsTable, careerDataTable, seasonDataTable, clubInfoCacheTable } from "@workspace/db";
 import { sql, eq, notInArray } from "drizzle-orm";
 import { mapPosition, AF_TO_FC26 } from "../lib/positions";
 import { isR2Configured, cacheExternalImage } from "../lib/r2Storage";
@@ -812,8 +812,11 @@ router.post("/admin/recover-career", async (req, res) => {
   }
 });
 
-// GET /admin/cache-league-logos — SSE stream that caches all known league logos to R2
-router.get("/admin/cache-league-logos", async (req, res) => {
+const R2_LEAGUE_LOGOS_CACHE_KEY = "r2-league-logos";
+
+// POST /admin/cache-league-logos — SSE stream that caches all known league logos to R2
+// Persists successfully cached league IDs in club_info_cache for the /api/league-logos endpoint.
+router.post("/admin/cache-league-logos", async (req, res) => {
   const adminSecret = process.env.ADMIN_SECRET;
   if (!adminSecret || req.headers["x-admin-secret"] !== adminSecret) {
     res.status(401).json({ error: "Unauthorized" });
@@ -840,8 +843,8 @@ router.get("/admin/cache-league-logos", async (req, res) => {
   const leagueIds = Object.keys(LEAGUE_MAP).map(Number);
   const total = leagueIds.length;
   let cached = 0;
-  let skipped = 0;
   let failed = 0;
+  const successfulIds: number[] = [];
 
   emit({ type: "start", total, message: `Iniciando cache de ${total} logos de ligas no R2...` });
 
@@ -852,6 +855,7 @@ router.get("/admin/cache-league-logos", async (req, res) => {
       const r2Url = await cacheExternalImage(sourceUrl, r2Key);
       if (r2Url) {
         cached++;
+        successfulIds.push(leagueId);
         emit({ type: "cached", leagueId, r2Url, leagueName: LEAGUE_MAP[leagueId] });
       } else {
         failed++;
@@ -864,12 +868,25 @@ router.get("/admin/cache-league-logos", async (req, res) => {
     await sleep(DELAY_MS);
   }
 
-  emit({ type: "done", cached, skipped, failed, total, message: `Concluído! ${cached} logos salvos, ${failed} falhas.` });
+  // Persist successfully cached league IDs so /api/league-logos can serve R2 URLs
+  if (successfulIds.length > 0) {
+    try {
+      const record = JSON.stringify({ cachedIds: successfulIds, cachedAt: Date.now() });
+      await db
+        .insert(clubInfoCacheTable)
+        .values({ cacheKey: R2_LEAGUE_LOGOS_CACHE_KEY, description: record, titlesJson: "[]", createdAt: Date.now() })
+        .onConflictDoUpdate({ target: clubInfoCacheTable.cacheKey, set: { description: record } });
+    } catch (err) {
+      console.error("[admin] Failed to persist league logo cache record:", err);
+    }
+  }
+
+  emit({ type: "done", cached, failed, total, message: `Concluído! ${cached} logos salvos, ${failed} falhas.` });
   res.end();
 });
 
-// GET /admin/cache-club-logos — SSE stream that caches all club logos from DB to R2
-router.get("/admin/cache-club-logos", async (req, res) => {
+// POST /admin/cache-club-logos — SSE stream that caches all club logos from DB to R2
+router.post("/admin/cache-club-logos", async (req, res) => {
   const adminSecret = process.env.ADMIN_SECRET;
   if (!adminSecret || req.headers["x-admin-secret"] !== adminSecret) {
     res.status(401).json({ error: "Unauthorized" });

@@ -80,6 +80,19 @@ async function buildAndSaveSquad(teamId: number): Promise<SquadPlayerBody[] | nu
   if (!players || players.length === 0) return null;
 
   const cachedAt = Date.now();
+
+  // Preserve any existing R2 photo URLs — never downgrade a cached R2 URL back to api-sports.io
+  const existingRows = await db
+    .select({ playerId: squadPlayersTable.playerId, photo: squadPlayersTable.photo })
+    .from(squadPlayersTable)
+    .where(eq(squadPlayersTable.teamId, teamId));
+  const existingR2Photos = new Map<number, string>();
+  for (const row of existingRows) {
+    if (row.photo && !row.photo.includes("media.api-sports.io")) {
+      existingR2Photos.set(row.playerId, row.photo);
+    }
+  }
+
   const values = players.map((p) => ({
     teamId,
     playerId: p.id,
@@ -87,7 +100,8 @@ async function buildAndSaveSquad(teamId: number): Promise<SquadPlayerBody[] | nu
     age: p.age ?? 0,
     position: p.position,
     positionPtBr: p.positionPtBr,
-    photo: p.photo ?? "",
+    // Restore R2 URL if this player already had one cached
+    photo: existingR2Photos.get(p.id) ?? p.photo ?? "",
     playerNumber: p.number ?? null,
     source: "api-football@v2",
     cachedAt,
@@ -101,8 +115,12 @@ async function buildAndSaveSquad(teamId: number): Promise<SquadPlayerBody[] | nu
     }
   });
 
-  if (isR2Configured()) {
-    cacheSquadPhotosInBackground(teamId, players).catch(() => {});
+  // Only trigger background caching for players whose photo still points to api-sports.io
+  const playersNeedingCache = players.filter(
+    (p) => !existingR2Photos.has(p.id) && p.photo && p.photo.includes("media.api-sports.io"),
+  );
+  if (isR2Configured() && playersNeedingCache.length > 0) {
+    cacheSquadPhotosInBackground(teamId, playersNeedingCache).catch(() => {});
   }
 
   return players;
