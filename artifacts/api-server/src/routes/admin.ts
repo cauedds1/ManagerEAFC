@@ -702,15 +702,11 @@ router.post("/admin/recover-career", async (req, res) => {
       };
 
       // Use upsert so re-running the recovery updates an existing (possibly incomplete) record.
-      // onConflictDoUpdate overwrites all mutable fields; createdAt is preserved from the original.
-      const existingBefore = await tx
-        .select({ id: careersTable.id })
-        .from(careersTable)
-        .where(eq(careersTable.id, careerId))
-        .limit(1);
-      const alreadyExists = existingBefore.length > 0;
-
-      await tx
+      // onConflictDoUpdate overwrites all mutable fields; createdAt is intentionally NOT in
+      // the set clause so it stays as the original insert timestamp.
+      // Insert vs update is detected via returning(): if returned createdAt === now, it was
+      // a fresh insert; if it differs, it was an update that preserved the original createdAt.
+      const upsertResult = await tx
         .insert(careersTable)
         .values(careerValues)
         .onConflictDoUpdate({
@@ -734,9 +730,12 @@ router.post("/admin/recover-career", async (req, res) => {
             userId: careerValues.userId,
             updatedAt: now,
           },
-        });
+        })
+        .returning({ id: careersTable.id, createdAt: careersTable.createdAt });
 
-      careerCreated = !alreadyExists;
+      // If createdAt in the returned row equals `now`, the row was just inserted.
+      // On an update, createdAt remains the original value (not in the set clause).
+      careerCreated = upsertResult[0]?.createdAt === now;
 
       // 5b. Reconstruct seasons rows
       for (let i = 0; i < targetSeasonIds.length; i++) {
