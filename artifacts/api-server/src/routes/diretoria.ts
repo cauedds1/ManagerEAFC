@@ -434,19 +434,41 @@ router.post("/diretoria/generate-member", requireAuth, async (req: AuthRequest, 
     return;
   }
 
-  const { roleLabel, personalityStyle, clubName, clubLeague, extraTraits, lang: memberLang } = req.body as {
+  const { roleLabel, personalityStyle, clubName, clubLeague, clubCountry, extraTraits, lang: memberLang } = req.body as {
     roleLabel: string;
     personalityStyle: string;
     clubName: string;
     clubLeague: string;
+    clubCountry?: string;
     extraTraits?: string;
     lang?: string;
   };
 
   const tier = clubTierFromLeague(clubLeague);
 
+  const COUNTRY_NAME_STYLE: Record<string, string> = {
+    Brazil: "brasileiro (ex: João Silva, Carlos Eduardo Santos, Pedro Henrique Menezes)",
+    England: "inglês ou britânico (ex: James Harrison, Robert Clarke, David Wilson)",
+    Spain: "espanhol (ex: Alejandro García, Carlos Martínez, Javier Romero)",
+    Italy: "italiano (ex: Marco Rossi, Luca Colombo, Francesco Bruno)",
+    Germany: "alemão (ex: Klaus Werner, Jürgen Hoffmann, Stefan Bauer)",
+    France: "francês (ex: Jean-Pierre Moreau, Philippe Lambert, Michel Dupont)",
+    Portugal: "português (ex: João Ferreira, Rui Pinto, Pedro Sousa)",
+    Netherlands: "holandês (ex: Jan van der Berg, Pieter Visser, Johan Smit)",
+    Argentina: "argentino (ex: Diego Rodríguez, Martín González, Pablo Álvarez)",
+    Mexico: "mexicano (ex: Alejandro Torres, Carlos Morales, Roberto Gutiérrez)",
+    Turkey: "turco (ex: Ahmet Yilmaz, Mehmet Demir, Mustafa Kaya)",
+    Russia: "russo (ex: Alexei Petrov, Dmitri Volkov, Igor Sokolov)",
+    "United States": "americano (ex: Robert Johnson, Michael Davis, James Anderson)",
+    China: "chinês (ex: Wei Zhang, Jian Li, Ming Wang)",
+    Japan: "japonês (ex: Hiroshi Tanaka, Kenji Suzuki, Yuki Yamamoto)",
+    Scotland: "escocês (ex: Alistair MacDonald, Cameron Fraser, Duncan McLean)",
+  };
+
+  const nameStyle = COUNTRY_NAME_STYLE[clubCountry ?? ""] ?? "coerente com o país do clube (nome real e comum da cultura local)";
+
   const memberLangInstruction = memberLang === "en"
-    ? "\n\nCRITICAL: Write the description field entirely in English. Keep the name in Brazilian Portuguese style. Do NOT write the description in Portuguese."
+    ? "\n\nCRITICAL: Write the description field entirely in English. The name must still follow the nationality style above. Do NOT write the description in Portuguese."
     : "";
 
   const systemPrompt = `Você é um criador de personagens para simuladores de futebol. Crie personagens realistas, complexos e coerentes com o contexto do clube.${memberLangInstruction}`;
@@ -456,10 +478,11 @@ router.post("/diretoria/generate-member", requireAuth, async (req: AuthRequest, 
 CARGO: ${roleLabel}
 ESTILO DE PERSONALIDADE: ${personalityStyle}
 CLUBE: ${clubName} — ${clubLeague} (${tier})
+PAÍS DO CLUBE: ${clubCountry ?? "não especificado"}
 ${extraTraits ? `TRAÇOS EXTRAS: ${extraTraits}` : ""}
 
 REGRAS:
-- Nome brasileiro real e comum (não inventar sobrenomes estrangeiros)
+- Nome ${nameStyle} — não use nomes de outros países sem motivo cultural
 - A descrição deve ter 3-5 frases: como age, o que prioriza, como reage a resultados ruins/bons, nível de paciência, peculiaridades
 - Paciência coerente com o estilo (conservador/diplomático = mais paciente; agressivo/exigente = menos)
 - O personagem deve ser ÚNICO e ter nuances — evite clichês simples

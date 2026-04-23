@@ -316,9 +316,11 @@ export function NoticiaPost({ post, portalPhotos, customPortals, onUpdateImage, 
 
   const lines = post.content.split("\n");
 
-  const postPhotoUrl = post.source === "custom"
-    ? customPortal?.photo
-    : (portalPhotos?.[post.source as keyof PortalPhotos] || PORTAL_DEFAULT_PHOTOS[post.source as keyof PortalPhotos]);
+  const postPhotoUrl = post.sourcePhotoUrl
+    ? post.sourcePhotoUrl
+    : post.source === "custom"
+      ? customPortal?.photo
+      : (portalPhotos?.[post.source as keyof PortalPhotos] || PORTAL_DEFAULT_PHOTOS[post.source as keyof PortalPhotos]);
 
   const displayImageUrl = localImageUrl ?? post.imageUrl ?? null;
   const hasEditActions = !!onUpdateImage || !!onDelete || !!onRefresh;

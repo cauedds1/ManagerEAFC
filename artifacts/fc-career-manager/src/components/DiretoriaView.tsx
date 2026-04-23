@@ -254,6 +254,7 @@ function CreateMemberModal({ career, membersCount, onClose, onCreated, effective
           personalityStyle,
           clubName: career.clubName,
           clubLeague: effectiveLeague ?? career.clubLeague,
+          clubCountry: career.clubCountry,
           extraTraits: extraTraits.trim() || undefined,
           lang: localStorage.getItem("fc_lang") ?? "pt",
         }),
@@ -685,6 +686,11 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
     if (!chatInput.trim() || !selectedMemberId || isTyping) return;
     const member = members.find((m) => m.id === selectedMemberId);
     if (!member) return;
+
+    if (member.messageLimit !== undefined) {
+      const sentCount = (conversations[selectedMemberId] ?? []).filter((m) => m.role === "user").length;
+      if (sentCount >= member.messageLimit) return;
+    }
 
     const userMsg: DiretoriaMessage = {
       id: generateMessageId(),
@@ -1238,32 +1244,57 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
               </div>
             )}
 
-            <div
-              className="flex items-end gap-2 px-4 py-3 flex-shrink-0"
-              style={{ borderTop: "1px solid var(--surface-border)", paddingBottom: keyboardOffset > 0 ? keyboardOffset + 12 : "calc(12px + env(safe-area-inset-bottom))" }}
-            >
-              <textarea
-                ref={chatInputRef}
-                value={chatInput}
-                onChange={(e) => setChatInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendChat(); }
-                }}
-                placeholder={t.chatPlaceholder.replace("{name}", selectedMember.name)}
-                rows={1}
-                disabled={isTyping}
-                className="flex-1 px-3 py-2.5 rounded-xl text-sm text-white placeholder-white/25 resize-none glass disabled:opacity-50"
-                style={{ border: "1px solid var(--surface-border)", outline: "none", background: "rgba(255,255,255,0.05)", maxHeight: 100, fontSize: 16 }}
-              />
-              <button
-                onClick={handleSendChat}
-                disabled={isTyping || !chatInput.trim()}
-                className="flex-shrink-0 flex items-center justify-center w-10 h-10 rounded-xl transition-all hover:scale-[1.05] active:scale-[0.95] disabled:opacity-40"
-                style={{ background: "rgba(var(--club-primary-rgb),0.2)", color: "var(--club-primary)", border: "1px solid rgba(var(--club-primary-rgb),0.3)" }}
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
-              </button>
-            </div>
+            {(() => {
+              const sentCount = selectedMemberId ? (conversations[selectedMemberId] ?? []).filter((m) => m.role === "user").length : 0;
+              const msgLimit = selectedMember?.messageLimit;
+              const limitReached = msgLimit !== undefined && sentCount >= msgLimit;
+              const remaining = msgLimit !== undefined ? Math.max(0, msgLimit - sentCount) : null;
+              return (
+                <div
+                  className="flex-shrink-0"
+                  style={{ borderTop: "1px solid var(--surface-border)" }}
+                >
+                  {msgLimit !== undefined && (
+                    <div className="flex items-center justify-end px-4 pt-2">
+                      <span
+                        className="text-[10px] font-semibold"
+                        style={{ color: limitReached ? "#f87171" : remaining !== null && remaining <= 3 ? "#fbbf24" : "rgba(255,255,255,0.3)" }}
+                      >
+                        {limitReached
+                          ? "Limite de mensagens atingido"
+                          : `${remaining} mensagem${remaining === 1 ? "" : "s"} restante${remaining === 1 ? "" : "s"}`}
+                      </span>
+                    </div>
+                  )}
+                  <div
+                    className="flex items-end gap-2 px-4 py-3"
+                    style={{ paddingBottom: keyboardOffset > 0 ? keyboardOffset + 12 : "calc(12px + env(safe-area-inset-bottom))" }}
+                  >
+                    <textarea
+                      ref={chatInputRef}
+                      value={chatInput}
+                      onChange={(e) => setChatInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendChat(); }
+                      }}
+                      placeholder={limitReached ? "Esta conversa chegou ao limite de mensagens." : t.chatPlaceholder.replace("{name}", selectedMember.name)}
+                      rows={1}
+                      disabled={isTyping || limitReached}
+                      className="flex-1 px-3 py-2.5 rounded-xl text-sm text-white placeholder-white/25 resize-none glass disabled:opacity-50"
+                      style={{ border: "1px solid var(--surface-border)", outline: "none", background: "rgba(255,255,255,0.05)", maxHeight: 100, fontSize: 16 }}
+                    />
+                    <button
+                      onClick={handleSendChat}
+                      disabled={isTyping || !chatInput.trim() || limitReached}
+                      className="flex-shrink-0 flex items-center justify-center w-10 h-10 rounded-xl transition-all hover:scale-[1.05] active:scale-[0.95] disabled:opacity-40"
+                      style={{ background: "rgba(var(--club-primary-rgb),0.2)", color: "var(--club-primary)", border: "1px solid rgba(var(--club-primary-rgb),0.3)" }}
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         )}
 

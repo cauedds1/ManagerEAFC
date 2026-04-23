@@ -30,6 +30,7 @@ import { copyPlayerMoodsToNewSeason, getAllPlayerStats } from "@/lib/playerStats
 import { getLeaguePosition } from "@/lib/leagueStorage";
 import { runAutoNews, runRumorNews, runPromotionRelegationNews, leagueTierLevel } from "@/lib/autoNewsService";
 import type { NewsPost, NewsSource, NewsCategory } from "@/types/noticias";
+import type { BoardMember, DiretoriaMessage } from "@/types/diretoria";
 import { PainelView } from "./PainelView";
 import { ClubeView, FC_ELENCO_TAB_VIEWED_EVENT } from "./ClubeView";
 import { TransferenciasView } from "./TransferenciasView";
@@ -46,6 +47,7 @@ import { ensureCareerAndSeason1, deleteCareer } from "@/lib/careerStorage";
 import { syncSeasonFromDb, syncCareerFromDb } from "@/lib/dbSync";
 import {
   getMembers,
+  addMember,
   getConversation,
   saveConversation,
   addNotification,
@@ -53,8 +55,10 @@ import {
   setMemberCooldown,
   setPendingMeetingTrigger,
   generateMessageId,
+  generateMemberId,
   FC_BOARD_MEMBER_ADDED_EVENT,
 } from "@/lib/diretoriaStorage";
+import { getClubPresident, buildFallbackPresident } from "@/lib/clubPresidents";
 import { FC_MOMENTO_SAVED_EVENT } from "@/lib/momentoStorage";
 import { CUSTOM_PORTALS_EVENT } from "@/lib/customPortalStorage";
 import { getFinanceiroSettings, computeFinancialSnapshot } from "@/lib/financeiroStorage";
@@ -80,7 +84,9 @@ import {
   setSeenPlan,
   completeMission,
   isMissionComplete,
+  allMissionsForPlanDone,
   getPlanDeltaMissions,
+  FC_MISSION_COMPLETE_EVENT,
 } from "@/lib/missionStorage";
 
 interface DashboardProps {
@@ -659,6 +665,109 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     window.addEventListener(CUSTOM_PORTALS_EVENT, handler);
     return () => window.removeEventListener(CUSTOM_PORTALS_EVENT, handler);
   }, [career.id, userPlan]);
+
+  useEffect(() => {
+    const handler = (_e: Event) => {
+      void _e;
+
+      if (allMissionsForPlanDone(career.id, "free")) {
+        const freeGuardKey = `fc_free_unlock_fired_${career.id}`;
+        if (!localStorage.getItem(freeGuardKey)) {
+          localStorage.setItem(freeGuardKey, "1");
+
+          const existingMembers = getMembers(career.id);
+          const alreadyHasPresidente = existingMembers.some((m) => m.role === "presidente");
+          if (!alreadyHasPresidente) {
+            const presData = getClubPresident(career.clubId) ?? buildFallbackPresident(career.clubId, career.clubCountry);
+            const newMember: BoardMember = {
+              id: generateMemberId(),
+              name: presData.name,
+              role: "presidente",
+              roleLabel: "Presidente",
+              description: presData.description,
+              personalityStyle: presData.personality,
+              patience: presData.patience,
+              mood: "bom",
+              avatarColor: `#8B5CF6`,
+              createdAt: Date.now(),
+              messageLimit: 15,
+            };
+            addMember(career.id, newMember);
+
+            const introContent = `Olá, treinador! Sou ${presData.name}, presidente do ${career.clubName}. Você completou todas as missões iniciais — isso mostra comprometimento e estamos no caminho certo. Parabéns! Vou estar aqui sempre que precisar conversar sobre o clube. Tenho grandes expectativas para o nosso trabalho juntos.`;
+            const introMsg: DiretoriaMessage = {
+              id: generateMessageId(),
+              role: "character",
+              content: introContent,
+              timestamp: Date.now(),
+            };
+            saveConversation(career.id, newMember.id, [introMsg]);
+            addNotification(career.id, { memberId: newMember.id, preview: introContent, triggeredAt: Date.now() });
+          }
+
+          const welcomePost: NewsPost = {
+            id: generatePostId(),
+            careerId: career.id,
+            source: "custom",
+            sourceHandle: "@fccareerapp",
+            sourceName: "FC Career Manager",
+            sourcePhotoUrl: "/fcm-logo.png",
+            content: `🎉 Bem-vindo ao FC Career Manager!\n\nVocê acaba de completar as missões iniciais e está oficialmente dentro da experiência completa. A partir de agora, você pode acompanhar resultados, gerenciar transferências, gerar notícias, interagir com a diretoria do clube e muito mais.\n\nEssa é só o começo da sua carreira. Continue evoluindo, treinador — o futebol espera por você! ⚽`,
+            likes: Math.floor(Math.random() * 300) + 150,
+            commentsCount: 0,
+            sharesCount: Math.floor(Math.random() * 50) + 10,
+            comments: [],
+            createdAt: Date.now(),
+            category: "conquista",
+          };
+          addNewsPost(activeSeasonId, welcomePost);
+        }
+      }
+
+      if ((userPlan === "pro" || userPlan === "ultra") && allMissionsForPlanDone(career.id, "pro")) {
+        const proGuardKey = `fc_pro_congrats_fired_${career.id}`;
+        if (!localStorage.getItem(proGuardKey)) {
+          localStorage.setItem(proGuardKey, "1");
+          const president = getMembers(career.id).find((m) => m.role === "presidente");
+          if (president) {
+            const content = `Parabéns, treinador! Você concluiu todas as missões do plano e demonstrou alto nível de comprometimento com o ${career.clubName}. O clube está evoluindo e estou muito satisfeito com o seu trabalho. Continue nesse ritmo — grandes conquistas estão por vir!`;
+            const congratsMsg: DiretoriaMessage = {
+              id: generateMessageId(),
+              role: "character",
+              content,
+              timestamp: Date.now(),
+            };
+            const existing = getConversation(career.id, president.id);
+            saveConversation(career.id, president.id, [...existing, congratsMsg]);
+            addNotification(career.id, { memberId: president.id, preview: content, triggeredAt: Date.now() });
+          }
+        }
+      }
+
+      if (userPlan === "ultra" && allMissionsForPlanDone(career.id, "ultra")) {
+        const ultraGuardKey = `fc_ultra_congrats_fired_${career.id}`;
+        if (!localStorage.getItem(ultraGuardKey)) {
+          localStorage.setItem(ultraGuardKey, "1");
+          const president = getMembers(career.id).find((m) => m.role === "presidente");
+          if (president) {
+            const content = `Impressionante, treinador! Você completou todas as missões no mais alto nível. O ${career.clubName} tem um técnico de elite no comando. A torcida e toda a diretoria estão orgulhosas do que você construiu aqui. Continue com essa dedicação — o futuro deste clube é brilhante!`;
+            const congratsMsg: DiretoriaMessage = {
+              id: generateMessageId(),
+              role: "character",
+              content,
+              timestamp: Date.now(),
+            };
+            const existing = getConversation(career.id, president.id);
+            saveConversation(career.id, president.id, [...existing, congratsMsg]);
+            addNotification(career.id, { memberId: president.id, preview: content, triggeredAt: Date.now() });
+          }
+        }
+      }
+    };
+
+    window.addEventListener(FC_MISSION_COMPLETE_EVENT, handler);
+    return () => window.removeEventListener(FC_MISSION_COMPLETE_EVENT, handler);
+  }, [career.id, career.clubId, career.clubName, career.clubCountry, userPlan, activeSeasonId]);
 
   const cachedPhotoMap = useMemo(() => {
     const map = new Map<number, string>();

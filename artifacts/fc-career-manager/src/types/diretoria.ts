@@ -21,6 +21,8 @@ export interface BoardMember {
   mood: MoodLevel;
   avatarColor: string;
   createdAt: number;
+  messageLimit?: number;
+  userMessagesSent?: number;
 }
 
 export interface DiretoriaMessage {

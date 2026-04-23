@@ -53,4 +53,5 @@ export interface NewsPost {
   category: NewsCategory;
   customPortalId?: string;
   postTag?: PostTag;
+  sourcePhotoUrl?: string;
 }
