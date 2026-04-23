@@ -527,7 +527,7 @@ function PainelMockup({ t }: { t: Record<string, string> }) {
 
 function PartidaMockup({ homeScore, awayScore, onChangeHome, onChangeAway, t }: { homeScore: number; awayScore: number; onChangeHome: (d: number) => void; onChangeAway: (d: number) => void; t: Record<string, string> }) {
   const diff = homeScore - awayScore;
-  const headline = diff > 2 ? t.mockupMatchBig : diff === 1 ? t.mockupMatchWin : diff === 0 ? t.mockupMatchDraw : diff < -1 ? t.mockupMatchBigLoss : t.mockupMatchLoss;
+  const headline = diff >= 2 ? t.mockupMatchBig : diff === 1 ? t.mockupMatchWin : diff === 0 ? t.mockupMatchDraw : diff <= -2 ? t.mockupMatchBigLoss : t.mockupMatchLoss;
 
   return (
     <div style={{ background: "#0d0d1a", borderRadius: 12, overflow: "hidden", border: "1px solid rgba(124,92,252,0.2)" }}>
