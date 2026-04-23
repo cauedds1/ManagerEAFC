@@ -5,7 +5,8 @@ import { getMatchResult, getMatchResultFull, RESULT_STYLE, LOCATION_ICONS, GOAL_
 import { PARTIDAS, getLocationLabel, getGoalTypeLabel, getResultPill, matchDateLocale } from "@/lib/i18n";
 import { useLang } from "@/hooks/useLang";
 import { getAllMatchesForCareer } from "@/lib/matchStorage";
-import type { SquadPlayer } from "@/lib/squadCache";
+import type { SquadPlayer, PositionPtBr } from "@/lib/squadCache";
+import { PT_BR_TO_POSITION } from "@/lib/squadCache";
 import { getCachedClubList } from "@/lib/clubListCache";
 import { searchStaticClubs } from "@/lib/staticClubList";
 import { FootballPitch, pickBestEleven } from "./FootballPitch";
@@ -482,6 +483,30 @@ export function MatchDetailPage({
   const [rivalCrestFlipped, setRivalCrestFlipped] = useState(false);
   const [showH2H, setShowH2H] = useState(false);
 
+  const resolvedPlayers = useMemo<SquadPlayer[]>(() => {
+    if (!match.playerSnapshot) return allPlayers;
+    const knownIds = new Set(allPlayers.map((p) => p.id));
+    const extras: SquadPlayer[] = [];
+    for (const [idStr, snap] of Object.entries(match.playerSnapshot)) {
+      const id = Number(idStr);
+      if (!knownIds.has(id)) {
+        const validPos: PositionPtBr = (["GOL", "DEF", "MID", "ATA"] as const).includes(snap.positionPtBr as PositionPtBr)
+          ? (snap.positionPtBr as PositionPtBr)
+          : "MID";
+        extras.push({
+          id,
+          name: snap.name,
+          photo: snap.photo,
+          positionPtBr: validPos,
+          position: PT_BR_TO_POSITION[validPos] ?? "Midfielder",
+          number: snap.number,
+          age: 0,
+        });
+      }
+    }
+    return extras.length > 0 ? [...allPlayers, ...extras] : allPlayers;
+  }, [allPlayers, match.playerSnapshot]);
+
   const h2hMatches = useMemo(() => {
     if (!careerId) return [];
     const opponent = match.opponent.toLowerCase().trim();
@@ -567,13 +592,13 @@ export function MatchDetailPage({
 
   const motmPlayer =
     match.motmPlayerId != null
-      ? allPlayers.find((p) => p.id === match.motmPlayerId)
+      ? resolvedPlayers.find((p) => p.id === match.motmPlayerId)
       : null;
   const motmDisplayName = motmPlayer?.name ?? match.motmPlayerName ?? null;
   const motmPhoto = motmPlayer?.photo;
 
   const starters = match.starterIds
-    .map((id) => allPlayers.find((p) => p.id === id))
+    .map((id) => resolvedPlayers.find((p) => p.id === id))
     .filter((p): p is SquadPlayer => !!p);
 
   const sortedStarterIds = pickBestEleven(starters);
@@ -584,7 +609,7 @@ export function MatchDetailPage({
   }
 
   const subs = match.subIds
-    .map((id) => allPlayers.find((p) => p.id === id))
+    .map((id) => resolvedPlayers.find((p) => p.id === id))
     .filter((p): p is SquadPlayer => !!p);
 
   const myPoss = match.matchStats.possessionPct;
@@ -593,14 +618,14 @@ export function MatchDetailPage({
   const goalsByPlayer: { player: SquadPlayer; goals: GoalEntry[] }[] = [];
   for (const pid of match.starterIds) {
     const stats = match.playerStats[pid];
-    const player = allPlayers.find((p) => p.id === pid);
+    const player = resolvedPlayers.find((p) => p.id === pid);
     if (stats && player && stats.goals.length > 0) {
       goalsByPlayer.push({ player, goals: stats.goals });
     }
   }
   for (const pid of match.subIds) {
     const stats = match.playerStats[pid];
-    const player = allPlayers.find((p) => p.id === pid);
+    const player = resolvedPlayers.find((p) => p.id === pid);
     if (stats && player && stats.goals.length > 0) {
       goalsByPlayer.push({ player, goals: stats.goals });
     }
@@ -611,8 +636,8 @@ export function MatchDetailPage({
   for (const sid of match.starterIds) {
     const stats = match.playerStats[sid];
     if (stats?.substituted && stats.substitutedAtMinute != null && stats.substitutedInPlayerId != null) {
-      const goingOff = allPlayers.find((p) => p.id === sid);
-      const comingOn = allPlayers.find((p) => p.id === stats.substitutedInPlayerId);
+      const goingOff = resolvedPlayers.find((p) => p.id === sid);
+      const comingOn = resolvedPlayers.find((p) => p.id === stats.substitutedInPlayerId);
       if (goingOff && comingOn) {
         subEvents.push({ goingOff, comingOn, minute: stats.substitutedAtMinute });
       }
@@ -819,7 +844,7 @@ export function MatchDetailPage({
           <p className="text-white/30 text-[10px] font-bold tracking-widest uppercase mb-2">{t.startersSection}</p>
           {starters.length > 0 ? (
             <FootballPitch
-              players={allPlayers}
+              players={resolvedPlayers}
               starterIds={sortedStarterIds}
               ratings={playerRatings}
               onPlayerClick={setSelectedPlayer}
@@ -1272,7 +1297,7 @@ export function MatchDetailPage({
           </div>
           <div className="flex flex-col gap-1.5">
             {match.penaltyShootout.kicks.map((kick, i) => {
-              const kPlayer = kick.playerId != null ? allPlayers.find((p) => p.id === kick.playerId) : null;
+              const kPlayer = kick.playerId != null ? resolvedPlayers.find((p) => p.id === kick.playerId) : null;
               const kName = kPlayer ? kPlayer.name : t.unknownPlayer;
               return (
                 <div key={i} className="flex items-center gap-2">
@@ -1310,7 +1335,7 @@ export function MatchDetailPage({
         <PlayerDetailPanel
           player={selectedPlayer}
           match={match}
-          allPlayers={allPlayers}
+          allPlayers={resolvedPlayers}
           onClose={() => setSelectedPlayer(null)}
         />
       )}

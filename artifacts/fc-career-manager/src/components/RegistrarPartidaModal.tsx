@@ -5,6 +5,7 @@ import { getAllCachedPlayers } from "@/lib/squadCache";
 import type {
   MatchRecord,
   PlayerMatchStats,
+  PlayerSnapshotEntry,
   MatchLocation,
   GoalEntry,
   OpponentGoalEntry,
@@ -1401,10 +1402,29 @@ export function RegistrarPartidaModal({
 
   const canSave = draft.opponent.trim().length > 0;
 
+  const buildPlayerSnapshot = useCallback((starterIds: number[], subIds: number[], motmPlayerId: number | null): Record<number, PlayerSnapshotEntry> => {
+    const snapshot: Record<number, PlayerSnapshotEntry> = {};
+    const ids = new Set([...starterIds, ...subIds]);
+    if (motmPlayerId != null) ids.add(motmPlayerId);
+    for (const id of ids) {
+      const p = allSystemPlayers.find((pl) => pl.id === id);
+      if (p) {
+        snapshot[id] = {
+          name: p.name,
+          photo: p.photo ?? "",
+          positionPtBr: p.positionPtBr,
+          number: p.number,
+        };
+      }
+    }
+    return snapshot;
+  }, [allSystemPlayers]);
+
   const handleConfirm = useCallback(() => {
     if (!canSave || saving) return;
     setSaving(true);
     if (isEditMode && editMatch) {
+      const playerSnapshot = buildPlayerSnapshot(draft.starterIds, draft.subIds, draft.motmPlayerId);
       const updated: MatchRecord = {
         ...editMatch,
         date: draft.date,
@@ -1430,11 +1450,13 @@ export function RegistrarPartidaModal({
         opponentLogoUrl: draft.opponentLogoUrl ?? undefined,
         hasExtraTime: draft.hasExtraTime || undefined,
         penaltyShootout: draft.penaltyShootout ?? undefined,
+        playerSnapshot: Object.keys(playerSnapshot).length > 0 ? playerSnapshot : editMatch.playerSnapshot,
       };
       updateMatch(seasonId, updated);
       onMatchUpdated?.(updated);
       onClose();
     } else {
+      const playerSnapshot = buildPlayerSnapshot(draft.starterIds, draft.subIds, draft.motmPlayerId);
       const match: MatchRecord = {
         id: generateMatchId(),
         careerId,
@@ -1464,6 +1486,7 @@ export function RegistrarPartidaModal({
         hasExtraTime: draft.hasExtraTime || undefined,
         penaltyShootout: draft.penaltyShootout ?? undefined,
         createdAt: Date.now(),
+        playerSnapshot: Object.keys(playerSnapshot).length > 0 ? playerSnapshot : undefined,
       };
       addMatch(seasonId, match);
       applyMatchToPlayerStats(seasonId, draft.starterIds, draft.subIds, draft.playerStats);
@@ -1471,7 +1494,7 @@ export function RegistrarPartidaModal({
       onMatchAdded(match);
       onClose();
     }
-  }, [canSave, saving, isEditMode, editMatch, seasonId, careerId, season, draft, onMatchAdded, onMatchUpdated, onClose]);
+  }, [canSave, saving, isEditMode, editMatch, seasonId, careerId, season, draft, buildPlayerSnapshot, onMatchAdded, onMatchUpdated, onClose]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };

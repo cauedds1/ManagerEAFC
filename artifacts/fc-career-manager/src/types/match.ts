@@ -110,6 +110,13 @@ export interface PenaltyShootout {
   goalkeeperSaves?: number;
 }
 
+export interface PlayerSnapshotEntry {
+  name: string;
+  photo: string;
+  positionPtBr: string;
+  number?: number;
+}
+
 export interface MatchRecord {
   id: string;
   careerId: string;
@@ -134,6 +141,7 @@ export interface MatchRecord {
   hasExtraTime?: boolean;
   penaltyShootout?: PenaltyShootout;
   createdAt: number;
+  playerSnapshot?: Record<number, PlayerSnapshotEntry>;
 }
 
 export function getMatchResult(myScore: number, opponentScore: number): MatchResult {
