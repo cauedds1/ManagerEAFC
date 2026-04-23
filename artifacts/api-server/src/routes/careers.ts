@@ -12,10 +12,15 @@ function generateId(): string {
 }
 
 function isApiSportsUrl(url: string): boolean {
-  return url.includes("media.api-sports.io");
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "https:" && parsed.hostname === "media.api-sports.io";
+  } catch {
+    return false;
+  }
 }
 
-async function cacheClubLogoInBackground(careerId: string, clubId: number, hintLogoUrl: string): Promise<void> {
+async function cacheClubLogoInBackground(careerId: string, clubId: number, hintLogoUrl?: string): Promise<void> {
   if (!isR2Configured() || !clubId) return;
   try {
     // Use DB as source-of-truth for the logo URL (prevents caching incorrect client-provided URLs)
@@ -25,9 +30,17 @@ async function cacheClubLogoInBackground(careerId: string, clubId: number, hintL
       .where(eq(clubsTable.id, clubId))
       .limit(1);
 
-    // Resolve: DB URL takes precedence over the client hint
-    const sourceUrl = clubRow?.logoUrl ?? hintLogoUrl;
-    if (!sourceUrl || !isApiSportsUrl(sourceUrl)) return; // Already R2 or empty
+    const dbLogoUrl = clubRow?.logoUrl;
+
+    // If club already has an R2 URL in DB, repair career to point at it (prevents downgrade)
+    if (dbLogoUrl && !isApiSportsUrl(dbLogoUrl)) {
+      await db.update(careersTable).set({ clubLogo: dbLogoUrl }).where(eq(careersTable.id, careerId));
+      return;
+    }
+
+    // Resolve source: DB URL takes precedence, then client hint
+    const sourceUrl = dbLogoUrl ?? hintLogoUrl;
+    if (!sourceUrl || !isApiSportsUrl(sourceUrl)) return;
 
     const r2Url = await cacheExternalImage(sourceUrl, `cached-images/teams/${clubId}.png`);
     if (r2Url) {
@@ -149,7 +162,7 @@ router.post("/careers", requireAuth, async (req: AuthRequest, res) => {
       })
       .onConflictDoNothing();
 
-    if (body.clubLogo && body.clubId) {
+    if (body.clubId) {
       cacheClubLogoInBackground(id, body.clubId, body.clubLogo).catch(() => {});
     }
 
@@ -209,7 +222,7 @@ router.put("/careers/:id", requireAuth, async (req: AuthRequest, res) => {
 
     await db.update(careersTable).set(patch).where(eq(careersTable.id, id));
 
-    if (body.clubLogo && body.clubId) {
+    if (body.clubId) {
       cacheClubLogoInBackground(id, body.clubId, body.clubLogo).catch(() => {});
     }
 
