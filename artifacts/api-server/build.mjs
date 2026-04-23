@@ -4,6 +4,8 @@ import { fileURLToPath } from "node:url";
 import { build as esbuild } from "esbuild";
 import esbuildPluginPino from "esbuild-plugin-pino";
 import { rm, cp } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { execSync } from "node:child_process";
 
 // Plugins (e.g. 'esbuild-plugin-pino') may use `require` to resolve dependencies
 globalThis.require = createRequire(import.meta.url);
@@ -116,6 +118,24 @@ globalThis.__dirname = __bannerPath.dirname(globalThis.__filename);
   });
 }
 
+async function buildAdminPanel(distDir) {
+  const adminPanelDir = path.resolve(artifactDir, "../admin-panel");
+  if (!existsSync(adminPanelDir)) {
+    console.log("Admin panel not found — skipping");
+    return;
+  }
+  console.log("Building admin panel...");
+  execSync("pnpm --filter @workspace/admin-panel exec vite build", {
+    env: { ...process.env, PORT: "3001", BASE_PATH: "/admin/", NODE_ENV: "production" },
+    stdio: "inherit",
+    cwd: path.resolve(artifactDir, "../.."),
+  });
+  const adminDist = path.resolve(adminPanelDir, "dist/public");
+  const dest = path.join(distDir, "admin-panel");
+  await cp(adminDist, dest, { recursive: true });
+  console.log("Copied admin panel →", dest);
+}
+
 async function copyStripeMigrations(distDir) {
   const req = createRequire(import.meta.url);
   const mainEntry = req.resolve("stripe-replit-sync");
@@ -125,8 +145,11 @@ async function copyStripeMigrations(distDir) {
   console.log("Copied stripe-replit-sync migrations →", dest);
 }
 
+const distDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "dist");
+
 buildAll()
-  .then(() => copyStripeMigrations(path.resolve(path.dirname(fileURLToPath(import.meta.url)), "dist")))
+  .then(() => copyStripeMigrations(distDir))
+  .then(() => buildAdminPanel(distDir))
   .catch((err) => {
     console.error(err);
     process.exit(1);

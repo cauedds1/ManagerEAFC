@@ -77,6 +77,17 @@ app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 app.use("/api", router);
 
+const adminDist =
+  process.env.ADMIN_DIST ??
+  path.resolve(__dirname, "admin-panel");
+
+if (existsSync(adminDist)) {
+  app.use("/admin", express.static(adminDist));
+  app.get(["/admin", "/admin/{*path}"], (_req, res) => {
+    res.sendFile(path.join(adminDist, "index.html"));
+  });
+}
+
 const frontendDist =
   process.env.FRONTEND_DIST ??
   path.resolve(__dirname, "../public");
