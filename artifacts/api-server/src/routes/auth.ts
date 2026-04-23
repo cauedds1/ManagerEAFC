@@ -69,7 +69,9 @@ router.post("/auth/login", async (req, res) => {
       return res.status(401).json({ error: "E-mail ou senha incorretos" });
     }
 
-    db.update(usersTable).set({ lastLoginAt: Date.now() }).where(eq(usersTable.id, user.id)).catch(() => {});
+    db.update(usersTable).set({ lastLoginAt: Date.now() }).where(eq(usersTable.id, user.id)).catch((err) => {
+      console.error("Failed to update last_login_at:", err);
+    });
 
     const token = signToken({ id: user.id, email: user.email, name: user.name, plan: user.plan });
     return res.json({
