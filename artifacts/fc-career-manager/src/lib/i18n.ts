@@ -2973,6 +2973,11 @@ export const DIRETORIA: Record<Lang, Record<string, string>> = {
     errChatConnection: "Não consegui responder agora. Verifique sua conexão e tente novamente.",
     errMeetingAuth: "⚠️ Chave OpenAI não configurada. Acesse as configurações (ícone ⚙️) e adicione sua chave para usar a Diretoria.",
     errMeetingConnection: "⚠️ Erro ao conectar com a IA ({details}). Verifique sua chave OpenAI nas configurações e tente novamente.",
+    // Message limit (Presidente cap)
+    messageLimitReached: "Limite de mensagens atingido",
+    messageLimitPlaceholder: "Esta conversa chegou ao limite de mensagens.",
+    messagesRemaining: "{n} mensagem restante",
+    messagesRemainingPlural: "{n} mensagens restantes",
     // Upgrade prompt
     upgradeFeatureName: "Diretoria",
     upgradeDescription: "Converse com os diretores do clube, receba alertas sobre desempenho da equipe e negocie reforços. Disponível a partir do plano Pro.",
@@ -3101,6 +3106,11 @@ export const DIRETORIA: Record<Lang, Record<string, string>> = {
     errChatConnection: "Couldn't respond right now. Check your connection and try again.",
     errMeetingAuth: "⚠️ OpenAI key not configured. Go to settings (⚙️) and add your key to use the Board.",
     errMeetingConnection: "⚠️ Failed to connect to AI ({details}). Check your OpenAI key in settings and try again.",
+    // Message limit (Presidente cap)
+    messageLimitReached: "Message limit reached",
+    messageLimitPlaceholder: "This conversation has reached the message limit.",
+    messagesRemaining: "{n} message remaining",
+    messagesRemainingPlural: "{n} messages remaining",
     // Upgrade prompt
     upgradeFeatureName: "Board",
     upgradeDescription: "Chat with club directors, receive performance alerts and negotiate transfers. Available from the Pro plan.",

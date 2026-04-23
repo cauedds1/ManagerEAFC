@@ -23,6 +23,7 @@ export interface BoardMember {
   createdAt: number;
   messageLimit?: number;
   userMessagesSent?: number;
+  descriptionEn?: string;
 }
 
 export interface DiretoriaMessage {

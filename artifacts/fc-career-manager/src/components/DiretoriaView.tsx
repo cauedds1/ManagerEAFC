@@ -1214,7 +1214,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
                 <div className="flex flex-col items-center justify-center h-full text-center py-8">
                   <AvatarCircle member={selectedMember} size={52} />
                   <p className="text-white/50 text-sm mt-3 font-semibold">{selectedMember.name}</p>
-                  <p className="text-white/25 text-xs mt-1 max-w-xs leading-relaxed">{selectedMember.description.slice(0, 120)}...</p>
+                  <p className="text-white/25 text-xs mt-1 max-w-xs leading-relaxed">{((lang === "en" && selectedMember.descriptionEn) ? selectedMember.descriptionEn : selectedMember.description).slice(0, 120)}...</p>
                   <p className="text-white/20 text-xs mt-4">{t.startConversation}</p>
                 </div>
               )}
@@ -1268,8 +1268,10 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
                         style={{ color: limitReached ? "#f87171" : remaining !== null && remaining <= 3 ? "#fbbf24" : "rgba(255,255,255,0.3)" }}
                       >
                         {limitReached
-                          ? "Limite de mensagens atingido"
-                          : `${remaining} mensagem${remaining === 1 ? "" : "s"} restante${remaining === 1 ? "" : "s"}`}
+                          ? t.messageLimitReached
+                          : remaining === 1
+                            ? t.messagesRemaining.replace("{n}", "1")
+                            : t.messagesRemainingPlural.replace("{n}", String(remaining))}
                       </span>
                     </div>
                   )}
@@ -1284,7 +1286,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
                       onKeyDown={(e) => {
                         if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendChat(); }
                       }}
-                      placeholder={limitReached ? "Esta conversa chegou ao limite de mensagens." : t.chatPlaceholder.replace("{name}", selectedMember.name)}
+                      placeholder={limitReached ? t.messageLimitPlaceholder : t.chatPlaceholder.replace("{name}", selectedMember.name)}
                       rows={1}
                       disabled={isTyping || limitReached}
                       className="flex-1 px-3 py-2.5 rounded-xl text-sm text-white placeholder-white/25 resize-none glass disabled:opacity-50"

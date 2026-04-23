@@ -676,6 +676,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
           localStorage.setItem(freeGuardKey, "1");
 
           const runFreeUnlock = async () => {
+            const activeLang = localStorage.getItem("fc_lang") ?? "pt";
             const existingMembers = getMembers(career.id);
             const alreadyHasPresidente = existingMembers.some((m) => m.role === "presidente");
             if (!alreadyHasPresidente) {
@@ -692,7 +693,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
                       clubCountry: career.clubCountry,
                       clubLeague: career.clubLeague,
                       existingMembers: [],
-                      lang: "pt",
+                      lang: localStorage.getItem("fc_lang") ?? "pt",
                     }),
                   });
                   if (aiRes.ok) {
@@ -723,8 +724,9 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
                 id: generateMemberId(),
                 name: presData.name,
                 role: "presidente",
-                roleLabel: "Presidente",
+                roleLabel: activeLang === "en" ? "President" : "Presidente",
                 description: presData.description,
+                descriptionEn: presData.descriptionEn,
                 personalityStyle: presData.personality,
                 patience: presData.patience,
                 mood: "bom",
@@ -735,7 +737,9 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
               };
               addMember(career.id, newMember);
 
-              const introContent = `Olá, treinador! Sou ${presData.name}, presidente do ${career.clubName}. Você completou todas as missões iniciais — isso mostra comprometimento e estamos no caminho certo. Parabéns! Vou estar aqui sempre que precisar conversar sobre o clube. Tenho grandes expectativas para o nosso trabalho juntos.`;
+              const introContent = activeLang === "en"
+                ? `Hello, manager! I'm ${presData.name}, president of ${career.clubName}. You've completed all the starter missions — that shows real commitment and we're on the right track. Congratulations! I'll be here whenever you need to talk about the club. I have high expectations for our work together.`
+                : `Olá, treinador! Sou ${presData.name}, presidente do ${career.clubName}. Você completou todas as missões iniciais — isso mostra comprometimento e estamos no caminho certo. Parabéns! Vou estar aqui sempre que precisar conversar sobre o clube. Tenho grandes expectativas para o nosso trabalho juntos.`;
               const introMsg: DiretoriaMessage = {
                 id: generateMessageId(),
                 role: "character",
@@ -746,6 +750,9 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
               addNotification(career.id, { memberId: newMember.id, preview: introContent, triggeredAt: Date.now() });
             }
 
+            const welcomeContent = activeLang === "en"
+              ? "Welcome to FC Career Manager!\n\nYou've completed the welcome missions and unlocked the full app. Your journey as a manager starts here — every decision matters, every season writes your story.\n\nWhat you can do now:\n• Board — chat with the president and club staff\n• News — generate and share career news with AI\n• Squad — track transfers, loans and contract renewals\n• Album — document special moments with photos and videos\n• Matches — follow games, results and season stats\n\nYour club president is already in the Board tab waiting to hear from you. Good luck, manager — football is waiting."
+              : "Bem-vindo ao FC Career Manager!\n\nVocê completou as missões de boas-vindas e desbloqueou o aplicativo completo. Aqui começa a sua jornada como treinador — cada decisão importa, cada temporada escreve a sua história.\n\nO que você pode fazer agora:\n• Diretoria — converse com o presidente e os membros da comissão do clube\n• Notícias — gere e compartilhe notícias sobre a sua carreira com IA\n• Elenco — registre transferências, empréstimos e renovações de contrato\n• Álbum — documente momentos especiais com fotos e vídeos\n• Jogos — acompanhe partidas, resultados e estatísticas da temporada\n\nO presidente do seu clube já está na aba Diretoria aguardando o primeiro contato. Boa sorte, treinador — o futebol está esperando por você.";
             const welcomePost: NewsPost = {
               id: generatePostId(),
               careerId: career.id,
@@ -753,7 +760,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
               sourceHandle: "@fccareerapp",
               sourceName: "FC Career Manager",
               sourcePhotoUrl: "/fcm-logo.png",
-              content: "Bem-vindo ao FC Career Manager!\n\nVocê completou as missões de boas-vindas e desbloqueou o aplicativo completo. Aqui começa a sua jornada como treinador — cada decisão importa, cada temporada escreve a sua história.\n\nO que você pode fazer agora:\n• Diretoria — converse com o presidente e os membros da comissão do clube\n• Notícias — gere e compartilhe notícias sobre a sua carreira com IA\n• Elenco — registre transferências, empréstimos e renovações de contrato\n• Álbum — documente momentos especiais com fotos e vídeos\n• Jogos — acompanhe partidas, resultados e estatísticas da temporada\n\nO presidente do seu clube já está na aba Diretoria aguardando o primeiro contato. Boa sorte, treinador — o futebol está esperando por você.",
+              content: welcomeContent,
               likes: 0,
               commentsCount: 0,
               sharesCount: 0,
@@ -774,7 +781,10 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
           const president = getMembers(career.id).find((m) => m.role === "presidente");
           if (president) {
             localStorage.setItem(proGuardKey, "1");
-            const content = `Parabéns, treinador! Você concluiu todas as missões do plano e demonstrou alto nível de comprometimento com o ${career.clubName}. O clube está evoluindo e estou muito satisfeito com o seu trabalho. Continue nesse ritmo — grandes conquistas estão por vir!`;
+            const proLang = localStorage.getItem("fc_lang") ?? "pt";
+            const content = proLang === "en"
+              ? `Congratulations, manager! You've completed all the plan missions and shown a high level of commitment to ${career.clubName}. The club is growing and I'm very pleased with your work. Keep it up — great achievements are ahead!`
+              : `Parabéns, treinador! Você concluiu todas as missões do plano e demonstrou alto nível de comprometimento com o ${career.clubName}. O clube está evoluindo e estou muito satisfeito com o seu trabalho. Continue nesse ritmo — grandes conquistas estão por vir!`;
             const congratsMsg: DiretoriaMessage = {
               id: generateMessageId(),
               role: "character",
@@ -794,7 +804,10 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
           const president = getMembers(career.id).find((m) => m.role === "presidente");
           if (president) {
             localStorage.setItem(ultraGuardKey, "1");
-            const content = `Impressionante, treinador! Você completou todas as missões no mais alto nível. O ${career.clubName} tem um técnico de elite no comando. A torcida e toda a diretoria estão orgulhosas do que você construiu aqui. Continue com essa dedicação — o futuro deste clube é brilhante!`;
+            const ultraLang = localStorage.getItem("fc_lang") ?? "pt";
+            const content = ultraLang === "en"
+              ? `Impressive, manager! You've completed every mission at the highest level. ${career.clubName} has an elite manager at the helm. The fans and the entire board are proud of what you've built here. Keep up this dedication — the future of this club is bright!`
+              : `Impressionante, treinador! Você completou todas as missões no mais alto nível. O ${career.clubName} tem um técnico de elite no comando. A torcida e toda a diretoria estão orgulhosas do que você construiu aqui. Continue com essa dedicação — o futuro deste clube é brilhante!`;
             const congratsMsg: DiretoriaMessage = {
               id: generateMessageId(),
               role: "character",
