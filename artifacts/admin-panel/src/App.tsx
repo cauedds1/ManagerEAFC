@@ -112,6 +112,55 @@ function formatDate(ts: number) {
   });
 }
 
+function formatRelativeTime(ts: number): string {
+  const now = Date.now();
+  const diffMs = now - ts;
+  const diffMin = Math.floor(diffMs / 60000);
+  const diffH = Math.floor(diffMs / 3600000);
+  const diffD = Math.floor(diffMs / 86400000);
+  const diffM = Math.floor(diffD / 30);
+  const diffY = Math.floor(diffD / 365);
+  if (diffMin < 2) return "agora mesmo";
+  if (diffMin < 60) return `há ${diffMin} min`;
+  if (diffH < 24) return `há ${diffH}h`;
+  if (diffD === 1) return "ontem";
+  if (diffD < 30) return `há ${diffD} dias`;
+  if (diffM === 1) return "há 1 mês";
+  if (diffM < 12) return `há ${diffM} meses`;
+  if (diffY === 1) return "há 1 ano";
+  return `há ${diffY} anos`;
+}
+
+type ActivityLevel = "active" | "recent" | "inactive" | "never";
+
+function getActivityLevel(lastLoginAt: number | null): ActivityLevel {
+  if (!lastLoginAt) return "never";
+  const diffD = Math.floor((Date.now() - lastLoginAt) / 86400000);
+  if (diffD <= 7) return "active";
+  if (diffD <= 30) return "recent";
+  return "inactive";
+}
+
+const ACTIVITY_CONFIG: Record<ActivityLevel, { label: string; color: string; bg: string; border: string }> = {
+  active:   { label: "Ativo",    color: "#4ade80", bg: "rgba(74,222,128,0.15)",  border: "rgba(74,222,128,0.3)" },
+  recent:   { label: "Recente",  color: "#fbbf24", bg: "rgba(251,191,36,0.15)",  border: "rgba(251,191,36,0.3)" },
+  inactive: { label: "Inativo",  color: "#94a3b8", bg: "rgba(148,163,184,0.1)",  border: "rgba(148,163,184,0.2)" },
+  never:    { label: "Nunca",    color: "#64748b", bg: "rgba(100,116,139,0.1)",   border: "rgba(100,116,139,0.15)" },
+};
+
+function ActivityBadge({ lastLoginAt }: { lastLoginAt: number | null }) {
+  const level = getActivityLevel(lastLoginAt);
+  const cfg = ACTIVITY_CONFIG[level];
+  return (
+    <span
+      className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide whitespace-nowrap"
+      style={{ background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}` }}
+    >
+      {cfg.label}
+    </span>
+  );
+}
+
 function PlanBadge({ plan }: { plan: string }) {
   const colors: Record<string, string> = {
     free:  "rgba(148,163,184,0.15)",
@@ -503,9 +552,19 @@ function UserDetailModal({ userId, onClose }: { userId: number; onClose: () => v
   );
 }
 
+type ActivityFilter = "all" | "active" | "recent" | "inactive";
+
+const ACTIVITY_FILTERS: { key: ActivityFilter; label: string; color: string; bg: string; activeBg: string }[] = [
+  { key: "all",      label: "Todos",        color: "rgba(255,255,255,0.6)", bg: "rgba(255,255,255,0.04)", activeBg: "rgba(255,255,255,0.12)" },
+  { key: "active",   label: "Ativos (7d)",  color: "#4ade80",               bg: "rgba(74,222,128,0.07)",  activeBg: "rgba(74,222,128,0.2)" },
+  { key: "recent",   label: "Recentes (30d)",color: "#fbbf24",              bg: "rgba(251,191,36,0.07)",  activeBg: "rgba(251,191,36,0.2)" },
+  { key: "inactive", label: "Inativos",     color: "#94a3b8",               bg: "rgba(148,163,184,0.05)", activeBg: "rgba(148,163,184,0.15)" },
+];
+
 function UsersTab() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
+  const [activityFilter, setActivityFilter] = useState<ActivityFilter>("all");
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const limit = 50;
   const { data, isLoading, error } = useQuery<{ users: User[]; total: number; page: number; limit: number }>({
@@ -517,12 +576,22 @@ function UsersTab() {
   if (error) return <div className="text-red-400 text-sm py-8 text-center">{String((error as Error).message)}</div>;
   if (!data) return null;
 
-  const filtered = search.trim()
-    ? data.users.filter((u) =>
-        u.name.toLowerCase().includes(search.toLowerCase()) ||
-        u.email.toLowerCase().includes(search.toLowerCase())
-      )
-    : data.users;
+  const sorted = [...data.users].sort((a, b) => (b.lastLoginAt ?? 0) - (a.lastLoginAt ?? 0));
+
+  const filtered = sorted.filter((u) => {
+    const matchesSearch = search.trim()
+      ? u.name.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase())
+      : true;
+    const matchesActivity = activityFilter === "all" ? true : getActivityLevel(u.lastLoginAt) === activityFilter;
+    return matchesSearch && matchesActivity;
+  });
+
+  const activityCounts: Record<ActivityFilter, number> = {
+    all: data.users.length,
+    active: data.users.filter((u) => getActivityLevel(u.lastLoginAt) === "active").length,
+    recent: data.users.filter((u) => getActivityLevel(u.lastLoginAt) === "recent").length,
+    inactive: data.users.filter((u) => getActivityLevel(u.lastLoginAt) === "inactive" || getActivityLevel(u.lastLoginAt) === "never").length,
+  };
 
   const totalPages = Math.ceil(data.total / limit);
 
@@ -535,7 +604,7 @@ function UsersTab() {
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
             <h2 className="text-white font-bold text-base">Usuários</h2>
-            <p className="text-white/40 text-xs mt-0.5">{data.total} usuários cadastrados</p>
+            <p className="text-white/40 text-xs mt-0.5">{data.total} usuários cadastrados · ordenados por atividade</p>
           </div>
           <input
             type="text"
@@ -546,12 +615,40 @@ function UsersTab() {
             style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)" }}
           />
         </div>
+
+        <div className="flex items-center gap-2 flex-wrap">
+          {ACTIVITY_FILTERS.map((f) => {
+            const isActive = activityFilter === f.key;
+            return (
+              <button
+                key={f.key}
+                onClick={() => setActivityFilter(f.key)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all"
+                style={{
+                  background: isActive ? f.activeBg : f.bg,
+                  color: isActive ? f.color : "rgba(255,255,255,0.4)",
+                  border: `1px solid ${isActive ? f.color + "44" : "rgba(255,255,255,0.08)"}`,
+                }}
+              >
+                {f.label}
+                <span
+                  className="px-1.5 py-0.5 rounded-full text-[10px] font-bold"
+                  style={{ background: isActive ? "rgba(0,0,0,0.2)" : "rgba(255,255,255,0.06)", color: isActive ? f.color : "rgba(255,255,255,0.3)" }}
+                >
+                  {activityCounts[f.key]}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
         <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr style={{ background: "rgba(255,255,255,0.04)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
                   <th className="text-left px-4 py-3 text-white/50 text-xs font-semibold uppercase tracking-wide whitespace-nowrap">Nome</th>
+                  <th className="text-left px-4 py-3 text-white/50 text-xs font-semibold uppercase tracking-wide whitespace-nowrap">Atividade</th>
                   <th className="text-left px-4 py-3 text-white/50 text-xs font-semibold uppercase tracking-wide whitespace-nowrap">Plano</th>
                   <th className="text-left px-4 py-3 text-white/50 text-xs font-semibold uppercase tracking-wide whitespace-nowrap">Clube(s)</th>
                   <th className="text-left px-4 py-3 text-white/50 text-xs font-semibold uppercase tracking-wide whitespace-nowrap">Partidas</th>
@@ -565,7 +662,7 @@ function UsersTab() {
               <tbody>
                 {filtered.length === 0 && (
                   <tr>
-                    <td colSpan={9} className="px-4 py-8 text-center text-white/25 text-xs">Nenhum usuário encontrado</td>
+                    <td colSpan={10} className="px-4 py-8 text-center text-white/25 text-xs">Nenhum usuário encontrado</td>
                   </tr>
                 )}
                 {filtered.map((u, i) => (
@@ -585,6 +682,7 @@ function UsersTab() {
                         <span className="text-white/35 text-[10px]">{u.email}</span>
                       </div>
                     </td>
+                    <td className="px-4 py-3"><ActivityBadge lastLoginAt={u.lastLoginAt} /></td>
                     <td className="px-4 py-3"><PlanBadge plan={u.plan} /></td>
                     <td className="px-4 py-3 text-white/55 text-xs max-w-[120px]">
                       <span className="truncate block">{u.clubs.length > 0 ? u.clubs.slice(0, 2).join(", ") + (u.clubs.length > 2 ? ` +${u.clubs.length - 2}` : "") : "—"}</span>
@@ -593,7 +691,10 @@ function UsersTab() {
                     <td className="px-4 py-3 text-white/60 text-xs">{u.aiUsageCount}</td>
                     <td className="px-4 py-3 text-white/60 text-xs">{u.seasonCount}</td>
                     <td className="px-4 py-3 text-white/40 text-xs whitespace-nowrap">
-                      {u.lastLoginAt ? formatDate(u.lastLoginAt) : <span className="text-white/20">—</span>}
+                      {u.lastLoginAt
+                        ? <span title={formatDate(u.lastLoginAt)}>{formatRelativeTime(u.lastLoginAt)}</span>
+                        : <span className="text-white/20">—</span>
+                      }
                     </td>
                     <td className="px-4 py-3 text-white/40 text-xs whitespace-nowrap">{formatDate(u.createdAt)}</td>
                     <td className="px-4 py-3">
