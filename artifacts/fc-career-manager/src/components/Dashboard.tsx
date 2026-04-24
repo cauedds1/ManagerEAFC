@@ -1051,6 +1051,10 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     if (activeSeasonNeedsRefresh) {
       setMatches(getMatches(activeSeasonId));
     }
+
+    if (dbSynced) {
+      setNoticiasPosts(getNoticiaPosts(activeSeasonId));
+    }
   }, [dbSynced, seasons, allTimeCareerPlayers, activeSeasonId]);
 
   // For the elenco (squad) display in historical (read-only) seasons, include former
