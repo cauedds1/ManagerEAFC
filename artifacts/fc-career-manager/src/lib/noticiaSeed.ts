@@ -1,5 +1,6 @@
 import type { NewsPost, NewsComment } from "@/types/noticias";
 import type { Career } from "@/types/career";
+import type { Lang } from "@/lib/i18n";
 import { generatePostId, generateCommentId } from "@/lib/noticiaStorage";
 
 const MAJOR_LEAGUE_KEYWORDS = [
@@ -37,14 +38,647 @@ function cmt(
   };
 }
 
-export function seedPosts(career: Career): NewsPost[] {
+function buildEnPosts(career: Career): NewsPost[] {
+  const club = career.clubName;
+  const shortClub = club.split(" ").slice(0, 2).join(" ");
+  const slug = club.toLowerCase().replace(/\s+/g, "").replace(/[^a-z0-9]/g, "");
+  const fanHandle = `@${slug}official`;
+  const fanName = `${shortClub} Official`;
+
+  return [
+    {
+      id: generatePostId(),
+      careerId: career.id,
+      source: "fanpage",
+      sourceHandle: fanHandle,
+      sourceName: fanName,
+      category: "treino",
+      content:
+        `🟢 TRAINING WEEK!\n\n` +
+        `${club} have stepped up their preparations this week with two sessions a day. ` +
+        `The manager focused on physical conditioning and tactics, with the next match firmly in mind.\n\n` +
+        `United and focused! 💪⚽\n\n` +
+        `#${shortClub.replace(/\s/g, "")} #Training #Preparation`,
+      likes: 4_812,
+      commentsCount: 187,
+      sharesCount: 312,
+      comments: [
+        cmt(
+          "@vitor.mendes10",
+          "Vitor Mendes",
+          "That's it! A focused squad is half the battle 🔥🔥",
+          342,
+          "otimista",
+          [
+            cmt("@rafael.nunes_7", "Rafael Nunes", "Focused on nothing mate, did you see the last session? A complete mess", 89, "corneteiro"),
+            cmt("@vitor.mendes10", "Vitor Mendes", "Relax lol there's always someone to kill the vibe 😂", 56, "zoeiro"),
+          ],
+        ),
+        cmt(
+          "@alexandre.costa8",
+          "Alexandre Costa",
+          "TODAY WE TRAIN, TOMORROW WE PLAY, THEN WE WIN THE TITLE 🏆🏆🏆",
+          218,
+          "otimista",
+        ),
+        cmt(
+          "@josivaldo.peixoto_",
+          "Josivaldo Peixoto",
+          "Training, training, training… and the results? Zero. Fed up with this squad going nowhere",
+          134,
+          "chato",
+          [
+            cmt("@murilo.figueira_", "Murilo Figueira", "Stop complaining mate, the team is improving 🙏", 78, "otimista"),
+            cmt("@josivaldo.peixoto_", "Josivaldo Peixoto", "Improving where? You're watching a different game to me", 45, "chato"),
+            cmt("@caio.drummond_", "Caio Drummond", "This guy complains even when they win hahahaha permanent moan 😂", 201, "zoeiro"),
+          ],
+        ),
+        cmt(
+          "@felipe.augusto99",
+          "Felipe Augusto",
+          `Hey everyone! Does anyone know the kick-off time for ${shortClub}'s next game?`,
+          12,
+          "neutro",
+          [
+            cmt("@analuiza.ribeiro_", "Ana Luíza Ribeiro", "Check the official site, all the info's there 😊", 34, "neutro"),
+          ],
+        ),
+        cmt(
+          "@edmundo.carvalho",
+          "Edmundo Carvalho",
+          `Today's session is good but it'll never compare to ${shortClub} in 2008… that generation was something else`,
+          167,
+          "saudosista",
+          [
+            cmt("@lucas.vinicius_", "Lucas Vinicius", "Stopped reading at 2008 lol let it go mate", 234, "zoeiro"),
+          ],
+        ),
+      ],
+      createdAt: now - 5 * H,
+    },
+
+    {
+      id: generatePostId(),
+      careerId: career.id,
+      source: "fanpage",
+      sourceHandle: fanHandle,
+      sourceName: fanName,
+      category: "lesao",
+      content:
+        `INJURED 🚑\n\n` +
+        `${club} have released the squad's injury update.\n\n` +
+        `One of the first-teamers felt discomfort in their right thigh during the last training session and is a doubt for the next match. ` +
+        `The medical department is monitoring daily and further details will be released in the coming hours.\n\n` +
+        `Keep an eye on our channels for updates! 🏥`,
+      likes: 7_234,
+      commentsCount: 413,
+      sharesCount: 891,
+      comments: [
+        cmt(
+          "@bruno.gomes17",
+          "Bruno Gomes",
+          "Can't believe it… always when we need them most 😭😭",
+          567,
+          "chato",
+          [
+            cmt("@rodrigo.alves13", "Rodrigo Alves", "Stay calm everyone, we have a strong squad! Next man up! 💪", 234, "otimista"),
+            cmt("@bruno.gomes17", "Bruno Gomes", "Easy to say… always the same injury issues at this club", 89, "chato"),
+          ],
+        ),
+        cmt(
+          "@deivid.moraes_",
+          "Deivid Moraes",
+          "This is the result of poor fitness work. The conditioning staff need to rethink their methods urgently",
+          445,
+          "corneteiro",
+          [
+            cmt("@thiago_lima9", "Thiago Lima", "You're an expert in sports science, are you? Easy to talk from the outside", 123, "neutro"),
+            cmt("@deivid.moraes_", "Deivid Moraes", "You don't need to be a professional to see something's wrong, look at the injury record", 89, "corneteiro"),
+          ],
+        ),
+        cmt(
+          "@caio.drummond_",
+          "Caio Drummond",
+          "The club's medical department works so well the players prefer to get injured 😂",
+          1_102,
+          "zoeiro",
+        ),
+        cmt(
+          "@edmundo.carvalho",
+          "Edmundo Carvalho",
+          "In my day players were tougher, the ones today are made of glass",
+          234,
+          "saudosista",
+          [
+            cmt("@caio_ferreira22", "Caio Ferreira", "Times were different — sports medicine has improved so more injuries get detected now. No drama", 345, "neutro"),
+          ],
+        ),
+        cmt(
+          "@analuiza.ribeiro_",
+          "Ana Luíza Ribeiro",
+          "Such sad news 😢 Get well soon, warrior! The fans are with you!",
+          678,
+          "otimista",
+        ),
+      ],
+      createdAt: now - 22 * H,
+    },
+
+    {
+      id: generatePostId(),
+      careerId: career.id,
+      source: "fanpage",
+      sourceHandle: fanHandle,
+      sourceName: fanName,
+      category: "geral",
+      content:
+        `📣 SQUAD ANNOUNCED!\n\n` +
+        `${club} have just released the list of players called up for the next match. ` +
+        `The manager has named 23 players, keeping the first-team core and ` +
+        `including two players from the academy.\n\n` +
+        `Good luck to all! Together! 🏟️⚽\n\n` +
+        `#Squad #${shortClub.replace(/\s/g, "")}`,
+      likes: 6_789,
+      commentsCount: 412,
+      sharesCount: 876,
+      comments: [
+        cmt(
+          "@vitor.mendes10",
+          "Vitor Mendes",
+          "Good call-up! Happy with the manager's choices 👏👏",
+          678,
+          "otimista",
+        ),
+        cmt(
+          "@josivaldo.peixoto_",
+          "Josivaldo Peixoto",
+          "Dreadful squad selection. Left out the players who've been performing best",
+          345,
+          "chato",
+          [
+            cmt("@caio.drummond_", "Caio Drummond", "My friend you complain when they're called up and complain when they're not 😂 give it a rest", 1_234, "zoeiro"),
+          ],
+        ),
+        cmt(
+          "@lucas.vinicius_",
+          "Lucas Vinicius",
+          "The academy lads getting a call-up is exactly what I wanted to see!! Bright future 🌟",
+          567,
+          "otimista",
+          [
+            cmt("@edmundo.carvalho", "Edmundo Carvalho", "In my day the academy already had better players… nowadays…", 89, "saudosista"),
+          ],
+        ),
+        cmt(
+          "@guilherme.ramos3",
+          "Guilherme Ramos",
+          "Balanced squad. The manager knows what he's doing 🎯",
+          456,
+          "neutro",
+        ),
+      ],
+      createdAt: now - 30 * H,
+    },
+
+    {
+      id: generatePostId(),
+      careerId: career.id,
+      source: "fanpage",
+      sourceHandle: fanHandle,
+      sourceName: fanName,
+      category: "geral",
+      content:
+        `📊 SEASON NUMBERS\n\n` +
+        `${club} have been putting together impressive statistics this season. ` +
+        `Here are the highlights:\n\n` +
+        `⚽ Goals scored: Growing with every matchday\n` +
+        `🧱 Defensive record: Solid and organised backline\n` +
+        `🏃 Average distance covered: High intensity every game\n\n` +
+        `The manager's influence is leaving its mark on this squad. ` +
+        `So proud of our team! 💪🏆`,
+      likes: 8_234,
+      commentsCount: 296,
+      sharesCount: 1_456,
+      comments: [
+        cmt(
+          "@deivid.moraes_",
+          "Deivid Moraes",
+          "The numbers are good but we still need to improve at defending set pieces",
+          234,
+          "corneteiro",
+          [
+            cmt("@thiago_lima9", "Thiago Lima", "There's always one to find fault even with positive numbers lol", 456, "zoeiro"),
+          ],
+        ),
+        cmt(
+          "@analuiza.ribeiro_",
+          "Ana Luíza Ribeiro",
+          "WHAT A TEAM 💪❤️ these numbers show how far we've come!",
+          1_234,
+          "otimista",
+        ),
+        cmt(
+          "@edmundo.carvalho",
+          "Edmundo Carvalho",
+          "Good to see these numbers but the 2012 side had even better stats…",
+          123,
+          "saudosista",
+          [
+            cmt("@caio_ferreira22", "Caio Ferreira", "Uncle we're in 2025 not 2012 😂 enjoy the present", 789, "zoeiro"),
+          ],
+        ),
+      ],
+      createdAt: now - 110 * H,
+    },
+
+    {
+      id: generatePostId(),
+      careerId: career.id,
+      source: "tnt",
+      sourceHandle: "@tntsports",
+      sourceName: "TNT Sports",
+      category: "geral",
+      content:
+        `📊 ANALYSIS | ${club.toUpperCase()}\n\n` +
+        `${club} have been showing some interesting tactical evolution over the last few rounds. ` +
+        `The side displayed greater defensive consistency and attacking creativity, ` +
+        `averaging over 2 goals per game across the last 5 matches.\n\n` +
+        `The manager has been getting the best out of the squad and supporters are starting to believe ` +
+        `in this team's potential this season. Will they hold up under pressure when it matters most? 🤔`,
+      likes: 15_890,
+      commentsCount: 1_203,
+      sharesCount: 4_512,
+      comments: [
+        cmt(
+          "@martin.erikson9",
+          "Martin Erikson",
+          `${club} looking really solid this season. Impressive tactical work`,
+          456,
+          "internacional",
+          [
+            cmt("@marc.soler21", "Marc Soler", "Lol who even cares about this club 😂", 123, "internacional"),
+            cmt("@martin.erikson9", "Martin Erikson", "Every club matters, bro. Respect the game", 567, "internacional"),
+            cmt("@tom.whitfield99", "Tom Whitfield", "People who gatekeep football need to touch grass honestly", 789, "internacional"),
+          ],
+        ),
+        cmt(
+          "@oliver.james_fc",
+          "Oliver James",
+          `Interesting to see ${shortClub} develop this way. Their pressing stats are actually decent`,
+          234,
+          "internacional",
+        ),
+        cmt(
+          "@helio.campos_",
+          "Hélio Campos",
+          "Even TNT are watching us! We're a big club now 🔥🔥🔥",
+          892,
+          "otimista",
+          [
+            cmt("@marco.antonio.fc", "Marco Antônio", "TNT covers every club when they need to fill airtime lol calm down", 345, "zoeiro"),
+            cmt("@helio.campos_", "Hélio Campos", "Let us dream mate 😂😂", 567, "zoeiro"),
+          ],
+        ),
+        cmt(
+          "@alex.harris_7",
+          "Alex Harris",
+          "Never heard of them tbh but the stats look promising",
+          167,
+          "internacional",
+        ),
+        cmt(
+          "@james.walker_fc",
+          "James Walker",
+          "Every underdog story in football is worth following 🙌",
+          2_341,
+          "internacional",
+        ),
+      ],
+      createdAt: now - 36 * H,
+    },
+
+    {
+      id: generatePostId(),
+      careerId: career.id,
+      source: "fanpage",
+      sourceHandle: fanHandle,
+      sourceName: fanName,
+      category: "geral",
+      content:
+        `🎥 BEHIND THE SCENES\n\n` +
+        `A different week at the training ground! The squad took advantage of a break in the schedule for a ` +
+        `team-bonding session. Check out this week's behind the scenes.\n\n` +
+        `A united squad is a strong squad! 💪❤️\n\n` +
+        `#BehindTheScenes #${shortClub.replace(/\s/g, "")} #TrainingGround`,
+      likes: 9_341,
+      commentsCount: 329,
+      sharesCount: 1_120,
+      comments: [
+        cmt(
+          "@vitor.mendes10",
+          "Vitor Mendes",
+          "Such a beautiful sight!! Love seeing the group like this 🥹🥹",
+          892,
+          "otimista",
+        ),
+        cmt(
+          "@josivaldo.peixoto_",
+          "Josivaldo Peixoto",
+          "Bonding sessions yes, but what about the results on the pitch? Messing around at the training ground while the league slips away",
+          234,
+          "chato",
+          [
+            cmt("@junior.bezerra_j", "Junior Bezerra", "Mate, players are human too. They need rest and team bonding to perform better 😅", 456, "otimista"),
+            cmt("@josivaldo.peixoto_", "Josivaldo Peixoto", "Their job is to win games, not make behind-the-scenes videos", 78, "chato"),
+            cmt("@caio.drummond_", "Caio Drummond", "This guy would moan if the team won the Champions League kkkkk relax 😂", 1_203, "zoeiro"),
+          ],
+        ),
+        cmt(
+          "@guilherme.ramos3",
+          "Guilherme Ramos",
+          "Clubs that look after squad wellbeing are more successful. The data backs it up! 📊",
+          345,
+          "neutro",
+        ),
+        cmt(
+          "@edmundo.carvalho",
+          "Edmundo Carvalho",
+          "Team bonding these days looks like this… In my day it was hard tackling in training then a beer after 😄",
+          1_567,
+          "saudosista",
+          [
+            cmt("@caio_ferreira22", "Caio Ferreira", "That's exactly why there were more injuries back then lol 'in my day'", 678, "zoeiro"),
+          ],
+        ),
+      ],
+      createdAt: now - 48 * H,
+    },
+
+    {
+      id: generatePostId(),
+      careerId: career.id,
+      source: "espn",
+      sourceHandle: "@espn",
+      sourceName: "ESPN",
+      category: "transferencia",
+      content:
+        `💰 TRANSFER MARKET\n\n` +
+        `Sources close to ${club} indicate the club are monitoring at least two targets ahead of ` +
+        `the next transfer window. The board is looking for reinforcements in midfield.\n\n` +
+        `The club's financial situation allows for targeted moves, according to ESPN's report. ` +
+        `More details should emerge in the coming weeks. 🔴`,
+      likes: 23_456,
+      commentsCount: 2_891,
+      sharesCount: 8_123,
+      comments: [
+        cmt(
+          "@helio.campos_",
+          "Hélio Campos",
+          "JUST SIGN THEM PLEASE 🙏🙏🙏🙏",
+          3_456,
+          "otimista",
+          [
+            cmt("@marco.antonio.fc", "Marco Antônio", "Wait for the window to open before celebrating lol", 234, "neutro"),
+          ],
+        ),
+        cmt(
+          "@oliver.james_fc",
+          "Oliver James",
+          `Midfield reinforcement is the right move for ${shortClub}. Their pressing game needs more depth`,
+          567,
+          "internacional",
+        ),
+        cmt(
+          "@deivid.moraes_",
+          "Deivid Moraes",
+          "Monitoring for 3 transfer windows in a row. This club only 'monitors', never actually signs anyone of quality",
+          2_123,
+          "corneteiro",
+          [
+            cmt("@thiago_lima9", "Thiago Lima", "They did sign someone last window, you just don't follow closely enough", 456, "neutro"),
+            cmt("@deivid.moraes_", "Deivid Moraes", "Who? Name me one signing who actually made a difference", 345, "corneteiro"),
+            cmt("@caio.drummond_", "Caio Drummond", "This has turned into a comments section debate 😂 getting worse", 789, "zoeiro"),
+          ],
+        ),
+        cmt(
+          "@edmundo.carvalho",
+          "Edmundo Carvalho",
+          "Midfield… our best midfield signing was 10 years ago. Nothing but decline since then",
+          890,
+          "saudosista",
+        ),
+        cmt(
+          "@marc.soler21",
+          "Marc Soler",
+          "and who cares about this team? focus on what matters ESPN",
+          445,
+          "internacional",
+          [
+            cmt("@helio.campos_", "Hélio Campos", "Don't follow us then 👋", 2_341, "otimista"),
+            cmt("@martin.erikson9", "Martin Erikson", "Football isn't just about the top 6 clubs, my friend", 1_234, "internacional"),
+          ],
+        ),
+      ],
+      createdAt: now - 60 * H,
+    },
+
+    {
+      id: generatePostId(),
+      careerId: career.id,
+      source: "fanpage",
+      sourceHandle: fanHandle,
+      sourceName: fanName,
+      category: "renovacao",
+      content:
+        `📋 RENEWAL!\n\n` +
+        `${club} are in advanced talks to renew the contract of one of the squad's key pillars. ` +
+        `Negotiations are at a final stage and the announcement could come within days.\n\n` +
+        `Stay, warrior! 🙏❤️\n\n` +
+        `#Renewal #${shortClub.replace(/\s/g, "")} #Stay`,
+      likes: 18_923,
+      commentsCount: 934,
+      sharesCount: 3_445,
+      comments: [
+        cmt(
+          "@analuiza.ribeiro_",
+          "Ana Luíza Ribeiro",
+          "STAY STAY STAY STAY STAY ❤️❤️❤️❤️",
+          4_512,
+          "otimista",
+        ),
+        cmt(
+          "@josivaldo.peixoto_",
+          "Josivaldo Peixoto",
+          "Renew for what? To carry on the same? We need new faces, not more of the same",
+          567,
+          "chato",
+          [
+            cmt("@vitor.mendes10", "Vitor Mendes", "You're unbearable mate lol the guy is good and you want him gone?", 1_234, "otimista"),
+            cmt("@josivaldo.peixoto_", "Josivaldo Peixoto", "Good at what exactly? Show me one good performance in the last 6 months", 234, "chato"),
+          ],
+        ),
+        cmt(
+          "@guilherme.ramos3",
+          "Guilherme Ramos",
+          "Important to keep the spine of the team. Continuity is fundamental in modern football",
+          789,
+          "neutro",
+        ),
+        cmt(
+          "@edmundo.carvalho",
+          "Edmundo Carvalho",
+          "Good to see someone who still wants to stay. Before, players had love for the shirt — today it's all about money",
+          1_123,
+          "saudosista",
+          [
+            cmt("@caio.drummond_", "Caio Drummond", "Do you renew your contract because you love the company or because they pay well? lol 😂", 2_890, "zoeiro"),
+            cmt("@edmundo.carvalho", "Edmundo Carvalho", "That's different mate…", 123, "saudosista"),
+          ],
+        ),
+      ],
+      createdAt: now - 72 * H,
+    },
+
+    {
+      id: generatePostId(),
+      careerId: career.id,
+      source: "fanpage",
+      sourceHandle: fanHandle,
+      sourceName: fanName,
+      category: "treino",
+      content:
+        `📸 FRIDAY TRAINING!\n\n` +
+        `Matchday eve at ${club}'s training ground! The manager took charge of the final session before tomorrow's match. ` +
+        `The squad is in good physical shape and morale is high.\n\n` +
+        `Who do you put in tomorrow's team? Comment below! 👇⚽`,
+      likes: 12_445,
+      commentsCount: 1_678,
+      sharesCount: 2_340,
+      comments: [
+        cmt(
+          "@felipe.augusto99",
+          "Felipe Augusto",
+          "Play the usual first eleven, no surprises! 🔥",
+          567,
+          "otimista",
+        ),
+        cmt(
+          "@deivid.moraes_",
+          "Deivid Moraes",
+          "Need to change the right back, looked weak this week in training. Everyone saw it",
+          345,
+          "corneteiro",
+          [
+            cmt("@thiago_lima9", "Thiago Lima", "Where's the proof they looked weak? Did you watch the sessions?", 123, "neutro"),
+            cmt("@deivid.moraes_", "Deivid Moraes", "I watched the highlights yeah, was pretty clear", 89, "corneteiro"),
+            cmt("@caio.drummond_", "Caio Drummond", "Training highlights lol this guy is a legend 😂", 1_456, "zoeiro"),
+          ],
+        ),
+        cmt(
+          "@bruno.gomes17",
+          "Bruno Gomes",
+          "Everyone's too anxious. Let the manager do his job in peace",
+          678,
+          "neutro",
+        ),
+        cmt(
+          "@edmundo.carvalho",
+          "Edmundo Carvalho",
+          "In my day the eve of a match was total silence and focus. Nowadays it's a party and selfies for social media",
+          890,
+          "saudosista",
+          [
+            cmt("@lucas.vinicius_", "Lucas Vinicius", "Uncle, fan engagement is part of modern football. Stop complaining about everything 😂", 1_234, "zoeiro"),
+          ],
+        ),
+        cmt(
+          "@analuiza.ribeiro_",
+          "Ana Luíza Ribeiro",
+          "Tomorrow is the day!! Let's go all out!! 🏆🏆",
+          3_456,
+          "otimista",
+        ),
+      ],
+      createdAt: now - 84 * H,
+    },
+
+    {
+      id: generatePostId(),
+      careerId: career.id,
+      source: "tnt",
+      sourceHandle: "@tntsports",
+      sourceName: "TNT Sports",
+      category: "geral",
+      content:
+        `🧠 TACTICAL MASTERCLASS\n\n` +
+        `How is ${club} building their football? Our tactical analysis shows that ` +
+        `the side works the ball well down the right flank and exploits space in behind the opposition line effectively.\n\n` +
+        `With over 300 pressing actions in the last 5 games, the squad shows that the ` +
+        `defensive system is becoming more and more organised. A genuine advantage or just a good run of form? 👀`,
+      likes: 31_234,
+      commentsCount: 4_123,
+      sharesCount: 12_456,
+      comments: [
+        cmt(
+          "@noah.robertson92",
+          "Noah Robertson",
+          `${shortClub}'s high press is genuinely impressive for a team of this size. Kompany vibes 🧠`,
+          2_345,
+          "internacional",
+          [
+            cmt("@liam.davidson_fc", "Liam Davidson", "300 pressing actions in 5 games is elite territory actually", 567, "internacional"),
+            cmt("@carlos.ruiz_es", "Carlos Ruíz", "Mucho hype… esperemos a ver cuando jueguen contra los grandes", 234, "internacional"),
+          ],
+        ),
+        cmt(
+          "@helio.campos_",
+          "Hélio Campos",
+          "THE BIGGEST REVELATION IN WORLD FOOTBALL 🔥🔥🔥 SO PROUD",
+          5_678,
+          "otimista",
+        ),
+        cmt(
+          "@marco.antonio.fc",
+          "Marco Antônio",
+          "Good analysis. But this is form — let's see when the big games come",
+          1_234,
+          "neutro",
+          [
+            cmt("@vitor.mendes10", "Vitor Mendes", "Negativity lol at least let us enjoy the moment", 678, "otimista"),
+          ],
+        ),
+        cmt(
+          "@finn.wagner_9",
+          "Finn Wagner",
+          "team of the season for me so far, love watching them play",
+          1_890,
+          "internacional",
+        ),
+        cmt(
+          "@marc.soler21",
+          "Marc Soler",
+          "300 pressing actions but how many actual trophies? lol",
+          345,
+          "internacional",
+          [
+            cmt("@martin.erikson9", "Martin Erikson", "Not every club starts with trophies, some have to build first 🤷‍♂️", 2_123, "internacional"),
+            cmt("@helio.campos_", "Hélio Campos", "You'll be eating your words when we win everything 😤", 3_456, "otimista"),
+          ],
+        ),
+      ],
+      createdAt: now - 96 * H,
+    },
+  ];
+}
+
+function buildPtPosts(career: Career): NewsPost[] {
   const club = career.clubName;
   const shortClub = club.split(" ").slice(0, 2).join(" ");
   const slug = club.toLowerCase().replace(/\s+/g, "").replace(/[^a-z0-9]/g, "");
   const fanHandle = `@${slug}oficial`;
   const fanName = `${shortClub} Oficial`;
 
-  const posts: NewsPost[] = [
+  return [
     {
       id: generatePostId(),
       careerId: career.id,
@@ -669,11 +1303,13 @@ export function seedPosts(career: Career): NewsPost[] {
       createdAt: now - 96 * H,
     },
   ];
+}
 
+export function seedPosts(career: Career, lang: Lang = "pt"): NewsPost[] {
+  const posts = lang === "en" ? buildEnPosts(career) : buildPtPosts(career);
   const isLarge = isMediumOrLargeClub(career);
   const filtered = isLarge
     ? posts
     : posts.filter((p) => p.source === "fanpage");
-
   return filtered.sort((a, b) => b.createdAt - a.createdAt).slice(0, 8);
 }

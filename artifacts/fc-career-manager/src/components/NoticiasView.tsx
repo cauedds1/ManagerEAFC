@@ -1388,7 +1388,7 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
     let stored = getPosts(seasonId);
     const isFirstSeed = stored.length === 0;
     if (isFirstSeed) {
-      stored = seedPosts(career);
+      stored = seedPosts(career, lang);
       savePosts(seasonId, stored);
     }
     setPosts(stored);
