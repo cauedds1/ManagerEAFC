@@ -376,7 +376,7 @@ export function ReelsModal({ post, portalPhotos, customPortals, onClose }: Reels
 
             {showComments && (
               <div
-                className="absolute right-0 top-0 bottom-0 flex flex-col pointer-events-auto"
+                className="absolute right-0 top-0 bottom-0 flex flex-col pointer-events-auto sm:hidden"
                 style={{
                   width: "72vw",
                   maxWidth: 320,
