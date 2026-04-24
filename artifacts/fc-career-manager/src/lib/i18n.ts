@@ -2911,6 +2911,7 @@ export const DIRETORIA: Record<Lang, Record<string, string>> = {
     btnCallMeeting: "Convocar Reunião",
     btnAddMember: "Adicionar membro",
     planLimitTooltip: "Limite do plano: {n} membros",
+    freeUpgradeTooltip: "Disponível no plano Pro",
     membersCount: "{n}/{max} membros",
     // Active meeting row
     meetingInProgress: "Em andamento",
@@ -3053,6 +3054,7 @@ export const DIRETORIA: Record<Lang, Record<string, string>> = {
     btnCallMeeting: "Call Meeting",
     btnAddMember: "Add member",
     planLimitTooltip: "Plan limit: {n} members",
+    freeUpgradeTooltip: "Available on Pro plan",
     membersCount: "{n}/{max} members",
     // Active meeting row
     meetingInProgress: "In progress",

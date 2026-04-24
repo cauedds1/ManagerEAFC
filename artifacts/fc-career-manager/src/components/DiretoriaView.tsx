@@ -484,6 +484,7 @@ function CreateMemberModal({ career, membersCount, onClose, onCreated, effective
 
 export function DiretoriaView({ career, matches, transfers, squadSize, allPlayers = [], effectiveLeague, currentCompetitions = [], userPlan, freeMissionsDone }: DiretoriaViewProps) {
   const resolvedPlan = userPlan ?? getUserPlan();
+  const isFreePlan = resolvedPlan === "free";
   const effectivePlan = resolvedPlan === "free" && freeMissionsDone ? "pro" : resolvedPlan;
   const planLimits = getPlanLimits(effectivePlan);
   const [lang] = useLang();
@@ -1149,17 +1150,36 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
             </div>
             <div className="flex items-center gap-1.5">
               {members.length >= 1 && !activeMeeting && (
-                <button
-                  onClick={() => handleOpenMeetingTitleModal()}
-                  className="flex items-center gap-1 px-2 py-1 rounded-lg font-semibold text-[11px] transition-all hover:scale-[1.02] active:scale-[0.98]"
-                  style={{ background: "rgba(var(--club-primary-rgb),0.12)", color: "var(--club-primary)", border: "1px solid rgba(var(--club-primary-rgb),0.2)" }}
-                  title={t.btnCallMeeting}
-                >
-                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                  {t.btnCallMeeting}
-                </button>
+                isFreePlan ? (
+                  <span
+                    className="flex items-center gap-1 px-2 py-1 rounded-lg font-semibold text-[11px]"
+                    style={{ background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.2)", border: "1px solid rgba(255,255,255,0.07)", cursor: "not-allowed" }}
+                    title={t.freeUpgradeTooltip}
+                  >
+                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                    {t.btnCallMeeting}
+                  </span>
+                ) : (
+                  <button
+                    onClick={() => handleOpenMeetingTitleModal()}
+                    className="flex items-center gap-1 px-2 py-1 rounded-lg font-semibold text-[11px] transition-all hover:scale-[1.02] active:scale-[0.98]"
+                    style={{ background: "rgba(var(--club-primary-rgb),0.12)", color: "var(--club-primary)", border: "1px solid rgba(var(--club-primary-rgb),0.2)" }}
+                    title={t.btnCallMeeting}
+                  >
+                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                    {t.btnCallMeeting}
+                  </button>
+                )
               )}
-              {members.length < planLimits.maxDiretoriaMembers ? (
+              {isFreePlan ? (
+                <span
+                  className="flex items-center justify-center w-7 h-7 rounded-lg"
+                  style={{ background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.2)", border: "1px solid rgba(255,255,255,0.07)", cursor: "not-allowed" }}
+                  title={t.freeUpgradeTooltip}
+                >
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                </span>
+              ) : members.length < planLimits.maxDiretoriaMembers ? (
                 <button
                   onClick={() => setShowCreateModal(true)}
                   className="flex items-center justify-center w-7 h-7 rounded-lg transition-all hover:scale-[1.05]"
