@@ -1314,20 +1314,28 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
 
   useEffect(() => {
     if (!focusedPostId) return;
+    let highlightTimer: ReturnType<typeof setTimeout> | null = null;
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
+
     const tryScroll = (attempts = 0) => {
       const el = postRefs.current[focusedPostId];
       if (el) {
         el.scrollIntoView({ behavior: "smooth", block: "center" });
         setHighlightedPostId(focusedPostId);
-        const timer = setTimeout(() => setHighlightedPostId(undefined), 1800);
+        highlightTimer = setTimeout(() => setHighlightedPostId(undefined), 1800);
         onClearFocusedPost?.();
-        return () => clearTimeout(timer);
       } else if (attempts < 10) {
-        setTimeout(() => tryScroll(attempts + 1), 120);
+        retryTimer = setTimeout(() => tryScroll(attempts + 1), 120);
+      } else {
+        onClearFocusedPost?.();
       }
     };
-    const cleanup = tryScroll();
-    return () => { if (typeof cleanup === "function") cleanup(); };
+
+    tryScroll();
+    return () => {
+      if (highlightTimer) clearTimeout(highlightTimer);
+      if (retryTimer) clearTimeout(retryTimer);
+    };
   }, [focusedPostId]);
 
   useEffect(() => {

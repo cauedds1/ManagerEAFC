@@ -250,6 +250,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
   const [activeTab, setActiveTab] = useState<CareerTab>("painel");
   const [highlightMomentoId, setHighlightMomentoId] = useState<string | undefined>();
   const [portalPhotos, setPortalPhotos] = useState<PortalPhotos>({});
+  const [customPortalPhotos, setCustomPortalPhotos] = useState<Record<string, string>>({});
   const [focusedPostId, setFocusedPostId] = useState<string | undefined>();
 
   const [seasons, setSeasons] = useState<Season[]>([]);
@@ -425,6 +426,16 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
 
   useEffect(() => {
     fetchPortalPhotos(career.id).then(setPortalPhotos).catch(() => {});
+  }, [career.id]);
+
+  useEffect(() => {
+    fetchPortals(career.id).then((portals) => {
+      const map: Record<string, string> = {};
+      for (const p of portals) {
+        if (p.photo) map[p.id] = p.photo;
+      }
+      setCustomPortalPhotos(map);
+    }).catch(() => {});
   }, [career.id]);
 
   useEffect(() => {
@@ -1880,6 +1891,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
                 isReadOnly={isReadOnly}
                 posts={getNoticiaPosts(activeSeasonId)}
                 portalPhotos={portalPhotos}
+                customPortalPhotos={customPortalPhotos}
                 onNavigateToPost={(postId) => {
                   setFocusedPostId(postId);
                   setActiveTab("noticias");
