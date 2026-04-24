@@ -651,7 +651,20 @@ export function PainelView({
 
   return (
     <div className="space-y-5 animate-fade-up">
-      <div className="flex items-center justify-end pb-0">
+      <div className="flex items-center justify-between pb-0">
+        {posts && posts.length > 0 ? (
+          <div className="flex-1 mr-3">
+            <NewsTicker
+              posts={posts}
+              portalPhotos={portalPhotos ?? {}}
+              customPortalPhotos={customPortalPhotos}
+              onClickPost={(postId) => onNavigateToPost?.(postId)}
+              lang={lang}
+            />
+          </div>
+        ) : (
+          <div className="flex-1" />
+        )}
         <SectionHelp section="painel" />
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -676,16 +689,6 @@ export function PainelView({
           </div>
         ))}
       </div>
-
-      {posts && posts.length > 0 && (
-        <NewsTicker
-          posts={posts}
-          portalPhotos={portalPhotos ?? {}}
-          customPortalPhotos={customPortalPhotos}
-          onClickPost={(postId) => onNavigateToPost?.(postId)}
-          lang={lang}
-        />
-      )}
 
       <LastMatches
         seasonId={seasonId}
