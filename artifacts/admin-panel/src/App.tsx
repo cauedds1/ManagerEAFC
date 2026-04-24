@@ -582,7 +582,12 @@ function UsersTab() {
     const matchesSearch = search.trim()
       ? u.name.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase())
       : true;
-    const matchesActivity = activityFilter === "all" ? true : getActivityLevel(u.lastLoginAt) === activityFilter;
+    const level = getActivityLevel(u.lastLoginAt);
+    const matchesActivity = activityFilter === "all"
+      ? true
+      : activityFilter === "inactive"
+        ? level === "inactive" || level === "never"
+        : level === activityFilter;
     return matchesSearch && matchesActivity;
   });
 
