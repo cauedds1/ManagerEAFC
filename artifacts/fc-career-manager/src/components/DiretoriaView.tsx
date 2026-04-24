@@ -726,6 +726,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
             description: member.description,
             mood: member.mood,
             patience: member.patience,
+            messageLimit: member.messageLimit,
           },
           message: userMsg.content,
           history: newConv.slice(-14).map((m) => ({ role: m.role, content: m.content })),

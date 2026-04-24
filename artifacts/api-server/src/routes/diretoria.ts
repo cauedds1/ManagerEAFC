@@ -175,13 +175,9 @@ ${matchStr}`;
 router.post("/diretoria/chat", requireAuth, async (req: AuthRequest, res) => {
   const plan = req.user!.plan;
   const limits = getPlanLimits(plan);
-  if (!limits.diretoriaEnabled) {
-    res.status(403).json({ error: "Diretoria não está disponível no plano Free", code: "PLAN_LIMIT_REACHED", plan });
-    return;
-  }
 
   const { member, message, history, context, squadOvrContext, squadRosterContext, playerPerformanceContext, lang } = req.body as {
-    member: MemberProfile;
+    member: MemberProfile & { messageLimit?: number };
     message: string;
     history: ChatHistoryItem[];
     context: ClubContext;
@@ -190,6 +186,12 @@ router.post("/diretoria/chat", requireAuth, async (req: AuthRequest, res) => {
     playerPerformanceContext?: string;
     lang?: string;
   };
+
+  const isFreeWithLimit = !limits.diretoriaEnabled && typeof member?.messageLimit === "number";
+  if (!limits.diretoriaEnabled && !isFreeWithLimit) {
+    res.status(403).json({ error: "Diretoria não está disponível no plano Free", code: "PLAN_LIMIT_REACHED", plan });
+    return;
+  }
 
   if (!message?.trim()) {
     res.status(400).json({ error: "message é obrigatório" });
