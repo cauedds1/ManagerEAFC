@@ -620,9 +620,9 @@ export default function App() {
                 setAuthUser(updated);
               }
               if (isUpgrade && (serverPlan === "pro" || serverPlan === "ultra")) {
-                const seenKey = `fc_promotion_seen_${parsed.id ?? "anon"}_${serverPlan}`;
-                if (!localStorage.getItem(seenKey)) {
-                  localStorage.setItem(seenKey, "1");
+                const seenKey = `fc_plan_promoted_${parsed.id ?? "anon"}_${serverPlan}`;
+                if (!sessionStorage.getItem(seenKey)) {
+                  sessionStorage.setItem(seenKey, "1");
                   setPlanPromotion({ plan: serverPlan });
                 }
               }
