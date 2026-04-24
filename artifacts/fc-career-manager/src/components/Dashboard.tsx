@@ -34,6 +34,7 @@ import { getAutoNewsEnabled } from "@/lib/autoNewsPreference";
 import type { NewsPost, NewsSource, NewsCategory } from "@/types/noticias";
 import type { BoardMember, DiretoriaMessage } from "@/types/diretoria";
 import { PainelView } from "./PainelView";
+import { NewsTicker } from "./NewsTicker";
 import { ClubeView, FC_ELENCO_TAB_VIEWED_EVENT } from "./ClubeView";
 import { TransferenciasView } from "./TransferenciasView";
 import { PartidasView } from "./PartidasView";
@@ -1853,6 +1854,22 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
           </div>
         )}
 
+        {noticiasPosts.length > 0 && (
+          <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
+            <NewsTicker
+              posts={noticiasPosts}
+              portalPhotos={portalPhotos}
+              customPortalPhotos={customPortalPhotos}
+              onClickPost={(postId) => {
+                setFocusedPostId(postId);
+                setActiveTab("noticias");
+              }}
+              lang={lang}
+              clubLogoUrl={logoUrl}
+            />
+          </div>
+        )}
+
         {activeTab === "clube" && (
           <ClubeView
             careerId={career.id}
@@ -1904,13 +1921,6 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
                 transferCount={transfers.length}
                 competitions={activeSeason?.competitions ?? career.competitions}
                 isReadOnly={isReadOnly}
-                posts={noticiasPosts}
-                portalPhotos={portalPhotos}
-                customPortalPhotos={customPortalPhotos}
-                onNavigateToPost={(postId) => {
-                  setFocusedPostId(postId);
-                  setActiveTab("noticias");
-                }}
                 onNavigateToSettings={() => setActiveTab("configuracoes")}
               />
             )}

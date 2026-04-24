@@ -15,9 +15,6 @@ import { MatchDetailPage } from "./MatchDetailPage";
 import { useLang } from "@/hooks/useLang";
 import { PAINEL } from "@/lib/i18n";
 import { SectionHelp } from "./SectionHelp";
-import { NewsTicker } from "./NewsTicker";
-import type { NewsPost } from "@/types/noticias";
-import type { PortalPhotos } from "@/lib/portalPhotosStorage";
 
 function resolveOpponentLogo(name: string, stored?: string): string | undefined {
   if (stored) return stored;
@@ -70,10 +67,6 @@ interface PainelViewProps {
   transferCount: number;
   competitions?: string[];
   isReadOnly?: boolean;
-  posts?: NewsPost[];
-  portalPhotos?: PortalPhotos;
-  customPortalPhotos?: Record<string, string>;
-  onNavigateToPost?: (postId: string) => void;
   onNavigateToSettings?: () => void;
 }
 
@@ -613,10 +606,6 @@ export function PainelView({
   transferCount,
   competitions,
   isReadOnly,
-  posts,
-  portalPhotos,
-  customPortalPhotos,
-  onNavigateToPost,
   onNavigateToSettings,
 }: PainelViewProps) {
   const careerId = careerIdProp ?? seasonId;
@@ -689,21 +678,7 @@ export function PainelView({
 
   return (
     <div className="space-y-5 animate-fade-up">
-      <div className="flex items-center justify-between pb-0">
-        {posts && posts.length > 0 ? (
-          <div className="flex-1 mr-3">
-            <NewsTicker
-              posts={posts}
-              portalPhotos={portalPhotos ?? {}}
-              customPortalPhotos={customPortalPhotos}
-              onClickPost={(postId) => onNavigateToPost?.(postId)}
-              lang={lang}
-              clubLogoUrl={clubLogoUrl}
-            />
-          </div>
-        ) : (
-          <div className="flex-1" />
-        )}
+      <div className="flex justify-end">
         <SectionHelp section="painel" />
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

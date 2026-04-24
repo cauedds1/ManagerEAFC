@@ -99,6 +99,7 @@ export function NewsTicker({
 }: NewsTickerProps) {
   const t = PAINEL[lang];
   const containerRef = useRef<HTMLDivElement>(null);
+  const [accelerated, setAccelerated] = useState(false);
 
   if (!posts || posts.length === 0) return null;
 
@@ -108,20 +109,51 @@ export function NewsTicker({
   const items = [...displayPosts, ...displayPosts];
 
   const speed = Math.max(40, displayPosts.length * 18);
+  const activeSpeed = accelerated ? Math.max(8, Math.round(speed * 0.25)) : speed;
 
   return (
     <div
       style={{
         display: "flex",
         alignItems: "stretch",
-        borderRadius: 12,
         overflow: "hidden",
         background: "rgba(255,255,255,0.03)",
-        border: "1px solid rgba(255,255,255,0.07)",
+        borderTop: "1px solid rgba(255,255,255,0.07)",
+        borderBottom: "1px solid rgba(255,255,255,0.07)",
         height: 38,
         userSelect: "none",
       }}
     >
+      {/* Speed button */}
+      <button
+        onClick={() => setAccelerated((a) => !a)}
+        title={accelerated ? "Velocidade normal" : "Acelerar"}
+        style={{
+          flexShrink: 0,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          width: 32,
+          background: accelerated
+            ? "rgba(var(--club-primary-rgb),0.25)"
+            : "rgba(255,255,255,0.04)",
+          borderTop: "none",
+          borderBottom: "none",
+          borderLeft: "none",
+          borderRight: accelerated
+            ? "1px solid rgba(var(--club-primary-rgb),0.35)"
+            : "1px solid rgba(255,255,255,0.06)",
+          color: accelerated ? "var(--club-primary)" : "rgba(255,255,255,0.35)",
+          fontSize: 16,
+          fontWeight: 700,
+          cursor: "pointer",
+          transition: "background 0.2s, color 0.2s",
+        }}
+      >
+        ‹
+      </button>
+
+      {/* NOTÍCIAS label */}
       <div
         style={{
           flexShrink: 0,
@@ -159,12 +191,12 @@ export function NewsTicker({
           .fc-ticker-track {
             display: flex;
             align-items: center;
-            animation: fc-ticker-scroll ${speed}s linear infinite;
+            animation: fc-ticker-scroll linear infinite;
             width: max-content;
           }
         `}</style>
 
-        <div className="fc-ticker-track">
+        <div className="fc-ticker-track" style={{ animationDuration: `${activeSpeed}s` }}>
           {items.map((post, idx) => {
             const title = post.title || post.content.slice(0, 80);
             return (
