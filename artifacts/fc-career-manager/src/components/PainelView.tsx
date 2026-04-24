@@ -74,6 +74,43 @@ interface PainelViewProps {
   portalPhotos?: PortalPhotos;
   customPortalPhotos?: Record<string, string>;
   onNavigateToPost?: (postId: string) => void;
+  onNavigateToSettings?: () => void;
+}
+
+function FeedbackCard({ onNavigateToSettings }: { onNavigateToSettings?: () => void }) {
+  const [lang] = useLang();
+  const t = PAINEL[lang];
+  return (
+    <div
+      className="glass rounded-2xl p-4 flex items-center gap-4"
+      style={{ border: "1px solid rgba(255,255,255,0.06)" }}
+    >
+      <img
+        src="/fcm-logo.png"
+        alt="FC Career Manager"
+        style={{
+          width: 40,
+          height: 40,
+          objectFit: "contain",
+          flexShrink: 0,
+          filter: "drop-shadow(0 2px 10px rgba(124,92,252,0.35))",
+        }}
+      />
+      <div className="flex-1 min-w-0">
+        <p className="text-white/80 text-sm font-bold leading-tight">{t.feedbackTitle}</p>
+        <p className="text-white/40 text-xs mt-0.5 leading-snug">{t.feedbackMsg}</p>
+      </div>
+      {onNavigateToSettings && (
+        <button
+          onClick={onNavigateToSettings}
+          className="flex-shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold transition-all hover:opacity-80 active:scale-95"
+          style={{ background: "rgba(var(--club-primary-rgb),0.15)", color: "var(--club-primary)", border: "1px solid rgba(var(--club-primary-rgb),0.25)" }}
+        >
+          {t.feedbackCta}
+        </button>
+      )}
+    </div>
+  );
 }
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
@@ -580,6 +617,7 @@ export function PainelView({
   portalPhotos,
   customPortalPhotos,
   onNavigateToPost,
+  onNavigateToSettings,
 }: PainelViewProps) {
   const careerId = careerIdProp ?? seasonId;
   const [lang] = useLang();
@@ -705,6 +743,8 @@ export function PainelView({
       </div>
 
       <MessagesSection />
+
+      <FeedbackCard onNavigateToSettings={onNavigateToSettings} />
     </div>
   );
 }

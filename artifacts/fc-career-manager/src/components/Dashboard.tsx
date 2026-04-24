@@ -1911,6 +1911,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
                   setFocusedPostId(postId);
                   setActiveTab("noticias");
                 }}
+                onNavigateToSettings={() => setActiveTab("configuracoes")}
               />
             )}
             {activeTab === "partidas" && (

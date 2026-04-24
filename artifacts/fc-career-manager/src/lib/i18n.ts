@@ -813,6 +813,10 @@ export const PAINEL: Record<Lang, Record<string, string>> = {
     tabLabel: "Painel",
     // NewsTicker
     tickerLabel: "📰 NOTÍCIAS",
+    // FeedbackCard
+    feedbackTitle: "Tem algo a dizer?",
+    feedbackMsg: "Reporte bugs ou dê sugestões no menu de Configurações.",
+    feedbackCta: "Abrir Configurações",
   },
   en: {
     // LeagueCard
@@ -867,6 +871,10 @@ export const PAINEL: Record<Lang, Record<string, string>> = {
     tabLabel: "Dashboard",
     // NewsTicker
     tickerLabel: "📰 NEWS",
+    // FeedbackCard
+    feedbackTitle: "Got something to say?",
+    feedbackMsg: "Report bugs or suggest improvements in the Settings menu.",
+    feedbackCta: "Open Settings",
   },
 };
 
