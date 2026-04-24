@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useRef } from "react";
 import type { NewsPost } from "@/types/noticias";
 import type { PortalPhotos } from "@/lib/portalPhotosStorage";
 import { PORTAL_DEFAULT_PHOTOS } from "@/lib/portalPhotosStorage";
@@ -89,7 +89,6 @@ export function NewsTicker({
   lang,
 }: NewsTickerProps) {
   const t = PAINEL[lang];
-  const [paused, setPaused] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   if (!posts || posts.length === 0) return null;
@@ -99,7 +98,7 @@ export function NewsTicker({
 
   const items = [...displayPosts, ...displayPosts];
 
-  const speed = Math.max(20, displayPosts.length * 8);
+  const speed = Math.max(40, displayPosts.length * 18);
 
   return (
     <div
@@ -113,8 +112,6 @@ export function NewsTicker({
         height: 38,
         userSelect: "none",
       }}
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
     >
       <div
         style={{
@@ -156,12 +153,9 @@ export function NewsTicker({
             animation: fc-ticker-scroll ${speed}s linear infinite;
             width: max-content;
           }
-          .fc-ticker-track.paused {
-            animation-play-state: paused;
-          }
         `}</style>
 
-        <div className={`fc-ticker-track${paused ? " paused" : ""}`}>
+        <div className="fc-ticker-track">
           {items.map((post, idx) => {
             const title = post.title || post.content.slice(0, 80);
             return (
