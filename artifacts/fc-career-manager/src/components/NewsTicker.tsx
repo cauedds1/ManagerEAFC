@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useState, useRef } from "react";
 import type { NewsPost } from "@/types/noticias";
 import type { PortalPhotos } from "@/lib/portalPhotosStorage";
 import { PORTAL_DEFAULT_PHOTOS } from "@/lib/portalPhotosStorage";
