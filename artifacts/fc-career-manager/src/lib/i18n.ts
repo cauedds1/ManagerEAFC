@@ -4163,7 +4163,7 @@ export const ONBOARDING: Record<Lang, Record<string, string>> = {
     rewardTitle: "Missão concluída!",
     // Free missions
     m_free1_title: "Registre sua primeira partida",
-    m_free1_desc: "Vá até Partidas e registre um resultado. A temporada começa aqui.",
+    m_free1_desc: "Jogue no FC 26, volte aqui e registre o resultado na aba Partidas.",
     m_free1_reward: "Partida registrada! O painel já mostra seus dados.",
     m_free2_title: "Gere sua primeira notícia",
     m_free2_desc: "Vá até Notícias e gere um post sobre o que aconteceu.",
@@ -4227,7 +4227,7 @@ export const ONBOARDING: Record<Lang, Record<string, string>> = {
     rewardTitle: "Mission complete!",
     // Free missions
     m_free1_title: "Log your first match",
-    m_free1_desc: "Go to Matches and log a result. The season starts here.",
+    m_free1_desc: "Play a match in FC 26, come back here and log the result in the Matches tab.",
     m_free1_reward: "Match logged! The dashboard now shows your data.",
     m_free2_title: "Generate your first news post",
     m_free2_desc: "Go to News and generate a post about what happened.",
