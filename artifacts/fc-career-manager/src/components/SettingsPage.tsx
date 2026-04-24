@@ -1225,7 +1225,7 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
                 subtitle={t.sRivaisSubtitle}
               >
                 {seasonId
-                  ? <RivaisView seasonId={seasonId} />
+                  ? <RivaisView seasonId={seasonId} careerId={careerId} />
                   : <p className="text-xs text-white/30">{t.noActiveSeason}</p>
                 }
               </SectionCard>

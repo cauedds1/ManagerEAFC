@@ -4171,6 +4171,9 @@ export const ONBOARDING: Record<Lang, Record<string, string>> = {
     m_free3_title: "Conheça seu elenco",
     m_free3_desc: "Vá até Clube e explore os jogadores disponíveis.",
     m_free3_reward: "Elenco visualizado! Edite os jogadores e monte sua escalação.",
+    m_free4_title: "Defina os rivais da temporada",
+    m_free4_desc: "Vá até Configurações e adicione pelo menos um rival. Clássicos ganham outro nível nas notícias e na Diretoria.",
+    m_free4_reward: "Rival adicionado! Seus clássicos agora têm um peso especial.",
     // Pro missions
     m_pro1_title: "Configure sua Diretoria",
     m_pro1_desc: "Adicione um membro da diretoria — ele vai opinar sobre os resultados.",
@@ -4232,6 +4235,9 @@ export const ONBOARDING: Record<Lang, Record<string, string>> = {
     m_free3_title: "Meet your squad",
     m_free3_desc: "Go to Club and explore your available players.",
     m_free3_reward: "Squad viewed! Edit players and set up your lineup.",
+    m_free4_title: "Set your season rivals",
+    m_free4_desc: "Go to Settings and add at least one rival. Clasicos take on a whole new dimension in news and Board reactions.",
+    m_free4_reward: "Rival added! Your clasicos now carry real weight.",
     // Pro missions
     m_pro1_title: "Set up your Board",
     m_pro1_desc: "Add a board member — they'll weigh in on your results.",

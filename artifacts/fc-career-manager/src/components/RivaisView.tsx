@@ -10,9 +10,11 @@ import { getCachedClubList, searchClubs } from "@/lib/clubListCache";
 import { ClubEntry } from "@/types/club";
 import { useLang } from "@/hooks/useLang";
 import { SETTINGS } from "@/lib/i18n";
+import { isMissionComplete, completeMission } from "@/lib/missionStorage";
 
 interface RivaisViewProps {
   seasonId: string;
+  careerId?: string;
   isReadOnly?: boolean;
 }
 
@@ -41,7 +43,7 @@ function ClubLogo({ logo, name }: { logo: string; name: string }) {
 
 const MAX_SUGGESTIONS = 8;
 
-export function RivaisView({ seasonId, isReadOnly }: RivaisViewProps) {
+export function RivaisView({ seasonId, careerId, isReadOnly }: RivaisViewProps) {
   const [lang] = useLang();
   const t = SETTINGS[lang];
 
@@ -108,10 +110,13 @@ export function RivaisView({ seasonId, isReadOnly }: RivaisViewProps) {
       setSuggestions([]);
       setIsOpen(false);
       setActiveIdx(-1);
+      if (careerId && rivals.length === 0 && !isMissionComplete(careerId, "free_set_rivals")) {
+        completeMission(careerId, "free_set_rivals");
+      }
     } else {
       setError(t.rivalsLockedError);
     }
-  }, [rivals, seasonId, clubs, t]);
+  }, [rivals, seasonId, clubs, t, careerId]);
 
   const handleInputChange = (value: string) => {
     setInput(value);
