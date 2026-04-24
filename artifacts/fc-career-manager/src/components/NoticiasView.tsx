@@ -50,6 +50,7 @@ interface NoticiasViewProps {
   aiUsageLimit?: number;
   focusedPostId?: string;
   onClearFocusedPost?: () => void;
+  clubLogoUrl?: string | null;
 }
 
 const NEGATIVE_KEYWORDS = [
@@ -1248,7 +1249,7 @@ const SOURCE_SIDEBAR_COLOR: Record<string, { color: string; bg: string }> = {
 const CUSTOM_SIDEBAR_COLOR = { color: "#a78bfa", bg: "rgba(167,139,250,0.15)" };
 
 
-export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matches = [], pastSeasons = [], isReadOnly, onGenerateBackground, userPlan, aiUsageToday, aiUsageLimit, focusedPostId, onClearFocusedPost }: NoticiasViewProps) {
+export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matches = [], pastSeasons = [], isReadOnly, onGenerateBackground, userPlan, aiUsageToday, aiUsageLimit, focusedPostId, onClearFocusedPost, clubLogoUrl }: NoticiasViewProps) {
   const [lang] = useLang();
   const t = NOTICIAS[lang];
 
@@ -2213,6 +2214,7 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
                     onRefresh={isReadOnly ? undefined : handleRefreshPost}
                     isRefreshing={refreshingPostId === post.id}
                     lang={lang}
+                    clubLogoUrl={clubLogoUrl}
                   />
                 </div>
               ))}

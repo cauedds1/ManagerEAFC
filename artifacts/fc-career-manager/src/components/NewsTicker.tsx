@@ -11,22 +11,30 @@ interface NewsTickerProps {
   customPortalPhotos?: Record<string, string>;
   onClickPost: (postId: string) => void;
   lang: Lang;
+  clubLogoUrl?: string | null;
 }
 
 function PortalLogo({
   post,
   portalPhotos,
   customPortalPhotos,
+  clubLogoUrl,
 }: {
   post: NewsPost;
   portalPhotos: PortalPhotos;
   customPortalPhotos?: Record<string, string>;
+  clubLogoUrl?: string | null;
 }) {
   const [failed, setFailed] = useState(false);
 
   let photoUrl: string | undefined;
   if (post.source === "custom" && post.customPortalId) {
     photoUrl = customPortalPhotos?.[post.customPortalId] ?? post.sourcePhotoUrl;
+  } else if (post.source === "fanpage") {
+    photoUrl =
+      portalPhotos.fanpage ??
+      (clubLogoUrl || undefined) ??
+      PORTAL_DEFAULT_PHOTOS.fanpage;
   } else if (post.source !== "custom") {
     photoUrl =
       portalPhotos[post.source] ??
@@ -87,6 +95,7 @@ export function NewsTicker({
   customPortalPhotos,
   onClickPost,
   lang,
+  clubLogoUrl,
 }: NewsTickerProps) {
   const t = PAINEL[lang];
   const containerRef = useRef<HTMLDivElement>(null);
@@ -179,6 +188,7 @@ export function NewsTicker({
                   post={post}
                   portalPhotos={portalPhotos}
                   customPortalPhotos={customPortalPhotos}
+                  clubLogoUrl={clubLogoUrl}
                 />
                 <span
                   style={{

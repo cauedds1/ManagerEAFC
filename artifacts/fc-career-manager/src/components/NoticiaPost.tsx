@@ -231,9 +231,10 @@ interface NoticiaPostProps {
   onRefresh?: (postId: string) => void;
   isRefreshing?: boolean;
   lang?: Lang;
+  clubLogoUrl?: string | null;
 }
 
-export function NoticiaPost({ post, portalPhotos, customPortals, onUpdateImage, onUpdateImageFit, onDelete, onRefresh, isRefreshing, lang = "pt" }: NoticiaPostProps) {
+export function NoticiaPost({ post, portalPhotos, customPortals, onUpdateImage, onUpdateImageFit, onDelete, onRefresh, isRefreshing, lang = "pt", clubLogoUrl }: NoticiaPostProps) {
   const [liked, setLiked] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -320,7 +321,9 @@ export function NoticiaPost({ post, portalPhotos, customPortals, onUpdateImage, 
     ? post.sourcePhotoUrl
     : post.source === "custom"
       ? customPortal?.photo
-      : (portalPhotos?.[post.source as keyof PortalPhotos] || PORTAL_DEFAULT_PHOTOS[post.source as keyof PortalPhotos]);
+      : post.source === "fanpage"
+        ? (portalPhotos?.fanpage || clubLogoUrl || PORTAL_DEFAULT_PHOTOS.fanpage)
+        : (portalPhotos?.[post.source as keyof PortalPhotos] || PORTAL_DEFAULT_PHOTOS[post.source as keyof PortalPhotos]);
 
   const displayImageUrl = localImageUrl ?? post.imageUrl ?? null;
   const hasEditActions = !!onUpdateImage || !!onDelete || !!onRefresh;

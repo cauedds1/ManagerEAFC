@@ -698,6 +698,7 @@ export function PainelView({
               customPortalPhotos={customPortalPhotos}
               onClickPost={(postId) => onNavigateToPost?.(postId)}
               lang={lang}
+              clubLogoUrl={clubLogoUrl}
             />
           </div>
         ) : (

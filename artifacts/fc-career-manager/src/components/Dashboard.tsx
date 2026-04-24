@@ -1962,6 +1962,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
                 aiUsageLimit={aiUsageLimit}
                 focusedPostId={focusedPostId}
                 onClearFocusedPost={() => setFocusedPostId(undefined)}
+                clubLogoUrl={logoUrl}
               />
             )}
             {activeTab === "diretoria" && (
