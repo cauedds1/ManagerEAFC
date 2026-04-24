@@ -358,6 +358,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     setTransfers(getTransfers(season.id));
     setTransferWindow(getTransferWindow(season.id));
     setMatches(getMatches(season.id));
+    setNoticiasPosts(getNoticiaPosts(season.id));
     if (season.finalized) setActiveTab("resumo");
     else setActiveTab("painel");
   }, []);
