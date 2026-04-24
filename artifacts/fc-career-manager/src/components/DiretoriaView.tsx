@@ -474,6 +474,12 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
   const [suggestClose, setSuggestClose] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
+  const [showEditMember, setShowEditMember] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editPatience, setEditPatience] = useState(50);
+  const [editPersonality, setEditPersonality] = useState<PersonalityStyle | "">("");
+  const [editAvatarColor, setEditAvatarColor] = useState("");
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [transferPosition, setTransferPosition] = useState("");
   const [transferBudget, setTransferBudget] = useState("");
@@ -939,6 +945,31 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
     setShowDeleteConfirm(null);
   };
 
+  const handleOpenEdit = (memberId: string) => {
+    const member = members.find((m) => m.id === memberId);
+    if (!member) return;
+    setEditName(member.name);
+    setEditDescription(member.description);
+    setEditPatience(member.patience);
+    setEditPersonality(member.personalityStyle ?? "");
+    setEditAvatarColor(member.avatarColor);
+    setShowEditMember(memberId);
+  };
+
+  const handleSaveEdit = () => {
+    if (!showEditMember || !editName.trim() || !editDescription.trim()) return;
+    const updates: Partial<BoardMember> = {
+      name: editName.trim(),
+      description: editDescription.trim(),
+      patience: editPatience,
+      avatarColor: editAvatarColor,
+      ...(editPersonality ? { personalityStyle: editPersonality as PersonalityStyle } : {}),
+    };
+    updateMember(career.id, showEditMember, updates);
+    setMembers((prev) => prev.map((m) => m.id === showEditMember ? { ...m, ...updates } : m));
+    setShowEditMember(null);
+  };
+
   const memberNotif = (memberId: string) =>
     notifications.find((n) => n.memberId === memberId) ?? null;
 
@@ -1215,6 +1246,13 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
                 </div>
                 <span className="text-white/40 text-xs">{selectedMember.roleLabel}</span>
               </div>
+              <button
+                onClick={() => handleOpenEdit(selectedMember.id)}
+                className="text-white/20 hover:text-white/60 transition-colors p-1"
+                title={t.btnEditMember}
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+              </button>
               <button
                 onClick={() => setShowDeleteConfirm(selectedMember.id)}
                 className="text-white/20 hover:text-red-400/70 transition-colors p-1"
@@ -1703,6 +1741,146 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
                 style={{ background: "rgba(248,113,113,0.2)", color: "#f87171", border: "1px solid rgba(248,113,113,0.3)" }}
               >
                 {t.btnRemove}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showEditMember && (
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(8px)" }}
+          onClick={(e) => { if (e.target === e.currentTarget) setShowEditMember(null); }}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl overflow-hidden flex flex-col glass"
+            style={{ border: "1px solid var(--surface-border)", maxHeight: "90dvh" }}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 flex-shrink-0" style={{ borderBottom: "1px solid var(--surface-border)" }}>
+              <h3 className="text-white font-bold text-base">{t.editMemberTitle}</h3>
+              <button onClick={() => setShowEditMember(null)} className="text-white/30 hover:text-white/70 transition-colors">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
+
+              {/* Avatar color picker */}
+              <div>
+                <label className="block text-xs text-white/40 font-semibold uppercase tracking-wider mb-2">{t.editAvatarColor}</label>
+                <div className="flex gap-2 flex-wrap">
+                  {AVATAR_PALETTE.map((color) => (
+                    <button
+                      key={color}
+                      onClick={() => setEditAvatarColor(color)}
+                      className="w-7 h-7 rounded-full transition-all hover:scale-110"
+                      style={{
+                        background: color,
+                        outline: editAvatarColor === color ? `3px solid ${color}` : "none",
+                        outlineOffset: "2px",
+                        opacity: editAvatarColor === color ? 1 : 0.5,
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Name */}
+              <div>
+                <label className="block text-xs text-white/40 font-semibold uppercase tracking-wider mb-2">{t.labelName}</label>
+                <input
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  placeholder={t.placeholderName}
+                  className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
+                  style={{
+                    background: "rgba(255,255,255,0.05)",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    color: "rgba(255,255,255,0.9)",
+                    caretColor: "var(--club-primary)",
+                  }}
+                />
+              </div>
+
+              {/* Personality style */}
+              <div>
+                <label className="block text-xs text-white/40 font-semibold uppercase tracking-wider mb-2">{t.labelPersonality}</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {PERSONALITY_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => setEditPersonality(opt.value)}
+                      className="flex flex-col items-start px-3 py-2 rounded-xl text-left transition-all"
+                      style={{
+                        background: editPersonality === opt.value ? "rgba(var(--club-primary-rgb),0.15)" : "rgba(255,255,255,0.04)",
+                        border: editPersonality === opt.value ? "1px solid rgba(var(--club-primary-rgb),0.4)" : "1px solid rgba(255,255,255,0.08)",
+                      }}
+                    >
+                      <span className="text-xs font-bold" style={{ color: editPersonality === opt.value ? "var(--club-primary)" : "rgba(255,255,255,0.75)" }}>{opt.label}</span>
+                      <span className="text-[10px] mt-0.5" style={{ color: "rgba(255,255,255,0.3)" }}>{opt.desc}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Patience */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs text-white/40 font-semibold uppercase tracking-wider">{t.patienceLabel}</label>
+                  <span className="text-xs font-bold tabular-nums" style={{ color: "var(--club-primary)" }}>{editPatience}</span>
+                </div>
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  value={editPatience}
+                  onChange={(e) => setEditPatience(Number(e.target.value))}
+                  className="w-full accent-[var(--club-primary)]"
+                />
+                <div className="flex justify-between text-[10px] mt-1" style={{ color: "rgba(255,255,255,0.25)" }}>
+                  <span>{t.patienceMin}</span>
+                  <span>{t.patienceMax}</span>
+                </div>
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="block text-xs text-white/40 font-semibold uppercase tracking-wider mb-2">{t.labelPersonalityBehavior}</label>
+                <textarea
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  placeholder={t.placeholderDescription}
+                  rows={4}
+                  className="w-full px-3 py-2.5 rounded-xl text-sm outline-none resize-none"
+                  style={{
+                    background: "rgba(255,255,255,0.05)",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    color: "rgba(255,255,255,0.9)",
+                    caretColor: "var(--club-primary)",
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-5 py-4 flex gap-3 flex-shrink-0" style={{ borderTop: "1px solid var(--surface-border)" }}>
+              <button
+                onClick={() => setShowEditMember(null)}
+                className="flex-1 py-2.5 rounded-xl font-semibold text-sm text-white/60 hover:text-white/80 transition-colors glass"
+                style={{ border: "1px solid var(--surface-border)" }}
+              >
+                {t.btnCancel}
+              </button>
+              <button
+                onClick={handleSaveEdit}
+                disabled={!editName.trim() || !editDescription.trim()}
+                className="flex-1 py-2.5 rounded-xl font-bold text-sm text-white transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none"
+                style={{ background: "var(--club-gradient)" }}
+              >
+                {t.btnSaveEdit}
               </button>
             </div>
           </div>

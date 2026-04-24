@@ -3005,6 +3005,11 @@ export const DIRETORIA: Record<Lang, Record<string, string>> = {
     // Upgrade prompt
     upgradeFeatureName: "Diretoria",
     upgradeDescription: "Converse com os diretores do clube, receba alertas sobre desempenho da equipe e negocie reforços. Disponível a partir do plano Pro.",
+    // Edit member modal
+    btnEditMember: "Editar membro",
+    editMemberTitle: "Editar Membro",
+    editAvatarColor: "Cor do avatar",
+    btnSaveEdit: "Salvar alterações",
   },
   en: {
     // Mood labels
@@ -3138,6 +3143,11 @@ export const DIRETORIA: Record<Lang, Record<string, string>> = {
     // Upgrade prompt
     upgradeFeatureName: "Board",
     upgradeDescription: "Chat with club directors, receive performance alerts and negotiate transfers. Available from the Pro plan.",
+    // Edit member modal
+    btnEditMember: "Edit member",
+    editMemberTitle: "Edit Member",
+    editAvatarColor: "Avatar colour",
+    btnSaveEdit: "Save changes",
   },
 } satisfies Record<Lang, Record<string, string>>;
 
