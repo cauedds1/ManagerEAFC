@@ -53,14 +53,14 @@ const PLAN_LIMITS: Record<Plan, FrontendPlanLimits> = {
 };
 
 export function getUserPlan(): Plan {
-  try {
-    const impRaw = sessionStorage.getItem("fc_impersonation_user");
-    if (impRaw) {
+  const impRaw = sessionStorage.getItem("fc_impersonation_user");
+  if (impRaw !== null) {
+    try {
       const impUser = JSON.parse(impRaw) as { plan?: string };
       if (impUser.plan === "pro" || impUser.plan === "ultra") return impUser.plan;
-      return "free";
-    }
-  } catch {}
+    } catch {}
+    return "free";
+  }
   try {
     const raw = localStorage.getItem("fc_auth_user");
     if (!raw) return "free";
