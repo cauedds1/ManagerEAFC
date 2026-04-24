@@ -748,6 +748,11 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
               };
               saveConversation(career.id, newMember.id, [introMsg]);
               addNotification(career.id, { memberId: newMember.id, preview: introContent, triggeredAt: Date.now() });
+              addToast({
+                type: "diretoria",
+                title: activeLang === "en" ? `${presData.name} (President)` : `${presData.name} (Presidente)`,
+                preview: introContent,
+              });
             }
 
             const welcomeContent = activeLang === "en"
@@ -769,6 +774,13 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
               category: "conquista",
             };
             addNewsPost(activeSeasonId, welcomePost);
+            addToast({
+              type: "noticias",
+              title: activeLang === "en" ? "FC Career Manager" : "FC Career Manager",
+              preview: activeLang === "en"
+                ? "Missions completed! Welcome to the full app."
+                : "Missões concluídas! Bem-vindo ao app completo.",
+            });
           };
 
           void runFreeUnlock();
