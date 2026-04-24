@@ -48,6 +48,8 @@ interface NoticiasViewProps {
   userPlan?: "free" | "pro" | "ultra";
   aiUsageToday?: number;
   aiUsageLimit?: number;
+  focusedPostId?: string;
+  onClearFocusedPost?: () => void;
 }
 
 const NEGATIVE_KEYWORDS = [
@@ -1246,7 +1248,7 @@ const SOURCE_SIDEBAR_COLOR: Record<string, { color: string; bg: string }> = {
 const CUSTOM_SIDEBAR_COLOR = { color: "#a78bfa", bg: "rgba(167,139,250,0.15)" };
 
 
-export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matches = [], pastSeasons = [], isReadOnly, onGenerateBackground, userPlan, aiUsageToday, aiUsageLimit }: NoticiasViewProps) {
+export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matches = [], pastSeasons = [], isReadOnly, onGenerateBackground, userPlan, aiUsageToday, aiUsageLimit, focusedPostId, onClearFocusedPost }: NoticiasViewProps) {
   const [lang] = useLang();
   const t = NOTICIAS[lang];
 
@@ -1275,6 +1277,8 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
   const [portalPhotos, setPortalPhotos] = useState<PortalPhotos>({});
   const [customPortals, setCustomPortals] = useState<CustomPortal[]>([]);
   const [refreshingPostId, setRefreshingPostId] = useState<string | null>(null);
+  const [highlightedPostId, setHighlightedPostId] = useState<string | undefined>();
+  const postRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const [autoNewsEnabled, setAutoNewsEnabledState] = useState(() =>
     getAutoNewsEnabled(career.id),
@@ -1307,6 +1311,24 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
     window.addEventListener(CUSTOM_PORTALS_EVENT, refresh);
     return () => window.removeEventListener(CUSTOM_PORTALS_EVENT, refresh);
   }, [career.id]);
+
+  useEffect(() => {
+    if (!focusedPostId) return;
+    const tryScroll = (attempts = 0) => {
+      const el = postRefs.current[focusedPostId];
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        setHighlightedPostId(focusedPostId);
+        const timer = setTimeout(() => setHighlightedPostId(undefined), 1800);
+        onClearFocusedPost?.();
+        return () => clearTimeout(timer);
+      } else if (attempts < 10) {
+        setTimeout(() => tryScroll(attempts + 1), 120);
+      }
+    };
+    const cleanup = tryScroll();
+    return () => { if (typeof cleanup === "function") cleanup(); };
+  }, [focusedPostId]);
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -2159,18 +2181,32 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
           ) : (
             <div className="flex flex-col gap-4 lg:max-w-[560px]">
               {filtered.map((post) => (
-                <NoticiaPost
+                <div
                   key={post.id}
-                  post={post}
-                  portalPhotos={portalPhotos}
-                  customPortals={customPortals}
-                  onUpdateImage={isReadOnly ? undefined : handleUpdateImage}
-                  onUpdateImageFit={isReadOnly ? undefined : handleUpdateImageFit}
-                  onDelete={isReadOnly ? undefined : handleDeletePost}
-                  onRefresh={isReadOnly ? undefined : handleRefreshPost}
-                  isRefreshing={refreshingPostId === post.id}
-                  lang={lang}
-                />
+                  ref={(el) => { postRefs.current[post.id] = el; }}
+                  style={{
+                    borderRadius: 16,
+                    transition: "box-shadow 0.4s ease, outline 0.4s ease",
+                    outline: highlightedPostId === post.id
+                      ? "2px solid rgba(var(--club-primary-rgb),0.7)"
+                      : "2px solid transparent",
+                    boxShadow: highlightedPostId === post.id
+                      ? "0 0 0 4px rgba(var(--club-primary-rgb),0.18)"
+                      : "none",
+                  }}
+                >
+                  <NoticiaPost
+                    post={post}
+                    portalPhotos={portalPhotos}
+                    customPortals={customPortals}
+                    onUpdateImage={isReadOnly ? undefined : handleUpdateImage}
+                    onUpdateImageFit={isReadOnly ? undefined : handleUpdateImageFit}
+                    onDelete={isReadOnly ? undefined : handleDeletePost}
+                    onRefresh={isReadOnly ? undefined : handleRefreshPost}
+                    isRefreshing={refreshingPostId === post.id}
+                    lang={lang}
+                  />
+                </div>
               ))}
             </div>
           )}

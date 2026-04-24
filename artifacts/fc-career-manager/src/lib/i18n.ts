@@ -811,6 +811,8 @@ export const PAINEL: Record<Lang, Record<string, string>> = {
     subMovements: "movimentações",
     // Tab label
     tabLabel: "Painel",
+    // NewsTicker
+    tickerLabel: "📰 NOTÍCIAS",
   },
   en: {
     // LeagueCard
@@ -863,6 +865,8 @@ export const PAINEL: Record<Lang, Record<string, string>> = {
     subMovements: "movements",
     // Tab label
     tabLabel: "Dashboard",
+    // NewsTicker
+    tickerLabel: "📰 NEWS",
   },
 };
 

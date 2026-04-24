@@ -20,6 +20,7 @@ import { getTransfers, addTransfer, updateTransfer, saveTransfers } from "@/lib/
 import { getTransferWindow, saveTransferWindow, type TransferWindowState } from "@/lib/transferWindowStorage";
 import { getRivals } from "@/lib/rivalsStorage";
 import { fetchPortals } from "@/lib/customPortalStorage";
+import { fetchPortalPhotos, type PortalPhotos } from "@/lib/portalPhotosStorage";
 import { addPost as addNewsPost, getPosts as getNoticiaPosts, generatePostId, generateCommentId } from "@/lib/noticiaStorage";
 import { getFanMood, setFanMood, computeFanMoodDelta, getFanMoodLabel } from "@/lib/fanMoodStorage";
 import type { TransferRecord } from "@/types/transfer";
@@ -248,6 +249,8 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
   }, []);
   const [activeTab, setActiveTab] = useState<CareerTab>("painel");
   const [highlightMomentoId, setHighlightMomentoId] = useState<string | undefined>();
+  const [portalPhotos, setPortalPhotos] = useState<PortalPhotos>({});
+  const [focusedPostId, setFocusedPostId] = useState<string | undefined>();
 
   const [seasons, setSeasons] = useState<Season[]>([]);
   const [activeSeasonId, setActiveSeasonId] = useState<string>(career.currentSeasonId ?? career.id);
@@ -419,6 +422,10 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
   useEffect(() => {
     setFanMoodScore(getFanMood(activeSeasonId));
   }, [activeSeasonId]);
+
+  useEffect(() => {
+    fetchPortalPhotos(career.id).then(setPortalPhotos).catch(() => {});
+  }, [career.id]);
 
   useEffect(() => {
     initNoticiasSeenAt(activeSeasonId);
@@ -1871,6 +1878,12 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
                 transferCount={transfers.length}
                 competitions={activeSeason?.competitions ?? career.competitions}
                 isReadOnly={isReadOnly}
+                posts={getNoticiaPosts(activeSeasonId)}
+                portalPhotos={portalPhotos}
+                onNavigateToPost={(postId) => {
+                  setFocusedPostId(postId);
+                  setActiveTab("noticias");
+                }}
               />
             )}
             {activeTab === "partidas" && (
@@ -1919,6 +1932,8 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
                 userPlan={userPlan}
                 aiUsageToday={aiUsageToday}
                 aiUsageLimit={aiUsageLimit}
+                focusedPostId={focusedPostId}
+                onClearFocusedPost={() => setFocusedPostId(undefined)}
               />
             )}
             {activeTab === "diretoria" && (

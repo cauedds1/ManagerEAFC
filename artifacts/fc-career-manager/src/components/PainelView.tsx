@@ -15,6 +15,9 @@ import { MatchDetailPage } from "./MatchDetailPage";
 import { useLang } from "@/hooks/useLang";
 import { PAINEL } from "@/lib/i18n";
 import { SectionHelp } from "./SectionHelp";
+import { NewsTicker } from "./NewsTicker";
+import type { NewsPost } from "@/types/noticias";
+import type { PortalPhotos } from "@/lib/portalPhotosStorage";
 
 function resolveOpponentLogo(name: string, stored?: string): string | undefined {
   if (stored) return stored;
@@ -67,6 +70,10 @@ interface PainelViewProps {
   transferCount: number;
   competitions?: string[];
   isReadOnly?: boolean;
+  posts?: NewsPost[];
+  portalPhotos?: PortalPhotos;
+  customPortalPhotos?: Record<string, string>;
+  onNavigateToPost?: (postId: string) => void;
 }
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
@@ -569,6 +576,10 @@ export function PainelView({
   transferCount,
   competitions,
   isReadOnly,
+  posts,
+  portalPhotos,
+  customPortalPhotos,
+  onNavigateToPost,
 }: PainelViewProps) {
   const careerId = careerIdProp ?? seasonId;
   const [lang] = useLang();
@@ -665,6 +676,16 @@ export function PainelView({
           </div>
         ))}
       </div>
+
+      {posts && posts.length > 0 && (
+        <NewsTicker
+          posts={posts}
+          portalPhotos={portalPhotos ?? {}}
+          customPortalPhotos={customPortalPhotos}
+          onClickPost={(postId) => onNavigateToPost?.(postId)}
+          lang={lang}
+        />
+      )}
 
       <LastMatches
         seasonId={seasonId}
