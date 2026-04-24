@@ -3009,6 +3009,10 @@ export const DIRETORIA: Record<Lang, Record<string, string>> = {
     btnEditMember: "Editar membro",
     editMemberTitle: "Editar Membro",
     editAvatarColor: "Cor do avatar",
+    editMemberPhoto: "Foto do membro",
+    editPhotoUpload: "Anexar foto",
+    editPhotoRemove: "Remover foto",
+    editPhotoHint: "A foto aparece no chat no lugar das iniciais.",
     btnSaveEdit: "Salvar alterações",
   },
   en: {
@@ -3147,6 +3151,10 @@ export const DIRETORIA: Record<Lang, Record<string, string>> = {
     btnEditMember: "Edit member",
     editMemberTitle: "Edit Member",
     editAvatarColor: "Avatar colour",
+    editMemberPhoto: "Member photo",
+    editPhotoUpload: "Attach photo",
+    editPhotoRemove: "Remove photo",
+    editPhotoHint: "The photo replaces the initials in the chat.",
     btnSaveEdit: "Save changes",
   },
 } satisfies Record<Lang, Record<string, string>>;

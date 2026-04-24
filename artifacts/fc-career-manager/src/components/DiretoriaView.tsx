@@ -153,6 +153,16 @@ function MoodBadge({ mood, small, lang = "pt" }: { mood: MoodLevel; small?: bool
 }
 
 function AvatarCircle({ member, size = 44 }: { member: BoardMember; size?: number }) {
+  if (member.photoUrl) {
+    return (
+      <div
+        className="flex-shrink-0 rounded-full overflow-hidden"
+        style={{ width: size, height: size, border: `2px solid ${member.avatarColor}44`, flexShrink: 0 }}
+      >
+        <img src={member.photoUrl} alt={member.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+      </div>
+    );
+  }
   return (
     <div
       className="flex-shrink-0 flex items-center justify-center font-black rounded-full select-none"
@@ -168,6 +178,32 @@ function AvatarCircle({ member, size = 44 }: { member: BoardMember; size?: numbe
       {getInitials(member.name)}
     </div>
   );
+}
+
+function compressImage(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const size = 200;
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) { reject(new Error("canvas")); return; }
+        const min = Math.min(img.width, img.height);
+        const sx = (img.width - min) / 2;
+        const sy = (img.height - min) / 2;
+        ctx.drawImage(img, sx, sy, min, min, 0, 0, size, size);
+        resolve(canvas.toDataURL("image/jpeg", 0.75));
+      };
+      img.onerror = reject;
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 }
 
 function TypingDots({ name, typingLabel = "está digitando" }: { name: string; typingLabel?: string; }) {
@@ -480,6 +516,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
   const [editPatience, setEditPatience] = useState(50);
   const [editPersonality, setEditPersonality] = useState<PersonalityStyle | "">("");
   const [editAvatarColor, setEditAvatarColor] = useState("");
+  const [editPhotoUrl, setEditPhotoUrl] = useState("");
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [transferPosition, setTransferPosition] = useState("");
   const [transferBudget, setTransferBudget] = useState("");
@@ -953,6 +990,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
     setEditPatience(member.patience);
     setEditPersonality(member.personalityStyle ?? "");
     setEditAvatarColor(member.avatarColor);
+    setEditPhotoUrl(member.photoUrl ?? "");
     setShowEditMember(memberId);
   };
 
@@ -963,11 +1001,24 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
       description: editDescription.trim(),
       patience: editPatience,
       avatarColor: editAvatarColor,
+      photoUrl: editPhotoUrl || undefined,
       ...(editPersonality ? { personalityStyle: editPersonality as PersonalityStyle } : {}),
     };
     updateMember(career.id, showEditMember, updates);
     setMembers((prev) => prev.map((m) => m.id === showEditMember ? { ...m, ...updates } : m));
     setShowEditMember(null);
+  };
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const compressed = await compressImage(file);
+      setEditPhotoUrl(compressed);
+    } catch {
+      // ignore compression errors
+    }
+    e.target.value = "";
   };
 
   const memberNotif = (memberId: string) =>
@@ -1767,6 +1818,56 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
 
             {/* Body */}
             <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
+
+              {/* Photo upload */}
+              <div>
+                <label className="block text-xs text-white/40 font-semibold uppercase tracking-wider mb-2">{t.editMemberPhoto}</label>
+                <div className="flex items-center gap-4">
+                  {/* Preview */}
+                  <div className="flex-shrink-0">
+                    {editPhotoUrl ? (
+                      <img
+                        src={editPhotoUrl}
+                        alt="preview"
+                        style={{ width: 56, height: 56, borderRadius: "50%", objectFit: "cover", border: `2px solid ${editAvatarColor}66` }}
+                      />
+                    ) : (
+                      <div
+                        className="flex items-center justify-center font-black rounded-full select-none"
+                        style={{ width: 56, height: 56, background: `${editAvatarColor}22`, border: `2px solid ${editAvatarColor}44`, color: editAvatarColor, fontSize: 20 }}
+                      >
+                        {getInitials(editName || "?")}
+                      </div>
+                    )}
+                  </div>
+                  {/* Buttons */}
+                  <div className="flex flex-col gap-2 flex-1">
+                    <label
+                      className="cursor-pointer flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-all hover:scale-[1.01] active:scale-[0.99]"
+                      style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.7)" }}
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      {t.editPhotoUpload}
+                      <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
+                    </label>
+                    {editPhotoUrl && (
+                      <button
+                        onClick={() => setEditPhotoUrl("")}
+                        className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-all"
+                        style={{ background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.2)", color: "rgb(248,113,113)" }}
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                        {t.editPhotoRemove}
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <p className="text-[10px] mt-2" style={{ color: "rgba(255,255,255,0.25)" }}>{t.editPhotoHint}</p>
+              </div>
 
               {/* Avatar color picker */}
               <div>

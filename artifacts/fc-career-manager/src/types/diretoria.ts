@@ -20,6 +20,7 @@ export interface BoardMember {
   patience: number;
   mood: MoodLevel;
   avatarColor: string;
+  photoUrl?: string;
   createdAt: number;
   messageLimit?: number;
   userMessagesSent?: number;
