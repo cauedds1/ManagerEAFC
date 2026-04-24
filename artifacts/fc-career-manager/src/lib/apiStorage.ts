@@ -1,7 +1,9 @@
+import { getEffectiveToken } from "@/lib/authToken";
+
 const BASE = "/api";
 
 function authHeader(): Record<string, string> {
-  const token = localStorage.getItem("fc_auth_token");
+  const token = getEffectiveToken();
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 

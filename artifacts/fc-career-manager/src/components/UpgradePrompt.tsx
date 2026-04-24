@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Plan, getPlanLabel } from "@/lib/userPlan";
 import { useLang } from "@/hooks/useLang";
+import { getEffectiveToken } from "@/lib/authToken";
 
 interface UpgradePromptProps {
   currentPlan: Plan;
@@ -12,7 +13,6 @@ interface UpgradePromptProps {
 }
 
 const API_BASE = "/api";
-const AUTH_TOKEN_KEY = "fc_auth_token";
 
 function readEffectiveLang(): "pt" | "en" {
   try {
@@ -23,7 +23,7 @@ function readEffectiveLang(): "pt" | "en" {
 }
 
 async function startStripeCheckout(requiredPlan: "pro" | "ultra"): Promise<void> {
-  const token = localStorage.getItem(AUTH_TOKEN_KEY);
+  const token = getEffectiveToken();
   if (!token) { return; }
 
   const pricesRes = await fetch(`${API_BASE}/stripe/products-with-plan`, {

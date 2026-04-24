@@ -340,6 +340,35 @@ router.patch("/admin-panel/bug-reports/:id", async (req: Request, res: Response)
   }
 });
 
+// POST /api/admin-panel/impersonate/:userId
+router.post("/admin-panel/impersonate/:userId", async (req: Request, res: Response) => {
+  if (!validateAdminToken(req, res)) return;
+  try {
+    const userId = Number(req.params["userId"]);
+    if (!Number.isFinite(userId)) return res.status(400).json({ error: "ID inválido" });
+
+    const [user] = await db
+      .select({ id: usersTable.id, email: usersTable.email, name: usersTable.name, plan: usersTable.plan })
+      .from(usersTable)
+      .where(eq(usersTable.id, userId))
+      .limit(1);
+
+    if (!user) return res.status(404).json({ error: "Usuário não encontrado" });
+
+    const JWT_SECRET = process.env.JWT_SECRET ?? "fc-career-dev-secret-change-in-production";
+    const token = jwt.sign(
+      { id: user.id, email: user.email, name: user.name, plan: user.plan ?? "free", impersonated: true },
+      JWT_SECRET,
+      { expiresIn: "1h" }
+    );
+
+    return res.json({ token, user: { id: user.id, email: user.email, name: user.name, plan: user.plan } });
+  } catch (err) {
+    console.error("POST /admin-panel/impersonate/:userId error:", err);
+    return res.status(500).json({ error: "Erro interno" });
+  }
+});
+
 // POST /api/admin-panel/recover-career — admin JWT authenticated proxy to recover-career logic
 router.post("/admin-panel/recover-career", async (req: Request, res: Response) => {
   if (!validateAdminToken(req, res)) return;

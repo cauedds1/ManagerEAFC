@@ -1,4 +1,5 @@
 import { putSeasonData } from "@/lib/apiStorage";
+import { getEffectiveToken } from "@/lib/authToken";
 
 export interface Momento {
   id: string;
@@ -83,7 +84,7 @@ export async function resizeImageToDataUrl(file: File, maxPx = 1280, quality = 0
 }
 
 function getAuthHeader(): Record<string, string> {
-  const token = localStorage.getItem("fc_auth_token");
+  const token = getEffectiveToken();
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 

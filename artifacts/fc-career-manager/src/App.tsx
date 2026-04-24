@@ -20,12 +20,52 @@ import {
   clearClubCache,
   ApiRateLimitError,
 } from "@/lib/clubListCache";
-import { listCareers, saveCareer, migrateFromLegacy, updateCareerSeason, fetchCareersFromApi, AuthExpiredError } from "@/lib/careerStorage";
+import { listCareers, saveCareer, migrateFromLegacy, updateCareerSeason, fetchCareersFromApi, AuthExpiredError, getEffectiveToken } from "@/lib/careerStorage";
 import { sessionClear } from "@/lib/sessionStore";
 
 const AUTH_TOKEN_KEY = "fc_auth_token";
 const AUTH_USER_KEY = "fc_auth_user";
+const IMPERSONATION_USER_KEY = "fc_impersonation_user";
 const API_BASE = "/api";
+
+function parseJwtPayload(token: string): Record<string, unknown> | null {
+  try {
+    const parts = token.split(".");
+    if (parts.length !== 3) return null;
+    const b64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const padded = b64 + "=".repeat((4 - (b64.length % 4)) % 4);
+    const decoded = atob(padded);
+    return JSON.parse(decoded) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+function ImpersonationBanner({ userName, onEnd }: { userName: string; onEnd: () => void }) {
+  return (
+    <div
+      className="fixed top-0 left-0 right-0 z-[200] flex items-center justify-between px-4 py-2 gap-3"
+      style={{ background: "rgba(234,179,8,0.95)", backdropFilter: "blur(8px)", boxShadow: "0 2px 12px rgba(0,0,0,0.4)" }}
+    >
+      <div className="flex items-center gap-2 min-w-0">
+        <svg className="w-4 h-4 flex-shrink-0 text-yellow-900" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+        </svg>
+        <span className="text-yellow-900 font-bold text-xs truncate">
+          Modo Admin — Visualizando como <span className="underline">{userName}</span>
+        </span>
+      </div>
+      <button
+        onClick={onEnd}
+        className="flex-shrink-0 px-3 py-1 rounded-lg text-xs font-bold transition-all hover:opacity-80"
+        style={{ background: "rgba(0,0,0,0.2)", color: "#713f12" }}
+      >
+        Encerrar visualização
+      </button>
+    </div>
+  );
+}
 
 interface AuthUser {
   id: number;
@@ -158,6 +198,8 @@ export default function App() {
   const [checkoutConfirmed, setCheckoutConfirmed] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
+  const [isImpersonating, setIsImpersonating] = useState(false);
+  const [impersonatedUserName, setImpersonatedUserName] = useState("");
   const [lang, setLangState] = useState<"pt" | "en">(() => {
     try {
       const s = localStorage.getItem("fc_lang");
@@ -254,6 +296,10 @@ export default function App() {
   const WELCOME_KEY = (userId: number) => `fc_onboarded_${userId}`;
 
   const handleAuthSuccess = useCallback(async (token: string, user: AuthUser) => {
+    sessionStorage.removeItem(AUTH_TOKEN_KEY);
+    sessionStorage.removeItem(IMPERSONATION_USER_KEY);
+    setIsImpersonating(false);
+    setImpersonatedUserName("");
     localStorage.setItem(AUTH_TOKEN_KEY, token);
     localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user));
     setAuthUser(user);
@@ -281,10 +327,14 @@ export default function App() {
     localStorage.removeItem(AUTH_USER_KEY);
     localStorage.removeItem("fc-career-manager-careers");
     localStorage.removeItem("fc-career-manager-synced-ids");
+    sessionStorage.removeItem(AUTH_TOKEN_KEY);
+    sessionStorage.removeItem(IMPERSONATION_USER_KEY);
     sessionClear();
     setAuthUser(null);
     setActiveCareer(null);
     setCareers([]);
+    setIsImpersonating(false);
+    setImpersonatedUserName("");
     resetTheme();
     setView("landing");
   }, []);
@@ -394,15 +444,72 @@ export default function App() {
     }
   }, [handleAuthSuccess]);
 
+  const handleEndImpersonation = useCallback(() => {
+    sessionStorage.removeItem(AUTH_TOKEN_KEY);
+    sessionStorage.removeItem(IMPERSONATION_USER_KEY);
+    setIsImpersonating(false);
+    setImpersonatedUserName("");
+    try { window.close(); } catch {}
+    setAuthUser(null);
+    setActiveCareer(null);
+    setCareers([]);
+    resetTheme();
+    setView("landing");
+  }, []);
+
   useEffect(() => {
     migrateFromLegacy();
 
-    const storedUser = localStorage.getItem(AUTH_USER_KEY);
-    if (storedUser) {
-      try { setAuthUser(JSON.parse(storedUser) as AuthUser); } catch {}
+    const urlParams = new URLSearchParams(window.location.search);
+    const impersonationToken = urlParams.get("impersonation_token");
+    if (impersonationToken) {
+      window.history.replaceState({}, "", window.location.pathname);
+      const payload = parseJwtPayload(impersonationToken);
+      if (payload && typeof payload.id === "number" && payload.impersonated === true) {
+        const impUser: AuthUser = {
+          id: payload.id as number,
+          email: typeof payload.email === "string" ? payload.email : "",
+          name: typeof payload.name === "string" ? payload.name : "Usuário",
+          plan: typeof payload.plan === "string" ? payload.plan as "free" | "pro" | "ultra" : "free",
+        };
+        sessionStorage.setItem(AUTH_TOKEN_KEY, impersonationToken);
+        sessionStorage.setItem(IMPERSONATION_USER_KEY, JSON.stringify(impUser));
+        setIsImpersonating(true);
+        setImpersonatedUserName(impUser.name);
+        setAuthUser(impUser);
+        fetchCareersFromApi().then((fetchedCareers) => {
+          setCareers(fetchedCareers);
+          const localCached = getCachedClubList();
+          if (localCached && localCached.length > 0) {
+            setAllClubs(localCached);
+            resolveViewAfterClubs(fetchedCareers.length > 0);
+            return;
+          }
+          startFetching(fetchedCareers.length > 0);
+        }).catch(() => {
+          setCareers([]);
+          setView("career-selection");
+        });
+        return;
+      }
     }
 
-    const token = localStorage.getItem(AUTH_TOKEN_KEY);
+    const storedImpUser = sessionStorage.getItem(IMPERSONATION_USER_KEY);
+    if (storedImpUser) {
+      try {
+        const impUser = JSON.parse(storedImpUser) as AuthUser;
+        setIsImpersonating(true);
+        setImpersonatedUserName(impUser.name);
+        setAuthUser(impUser);
+      } catch {}
+    } else {
+      const storedUser = localStorage.getItem(AUTH_USER_KEY);
+      if (storedUser) {
+        try { setAuthUser(JSON.parse(storedUser) as AuthUser); } catch {}
+      }
+    }
+
+    const token = getEffectiveToken();
     if (!token) {
       const localCareers = listCareers();
       setCareers(localCareers);
@@ -440,7 +547,11 @@ export default function App() {
       if (err instanceof AuthExpiredError) {
         localStorage.removeItem(AUTH_TOKEN_KEY);
         localStorage.removeItem(AUTH_USER_KEY);
+        sessionStorage.removeItem(AUTH_TOKEN_KEY);
+        sessionStorage.removeItem(IMPERSONATION_USER_KEY);
         setAuthUser(null);
+        setIsImpersonating(false);
+        setImpersonatedUserName("");
       }
       const localCareers = listCareers();
       setCareers(localCareers);
@@ -638,7 +749,10 @@ export default function App() {
   return (
     <>
       <AnimatedBackground />
-      <div className="relative h-full overflow-hidden">
+      {isImpersonating && (
+        <ImpersonationBanner userName={impersonatedUserName} onEnd={handleEndImpersonation} />
+      )}
+      <div className="relative h-full overflow-hidden" style={isImpersonating ? { paddingTop: "40px" } : undefined}>
         <div
           style={{
             height: "100%",

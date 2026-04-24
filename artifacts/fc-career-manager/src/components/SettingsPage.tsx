@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useLang } from "@/hooks/useLang";
+import { getEffectiveToken } from "@/lib/authToken";
 import { SETTINGS } from "@/lib/i18n";
 import { clearClubCache } from "@/lib/clubListCache";
 import {
@@ -349,7 +350,6 @@ function CustomPortalModal({
 }
 
 const API_BASE = "/api";
-const AUTH_TOKEN_KEY = "fc_auth_token";
 
 export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer, userPlan }: SettingsPageProps) {
   const [lang, setLang] = useLang();
@@ -382,7 +382,7 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
   const [subLoading, setSubLoading] = useState(false);
 
   useEffect(() => {
-    const token = localStorage.getItem(AUTH_TOKEN_KEY);
+    const token = getEffectiveToken();
     if (!token || resolvedPlan === "free") return;
     setSubLoading(true);
     fetch(`${API_BASE}/stripe/subscription`, {
@@ -400,7 +400,7 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
     setPortalError("");
     setPortalLoading(true);
     try {
-      const token = localStorage.getItem(AUTH_TOKEN_KEY);
+      const token = getEffectiveToken();
       const res = await fetch(`${API_BASE}/stripe/portal`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
@@ -483,7 +483,7 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
     if (!bugDesc.trim()) return;
     setBugState("sending");
     try {
-      const token = localStorage.getItem(AUTH_TOKEN_KEY);
+      const token = getEffectiveToken();
       const res = await fetch("/api/bug-reports", {
         method: "POST",
         headers: {

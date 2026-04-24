@@ -277,6 +277,49 @@ function OverviewTab() {
   );
 }
 
+async function impersonateUser(userId: number): Promise<void> {
+  const data = await apiFetch<{ token: string; user: { name: string } }>(`/admin-panel/impersonate/${userId}`, { method: "POST" });
+  const url = `${window.location.protocol}//${window.location.host}/?impersonation_token=${encodeURIComponent(data.token)}`;
+  window.open(url, "_blank", "noopener,noreferrer");
+}
+
+function ImpersonateButton({ userId, userName }: { userId: number; userName: string }) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleClick = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setLoading(true);
+    setError(null);
+    try {
+      await impersonateUser(userId);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro ao iniciar visualização");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-1">
+      <button
+        onClick={handleClick}
+        disabled={loading}
+        title={`Visualizar como ${userName}`}
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:opacity-80 disabled:opacity-50"
+        style={{ background: "rgba(234,179,8,0.15)", color: "#fbbf24", border: "1px solid rgba(234,179,8,0.3)" }}
+      >
+        <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+        </svg>
+        {loading ? "Abrindo..." : "Visualizar como usuário"}
+      </button>
+      {error && <span className="text-red-400 text-xs">{error}</span>}
+    </div>
+  );
+}
+
 function UserDetailModal({ userId, onClose }: { userId: number; onClose: () => void }) {
   const { data, isLoading, error } = useQuery<UserDetail>({
     queryKey: ["user-detail", userId],
@@ -331,6 +374,8 @@ function UserDetailModal({ userId, onClose }: { userId: number; onClose: () => v
                   ))}
                 </div>
               </div>
+
+              <ImpersonateButton userId={data.user.id} userName={data.user.name} />
 
               <div className="flex flex-col gap-3">
                 <h3 className="text-white/50 text-xs font-semibold uppercase tracking-wider">
@@ -443,12 +488,13 @@ function UsersTab() {
                   <th className="text-left px-4 py-3 text-white/50 text-xs font-semibold uppercase tracking-wide whitespace-nowrap">Temp.</th>
                   <th className="text-left px-4 py-3 text-white/50 text-xs font-semibold uppercase tracking-wide whitespace-nowrap">Último Login</th>
                   <th className="text-left px-4 py-3 text-white/50 text-xs font-semibold uppercase tracking-wide whitespace-nowrap">Cadastro</th>
+                  <th className="text-left px-4 py-3 text-white/50 text-xs font-semibold uppercase tracking-wide whitespace-nowrap">Ação</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="px-4 py-8 text-center text-white/25 text-xs">Nenhum usuário encontrado</td>
+                    <td colSpan={9} className="px-4 py-8 text-center text-white/25 text-xs">Nenhum usuário encontrado</td>
                   </tr>
                 )}
                 {filtered.map((u, i) => (
@@ -479,6 +525,9 @@ function UsersTab() {
                       {u.lastLoginAt ? formatDate(u.lastLoginAt) : <span className="text-white/20">—</span>}
                     </td>
                     <td className="px-4 py-3 text-white/40 text-xs whitespace-nowrap">{formatDate(u.createdAt)}</td>
+                    <td className="px-4 py-3">
+                      <ImpersonateButton userId={u.id} userName={u.name} />
+                    </td>
                   </tr>
                 ))}
               </tbody>

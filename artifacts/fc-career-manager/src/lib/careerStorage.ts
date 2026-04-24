@@ -3,13 +3,16 @@ import { ClubEntry } from "@/types/club";
 import { getCurrentSeason } from "@/lib/api";
 import { createSeason } from "@/lib/seasonStorage";
 
+import { getEffectiveToken } from "@/lib/authToken";
+
+export { getEffectiveToken };
+
 const CAREERS_KEY = "fc-career-manager-careers";
 const LEGACY_CLUB_KEY = "fc-career-manager-club";
 const SYNCED_KEY = "fc-career-manager-synced-ids";
-const AUTH_TOKEN_KEY = "fc_auth_token";
 
 function getAuthHeaders(): HeadersInit {
-  const token = localStorage.getItem(AUTH_TOKEN_KEY);
+  const token = getEffectiveToken();
   return token ? { "Content-Type": "application/json", Authorization: `Bearer ${token}` } : { "Content-Type": "application/json" };
 }
 
@@ -52,7 +55,7 @@ export class AuthExpiredError extends Error {
 }
 
 export async function fetchCareersFromApi(): Promise<Career[]> {
-  const token = localStorage.getItem(AUTH_TOKEN_KEY);
+  const token = getEffectiveToken();
   if (!token) return listCareers();
   const res = await fetch("/api/careers", { headers: getAuthHeaders() });
   if (res.status === 401) throw new AuthExpiredError();

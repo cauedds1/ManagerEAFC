@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { createPortal } from "react-dom";
+import { getEffectiveToken } from "@/lib/authToken";
 import {
   getMomentos,
   addMomento,
@@ -296,7 +297,7 @@ function VideoUploadSection({
     onVideoReady(null);
 
     try {
-      const token = localStorage.getItem("fc_auth_token");
+      const token = getEffectiveToken();
 
       const result = await new Promise<{ url: string; key: string }>((resolve, reject) => {
         const xhr = new XMLHttpRequest();

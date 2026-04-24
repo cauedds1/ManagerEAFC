@@ -14,6 +14,7 @@ export interface AuthUser {
 
 export interface AuthRequest extends Request {
   user?: AuthUser;
+  impersonated?: boolean;
 }
 
 export function requireAuth(req: AuthRequest, res: Response, next: NextFunction): void {
@@ -25,11 +26,23 @@ export function requireAuth(req: AuthRequest, res: Response, next: NextFunction)
 
   const token = header.slice(7);
 
-  let payload: AuthUser & { iat?: number; exp?: number };
+  let payload: AuthUser & { iat?: number; exp?: number; impersonated?: boolean };
   try {
-    payload = jwt.verify(token, JWT_SECRET) as AuthUser & { iat?: number; exp?: number };
+    payload = jwt.verify(token, JWT_SECRET) as AuthUser & { iat?: number; exp?: number; impersonated?: boolean };
   } catch {
     res.status(401).json({ error: "Token inválido ou expirado" });
+    return;
+  }
+
+  if (payload.impersonated) {
+    const writeMethods = ["POST", "PUT", "PATCH", "DELETE"];
+    if (writeMethods.includes(req.method)) {
+      res.status(403).json({ error: "Operações de escrita não são permitidas em modo de visualização" });
+      return;
+    }
+    req.user = { id: payload.id, email: payload.email, name: payload.name, plan: payload.plan ?? "free" };
+    req.impersonated = true;
+    next();
     return;
   }
 

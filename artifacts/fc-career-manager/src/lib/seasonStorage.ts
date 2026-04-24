@@ -1,9 +1,8 @@
 import type { Season } from "@/types/career";
-
-const AUTH_TOKEN_KEY = "fc_auth_token";
+import { getEffectiveToken } from "@/lib/authToken";
 
 function getAuthHeaders(): HeadersInit {
-  const token = localStorage.getItem(AUTH_TOKEN_KEY);
+  const token = getEffectiveToken();
   return token
     ? { "Content-Type": "application/json", Authorization: `Bearer ${token}` }
     : { "Content-Type": "application/json" };

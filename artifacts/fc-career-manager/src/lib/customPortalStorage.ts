@@ -1,3 +1,5 @@
+import { getEffectiveToken } from "@/lib/authToken";
+
 export type PortalTone =
   | "humoristico"
   | "serio"
@@ -40,10 +42,8 @@ export interface CustomPortal {
 export const CUSTOM_PORTALS_EVENT = "fc-custom-portals-changed";
 const MAX_PORTALS = 3;
 
-const AUTH_TOKEN_KEY = "fc_auth_token";
-
 function getAuthHeaders(): HeadersInit {
-  const token = localStorage.getItem(AUTH_TOKEN_KEY);
+  const token = getEffectiveToken();
   return token
     ? { "Content-Type": "application/json", Authorization: `Bearer ${token}` }
     : { "Content-Type": "application/json" };

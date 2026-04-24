@@ -1,7 +1,7 @@
-const AUTH_TOKEN_KEY = "fc_auth_token";
+import { getEffectiveToken } from "@/lib/authToken";
 
 function getAuthHeaders(): HeadersInit {
-  const token = localStorage.getItem(AUTH_TOKEN_KEY);
+  const token = getEffectiveToken();
   return {
     "Content-Type": "application/json",
     ...(token ? { Authorization: `Bearer ${token}` } : {}),

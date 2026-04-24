@@ -1,14 +1,34 @@
-import express, { type Express } from "express";
+import express, { type Express, type Request, type Response, type NextFunction } from "express";
 import cors from "cors";
 import helmet from "helmet";
 import pinoHttp from "pino-http";
 import path from "path";
 import { existsSync } from "fs";
+import jwt from "jsonwebtoken";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import { WebhookHandlers } from "./lib/webhookHandlers";
 import { handleStripeEvent } from "./lib/stripeWebhook";
 import type Stripe from "stripe";
+
+const JWT_SECRET = process.env.JWT_SECRET ?? "fc-career-dev-secret-change-in-production";
+const WRITE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+
+function blockImpersonatedWrites(req: Request, res: Response, next: NextFunction): void {
+  if (!WRITE_METHODS.has(req.method)) { next(); return; }
+  if (req.path.startsWith("/admin-panel/")) { next(); return; }
+  const header = req.headers.authorization;
+  if (!header?.startsWith("Bearer ")) { next(); return; }
+  try {
+    const payload = jwt.verify(header.slice(7), JWT_SECRET) as { impersonated?: boolean };
+    if (payload.impersonated) {
+      res.status(403).json({ error: "Operações de escrita não são permitidas em modo de visualização" });
+      return;
+    }
+  } catch {
+  }
+  next();
+}
 
 const app: Express = express();
 
@@ -91,7 +111,7 @@ app.post(
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
-app.use("/api", router);
+app.use("/api", blockImpersonatedWrites, router);
 
 const adminDist =
   process.env.ADMIN_DIST ??

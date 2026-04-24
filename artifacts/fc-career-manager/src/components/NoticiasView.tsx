@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
+import { getEffectiveToken } from "@/lib/authToken";
 import { NOTICIAS } from "@/lib/i18n";
 import type { Lang } from "@/lib/i18n";
 import { useLang } from "@/hooks/useLang";
@@ -396,7 +397,7 @@ function AddPostModal({
     setVideoUploadProgress(0);
     setVideoUploadError(null);
     try {
-      const token = localStorage.getItem("fc_auth_token");
+      const token = getEffectiveToken();
 
       const result = await new Promise<{ url: string; key: string }>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
@@ -942,7 +943,7 @@ function AddPostModal({
                   </div>
                   <button
                     onClick={async () => {
-                      const token = localStorage.getItem("fc_auth_token");
+                      const token = getEffectiveToken();
                       if (!token) return;
                       try {
                         const priceRes = await fetch("/api/stripe/products-with-plan", { headers: { Authorization: `Bearer ${token}` } });

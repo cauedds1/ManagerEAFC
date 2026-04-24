@@ -2,6 +2,7 @@ import type { NewsPost } from "@/types/noticias";
 import type { Career } from "@/types/career";
 import { putSeasonData } from "@/lib/apiStorage";
 import { sessionGet, sessionSet, sessionDel } from "@/lib/sessionStore";
+import { getEffectiveToken } from "@/lib/authToken";
 
 function postsKey(seasonId: string): string {
   return `fc-career-noticias-${seasonId}`;
@@ -52,7 +53,7 @@ export function generateNoticia(_career: Career, _trigger: string): null {
 }
 
 function getAuthHeader(): Record<string, string> {
-  const token = localStorage.getItem("fc_auth_token");
+  const token = getEffectiveToken();
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
