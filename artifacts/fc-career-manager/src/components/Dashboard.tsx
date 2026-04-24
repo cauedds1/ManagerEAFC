@@ -29,6 +29,7 @@ import { runPerformanceEngine } from "@/lib/playerPerformanceEngine";
 import { copyPlayerMoodsToNewSeason, getAllPlayerStats } from "@/lib/playerStatsStorage";
 import { getLeaguePosition } from "@/lib/leagueStorage";
 import { runAutoNews, runRumorNews, runPromotionRelegationNews, leagueTierLevel } from "@/lib/autoNewsService";
+import { getAutoNewsEnabled } from "@/lib/autoNewsPreference";
 import type { NewsPost, NewsSource, NewsCategory } from "@/types/noticias";
 import type { BoardMember, DiretoriaMessage } from "@/types/diretoria";
 import { PainelView } from "./PainelView";
@@ -1382,7 +1383,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
 
     const planLimits = getPlanLimits(userPlan);
 
-    if (planLimits.autoNewsEnabled) {
+    if (planLimits.autoNewsEnabled && getAutoNewsEnabled(career.id)) {
       void runAutoNews(match, {
         careerId: career.id,
         seasonId: activeSeasonId,
@@ -1407,7 +1408,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
       void runDiretoriaTriggers(updatedMatches, allPlayers, isClassico, rivalName, newMoodScore, `${moodInfo.emoji} ${moodInfo.label}`);
     }, 1500);
 
-    if (planLimits.autoNewsEnabled) {
+    if (planLimits.autoNewsEnabled && getAutoNewsEnabled(career.id)) {
       setTimeout(() => {
         void fetchPortals(career.id).then((customPortals) => {
           void runRumorNews({
@@ -1475,7 +1476,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
         setShowNewSeasonWizard(false);
         setShowSeasonModal(false);
 
-        if (oldLeague && newLeague && oldLeague !== newLeague && leagueTierLevel(oldLeague) !== leagueTierLevel(newLeague) && getPlanLimits(userPlan).autoNewsEnabled) {
+        if (oldLeague && newLeague && oldLeague !== newLeague && leagueTierLevel(oldLeague) !== leagueTierLevel(newLeague) && getPlanLimits(userPlan).autoNewsEnabled && getAutoNewsEnabled(career.id)) {
           setTimeout(() => {
             void runPromotionRelegationNews({
               careerId: career.id,

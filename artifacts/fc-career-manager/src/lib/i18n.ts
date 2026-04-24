@@ -2698,6 +2698,18 @@ export const NOTICIAS: Record<Lang, Record<string, string>> = {
     alertRefreshFailed: "Não foi possível atualizar a notícia agora. Verifique sua chave de IA e tente novamente.",
     // Upgrade CTA
     upgradeCtaBtn: "Fazer upgrade para mais gerações →",
+    // Auto-news engine toggle
+    autoNewsCardTitle: "Motor automático de notícias",
+    autoNewsCardBadge: "Ultra",
+    autoNewsCardDesc: "Após cada partida, a IA analisa o resultado, o desempenho dos jogadores, a forma recente e o clima da torcida — e publica automaticamente uma notícia contextualizada na sua aba de notícias. Sem você precisar fazer nada.",
+    autoNewsCardOn: "Ligado",
+    autoNewsCardOff: "Desligado",
+    autoNewsCardToggleOn: "Ligar motor",
+    autoNewsCardToggleOff: "Desligar motor",
+    autoNewsCardLockedHint: "Disponível no plano Ultra",
+    autoNewsCardLockedBtn: "Fazer upgrade →",
+    autoNewsCardCollapse: "Ocultar detalhes",
+    autoNewsCardExpand: "Ver como funciona",
   },
   en: {
     // Header
@@ -2820,6 +2832,18 @@ export const NOTICIAS: Record<Lang, Record<string, string>> = {
     alertRefreshFailed: "Could not update the post right now. Check your AI key and try again.",
     // Upgrade CTA
     upgradeCtaBtn: "Upgrade for more generations →",
+    // Auto-news engine toggle
+    autoNewsCardTitle: "Automatic news engine",
+    autoNewsCardBadge: "Ultra",
+    autoNewsCardDesc: "After every match, the AI analyses the result, player performances, recent form and fan mood — then automatically publishes a contextualised news post in your news tab. No action required from you.",
+    autoNewsCardOn: "On",
+    autoNewsCardOff: "Off",
+    autoNewsCardToggleOn: "Enable engine",
+    autoNewsCardToggleOff: "Disable engine",
+    autoNewsCardLockedHint: "Available on the Ultra plan",
+    autoNewsCardLockedBtn: "Upgrade →",
+    autoNewsCardCollapse: "Hide details",
+    autoNewsCardExpand: "How it works",
   },
 } satisfies Record<Lang, Record<string, string>>;
 

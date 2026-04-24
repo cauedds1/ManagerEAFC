@@ -32,6 +32,8 @@ import { getLeaguePosition } from "@/lib/leagueStorage";
 import { getTransfers } from "@/lib/transferStorage";
 import { getFanMood, getFanMoodLabel } from "@/lib/fanMoodStorage";
 import { getPlanLimits } from "@/lib/userPlan";
+import { getAutoNewsEnabled, setAutoNewsEnabled } from "@/lib/autoNewsPreference";
+import { isMissionComplete, completeMission } from "@/lib/missionStorage";
 
 import type { Season } from "@/types/career";
 
@@ -1274,6 +1276,24 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
   const [customPortals, setCustomPortals] = useState<CustomPortal[]>([]);
   const [refreshingPostId, setRefreshingPostId] = useState<string | null>(null);
 
+  const [autoNewsEnabled, setAutoNewsEnabledState] = useState(() =>
+    getAutoNewsEnabled(career.id),
+  );
+  const missionDone = isMissionComplete(career.id, "ultra_auto_news");
+  const [autoNewsCardExpanded, setAutoNewsCardExpanded] = useState(
+    !missionDone && userPlan === "ultra",
+  );
+
+  const handleAutoNewsToggle = () => {
+    if (userPlan !== "ultra") return;
+    const next = !autoNewsEnabled;
+    setAutoNewsEnabled(career.id, next);
+    setAutoNewsEnabledState(next);
+    if (next && !isMissionComplete(career.id, "ultra_auto_news")) {
+      completeMission(career.id, "ultra_auto_news");
+    }
+  };
+
   useEffect(() => {
     fetchPortalPhotos(career.id).then(setPortalPhotos);
     const refresh = () => { fetchPortalPhotos(career.id).then(setPortalPhotos); };
@@ -1864,6 +1884,156 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
           </button>
         )}
       </div>
+
+      {/* Auto-news engine card */}
+      {!isReadOnly && (
+        <div
+          className="mb-4 rounded-2xl overflow-hidden transition-all duration-300"
+          style={{
+            border: userPlan === "ultra"
+              ? "1px solid rgba(245,158,11,0.25)"
+              : "1px solid rgba(255,255,255,0.07)",
+            background: userPlan === "ultra"
+              ? "rgba(245,158,11,0.06)"
+              : "rgba(255,255,255,0.03)",
+          }}
+        >
+          {/* Card header row */}
+          <div className="flex items-center gap-3 px-4 py-3">
+            {/* Engine icon */}
+            <div
+              className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center"
+              style={{
+                background: userPlan === "ultra"
+                  ? "rgba(245,158,11,0.15)"
+                  : "rgba(255,255,255,0.05)",
+              }}
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}
+                style={{ color: userPlan === "ultra" ? "#f59e0b" : "rgba(255,255,255,0.3)" }}>
+                <path strokeLinecap="round" strokeLinejoin="round"
+                  d="M9.75 3.104v5.714a2.25 2.25 0 0 1-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 0 1 4.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0 1 12 15a9.065 9.065 0 0 1-6.23-.693L4.2 14l1.17 2.34M19.8 15.3l1.17 2.34M4.2 14l-.798 1.596M19.8 15.3l.798 1.596M8.25 12h.008v.008H8.25V12zm3.75 0h.008v.008H12V12zm3.75 0h.008v.008H15.75V12z" />
+              </svg>
+            </div>
+
+            {/* Title + badge */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-sm font-semibold" style={{ color: "rgba(255,255,255,0.85)" }}>
+                  {t.autoNewsCardTitle}
+                </span>
+                <span
+                  className="text-[10px] font-bold px-1.5 py-0.5 rounded-md tracking-wide uppercase"
+                  style={{
+                    background: "rgba(245,158,11,0.15)",
+                    color: "#f59e0b",
+                  }}
+                >
+                  {t.autoNewsCardBadge}
+                </span>
+                {userPlan === "ultra" && (
+                  <span
+                    className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                    style={{
+                      background: autoNewsEnabled
+                        ? "rgba(34,197,94,0.15)"
+                        : "rgba(255,255,255,0.06)",
+                      color: autoNewsEnabled ? "#22c55e" : "rgba(255,255,255,0.3)",
+                    }}
+                  >
+                    {autoNewsEnabled ? t.autoNewsCardOn : t.autoNewsCardOff}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Right side: toggle (ultra) or lock (others) + expand chevron */}
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {userPlan === "ultra" ? (
+                <button
+                  onClick={handleAutoNewsToggle}
+                  className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none"
+                  style={{
+                    background: autoNewsEnabled ? "#22c55e" : "rgba(255,255,255,0.12)",
+                  }}
+                  title={autoNewsEnabled ? t.autoNewsCardToggleOff : t.autoNewsCardToggleOn}
+                >
+                  <span
+                    className="inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200"
+                    style={{ transform: autoNewsEnabled ? "translateX(24px)" : "translateX(4px)" }}
+                  />
+                </button>
+              ) : (
+                <div
+                  className="flex items-center gap-1 text-xs"
+                  style={{ color: "rgba(255,255,255,0.3)" }}
+                >
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                    <rect x="3" y="11" width="18" height="11" rx="2" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M7 11V7a5 5 0 0 1 10 0v4" />
+                  </svg>
+                </div>
+              )}
+              <button
+                onClick={() => setAutoNewsCardExpanded((v) => !v)}
+                className="p-1 rounded-lg transition-colors"
+                style={{ color: "rgba(255,255,255,0.3)" }}
+                title={autoNewsCardExpanded ? t.autoNewsCardCollapse : t.autoNewsCardExpand}
+              >
+                <svg
+                  className="w-4 h-4 transition-transform duration-200"
+                  style={{ transform: autoNewsCardExpanded ? "rotate(180deg)" : "rotate(0deg)" }}
+                  viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          {/* Expanded body */}
+          {autoNewsCardExpanded && (
+            <div
+              className="px-4 pb-4"
+              style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}
+            >
+              <p className="text-xs leading-relaxed mt-3 mb-4" style={{ color: "rgba(255,255,255,0.5)" }}>
+                {t.autoNewsCardDesc}
+              </p>
+              {userPlan === "ultra" ? (
+                <button
+                  onClick={handleAutoNewsToggle}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+                  style={{
+                    background: autoNewsEnabled
+                      ? "rgba(239,68,68,0.15)"
+                      : "rgba(34,197,94,0.15)",
+                    color: autoNewsEnabled ? "#ef4444" : "#22c55e",
+                    border: autoNewsEnabled
+                      ? "1px solid rgba(239,68,68,0.3)"
+                      : "1px solid rgba(34,197,94,0.3)",
+                  }}
+                >
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                    {autoNewsEnabled ? (
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 0 0 5.636 5.636m12.728 12.728A9 9 0 0 1 5.636 5.636m12.728 12.728L5.636 5.636" />
+                    ) : (
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5.636 5.636a9 9 0 1 0 12.728 12.728 9 9 0 0 0-12.728-12.728z" />
+                    )}
+                  </svg>
+                  {autoNewsEnabled ? t.autoNewsCardToggleOff : t.autoNewsCardToggleOn}
+                </button>
+              ) : (
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <span className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>
+                    {t.autoNewsCardLockedHint}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Search bar */}
       {posts.length > 0 && (
