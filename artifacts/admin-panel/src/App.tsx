@@ -320,6 +320,75 @@ function ImpersonateButton({ userId, userName }: { userId: number; userName: str
   );
 }
 
+function ChangePlanSection({ userId, currentPlan }: { userId: number; currentPlan: string }) {
+  const [loading, setLoading] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const qc = useQueryClient();
+
+  const changePlan = async (plan: string) => {
+    if (plan === currentPlan || loading) return;
+    setLoading(plan);
+    setError(null);
+    setSuccess(null);
+    try {
+      await apiFetch(`/admin-panel/users/${userId}/plan`, {
+        method: "PATCH",
+        body: JSON.stringify({ plan }),
+      });
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["user-detail", userId] }),
+        qc.invalidateQueries({ queryKey: ["users"] }),
+        qc.invalidateQueries({ queryKey: ["stats"] }),
+        qc.invalidateQueries({ queryKey: ["analytics"] }),
+      ]);
+      setSuccess(plan);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro ao alterar plano");
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  const plans = [
+    { key: "free",  label: "Free",  color: "#94a3b8", bg: "rgba(148,163,184,0.15)", border: "rgba(148,163,184,0.35)" },
+    { key: "pro",   label: "Pro",   color: "#60a5fa", bg: "rgba(59,130,246,0.15)",  border: "rgba(59,130,246,0.4)" },
+    { key: "ultra", label: "Ultra", color: "#c084fc", bg: "rgba(168,85,247,0.15)",  border: "rgba(168,85,247,0.4)" },
+  ];
+
+  return (
+    <div className="flex flex-col gap-2">
+      <span className="text-white/50 text-xs font-semibold uppercase tracking-wider">Alterar Plano</span>
+      <div className="flex gap-2">
+        {plans.map((p) => {
+          const isActive = currentPlan === p.key;
+          const isLoading = loading === p.key;
+          return (
+            <button
+              key={p.key}
+              onClick={() => changePlan(p.key)}
+              disabled={!!loading || isActive}
+              className="flex-1 py-2 rounded-xl text-xs font-bold transition-all hover:opacity-80"
+              style={{
+                background: isActive ? p.bg : "rgba(255,255,255,0.04)",
+                color: isActive ? p.color : "rgba(255,255,255,0.35)",
+                border: `1px solid ${isActive ? p.border : "rgba(255,255,255,0.08)"}`,
+                cursor: isActive ? "default" : loading ? "not-allowed" : "pointer",
+                transform: isActive ? "scale(1.03)" : "scale(1)",
+              }}
+            >
+              {isLoading ? "..." : p.label}
+              {isActive && <span className="ml-1 opacity-60">✓</span>}
+            </button>
+          );
+        })}
+      </div>
+      {error && <span className="text-red-400 text-xs">{error}</span>}
+      {success && <span className="text-xs" style={{ color: "#34d399" }}>Plano alterado para <strong>{success}</strong> com sucesso.</span>}
+    </div>
+  );
+}
+
 function UserDetailModal({ userId, onClose }: { userId: number; onClose: () => void }) {
   const { data, isLoading, error } = useQuery<UserDetail>({
     queryKey: ["user-detail", userId],
@@ -376,6 +445,8 @@ function UserDetailModal({ userId, onClose }: { userId: number; onClose: () => v
               </div>
 
               <ImpersonateButton userId={data.user.id} userName={data.user.name} />
+
+              <ChangePlanSection userId={data.user.id} currentPlan={data.user.plan} />
 
               <div className="flex flex-col gap-3">
                 <h3 className="text-white/50 text-xs font-semibold uppercase tracking-wider">

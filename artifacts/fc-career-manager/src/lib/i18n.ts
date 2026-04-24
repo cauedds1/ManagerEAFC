@@ -4336,3 +4336,22 @@ export const SEASON_SELECT_MODAL: Record<Lang, Record<string, string>> = {
     renamePlaceholder: "e.g. 2025/26",
   },
 };
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Plan Promotion Modal
+// ─────────────────────────────────────────────────────────────────────────────
+export const PLAN_PROMOTION: Record<Lang, Record<string, string>> = {
+  pt: {
+    title: "Você foi promovido!",
+    bodyPro: "O administrador do servidor reconheceu seu trabalho e promoveu sua conta para Pro. Aproveite os novos recursos!",
+    bodyUltra: "O administrador do servidor reconheceu seu trabalho e promoveu sua conta para Ultra. Aproveite os novos recursos!",
+    btn: "Entendido!",
+  },
+  en: {
+    title: "You've been promoted!",
+    bodyPro: "The server administrator recognized your dedication and promoted your account to Pro. Enjoy your new features!",
+    bodyUltra: "The server administrator recognized your dedication and promoted your account to Ultra. Enjoy your new features!",
+    btn: "Got it!",
+  },
+};

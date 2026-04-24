@@ -22,6 +22,7 @@ import {
 } from "@/lib/clubListCache";
 import { listCareers, saveCareer, migrateFromLegacy, updateCareerSeason, fetchCareersFromApi, AuthExpiredError, getEffectiveToken } from "@/lib/careerStorage";
 import { sessionClear } from "@/lib/sessionStore";
+import { PLAN_PROMOTION } from "@/lib/i18n";
 
 const AUTH_TOKEN_KEY = "fc_auth_token";
 const AUTH_USER_KEY = "fc_auth_user";
@@ -184,6 +185,97 @@ function FetchErrorScreen({ onRetry }: { onRetry: () => void }) {
   );
 }
 
+const PROMO_CONFETTI_COLORS = ["#34d399","#6ee7b7","#a78bfa","#818cf8","#fbbf24","#fb923c","#f472b6","#60a5fa","#c084fc"];
+const PROMO_CONFETTI_COUNT = 30;
+
+function PlanPromotionModal({ plan, lang, onClose }: { plan: "pro" | "ultra"; lang: "pt" | "en"; onClose: () => void }) {
+  const t = PLAN_PROMOTION[lang];
+  const body = plan === "ultra" ? t.bodyUltra : t.bodyPro;
+  const planLabel = plan === "ultra" ? "Ultra" : "Pro";
+  const planColor = plan === "ultra" ? "#c084fc" : "#60a5fa";
+  const planBg = plan === "ultra" ? "rgba(168,85,247,0.15)" : "rgba(59,130,246,0.15)";
+
+  return (
+    <div
+      className="fixed inset-0 z-[300] flex items-center justify-center p-4"
+      style={{ background: "rgba(0,0,0,0.82)", backdropFilter: "blur(14px)" }}
+    >
+      <div className="pointer-events-none fixed inset-0 overflow-hidden">
+        {Array.from({ length: PROMO_CONFETTI_COUNT }).map((_, i) => {
+          const angle = (360 / PROMO_CONFETTI_COUNT) * i;
+          const dist = 90 + (i % 3) * 40;
+          const dx = Math.cos((angle * Math.PI) / 180) * dist;
+          const dy = Math.sin((angle * Math.PI) / 180) * dist - 40;
+          const color = PROMO_CONFETTI_COLORS[i % PROMO_CONFETTI_COLORS.length];
+          const size = 5 + (i % 4);
+          const delay = (i % 8) * 50;
+          return (
+            <div
+              key={i}
+              style={{
+                position: "absolute",
+                left: "50%",
+                top: "44%",
+                width: size,
+                height: size,
+                borderRadius: i % 2 === 0 ? "50%" : "2px",
+                background: color,
+                opacity: 0,
+                animation: `promo-particle 1.3s ease-out ${delay}ms forwards`,
+                ["--dx" as string]: `${dx}px`,
+                ["--dy" as string]: `${dy}px`,
+              }}
+            />
+          );
+        })}
+        <style>{`
+          @keyframes promo-particle {
+            0%   { transform: translate(-50%,-50%) translate(0,0) scale(1); opacity: 1; }
+            75%  { opacity: 0.7; }
+            100% { transform: translate(-50%,-50%) translate(var(--dx),var(--dy)) scale(0.2); opacity: 0; }
+          }
+        `}</style>
+      </div>
+
+      <div
+        className="relative w-full max-w-sm rounded-3xl p-8 flex flex-col items-center gap-6 text-center"
+        style={{
+          background: "rgba(14,12,24,0.98)",
+          border: "1px solid rgba(255,255,255,0.12)",
+          boxShadow: `0 24px 80px rgba(0,0,0,0.7), 0 0 0 1px ${planColor}22`,
+        }}
+      >
+        <div
+          className="w-20 h-20 rounded-3xl flex items-center justify-center text-4xl"
+          style={{ background: planBg, border: `1px solid ${planColor}55` }}
+        >
+          🏆
+        </div>
+        <div className="flex flex-col items-center gap-2">
+          <span
+            className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider"
+            style={{ background: planBg, color: planColor }}
+          >
+            {planLabel}
+          </span>
+          <h2 className="text-white font-black text-xl">{t.title}</h2>
+          <p className="text-white/60 text-sm leading-relaxed">{body}</p>
+        </div>
+        <button
+          onClick={onClose}
+          className="w-full py-3 rounded-2xl font-bold text-sm text-white transition-all hover:opacity-90 active:scale-[0.98]"
+          style={{
+            background: `linear-gradient(135deg, ${planColor}cc, ${planColor}77)`,
+            boxShadow: `0 4px 20px ${planColor}44`,
+          }}
+        >
+          {t.btn}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [view, setView] = useState<AppView>("init");
   const [careers, setCareers] = useState<Career[]>([]);
@@ -200,6 +292,7 @@ export default function App() {
   const [showWelcome, setShowWelcome] = useState(false);
   const [isImpersonating, setIsImpersonating] = useState(false);
   const [impersonatedUserName, setImpersonatedUserName] = useState("");
+  const [planPromotion, setPlanPromotion] = useState<{ plan: "pro" | "ultra" } | null>(null);
   const [lang, setLangState] = useState<"pt" | "en">(() => {
     try {
       const s = localStorage.getItem("fc_lang");
@@ -507,6 +600,36 @@ export default function App() {
       if (storedUser) {
         try { setAuthUser(JSON.parse(storedUser) as AuthUser); } catch {}
       }
+      const syncToken = localStorage.getItem(AUTH_TOKEN_KEY);
+      if (syncToken) {
+        fetch(`${API_BASE}/auth/me`, { headers: { Authorization: `Bearer ${syncToken}` } })
+          .then(r => r.ok ? r.json() as Promise<{ user?: { plan?: string } }> : null)
+          .then(data => {
+            if (!data?.user?.plan) return;
+            const serverPlan = data.user.plan as "free" | "pro" | "ultra";
+            try {
+              const raw = localStorage.getItem(AUTH_USER_KEY);
+              if (!raw) return;
+              const parsed = JSON.parse(raw) as AuthUser;
+              const oldPlan = parsed.plan ?? "free";
+              const rank: Record<string, number> = { free: 0, pro: 1, ultra: 2 };
+              const isUpgrade = (rank[serverPlan] ?? 0) > (rank[oldPlan] ?? 0);
+              if (serverPlan !== oldPlan) {
+                const updated = { ...parsed, plan: serverPlan };
+                localStorage.setItem(AUTH_USER_KEY, JSON.stringify(updated));
+                setAuthUser(updated);
+              }
+              if (isUpgrade && (serverPlan === "pro" || serverPlan === "ultra")) {
+                const seenKey = `fc_promotion_seen_${parsed.id ?? "anon"}_${serverPlan}`;
+                if (!localStorage.getItem(seenKey)) {
+                  localStorage.setItem(seenKey, "1");
+                  setPlanPromotion({ plan: serverPlan });
+                }
+              }
+            } catch {}
+          })
+          .catch(() => {});
+      }
     }
 
     const token = getEffectiveToken();
@@ -770,6 +893,14 @@ export default function App() {
           userName={authUser.name}
           plan={authUser.plan ?? "free"}
           onContinue={handleWelcomeDismiss}
+        />
+      )}
+
+      {planPromotion && !showWelcome && (
+        <PlanPromotionModal
+          plan={planPromotion.plan}
+          lang={lang}
+          onClose={() => setPlanPromotion(null)}
         />
       )}
 

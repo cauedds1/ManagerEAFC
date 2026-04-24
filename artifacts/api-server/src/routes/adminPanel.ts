@@ -340,6 +340,33 @@ router.patch("/admin-panel/bug-reports/:id", async (req: Request, res: Response)
   }
 });
 
+// PATCH /api/admin-panel/users/:id/plan
+router.patch("/admin-panel/users/:id/plan", async (req: Request, res: Response) => {
+  if (!validateAdminToken(req, res)) return;
+  try {
+    const userId = Number(req.params["id"]);
+    if (!Number.isFinite(userId)) return res.status(400).json({ error: "ID inválido" });
+
+    const { plan } = req.body as { plan?: string };
+    if (!["free", "pro", "ultra"].includes(plan ?? "")) {
+      return res.status(400).json({ error: "Plano inválido. Use: free, pro ou ultra" });
+    }
+
+    const [user] = await db
+      .update(usersTable)
+      .set({ plan: plan! })
+      .where(eq(usersTable.id, userId))
+      .returning({ id: usersTable.id, plan: usersTable.plan });
+
+    if (!user) return res.status(404).json({ error: "Usuário não encontrado" });
+
+    return res.json({ id: user.id, plan: user.plan });
+  } catch (err) {
+    console.error("PATCH /admin-panel/users/:id/plan error:", err);
+    return res.status(500).json({ error: "Erro interno" });
+  }
+});
+
 // POST /api/admin-panel/impersonate/:userId
 router.post("/admin-panel/impersonate/:userId", async (req: Request, res: Response) => {
   if (!validateAdminToken(req, res)) return;
