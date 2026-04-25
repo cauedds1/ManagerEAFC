@@ -1685,7 +1685,7 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
 
     {bugToast && (
       <div
-        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-2xl text-sm font-medium shadow-xl transition-all duration-300"
+        className="fixed bottom-[84px] sm:bottom-6 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-2xl text-sm font-medium shadow-xl transition-all duration-300"
         style={{
           background: bugToast.ok ? "rgba(16,185,129,0.92)" : "rgba(239,68,68,0.92)",
           color: "#fff",

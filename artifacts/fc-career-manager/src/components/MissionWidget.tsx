@@ -235,7 +235,7 @@ export function MissionWidget({
     return (
       <button
         onClick={() => setCollapsed(false)}
-        className="fixed bottom-6 right-4 z-[440] w-10 h-10 rounded-full flex items-center justify-center text-sm shadow-lg transition-all hover:scale-105 active:scale-95"
+        className="fixed bottom-[72px] sm:bottom-6 right-4 z-[440] w-10 h-10 rounded-full flex items-center justify-center text-sm shadow-lg transition-all hover:scale-105 active:scale-95"
         style={{
           background: "rgba(52,211,153,0.18)",
           border: "1px solid rgba(52,211,153,0.35)",
@@ -252,7 +252,7 @@ export function MissionWidget({
     return (
       <button
         onClick={() => setCollapsed(false)}
-        className="fixed bottom-6 right-4 z-[440] w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shadow-lg transition-all hover:scale-105 active:scale-95"
+        className="fixed bottom-[72px] sm:bottom-6 right-4 z-[440] w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shadow-lg transition-all hover:scale-105 active:scale-95"
         style={{
           background: "rgba(var(--club-primary-rgb),0.2)",
           border: "1px solid rgba(var(--club-primary-rgb),0.4)",
@@ -268,7 +268,7 @@ export function MissionWidget({
 
   return (
     <div
-      className="fixed bottom-6 right-4 z-[440] w-72 rounded-2xl flex flex-col overflow-hidden shadow-2xl"
+      className="fixed bottom-[72px] sm:bottom-6 right-4 z-[440] w-72 rounded-2xl flex flex-col overflow-hidden shadow-2xl"
       style={{
         background: "rgba(14,12,24,0.97)",
         border: "1px solid rgba(255,255,255,0.1)",

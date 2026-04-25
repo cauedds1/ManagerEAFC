@@ -2050,7 +2050,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
       </div>
       {bgGenStatus !== "idle" && (
         <div
-          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[400] flex items-center gap-3 px-4 py-3 rounded-2xl shadow-2xl transition-all duration-300"
+          className="fixed bottom-[84px] sm:bottom-6 left-1/2 -translate-x-1/2 z-[400] flex items-center gap-3 px-4 py-3 rounded-2xl shadow-2xl transition-all duration-300"
           style={{
             background: bgGenStatus === "done"
               ? "rgba(16,185,129,0.15)"

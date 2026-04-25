@@ -124,7 +124,7 @@ export function NotificationToast({ toasts, onDismiss }: NotificationToastProps)
         }
       `}</style>
       <div
-        className="fixed bottom-6 right-4 z-50 flex flex-col gap-2 pointer-events-none"
+        className="fixed bottom-[84px] sm:bottom-6 right-4 z-50 flex flex-col gap-2 pointer-events-none"
         style={{ maxWidth: "340px" }}
       >
         {toasts.slice(-3).map((t) => (
