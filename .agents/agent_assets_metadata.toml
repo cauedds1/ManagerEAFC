@@ -246,8 +246,20 @@ uri = "file://attached_assets/watford_noticia_exemplo.png"
 type = "image"
 title = "watford unbeaten streak news card"
 
+[[generated]]
+id = "kdXzU8OlZjrkwSH047yTU"
+uri = "file://attached_assets/generated_images/instagram_post_v1.png"
+type = "image"
+title = "instagram post fc career manager"
+
 [[outputs]]
 id = "XdmrkZE5d676nLMszlZND"
 uri = "file://attached_assets/watford_noticia_exemplo.png"
 type = "image"
 title = "Exemplo de imagem gerada por IA para a notícia"
+
+[[outputs]]
+id = "WQDo46G7Za61t5HmwGEcm"
+uri = "file://attached_assets/generated_images/instagram_post_v1.png"
+type = "image"
+title = "Instagram Post — FC Career Manager (v1)"
