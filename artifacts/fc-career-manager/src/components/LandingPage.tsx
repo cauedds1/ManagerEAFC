@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo, type CSSProperties }
 import { ClubDemoMockup } from "./ClubDemoMockup";
 import { LangToggle } from "./LangToggle";
 import { LP, getAiTexts, getHeadlineTemplates, getBodyTemplates, getSteps, getFaqItems, getFeaturesExplorer, getTestimonials, type Lang } from "@/lib/i18n";
+import { LandingPageMobile } from "./LandingPageMobile";
 
 /* ─── Types ─────────────────────────────────────────────── */
 interface LandingPageProps {
@@ -1001,7 +1002,7 @@ export function LandingPage({ onStart, onLogin, onStartWithPlan, lang, setLang }
   const audioRef      = useRef<HTMLAudioElement | null>(null);
 
   const [activeClub, setActiveClub]           = useState(0);
-  const [isMobile, setIsMobile]               = useState(() => typeof window !== "undefined" && window.innerWidth < 900);
+  const [isMobile, setIsMobile]               = useState(() => typeof window !== "undefined" && window.innerWidth < 768);
   const [typedText, setTypedText]             = useState("");
   const [typingDone, setTypingDone]           = useState(false);
   const [aiTextIdx, setAiTextIdx]             = useState(0);
@@ -1039,7 +1040,7 @@ export function LandingPage({ onStart, onLogin, onStartWithPlan, lang, setLang }
 
   /* ── Mobile detection ─── */
   useEffect(() => {
-    const onResize = () => setIsMobile(window.innerWidth < 900);
+    const onResize = () => setIsMobile(window.innerWidth < 768);
     window.addEventListener("resize", onResize, { passive: true });
     return () => window.removeEventListener("resize", onResize);
   }, []);
@@ -1208,6 +1209,18 @@ export function LandingPage({ onStart, onLogin, onStartWithPlan, lang, setLang }
   };
 
   const activeF = featuresExplorer[Math.max(0, activeFeature)];
+
+  if (isMobile) {
+    return (
+      <LandingPageMobile
+        onStart={onStart}
+        onLogin={onLogin}
+        onStartWithPlan={onStartWithPlan}
+        lang={lang}
+        setLang={setLang}
+      />
+    );
+  }
 
   return (
     <div ref={containerRef} className="font-dm" style={{ background: "#09090f", height: "100%", overflowY: "auto", overflowX: "hidden", scrollBehavior: "smooth", cursor: isMobile ? "auto" : "none" }}>
