@@ -412,4 +412,72 @@ router.put("/seasons/:id/activate", requireAuth, async (req: AuthRequest, res) =
   }
 });
 
+router.get("/careers/:id/export", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user!.id;
+
+    const [career] = await db.select().from(careersTable).where(eq(careersTable.id, id)).limit(1);
+    if (!career || career.userId !== userId) {
+      return res.status(404).json({ error: "Carreira não encontrada" });
+    }
+
+    const seasons = await db.select().from(seasonsTable).where(eq(seasonsTable.careerId, id)).orderBy(seasonsTable.createdAt);
+    const seasonIds = seasons.map((s) => s.id);
+
+    const allSeasonData: Record<string, { key: string; valueJson: string }[]> = {};
+    for (const sid of seasonIds) {
+      const rows = await db.select({ key: seasonDataTable.key, valueJson: seasonDataTable.valueJson }).from(seasonDataTable).where(eq(seasonDataTable.seasonId, sid));
+      allSeasonData[sid] = rows;
+    }
+
+    const careerDataRows = await db.select({ key: careerDataTable.key, valueJson: careerDataTable.valueJson }).from(careerDataTable).where(eq(careerDataTable.careerId, id));
+
+    const payload = {
+      exportVersion: 1,
+      exportedAt: Date.now(),
+      career: {
+        id: career.id,
+        coachJson: career.coachJson,
+        clubId: career.clubId,
+        clubName: career.clubName,
+        clubLogo: career.clubLogo,
+        clubLeague: career.clubLeague,
+        clubCountry: career.clubCountry,
+        clubStadium: career.clubStadium,
+        clubFounded: career.clubFounded,
+        clubPrimary: career.clubPrimary,
+        clubSecondary: career.clubSecondary,
+        clubDescription: career.clubDescription,
+        clubTitlesJson: career.clubTitlesJson,
+        season: career.season,
+        projeto: career.projeto,
+        competitionsJson: career.competitionsJson,
+        currentSeasonId: career.currentSeasonId,
+        createdAt: career.createdAt,
+        updatedAt: career.updatedAt,
+      },
+      seasons: seasons.map((s) => ({
+        id: s.id,
+        careerId: s.careerId,
+        label: s.label,
+        competitionsJson: s.competitionsJson,
+        isActive: s.isActive,
+        finalized: s.finalized,
+        createdAt: s.createdAt,
+      })),
+      seasonData: allSeasonData,
+      careerData: careerDataRows,
+    };
+
+    const clubSlug = career.clubName.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+    res.setHeader("Content-Type", "application/json");
+    res.setHeader("Content-Disposition", `attachment; filename="${clubSlug}-career-export.json"`);
+    return res.json(payload);
+  } catch (err) {
+    console.error("GET /careers/:id/export error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 export default router;

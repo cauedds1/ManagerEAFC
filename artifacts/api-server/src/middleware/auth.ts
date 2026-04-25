@@ -48,9 +48,25 @@ export function requireAuth(req: AuthRequest, res: Response, next: NextFunction)
   }
 
   if (payload.demo) {
-    if (req.method === "DELETE") {
-      res.status(403).json({ error: "Operação não permitida em modo demo" });
-      return;
+    const writeMethods = ["POST", "PUT", "PATCH", "DELETE"];
+    if (writeMethods.includes(req.method)) {
+      const aiPaths = [
+        "/noticias/generate",
+        "/noticias/generate-rumor",
+        "/noticias/generate-leak",
+        "/noticias/generate-welcome",
+        "/noticias/generate-image",
+        "/diretoria/chat",
+        "/diretoria/meeting",
+        "/diretoria/check-triggers",
+        "/diretoria/suggest-transfer",
+        "/generate-projeto",
+      ];
+      const isAiRoute = aiPaths.some((p) => req.path === p || req.path.startsWith(p + "?"));
+      if (!isAiRoute) {
+        res.status(403).json({ error: "Operação não permitida em modo demo" });
+        return;
+      }
     }
     req.user = { id: payload.id, email: payload.email, name: payload.name, plan: payload.plan ?? "pro" };
     req.demo = true;

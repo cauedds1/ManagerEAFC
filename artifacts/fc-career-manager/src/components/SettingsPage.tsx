@@ -421,6 +421,32 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [soundEnabled, setSoundEnabledState] = useState(() => isSoundEnabled());
 
+  /* ── Career export ── */
+  const [exportState, setExportState] = useState<"idle" | "loading">("idle");
+  const handleExportCareer = useCallback(async () => {
+    if (!careerId) return;
+    setExportState("loading");
+    try {
+      const token = getEffectiveToken();
+      const res = await fetch(`${API_BASE}/careers/${careerId}/export`, {
+        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      });
+      if (!res.ok) throw new Error("Export failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const disposition = res.headers.get("Content-Disposition") ?? "";
+      const match = disposition.match(/filename="([^"]+)"/);
+      a.download = match?.[1] ?? `career-export.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {}
+    finally { setExportState("idle"); }
+  }, [careerId]);
+
   /* ── Bug report ── */
   const [showBugModal, setShowBugModal] = useState(false);
   const [bugDesc, setBugDesc] = useState("");
@@ -1229,6 +1255,40 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
                   : <p className="text-xs text-white/30">{t.noActiveSeason}</p>
                 }
               </SectionCard>
+
+              {careerId && (
+                <SectionCard title={t.exportCareerTitle} subtitle={t.exportCareerSubtitle}>
+                  <div className="flex items-start gap-4">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white/70 text-sm font-semibold">{t.exportCareerLabel}</p>
+                      <p className="text-white/35 text-xs mt-0.5 leading-relaxed">{t.exportCareerDesc}</p>
+                    </div>
+                    <button
+                      onClick={handleExportCareer}
+                      disabled={exportState === "loading"}
+                      className="flex-shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all duration-150 hover:opacity-90 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                      style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.75)", border: "1px solid rgba(255,255,255,0.12)" }}
+                    >
+                      {exportState === "loading" ? (
+                        <>
+                          <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                          </svg>
+                          {t.exportingBtn}
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                          </svg>
+                          {t.exportBtn}
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </SectionCard>
+              )}
 
               {onDeleteCareer && (
                 <div
