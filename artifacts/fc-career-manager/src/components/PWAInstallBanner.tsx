@@ -1,53 +1,25 @@
 import { useState, useEffect } from "react";
+import { usePWAInstall } from "@/hooks/usePWAInstall";
 
 const DISMISS_KEY = "fc_pwa_banner_dismissed";
 
-function isIOS() {
-  return /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as unknown as Record<string, unknown>).MSStream;
-}
-
-function isInStandaloneMode() {
-  return window.matchMedia("(display-mode: standalone)").matches
-    || (navigator as unknown as { standalone?: boolean }).standalone === true;
-}
-
-function isAndroid() {
-  return /Android/.test(navigator.userAgent);
-}
-
-function isMobile() {
-  return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
-}
-
 export function PWAInstallBanner() {
+  const { status, canInstall, installing, install } = usePWAInstall();
   const [show, setShow] = useState(false);
-  const [isIOSDevice, setIsIOSDevice] = useState(false);
-  const [deferredPrompt, setDeferredPrompt] = useState<Event & { prompt: () => void; userChoice: Promise<{ outcome: string }> } | null>(null);
-  const [installing, setInstalling] = useState(false);
 
   useEffect(() => {
     if (localStorage.getItem(DISMISS_KEY)) return;
-    if (!isMobile()) return;
-    if (isInStandaloneMode()) return;
+    if (status === "standalone") return;
 
-    const ios = isIOS();
-    setIsIOSDevice(ios);
-
-    if (ios) {
+    if (status === "ios") {
       const timer = setTimeout(() => setShow(true), 2000);
       return () => clearTimeout(timer);
     }
-
-    const handler = (e: Event) => {
-      e.preventDefault();
-      setDeferredPrompt(e as Event & { prompt: () => void; userChoice: Promise<{ outcome: string }> });
+    if (status === "android" && canInstall) {
       const timer = setTimeout(() => setShow(true), 2000);
       return () => clearTimeout(timer);
-    };
-
-    window.addEventListener("beforeinstallprompt", handler);
-    return () => window.removeEventListener("beforeinstallprompt", handler);
-  }, []);
+    }
+  }, [status, canInstall]);
 
   const handleDismiss = () => {
     setShow(false);
@@ -55,19 +27,14 @@ export function PWAInstallBanner() {
   };
 
   const handleInstall = async () => {
-    if (!deferredPrompt) return;
-    setInstalling(true);
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === "accepted") {
-      localStorage.setItem(DISMISS_KEY, "1");
-    }
-    setInstalling(false);
+    await install();
+    localStorage.setItem(DISMISS_KEY, "1");
     setShow(false);
-    setDeferredPrompt(null);
   };
 
   if (!show) return null;
+
+  const isIOSDevice = status === "ios";
 
   return (
     <div

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useLang } from "@/hooks/useLang";
+import { usePWAInstall } from "@/hooks/usePWAInstall";
 import { getEffectiveToken } from "@/lib/authToken";
 import { SETTINGS } from "@/lib/i18n";
 import { clearClubCache } from "@/lib/clubListCache";
@@ -35,7 +36,7 @@ interface SettingsPageProps {
 }
 
 type SyncState = "idle" | "running" | "done" | "error";
-type Section = "api" | "portais" | "ia" | "temporada" | "idioma" | "suporte" | "convites";
+type Section = "api" | "portais" | "ia" | "temporada" | "idioma" | "suporte" | "convites" | "app";
 
 interface SeedProgress {
   processed: number;
@@ -106,6 +107,14 @@ const NAV_ITEMS: { id: Section; icon: React.ReactNode }[] = [
     icon: (
       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+      </svg>
+    ),
+  },
+  {
+    id: "app",
+    icon: (
+      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
       </svg>
     ),
   },
@@ -375,9 +384,12 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
     idioma:    t.navIdioma,
     suporte:   lang === "pt" ? "Suporte" : "Support",
     convites:  lang === "pt" ? "Convites" : "Referrals",
+    app:       lang === "pt" ? "Instalar App" : "Install App",
   };
   const resolvedPlan = userPlan ?? getUserPlan();
   const planLimits = getPlanLimits(resolvedPlan);
+
+  const pwa = usePWAInstall();
 
   const [portalLoading, setPortalLoading] = useState(false);
   const [portalError, setPortalError] = useState("");
@@ -1599,6 +1611,121 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
                     </div>
                   ))}
                 </div>
+              </SectionCard>
+            </div>
+          )}
+
+          {section === "app" && (
+            <div className="flex flex-col gap-5">
+              <SectionCard
+                title={lang === "pt" ? "Instalar no celular" : "Install on mobile"}
+                subtitle={lang === "pt"
+                  ? "Adicione o FC Career Manager à tela inicial do seu celular para acesso rápido, sem abrir o navegador."
+                  : "Add FC Career Manager to your phone's home screen for quick access, no browser needed."}
+              >
+                {pwa.status === "standalone" ? (
+                  <div className="flex items-center gap-3 px-4 py-3 rounded-xl" style={{ background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.25)" }}>
+                    <svg className="w-5 h-5 flex-shrink-0" style={{ color: "#4ade80" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div>
+                      <p className="text-sm font-bold" style={{ color: "#4ade80" }}>
+                        {lang === "pt" ? "App já instalado" : "App already installed"}
+                      </p>
+                      <p className="text-xs mt-0.5" style={{ color: "rgba(74,222,128,0.6)" }}>
+                        {lang === "pt" ? "Você está usando o app instalado na tela inicial." : "You're using the app installed on your home screen."}
+                      </p>
+                    </div>
+                  </div>
+                ) : pwa.status === "android" ? (
+                  <div className="flex flex-col gap-3">
+                    <p className="text-white/50 text-xs leading-relaxed">
+                      {lang === "pt"
+                        ? "Clique no botão abaixo para instalar o app direto na tela inicial do seu Android — sem precisar da Play Store."
+                        : "Click the button below to install the app directly on your Android home screen — no Play Store needed."}
+                    </p>
+                    <button
+                      onClick={() => void pwa.install()}
+                      disabled={pwa.installing || !pwa.canInstall}
+                      className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-bold transition-all duration-150 hover:opacity-90 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                      style={{
+                        background: "var(--club-gradient)",
+                        color: "#fff",
+                        boxShadow: "0 4px 14px rgba(var(--club-primary-rgb),0.3)",
+                      }}
+                    >
+                      {pwa.installing ? (
+                        <>
+                          <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                          </svg>
+                          {lang === "pt" ? "Instalando..." : "Installing..."}
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                          </svg>
+                          {lang === "pt" ? "Instalar app no Android" : "Install app on Android"}
+                        </>
+                      )}
+                    </button>
+                  </div>
+                ) : pwa.status === "ios" ? (
+                  <div className="flex flex-col gap-3">
+                    <p className="text-white/50 text-xs leading-relaxed">
+                      {lang === "pt"
+                        ? "No Safari, siga os passos abaixo para adicionar o app à tela inicial:"
+                        : "In Safari, follow the steps below to add the app to your home screen:"}
+                    </p>
+                    <div className="flex flex-col gap-2">
+                      {[
+                        {
+                          n: "1",
+                          text: lang === "pt"
+                            ? "Toque no ícone de compartilhar (⬆) na barra inferior do Safari"
+                            : "Tap the share icon (⬆) in Safari's bottom bar",
+                        },
+                        {
+                          n: "2",
+                          text: lang === "pt"
+                            ? "Role a lista e toque em \"Adicionar à Tela de Início\""
+                            : "Scroll down and tap \"Add to Home Screen\"",
+                        },
+                        {
+                          n: "3",
+                          text: lang === "pt"
+                            ? "Confirme tocando em \"Adicionar\" no canto superior direito"
+                            : "Confirm by tapping \"Add\" in the top-right corner",
+                        },
+                      ].map(({ n, text }) => (
+                        <div key={n} className="flex items-start gap-3 px-3 py-2.5 rounded-xl" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                          <span
+                            className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold"
+                            style={{ background: "rgba(var(--club-primary-rgb),0.15)", color: "var(--club-primary)" }}
+                          >
+                            {n}
+                          </span>
+                          <p className="text-white/60 text-xs leading-relaxed">{text}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-start gap-3 px-4 py-3 rounded-xl" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                      <svg className="w-5 h-5 flex-shrink-0 mt-0.5 text-white/30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <p className="text-white/45 text-xs leading-relaxed">
+                        {lang === "pt"
+                          ? "Para instalar o app, acesse este site pelo Chrome no seu Android ou pelo Safari no seu iPhone."
+                          : "To install the app, open this site in Chrome on your Android or in Safari on your iPhone."}
+                      </p>
+                    </div>
+                  </div>
+                )}
               </SectionCard>
             </div>
           )}
