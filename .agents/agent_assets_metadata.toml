@@ -263,3 +263,9 @@ id = "WQDo46G7Za61t5HmwGEcm"
 uri = "file://attached_assets/generated_images/instagram_post_v1.png"
 type = "image"
 title = "Instagram Post — FC Career Manager (v1)"
+
+[[outputs]]
+id = "LwKVhErC_4tyzYuZMKT4y"
+uri = "file://attached_assets/generated_images/instagram_post_v2.jpg"
+type = "image"
+title = "Instagram Post v2 — com prints reais"
