@@ -1245,8 +1245,8 @@ function LandingPageDesktop({ onStart, onLogin, onStartWithPlan, lang, setLang }
           <span style={{ color: "#f0f0ff", fontWeight: 700, fontSize: 15, letterSpacing: "-0.01em" }}>FC Career Manager</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 28 }}>
-          {[{ label: t.navFeatures, id: "features" }, { label: t.navAI, id: "ia" }, { label: t.navClub, id: "clube" }, { label: t.navHowItWorks, id: "como-funciona" }].map(({ label, id }) => (
-            <a key={id} href={`#${id}`} onClick={e => { e.preventDefault(); scrollTo(id); }} className="hidden md:block" style={{ color: "#666688", fontSize: 13, textDecoration: "none", transition: "color 0.2s" }} onMouseEnter={e => (e.currentTarget.style.color = "#f0f0ff")} onMouseLeave={e => (e.currentTarget.style.color = "#666688")}>{label}</a>
+          {!isMobile && [{ label: t.navFeatures, id: "features" }, { label: t.navAI, id: "ia" }, { label: t.navClub, id: "clube" }, { label: t.navHowItWorks, id: "como-funciona" }].map(({ label, id }) => (
+            <a key={id} href={`#${id}`} onClick={e => { e.preventDefault(); scrollTo(id); }} style={{ color: "#666688", fontSize: 13, textDecoration: "none", transition: "color 0.2s" }} onMouseEnter={e => (e.currentTarget.style.color = "#f0f0ff")} onMouseLeave={e => (e.currentTarget.style.color = "#666688")}>{label}</a>
           ))}
 
           {/* ── Language toggle ─── */}
