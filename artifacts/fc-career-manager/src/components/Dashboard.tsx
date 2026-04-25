@@ -1932,7 +1932,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
                 transferCount={transfers.length}
                 competitions={activeSeason?.competitions ?? career.competitions}
                 isReadOnly={isReadOnly}
-                onNavigateToSettings={() => setActiveTab("configuracoes")}
+                onNavigateToSettings={!isDemo ? () => setActiveTab("configuracoes") : undefined}
               />
             )}
             {activeTab === "partidas" && (
@@ -1965,7 +1965,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
                 onPlayerLeftInTrade={handlePlayerLeftInTrade}
                 transferWindowOpen={transferWindow.open}
                 transferWindowOpenCount={transferWindow.openCount}
-                onToggleWindow={handleWindowToggle}
+                onToggleWindow={!isReadOnly ? handleWindowToggle : undefined}
                 isReadOnly={isReadOnly}
               />
             )}
