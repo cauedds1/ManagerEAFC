@@ -175,9 +175,19 @@ export async function fetchSquadFromBackend(teamId: number): Promise<SquadResult
 
 export async function getSquad(teamId: number, clubName: string): Promise<SquadResult> {
   const localCached = readLocalCache(teamId, clubName);
-  if (localCached) return localCached;
 
   const dbResult = await readDbSquad(teamId);
+
+  if (localCached && dbResult) {
+    if (dbResult.cachedAt > localCached.cachedAt) {
+      writeLocalCache(teamId, clubName, dbResult);
+      return dbResult;
+    }
+    return localCached;
+  }
+
+  if (localCached) return localCached;
+
   if (dbResult) {
     writeLocalCache(teamId, clubName, dbResult);
     return dbResult;
