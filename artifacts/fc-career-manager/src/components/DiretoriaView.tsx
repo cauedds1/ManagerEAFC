@@ -1038,7 +1038,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
 
   const totalNotifs = notifications.length;
 
-  if (!planLimits.diretoriaEnabled) {
+  if (!planLimits.diretoriaEnabled && !isDemo) {
     return (
       <div className="flex flex-col items-center justify-center py-24 px-4 text-center">
         <div
