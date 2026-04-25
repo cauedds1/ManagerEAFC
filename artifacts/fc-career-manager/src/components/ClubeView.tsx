@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import type { SquadResult, SquadPlayer, PositionPtBr } from "@/lib/squadCache";
+import { PT_BR_TO_POSITION } from "@/lib/squadCache";
 import type { TransferRecord } from "@/types/transfer";
 import type { Career, Season } from "@/types/career";
 import type { MatchRecord } from "@/types/match";
@@ -161,23 +162,46 @@ export function ClubeView({
   const expandedStatsPlayers = useMemo(() => {
     if (!hasMultipleSeasons) return statsPlayers;
     const statsPlayerMap = new Map(statsPlayers.map((p) => [p.id, p]));
+
+    // Build a fallback lookup from transfers and formerPlayers so we can
+    // resolve player names instead of showing "Jogador #ID".
+    const fallbackMap = new Map<number, Partial<SquadPlayer>>();
+    for (const fp of (formerPlayers ?? [])) {
+      if (!fallbackMap.has(fp.id)) fallbackMap.set(fp.id, fp);
+    }
+    for (const tr of transfers) {
+      if (!fallbackMap.has(tr.playerId)) {
+        const pos = tr.playerPositionPtBr as PositionPtBr | undefined;
+        fallbackMap.set(tr.playerId, {
+          id: tr.playerId,
+          name: tr.playerName,
+          age: tr.playerAge,
+          position: pos ? (PT_BR_TO_POSITION[pos] ?? "Midfielder") : "Midfielder",
+          positionPtBr: pos ?? ("MID" as PositionPtBr),
+          photo: tr.playerPhoto ?? "",
+          number: tr.shirtNumber,
+        });
+      }
+    }
+
     const extras: SquadPlayer[] = [];
     for (const idStr of Object.keys(allStatsOverride)) {
       const id = Number(idStr);
       if (!statsPlayerMap.has(id)) {
+        const known = fallbackMap.get(id);
         extras.push({
           id,
-          name: t.playerFallback.replace("{n}", `#${id}`),
-          age: 0,
-          position: "Midfielder",
-          positionPtBr: "MID" as PositionPtBr,
-          photo: "",
-          number: 0,
+          name: known?.name ?? t.playerFallback.replace("{n}", `#${id}`),
+          age: known?.age ?? 0,
+          position: known?.position ?? "Midfielder",
+          positionPtBr: (known?.positionPtBr ?? "MID") as PositionPtBr,
+          photo: known?.photo ?? "",
+          number: known?.number ?? 0,
         });
       }
     }
     return extras.length > 0 ? [...statsPlayers, ...extras] : statsPlayers;
-  }, [hasMultipleSeasons, statsPlayers, allStatsOverride]);
+  }, [hasMultipleSeasons, statsPlayers, allStatsOverride, formerPlayers, transfers]);
 
   const expandedFormerPlayerIds = useMemo(() => {
     if (!hasMultipleSeasons) return formerPlayerIds;
