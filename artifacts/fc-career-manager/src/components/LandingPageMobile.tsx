@@ -174,7 +174,7 @@ export function LandingPageMobile({
               fontSize: 12,
               fontWeight: 700,
               cursor: "pointer",
-              minHeight: 36,
+              minHeight: 48,
               whiteSpace: "nowrap",
             }}
           >
@@ -186,8 +186,8 @@ export function LandingPageMobile({
               background: "none",
               border: `1px solid ${BORDER}`,
               borderRadius: 8,
-              width: 36,
-              height: 36,
+              width: 48,
+              height: 48,
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
@@ -288,24 +288,6 @@ export function LandingPageMobile({
             pointerEvents: "none",
           }}
         />
-
-        {/* Badge */}
-        <div
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 6,
-            background: "rgba(124,92,252,0.12)",
-            border: "1px solid rgba(124,92,252,0.25)",
-            borderRadius: 100,
-            padding: "5px 14px",
-            marginBottom: 24,
-          }}
-        >
-          <span style={{ fontSize: 10, color: PURPLE, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>
-            EA Sports FC · Career Mode
-          </span>
-        </div>
 
         {/* Headline */}
         <h1
@@ -745,8 +727,7 @@ export function LandingPageMobile({
               padding: "24px 20px",
             }}
           >
-            <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>Free</div>
-            <div style={{ color: TEXT_DIM, fontSize: 12, marginBottom: 16 }}>{t.pricingFreeForWho}</div>
+            <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 16 }}>{t.pricingFreeForWho}</div>
             <div style={{ display: "flex", alignItems: "baseline", gap: 2, marginBottom: 20 }}>
               <span style={{ fontSize: 36, fontWeight: 900 }}>{t.pricingFreePriceWhole}</span>
               <span style={{ color: TEXT_DIM, fontSize: 13 }}>{t.pricingFreeForever}</span>
@@ -807,8 +788,7 @@ export function LandingPageMobile({
             >
               {t.pricingProBadge}
             </div>
-            <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4, color: TEXT_MAIN }}>Pro</div>
-            <div style={{ color: TEXT_DIM, fontSize: 12, marginBottom: 16 }}>{t.pricingProForWho}</div>
+            <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 16, color: TEXT_MAIN }}>{t.pricingProForWho}</div>
             <div style={{ display: "flex", alignItems: "baseline", gap: 2, marginBottom: 20 }}>
               <span style={{ fontSize: 36, fontWeight: 900 }}>{t.pricingProPriceWhole}</span>
               <span style={{ fontSize: 18, fontWeight: 800 }}>{t.pricingProPriceDec}</span>
@@ -851,8 +831,7 @@ export function LandingPageMobile({
               padding: "24px 20px",
             }}
           >
-            <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4, color: TEXT_MAIN }}>Ultra</div>
-            <div style={{ color: TEXT_DIM, fontSize: 12, marginBottom: 16 }}>{t.pricingUltraForWho}</div>
+            <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 16, color: TEXT_MAIN }}>{t.pricingUltraForWho}</div>
             <div style={{ display: "flex", alignItems: "baseline", gap: 2, marginBottom: 20 }}>
               <span style={{ fontSize: 36, fontWeight: 900 }}>{t.pricingUltraPriceWhole}</span>
               <span style={{ fontSize: 18, fontWeight: 800 }}>{t.pricingUltraPriceDec}</span>
