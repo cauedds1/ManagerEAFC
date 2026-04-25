@@ -1761,7 +1761,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
 
         <div
           data-dashboard-nav="1"
-          className="hidden sm:block sticky top-0 z-30"
+          className="hidden sm:flex sticky top-0 z-30 flex-col"
           style={{ background: "rgba(var(--club-primary-rgb), 0.06)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", borderBottom: "1px solid var(--surface-border)" }}
         >
           <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
@@ -2247,6 +2247,8 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
             return (
               <button
                 onClick={() => setShowMobileMore((v) => !v)}
+                aria-label={lang === "en" ? "More navigation options" : "Mais opções de navegação"}
+                aria-expanded={showMobileMore}
                 className="flex-1 flex flex-col items-center justify-center gap-0.5 py-2 px-1 relative"
                 style={{ color: moreActive ? "var(--club-primary)" : "rgba(255,255,255,0.4)" }}
               >
