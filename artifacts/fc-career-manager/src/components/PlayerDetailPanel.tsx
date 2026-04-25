@@ -76,6 +76,7 @@ function LabeledInput({ label, value, onChange, type = "text", min, max, placeho
         style={{
           background: "rgba(255,255,255,0.05)",
           border: "1px solid rgba(255,255,255,0.09)",
+          fontSize: 16,
         }}
         onFocus={(e) => { e.currentTarget.style.border = "1px solid rgba(var(--club-primary-rgb),0.5)"; }}
         onBlur={(e) => { e.currentTarget.style.border = "1px solid rgba(255,255,255,0.09)"; }}

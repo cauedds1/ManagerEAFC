@@ -252,6 +252,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     }
   }, []);
   const [activeTab, setActiveTab] = useState<CareerTab>(initialTab ?? "painel");
+  const [showMobileMore, setShowMobileMore] = useState(false);
   const [highlightMomentoId, setHighlightMomentoId] = useState<string | undefined>();
   const [portalPhotos, setPortalPhotos] = useState<PortalPhotos>({});
   const [customPortalPhotos, setCustomPortalPhotos] = useState<Record<string, string>>({});
@@ -1760,7 +1761,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
 
         <div
           data-dashboard-nav="1"
-          className="sticky top-0 z-30"
+          className="hidden sm:block sticky top-0 z-30"
           style={{ background: "rgba(var(--club-primary-rgb), 0.06)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", borderBottom: "1px solid var(--surface-border)" }}
         >
           <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
@@ -1903,6 +1904,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
         )}
 
         {activeTab === "clube" && (
+          <div className="pb-24 sm:pb-0">
           <ClubeView
             careerId={career.id}
             seasonId={activeSeasonId}
@@ -1928,9 +1930,10 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
             isCustomClub={career.isCustomClub}
             isDemo={isDemo}
           />
+          </div>
         )}
         {activeTab !== "clube" && (
-          <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6">
+          <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 pt-6 pb-24 sm:pb-6">
             {activeTab === "resumo" && isFinalized && (
               <SeasonSummaryView
                 careerId={career.id}
@@ -2149,6 +2152,183 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
           notification={pendingNotification}
           onDismiss={() => setPendingNotification(null)}
         />
+      )}
+
+      {/* Mobile Bottom Navigation */}
+      <nav
+        className="fixed bottom-0 left-0 right-0 z-40 sm:hidden"
+        style={{
+          background: "rgba(10,8,20,0.95)",
+          borderTop: "1px solid rgba(255,255,255,0.08)",
+          backdropFilter: "blur(16px)",
+          WebkitBackdropFilter: "blur(16px)",
+          paddingBottom: "env(safe-area-inset-bottom, 0px)",
+        }}
+      >
+        <div className="flex items-stretch">
+          {(
+            [
+              {
+                id: "painel" as CareerTab,
+                label: painelTabLabel,
+                icon: (
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                  </svg>
+                ),
+                badge: 0,
+              },
+              {
+                id: "partidas" as CareerTab,
+                label: tabLabels["partidas"] ?? "partidas",
+                icon: (
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <circle cx="12" cy="12" r="9" strokeLinecap="round" strokeLinejoin="round" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 3c0 0 2.5 4 2.5 9s-2.5 9-2.5 9M12 3c0 0-2.5 4-2.5 9s2.5 9 2.5 9M3 12h18" />
+                  </svg>
+                ),
+                badge: 0,
+              },
+              {
+                id: "clube" as CareerTab,
+                label: tabLabels["clube"] ?? "clube",
+                icon: (
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                ),
+                badge: 0,
+              },
+              {
+                id: "diretoria" as CareerTab,
+                label: tabLabels["diretoria"] ?? "diretoria",
+                icon: (
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                  </svg>
+                ),
+                badge: diretoriaUnread,
+              },
+            ] as { id: CareerTab; label: string; icon: React.ReactNode; badge: number }[]
+          ).map(({ id, label, icon, badge }) => {
+            const active = activeTab === id;
+            return (
+              <button
+                key={id}
+                onClick={() => { handleTabChange(id); setShowMobileMore(false); }}
+                className="flex-1 flex flex-col items-center justify-center gap-0.5 py-2 px-1 relative"
+                style={{ color: active ? "var(--club-primary)" : "rgba(255,255,255,0.4)" }}
+              >
+                {active && (
+                  <span
+                    className="absolute top-0 left-[15%] right-[15%] h-0.5 rounded-full"
+                    style={{ background: "var(--club-primary)" }}
+                  />
+                )}
+                <span className="relative">
+                  {icon}
+                  {!active && badge > 0 && (
+                    <span
+                      className="absolute -top-1 -right-1.5 min-w-[14px] h-3.5 rounded-full flex items-center justify-center text-[9px] font-bold px-0.5"
+                      style={{ background: "rgba(239,68,68,0.9)", color: "#fff" }}
+                    >
+                      {badge}
+                    </span>
+                  )}
+                </span>
+                <span className="text-[10px] font-medium capitalize leading-none">{label}</span>
+              </button>
+            );
+          })}
+          {/* Mais / More */}
+          {(() => {
+            const moreActive = showMobileMore || ["transferencias", "noticias", "momentos", "configuracoes", "resumo"].includes(activeTab);
+            const moreBadge = noticiasUnread + (transfers.length > 0 ? 1 : 0);
+            return (
+              <button
+                onClick={() => setShowMobileMore((v) => !v)}
+                className="flex-1 flex flex-col items-center justify-center gap-0.5 py-2 px-1 relative"
+                style={{ color: moreActive ? "var(--club-primary)" : "rgba(255,255,255,0.4)" }}
+              >
+                {moreActive && (
+                  <span
+                    className="absolute top-0 left-[15%] right-[15%] h-0.5 rounded-full"
+                    style={{ background: "var(--club-primary)" }}
+                  />
+                )}
+                <span className="relative">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+                  </svg>
+                  {!moreActive && moreBadge > 0 && (
+                    <span
+                      className="absolute -top-1 -right-1.5 min-w-[14px] h-3.5 rounded-full flex items-center justify-center text-[9px] font-bold px-0.5"
+                      style={{ background: "rgba(239,68,68,0.9)", color: "#fff" }}
+                    >
+                      {moreBadge > 9 ? "9+" : moreBadge}
+                    </span>
+                  )}
+                </span>
+                <span className="text-[10px] font-medium leading-none">{lang === "en" ? "More" : "Mais"}</span>
+              </button>
+            );
+          })()}
+        </div>
+      </nav>
+
+      {/* Mobile More Sheet */}
+      {showMobileMore && (
+        <div
+          className="fixed inset-0 z-[41] sm:hidden"
+          onClick={() => setShowMobileMore(false)}
+        >
+          <div
+            className="absolute bottom-[65px] left-2 right-2 rounded-2xl overflow-hidden shadow-2xl"
+            style={{
+              background: "rgba(12,10,22,0.98)",
+              border: "1px solid rgba(255,255,255,0.1)",
+              backdropFilter: "blur(24px)",
+              WebkitBackdropFilter: "blur(24px)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {(
+              [
+                ...(isFinalized ? [{ id: "resumo" as CareerTab, label: t.tabResumo, badge: 0 }] : []),
+                { id: "transferencias" as CareerTab, label: tabLabels["transferencias"] ?? "transferências", badge: transfers.length },
+                { id: "noticias" as CareerTab, label: tabLabels["noticias"] ?? "notícias", badge: noticiasUnread },
+                { id: "momentos" as CareerTab, label: tabLabels["momentos"] ?? "momentos", badge: 0 },
+                ...(!isDemo ? [{ id: "configuracoes" as CareerTab, label: lang === "en" ? "Settings" : "Configurações", badge: 0 }] : []),
+              ] as { id: CareerTab; label: string; badge: number }[]
+            ).map(({ id, label, badge }) => {
+              const active = activeTab === id;
+              return (
+                <button
+                  key={id}
+                  onClick={() => { handleTabChange(id); setShowMobileMore(false); }}
+                  className="w-full flex items-center justify-between px-5 py-3.5"
+                  style={{
+                    borderBottom: "1px solid rgba(255,255,255,0.05)",
+                    color: active ? "var(--club-primary)" : "rgba(255,255,255,0.75)",
+                  }}
+                >
+                  <span className="font-medium capitalize">{label}</span>
+                  {badge > 0 && (
+                    <span
+                      className="text-xs font-bold px-1.5 py-0.5 rounded-full tabular-nums min-w-[20px] text-center"
+                      style={{
+                        background: active ? "rgba(var(--club-primary-rgb),0.2)" : "rgba(239,68,68,0.85)",
+                        color: active ? "var(--club-primary)" : "#fff",
+                      }}
+                    >
+                      {badge}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
       )}
     </div>
   );
