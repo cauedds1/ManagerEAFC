@@ -348,10 +348,11 @@ function CareerCard({ career, onSelect, onRequestDelete, index, t }: {
 
       <button
         onClick={handleDelete}
-        className="absolute top-4 right-4 w-6 h-6 rounded-md flex items-center justify-center opacity-0 group-hover:opacity-100 hover:!opacity-100 text-white/0 group-hover:text-white/30 hover:!text-red-400 hover:!bg-red-500/15 transition-all duration-200"
+        className="absolute top-3 right-3 w-8 h-8 rounded-lg flex items-center justify-center opacity-20 hover:opacity-100 focus:opacity-100 active:opacity-100 text-white/50 hover:text-red-400 hover:bg-red-500/15 active:bg-red-500/15 transition-all duration-200"
+        style={{ touchAction: "manipulation" }}
         title={t.deleteCareer}
       >
-        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
         </svg>
       </button>
