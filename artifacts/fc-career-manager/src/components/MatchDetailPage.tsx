@@ -247,23 +247,33 @@ function PlayerDetailPanel({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 flex items-end sm:items-center sm:p-4"
       style={{ backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", background: "rgba(0,0,0,0.65)" }}
       onClick={onClose}
     >
       <div
-        className="w-full flex flex-col rounded-2xl overflow-hidden"
+        className="w-full flex flex-col rounded-t-2xl sm:rounded-2xl overflow-hidden"
         style={{
           maxWidth: 460,
+          maxHeight: "92dvh",
+          margin: "0 auto",
           background: "var(--app-bg-lighter, #141024)",
           border: "1px solid var(--surface-border)",
           boxShadow: "0 30px 80px rgba(0,0,0,0.7)",
         }}
         onClick={(e) => e.stopPropagation()}
       >
+        {/* ── Mobile drag handle ── */}
+        <div className="flex justify-center pt-3 pb-1 sm:hidden flex-shrink-0">
+          <div className="w-10 h-1 rounded-full" style={{ background: "rgba(255,255,255,0.2)" }} />
+        </div>
+
+        {/* ── Scrollable body ── */}
+        <div className="flex flex-col overflow-y-auto flex-1 min-h-0">
+
         {/* ── Header ── */}
         <div
-          className="flex items-start justify-between px-5 pt-5 pb-4 flex-shrink-0"
+          className="flex items-start justify-between px-5 pt-4 sm:pt-5 pb-4 flex-shrink-0"
           style={{ borderBottom: "1px solid var(--surface-border)" }}
         >
           <div className="flex items-center gap-4 min-w-0">
@@ -300,8 +310,8 @@ function PlayerDetailPanel({
           </div>
           <button
             onClick={onClose}
-            className="flex-shrink-0 ml-2 w-7 h-7 flex items-center justify-center rounded-lg text-white/50 hover:text-white transition-colors"
-            style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}
+            className="flex-shrink-0 ml-2 flex items-center justify-center rounded-lg text-white/50 hover:text-white transition-colors"
+            style={{ minWidth: 44, minHeight: 44, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}
           >
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -309,8 +319,8 @@ function PlayerDetailPanel({
           </button>
         </div>
 
-        {/* ── 4-col stats row ── */}
-        <div className="px-5 pt-4 pb-3 grid grid-cols-4 gap-2">
+        {/* ── 4-col stats row (2×2 on mobile) ── */}
+        <div className="px-5 pt-4 pb-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
           {[
             { label: t.ratingStatLabel, value: rating > 0 ? rating.toFixed(1) : "—", accent: rating > 0 ? ratingC : undefined, sub: rating > 0 ? (rating > 8.5 ? t.ratingExcellent : rating >= 7.6 ? t.ratingGood : rating >= 6.5 ? t.ratingAverage : t.ratingBelow) : undefined, subColor: ratingB },
             { label: t.minutesLabel, value: minutes > 0 ? `${minutes}'` : "—" },
@@ -384,12 +394,14 @@ function PlayerDetailPanel({
           </div>
         )}
 
+        </div>{/* end scrollable body */}
+
         {/* ── Close button ── */}
-        <div className="px-5 pb-5" style={{ borderTop: "1px solid var(--surface-border)", paddingTop: 14 }}>
+        <div className="px-5 pb-5 flex-shrink-0" style={{ borderTop: "1px solid var(--surface-border)", paddingTop: 14 }}>
           <button
             onClick={onClose}
-            className="w-full py-2.5 rounded-xl text-sm font-semibold text-white/60 hover:text-white transition-colors"
-            style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}
+            className="w-full rounded-xl text-sm font-semibold text-white/60 hover:text-white transition-colors"
+            style={{ minHeight: 44, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}
           >
             {t.closeBtn}
           </button>
