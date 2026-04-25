@@ -1134,16 +1134,14 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
       )}
 
       <div
-        className="rounded-2xl overflow-hidden"
+        className={`rounded-2xl overflow-hidden grid ${panel !== "list" ? "sm:grid-cols-[clamp(200px,28%,260px)_1fr]" : ""}`}
         style={{
           border: "1px solid var(--surface-border)",
           height: "clamp(380px, calc(100dvh - 280px), 520px)",
-          display: "grid",
-          gridTemplateColumns: panel === "list" ? "1fr" : "clamp(200px,28%,260px) 1fr",
         }}
       >
         <div
-          className={`flex flex-col ${panel !== "list" ? "" : ""}`}
+          className={`flex-col ${panel !== "list" ? "hidden sm:flex" : "flex"}`}
           style={{ borderRight: panel !== "list" ? "1px solid var(--surface-border)" : undefined }}
         >
           <div
@@ -1569,7 +1567,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
                 rows={1}
                 disabled={meetingResponding}
                 className="flex-1 px-3 py-2.5 rounded-xl text-sm text-white placeholder-white/25 resize-none glass disabled:opacity-50"
-                style={{ border: "1px solid var(--surface-border)", outline: "none", background: "rgba(255,255,255,0.05)", maxHeight: 100 }}
+                style={{ border: "1px solid var(--surface-border)", outline: "none", background: "rgba(255,255,255,0.05)", maxHeight: 100, fontSize: 16 }}
               />
               <button
                 onClick={handleSendMeetingMessage}
@@ -1604,11 +1602,17 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
         )}
 
         {panel === "history" && (
-          <div className="flex flex-col min-h-0" style={{ height: 520 }}>
+          <div className="flex flex-col min-h-0" style={{ height: "clamp(380px, calc(100dvh - 280px), 520px)" }}>
             <div
               className="flex items-center gap-3 px-5 py-3 flex-shrink-0"
               style={{ borderBottom: "1px solid var(--surface-border)", background: "rgba(255,255,255,0.02)" }}
             >
+              <button
+                onClick={() => setPanel("list")}
+                className="text-white/30 hover:text-white/70 transition-colors mr-1 sm:hidden"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+              </button>
               <span className="text-lg">📋</span>
               <div className="flex-1 min-w-0">
                 <span className="text-white font-bold text-sm">{t.closedMeetingsHeading}</span>
@@ -1671,7 +1675,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
         )}
 
         {panel === "history-detail" && historyMeeting && (
-          <div className="flex flex-col min-h-0" style={{ height: 520 }}>
+          <div className="flex flex-col min-h-0" style={{ height: "clamp(380px, calc(100dvh - 280px), 520px)" }}>
             <div
               className="flex items-center gap-3 px-5 py-3 flex-shrink-0"
               style={{ borderBottom: "1px solid var(--surface-border)", background: "rgba(255,255,255,0.02)" }}
