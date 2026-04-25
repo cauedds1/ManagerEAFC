@@ -21,7 +21,7 @@ This is a pnpm monorepo with the following packages:
 
 ## Tech Stack
 
-- **Frontend**: React 19, Vite 7, Tailwind CSS 4, TanStack Query, Framer Motion, Shadcn UI
+- **Frontend**: React 19, Vite 7, Tailwind CSS 4, TanStack Query, Framer Motion, Shadcn UI, vite-plugin-pwa (PWA/installable)
 - **Backend**: Express.js 5, Node.js, TypeScript
 - **Database**: PostgreSQL with Drizzle ORM
 - **AI**: OpenAI via Replit AI Integrations (provisioned)
