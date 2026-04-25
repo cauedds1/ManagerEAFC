@@ -94,12 +94,12 @@ function reNormalizePlayers(players: SquadPlayer[]): SquadPlayer[] {
   });
 }
 
-function readLocalCache(teamId: number, clubName: string): SquadResult | null {
+function readLocalCache(teamId: number, clubName: string, ignoreTtl = false): SquadResult | null {
   try {
     const raw = localStorage.getItem(getCacheKey(teamId, clubName));
     if (!raw) return null;
     const data = JSON.parse(raw) as SquadResult;
-    if (Date.now() - data.cachedAt >= CACHE_TTL_MS) return null;
+    if (!ignoreTtl && Date.now() - data.cachedAt >= CACHE_TTL_MS) return null;
     data.players = reNormalizePlayers(data.players);
     return data;
   } catch {
@@ -113,25 +113,34 @@ function writeLocalCache(teamId: number, clubName: string, result: SquadResult):
   } catch {}
 }
 
-async function readDbSquad(teamId: number): Promise<SquadResult | null> {
-  if (teamId <= 0) return null;
+type DbSquadOutcome =
+  | { status: "ok"; data: SquadResult }
+  | { status: "empty" }
+  | { status: "unavailable" };
+
+async function readDbSquad(teamId: number): Promise<DbSquadOutcome> {
+  if (teamId <= 0) return { status: "empty" };
   try {
     const res = await fetch(`/api/squad/${teamId}`);
-    if (res.status === 204 || !res.ok) return null;
+    if (res.status === 204) return { status: "empty" };
+    if (!res.ok) return { status: "unavailable" };
     const data = await res.json() as {
       players: SquadPlayer[];
       source: string;
       cachedAt: number;
       schemaVersion?: string;
     };
-    if (!Array.isArray(data.players) || data.players.length === 0) return null;
+    if (!Array.isArray(data.players) || data.players.length === 0) return { status: "empty" };
     return {
-      players: reNormalizePlayers(data.players as SquadPlayer[]),
-      source: data.source as SquadSource,
-      cachedAt: data.cachedAt,
+      status: "ok",
+      data: {
+        players: reNormalizePlayers(data.players as SquadPlayer[]),
+        source: data.source as SquadSource,
+        cachedAt: data.cachedAt,
+      },
     };
   } catch {
-    return null;
+    return { status: "unavailable" };
   }
 }
 
@@ -176,24 +185,29 @@ export async function fetchSquadFromBackend(teamId: number): Promise<SquadResult
 export async function getSquad(teamId: number, clubName: string): Promise<SquadResult> {
   const localCached = readLocalCache(teamId, clubName);
 
-  const dbResult = await readDbSquad(teamId);
+  const dbOutcome = await readDbSquad(teamId);
 
-  if (localCached && dbResult) {
-    if (dbResult.cachedAt > localCached.cachedAt) {
-      writeLocalCache(teamId, clubName, dbResult);
-      return dbResult;
+  if (dbOutcome.status === "unavailable") {
+    return localCached ?? readLocalCache(teamId, clubName, true) ?? { players: [], source: "api-football", cachedAt: Date.now() };
+  }
+
+  if (dbOutcome.status === "empty") {
+    if (localCached) return localCached;
+    return { players: [], source: "api-football", cachedAt: Date.now() };
+  }
+
+  const dbData = dbOutcome.data;
+
+  if (localCached) {
+    if (dbData.cachedAt > localCached.cachedAt) {
+      writeLocalCache(teamId, clubName, dbData);
+      return dbData;
     }
     return localCached;
   }
 
-  if (localCached) return localCached;
-
-  if (dbResult) {
-    writeLocalCache(teamId, clubName, dbResult);
-    return dbResult;
-  }
-
-  return { players: [], source: "api-football", cachedAt: Date.now() };
+  writeLocalCache(teamId, clubName, dbData);
+  return dbData;
 }
 
 /**
