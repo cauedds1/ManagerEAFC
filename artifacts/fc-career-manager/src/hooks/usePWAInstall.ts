@@ -34,17 +34,22 @@ function isMobile(): boolean {
 }
 
 let _deferredPrompt: BeforeInstallPromptEvent | null = null;
-const _promptListeners = new Set<() => void>();
+const _promptListeners = new Set<(hasPrompt: boolean) => void>();
 
-function notifyPromptListeners() {
-  _promptListeners.forEach((cb) => cb());
+function notifyPromptListeners(hasPrompt: boolean) {
+  _promptListeners.forEach((cb) => cb(hasPrompt));
 }
 
 if (typeof window !== "undefined") {
   window.addEventListener("beforeinstallprompt", (e) => {
     e.preventDefault();
     _deferredPrompt = e as BeforeInstallPromptEvent;
-    notifyPromptListeners();
+    notifyPromptListeners(true);
+  });
+
+  window.addEventListener("appinstalled", () => {
+    _deferredPrompt = null;
+    notifyPromptListeners(false);
   });
 }
 
@@ -63,11 +68,11 @@ export function usePWAInstall(): UsePWAInstallReturn {
   const [status] = useState<PWAInstallStatus>(getDeviceStatus);
 
   useEffect(() => {
-    const onPrompt = () => setHasPrompt(true);
-    _promptListeners.add(onPrompt);
-    if (_deferredPrompt) setHasPrompt(true);
+    const onPromptChange = (has: boolean) => setHasPrompt(has);
+    _promptListeners.add(onPromptChange);
+    setHasPrompt(!!_deferredPrompt);
     return () => {
-      _promptListeners.delete(onPrompt);
+      _promptListeners.delete(onPromptChange);
     };
   }, []);
 
@@ -78,7 +83,7 @@ export function usePWAInstall(): UsePWAInstallReturn {
     const { outcome } = await _deferredPrompt.userChoice;
     if (outcome === "accepted") {
       _deferredPrompt = null;
-      setHasPrompt(false);
+      notifyPromptListeners(false);
     }
     setInstalling(false);
     return outcome === "accepted" ? "accepted" : "dismissed";
