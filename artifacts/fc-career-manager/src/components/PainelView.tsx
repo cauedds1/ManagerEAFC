@@ -379,7 +379,7 @@ function LastMatches({
     return (
       <div className="glass rounded-2xl p-5 flex flex-col gap-3">
         <SectionTitle>{t.lastMatches}</SectionTitle>
-        <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(6, 1fr)" }}>
+        <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
           {Array.from({ length: 6 }).map((_, i) => (
             <div
               key={i}
@@ -407,7 +407,7 @@ function LastMatches({
   return (
     <div className="glass rounded-2xl p-5 flex flex-col gap-3">
       <SectionTitle>{t.lastMatches}</SectionTitle>
-      <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(6, 1fr)" }}>
+      <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
         {last5.map((m) => {
           const result = getMatchResultFull(m.myScore, m.opponentScore, m.penaltyShootout);
           const rs = RESULT_STYLE[result];
