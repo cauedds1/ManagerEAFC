@@ -65,6 +65,16 @@ Game data is stored in PostgreSQL via `career_data` and `season_data` key-value 
 Season-level: matches, player_stats, transfers, league_position, finances, news, injuries, rivals, rivalsLocked, fan_mood
 Career-level: overrides, lineup, benchOrder, formation, diretoria_members, diretoria_meetings, diretoria_notifications, conv_*, trophies, comp_results, customPlayers, formerPlayers, hiddenPlayerIds
 
+## Payments (Stripe)
+
+The app has full Stripe integration code already in place (`artifacts/api-server/src/lib/stripeClient.ts`). It is coded to use the Replit Stripe integration first, then falls back to `STRIPE_SECRET_KEY` / `STRIPE_PUBLISHABLE_KEY` env vars.
+
+**NOTE:** The Stripe Replit integration was not connected during migration (user dismissed). To enable payments, either:
+1. Connect the Stripe integration via the Integrations panel in Replit (recommended), OR
+2. Set `STRIPE_SECRET_KEY` and `STRIPE_PUBLISHABLE_KEY` as secrets in the environment
+
+Stripe initialization is non-fatal — the app runs fully without it; only subscription/checkout features are affected.
+
 ## Required Environment Variables
 
 - `AI_INTEGRATIONS_OPENAI_BASE_URL` — Auto-provisioned via Replit AI Integrations
