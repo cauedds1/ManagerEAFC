@@ -1,0 +1,77 @@
+#29 - App Nativo Android (Expo)
+What & Why
+Criar um app Android nativo em React Native + Expo como um novo artifact (artifacts/fc-career-manager-mobile), consumindo a mesma API REST e banco de dados já existentes. O usuário usa a mesma conta no PC e no celular com dados 100% sincronizados. A interface deve ser desenhada do zero para toque — não é uma cópia do web app, mas sim uma experiência mobile-first otimizada para máxima velocidade e conforto de uso.
+
+Design e UX principles
+Interface própria: não copiar o layout do web. Usar padrões nativos do Android (Material-inspired, gestos de swipe, bottom sheets, listas com FlatList performática).
+Toque em primeiro lugar: botões grandes, áreas de toque generosas, feedbacks táteis (haptics), sem hover states.
+Velocidade: dados carregados otimisticamente, cache local com AsyncStorage, skeleton loaders em vez de spinners.
+Hierarquia clara: informação mais importante sempre visível sem scroll. Cards compactos, tipografia grande e legível.
+Navegação fluida: bottom tab bar fixa para as seções principais, stack navigation para detalhes, swipe-back nativo.
+Tema do clube: cores primária e secundária do clube ativo aplicadas em toda a UI (header, botões, badges, gradientes).
+Done looks like
+Novo artifact Expo (fc-career-manager-mobile) configurado e rodando no workspace
+O app pode ser gerado como APK via EAS Build
+Login/cadastro com a mesma conta do web app (JWT), salvo em SecureStore
+Todas as funcionalidades do web disponíveis nativamente: Dashboard, Carreiras, Elenco, Partidas, Registrar Partida, Transferências, Diretoria, Financeiro, Lesões, Rivais, Sequências, Troféus, Notícias, Configurações
+Navegação nativa com React Navigation (bottom tabs + stack)
+Qualquer ação feita no celular aparece no PC e vice-versa em tempo real
+Push notifications via Expo Notifications integradas ao sistema existente do backend
+Modo offline básico: dados já carregados ficam acessíveis sem conexão
+Out of scope
+Versão iOS / App Store (o mesmo código Expo suporta depois com mínimo esforço)
+Admin panel no mobile
+Modo demo/impersonation no mobile
+Copiar literalmente o visual do web app
+Steps
+Scaffold do artifact Expo — Criar artifacts/fc-career-manager-mobile com Expo SDK + TypeScript. Configurar app.config.ts com nome, bundle ID, ícone, splash screen e permissões. Instalar React Navigation, Expo SecureStore, Expo Haptics, Expo Notifications. Adicionar ao workspace e criar workflow expo start.
+
+Camada de API e cache — Criar src/lib/api.ts com cliente HTTP tipado para todos os endpoints da API existente (auth, careers, squad, matches, transfers, diretoria, financeiro, lesões, notícias). JWT lido do SecureStore. Cache local com AsyncStorage para leitura offline.
+
+Auth nativo — Telas de login e cadastro com design mobile-first: campos grandes, teclado bem comportado, feedback imediato de erro. Salvar JWT no SecureStore e redirecionar para o app. Suporte a logout.
+
+Seleção e criação de carreira — Tela de carreiras do usuário com cards visuais por clube e wizard de nova carreira em steps nativos (escolha de clube com busca, treinador, temporada). Design próprio, não derivado do web.
+
+Dashboard nativo — Tela home com cartões de resumo: resultado da última partida, próxima partida, classificação na liga, estatísticas da temporada e widget de missões. Layout em scroll vertical com cards bem espaçados.
+
+Elenco — FlatList performática de jogadores com busca e filtros por posição em chips horizontais. Tap em jogador abre bottom sheet com estatísticas detalhadas, avaliação e status de lesão.
+
+Partidas e Registrar Partida — Lista de partidas agrupada por rodada. Tap abre tela de detalhes com escalação, gols e avaliações. Botão flutuante para registrar nova partida: formulário nativo com steps (adversário → resultado → gols/assistências → avaliações individuais).
+
+Transferências e Lesões — Tela de transferências com tabs Entradas/Saídas, cards compactos por jogador e valores formatados. Tela de lesões com lista por jogador e previsão de retorno.
+
+Diretoria e Financeiro — Chat com a diretoria como interface de mensagens nativa (bolhas, scroll pra baixo automático). Financeiro com gráficos simples (receitas, despesas, saldo) em cards.
+
+Telas secundárias — Rivais (ranking e histórico), Sequências (streak de resultados), Troféus (vitrine com ícones), Notícias (feed de cards), Painel geral — todas com layouts nativos próprios integrados à navegação.
+
+Configurações e perfil — Tela de configurações: idioma, conta (nome, email, plano), tema, logout. Exibir plano atual (free/pro/ultra) com opção de upgrade.
+
+Tema dinâmico por clube — Context global de tema que aplica as cores do clube ativo (primary/secondary) em headers, botões, badges e gradientes de fundo. Cores extraídas do logo do clube via a lógica já existente em clubColors.ts.
+
+Push Notifications — Registrar Expo push token ao fazer login e enviar para o backend vincular ao usuário. Exibir notificações push enviadas pelo admin como banners nativos do Android.
+
+Relevant files
+artifacts/fc-career-manager/src/App.tsx
+artifacts/fc-career-manager/src/components/Dashboard.tsx
+artifacts/fc-career-manager/src/components/ElencoView.tsx
+artifacts/fc-career-manager/src/components/PartidasView.tsx
+artifacts/fc-career-manager/src/components/MatchDetailPage.tsx
+artifacts/fc-career-manager/src/components/RegistrarPartidaModal.tsx
+artifacts/fc-career-manager/src/components/TransferenciasView.tsx
+artifacts/fc-career-manager/src/components/DiretoriaView.tsx
+artifacts/fc-career-manager/src/components/FinanceiroView.tsx
+artifacts/fc-career-manager/src/components/LesoesView.tsx
+artifacts/fc-career-manager/src/components/RivaisView.tsx
+artifacts/fc-career-manager/src/components/SequenciasView.tsx
+artifacts/fc-career-manager/src/components/TrophyCabinetView.tsx
+artifacts/fc-career-manager/src/components/NoticiasView.tsx
+artifacts/fc-career-manager/src/components/CareerSelection.tsx
+artifacts/fc-career-manager/src/components/CreateCareerWizard.tsx
+artifacts/fc-career-manager/src/components/Settings.tsx
+artifacts/fc-career-manager/src/lib/api.ts
+artifacts/fc-career-manager/src/lib/careerStorage.ts
+artifacts/fc-career-manager/src/lib/clubColors.ts
+artifacts/api-server/src/routes/auth.ts
+artifacts/api-server/src/routes/careers.ts
+artifacts/api-server/src/routes/squad.ts
+artifacts/api-server/src/routes/players.ts
