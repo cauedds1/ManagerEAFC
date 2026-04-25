@@ -3,7 +3,7 @@ import bcrypt from "bcryptjs";
 import { rateLimit } from "express-rate-limit";
 import { db, usersTable, careersTable } from "@workspace/db";
 import { eq, isNull } from "drizzle-orm";
-import { requireAuth, signToken, type AuthRequest } from "../middleware/auth";
+import { requireAuth, signToken, signDemoToken, type AuthRequest } from "../middleware/auth";
 import { getUncachableStripeClient } from "../lib/stripeClient";
 import type Stripe from "stripe";
 
@@ -173,6 +173,59 @@ router.post("/auth/from-checkout", async (req, res) => {
     });
   } catch (err) {
     console.error("POST /auth/from-checkout error:", err);
+    return res.status(500).json({ error: "Erro interno do servidor" });
+  }
+});
+
+const demoRateLimit = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 30,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: { error: "Muitas tentativas de demo. Tente novamente mais tarde." },
+});
+
+const DEMO_EMAIL = "demo@fc-career-manager.app";
+const DEMO_NAME = "Demo Coach";
+
+router.get("/auth/demo", demoRateLimit, async (_req, res) => {
+  try {
+    let demoUser = await db
+      .select({ id: usersTable.id, email: usersTable.email, name: usersTable.name, plan: usersTable.plan })
+      .from(usersTable)
+      .where(eq(usersTable.email, DEMO_EMAIL))
+      .limit(1)
+      .then((rows) => rows[0] ?? null);
+
+    if (!demoUser) {
+      const passwordHash = await bcrypt.hash(`demo-${Date.now()}`, 12);
+      const [inserted] = await db.insert(usersTable).values({
+        email: DEMO_EMAIL,
+        passwordHash,
+        name: DEMO_NAME,
+        createdAt: Date.now(),
+        plan: "pro",
+        aiUsageCount: 0,
+        aiUsageResetDate: "",
+      }).returning();
+      demoUser = inserted;
+    }
+
+    const token = signDemoToken({ id: demoUser.id, email: demoUser.email, name: demoUser.name, plan: demoUser.plan ?? "pro" });
+
+    const careers = await db
+      .select({ id: careersTable.id })
+      .from(careersTable)
+      .where(eq(careersTable.userId, demoUser.id))
+      .limit(1);
+
+    return res.json({
+      token,
+      user: { id: demoUser.id, email: demoUser.email, name: demoUser.name, plan: demoUser.plan ?? "pro" },
+      careerId: careers[0]?.id ?? null,
+    });
+  } catch (err) {
+    console.error("GET /auth/demo error:", err);
     return res.status(500).json({ error: "Erro interno do servidor" });
   }
 });

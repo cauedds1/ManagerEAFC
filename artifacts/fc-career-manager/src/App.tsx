@@ -68,6 +68,34 @@ function ImpersonationBanner({ userName, onEnd }: { userName: string; onEnd: () 
   );
 }
 
+function DemoBanner({ lang, onEnd }: { lang: "pt" | "en"; onEnd: () => void }) {
+  const label = lang === "en"
+    ? "Interactive Demo — Watford FC · Championship"
+    : "Demo Interativa — Watford FC · Championship";
+  const btn = lang === "en" ? "Exit demo" : "Sair da demo";
+  return (
+    <div
+      className="fixed top-0 left-0 right-0 z-[200] flex items-center justify-between px-4 py-2 gap-3"
+      style={{ background: "rgba(16,185,129,0.95)", backdropFilter: "blur(8px)", boxShadow: "0 2px 12px rgba(0,0,0,0.4)" }}
+    >
+      <div className="flex items-center gap-2 min-w-0">
+        <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} style={{ color: "#065f46" }}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <span className="font-bold text-xs truncate" style={{ color: "#065f46" }}>{label}</span>
+      </div>
+      <button
+        onClick={onEnd}
+        className="flex-shrink-0 px-3 py-1 rounded-lg text-xs font-bold transition-all hover:opacity-80"
+        style={{ background: "rgba(0,0,0,0.15)", color: "#065f46" }}
+      >
+        {btn}
+      </button>
+    </div>
+  );
+}
+
 interface AuthUser {
   id: number;
   email: string;
@@ -292,6 +320,8 @@ export default function App() {
   const [showWelcome, setShowWelcome] = useState(false);
   const [isImpersonating, setIsImpersonating] = useState(false);
   const [impersonatedUserName, setImpersonatedUserName] = useState("");
+  const [isDemo, setIsDemo] = useState(false);
+  const [demoInitialTab, setDemoInitialTab] = useState<string | null>(null);
   const [planPromotion, setPlanPromotion] = useState<{ plan: "pro" | "ultra" } | null>(null);
   const [lang, setLangState] = useState<"pt" | "en">(() => {
     try {
@@ -550,10 +580,51 @@ export default function App() {
     setView("landing");
   }, []);
 
+  const handleEndDemo = useCallback(() => {
+    sessionStorage.removeItem(AUTH_TOKEN_KEY);
+    setIsDemo(false);
+    setDemoInitialTab(null);
+    setAuthUser(null);
+    setActiveCareer(null);
+    setCareers([]);
+    resetTheme();
+    setView("landing");
+  }, []);
+
   useEffect(() => {
     migrateFromLegacy();
 
     const urlParams = new URLSearchParams(window.location.search);
+
+    const demoParam = urlParams.get("demo");
+    const demoTab = urlParams.get("tab");
+    if (demoParam === "true") {
+      window.history.replaceState({}, "", window.location.pathname);
+      if (demoTab) setDemoInitialTab(demoTab);
+      fetch(`${API_BASE}/auth/demo`)
+        .then(r => r.ok ? r.json() as Promise<{ token: string; careerId: string; user: AuthUser }> : Promise.reject())
+        .then(({ token, careerId: _careerId, user }) => {
+          sessionStorage.setItem(AUTH_TOKEN_KEY, token);
+          setIsDemo(true);
+          setAuthUser(user);
+          fetchCareersFromApi().then((fetchedCareers) => {
+            setCareers(fetchedCareers);
+            const localCached = getCachedClubList();
+            if (localCached && localCached.length > 0) {
+              setAllClubs(localCached);
+              resolveViewAfterClubs(fetchedCareers.length > 0);
+              return;
+            }
+            startFetching(fetchedCareers.length > 0);
+          }).catch(() => {
+            setCareers([]);
+            setView("career-selection");
+          });
+        })
+        .catch(() => setView("landing"));
+      return;
+    }
+
     const impersonationToken = urlParams.get("impersonation_token");
     if (impersonationToken) {
       window.history.replaceState({}, "", window.location.pathname);
@@ -848,10 +919,12 @@ export default function App() {
         <Dashboard
           career={activeCareer}
           onSeasonChange={handleSeasonChange}
-          onGoToCareers={handleGoToCareers}
-          onChangeClub={handleChangeClub}
+          onGoToCareers={isDemo ? handleEndDemo : handleGoToCareers}
+          onChangeClub={isDemo ? () => {} : handleChangeClub}
           onReloadClubs={handleReloadClubs}
-          onDeleteCareer={handleGoToCareers}
+          onDeleteCareer={isDemo ? undefined : handleGoToCareers}
+          initialTab={demoInitialTab as Parameters<typeof Dashboard>[0]["initialTab"] ?? undefined}
+          isDemo={isDemo}
         />
       );
     }
@@ -875,7 +948,10 @@ export default function App() {
       {isImpersonating && (
         <ImpersonationBanner userName={impersonatedUserName} onEnd={handleEndImpersonation} />
       )}
-      <div className="relative h-full overflow-hidden" style={isImpersonating ? { paddingTop: "40px" } : undefined}>
+      {isDemo && !isImpersonating && (
+        <DemoBanner lang={lang} onEnd={handleEndDemo} />
+      )}
+      <div className="relative h-full overflow-hidden" style={(isImpersonating || isDemo) ? { paddingTop: "40px" } : undefined}>
         <div
           style={{
             height: "100%",

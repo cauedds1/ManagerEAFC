@@ -12,6 +12,10 @@ export function getPosts(seasonId: string): NewsPost[] {
   return sessionGet<NewsPost[]>(postsKey(seasonId)) ?? [];
 }
 
+export function getPostsEn(seasonId: string): NewsPost[] {
+  return sessionGet<NewsPost[]>(postsKey(seasonId) + "_en") ?? [];
+}
+
 export function savePosts(seasonId: string, posts: NewsPost[]): void {
   sessionSet(postsKey(seasonId), posts);
   void putSeasonData(seasonId, "news", posts);

@@ -99,6 +99,8 @@ interface DashboardProps {
   onChangeClub: () => void;
   onReloadClubs: () => void;
   onDeleteCareer?: () => void;
+  initialTab?: CareerTab;
+  isDemo?: boolean;
 }
 
 type CareerTab = "resumo" | "painel" | "partidas" | "clube" | "transferencias" | "noticias" | "diretoria" | "momentos" | "configuracoes";
@@ -222,7 +224,7 @@ function CoachAvatar({ career }: { career: Career }) {
   );
 }
 
-export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub, onReloadClubs, onDeleteCareer }: DashboardProps) {
+export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub, onReloadClubs, onDeleteCareer, initialTab, isDemo }: DashboardProps) {
   const [lang] = useLang();
   const isNarrow = useIsNarrow();
   const painelTabLabel = PAINEL[lang].tabLabel;
@@ -248,7 +250,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
       else setImgError(true);
     }
   }, []);
-  const [activeTab, setActiveTab] = useState<CareerTab>("painel");
+  const [activeTab, setActiveTab] = useState<CareerTab>(initialTab ?? "painel");
   const [highlightMomentoId, setHighlightMomentoId] = useState<string | undefined>();
   const [portalPhotos, setPortalPhotos] = useState<PortalPhotos>({});
   const [customPortalPhotos, setCustomPortalPhotos] = useState<Record<string, string>>({});
@@ -1973,6 +1975,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
                 focusedPostId={focusedPostId}
                 onClearFocusedPost={() => setFocusedPostId(undefined)}
                 clubLogoUrl={logoUrl}
+                isDemo={isDemo}
               />
             )}
             {activeTab === "diretoria" && (
@@ -1986,6 +1989,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
                 currentCompetitions={currentCompetitions}
                 userPlan={userPlan}
                 freeMissionsDone={allMissionsForPlanDone(career.id, "free")}
+                isDemo={isDemo}
               />
             )}
             {activeTab === "momentos" && (

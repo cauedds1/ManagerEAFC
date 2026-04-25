@@ -54,7 +54,10 @@ interface DiretoriaViewProps {
   currentCompetitions?: string[];
   userPlan?: "free" | "pro" | "ultra";
   freeMissionsDone?: boolean;
+  isDemo?: boolean;
 }
+
+const DEMO_MEMBER_ID = "member-mnvr58hs-udxh";
 
 interface TransferSuggestion {
   name: string;
@@ -482,7 +485,7 @@ function CreateMemberModal({ career, membersCount, onClose, onCreated, effective
   );
 }
 
-export function DiretoriaView({ career, matches, transfers, squadSize, allPlayers = [], effectiveLeague, currentCompetitions = [], userPlan, freeMissionsDone }: DiretoriaViewProps) {
+export function DiretoriaView({ career, matches, transfers, squadSize, allPlayers = [], effectiveLeague, currentCompetitions = [], userPlan, freeMissionsDone, isDemo }: DiretoriaViewProps) {
   const resolvedPlan = userPlan ?? getUserPlan();
   const isFreePlan = resolvedPlan === "free";
   const effectivePlan = resolvedPlan === "free" && freeMissionsDone ? "pro" : resolvedPlan;
@@ -628,11 +631,19 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
   }, [career.id]);
 
   useEffect(() => {
-    const ms = getMembers(career.id);
+    let ms = getMembers(career.id);
+    if (isDemo) {
+      ms = ms.filter((m) => m.id === DEMO_MEMBER_ID);
+    }
     setMembers(ms);
     const convs: Record<string, DiretoriaMessage[]> = {};
     for (const m of ms) {
-      convs[m.id] = getConversation(career.id, m.id);
+      if (isDemo && lang === "en" && m.id === DEMO_MEMBER_ID) {
+        const enConv = getConversation(career.id, `${DEMO_MEMBER_ID}_en`);
+        convs[m.id] = enConv.length > 0 ? enConv : getConversation(career.id, m.id);
+      } else {
+        convs[m.id] = getConversation(career.id, m.id);
+      }
     }
     setConversations(convs);
     setNotifications(getNotifications(career.id));
@@ -643,7 +654,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
       setMeetingTrigger(pendingMeeting);
       setPendingMeetingTrigger(career.id, null);
     }
-  }, [career.id, refreshClosedMeetings]);
+  }, [career.id, refreshClosedMeetings, isDemo, lang]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });

@@ -7,7 +7,7 @@ import { SectionHelp } from "./SectionHelp";
 import { createPortal } from "react-dom";
 import type { Career } from "@/types/career";
 import type { NewsPost, NewsSource, NewsCategory } from "@/types/noticias";
-import { getPosts, savePosts, addPost, updatePost, removePost, generatePostId, generateCommentId, deleteMediaFromR2 } from "@/lib/noticiaStorage";
+import { getPosts, getPostsEn, savePosts, addPost, updatePost, removePost, generatePostId, generateCommentId, deleteMediaFromR2 } from "@/lib/noticiaStorage";
 import { getAiHeaders } from "@/lib/apiStorage";
 import { seedPosts } from "@/lib/noticiaSeed";
 import { NoticiaPost } from "./NoticiaPost";
@@ -51,6 +51,7 @@ interface NoticiasViewProps {
   focusedPostId?: string;
   onClearFocusedPost?: () => void;
   clubLogoUrl?: string | null;
+  isDemo?: boolean;
 }
 
 const NEGATIVE_KEYWORDS = [
@@ -1249,7 +1250,7 @@ const SOURCE_SIDEBAR_COLOR: Record<string, { color: string; bg: string }> = {
 const CUSTOM_SIDEBAR_COLOR = { color: "#a78bfa", bg: "rgba(167,139,250,0.15)" };
 
 
-export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matches = [], pastSeasons = [], isReadOnly, onGenerateBackground, userPlan, aiUsageToday, aiUsageLimit, focusedPostId, onClearFocusedPost, clubLogoUrl }: NoticiasViewProps) {
+export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matches = [], pastSeasons = [], isReadOnly, onGenerateBackground, userPlan, aiUsageToday, aiUsageLimit, focusedPostId, onClearFocusedPost, clubLogoUrl, isDemo }: NoticiasViewProps) {
   const [lang] = useLang();
   const t = NOTICIAS[lang];
 
@@ -1385,9 +1386,16 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
   }, [seasonId, allPlayers, career.id]);
 
   useEffect(() => {
+    if (isDemo && lang === "en") {
+      const enPosts = getPostsEn(seasonId);
+      if (enPosts.length > 0) {
+        setPosts(enPosts);
+        return;
+      }
+    }
     let stored = getPosts(seasonId);
     const isFirstSeed = stored.length === 0;
-    if (isFirstSeed) {
+    if (isFirstSeed && !isDemo) {
       stored = seedPosts(career, lang);
       savePosts(seasonId, stored);
     }

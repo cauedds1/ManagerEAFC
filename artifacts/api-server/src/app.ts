@@ -24,9 +24,13 @@ function blockImpersonatedWrites(req: Request, res: Response, next: NextFunction
   const header = req.headers.authorization;
   if (!header?.startsWith("Bearer ")) { next(); return; }
   try {
-    const payload = jwt.verify(header.slice(7), JWT_SECRET) as { impersonated?: boolean };
+    const payload = jwt.verify(header.slice(7), JWT_SECRET) as { impersonated?: boolean; demo?: boolean };
     if (payload.impersonated) {
       res.status(403).json({ error: "Operações de escrita não são permitidas em modo de visualização" });
+      return;
+    }
+    if (payload.demo && req.method === "DELETE") {
+      res.status(403).json({ error: "Operação não permitida em modo demo" });
       return;
     }
   } catch {

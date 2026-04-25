@@ -722,6 +722,193 @@ function DiretoriaMockup({ t }: { t: Record<string, string> }) {
   );
 }
 
+/* ─── Interactive Demo Section ───────────────────────────── */
+const DEMO_TABS: { tab: string; label: { pt: string; en: string }; icon: string }[] = [
+  { tab: "painel",    label: { pt: "Painel",    en: "Dashboard" }, icon: "📊" },
+  { tab: "noticias",  label: { pt: "Notícias",  en: "News"      }, icon: "📰" },
+  { tab: "diretoria", label: { pt: "Diretoria", en: "Board"     }, icon: "🤝" },
+];
+
+const DEMO_COPY = {
+  pt: {
+    eyebrow:   "DEMO INTERATIVA",
+    title:     "Experimente sem cadastro",
+    sub:       "Carreira real do Watford FC na Championship — acesse cada seção e veja o app em ação.",
+    loadLabel: "Carregar demo",
+    loading:   "Carregando…",
+    notice:    "Modo somente leitura · Dados reais do fundador",
+  },
+  en: {
+    eyebrow:   "INTERACTIVE DEMO",
+    title:     "Try it without signing up",
+    sub:       "Real Watford FC career in the Championship — explore every section and see the app in action.",
+    loadLabel: "Load demo",
+    loading:   "Loading…",
+    notice:    "Read-only mode · Founder's real data",
+  },
+};
+
+function InteractiveDemoSection({ lang }: { lang: Lang }) {
+  const c = DEMO_COPY[lang];
+  const [activeTab, setActiveTab] = useState("painel");
+  const [loaded,    setLoaded]    = useState(false);
+  const [iframeSrc, setIframeSrc] = useState<string | null>(null);
+  const sectionRef = useRef<HTMLElement>(null);
+  const iframeRef  = useRef<HTMLIFrameElement>(null);
+
+  const buildSrc = useCallback((tab: string) =>
+    `${window.location.origin}/?demo=true&tab=${tab}`, []);
+
+  const handleTabClick = useCallback((tab: string) => {
+    setActiveTab(tab);
+    if (loaded && iframeRef.current) {
+      iframeRef.current.src = buildSrc(tab);
+      setLoaded(false);
+    }
+  }, [loaded, buildSrc]);
+
+  const handleLoad = useCallback(() => {
+    setLoaded(true);
+  }, []);
+
+  const triggerLoad = useCallback(() => {
+    if (!iframeSrc) {
+      setIframeSrc(buildSrc(activeTab));
+    }
+  }, [iframeSrc, activeTab, buildSrc]);
+
+  useEffect(() => {
+    const el = sectionRef.current;
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0]?.isIntersecting) {
+        triggerLoad();
+        observer.disconnect();
+      }
+    }, { threshold: 0.15 });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [triggerLoad]);
+
+  return (
+    <section
+      ref={sectionRef}
+      id="demo"
+      style={{ background: "linear-gradient(180deg,#09090f 0%,#0b0c1a 100%)", padding: "90px 0 80px", position: "relative", overflow: "hidden" }}
+    >
+      <div style={{ position: "absolute", inset: 0, pointerEvents: "none", background: "radial-gradient(ellipse 70% 55% at 50% 30%, rgba(124,92,252,0.07) 0%, transparent 70%)" }} />
+      <div className="lp-section-inner" style={{ maxWidth: 1100, margin: "0 auto", padding: "0 40px", position: "relative" }}>
+        <div className="lp-reveal" style={{ textAlign: "center", marginBottom: 40 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.16em", color: "rgba(245,158,11,0.75)", marginBottom: 12 }}>{c.eyebrow}</div>
+          <h2 style={{ fontSize: "clamp(26px,4vw,40px)", fontWeight: 800, color: "#ffffff", lineHeight: 1.15, margin: "0 0 14px", letterSpacing: "-0.02em" }}>
+            {c.title}
+          </h2>
+          <p style={{ fontSize: "clamp(13px,1.6vw,16px)", color: "rgba(255,255,255,0.45)", maxWidth: 540, margin: "0 auto 28px" }}>{c.sub}</p>
+
+          {/* Tab buttons */}
+          <div style={{ display: "flex", justifyContent: "center", gap: 10, flexWrap: "wrap" }}>
+            {DEMO_TABS.map(({ tab, label, icon }) => {
+              const active = tab === activeTab;
+              return (
+                <button
+                  key={tab}
+                  onClick={() => handleTabClick(tab)}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 6,
+                    padding: "9px 20px", borderRadius: 30,
+                    fontSize: 13, fontWeight: 700, cursor: "pointer",
+                    border: active ? "1px solid rgba(124,92,252,0.5)" : "1px solid rgba(255,255,255,0.1)",
+                    background: active ? "rgba(124,92,252,0.18)" : "rgba(255,255,255,0.04)",
+                    color: active ? "#c4b5fd" : "rgba(255,255,255,0.45)",
+                    transition: "all 0.2s ease",
+                  }}
+                >
+                  <span style={{ fontSize: 15 }}>{icon}</span>
+                  {label[lang]}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* iframe wrapper */}
+        <div
+          style={{
+            position: "relative",
+            borderRadius: 14,
+            overflow: "hidden",
+            border: "1px solid rgba(124,92,252,0.18)",
+            boxShadow: "0 32px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04)",
+            background: "#09090f",
+          }}
+        >
+          {/* Browser chrome bar */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 16px", background: "rgba(255,255,255,0.04)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+            <div style={{ display: "flex", gap: 6 }}>
+              {["#ff5f57","#ffbd2e","#28c840"].map(c2 => (
+                <div key={c2} style={{ width: 10, height: 10, borderRadius: "50%", background: c2 }} />
+              ))}
+            </div>
+            <div style={{ flex: 1, background: "rgba(255,255,255,0.06)", borderRadius: 6, height: 22, display: "flex", alignItems: "center", paddingLeft: 10 }}>
+              <span style={{ fontSize: 11, color: "rgba(255,255,255,0.25)", letterSpacing: "0.02em" }}>
+                fc-career-manager.app · Demo
+              </span>
+            </div>
+          </div>
+
+          {/* iframe area */}
+          <div style={{ position: "relative", width: "100%", height: "clamp(420px,56vw,640px)" }}>
+            {!iframeSrc ? (
+              <div
+                style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 18, cursor: "pointer" }}
+                onClick={triggerLoad}
+              >
+                <div style={{ width: 64, height: 64, borderRadius: "50%", background: "rgba(124,92,252,0.15)", border: "2px solid rgba(124,92,252,0.3)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(124,92,252,0.9)" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+                    <polygon points="5 3 19 12 5 21 5 3" />
+                  </svg>
+                </div>
+                <span style={{ fontSize: 14, color: "rgba(255,255,255,0.5)", fontWeight: 600 }}>{c.loadLabel}</span>
+              </div>
+            ) : (
+              <>
+                {!loaded && (
+                  <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2, background: "#09090f" }}>
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
+                      <div style={{ width: 36, height: 36, borderRadius: "50%", border: "3px solid rgba(124,92,252,0.8)", borderTopColor: "transparent", animation: "spin 0.8s linear infinite" }} />
+                      <span style={{ fontSize: 13, color: "rgba(255,255,255,0.4)" }}>{c.loading}</span>
+                    </div>
+                  </div>
+                )}
+                <iframe
+                  ref={iframeRef}
+                  src={iframeSrc}
+                  onLoad={handleLoad}
+                  title="FC Career Manager Demo"
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    border: "none",
+                    display: "block",
+                    opacity: loaded ? 1 : 0,
+                    transition: "opacity 0.4s ease",
+                  }}
+                  allow="autoplay"
+                />
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Notice */}
+        <div style={{ textAlign: "center", marginTop: 16 }}>
+          <span style={{ fontSize: 11, color: "rgba(255,255,255,0.2)", letterSpacing: "0.05em" }}>{c.notice}</span>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 /* ─── Main component ─────────────────────────────────────── */
 export function LandingPage({ onStart, onLogin, onStartWithPlan, lang, setLang }: LandingPageProps) {
   const t = LP[lang];
@@ -1050,6 +1237,9 @@ export function LandingPage({ onStart, onLogin, onStartWithPlan, lang, setLang }
           </div>
         </div>
       </section>
+
+      {/* ════════════════ INTERACTIVE DEMO ════════════════ */}
+      <InteractiveDemoSection lang={lang} />
 
       {/* ════════════════ LEAGUE MARQUEE ════════════════ */}
       <div style={{ background: "#0d0820", borderTop: "1px solid rgba(245,158,11,0.2)", borderBottom: "1px solid rgba(245,158,11,0.2)", padding: "14px 0", overflow: "hidden", position: "relative" }}>

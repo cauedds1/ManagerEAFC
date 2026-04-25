@@ -50,6 +50,7 @@ export async function syncSeasonFromDb(seasonId: string): Promise<void> {
   if (data.league_position !== undefined) sessionSet(leagueKey(seasonId), data.league_position);
   if (data.finances !== undefined) sessionSet(financeKey(seasonId), data.finances);
   if (data.news !== undefined) sessionSet(newsKey(seasonId), data.news);
+  if (data.news_en !== undefined) sessionSet(newsKey(seasonId) + "_en", data.news_en);
   if (data.injuries !== undefined) sessionSet(injuryKey(seasonId), data.injuries);
   if (data.rivals !== undefined || data.rivalsLocked !== undefined) hydrateRivalsCache(seasonId, data);
   if (data.fan_mood !== undefined) hydrateFanMoodCache(seasonId, data);

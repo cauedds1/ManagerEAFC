@@ -15,6 +15,7 @@ export interface AuthUser {
 export interface AuthRequest extends Request {
   user?: AuthUser;
   impersonated?: boolean;
+  demo?: boolean;
 }
 
 export function requireAuth(req: AuthRequest, res: Response, next: NextFunction): void {
@@ -26,9 +27,9 @@ export function requireAuth(req: AuthRequest, res: Response, next: NextFunction)
 
   const token = header.slice(7);
 
-  let payload: AuthUser & { iat?: number; exp?: number; impersonated?: boolean };
+  let payload: AuthUser & { iat?: number; exp?: number; impersonated?: boolean; demo?: boolean };
   try {
-    payload = jwt.verify(token, JWT_SECRET) as AuthUser & { iat?: number; exp?: number; impersonated?: boolean };
+    payload = jwt.verify(token, JWT_SECRET) as AuthUser & { iat?: number; exp?: number; impersonated?: boolean; demo?: boolean };
   } catch {
     res.status(401).json({ error: "Token inválido ou expirado" });
     return;
@@ -42,6 +43,17 @@ export function requireAuth(req: AuthRequest, res: Response, next: NextFunction)
     }
     req.user = { id: payload.id, email: payload.email, name: payload.name, plan: payload.plan ?? "free" };
     req.impersonated = true;
+    next();
+    return;
+  }
+
+  if (payload.demo) {
+    if (req.method === "DELETE") {
+      res.status(403).json({ error: "Operação não permitida em modo demo" });
+      return;
+    }
+    req.user = { id: payload.id, email: payload.email, name: payload.name, plan: payload.plan ?? "pro" };
+    req.demo = true;
     next();
     return;
   }
@@ -64,8 +76,12 @@ export function requireAuth(req: AuthRequest, res: Response, next: NextFunction)
     });
 }
 
-export function signToken(user: AuthUser): string {
-  return jwt.sign(user, JWT_SECRET, { expiresIn: "30d" });
+export function signToken(user: AuthUser, extra?: Record<string, unknown>): string {
+  return jwt.sign({ ...user, ...extra }, JWT_SECRET, { expiresIn: "30d" });
+}
+
+export function signDemoToken(user: AuthUser): string {
+  return jwt.sign({ ...user, demo: true }, JWT_SECRET, { expiresIn: "1h" });
 }
 
 export function extractUserIdFromToken(authHeader: string | undefined): number | null {
