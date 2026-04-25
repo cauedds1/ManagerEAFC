@@ -51,7 +51,7 @@ outputType = "console"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "PORT=8080 pnpm --filter @workspace/api-server run dev:tsx"
+args = "PORT=8080 NODE_ENV=development MIGRATIONS_PATH=/home/runner/workspace/lib/db/migrations node --enable-source-maps /home/runner/workspace/artifacts/api-server/dist/index.mjs"
 waitForPort = 8080
 
 [agent]
