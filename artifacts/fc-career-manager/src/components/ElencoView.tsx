@@ -767,6 +767,7 @@ export function ElencoView({
                   <p className="text-white/70 text-sm font-semibold">{t.customClubEmptySquad ?? "Nenhum jogador cadastrado ainda"}</p>
                   <p className="text-white/30 text-xs leading-relaxed">{t.customClubEmptySquadDesc ?? "Este clube foi criado do zero — adicione os jogadores manualmente"}</p>
                 </div>
+                {!isDemo && (
                 <button
                   onClick={() => setShowAddPlayer(true)}
                   className="px-6 py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90 active:scale-95"
@@ -774,6 +775,7 @@ export function ElencoView({
                 >
                   {t.addPlayerLabel ?? t.addManualPlayer}
                 </button>
+                )}
               </>
             ) : (
               <>
@@ -783,6 +785,7 @@ export function ElencoView({
                 <p className="text-white/30 text-sm text-center leading-relaxed">
                   {t.noPlayers}
                 </p>
+                {!isDemo && (
                 <button
                   onClick={() => setShowAddPlayer(true)}
                   className="px-5 py-2 rounded-xl text-xs font-bold text-white transition-all hover:opacity-90"
@@ -790,6 +793,7 @@ export function ElencoView({
                 >
                   {t.addManualPlayer}
                 </button>
+                )}
               </>
             )}
           </div>
