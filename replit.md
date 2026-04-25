@@ -84,6 +84,16 @@ Stripe initialization is non-fatal — the app runs fully without it; only subsc
 - `PRIVATE_OBJECT_DIR` — Directory path for Replit Object Storage (private)
 - `JWT_SECRET` — Secret for signing JWTs (set in Railway for production; defaults to dev secret locally)
 
+## Admin Push Notification System
+
+Admin can send pop-up notifications to all users or specific users from the admin panel (Notifications tab). On the user side, after login + DB sync, the app checks for unread notifications and shows a modal popup.
+
+- **DB tables**: `notifications`, `notification_targets`, `notification_reads` (migration `0009_notifications.sql`)
+- **Admin routes** (require admin JWT): `POST/GET/DELETE /api/admin-panel/notifications`
+- **User routes** (require Bearer auth): `GET /api/notifications/pending`, `POST /api/notifications/:id/read`
+- Responses from users are saved as bug reports with page label `📣 Notificação: {title}`
+- Component: `artifacts/fc-career-manager/src/components/NotificationPopup.tsx`
+
 ## Database
 
 PostgreSQL managed by Replit. Schema managed via Drizzle Kit.

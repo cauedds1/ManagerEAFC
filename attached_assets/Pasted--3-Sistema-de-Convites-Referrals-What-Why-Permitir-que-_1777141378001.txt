@@ -1,0 +1,34 @@
+#3 - Sistema de Convites (Referrals)
+What & Why
+Permitir que usuários gerem um link de convite único. Quando um amigo se cadastrar via esse link e assinar qualquer plano, o evento aparece em uma nova aba "Convites" no admin panel, organizado e fácil de visualizar. O admin pode então recompensar manualmente quem convidou (ex: 20 dias de Ultra) usando o botão já existente de alteração de plano — sem nenhuma automação via Stripe.
+
+Done looks like
+Cada usuário tem um link de convite único visível em alguma parte do app (ex: página de perfil ou configurações), com botão de copiar
+Ao se cadastrar via esse link, o novo usuário é associado ao quem convidou no banco de dados
+No admin panel, aparece uma nova aba "Convites" que exibe todos os registros de convite no formato: "Miguel (convidado por Lucas) assinou o Plano PRO" com data e status (Pendente / Recompensado)
+O admin pode marcar um convite como "Recompensado" manualmente, alterando o status do registro
+A aba de Convites mostra um contador de pendentes, similar às outras abas existentes
+Out of scope
+Automação de crédito via Stripe (tudo é manual)
+E-mails automáticos para quem convidou
+Limite de convites por usuário
+Rastreamento de convites que ainda não converteram (só registra quando o amigo assina um plano pago)
+Steps
+Schema do banco — Adicionar tabela referrals (id, referrer_id, referred_id, referred_plan, status, notes, created_at) e coluna referral_code (texto único) na tabela users. Criar e rodar a migration via Drizzle.
+
+Geração de código de convite — Na rota de registro de usuários, gerar automaticamente um referral_code único (ex: 8 caracteres aleatórios) para cada novo usuário cadastrado. Adicionar endpoint autenticado GET /api/referrals/my-link que retorna o link completo de convite do usuário logado.
+
+Captura do convite no cadastro — Modificar a rota POST /auth/register para aceitar um parâmetro opcional ref (código do referenciador). Se o código existir e o novo usuário assinar um plano pago (pro ou ultra), registrar o evento na tabela referrals com status pending.
+
+Aba Convites no admin panel — Adicionar tab "Convites" ao admin panel (App.tsx). Criar componente ReferralsTab que lista os registros da tabela referrals com: nome do convidado, plano assinado, nome de quem convidou, data e status (Pendente / Recompensado). Incluir botão para marcar como Recompensado.
+
+Endpoints admin de convites — Criar GET /api/admin-panel/referrals (lista paginada com join em users para nomes) e PATCH /api/admin-panel/referrals/:id (alterna status entre pending e rewarded). Ambos protegidos pelo token admin existente.
+
+UI do link de convite no app — Exibir o link de convite do usuário em alguma área acessível do app (ex: modal de perfil, configurações ou widget lateral) com botão "Copiar link" e texto explicativo sobre a promoção.
+
+Relevant files
+lib/db/src/schema/index.ts
+artifacts/api-server/src/routes/auth.ts
+artifacts/api-server/src/routes/adminPanel.ts
+artifacts/admin-panel/src/App.tsx
+artifacts/fc-career-manager/src/components/MissionWidget.tsx

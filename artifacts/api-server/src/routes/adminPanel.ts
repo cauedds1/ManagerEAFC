@@ -1,6 +1,6 @@
 import { Router } from "express";
 import jwt from "jsonwebtoken";
-import { db, usersTable, careersTable, seasonsTable, bugReportsTable } from "@workspace/db";
+import { db, usersTable, careersTable, seasonsTable, bugReportsTable, notificationsTable, notificationTargetsTable, notificationReadsTable } from "@workspace/db";
 import { eq, sql, desc, count, sum } from "drizzle-orm";
 import { requireAuth, type AuthRequest } from "../middleware/auth";
 import type { Request, Response } from "express";
@@ -419,6 +419,199 @@ router.post("/admin-panel/recover-career", async (req: Request, res: Response) =
   } catch (err) {
     console.error("POST /admin-panel/recover-career proxy error:", err);
     return res.status(500).json({ error: "Erro interno ao encaminhar pedido de recuperação" });
+  }
+});
+
+// ─── Admin: Notifications ────────────────────────────────────────────────────
+
+// POST /api/admin-panel/notifications
+router.post("/admin-panel/notifications", async (req: Request, res: Response) => {
+  if (!validateAdminToken(req, res)) return;
+  try {
+    const { title, body, imageUrl, requiresResponse, targetAll, targetUserIds } = req.body as {
+      title?: string;
+      body?: string;
+      imageUrl?: string;
+      requiresResponse?: boolean;
+      targetAll?: boolean;
+      targetUserIds?: number[];
+    };
+
+    if (!title?.trim()) return res.status(400).json({ error: "Título obrigatório" });
+    if (!body?.trim()) return res.status(400).json({ error: "Corpo obrigatório" });
+
+    const isTargetAll = targetAll !== false;
+
+    const [notif] = await db.insert(notificationsTable).values({
+      title: title.trim().slice(0, 200),
+      body: body.trim().slice(0, 2000),
+      imageUrl: imageUrl?.trim() || null,
+      requiresResponse: !!requiresResponse,
+      targetAll: isTargetAll,
+      createdAt: Date.now(),
+    }).returning();
+
+    if (!isTargetAll && Array.isArray(targetUserIds) && targetUserIds.length > 0) {
+      const validIds = targetUserIds.filter((id) => Number.isFinite(id));
+      if (validIds.length > 0) {
+        await db.insert(notificationTargetsTable).values(
+          validIds.map((userId) => ({ notificationId: notif.id, userId }))
+        );
+      }
+    }
+
+    return res.json({ ok: true, id: notif.id });
+  } catch (err) {
+    console.error("POST /admin-panel/notifications error:", err);
+    return res.status(500).json({ error: "Erro interno" });
+  }
+});
+
+// GET /api/admin-panel/notifications?page=1&limit=20
+router.get("/admin-panel/notifications", async (req: Request, res: Response) => {
+  if (!validateAdminToken(req, res)) return;
+  try {
+    const page = Math.max(1, Number(req.query["page"] ?? 1));
+    const limit = Math.min(100, Math.max(1, Number(req.query["limit"] ?? 20)));
+    const offset = (page - 1) * limit;
+
+    const rows = await db.execute(sql`
+      SELECT
+        n.id, n.title, n.body, n.image_url as "imageUrl",
+        n.requires_response as "requiresResponse",
+        n.target_all as "targetAll",
+        n.created_at as "createdAt",
+        COUNT(DISTINCT nr.user_id) as "readCount",
+        CASE WHEN n.target_all THEN (SELECT COUNT(*) FROM users) ELSE COUNT(DISTINCT nt.user_id) END as "targetCount"
+      FROM notifications n
+      LEFT JOIN notification_reads nr ON nr.notification_id = n.id
+      LEFT JOIN notification_targets nt ON nt.notification_id = n.id
+      GROUP BY n.id
+      ORDER BY n.created_at DESC
+      LIMIT ${limit} OFFSET ${offset}
+    `);
+
+    const notifications = rows.rows.map((r: Record<string, unknown>) => ({
+      id: Number(r.id),
+      title: r.title,
+      body: r.body,
+      imageUrl: r.imageUrl ?? null,
+      requiresResponse: !!r.requiresResponse,
+      targetAll: !!r.targetAll,
+      createdAt: Number(r.createdAt),
+      readCount: Number(r.readCount ?? 0),
+      targetCount: Number(r.targetCount ?? 0),
+    }));
+
+    const [{ total }] = await db.select({ total: count(notificationsTable.id) }).from(notificationsTable);
+
+    return res.json({ notifications, total: Number(total), page, limit });
+  } catch (err) {
+    console.error("GET /admin-panel/notifications error:", err);
+    return res.status(500).json({ error: "Erro interno" });
+  }
+});
+
+// DELETE /api/admin-panel/notifications/:id
+router.delete("/admin-panel/notifications/:id", async (req: Request, res: Response) => {
+  if (!validateAdminToken(req, res)) return;
+  try {
+    const id = Number(req.params["id"]);
+    if (!Number.isFinite(id)) return res.status(400).json({ error: "ID inválido" });
+    await db.delete(notificationsTable).where(eq(notificationsTable.id, id));
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error("DELETE /admin-panel/notifications/:id error:", err);
+    return res.status(500).json({ error: "Erro interno" });
+  }
+});
+
+// ─── User-facing: Notifications ─────────────────────────────────────────────
+
+// GET /api/notifications/pending — returns first unread notification for the logged-in user
+router.get("/notifications/pending", requireAuth, async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user!.id;
+
+    const readRows = await db
+      .select({ notificationId: notificationReadsTable.notificationId })
+      .from(notificationReadsTable)
+      .where(eq(notificationReadsTable.userId, userId));
+    const readIds = readRows.map((r) => r.notificationId);
+
+    // Find first unread notification targeting this user (targetAll OR in targets list)
+    const rows = await db.execute(sql`
+      SELECT n.id, n.title, n.body, n.image_url as "imageUrl", n.requires_response as "requiresResponse"
+      FROM notifications n
+      WHERE
+        (
+          n.target_all = true
+          OR EXISTS (
+            SELECT 1 FROM notification_targets nt
+            WHERE nt.notification_id = n.id AND nt.user_id = ${userId}
+          )
+        )
+        ${readIds.length > 0 ? sql`AND n.id NOT IN (${sql.join(readIds.map((id) => sql`${id}`), sql`, `)})` : sql``}
+      ORDER BY n.created_at ASC
+      LIMIT 1
+    `);
+
+    if (rows.rows.length === 0) return res.status(204).send();
+
+    const r = rows.rows[0] as Record<string, unknown>;
+    return res.json({
+      id: Number(r.id),
+      title: r.title,
+      body: r.body,
+      imageUrl: r.imageUrl ?? null,
+      requiresResponse: !!r.requiresResponse,
+    });
+  } catch (err) {
+    console.error("GET /notifications/pending error:", err);
+    return res.status(500).json({ error: "Erro interno" });
+  }
+});
+
+// POST /api/notifications/:id/read — mark notification as read, optionally submit response
+router.post("/notifications/:id/read", requireAuth, async (req: AuthRequest, res: Response) => {
+  try {
+    const notifId = Number(req.params["id"]);
+    if (!Number.isFinite(notifId)) return res.status(400).json({ error: "ID inválido" });
+
+    const userId = req.user!.id;
+    const { response } = req.body as { response?: string };
+
+    // Upsert read record
+    await db.execute(sql`
+      INSERT INTO notification_reads (notification_id, user_id, responded_at)
+      VALUES (${notifId}, ${userId}, ${response?.trim() ? Date.now() : null})
+      ON CONFLICT (notification_id, user_id) DO NOTHING
+    `);
+
+    // If there's a response, save it as a bug report
+    if (response?.trim()) {
+      const [notif] = await db
+        .select({ title: notificationsTable.title })
+        .from(notificationsTable)
+        .where(eq(notificationsTable.id, notifId))
+        .limit(1);
+
+      const pageLabel = notif ? `📣 Notificação: ${notif.title}` : "📣 Notificação";
+
+      await db.insert(bugReportsTable).values({
+        userId,
+        userEmail: req.user!.email,
+        description: response.trim().slice(0, 2000),
+        page: pageLabel.slice(0, 500),
+        status: "open",
+        createdAt: Date.now(),
+      });
+    }
+
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error("POST /notifications/:id/read error:", err);
+    return res.status(500).json({ error: "Erro interno" });
   }
 });
 

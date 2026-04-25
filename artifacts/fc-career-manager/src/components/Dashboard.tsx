@@ -77,6 +77,7 @@ import {
   markDiretoriaRead,
 } from "@/lib/unreadStorage";
 import { NotificationToast, type ToastItem } from "./NotificationToast";
+import { NotificationPopup, fetchPendingNotification } from "./NotificationPopup";
 import { OnboardingEntry, PlanUpgradeEntry } from "./OnboardingEntry";
 import { MissionWidget } from "./MissionWidget";
 import { CuriosityTeaser, type TeaserKey } from "./CuriosityTeaser";
@@ -399,6 +400,11 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
   const [aiUsageToday, setAiUsageToday] = useState<number | undefined>(undefined);
   const [aiUsageLimit, setAiUsageLimit] = useState<number | undefined>(undefined);
 
+  // ─── Admin notification popup ────────────────────────────────────────────────
+  const [pendingNotification, setPendingNotification] = useState<{
+    id: number; title: string; body: string; imageUrl: string | null; requiresResponse: boolean;
+  } | null>(null);
+
   // ─── Onboarding state ───────────────────────────────────────────────────────
   const [showOnboardingEntry, setShowOnboardingEntry] = useState(false);
   const [showUpgradeEntry, setShowUpgradeEntry] = useState(false);
@@ -412,6 +418,13 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
   }, []);
 
   // ─── Onboarding initialization ──────────────────────────────────────────────
+  useEffect(() => {
+    if (!dbSynced || isDemo) return;
+    fetchPendingNotification().then((notif) => {
+      if (notif) setPendingNotification(notif);
+    });
+  }, [dbSynced, isDemo]);
+
   useEffect(() => {
     if (!dbSynced) return;
     const seenPlan = getSeenPlan(career.id);
@@ -2127,6 +2140,14 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
           careerId={career.id}
           trigger={activeTeaserTrigger}
           onDismiss={() => setActiveTeaserTrigger(null)}
+        />
+      )}
+
+      {/* Admin Notification Popup */}
+      {pendingNotification && (
+        <NotificationPopup
+          notification={pendingNotification}
+          onDismiss={() => setPendingNotification(null)}
         />
       )}
     </div>

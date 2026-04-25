@@ -122,3 +122,32 @@ export const bugReportsTable = pgTable("bug_reports", {
   status: text("status").notNull().default("open"),
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
 });
+
+export const notificationsTable = pgTable("notifications", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  body: text("body").notNull(),
+  imageUrl: text("image_url"),
+  requiresResponse: boolean("requires_response").notNull().default(false),
+  targetAll: boolean("target_all").notNull().default(true),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+});
+
+export const notificationTargetsTable = pgTable(
+  "notification_targets",
+  {
+    notificationId: integer("notification_id").notNull().references(() => notificationsTable.id, { onDelete: "cascade" }),
+    userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  },
+  (table) => [primaryKey({ columns: [table.notificationId, table.userId] })],
+);
+
+export const notificationReadsTable = pgTable(
+  "notification_reads",
+  {
+    notificationId: integer("notification_id").notNull().references(() => notificationsTable.id, { onDelete: "cascade" }),
+    userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+    respondedAt: bigint("responded_at", { mode: "number" }),
+  },
+  (table) => [primaryKey({ columns: [table.notificationId, table.userId] })],
+);

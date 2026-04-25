@@ -34,7 +34,7 @@ async function apiFetch<T>(path: string, opts: RequestInit = {}): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-type Tab = "overview" | "users" | "bug-reports" | "career-recovery";
+type Tab = "overview" | "users" | "bug-reports" | "career-recovery" | "notifications";
 
 interface Stats {
   users: { total: number; free: number; pro: number; ultra: number };
@@ -1154,6 +1154,306 @@ function CareerRecoveryTab() {
   );
 }
 
+interface AdminNotification {
+  id: number;
+  title: string;
+  body: string;
+  imageUrl: string | null;
+  requiresResponse: boolean;
+  targetAll: boolean;
+  createdAt: number;
+  readCount: number;
+  targetCount: number;
+}
+
+interface AdminUserSimple {
+  id: number;
+  email: string;
+  name: string;
+}
+
+function NotificationsTab() {
+  const qc = useQueryClient();
+  const [page] = useState(1);
+  const limit = 20;
+
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
+  const [requiresResponse, setRequiresResponse] = useState(false);
+  const [targetAll, setTargetAll] = useState(true);
+  const [selectedUserIds, setSelectedUserIds] = useState<number[]>([]);
+  const [userSearch, setUserSearch] = useState("");
+  const [formError, setFormError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const { data: notifData, isLoading } = useQuery<{ notifications: AdminNotification[]; total: number }>({
+    queryKey: ["admin-notifications", page],
+    queryFn: () => apiFetch(`/admin-panel/notifications?page=${page}&limit=${limit}`),
+  });
+
+  const { data: usersData } = useQuery<{ users: AdminUserSimple[] }>({
+    queryKey: ["users-simple"],
+    queryFn: () => apiFetch(`/admin-panel/users?page=1&limit=200`),
+    enabled: !targetAll,
+  });
+
+  const filteredUsers = (usersData?.users ?? []).filter(
+    (u) =>
+      userSearch.trim() === "" ||
+      u.email.toLowerCase().includes(userSearch.toLowerCase()) ||
+      u.name.toLowerCase().includes(userSearch.toLowerCase())
+  );
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => apiFetch(`/admin-panel/notifications/${id}`, { method: "DELETE" }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-notifications"] }),
+  });
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setFormError("");
+    if (!title.trim()) { setFormError("Título obrigatório."); return; }
+    if (!body.trim()) { setFormError("Corpo obrigatório."); return; }
+    if (!targetAll && selectedUserIds.length === 0) { setFormError("Selecione ao menos um usuário."); return; }
+    setSubmitting(true);
+    try {
+      await apiFetch("/admin-panel/notifications", {
+        method: "POST",
+        body: JSON.stringify({
+          title: title.trim(),
+          body: body.trim(),
+          imageUrl: imageUrl.trim() || undefined,
+          requiresResponse,
+          targetAll,
+          targetUserIds: targetAll ? undefined : selectedUserIds,
+        }),
+      });
+      setTitle("");
+      setBody("");
+      setImageUrl("");
+      setRequiresResponse(false);
+      setTargetAll(true);
+      setSelectedUserIds([]);
+      setUserSearch("");
+      qc.invalidateQueries({ queryKey: ["admin-notifications"] });
+    } catch (err) {
+      setFormError(String((err as Error).message));
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  function toggleUser(userId: number) {
+    setSelectedUserIds((prev) =>
+      prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]
+    );
+  }
+
+  const cardStyle = {
+    background: "rgba(255,255,255,0.03)",
+    border: "1px solid rgba(255,255,255,0.08)",
+  };
+
+  return (
+    <div className="flex flex-col gap-6 max-w-2xl">
+      <div>
+        <h2 className="text-white font-bold text-base">Notificações</h2>
+        <p className="text-white/40 text-xs mt-0.5">Envie pop-ups para usuários ao entrarem no app.</p>
+      </div>
+
+      {/* Create form */}
+      <form onSubmit={handleSubmit} className="rounded-2xl p-5 flex flex-col gap-4" style={cardStyle}>
+        <h3 className="text-white/80 font-semibold text-sm">Nova Notificação</h3>
+
+        <div className="flex flex-col gap-1.5">
+          <label className="text-xs font-semibold text-white/40 uppercase tracking-wider">Título *</label>
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Ex: Nova funcionalidade disponível!"
+            className="w-full px-3 py-2.5 rounded-xl text-white text-sm focus:outline-none placeholder:text-white/20"
+            style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}
+          />
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <label className="text-xs font-semibold text-white/40 uppercase tracking-wider">Corpo *</label>
+          <textarea
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            placeholder="Descreva o aviso, novidade ou pedido de feedback..."
+            rows={4}
+            className="w-full px-3 py-2.5 rounded-xl text-white text-sm resize-none focus:outline-none placeholder:text-white/20"
+            style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}
+          />
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <label className="text-xs font-semibold text-white/40 uppercase tracking-wider">URL da Imagem (opcional)</label>
+          <input
+            value={imageUrl}
+            onChange={(e) => setImageUrl(e.target.value)}
+            placeholder="https://..."
+            className="w-full px-3 py-2.5 rounded-xl text-white text-sm focus:outline-none placeholder:text-white/20"
+            style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}
+          />
+        </div>
+
+        {/* Toggles */}
+        <div className="flex flex-col gap-3">
+          <label className="flex items-center justify-between cursor-pointer">
+            <div>
+              <p className="text-white/70 text-sm font-medium">Solicitar resposta do usuário</p>
+              <p className="text-white/30 text-xs">Exibe uma caixinha de texto no pop-up</p>
+            </div>
+            <div
+              className="w-11 h-6 rounded-full relative transition-colors duration-200 flex-shrink-0"
+              style={{ background: requiresResponse ? "#8b5cf6" : "rgba(255,255,255,0.1)" }}
+              onClick={() => setRequiresResponse((v) => !v)}
+            >
+              <div
+                className="absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200"
+                style={{ left: requiresResponse ? "calc(100% - 20px)" : "4px" }}
+              />
+            </div>
+          </label>
+
+          <label className="flex items-center justify-between cursor-pointer">
+            <div>
+              <p className="text-white/70 text-sm font-medium">Enviar para todos</p>
+              <p className="text-white/30 text-xs">Todos os usuários verão essa notificação</p>
+            </div>
+            <div
+              className="w-11 h-6 rounded-full relative transition-colors duration-200 flex-shrink-0"
+              style={{ background: targetAll ? "#4ade80" : "rgba(255,255,255,0.1)" }}
+              onClick={() => { setTargetAll((v) => !v); setSelectedUserIds([]); }}
+            >
+              <div
+                className="absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200"
+                style={{ left: targetAll ? "calc(100% - 20px)" : "4px" }}
+              />
+            </div>
+          </label>
+        </div>
+
+        {/* User selector (when targetAll is off) */}
+        {!targetAll && (
+          <div className="flex flex-col gap-2 p-3 rounded-xl" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+            <p className="text-white/50 text-xs font-semibold uppercase tracking-wider">
+              Selecionar usuários ({selectedUserIds.length} selecionados)
+            </p>
+            <input
+              value={userSearch}
+              onChange={(e) => setUserSearch(e.target.value)}
+              placeholder="Buscar por email ou nome..."
+              className="w-full px-3 py-2 rounded-lg text-white text-xs focus:outline-none placeholder:text-white/20"
+              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}
+            />
+            <div className="flex flex-col gap-1 max-h-40 overflow-y-auto">
+              {filteredUsers.length === 0 && (
+                <p className="text-white/30 text-xs text-center py-2">Nenhum usuário encontrado.</p>
+              )}
+              {filteredUsers.map((u) => {
+                const checked = selectedUserIds.includes(u.id);
+                return (
+                  <label key={u.id} className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg cursor-pointer hover:bg-white/5">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => toggleUser(u.id)}
+                      className="accent-purple-500"
+                    />
+                    <div className="min-w-0">
+                      <p className="text-white/70 text-xs font-medium truncate">{u.name}</p>
+                      <p className="text-white/30 text-xs truncate">{u.email}</p>
+                    </div>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {formError && (
+          <div className="text-red-400 text-xs px-3 py-2 rounded-lg" style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)" }}>
+            {formError}
+          </div>
+        )}
+
+        <button
+          type="submit"
+          disabled={submitting}
+          className="py-2.5 rounded-xl text-sm font-bold transition-all"
+          style={{
+            background: submitting ? "rgba(139,92,246,0.2)" : "linear-gradient(135deg, #8b5cf6, #6d28d9)",
+            color: submitting ? "rgba(255,255,255,0.3)" : "white",
+            cursor: submitting ? "not-allowed" : "pointer",
+            boxShadow: submitting ? "none" : "0 4px 16px rgba(139,92,246,0.3)",
+          }}
+        >
+          {submitting ? "Enviando..." : "Enviar Notificação"}
+        </button>
+      </form>
+
+      {/* Notifications list */}
+      <div className="flex flex-col gap-3">
+        <h3 className="text-white/60 text-xs font-semibold uppercase tracking-wider">Enviadas</h3>
+        {isLoading && <div className="text-white/30 text-sm text-center py-4">Carregando...</div>}
+        {!isLoading && notifData?.notifications.length === 0 && (
+          <div className="text-white/30 text-sm text-center py-6">Nenhuma notificação enviada ainda.</div>
+        )}
+        {(notifData?.notifications ?? []).map((n) => (
+          <div key={n.id} className="rounded-2xl p-4 flex flex-col gap-2" style={cardStyle}>
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex flex-col gap-1 min-w-0">
+                <p className="text-white font-semibold text-sm truncate">{n.title}</p>
+                <p className="text-white/50 text-xs line-clamp-2">{n.body}</p>
+              </div>
+              <button
+                onClick={() => { if (confirm("Excluir esta notificação?")) deleteMutation.mutate(n.id); }}
+                className="flex-shrink-0 p-1.5 rounded-lg hover:bg-red-500/15 transition-colors"
+                style={{ color: "rgba(248,113,113,0.6)" }}
+                title="Excluir"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="flex items-center gap-3 flex-wrap">
+              <span className="text-white/30 text-xs">
+                {new Date(n.createdAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+              </span>
+              <span
+                className="px-2 py-0.5 rounded-full text-xs font-semibold"
+                style={n.targetAll
+                  ? { background: "rgba(74,222,128,0.12)", color: "#4ade80", border: "1px solid rgba(74,222,128,0.2)" }
+                  : { background: "rgba(139,92,246,0.12)", color: "#a78bfa", border: "1px solid rgba(139,92,246,0.2)" }}
+              >
+                {n.targetAll ? "Todos" : `${n.targetCount} usuários`}
+              </span>
+              {n.requiresResponse && (
+                <span className="px-2 py-0.5 rounded-full text-xs font-semibold" style={{ background: "rgba(251,191,36,0.12)", color: "#fbbf24", border: "1px solid rgba(251,191,36,0.2)" }}>
+                  Pede resposta
+                </span>
+              )}
+              <span className="text-white/30 text-xs ml-auto">
+                {n.readCount}/{n.targetAll ? "todos" : n.targetCount} leram
+              </span>
+            </div>
+
+            {n.imageUrl && (
+              <p className="text-white/30 text-xs truncate">🖼 {n.imageUrl}</p>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   {
     id: "overview",
@@ -1188,6 +1488,15 @@ const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
     icon: (
       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+      </svg>
+    ),
+  },
+  {
+    id: "notifications",
+    label: "Notificações",
+    icon: (
+      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
       </svg>
     ),
   },
@@ -1369,6 +1678,7 @@ function AdminApp() {
           {tab === "users" && <UsersTab />}
           {tab === "bug-reports" && <BugReportsTab />}
           {tab === "career-recovery" && <CareerRecoveryTab />}
+          {tab === "notifications" && <NotificationsTab />}
         </main>
       </div>
     </div>
