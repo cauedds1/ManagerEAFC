@@ -1061,7 +1061,7 @@ Responda APENAS com JSON puro (sem markdown):
 
 router.post("/generate-projeto", requireAuth, async (req: AuthRequest, res) => {
   if (req.demo && checkDemoRateLimit(`demo-ai:${req.user!.id}`)) {
-    res.status(429).json({ error: "Demo AI limit reached (3/h). Sign up for full access." });
+    res.status(403).json({ error: "Limite da demo atingido (3 chamadas IA/hora)", code: "DEMO_LIMIT_REACHED" });
     return;
   }
   const plan = req.user!.plan;
