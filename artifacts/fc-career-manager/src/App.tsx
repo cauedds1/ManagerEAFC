@@ -968,7 +968,7 @@ export default function App() {
       {isImpersonating && (
         <ImpersonationBanner userName={impersonatedUserName} onEnd={handleEndImpersonation} />
       )}
-      {isDemo && !isImpersonating && (
+      {isDemo && !isImpersonating && view !== "landing" && (
         <DemoBanner
           lang={lang}
           onSignup={() => {
@@ -982,7 +982,7 @@ export default function App() {
           }}
         />
       )}
-      <div className="relative h-full overflow-hidden" style={(isImpersonating || isDemo) ? { paddingTop: "40px" } : undefined}>
+      <div className="relative h-full overflow-hidden" style={(isImpersonating || (isDemo && view !== "landing")) ? { paddingTop: "40px" } : undefined}>
         <div
           style={{
             height: "100%",
