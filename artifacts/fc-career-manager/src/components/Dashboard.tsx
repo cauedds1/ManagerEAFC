@@ -1571,13 +1571,13 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
           seasons={seasons}
           activeSeasonId={activeSeasonId}
           onSelect={switchToSeason}
-          onNewSeason={() => { setShowSeasonModal(false); setShowNewSeasonWizard(true); }}
+          onNewSeason={!isDemo ? () => { setShowSeasonModal(false); setShowNewSeasonWizard(true); } : undefined}
           onRenameSeason={(seasonId, newLabel) => {
             void updateSeasonLabel(seasonId, newLabel);
             setSeasons((prev) => prev.map((s) => s.id === seasonId ? { ...s, label: newLabel } : s));
             if (seasonId === activeSeasonId) setActiveSeasonLabel(newLabel);
           }}
-          onFinalizeSeason={handleFinalizeSeason}
+          onFinalizeSeason={!isDemo ? handleFinalizeSeason : undefined}
           onClose={() => setShowSeasonModal(false)}
         />
       )}

@@ -392,7 +392,7 @@ export function PlayerDetailPanel({
                   </div>
                 </div>
 
-                {onRemove && (
+                {onRemove && !isDemo && (
                   <div
                     className="mt-1 p-3 rounded-xl flex items-center justify-between gap-3"
                     style={{ background: "rgba(239,68,68,0.04)", border: "1px solid rgba(239,68,68,0.12)" }}

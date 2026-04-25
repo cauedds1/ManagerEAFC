@@ -815,16 +815,18 @@ function InteractiveDemoSection({ lang, onLogin }: { lang: Lang; onLogin: () => 
     <section
       ref={sectionRef}
       id="demo"
-      style={{ background: "linear-gradient(180deg,#09090f 0%,#0b0c1a 100%)", padding: "90px 0 80px", position: "relative", overflow: "hidden" }}
+      style={{ background: "linear-gradient(180deg,#09090f 0%,#0b0c1a 100%)", padding: "64px 0 56px", position: "relative", overflow: "hidden" }}
     >
       <div style={{ position: "absolute", inset: 0, pointerEvents: "none", background: "radial-gradient(ellipse 70% 55% at 50% 30%, rgba(124,92,252,0.07) 0%, transparent 70%)" }} />
-      <div className="lp-section-inner" style={{ maxWidth: 1100, margin: "0 auto", padding: "0 40px", position: "relative" }}>
-        <div className="lp-reveal" style={{ textAlign: "center", marginBottom: 40 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.16em", color: "rgba(245,158,11,0.75)", marginBottom: 12 }}>{c.eyebrow}</div>
-          <h2 style={{ fontSize: "clamp(26px,4vw,40px)", fontWeight: 800, color: "#ffffff", lineHeight: 1.15, margin: "0 0 14px", letterSpacing: "-0.02em" }}>
+      <div className="lp-section-inner" style={{ maxWidth: 1100, margin: "0 auto", padding: "0 24px", position: "relative" }}>
+
+        {/* Compact header */}
+        <div className="lp-reveal" style={{ textAlign: "center", marginBottom: 28 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.16em", color: "rgba(245,158,11,0.75)", marginBottom: 10 }}>{c.eyebrow}</div>
+          <h2 style={{ fontSize: "clamp(22px,3.2vw,34px)", fontWeight: 800, color: "#ffffff", lineHeight: 1.15, margin: "0 0 10px", letterSpacing: "-0.02em" }}>
             {c.title}
           </h2>
-          <p style={{ fontSize: "clamp(13px,1.6vw,16px)", color: "rgba(255,255,255,0.45)", maxWidth: 540, margin: "0 auto 0" }}>{c.sub}</p>
+          <p style={{ fontSize: "clamp(12px,1.4vw,14px)", color: "rgba(255,255,255,0.45)", maxWidth: 480, margin: "0 auto" }}>{c.sub}</p>
         </div>
 
         {/* iframe wrapper */}
@@ -834,26 +836,50 @@ function InteractiveDemoSection({ lang, onLogin }: { lang: Lang; onLogin: () => 
             borderRadius: 14,
             overflow: "hidden",
             border: "1px solid rgba(124,92,252,0.18)",
-            boxShadow: "0 32px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04)",
+            boxShadow: "0 24px 60px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.04)",
             background: "#09090f",
           }}
         >
-          {/* Browser chrome bar */}
-          <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 16px", background: "rgba(255,255,255,0.04)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-            <div style={{ display: "flex", gap: 6 }}>
+          {/* Browser chrome bar — tabs live here so no scroll needed */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", background: "rgba(255,255,255,0.04)", borderBottom: "1px solid rgba(255,255,255,0.06)", flexWrap: "wrap" }}>
+            <div style={{ display: "flex", gap: 5, flexShrink: 0 }}>
               {["#ff5f57","#ffbd2e","#28c840"].map(c2 => (
-                <div key={c2} style={{ width: 10, height: 10, borderRadius: "50%", background: c2 }} />
+                <div key={c2} style={{ width: 9, height: 9, borderRadius: "50%", background: c2 }} />
               ))}
             </div>
-            <div style={{ flex: 1, background: "rgba(255,255,255,0.06)", borderRadius: 6, height: 22, display: "flex", alignItems: "center", paddingLeft: 10 }}>
-              <span style={{ fontSize: 11, color: "rgba(255,255,255,0.25)", letterSpacing: "0.02em" }}>
+            <div style={{ flex: "0 1 180px", background: "rgba(255,255,255,0.06)", borderRadius: 5, height: 20, display: "flex", alignItems: "center", paddingLeft: 8 }}>
+              <span style={{ fontSize: 10, color: "rgba(255,255,255,0.25)", letterSpacing: "0.02em", whiteSpace: "nowrap", overflow: "hidden" }}>
                 fc-career-manager.app · Demo
               </span>
             </div>
+            {/* Tab switcher inside chrome bar */}
+            <div style={{ display: "flex", gap: 5, marginLeft: "auto", flexShrink: 0 }}>
+              {DEMO_TABS.map(({ tab, label, icon }) => {
+                const active = tab === activeTab;
+                return (
+                  <button
+                    key={tab}
+                    onClick={() => handleTabClick(tab)}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 4,
+                      padding: "4px 12px", borderRadius: 20,
+                      fontSize: 11, fontWeight: 700, cursor: "pointer",
+                      border: active ? "1px solid rgba(124,92,252,0.5)" : "1px solid rgba(255,255,255,0.08)",
+                      background: active ? "rgba(124,92,252,0.2)" : "rgba(255,255,255,0.04)",
+                      color: active ? "#c4b5fd" : "rgba(255,255,255,0.4)",
+                      transition: "all 0.18s ease",
+                    }}
+                  >
+                    <span style={{ fontSize: 12 }}>{icon}</span>
+                    {label[lang]}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
-          {/* iframe area — skeleton is always shown until iframe finishes loading */}
-          <div style={{ position: "relative", width: "100%", height: "clamp(420px,56vw,640px)" }}>
+          {/* iframe area */}
+          <div style={{ position: "relative", width: "100%", height: "clamp(360px,48vw,540px)" }}>
             {(!iframeSrc || !loaded) && (
               <div style={{ position: "absolute", inset: 0, zIndex: 2, background: "#09090f", padding: "20px 16px", overflow: "hidden" }}>
                 <style>{`@keyframes shimmer-demo{0%{background-position:-600px 0}100%{background-position:600px 0}}`}</style>
@@ -882,75 +908,47 @@ function InteractiveDemoSection({ lang, onLogin }: { lang: Lang; onLogin: () => 
               </div>
             )}
             {iframeSrc && (
-              <>
-                <iframe
-                  ref={iframeRef}
-                  src={iframeSrc}
-                  onLoad={handleLoad}
-                  title="FC Career Manager Demo"
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    border: "none",
-                    display: "block",
-                    opacity: loaded ? 1 : 0,
-                    transition: "opacity 0.4s ease",
-                  }}
-                  allow="autoplay"
-                />
-              </>
+              <iframe
+                ref={iframeRef}
+                src={iframeSrc}
+                onLoad={handleLoad}
+                title="FC Career Manager Demo"
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  border: "none",
+                  display: "block",
+                  opacity: loaded ? 1 : 0,
+                  transition: "opacity 0.4s ease",
+                }}
+                allow="autoplay"
+              />
             )}
           </div>
         </div>
 
-        {/* Tab buttons — below iframe */}
-        <div style={{ display: "flex", justifyContent: "center", gap: 10, flexWrap: "wrap", marginTop: 24 }}>
-          {DEMO_TABS.map(({ tab, label, icon }) => {
-            const active = tab === activeTab;
-            return (
-              <button
-                key={tab}
-                onClick={() => handleTabClick(tab)}
-                style={{
-                  display: "flex", alignItems: "center", gap: 6,
-                  padding: "9px 20px", borderRadius: 30,
-                  fontSize: 13, fontWeight: 700, cursor: "pointer",
-                  border: active ? "1px solid rgba(124,92,252,0.5)" : "1px solid rgba(255,255,255,0.1)",
-                  background: active ? "rgba(124,92,252,0.18)" : "rgba(255,255,255,0.04)",
-                  color: active ? "#c4b5fd" : "rgba(255,255,255,0.45)",
-                  transition: "all 0.2s ease",
-                }}
-              >
-                <span style={{ fontSize: 15 }}>{icon}</span>
-                {label[lang]}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Notice */}
-        <div style={{ textAlign: "center", marginTop: 14 }}>
+        {/* Notice + Signup CTA — compact row */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginTop: 18 }}>
           <span style={{ fontSize: 11, color: "rgba(255,255,255,0.2)", letterSpacing: "0.05em" }}>{c.notice}</span>
-        </div>
-
-        {/* Signup CTA */}
-        <div style={{ textAlign: "center", marginTop: 36 }}>
-          <p style={{ fontSize: 15, color: "rgba(255,255,255,0.55)", marginBottom: 16 }}>{c.signupCta}</p>
-          <button
-            onClick={onLogin}
-            style={{
-              padding: "13px 36px", borderRadius: 14, fontSize: 14, fontWeight: 700,
-              color: "#fff", cursor: "pointer",
-              background: "linear-gradient(135deg,#7c5cfc,#5b3fd1)",
-              border: "none",
-              boxShadow: "0 8px 32px rgba(124,92,252,0.35)",
-              transition: "all 0.2s ease",
-            }}
-            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 40px rgba(124,92,252,0.55), 0 8px 32px rgba(124,92,252,0.35)"; (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-2px)"; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 8px 32px rgba(124,92,252,0.35)"; (e.currentTarget as HTMLButtonElement).style.transform = "none"; }}
-          >
-            {c.signupBtn}
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <span style={{ fontSize: 13, color: "rgba(255,255,255,0.45)" }}>{c.signupCta}</span>
+            <button
+              onClick={onLogin}
+              style={{
+                padding: "9px 24px", borderRadius: 10, fontSize: 13, fontWeight: 700,
+                color: "#fff", cursor: "pointer",
+                background: "linear-gradient(135deg,#7c5cfc,#5b3fd1)",
+                border: "none",
+                boxShadow: "0 6px 20px rgba(124,92,252,0.3)",
+                transition: "all 0.2s ease",
+                whiteSpace: "nowrap",
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-1px)"; (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 30px rgba(124,92,252,0.5), 0 6px 20px rgba(124,92,252,0.3)"; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.transform = "none"; (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 6px 20px rgba(124,92,252,0.3)"; }}
+            >
+              {c.signupBtn}
+            </button>
+          </div>
         </div>
       </div>
     </section>

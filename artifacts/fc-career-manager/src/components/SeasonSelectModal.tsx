@@ -8,9 +8,9 @@ interface SeasonSelectModalProps {
   seasons: Season[];
   activeSeasonId: string;
   onSelect: (season: Season) => void;
-  onNewSeason: () => void;
+  onNewSeason?: () => void;
   onRenameSeason: (seasonId: string, newLabel: string) => void;
-  onFinalizeSeason: (seasonId: string) => void;
+  onFinalizeSeason?: (seasonId: string) => void;
   onClose: () => void;
 }
 
@@ -239,7 +239,7 @@ export function SeasonSelectModal({
                 </div>
                 {!isEditing && <SeasonStats seasonId={season.id} t={t} />}
 
-                {isActive && !isFinalized && !isEditing && (
+                {isActive && !isFinalized && !isEditing && onFinalizeSeason && (
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -262,7 +262,7 @@ export function SeasonSelectModal({
           })}
         </div>
 
-        <div
+        {onNewSeason && <div
           className="p-4"
           style={{ borderTop: "1px solid rgba(var(--club-primary-rgb),0.1)" }}
         >
@@ -279,7 +279,7 @@ export function SeasonSelectModal({
             </svg>
             {t.btnNewSeason}
           </button>
-        </div>
+        </div>}
       </div>
     </div>
   );
