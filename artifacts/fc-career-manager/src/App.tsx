@@ -68,12 +68,11 @@ function ImpersonationBanner({ userName, onEnd }: { userName: string; onEnd: () 
   );
 }
 
-function DemoBanner({ lang, onEnd, onSignup }: { lang: "pt" | "en"; onEnd: () => void; onSignup: () => void }) {
+function DemoBanner({ lang, onSignup }: { lang: "pt" | "en"; onSignup: () => void }) {
   const label = lang === "en"
     ? "Interactive Demo — Watford FC · Championship"
     : "Demo Interativa — Watford FC · Championship";
   const signupBtn = lang === "en" ? "Create free account" : "Criar conta grátis";
-  const exitBtn = lang === "en" ? "Exit" : "Sair";
   return (
     <div
       className="fixed top-0 left-0 right-0 z-[200] flex items-center justify-between px-4 py-2 gap-3"
@@ -86,22 +85,13 @@ function DemoBanner({ lang, onEnd, onSignup }: { lang: "pt" | "en"; onEnd: () =>
         </svg>
         <span className="font-bold text-xs truncate" style={{ color: "#065f46" }}>{label}</span>
       </div>
-      <div className="flex items-center gap-2 flex-shrink-0">
-        <button
-          onClick={onSignup}
-          className="px-3 py-1 rounded-lg text-xs font-bold transition-all hover:opacity-90"
-          style={{ background: "#065f46", color: "#d1fae5" }}
-        >
-          {signupBtn}
-        </button>
-        <button
-          onClick={onEnd}
-          className="px-3 py-1 rounded-lg text-xs font-bold transition-all hover:opacity-80"
-          style={{ background: "rgba(0,0,0,0.15)", color: "#065f46" }}
-        >
-          {exitBtn}
-        </button>
-      </div>
+      <button
+        onClick={onSignup}
+        className="flex-shrink-0 px-3 py-1 rounded-lg text-xs font-bold transition-all hover:opacity-90"
+        style={{ background: "#065f46", color: "#d1fae5" }}
+      >
+        {signupBtn}
+      </button>
     </div>
   );
 }
@@ -981,7 +971,6 @@ export default function App() {
       {isDemo && !isImpersonating && (
         <DemoBanner
           lang={lang}
-          onEnd={handleEndDemo}
           onSignup={() => {
             if (window !== window.top) {
               // Inside iframe: ask the parent (LandingPage) to open the signup modal
