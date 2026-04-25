@@ -1060,6 +1060,10 @@ Responda APENAS com JSON puro (sem markdown):
 });
 
 router.post("/generate-projeto", requireAuth, async (req: AuthRequest, res) => {
+  if (req.demo && checkDemoRateLimit(`demo-ai:${req.user!.id}`)) {
+    res.status(429).json({ error: "Demo AI limit reached (3/h). Sign up for full access." });
+    return;
+  }
   const plan = req.user!.plan;
 
   const { clubName, clubLeague, clubCountry, clubDescription, clubTitles, lang: projetoLang } = req.body as {

@@ -29,10 +29,6 @@ function blockImpersonatedWrites(req: Request, res: Response, next: NextFunction
       res.status(403).json({ error: "Operações de escrita não são permitidas em modo de visualização" });
       return;
     }
-    if (payload.demo && req.method === "DELETE") {
-      res.status(204).end();
-      return;
-    }
   } catch {
   }
   next();
