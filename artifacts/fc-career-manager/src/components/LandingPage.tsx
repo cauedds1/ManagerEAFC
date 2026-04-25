@@ -1282,7 +1282,7 @@ function LandingPageDesktop({ onStart, onLogin, onStartWithPlan, lang, setLang }
               {label}
             </button>
           ))}
-          <button onClick={onLogin} style={{ marginTop: 8, background: "linear-gradient(135deg,#7c5cfc,#5b3fd1)", color: "#fff", border: "none", borderRadius: 10, padding: "13px 0", fontSize: 15, fontWeight: 700, cursor: "pointer", width: "100%" }}>
+          <button onClick={() => { setMenuOpen(false); onLogin(); }} style={{ marginTop: 8, background: "linear-gradient(135deg,#7c5cfc,#5b3fd1)", color: "#fff", border: "none", borderRadius: 10, padding: "13px 0", fontSize: 15, fontWeight: 700, cursor: "pointer", width: "100%" }}>
             {t.navCta}
           </button>
         </div>
