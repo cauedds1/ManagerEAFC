@@ -1052,6 +1052,7 @@ export function TransferenciasView({
             <p className="text-white/50 font-semibold text-base">{t.emptyTitle}</p>
             <p className="text-white/25 text-sm mt-1">{t.emptySub}</p>
           </div>
+          {!isReadOnly && (
           <button
             onClick={() => openForm("compra")}
             className="px-6 py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90"
@@ -1059,6 +1060,7 @@ export function TransferenciasView({
           >
             {t.emptyBtn}
           </button>
+          )}
         </div>
       ) : (
         <div className="flex flex-col gap-3 overflow-x-auto">
@@ -1074,7 +1076,7 @@ export function TransferenciasView({
         </div>
       )}
 
-      {showForm && createPortal(
+      {!isReadOnly && showForm && createPortal(
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
           <div
             className="absolute inset-0"

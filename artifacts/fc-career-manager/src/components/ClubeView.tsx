@@ -311,7 +311,7 @@ export function ClubeView({
         )}
 
         {sub === "lesoes" && (
-          <LesoesView careerId={careerId} seasonId={seasonId} allPlayers={allPlayers} />
+          <LesoesView careerId={careerId} seasonId={seasonId} allPlayers={allPlayers} isReadOnly={isReadOnly} />
         )}
         {sub === "sequencias" && (
           <div>

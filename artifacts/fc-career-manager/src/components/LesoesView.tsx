@@ -18,6 +18,7 @@ interface Props {
   careerId: string;
   seasonId: string;
   allPlayers: SquadPlayer[];
+  isReadOnly?: boolean;
 }
 
 function PlayerPhoto({ src, name }: { src: string; name: string }) {
@@ -161,11 +162,13 @@ function ActiveInjuryCard({
   player,
   seasonId,
   onUpdate,
+  isReadOnly,
 }: {
   injury: InjuryRecord;
   player: SquadPlayer | undefined;
   seasonId: string;
   onUpdate: () => void;
+  isReadOnly?: boolean;
 }) {
   const [lang] = useLang();
   const t = CLUBE[lang];
@@ -235,6 +238,7 @@ function ActiveInjuryCard({
             )}
           </div>
 
+          {!isReadOnly && (
           <div className="flex flex-col gap-1">
             <label className="text-white/40 text-xs">{t.injuryNameLabel}</label>
             <input
@@ -247,7 +251,9 @@ function ActiveInjuryCard({
               style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
             />
           </div>
+          )}
 
+          {!isReadOnly && (
           <button
             onClick={() => setReleasing(true)}
             className="w-full py-2 rounded-lg text-xs font-bold transition-all hover:opacity-90 active:scale-98"
@@ -255,6 +261,7 @@ function ActiveInjuryCard({
           >
             {t.releasePlayerBtn}
           </button>
+          )}
         </div>
       </div>
     </>
@@ -325,7 +332,7 @@ function HistoryCard({
   );
 }
 
-export function LesoesView({ careerId: _careerId, seasonId, allPlayers }: Props) {
+export function LesoesView({ careerId: _careerId, seasonId, allPlayers, isReadOnly }: Props) {
   const [lang] = useLang();
   const t = CLUBE[lang];
   const [tab, setTab] = useState<"ativos" | "historico">("ativos");
@@ -394,6 +401,7 @@ export function LesoesView({ careerId: _careerId, seasonId, allPlayers }: Props)
                 player={playerMap.get(inj.playerId)}
                 seasonId={seasonId}
                 onUpdate={reload}
+                isReadOnly={isReadOnly}
               />
             ))
           )}

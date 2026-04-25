@@ -932,7 +932,7 @@ export function PartidasView({ careerId, seasonId, season, clubName, clubLogoUrl
         </>
       )}
 
-      {matches.length === 0 && <EmptyState onAdd={() => setModalOpen(true)} />}
+      {matches.length === 0 && !isReadOnly && <EmptyState onAdd={() => setModalOpen(true)} />}
 
       {!isReadOnly && modalOpen && (
         <RegistrarPartidaModal
