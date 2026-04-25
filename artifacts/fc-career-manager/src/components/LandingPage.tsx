@@ -738,6 +738,7 @@ const DEMO_COPY = {
     notice:     "Modo somente leitura · Dados reais do fundador",
     signupCta:  "Pronto para começar sua própria carreira?",
     signupBtn:  "Criar conta grátis",
+    maximize:   "Tela cheia",
   },
   en: {
     eyebrow:    "INTERACTIVE DEMO",
@@ -748,6 +749,7 @@ const DEMO_COPY = {
     notice:     "Read-only mode · Founder's real data",
     signupCta:  "Ready to start your own career?",
     signupBtn:  "Create free account",
+    maximize:   "Full screen",
   },
 };
 
@@ -756,11 +758,14 @@ const isInsideIframe = typeof window !== "undefined" && window !== window.top;
 
 function InteractiveDemoSection({ lang, onLogin }: { lang: Lang; onLogin: () => void }) {
   const c = DEMO_COPY[lang];
-  const [activeTab, setActiveTab] = useState("noticias");
-  const [loaded,    setLoaded]    = useState(false);
-  const [iframeSrc, setIframeSrc] = useState<string | null>(null);
-  const sectionRef = useRef<HTMLElement>(null);
-  const iframeRef  = useRef<HTMLIFrameElement>(null);
+  const [activeTab,  setActiveTab]  = useState("noticias");
+  const [loaded,     setLoaded]     = useState(false);
+  const [iframeSrc,  setIframeSrc]  = useState<string | null>(null);
+  const [maximized,  setMaximized]  = useState(false);
+  const [maxLoaded,  setMaxLoaded]  = useState(false);
+  const sectionRef   = useRef<HTMLElement>(null);
+  const iframeRef    = useRef<HTMLIFrameElement>(null);
+  const maxIframeRef = useRef<HTMLIFrameElement>(null);
 
   const buildSrc = useCallback((tab: string) =>
     `${window.location.origin}/?demo=true&tab=${tab}`, []);
@@ -771,11 +776,27 @@ function InteractiveDemoSection({ lang, onLogin }: { lang: Lang; onLogin: () => 
       iframeRef.current.src = buildSrc(tab);
       setLoaded(false);
     }
-  }, [loaded, buildSrc]);
+    if (maximized && maxIframeRef.current) {
+      maxIframeRef.current.src = buildSrc(tab);
+      setMaxLoaded(false);
+    }
+  }, [loaded, maximized, buildSrc]);
 
-  const handleLoad = useCallback(() => {
-    setLoaded(true);
+  const handleLoad = useCallback(() => { setLoaded(true); }, []);
+  const handleMaxLoad = useCallback(() => { setMaxLoaded(true); }, []);
+
+  const openMaximized = useCallback(() => {
+    setMaxLoaded(false);
+    setMaximized(true);
   }, []);
+
+  // Escape closes the maximized overlay
+  useEffect(() => {
+    if (!maximized) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") setMaximized(false); };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [maximized]);
 
   // Listen for signup requests from inside the iframe demo
   useEffect(() => {
@@ -811,147 +832,103 @@ function InteractiveDemoSection({ lang, onLogin }: { lang: Lang; onLogin: () => 
   // loads the full app URL which itself contains this landing page
   if (isInsideIframe) return null;
 
-  return (
-    <section
-      ref={sectionRef}
-      id="demo"
-      style={{ background: "linear-gradient(180deg,#09090f 0%,#0b0c1a 100%)", padding: "64px 0 56px", position: "relative", overflow: "hidden" }}
-    >
-      <div style={{ position: "absolute", inset: 0, pointerEvents: "none", background: "radial-gradient(ellipse 70% 55% at 50% 30%, rgba(124,92,252,0.07) 0%, transparent 70%)" }} />
-      <div className="lp-section-inner" style={{ maxWidth: 1100, margin: "0 auto", padding: "0 24px", position: "relative" }}>
-
-        {/* Compact header */}
-        <div className="lp-reveal" style={{ textAlign: "center", marginBottom: 28 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.16em", color: "rgba(245,158,11,0.75)", marginBottom: 10 }}>{c.eyebrow}</div>
-          <h2 style={{ fontSize: "clamp(22px,3.2vw,34px)", fontWeight: 800, color: "#ffffff", lineHeight: 1.15, margin: "0 0 10px", letterSpacing: "-0.02em" }}>
-            {c.title}
-          </h2>
-          <p style={{ fontSize: "clamp(12px,1.4vw,14px)", color: "rgba(255,255,255,0.45)", maxWidth: 480, margin: "0 auto" }}>{c.sub}</p>
-        </div>
-
-        {/* iframe wrapper */}
-        <div
-          style={{
-            position: "relative",
-            borderRadius: 14,
-            overflow: "hidden",
-            border: "1px solid rgba(124,92,252,0.18)",
-            boxShadow: "0 24px 60px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.04)",
-            background: "#09090f",
-          }}
-        >
-          {/* Browser chrome bar — tabs live here so no scroll needed */}
-          <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", background: "rgba(255,255,255,0.04)", borderBottom: "1px solid rgba(255,255,255,0.06)", flexWrap: "wrap" }}>
-            <div style={{ display: "flex", gap: 5, flexShrink: 0 }}>
-              {["#ff5f57","#ffbd2e","#28c840"].map(c2 => (
-                <div key={c2} style={{ width: 9, height: 9, borderRadius: "50%", background: c2 }} />
-              ))}
-            </div>
-            <div style={{ flex: "0 1 180px", background: "rgba(255,255,255,0.06)", borderRadius: 5, height: 20, display: "flex", alignItems: "center", paddingLeft: 8 }}>
-              <span style={{ fontSize: 10, color: "rgba(255,255,255,0.25)", letterSpacing: "0.02em", whiteSpace: "nowrap", overflow: "hidden" }}>
-                fc-career-manager.app · Demo
-              </span>
-            </div>
-            {/* Tab switcher inside chrome bar */}
-            <div style={{ display: "flex", gap: 5, marginLeft: "auto", flexShrink: 0 }}>
-              {DEMO_TABS.map(({ tab, label, icon }) => {
-                const active = tab === activeTab;
-                return (
-                  <button
-                    key={tab}
-                    onClick={() => handleTabClick(tab)}
-                    style={{
-                      display: "flex", alignItems: "center", gap: 4,
-                      padding: "4px 12px", borderRadius: 20,
-                      fontSize: 11, fontWeight: 700, cursor: "pointer",
-                      border: active ? "1px solid rgba(124,92,252,0.5)" : "1px solid rgba(255,255,255,0.08)",
-                      background: active ? "rgba(124,92,252,0.2)" : "rgba(255,255,255,0.04)",
-                      color: active ? "#c4b5fd" : "rgba(255,255,255,0.4)",
-                      transition: "all 0.18s ease",
-                    }}
-                  >
-                    <span style={{ fontSize: 12 }}>{icon}</span>
-                    {label[lang]}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* iframe area */}
-          <div style={{ position: "relative", width: "100%", height: "clamp(360px,48vw,540px)" }}>
-            {(!iframeSrc || !loaded) && (
-              <div style={{ position: "absolute", inset: 0, zIndex: 2, background: "#09090f", padding: "20px 16px", overflow: "hidden" }}>
-                <style>{`@keyframes shimmer-demo{0%{background-position:-600px 0}100%{background-position:600px 0}}`}</style>
-                {[
-                  { w: "45%", h: 12, mb: 8 }, { w: "30%", h: 12, mb: 20 },
-                  { w: "100%", h: 60, mb: 10 }, { w: "100%", h: 60, mb: 20 },
-                  { w: "60%", h: 10, mb: 6 }, { w: "80%", h: 10, mb: 6 }, { w: "50%", h: 10, mb: 20 },
-                  { w: "100%", h: 100, mb: 0 },
-                ].map((s, i) => (
-                  <div key={i} style={{
-                    width: s.w, height: s.h, borderRadius: 6, marginBottom: s.mb,
-                    background: "linear-gradient(90deg,rgba(255,255,255,0.04) 0%,rgba(255,255,255,0.09) 50%,rgba(255,255,255,0.04) 100%)",
-                    backgroundSize: "600px 100%",
-                    animation: `shimmer-demo 1.4s ease-in-out infinite`,
-                    animationDelay: `${i * 0.06}s`,
-                  }} />
-                ))}
-                <div style={{ position: "absolute", bottom: 16, left: "50%", transform: "translateX(-50%)", display: "flex", alignItems: "center", gap: 8 }}>
-                  {iframeSrc && (
-                    <>
-                      <div style={{ width: 16, height: 16, borderRadius: "50%", border: "2px solid rgba(124,92,252,0.6)", borderTopColor: "transparent", animation: "spin 0.8s linear infinite" }} />
-                      <span style={{ fontSize: 12, color: "rgba(255,255,255,0.3)" }}>{c.loading}</span>
-                    </>
-                  )}
-                </div>
-              </div>
-            )}
-            {iframeSrc && (
-              <iframe
-                ref={iframeRef}
-                src={iframeSrc}
-                onLoad={handleLoad}
-                title="FC Career Manager Demo"
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  border: "none",
-                  display: "block",
-                  opacity: loaded ? 1 : 0,
-                  transition: "opacity 0.4s ease",
-                }}
-                allow="autoplay"
-              />
-            )}
-          </div>
-        </div>
-
-        {/* Notice + Signup CTA — compact row */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginTop: 18 }}>
-          <span style={{ fontSize: 11, color: "rgba(255,255,255,0.2)", letterSpacing: "0.05em" }}>{c.notice}</span>
-          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-            <span style={{ fontSize: 13, color: "rgba(255,255,255,0.45)" }}>{c.signupCta}</span>
-            <button
-              onClick={onLogin}
-              style={{
-                padding: "9px 24px", borderRadius: 10, fontSize: 13, fontWeight: 700,
-                color: "#fff", cursor: "pointer",
-                background: "linear-gradient(135deg,#7c5cfc,#5b3fd1)",
-                border: "none",
-                boxShadow: "0 6px 20px rgba(124,92,252,0.3)",
-                transition: "all 0.2s ease",
-                whiteSpace: "nowrap",
-              }}
-              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-1px)"; (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 30px rgba(124,92,252,0.5), 0 6px 20px rgba(124,92,252,0.3)"; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.transform = "none"; (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 6px 20px rgba(124,92,252,0.3)"; }}
-            >
-              {c.signupBtn}
-            </button>
-          </div>
-        </div>
+  const renderChrome = (inModal: boolean) => (
+    <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 12px", background: "rgba(255,255,255,0.04)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+      <div style={{ display: "flex", gap: 5, flexShrink: 0 }}>
+        {["#ff5f57","#ffbd2e","#28c840"].map(c2 => (
+          <div key={c2} style={{ width: 9, height: 9, borderRadius: "50%", background: c2 }} />
+        ))}
       </div>
-    </section>
+      <div style={{ flex: "0 1 160px", background: "rgba(255,255,255,0.06)", borderRadius: 5, height: 19, display: "flex", alignItems: "center", paddingLeft: 8, overflow: "hidden" }}>
+        <span style={{ fontSize: 10, color: "rgba(255,255,255,0.25)", letterSpacing: "0.02em", whiteSpace: "nowrap" }}>fc-career-manager.app · Demo</span>
+      </div>
+      <div style={{ display: "flex", gap: 5, marginLeft: "auto", flexShrink: 0, alignItems: "center" }}>
+        {DEMO_TABS.map(({ tab, label, icon }) => {
+          const active = tab === activeTab;
+          return (
+            <button key={tab} onClick={() => handleTabClick(tab)} style={{ display: "flex", alignItems: "center", gap: 4, padding: "3px 11px", borderRadius: 20, fontSize: 11, fontWeight: 700, cursor: "pointer", border: active ? "1px solid rgba(124,92,252,0.5)" : "1px solid rgba(255,255,255,0.08)", background: active ? "rgba(124,92,252,0.2)" : "rgba(255,255,255,0.04)", color: active ? "#c4b5fd" : "rgba(255,255,255,0.4)", transition: "all 0.18s ease" }}>
+              <span style={{ fontSize: 12 }}>{icon}</span>
+              {label[lang]}
+            </button>
+          );
+        })}
+        {inModal ? (
+          <button onClick={() => setMaximized(false)} title="Fechar (Esc)" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 26, height: 26, borderRadius: 6, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", cursor: "pointer", color: "rgba(255,255,255,0.5)", transition: "all 0.15s ease", marginLeft: 4 }} onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.12)"; (e.currentTarget as HTMLButtonElement).style.color = "#fff"; }} onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.06)"; (e.currentTarget as HTMLButtonElement).style.color = "rgba(255,255,255,0.5)"; }}>
+            <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M1 1l3.5 3.5M9.5 9.5L6 6M1 9.5l3.5-3.5M9.5 1L6 4.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></svg>
+          </button>
+        ) : (
+          <button onClick={openMaximized} title={c.maximize} style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 26, height: 26, borderRadius: 6, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", cursor: "pointer", color: "rgba(255,255,255,0.5)", transition: "all 0.15s ease", marginLeft: 4 }} onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(124,92,252,0.2)"; (e.currentTarget as HTMLButtonElement).style.color = "#c4b5fd"; (e.currentTarget as HTMLButtonElement).style.border = "1px solid rgba(124,92,252,0.4)"; }} onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.06)"; (e.currentTarget as HTMLButtonElement).style.color = "rgba(255,255,255,0.5)"; (e.currentTarget as HTMLButtonElement).style.border = "1px solid rgba(255,255,255,0.1)"; }}>
+            <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M1.5 4.5V1.5h3M6.5 1.5h3v3M9.5 6.5v3h-3M4.5 9.5h-3v-3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          </button>
+        )}
+      </div>
+    </div>
+  );
+
+  const renderSkeleton = (src: string | null) => (
+    <div style={{ position: "absolute", inset: 0, zIndex: 2, background: "#09090f", padding: "20px 16px", overflow: "hidden" }}>
+      <style>{`@keyframes shimmer-demo{0%{background-position:-600px 0}100%{background-position:600px 0}}`}</style>
+      {[{ w: "45%", h: 12, mb: 8 }, { w: "30%", h: 12, mb: 20 }, { w: "100%", h: 60, mb: 10 }, { w: "100%", h: 60, mb: 20 }, { w: "60%", h: 10, mb: 6 }, { w: "80%", h: 10, mb: 6 }, { w: "50%", h: 10, mb: 20 }, { w: "100%", h: 100, mb: 0 }].map((s, i) => (
+        <div key={i} style={{ width: s.w, height: s.h, borderRadius: 6, marginBottom: s.mb, background: "linear-gradient(90deg,rgba(255,255,255,0.04) 0%,rgba(255,255,255,0.09) 50%,rgba(255,255,255,0.04) 100%)", backgroundSize: "600px 100%", animation: `shimmer-demo 1.4s ease-in-out infinite`, animationDelay: `${i * 0.06}s` }} />
+      ))}
+      {src && (
+        <div style={{ position: "absolute", bottom: 16, left: "50%", transform: "translateX(-50%)", display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ width: 16, height: 16, borderRadius: "50%", border: "2px solid rgba(124,92,252,0.6)", borderTopColor: "transparent", animation: "spin 0.8s linear infinite" }} />
+          <span style={{ fontSize: 12, color: "rgba(255,255,255,0.3)" }}>{c.loading}</span>
+        </div>
+      )}
+    </div>
+  );
+
+  return (
+    <>
+      {/* ── Fullscreen overlay ── */}
+      {maximized && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.92)", display: "flex", flexDirection: "column" }} onClick={(e) => { if (e.target === e.currentTarget) setMaximized(false); }}>
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", margin: "16px", borderRadius: 14, overflow: "hidden", border: "1px solid rgba(124,92,252,0.25)", boxShadow: "0 32px 80px rgba(0,0,0,0.8)" }}>
+            {renderChrome(true)}
+            <div style={{ position: "relative", flex: 1 }}>
+              {!maxLoaded && renderSkeleton(iframeSrc)}
+              <iframe ref={maxIframeRef} src={buildSrc(activeTab)} onLoad={handleMaxLoad} title="FC Career Manager Demo" style={{ width: "100%", height: "100%", border: "none", display: "block", opacity: maxLoaded ? 1 : 0, transition: "opacity 0.4s ease" }} allow="autoplay" />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Inline section ── */}
+      <section ref={sectionRef} id="demo" style={{ background: "linear-gradient(180deg,#09090f 0%,#0b0c1a 100%)", padding: "44px 0 36px", position: "relative", overflow: "hidden" }}>
+        <div style={{ position: "absolute", inset: 0, pointerEvents: "none", background: "radial-gradient(ellipse 70% 55% at 50% 30%, rgba(124,92,252,0.07) 0%, transparent 70%)" }} />
+        <div className="lp-section-inner" style={{ maxWidth: 1100, margin: "0 auto", padding: "0 24px", position: "relative" }}>
+
+          <div className="lp-reveal" style={{ textAlign: "center", marginBottom: 20 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.16em", color: "rgba(245,158,11,0.75)", marginBottom: 8 }}>{c.eyebrow}</div>
+            <h2 style={{ fontSize: "clamp(20px,2.8vw,30px)", fontWeight: 800, color: "#ffffff", lineHeight: 1.15, margin: "0 0 8px", letterSpacing: "-0.02em" }}>{c.title}</h2>
+            <p style={{ fontSize: "clamp(12px,1.3vw,14px)", color: "rgba(255,255,255,0.45)", maxWidth: 460, margin: "0 auto" }}>{c.sub}</p>
+          </div>
+
+          <div style={{ position: "relative", borderRadius: 14, overflow: "hidden", border: "1px solid rgba(124,92,252,0.18)", boxShadow: "0 24px 60px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.04)", background: "#09090f" }}>
+            {renderChrome(false)}
+            {/* Height = viewport minus: navbar(64) + section-pad(80) + header(~115) + chrome(33) + bottom-row(42) + margin(24) ≈ 358 → use 340 with clamp */}
+            <div style={{ position: "relative", width: "100%", height: "clamp(300px, calc(100dvh - 340px), 620px)" }}>
+              {(!iframeSrc || !loaded) && renderSkeleton(iframeSrc)}
+              {iframeSrc && (
+                <iframe ref={iframeRef} src={iframeSrc} onLoad={handleLoad} title="FC Career Manager Demo" style={{ width: "100%", height: "100%", border: "none", display: "block", opacity: loaded ? 1 : 0, transition: "opacity 0.4s ease" }} allow="autoplay" />
+              )}
+            </div>
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10, marginTop: 14 }}>
+            <span style={{ fontSize: 11, color: "rgba(255,255,255,0.2)", letterSpacing: "0.05em" }}>{c.notice}</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <span style={{ fontSize: 12, color: "rgba(255,255,255,0.4)" }}>{c.signupCta}</span>
+              <button onClick={onLogin} style={{ padding: "8px 22px", borderRadius: 10, fontSize: 13, fontWeight: 700, color: "#fff", cursor: "pointer", background: "linear-gradient(135deg,#7c5cfc,#5b3fd1)", border: "none", boxShadow: "0 6px 20px rgba(124,92,252,0.3)", transition: "all 0.2s ease", whiteSpace: "nowrap" }} onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-1px)"; (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 30px rgba(124,92,252,0.5), 0 6px 20px rgba(124,92,252,0.3)"; }} onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.transform = "none"; (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 6px 20px rgba(124,92,252,0.3)"; }}>
+                {c.signupBtn}
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </>
   );
 }
 
