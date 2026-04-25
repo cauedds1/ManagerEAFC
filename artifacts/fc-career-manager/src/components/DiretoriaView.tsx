@@ -1103,7 +1103,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
       <div className="flex justify-end">
         <SectionHelp section="diretoria" />
       </div>
-      {meetingTrigger && panel !== "meeting" && (
+      {!isDemo && meetingTrigger && panel !== "meeting" && (
         <div
           className="flex items-start gap-4 px-5 py-4 rounded-2xl"
           style={{ background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.25)" }}

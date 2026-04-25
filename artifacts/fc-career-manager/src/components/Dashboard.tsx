@@ -1767,7 +1767,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
                   </button>
                 );
               })()}
-              {TABS.map((tab) => {
+              {TABS.filter((tab) => !isDemo || tab.id !== "configuracoes").map((tab) => {
                 const active = activeTab === tab.id;
                 const unreadCount =
                   tab.id === "diretoria" ? diretoriaUnread
