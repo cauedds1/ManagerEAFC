@@ -2,7 +2,11 @@
  * seed-demo.ts — Set up the demo account for FC Career Manager.
  *
  * Usage (Railway or local, pointing at prod DB):
- *   DATABASE_URL=postgresql://... pnpm seed:demo
+ *   DATABASE_URL=postgresql://... GEMINI_API_KEY=AIza... pnpm seed:demo
+ *
+ * Required env:
+ *   DATABASE_URL   — PostgreSQL connection string
+ *   GEMINI_API_KEY — Google AI Studio key for EN translation
  *
  * What it does:
  *   1. Finds or creates demo@fc-career-manager.app user (plan=pro)
@@ -38,13 +42,11 @@ function nanoid(size = 12): string {
 }
 
 async function geminiTranslate(text: string): Promise<string> {
-  const apiKey = process.env["AI_INTEGRATIONS_GEMINI_API_KEY"];
-  const baseUrl = process.env["AI_INTEGRATIONS_GEMINI_BASE_URL"];
-  if (!apiKey || !baseUrl) {
-    console.warn("⚠  Gemini env vars not set — skipping translation, copying original text");
-    return text;
+  const apiKey = process.env["GEMINI_API_KEY"] ?? process.env["AI_INTEGRATIONS_GEMINI_API_KEY"];
+  if (!apiKey) {
+    throw new Error("GEMINI_API_KEY is not set. Export it before running: GEMINI_API_KEY=AIza... pnpm seed:demo");
   }
-
+  const baseUrl = process.env["GEMINI_BASE_URL"] ?? "https://generativelanguage.googleapis.com";
   const url = `${baseUrl.replace(/\/$/, "")}/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
   const body = JSON.stringify({
     contents: [{
