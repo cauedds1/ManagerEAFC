@@ -418,6 +418,62 @@ export function LandingPageMobile({
         </div>
       </section>
 
+      {/* ════════════ DEMO CTA ════════════ */}
+      <section
+        id="m-demo"
+        style={{
+          padding: "48px 24px",
+          background: "linear-gradient(135deg, rgba(124,92,252,0.08) 0%, rgba(10,10,20,0) 100%)",
+          borderTop: `1px solid ${BORDER}`,
+          borderBottom: `1px solid ${BORDER}`,
+          textAlign: "center",
+        }}
+      >
+        <p style={{ fontSize: 11, fontWeight: 700, color: PURPLE, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 10 }}>
+          {t.demoLabel}
+        </p>
+        <h2
+          style={{
+            fontSize: 26,
+            fontWeight: 800,
+            letterSpacing: "-0.02em",
+            lineHeight: 1.2,
+            marginBottom: 14,
+          }}
+        >
+          {t.demoTitle}
+        </h2>
+        <p style={{ fontSize: 15, color: TEXT_DIM, lineHeight: 1.6, maxWidth: 300, margin: "0 auto 32px" }}>
+          {t.demoDesc}
+        </p>
+        <button
+          onClick={onLogin}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 8,
+            background: `linear-gradient(135deg,${PURPLE},#5b3fd1)`,
+            color: "#fff",
+            border: "none",
+            borderRadius: 12,
+            padding: "16px 32px",
+            fontSize: 16,
+            fontWeight: 700,
+            cursor: "pointer",
+            boxShadow: "0 8px 30px rgba(124,92,252,0.35)",
+            minHeight: 52,
+            width: "100%",
+            maxWidth: 300,
+          }}
+        >
+          {t.demoCta}
+        </button>
+        <p style={{ marginTop: 14, fontSize: 12, color: TEXT_DIM, opacity: 0.7 }}>
+          {t.pricingFreeForever} · {lang === "pt" ? "Sem cartão de crédito" : "No credit card needed"}
+        </p>
+      </section>
+
       {/* ════════════ FEATURES ════════════ */}
       <section id="m-features" style={{ padding: "56px 20px" }}>
         <p style={{ textAlign: "center", fontSize: 11, fontWeight: 700, color: PURPLE, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 10 }}>

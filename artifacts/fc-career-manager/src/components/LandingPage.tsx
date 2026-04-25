@@ -985,8 +985,8 @@ function MagneticButton({ onClick, label, style }: { onClick: () => void; label:
   );
 }
 
-/* ─── Main component ─────────────────────────────────────── */
-export function LandingPage({ onStart, onLogin, onStartWithPlan, lang, setLang }: LandingPageProps) {
+/* ─── Desktop component (only mounts when viewport ≥ 768px) ─── */
+function LandingPageDesktop({ onStart, onLogin, onStartWithPlan, lang, setLang }: LandingPageProps) {
   const t = LP[lang];
   const AI_TEXTS_DATA = getAiTexts(lang);
   const steps = getSteps(lang);
@@ -1209,18 +1209,6 @@ export function LandingPage({ onStart, onLogin, onStartWithPlan, lang, setLang }
   };
 
   const activeF = featuresExplorer[Math.max(0, activeFeature)];
-
-  if (isMobile) {
-    return (
-      <LandingPageMobile
-        onStart={onStart}
-        onLogin={onLogin}
-        onStartWithPlan={onStartWithPlan}
-        lang={lang}
-        setLang={setLang}
-      />
-    );
-  }
 
   return (
     <div ref={containerRef} className="font-dm" style={{ background: "#09090f", height: "100%", overflowY: "auto", overflowX: "hidden", scrollBehavior: "smooth", cursor: isMobile ? "auto" : "none" }}>
@@ -1809,4 +1797,23 @@ export function LandingPage({ onStart, onLogin, onStartWithPlan, lang, setLang }
       </footer>
     </div>
   );
+}
+
+/* ─── Public export: breakpoint router ──────────────────────
+   Only detects viewport size. Desktop hooks never run on mobile
+   because LandingPageDesktop is only mounted when isMobile=false.
+────────────────────────────────────────────────────────────── */
+export function LandingPage(props: LandingPageProps) {
+  const [isMobile, setIsMobile] = useState(
+    () => typeof window !== "undefined" && window.innerWidth < 768
+  );
+
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", onResize, { passive: true });
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  if (isMobile) return <LandingPageMobile {...props} />;
+  return <LandingPageDesktop {...props} />;
 }
