@@ -35,12 +35,25 @@ function isMobile(): boolean {
 
 let _deferredPrompt: BeforeInstallPromptEvent | null = null;
 const _promptListeners = new Set<(hasPrompt: boolean) => void>();
+const _statusListeners = new Set<(status: PWAInstallStatus) => void>();
 
 function notifyPromptListeners(hasPrompt: boolean) {
   _promptListeners.forEach((cb) => cb(hasPrompt));
 }
 
-if (typeof window !== "undefined") {
+function notifyStatusListeners(status: PWAInstallStatus) {
+  _statusListeners.forEach((cb) => cb(status));
+}
+
+declare global {
+  interface Window {
+    __pwaInstallListenerRegistered?: boolean;
+  }
+}
+
+if (typeof window !== "undefined" && !window.__pwaInstallListenerRegistered) {
+  window.__pwaInstallListenerRegistered = true;
+
   window.addEventListener("beforeinstallprompt", (e) => {
     e.preventDefault();
     _deferredPrompt = e as BeforeInstallPromptEvent;
@@ -50,6 +63,7 @@ if (typeof window !== "undefined") {
   window.addEventListener("appinstalled", () => {
     _deferredPrompt = null;
     notifyPromptListeners(false);
+    notifyStatusListeners("standalone");
   });
 }
 
@@ -65,14 +79,19 @@ function getDeviceStatus(): PWAInstallStatus {
 export function usePWAInstall(): UsePWAInstallReturn {
   const [installing, setInstalling] = useState(false);
   const [hasPrompt, setHasPrompt] = useState(!!_deferredPrompt);
-  const [status] = useState<PWAInstallStatus>(getDeviceStatus);
+  const [status, setStatus] = useState<PWAInstallStatus>(getDeviceStatus);
 
   useEffect(() => {
     const onPromptChange = (has: boolean) => setHasPrompt(has);
+    const onStatusChange = (s: PWAInstallStatus) => setStatus(s);
+
     _promptListeners.add(onPromptChange);
+    _statusListeners.add(onStatusChange);
     setHasPrompt(!!_deferredPrompt);
+
     return () => {
       _promptListeners.delete(onPromptChange);
+      _statusListeners.delete(onStatusChange);
     };
   }, []);
 
@@ -85,6 +104,7 @@ export function usePWAInstall(): UsePWAInstallReturn {
       if (outcome === "accepted") {
         _deferredPrompt = null;
         notifyPromptListeners(false);
+        notifyStatusListeners("standalone");
       }
       return outcome === "accepted" ? "accepted" : "dismissed";
     } finally {
