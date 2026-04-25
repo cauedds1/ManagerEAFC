@@ -648,7 +648,7 @@ export function MatchDetailPage({
   return (
     <div className="animate-fade-up space-y-5">
       {/* Back + Actions row */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <button
           onClick={onBack}
           className="flex items-center gap-2 text-white/50 hover:text-white/90 transition-colors text-sm font-semibold"
