@@ -932,6 +932,57 @@ function InteractiveDemoSection({ lang, onLogin }: { lang: Lang; onLogin: () => 
   );
 }
 
+/* ─── Magnetic CTA Button ────────────────────────────────── */
+function MagneticButton({ onClick, label, style }: { onClick: () => void; label: string; style?: CSSProperties }) {
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const [hovered, setHovered] = useState(false);
+  const RADIUS = 130;
+  const STRENGTH = 0.38;
+
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    const btn = btnRef.current;
+    if (!btn) return;
+    const rect = btn.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const dx = e.clientX - cx;
+    const dy = e.clientY - cy;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < RADIUS) {
+      setOffset({ x: dx * STRENGTH, y: dy * STRENGTH });
+    } else {
+      setOffset({ x: 0, y: 0 });
+    }
+  }, []);
+
+  useEffect(() => {
+    window.addEventListener("mousemove", handleMouseMove);
+    return () => window.removeEventListener("mousemove", handleMouseMove);
+  }, [handleMouseMove]);
+
+  return (
+    <button
+      ref={btnRef}
+      data-cursor="ball"
+      onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => { setHovered(false); setOffset({ x: 0, y: 0 }); }}
+      style={{
+        ...style,
+        transform: `translate(${offset.x}px, ${offset.y}px)`,
+        boxShadow: hovered
+          ? "0 0 50px rgba(124,92,252,0.7), 0 8px 32px rgba(124,92,252,0.5)"
+          : "0 8px 32px rgba(124,92,252,0.45)",
+        transition: "transform 0.35s cubic-bezier(0.25,0.46,0.45,0.94), box-shadow 0.25s",
+        willChange: "transform",
+      }}
+    >
+      {label}
+    </button>
+  );
+}
+
 /* ─── Main component ─────────────────────────────────────── */
 export function LandingPage({ onStart, onLogin, onStartWithPlan, lang, setLang }: LandingPageProps) {
   const t = LP[lang];
@@ -1232,13 +1283,12 @@ export function LandingPage({ onStart, onLogin, onStartWithPlan, lang, setLang }
               {t.heroDesc}
             </p>
 
-            <div className="lp-hero-ctas" style={{ display: "flex", gap: 14, flexWrap: "wrap", marginBottom: 40, animation: "landingFadeIn 1s ease 0.9s both" }}>
-              <button data-cursor="ball" onClick={onLogin}
-                style={{ background: "linear-gradient(135deg,#7c5cfc,#5b3fd1)", color: "#fff", border: "none", borderRadius: 14, padding: "15px 56px", fontSize: 15, fontWeight: 700, cursor: "none", boxShadow: "0 8px 32px rgba(124,92,252,0.45)", transition: "all 0.25s" }}
-                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 50px rgba(124,92,252,0.7), 0 8px 32px rgba(124,92,252,0.5)"; (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-3px) scale(1.03)"; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 8px 32px rgba(124,92,252,0.45)"; (e.currentTarget as HTMLButtonElement).style.transform = "none"; }}>
-                {t.heroCta}
-              </button>
+            <div className="lp-hero-ctas" style={{ marginBottom: 40, animation: "landingFadeIn 1s ease 0.9s both" }}>
+              <MagneticButton
+                onClick={onLogin}
+                label={t.heroCta}
+                style={{ background: "linear-gradient(135deg,#7c5cfc,#5b3fd1)", color: "#fff", border: "none", borderRadius: 14, padding: "15px 0", fontSize: 15, fontWeight: 700, cursor: "none", width: 340, display: "block" }}
+              />
             </div>
 
             <div style={{ animation: "landingFadeIn 1s ease 1.1s both" }}>
