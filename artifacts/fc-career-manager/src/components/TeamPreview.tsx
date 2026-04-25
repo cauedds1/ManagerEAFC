@@ -495,7 +495,7 @@ export function TeamPreview({ club, season, onNext, onBack, onClubInfoLoaded }: 
       >
         <button
           onClick={onBack}
-          className="flex items-center justify-center gap-2 px-5 py-3.5 rounded-xl font-semibold text-sm text-white/50 hover:text-white transition-all duration-200 glass glass-hover min-h-[48px]"
+          className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm text-white/50 hover:text-white transition-all duration-200 glass glass-hover min-h-[48px] sm:min-h-0"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
@@ -504,7 +504,7 @@ export function TeamPreview({ club, season, onNext, onBack, onClubInfoLoaded }: 
         </button>
         <button
           onClick={onNext}
-          className="flex-1 py-3.5 rounded-xl font-bold text-white text-sm transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 min-h-[48px]"
+          className="flex-1 py-2.5 rounded-xl font-bold text-white text-sm transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 min-h-[48px] sm:min-h-0"
           style={{ background: "var(--club-gradient)", boxShadow: "0 4px 20px rgba(var(--club-primary-rgb),0.25)" }}
         >
           {t.setupCareer}
