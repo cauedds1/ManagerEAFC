@@ -562,8 +562,8 @@ export function ElencoView({
   return (
     <div className="animate-fade-up w-full">
       {/* Toolbar */}
-      <div className="flex items-center justify-between px-4 sm:px-6 pt-4 pb-3">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between px-4 sm:px-6 pt-4 pb-3">
+        <div className="flex items-center gap-2 flex-wrap min-w-0">
           <h2 className="text-white/35 text-xs font-bold tracking-widest uppercase">{t.squadHeading}</h2>
           <SectionHelp section="elenco" />
           {squad && !squadLoading && (
@@ -596,7 +596,7 @@ export function ElencoView({
             </span>
           )}
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap flex-shrink-0">
           {/* Hidden file input for import */}
           <input
             ref={importInputRef}
@@ -675,7 +675,7 @@ export function ElencoView({
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                   </svg>
-                  {t.resetLabel}
+                  <span className="hidden sm:inline">{t.resetLabel}</span>
                 </button>
               )}
               <div className="flex rounded-lg p-0.5" style={{ background: "rgba(255,255,255,0.04)" }}>
