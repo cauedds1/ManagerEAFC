@@ -226,6 +226,7 @@ interface ElencoViewProps {
   finalizedLeftIds?: Set<number>;
   finalizedSeasonStats?: Record<number, { matchesAsStarter: number; totalMinutes: number }>;
   isCustomClub?: boolean;
+  isDemo?: boolean;
 }
 
 export function ElencoView({
@@ -247,6 +248,7 @@ export function ElencoView({
   finalizedLeftIds,
   finalizedSeasonStats,
   isCustomClub,
+  isDemo,
 }: ElencoViewProps) {
   const [lang] = useLang();
   const t = CLUBE[lang];
@@ -604,7 +606,7 @@ export function ElencoView({
             onChange={handleImportFile}
           />
           {/* Export button */}
-          {mergedPlayers.length > 0 && !squadLoading && (
+          {!isDemo && mergedPlayers.length > 0 && !squadLoading && (
             <button
               onClick={handleExportSquad}
               className="flex items-center gap-1.5 px-3 py-2 min-h-[44px] rounded-xl text-xs font-semibold transition-all duration-200 hover:opacity-90 active:scale-95"
@@ -619,7 +621,7 @@ export function ElencoView({
             </button>
           )}
           {/* Import button */}
-          {onImportSquad && (
+          {!isDemo && onImportSquad && (
             <button
               onClick={() => importInputRef.current?.click()}
               className="flex items-center gap-1.5 px-3 py-2 min-h-[44px] rounded-xl text-xs font-semibold transition-all duration-200 hover:opacity-90 active:scale-95"
@@ -649,7 +651,7 @@ export function ElencoView({
               <span className="hidden sm:inline">{importFeedback === "success" ? t.importSuccess : importFeedback === "error" ? t.importError : t.importLabel}</span>
             </button>
           )}
-          <button
+          {!isDemo && <button
             onClick={() => setShowAddPlayer(true)}
             className="flex items-center gap-1.5 px-3 py-2 min-h-[44px] rounded-xl text-xs font-semibold transition-all duration-200 hover:opacity-90 active:scale-95"
             style={{ background: "rgba(var(--club-primary-rgb),0.15)", color: "var(--club-primary)", border: "1px solid rgba(var(--club-primary-rgb),0.3)" }}
@@ -660,7 +662,7 @@ export function ElencoView({
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
             </svg>
             <span className="hidden sm:inline">{t.addPlayerLabel}</span>
-          </button>
+          </button>}
           {mergedPlayers.length > 0 && !squadLoading && (
             <>
               {isCustom && (
@@ -1192,7 +1194,8 @@ export function ElencoView({
           override={overrides[detailPlayer.id]}
           onClose={() => setDetailPlayer(null)}
           onUpdated={refreshOverrides}
-          onRemove={() => handleRemovePlayer(detailPlayer)}
+          onRemove={!isDemo ? () => handleRemovePlayer(detailPlayer) : undefined}
+          isDemo={isDemo}
         />,
         document.body
       )}

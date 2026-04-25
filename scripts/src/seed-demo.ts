@@ -77,23 +77,20 @@ async function aiTranslate(text: string): Promise<string> {
 
 async function translateNewsArray(posts: unknown[]): Promise<unknown[]> {
   if (!posts || posts.length === 0) return [];
-  console.log(`  Translating ${posts.length} news posts…`);
-  const translated: unknown[] = [];
-
-  for (let i = 0; i < posts.length; i++) {
-    const post = posts[i];
+  console.log(`  Translating ${posts.length} news posts in parallel…`);
+  const results = await Promise.all(posts.map(async (post, i) => {
     try {
       const ptJson = JSON.stringify(post, null, 2);
       const enJson = await aiTranslate(ptJson);
       const parsed = JSON.parse(enJson) as unknown;
-      translated.push(parsed);
       console.log(`    [${i + 1}/${posts.length}] ✓`);
+      return parsed;
     } catch (err) {
       console.warn(`    [${i + 1}/${posts.length}] ✗ Translation failed, using original:`, (err as Error).message);
-      translated.push(post);
+      return post;
     }
-  }
-  return translated;
+  }));
+  return results;
 }
 
 async function translateConversation(messages: unknown[]): Promise<unknown[]> {
@@ -410,8 +407,8 @@ async function main() {
     }
   }
 
-  // ── 3. Translate news → news_en (only in founder-clone mode) ─────────
-  if (!filePath) {
+  // ── 3. Translate news → news_en ──────────────────────────────────────
+  {
     console.log("\n3. Translating news to English…");
     const [newsRow] = await db.select().from(seasonDataTable)
       .where(and(eq(seasonDataTable.seasonId, demoSeasonId), eq(seasonDataTable.key, "news")))
@@ -465,8 +462,6 @@ async function main() {
       }).onConflictDoUpdate({ target: [careerDataTable.careerId, careerDataTable.key], set: { valueJson: JSON.stringify(enMessages), updatedAt: Date.now() } });
       console.log(`   ✓ Stored conv_en (${enMessages.length} messages)`);
     }
-  } else {
-    console.log("\n3. Skipping translation (file mode — data imported as-is)");
   }
 
   console.log("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");

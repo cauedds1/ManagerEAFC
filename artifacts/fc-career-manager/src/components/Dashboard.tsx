@@ -1904,6 +1904,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
             finalizedLeftIds={finalizedSquadData?.finalizedLeftIds}
             finalizedSeasonStats={finalizedSquadData?.finalizedSeasonStats}
             isCustomClub={career.isCustomClub}
+            isDemo={isDemo}
           />
         )}
         {activeTab !== "clube" && (

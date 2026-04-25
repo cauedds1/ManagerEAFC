@@ -1852,6 +1852,7 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
     }
     return true;
   });
+  const displayPosts = isDemo ? filtered.slice(0, 8) : filtered;
 
   const catLabels = getCategoryLabels();
   const srcLabels = getSourceLabels();
@@ -2206,7 +2207,7 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
             </div>
           ) : (
             <div className="flex flex-col gap-4 lg:max-w-[560px]">
-              {filtered.map((post) => (
+              {displayPosts.map((post) => (
                 <div
                   key={post.id}
                   ref={(el) => { postRefs.current[post.id] = el; }}

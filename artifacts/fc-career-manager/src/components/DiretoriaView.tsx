@@ -1160,7 +1160,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
               )}
             </div>
             <div className="flex items-center gap-1.5">
-              {members.length >= 1 && !activeMeeting && (
+              {!isDemo && members.length >= 1 && !activeMeeting && (
                 isFreePlan ? (
                   <span
                     className="flex items-center gap-1 px-2 py-1 rounded-lg font-semibold text-[11px]"
@@ -1182,7 +1182,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
                   </button>
                 )
               )}
-              {isFreePlan ? (
+              {!isDemo && (isFreePlan ? (
                 <span
                   className="flex items-center justify-center w-7 h-7 rounded-lg"
                   style={{ background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.2)", border: "1px solid rgba(255,255,255,0.07)", cursor: "not-allowed" }}
@@ -1207,7 +1207,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
                 >
                   {t.membersCount.replace("{n}", String(members.length)).replace("{max}", String(planLimits.maxDiretoriaMembers))}
                 </span>
-              ) : null}
+              ) : null)}
             </div>
           </div>
 
@@ -1410,6 +1410,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
                       </span>
                     </div>
                   )}
+                  {!isDemo && (
                   <div
                     className="flex items-end gap-2 px-4 py-3"
                     style={{ paddingBottom: keyboardOffset > 0 ? keyboardOffset + 12 : "calc(12px + env(safe-area-inset-bottom))" }}
@@ -1436,6 +1437,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
                     </button>
                   </div>
+                  )}
                 </div>
               );
             })()}
@@ -1546,7 +1548,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
               <div ref={meetingEndRef} />
             </div>
 
-            <div
+            {!isDemo && <div
               className="flex items-end gap-2 px-4 py-3 flex-shrink-0"
               style={{ borderTop: "1px solid var(--surface-border)", paddingBottom: keyboardOffset > 0 ? keyboardOffset + 12 : "calc(12px + env(safe-area-inset-bottom))" }}
             >
@@ -1578,7 +1580,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
                 )}
               </button>
-            </div>
+            </div>}
           </div>
         )}
 

@@ -92,6 +92,7 @@ interface PlayerDetailPanelProps {
   onClose: () => void;
   onUpdated: () => void;
   onRemove?: () => void;
+  isDemo?: boolean;
 }
 
 type Tab = "stats" | "edit" | "momentos";
@@ -104,6 +105,7 @@ export function PlayerDetailPanel({
   onClose,
   onUpdated,
   onRemove,
+  isDemo,
 }: PlayerDetailPanelProps) {
   const [tab, setTab] = useState<Tab>("stats");
   const [confirmRemove, setConfirmRemove] = useState(false);
@@ -253,7 +255,7 @@ export function PlayerDetailPanel({
           {([
             { key: "stats",    label: "Estatísticas" },
             ...(playerMomentos.length > 0 ? [{ key: "momentos", label: `Momentos (${playerMomentos.length})` }] : []),
-            { key: "edit",     label: "Editar Jogador" },
+            ...(!isDemo ? [{ key: "edit", label: "Editar Jogador" }] : []),
           ] as { key: Tab; label: string }[]).map(({ key, label }) => (
             <button
               key={key}
