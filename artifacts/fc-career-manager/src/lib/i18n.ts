@@ -3355,6 +3355,7 @@ export const DASHBOARD: Record<Lang, Record<string, string>> = {
     bgGenGenerating: "Gerando notícia em segundo plano...",
     bgGenDone: "Notícia publicada!",
     bgGenError: "Erro ao gerar notícia",
+    loadingCareer: "Carregando carreira...",
   },
   en: {
     // breadcrumb
@@ -3390,6 +3391,7 @@ export const DASHBOARD: Record<Lang, Record<string, string>> = {
     bgGenGenerating: "Generating news in the background...",
     bgGenDone: "News published!",
     bgGenError: "Error generating news",
+    loadingCareer: "Loading career...",
   },
 } satisfies Record<Lang, Record<string, string>>;
 
