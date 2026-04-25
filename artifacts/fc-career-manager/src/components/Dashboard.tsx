@@ -426,7 +426,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
   }, [dbSynced, isDemo]);
 
   useEffect(() => {
-    if (!dbSynced) return;
+    if (!dbSynced || isDemo) return;
     const seenPlan = getSeenPlan(career.id);
     if (!seenPlan) {
       // First time ever for this career
@@ -448,7 +448,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
       setSeenPlan(career.id, userPlan);
     }
     setShowMissions(true);
-  }, [dbSynced, career.id, userPlan]);
+  }, [dbSynced, isDemo, career.id, userPlan]);
 
   useEffect(() => {
     setFanMoodScore(getFanMood(activeSeasonId));
