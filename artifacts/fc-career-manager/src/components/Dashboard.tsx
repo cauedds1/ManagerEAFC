@@ -21,7 +21,7 @@ import { getTransferWindow, saveTransferWindow, type TransferWindowState } from 
 import { getRivals } from "@/lib/rivalsStorage";
 import { fetchPortals } from "@/lib/customPortalStorage";
 import { fetchPortalPhotos, type PortalPhotos } from "@/lib/portalPhotosStorage";
-import { addPost as addNewsPost, getPosts as getNoticiaPosts, generatePostId, generateCommentId } from "@/lib/noticiaStorage";
+import { addPost as addNewsPost, getPosts as getNoticiaPosts, getPostsEn as getNoticiaPostsEn, generatePostId, generateCommentId } from "@/lib/noticiaStorage";
 import { getFanMood, setFanMood, computeFanMoodDelta, getFanMoodLabel } from "@/lib/fanMoodStorage";
 import type { TransferRecord } from "@/types/transfer";
 import { getMatches, updateMatch } from "@/lib/matchStorage";
@@ -287,6 +287,14 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
   const [noticiasPosts, setNoticiasPosts] = useState(
     () => getNoticiaPosts(activeSeasonId)
   );
+
+  const tickerPosts = useMemo(() => {
+    if (lang === "en") {
+      const enPosts = getNoticiaPostsEn(activeSeasonId);
+      if (enPosts.length > 0) return enPosts;
+    }
+    return noticiasPosts;
+  }, [lang, noticiasPosts, activeSeasonId]);
 
   useEffect(() => { setImgLoaded(false); setImgError(false); }, [logoUrl]);
 
@@ -1867,7 +1875,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
         {activeTab === "painel" && noticiasPosts.length > 0 && (
           <div className="max-w-7xl mx-auto">
             <NewsTicker
-              posts={noticiasPosts}
+              posts={tickerPosts}
               portalPhotos={portalPhotos}
               customPortalPhotos={customPortalPhotos}
               onClickPost={(postId) => {
