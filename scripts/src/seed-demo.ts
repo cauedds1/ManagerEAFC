@@ -186,30 +186,57 @@ async function main() {
       createdAt: Date.now(),
     });
 
-    // Clone season_data
+    // Clone season_data (news: 8 most recent only)
     const founderSeasonData = await db.select().from(seasonDataTable).where(eq(seasonDataTable.seasonId, FOUNDER_SEASON_ID));
     console.log(`   Cloning ${founderSeasonData.length} season_data rows…`);
     for (const row of founderSeasonData) {
+      let valueJson = row.valueJson;
+      if (row.key === "news") {
+        try {
+          const posts = JSON.parse(row.valueJson) as unknown[];
+          const limited = posts.slice(-8);
+          valueJson = JSON.stringify(limited);
+          console.log(`   → Limiting news: ${posts.length} → ${limited.length} posts`);
+        } catch {}
+      }
       await db.insert(seasonDataTable).values({
         seasonId: demoSeasonId,
         key: row.key,
-        valueJson: row.valueJson,
+        valueJson,
         updatedAt: Date.now(),
       }).onConflictDoNothing();
     }
 
-    // Clone career_data
+    // Clone career_data (diretoria_members: Carl only; skip other conv_member-* keys)
     const founderCareerData = await db.select().from(careerDataTable).where(eq(careerDataTable.careerId, FOUNDER_CAREER_ID));
-    console.log(`   Cloning ${founderCareerData.length} career_data rows…`);
+    console.log(`   Cloning career_data rows (filtering)…`);
+    let cloned = 0;
+    let skipped = 0;
     for (const row of founderCareerData) {
+      // Skip conv threads for members other than Carl Monsoon
+      if (row.key.startsWith("conv_member-") && !row.key.startsWith(`conv_${CARL_MONSOON_ID}`)) {
+        skipped++;
+        continue;
+      }
+      let valueJson = row.valueJson;
+      // Filter diretoria_members to Carl Monsoon only
+      if (row.key === "diretoria_members") {
+        try {
+          const members = JSON.parse(row.valueJson) as Array<{ id: string }>;
+          const carlOnly = members.filter(m => m.id === CARL_MONSOON_ID);
+          valueJson = JSON.stringify(carlOnly);
+          console.log(`   → diretoria_members: ${members.length} → ${carlOnly.length} members`);
+        } catch {}
+      }
       await db.insert(careerDataTable).values({
         careerId: demoCareerId,
         key: row.key,
-        valueJson: row.valueJson,
+        valueJson,
         updatedAt: Date.now(),
       }).onConflictDoNothing();
+      cloned++;
     }
-
+    console.log(`   ✓ Cloned ${cloned} career_data rows, skipped ${skipped}`);
     console.log(`   ✓ Cloned career (id=${demoCareerId}, seasonId=${demoSeasonId})`);
   }
 

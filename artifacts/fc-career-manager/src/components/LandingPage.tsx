@@ -731,27 +731,31 @@ const DEMO_TABS: { tab: string; label: { pt: string; en: string }; icon: string 
 
 const DEMO_COPY = {
   pt: {
-    eyebrow:   "DEMO INTERATIVA",
-    title:     "Experimente sem cadastro",
-    sub:       "Carreira real do Watford FC na Championship — acesse cada seção e veja o app em ação.",
-    loadLabel: "Carregar demo",
-    loading:   "Carregando…",
-    notice:    "Modo somente leitura · Dados reais do fundador",
+    eyebrow:    "DEMO INTERATIVA",
+    title:      "Experimente sem cadastro",
+    sub:        "Carreira real do Watford FC na Championship — navegue por cada seção e veja o app em ação.",
+    loadLabel:  "Carregar demo",
+    loading:    "Iniciando demo…",
+    notice:     "Modo somente leitura · Dados reais do fundador",
+    signupCta:  "Pronto para começar sua própria carreira?",
+    signupBtn:  "Criar conta grátis",
   },
   en: {
-    eyebrow:   "INTERACTIVE DEMO",
-    title:     "Try it without signing up",
-    sub:       "Real Watford FC career in the Championship — explore every section and see the app in action.",
-    loadLabel: "Load demo",
-    loading:   "Loading…",
-    notice:    "Read-only mode · Founder's real data",
+    eyebrow:    "INTERACTIVE DEMO",
+    title:      "Try it without signing up",
+    sub:        "Real Watford FC career in the Championship — explore every section and see the app in action.",
+    loadLabel:  "Load demo",
+    loading:    "Starting demo…",
+    notice:     "Read-only mode · Founder's real data",
+    signupCta:  "Ready to start your own career?",
+    signupBtn:  "Create free account",
   },
 };
 
 /** Returns true when this page is itself loaded inside an iframe. */
 const isInsideIframe = typeof window !== "undefined" && window !== window.top;
 
-function InteractiveDemoSection({ lang }: { lang: Lang }) {
+function InteractiveDemoSection({ lang, onLogin }: { lang: Lang; onLogin: () => void }) {
   const c = DEMO_COPY[lang];
   const [activeTab, setActiveTab] = useState("painel");
   const [loaded,    setLoaded]    = useState(false);
@@ -810,32 +814,7 @@ function InteractiveDemoSection({ lang }: { lang: Lang }) {
           <h2 style={{ fontSize: "clamp(26px,4vw,40px)", fontWeight: 800, color: "#ffffff", lineHeight: 1.15, margin: "0 0 14px", letterSpacing: "-0.02em" }}>
             {c.title}
           </h2>
-          <p style={{ fontSize: "clamp(13px,1.6vw,16px)", color: "rgba(255,255,255,0.45)", maxWidth: 540, margin: "0 auto 28px" }}>{c.sub}</p>
-
-          {/* Tab buttons */}
-          <div style={{ display: "flex", justifyContent: "center", gap: 10, flexWrap: "wrap" }}>
-            {DEMO_TABS.map(({ tab, label, icon }) => {
-              const active = tab === activeTab;
-              return (
-                <button
-                  key={tab}
-                  onClick={() => handleTabClick(tab)}
-                  style={{
-                    display: "flex", alignItems: "center", gap: 6,
-                    padding: "9px 20px", borderRadius: 30,
-                    fontSize: 13, fontWeight: 700, cursor: "pointer",
-                    border: active ? "1px solid rgba(124,92,252,0.5)" : "1px solid rgba(255,255,255,0.1)",
-                    background: active ? "rgba(124,92,252,0.18)" : "rgba(255,255,255,0.04)",
-                    color: active ? "#c4b5fd" : "rgba(255,255,255,0.45)",
-                    transition: "all 0.2s ease",
-                  }}
-                >
-                  <span style={{ fontSize: 15 }}>{icon}</span>
-                  {label[lang]}
-                </button>
-              );
-            })}
-          </div>
+          <p style={{ fontSize: "clamp(13px,1.6vw,16px)", color: "rgba(255,255,255,0.45)", maxWidth: 540, margin: "0 auto 0" }}>{c.sub}</p>
         </div>
 
         {/* iframe wrapper */}
@@ -880,10 +859,25 @@ function InteractiveDemoSection({ lang }: { lang: Lang }) {
             ) : (
               <>
                 {!loaded && (
-                  <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2, background: "#09090f" }}>
-                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
-                      <div style={{ width: 36, height: 36, borderRadius: "50%", border: "3px solid rgba(124,92,252,0.8)", borderTopColor: "transparent", animation: "spin 0.8s linear infinite" }} />
-                      <span style={{ fontSize: 13, color: "rgba(255,255,255,0.4)" }}>{c.loading}</span>
+                  <div style={{ position: "absolute", inset: 0, zIndex: 2, background: "#09090f", padding: "20px 16px", overflow: "hidden" }}>
+                    <style>{`@keyframes shimmer-demo{0%{background-position:-600px 0}100%{background-position:600px 0}}`}</style>
+                    {[
+                      { w: "45%", h: 12, mb: 8 }, { w: "30%", h: 12, mb: 20 },
+                      { w: "100%", h: 60, mb: 10 }, { w: "100%", h: 60, mb: 20 },
+                      { w: "60%", h: 10, mb: 6 }, { w: "80%", h: 10, mb: 6 }, { w: "50%", h: 10, mb: 20 },
+                      { w: "100%", h: 100, mb: 0 },
+                    ].map((s, i) => (
+                      <div key={i} style={{
+                        width: s.w, height: s.h, borderRadius: 6, marginBottom: s.mb,
+                        background: "linear-gradient(90deg,rgba(255,255,255,0.04) 0%,rgba(255,255,255,0.09) 50%,rgba(255,255,255,0.04) 100%)",
+                        backgroundSize: "600px 100%",
+                        animation: `shimmer-demo 1.4s ease-in-out infinite`,
+                        animationDelay: `${i * 0.06}s`,
+                      }} />
+                    ))}
+                    <div style={{ position: "absolute", bottom: 16, left: "50%", transform: "translateX(-50%)", display: "flex", alignItems: "center", gap: 8 }}>
+                      <div style={{ width: 16, height: 16, borderRadius: "50%", border: "2px solid rgba(124,92,252,0.6)", borderTopColor: "transparent", animation: "spin 0.8s linear infinite" }} />
+                      <span style={{ fontSize: 12, color: "rgba(255,255,255,0.3)" }}>{c.loading}</span>
                     </div>
                   </div>
                 )}
@@ -907,9 +901,54 @@ function InteractiveDemoSection({ lang }: { lang: Lang }) {
           </div>
         </div>
 
+        {/* Tab buttons — below iframe */}
+        <div style={{ display: "flex", justifyContent: "center", gap: 10, flexWrap: "wrap", marginTop: 24 }}>
+          {DEMO_TABS.map(({ tab, label, icon }) => {
+            const active = tab === activeTab;
+            return (
+              <button
+                key={tab}
+                onClick={() => handleTabClick(tab)}
+                style={{
+                  display: "flex", alignItems: "center", gap: 6,
+                  padding: "9px 20px", borderRadius: 30,
+                  fontSize: 13, fontWeight: 700, cursor: "pointer",
+                  border: active ? "1px solid rgba(124,92,252,0.5)" : "1px solid rgba(255,255,255,0.1)",
+                  background: active ? "rgba(124,92,252,0.18)" : "rgba(255,255,255,0.04)",
+                  color: active ? "#c4b5fd" : "rgba(255,255,255,0.45)",
+                  transition: "all 0.2s ease",
+                }}
+              >
+                <span style={{ fontSize: 15 }}>{icon}</span>
+                {label[lang]}
+              </button>
+            );
+          })}
+        </div>
+
         {/* Notice */}
-        <div style={{ textAlign: "center", marginTop: 16 }}>
+        <div style={{ textAlign: "center", marginTop: 14 }}>
           <span style={{ fontSize: 11, color: "rgba(255,255,255,0.2)", letterSpacing: "0.05em" }}>{c.notice}</span>
+        </div>
+
+        {/* Signup CTA */}
+        <div style={{ textAlign: "center", marginTop: 36 }}>
+          <p style={{ fontSize: 15, color: "rgba(255,255,255,0.55)", marginBottom: 16 }}>{c.signupCta}</p>
+          <button
+            onClick={onLogin}
+            style={{
+              padding: "13px 36px", borderRadius: 14, fontSize: 14, fontWeight: 700,
+              color: "#fff", cursor: "pointer",
+              background: "linear-gradient(135deg,#7c5cfc,#5b3fd1)",
+              border: "none",
+              boxShadow: "0 8px 32px rgba(124,92,252,0.35)",
+              transition: "all 0.2s ease",
+            }}
+            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 40px rgba(124,92,252,0.55), 0 8px 32px rgba(124,92,252,0.35)"; (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-2px)"; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 8px 32px rgba(124,92,252,0.35)"; (e.currentTarget as HTMLButtonElement).style.transform = "none"; }}
+          >
+            {c.signupBtn}
+          </button>
         </div>
       </div>
     </section>
@@ -1246,7 +1285,7 @@ export function LandingPage({ onStart, onLogin, onStartWithPlan, lang, setLang }
       </section>
 
       {/* ════════════════ INTERACTIVE DEMO ════════════════ */}
-      <InteractiveDemoSection lang={lang} />
+      <InteractiveDemoSection lang={lang} onLogin={onLogin} />
 
       {/* ════════════════ LEAGUE MARQUEE ════════════════ */}
       <div style={{ background: "#0d0820", borderTop: "1px solid rgba(245,158,11,0.2)", borderBottom: "1px solid rgba(245,158,11,0.2)", padding: "14px 0", overflow: "hidden", position: "relative" }}>

@@ -708,6 +708,21 @@ export default function App() {
       }
     }
 
+    // Restore demo mode when session token has demo:true (handles page reloads)
+    const sessionToken = sessionStorage.getItem(AUTH_TOKEN_KEY);
+    if (sessionToken && !sessionStorage.getItem(IMPERSONATION_USER_KEY)) {
+      const demoPayload = parseJwtPayload(sessionToken);
+      if (demoPayload?.demo === true) {
+        setIsDemo(true);
+        setAuthUser({
+          id: typeof demoPayload.id === "number" ? demoPayload.id : 0,
+          email: typeof demoPayload.email === "string" ? demoPayload.email : "demo@fc-career-manager.app",
+          name: typeof demoPayload.name === "string" ? demoPayload.name : "Demo Coach",
+          plan: (typeof demoPayload.plan === "string" ? demoPayload.plan : "pro") as "free" | "pro" | "ultra",
+        });
+      }
+    }
+
     const token = getEffectiveToken();
     if (!token) {
       const localCareers = listCareers();

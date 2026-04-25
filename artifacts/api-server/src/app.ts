@@ -30,7 +30,7 @@ function blockImpersonatedWrites(req: Request, res: Response, next: NextFunction
       return;
     }
     if (payload.demo && req.method === "DELETE") {
-      res.status(403).json({ error: "Operação não permitida em modo demo" });
+      res.status(204).end();
       return;
     }
   } catch {

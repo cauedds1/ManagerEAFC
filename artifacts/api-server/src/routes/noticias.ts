@@ -9,6 +9,9 @@ import { getPlanLimits, getTodayDateString } from "../lib/planLimits";
 
 const router = Router();
 
+const demoRateLimit = new Map<number, { count: number; resetAt: number }>();
+const DEMO_AI_LIMIT_PER_HOUR = 3;
+
 interface RecentPostSummary {
   title?: string;
   category: string;
@@ -273,6 +276,20 @@ router.post("/noticias/generate", requireAuth, async (req: AuthRequest, res) => 
   const userId = req.user!.id;
   const [dbUser] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
   if (!dbUser) { res.status(401).json({ error: "Usuário não encontrado" }); return; }
+
+  if (req.demo) {
+    const now = Date.now();
+    let entry = demoRateLimit.get(userId);
+    if (!entry || now > entry.resetAt) {
+      entry = { count: 0, resetAt: now + 3_600_000 };
+    }
+    if (entry.count >= DEMO_AI_LIMIT_PER_HOUR) {
+      res.status(403).json({ error: "Limite da demo atingido (3 gerações/hora)", code: "DEMO_LIMIT_REACHED" });
+      return;
+    }
+    entry.count += 1;
+    demoRateLimit.set(userId, entry);
+  }
 
   const limits = getPlanLimits(dbUser.plan);
   const today = getTodayDateString();
