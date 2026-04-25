@@ -265,7 +265,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
   const [showFinalizeModal, setShowFinalizeModal] = useState(false);
   const [finalizeTargetSeasonId, setFinalizeTargetSeasonId] = useState<string | null>(null);
   const [dbSynced, setDbSynced] = useState(false);
-  const isReadOnly = seasons.length > 0 && seasons.find((s) => s.id === activeSeasonId)?.isActive === false;
+  const isReadOnly = isDemo || (seasons.length > 0 && seasons.find((s) => s.id === activeSeasonId)?.isActive === false);
 
   const [squad, setSquad] = useState<SquadResult | null>(null);
   const [squadLoading, setSquadLoading] = useState(true);
@@ -1614,35 +1614,41 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
           <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-5">
             <div className="flex items-center justify-between gap-2 mb-3 sm:mb-4">
               <div className="flex items-center gap-2 min-w-0">
-                <button
-                  onClick={onGoToCareers}
-                  className="flex items-center gap-1.5 text-white/40 hover:text-white/80 text-xs font-medium transition-colors duration-200 flex-shrink-0"
-                >
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-                  </svg>
-                  {t.breadcrumb}
-                </button>
-                <span className="text-white/15 text-xs">/</span>
+                {!isDemo && (
+                  <>
+                    <button
+                      onClick={onGoToCareers}
+                      className="flex items-center gap-1.5 text-white/40 hover:text-white/80 text-xs font-medium transition-colors duration-200 flex-shrink-0"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                      </svg>
+                      {t.breadcrumb}
+                    </button>
+                    <span className="text-white/15 text-xs">/</span>
+                  </>
+                )}
                 <div className="flex items-center gap-1.5 min-w-0">
                   <CoachAvatar career={career} />
                   <span className="text-white/50 text-xs font-medium truncate max-w-[100px] sm:max-w-32">{career.coach.name}</span>
                 </div>
               </div>
 
-              <div className="flex items-center gap-1.5 flex-shrink-0">
-                <button
-                  onClick={() => { if (!isDemo) setActiveTab("configuracoes"); }}
-                  className="flex items-center justify-center w-11 h-11 rounded-xl text-white/50 hover:text-white transition-all duration-200 glass glass-hover"
-                  title={t.settingsTooltip}
-                  style={isDemo ? { opacity: 0.3, cursor: "not-allowed" } : activeTab === "configuracoes" ? { color: "var(--club-primary)", background: "rgba(var(--club-primary-rgb),0.1)" } : {}}
-                >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                </button>
-              </div>
+              {!isDemo && (
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  <button
+                    onClick={() => setActiveTab("configuracoes")}
+                    className="flex items-center justify-center w-11 h-11 rounded-xl text-white/50 hover:text-white transition-all duration-200 glass glass-hover"
+                    title={t.settingsTooltip}
+                    style={activeTab === "configuracoes" ? { color: "var(--club-primary)", background: "rgba(var(--club-primary-rgb),0.1)" } : {}}
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
@@ -1704,7 +1710,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
                     className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-bold text-sm text-white hover:bg-white/10 transition-colors duration-200 group glass"
                   >
                     {displayLabel}
-                    {isReadOnly && (
+                    {isReadOnly && !isDemo && (
                       <span className="text-xs font-normal text-white/40 px-1.5 py-0.5 rounded" style={{ background: "rgba(255,255,255,0.06)" }}>
                         {t.readOnlyBadge}
                       </span>
@@ -1714,15 +1720,17 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
                     </svg>
                   </button>
                 </div>
-                <button
-                  onClick={onChangeClub}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl font-semibold text-xs text-white transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] glass glass-hover"
-                >
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                  </svg>
-                  {t.swapClub}
-                </button>
+                {!isDemo && (
+                  <button
+                    onClick={onChangeClub}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl font-semibold text-xs text-white transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] glass glass-hover"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                    </svg>
+                    {t.swapClub}
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -1832,7 +1840,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
           </div>
         </div>
 
-        {isReadOnly && (
+        {isReadOnly && !isDemo && (
           <div
             className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4"
           >
