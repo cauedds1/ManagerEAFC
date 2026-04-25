@@ -3,6 +3,7 @@ import cors from "cors";
 import helmet from "helmet";
 import pinoHttp from "pino-http";
 import path from "path";
+import { fileURLToPath } from "url";
 import { existsSync } from "fs";
 import jwt from "jsonwebtoken";
 import router from "./routes";
@@ -10,6 +11,9 @@ import { logger } from "./lib/logger";
 import { WebhookHandlers } from "./lib/webhookHandlers";
 import { handleStripeEvent } from "./lib/stripeWebhook";
 import type Stripe from "stripe";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const JWT_SECRET = process.env.JWT_SECRET ?? "fc-career-dev-secret-change-in-production";
 const WRITE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
@@ -32,82 +36,77 @@ function blockImpersonatedWrites(req: Request, res: Response, next: NextFunction
 
 const app: Express = express();
 
-const isProd = process.env.NODE_ENV === "production";
+app.use(
+  helmet({
+    contentSecurityPolicy: false,
+    crossOriginEmbedderPolicy: false,
+    crossOriginOpenerPolicy: false,
+    crossOriginResourcePolicy: false,
+  }),
+);
 
-app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      ...helmet.contentSecurityPolicy.getDefaultDirectives(),
-      "img-src": ["'self'", "data:", "blob:", "https:"],
-      "media-src": ["'self'", "blob:", "https:"],
-      "connect-src": ["'self'", "https:", "blob:"],
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      callback(null, true);
     },
-  },
-}));
-
-const allowedOrigins = isProd
-  ? [process.env.FRONTEND_URL, process.env.ADMIN_URL].filter(Boolean) as string[]
-  : true;
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Admin-Secret"],
+  }),
+);
 
 app.use(
   pinoHttp({
     logger,
-    serializers: {
-      req(req) {
-        return {
-          id: req.id,
-          method: req.method,
-          url: req.url?.split("?")[0],
-        };
-      },
-      res(res) {
-        return {
-          statusCode: res.statusCode,
-        };
-      },
+    customLogLevel: (_req, res) => {
+      if (res.statusCode >= 500) return "error";
+      if (res.statusCode >= 400) return "warn";
+      return "silent";
     },
   }),
 );
-app.use(cors({ origin: allowedOrigins, credentials: true }));
 
 app.post(
   "/api/stripe/webhook",
   express.raw({ type: "application/json" }),
-  async (req, res) => {
-    const signature = req.headers["stripe-signature"];
-    if (!signature) {
-      return res.status(400).json({ error: "Missing stripe-signature" });
+  async (req: Request, res: Response) => {
+    const sig = req.headers["stripe-signature"];
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+    if (!webhookSecret || !sig) {
+      res.status(400).json({ error: "Missing webhook secret or signature" });
+      return;
     }
 
-    const sig = Array.isArray(signature) ? signature[0] : signature;
-
-    if (!Buffer.isBuffer(req.body)) {
-      logger.error("Webhook body is not a Buffer — express.json() ran before webhook route");
-      return res.status(500).json({ error: "Webhook processing error" });
+    let event: Stripe.Event;
+    try {
+      const { getStripeSync } = await import("./lib/stripeClient");
+      const stripeSync = await getStripeSync();
+      if (!stripeSync) {
+        res.status(503).json({ error: "Stripe not initialized" });
+        return;
+      }
+      event = stripeSync.stripe.webhooks.constructEvent(
+        req.body as Buffer,
+        sig,
+        webhookSecret,
+      );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Unknown error";
+      logger.error({ err }, `Webhook signature verification failed: ${msg}`);
+      res.status(400).json({ error: `Webhook Error: ${msg}` });
+      return;
     }
 
     try {
-      let event: Stripe.Event;
-
-      const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-      if (webhookSecret) {
-        const { getUncachableStripeClient } = await import("./lib/stripeClient");
-        const stripe = await getUncachableStripeClient();
-        event = stripe.webhooks.constructEvent(req.body as Buffer, sig, webhookSecret);
-      } else {
-        await WebhookHandlers.processWebhook(req.body as Buffer, sig);
-        event = JSON.parse(req.body.toString()) as Stripe.Event;
-      }
-
       await handleStripeEvent(event);
-
-      return res.status(200).json({ received: true });
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      logger.error({ err }, "Stripe webhook error");
-      return res.status(400).json({ error: msg });
+      res.json({ received: true });
+    } catch (err) {
+      logger.error({ err }, "Stripe webhook handler error");
+      res.status(500).json({ error: "Internal server error" });
     }
-  }
+  },
 );
 
 app.use(express.json({ limit: "10mb" }));
