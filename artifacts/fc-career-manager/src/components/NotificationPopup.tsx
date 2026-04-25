@@ -19,32 +19,46 @@ export function NotificationPopup({ notification, onDismiss }: NotificationPopup
   const [submitting, setSubmitting] = useState(false);
   const [imgError, setImgError] = useState(false);
 
-  async function markRead(responseText?: string) {
+  const [closing, setClosing] = useState(false);
+  const [closeError, setCloseError] = useState("");
+
+  async function markRead(responseText?: string): Promise<boolean> {
     try {
       const headers = getAiHeaders();
-      await fetch(`/api/notifications/${notification.id}/read`, {
+      const res = await fetch(`/api/notifications/${notification.id}/read`, {
         method: "POST",
         headers,
         body: JSON.stringify({ response: responseText ?? "" }),
       });
+      return res.ok;
     } catch {
+      return false;
     }
   }
 
   async function handleClose() {
-    await markRead();
+    setClosing(true);
+    setCloseError("");
+    const ok = await markRead();
+    setClosing(false);
+    if (!ok) {
+      setCloseError("Erro ao registrar leitura. Tente novamente.");
+      return;
+    }
     onDismiss();
   }
 
   async function handleSubmit() {
     if (!response.trim()) return;
     setSubmitting(true);
-    try {
-      await markRead(response.trim());
-      onDismiss();
-    } finally {
-      setSubmitting(false);
+    setCloseError("");
+    const ok = await markRead(response.trim());
+    setSubmitting(false);
+    if (!ok) {
+      setCloseError("Erro ao enviar resposta. Tente novamente.");
+      return;
     }
+    onDismiss();
   }
 
   return (
@@ -115,34 +129,49 @@ export function NotificationPopup({ notification, onDismiss }: NotificationPopup
             </div>
           )}
 
+          {/* Error message */}
+          {closeError && (
+            <div
+              className="text-xs px-3 py-2 rounded-lg"
+              style={{
+                background: "rgba(239,68,68,0.12)",
+                color: "#fca5a5",
+                border: "1px solid rgba(239,68,68,0.25)",
+              }}
+            >
+              {closeError}
+            </div>
+          )}
+
           {/* Buttons */}
           <div className="flex gap-3 pt-1">
             <button
               onClick={handleClose}
-              disabled={submitting}
+              disabled={submitting || closing}
               className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-80"
               style={{
                 background: "rgba(255,255,255,0.07)",
                 color: "rgba(255,255,255,0.5)",
                 border: "1px solid rgba(255,255,255,0.1)",
+                cursor: submitting || closing ? "not-allowed" : "pointer",
               }}
             >
-              Fechar
+              {closing ? "Fechando..." : "Fechar"}
             </button>
             {notification.requiresResponse && (
               <button
                 onClick={handleSubmit}
-                disabled={submitting || !response.trim()}
+                disabled={submitting || closing || !response.trim()}
                 className="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all"
                 style={{
                   background:
-                    submitting || !response.trim()
+                    submitting || closing || !response.trim()
                       ? "rgba(139,92,246,0.15)"
                       : "linear-gradient(135deg, #8b5cf6, #6d28d9)",
-                  color: submitting || !response.trim() ? "rgba(255,255,255,0.3)" : "white",
-                  cursor: submitting || !response.trim() ? "not-allowed" : "pointer",
+                  color: submitting || closing || !response.trim() ? "rgba(255,255,255,0.3)" : "white",
+                  cursor: submitting || closing || !response.trim() ? "not-allowed" : "pointer",
                   boxShadow:
-                    submitting || !response.trim() ? "none" : "0 4px 16px rgba(139,92,246,0.35)",
+                    submitting || closing || !response.trim() ? "none" : "0 4px 16px rgba(139,92,246,0.35)",
                 }}
               >
                 {submitting ? "Enviando..." : "Enviar"}

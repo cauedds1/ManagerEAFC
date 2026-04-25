@@ -581,6 +581,23 @@ router.post("/notifications/:id/read", requireAuth, async (req: AuthRequest, res
     const userId = req.user!.id;
     const { response } = req.body as { response?: string };
 
+    // Authz: verify the notification is targeted at this user
+    const eligibleRows = await db.execute(sql`
+      SELECT 1 FROM notifications n
+      WHERE n.id = ${notifId}
+        AND (
+          n.target_all = true
+          OR EXISTS (
+            SELECT 1 FROM notification_targets nt
+            WHERE nt.notification_id = n.id AND nt.user_id = ${userId}
+          )
+        )
+      LIMIT 1
+    `);
+    if (eligibleRows.rows.length === 0) {
+      return res.status(403).json({ error: "Notificação não encontrada ou não destinada a você" });
+    }
+
     // Upsert read record
     await db.execute(sql`
       INSERT INTO notification_reads (notification_id, user_id, responded_at)
