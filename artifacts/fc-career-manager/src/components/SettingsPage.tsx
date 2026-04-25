@@ -1644,6 +1644,18 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
                         ? "Clique no botão abaixo para instalar o app direto na tela inicial do seu Android — sem precisar da Play Store."
                         : "Click the button below to install the app directly on your Android home screen — no Play Store needed."}
                     </p>
+                    {!pwa.canInstall && !pwa.installing && (
+                      <div className="flex items-start gap-2.5 px-3 py-2.5 rounded-xl" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                        <svg className="w-4 h-4 flex-shrink-0 mt-0.5 text-white/30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <p className="text-white/40 text-xs leading-relaxed">
+                          {lang === "pt"
+                            ? "O navegador ainda não liberou a instalação. Certifique-se de usar o Chrome e navegar pelo site alguns instantes — o botão será habilitado automaticamente."
+                            : "The browser hasn't enabled installation yet. Make sure you're using Chrome and have browsed the site for a moment — the button will enable automatically."}
+                        </p>
+                      </div>
+                    )}
                     <button
                       onClick={() => void pwa.install()}
                       disabled={pwa.installing || !pwa.canInstall}
