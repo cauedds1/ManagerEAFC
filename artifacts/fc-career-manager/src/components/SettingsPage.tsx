@@ -35,7 +35,7 @@ interface SettingsPageProps {
 }
 
 type SyncState = "idle" | "running" | "done" | "error";
-type Section = "api" | "portais" | "ia" | "temporada" | "idioma" | "suporte";
+type Section = "api" | "portais" | "ia" | "temporada" | "idioma" | "suporte" | "convites";
 
 interface SeedProgress {
   processed: number;
@@ -98,6 +98,14 @@ const NAV_ITEMS: { id: Section; icon: React.ReactNode }[] = [
     icon: (
       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" />
+      </svg>
+    ),
+  },
+  {
+    id: "convites",
+    icon: (
+      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
       </svg>
     ),
   },
@@ -366,6 +374,7 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
     ia:        t.navIa,
     idioma:    t.navIdioma,
     suporte:   lang === "pt" ? "Suporte" : "Support",
+    convites:  lang === "pt" ? "Convites" : "Referrals",
   };
   const resolvedPlan = userPlan ?? getUserPlan();
   const planLimits = getPlanLimits(resolvedPlan);
@@ -446,6 +455,41 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
     } catch {}
     finally { setExportState("idle"); }
   }, [careerId]);
+
+  /* ── Referral link ── */
+  const [referralLink, setReferralLink] = useState<{ code: string; url: string } | null>(null);
+  const [referralLoading, setReferralLoading] = useState(false);
+  const [referralCopied, setReferralCopied] = useState(false);
+
+  const fetchReferralLink = useCallback(async () => {
+    setReferralLoading(true);
+    try {
+      const token = getEffectiveToken();
+      const res = await fetch("/api/referrals/my-link", {
+        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      });
+      if (res.ok) {
+        const data = await res.json() as { code: string; url: string };
+        setReferralLink(data);
+      }
+    } catch {}
+    finally { setReferralLoading(false); }
+  }, []);
+
+  useEffect(() => {
+    if (section === "convites" && !referralLink) {
+      void fetchReferralLink();
+    }
+  }, [section, referralLink, fetchReferralLink]);
+
+  const handleCopyReferralLink = async () => {
+    if (!referralLink) return;
+    try {
+      await navigator.clipboard.writeText(referralLink.url);
+      setReferralCopied(true);
+      setTimeout(() => setReferralCopied(false), 2500);
+    } catch {}
+  };
 
   /* ── Bug report ── */
   const [showBugModal, setShowBugModal] = useState(false);
@@ -1447,6 +1491,118 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
               </SectionCard>
             </div>
           )}
+
+          {section === "convites" && (
+            <div className="flex flex-col gap-5">
+              <SectionCard
+                title={lang === "pt" ? "Seu Link de Convite" : "Your Referral Link"}
+                subtitle={lang === "pt"
+                  ? "Compartilhe esse link. Quando um amigo assinar um plano pago, o convite aparece no painel do admin para recompensa manual."
+                  : "Share this link. When a friend subscribes to a paid plan, the referral appears in the admin panel for a manual reward."}
+              >
+                {referralLoading ? (
+                  <div className="flex items-center gap-2 text-white/40 text-sm">
+                    <div className="w-4 h-4 border-2 border-white/20 border-t-white/40 rounded-full animate-spin" />
+                    {lang === "pt" ? "Carregando..." : "Loading..."}
+                  </div>
+                ) : referralLink ? (
+                  <div className="flex flex-col gap-3">
+                    <div
+                      className="flex items-center gap-2 px-4 py-3 rounded-xl overflow-hidden"
+                      style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)" }}
+                    >
+                      <p className="flex-1 text-white/70 text-xs font-mono truncate">{referralLink.url}</p>
+                      <button
+                        onClick={handleCopyReferralLink}
+                        className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 active:scale-95"
+                        style={{
+                          background: referralCopied ? "rgba(34,197,94,0.15)" : "rgba(255,255,255,0.08)",
+                          color: referralCopied ? "#4ade80" : "rgba(255,255,255,0.7)",
+                          border: referralCopied ? "1px solid rgba(74,222,128,0.3)" : "1px solid rgba(255,255,255,0.12)",
+                        }}
+                      >
+                        {referralCopied ? (
+                          <>
+                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                            </svg>
+                            {lang === "pt" ? "Copiado!" : "Copied!"}
+                          </>
+                        ) : (
+                          <>
+                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                            </svg>
+                            {lang === "pt" ? "Copiar" : "Copy"}
+                          </>
+                        )}
+                      </button>
+                    </div>
+                    <p className="text-white/30 text-xs">
+                      {lang === "pt"
+                        ? `Código: ${referralLink.code} — compatível com cadastro direto e via checkout.`
+                        : `Code: ${referralLink.code} — works for both direct signup and checkout.`}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    <p className="text-white/35 text-sm">{lang === "pt" ? "Não foi possível carregar o link." : "Could not load the link."}</p>
+                    <button
+                      onClick={() => void fetchReferralLink()}
+                      className="self-start px-4 py-2 rounded-xl text-xs font-semibold transition-all hover:opacity-80"
+                      style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.1)" }}
+                    >
+                      {lang === "pt" ? "Tentar novamente" : "Retry"}
+                    </button>
+                  </div>
+                )}
+              </SectionCard>
+
+              <SectionCard
+                title={lang === "pt" ? "Como funciona?" : "How does it work?"}
+              >
+                <div className="flex flex-col gap-4">
+                  {([
+                    {
+                      n: "1",
+                      q: lang === "pt" ? "Compartilhe o link" : "Share your link",
+                      a: lang === "pt"
+                        ? "Envie o link de convite para amigos que jogam EA Sports FC no modo carreira."
+                        : "Send your referral link to friends who play EA Sports FC career mode.",
+                    },
+                    {
+                      n: "2",
+                      q: lang === "pt" ? "Amigo assina um plano pago" : "Friend subscribes to a paid plan",
+                      a: lang === "pt"
+                        ? "Quando seu amigo se cadastrar via seu link e assinar o plano PRO ou Ultra, o convite é registrado."
+                        : "When your friend signs up via your link and subscribes to the PRO or Ultra plan, the referral is logged.",
+                    },
+                    {
+                      n: "3",
+                      q: lang === "pt" ? "Você é recompensado manualmente" : "You get rewarded manually",
+                      a: lang === "pt"
+                        ? "O admin verifica o convite no painel e aplica a recompensa (ex: 20 dias de Ultra grátis) diretamente na sua conta."
+                        : "The admin checks the referral in the panel and applies the reward (e.g. 20 free days of Ultra) directly to your account.",
+                    },
+                  ] as { n: string; q: string; a: string }[]).map(({ n, q, a }) => (
+                    <div key={n} className="flex gap-3">
+                      <div
+                        className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold"
+                        style={{ background: "rgba(var(--club-primary-rgb),0.15)", color: "var(--club-primary)", border: "1px solid rgba(var(--club-primary-rgb),0.25)" }}
+                      >
+                        {n}
+                      </div>
+                      <div>
+                        <p className="text-white/80 text-sm font-semibold leading-tight">{q}</p>
+                        <p className="text-white/40 text-xs mt-0.5 leading-relaxed">{a}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </SectionCard>
+            </div>
+          )}
+
         </div>
 
       </div>

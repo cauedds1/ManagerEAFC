@@ -93,6 +93,17 @@ export const usersTable = pgTable("users", {
   aiUsageResetDate: text("ai_usage_reset_date").notNull().default(""),
   stripeCustomerId: text("stripe_customer_id"),
   lastLoginAt: bigint("last_login_at", { mode: "number" }),
+  referralCode: text("referral_code").unique(),
+});
+
+export const referralsTable = pgTable("referrals", {
+  id: serial("id").primaryKey(),
+  referrerId: integer("referrer_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  referredId: integer("referred_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  referredPlan: text("referred_plan").notNull(),
+  status: text("status").notNull().default("pending"),
+  notes: text("notes"),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
 });
 
 export const customPortalsTable = pgTable("custom_portals", {

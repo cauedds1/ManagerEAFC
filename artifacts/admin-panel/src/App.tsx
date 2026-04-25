@@ -34,7 +34,7 @@ async function apiFetch<T>(path: string, opts: RequestInit = {}): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-type Tab = "overview" | "users" | "bug-reports" | "career-recovery" | "notifications";
+type Tab = "overview" | "users" | "bug-reports" | "career-recovery" | "notifications" | "referrals";
 
 interface Stats {
   users: { total: number; free: number; pro: number; ultra: number };
@@ -102,6 +102,20 @@ interface BugReport {
   description: string;
   page: string;
   status: string;
+  createdAt: number;
+}
+
+interface Referral {
+  id: number;
+  referrerId: number;
+  referrerEmail: string | null;
+  referrerName: string | null;
+  referredId: number | null;
+  referredEmail: string | null;
+  referredName: string | null;
+  referredPlan: string | null;
+  status: string;
+  notes: string | null;
   createdAt: number;
 }
 
@@ -1454,6 +1468,143 @@ function NotificationsTab() {
   );
 }
 
+function ReferralsTab() {
+  const qc = useQueryClient();
+  const [page] = useState(1);
+  const limit = 30;
+
+  const { data, isLoading } = useQuery<{ referrals: Referral[]; total: number }>({
+    queryKey: ["admin-referrals", page],
+    queryFn: () => apiFetch(`/admin-panel/referrals?page=${page}&limit=${limit}`),
+  });
+
+  const rewardMutation = useMutation({
+    mutationFn: ({ id, notes }: { id: number; notes: string }) =>
+      apiFetch(`/admin-panel/referrals/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ status: "rewarded", notes }),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-referrals"] }),
+  });
+
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editNotes, setEditNotes] = useState("");
+
+  const statusBadge = (status: string) => {
+    if (status === "rewarded") {
+      return (
+        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase" style={{ background: "rgba(74,222,128,0.15)", color: "#4ade80", border: "1px solid rgba(74,222,128,0.3)" }}>
+          Recompensado
+        </span>
+      );
+    }
+    return (
+      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase" style={{ background: "rgba(251,191,36,0.12)", color: "#fbbf24", border: "1px solid rgba(251,191,36,0.25)" }}>
+        Pendente
+      </span>
+    );
+  };
+
+  const referrals = data?.referrals ?? [];
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-xl font-bold text-white">Convites (Referrals)</h2>
+        <p className="text-white/40 text-sm mt-0.5">
+          Convites registrados — marque como recompensado após aplicar o benefício manualmente.
+        </p>
+      </div>
+
+      {isLoading ? (
+        <div className="text-white/40 text-sm">Carregando...</div>
+      ) : referrals.length === 0 ? (
+        <div className="rounded-xl px-6 py-8 text-center" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)" }}>
+          <p className="text-white/30 text-sm">Nenhum convite registrado ainda.</p>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-3">
+          {referrals.map((r) => (
+            <div
+              key={r.id}
+              className="rounded-xl px-5 py-4 flex flex-col gap-3"
+              style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)" }}
+            >
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div className="flex flex-col gap-0.5">
+                  <p className="text-white text-sm font-semibold">
+                    <span className="text-white/40 font-normal">De: </span>
+                    {r.referrerEmail ?? `ID ${r.referrerId}`}
+                    {r.referrerName ? <span className="text-white/50 font-normal ml-1">({r.referrerName})</span> : null}
+                  </p>
+                  <p className="text-white/60 text-xs">
+                    <span className="text-white/30">Para: </span>
+                    {r.referredEmail ?? (r.referredId ? `ID ${r.referredId}` : "—")}
+                    {r.referredName ? <span className="text-white/35 ml-1">({r.referredName})</span> : null}
+                    {r.referredPlan ? <span className="ml-2 font-semibold text-white/50">[{r.referredPlan.toUpperCase()}]</span> : null}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  {statusBadge(r.status)}
+                  <span className="text-white/25 text-xs">{formatDate(r.createdAt)}</span>
+                </div>
+              </div>
+
+              {r.notes && (
+                <p className="text-white/40 text-xs italic">Nota: {r.notes}</p>
+              )}
+
+              {r.status === "pending" && (
+                editingId === r.id ? (
+                  <div className="flex flex-col gap-2">
+                    <input
+                      type="text"
+                      placeholder="Nota (ex: 20 dias Ultra adicionados)"
+                      value={editNotes}
+                      onChange={(e) => setEditNotes(e.target.value)}
+                      className="w-full px-3 py-2 rounded-lg text-white text-xs focus:outline-none placeholder:text-white/20"
+                      style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          rewardMutation.mutate({ id: r.id, notes: editNotes.trim() });
+                          setEditingId(null);
+                          setEditNotes("");
+                        }}
+                        disabled={rewardMutation.isPending}
+                        className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all active:scale-95"
+                        style={{ background: "rgba(74,222,128,0.2)", color: "#4ade80", border: "1px solid rgba(74,222,128,0.3)" }}
+                      >
+                        {rewardMutation.isPending ? "Salvando..." : "Confirmar recompensa"}
+                      </button>
+                      <button
+                        onClick={() => { setEditingId(null); setEditNotes(""); }}
+                        className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
+                        style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.4)" }}
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => { setEditingId(r.id); setEditNotes(r.notes ?? ""); }}
+                    className="self-start px-3 py-1.5 rounded-lg text-xs font-bold transition-all active:scale-95"
+                    style={{ background: "rgba(74,222,128,0.1)", color: "#4ade80", border: "1px solid rgba(74,222,128,0.2)" }}
+                  >
+                    Marcar como recompensado
+                  </button>
+                )
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   {
     id: "overview",
@@ -1497,6 +1648,15 @@ const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
     icon: (
       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+      </svg>
+    ),
+  },
+  {
+    id: "referrals",
+    label: "Convites",
+    icon: (
+      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
       </svg>
     ),
   },
@@ -1679,6 +1839,7 @@ function AdminApp() {
           {tab === "bug-reports" && <BugReportsTab />}
           {tab === "career-recovery" && <CareerRecoveryTab />}
           {tab === "notifications" && <NotificationsTab />}
+          {tab === "referrals" && <ReferralsTab />}
         </main>
       </div>
     </div>

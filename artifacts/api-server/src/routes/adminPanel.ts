@@ -1,6 +1,6 @@
 import { Router } from "express";
 import jwt from "jsonwebtoken";
-import { db, usersTable, careersTable, seasonsTable, bugReportsTable, notificationsTable, notificationTargetsTable, notificationReadsTable } from "@workspace/db";
+import { db, usersTable, careersTable, seasonsTable, bugReportsTable, notificationsTable, notificationTargetsTable, notificationReadsTable, referralsTable } from "@workspace/db";
 import { eq, sql, desc, count, sum } from "drizzle-orm";
 import { requireAuth, type AuthRequest } from "../middleware/auth";
 import type { Request, Response } from "express";
@@ -419,6 +419,84 @@ router.post("/admin-panel/recover-career", async (req: Request, res: Response) =
   } catch (err) {
     console.error("POST /admin-panel/recover-career proxy error:", err);
     return res.status(500).json({ error: "Erro interno ao encaminhar pedido de recuperação" });
+  }
+});
+
+// ─── Admin: Referrals ────────────────────────────────────────────────────────
+
+// GET /api/admin-panel/referrals?page=1&limit=20&status=pending
+router.get("/admin-panel/referrals", async (req: Request, res: Response) => {
+  if (!validateAdminToken(req, res)) return;
+  try {
+    const page = Math.max(1, Number(req.query["page"] ?? 1));
+    const limit = Math.min(100, Math.max(1, Number(req.query["limit"] ?? 20)));
+    const offset = (page - 1) * limit;
+    const statusFilter = req.query["status"] as string | undefined;
+
+    const rows = await db.execute(sql`
+      SELECT
+        r.id,
+        r.referred_plan as "referredPlan",
+        r.status,
+        r.notes,
+        r.created_at as "createdAt",
+        rr.id as "referrerId",
+        rr.name as "referrerName",
+        rr.email as "referrerEmail",
+        rd.id as "referredId",
+        rd.name as "referredName",
+        rd.email as "referredEmail",
+        rd.plan as "referredCurrentPlan"
+      FROM referrals r
+      JOIN users rr ON rr.id = r.referrer_id
+      JOIN users rd ON rd.id = r.referred_id
+      ${statusFilter ? sql`WHERE r.status = ${statusFilter}` : sql``}
+      ORDER BY r.created_at DESC
+      LIMIT ${limit} OFFSET ${offset}
+    `);
+
+    const referrals = rows.rows.map((r: Record<string, unknown>) => ({
+      id: Number(r.id),
+      referredPlan: r.referredPlan,
+      status: r.status,
+      notes: r.notes ?? null,
+      createdAt: Number(r.createdAt),
+      referrer: { id: Number(r.referrerId), name: r.referrerName, email: r.referrerEmail },
+      referred: { id: Number(r.referredId), name: r.referredName, email: r.referredEmail, currentPlan: r.referredCurrentPlan },
+    }));
+
+    const [{ total }] = await db.select({ total: count(referralsTable.id) }).from(referralsTable);
+    const [{ pending }] = await db.execute(sql`SELECT COUNT(*) as pending FROM referrals WHERE status = 'pending'`).then((r) => r.rows as Array<{ pending: unknown }>);
+
+    return res.json({ referrals, total: Number(total), pending: Number(pending), page, limit });
+  } catch (err) {
+    console.error("GET /admin-panel/referrals error:", err);
+    return res.status(500).json({ error: "Erro interno" });
+  }
+});
+
+// PATCH /api/admin-panel/referrals/:id — toggle status between pending/rewarded, optionally set notes
+router.patch("/admin-panel/referrals/:id", async (req: Request, res: Response) => {
+  if (!validateAdminToken(req, res)) return;
+  try {
+    const id = Number(req.params["id"]);
+    if (!Number.isFinite(id)) return res.status(400).json({ error: "ID inválido" });
+
+    const [current] = await db.select({ status: referralsTable.status }).from(referralsTable).where(eq(referralsTable.id, id)).limit(1);
+    if (!current) return res.status(404).json({ error: "Convite não encontrado" });
+
+    const newStatus = current.status === "pending" ? "rewarded" : "pending";
+    const { notes } = req.body as { notes?: string };
+
+    await db.update(referralsTable).set({
+      status: newStatus,
+      ...(typeof notes === "string" ? { notes: notes.trim().slice(0, 500) || null } : {}),
+    }).where(eq(referralsTable.id, id));
+
+    return res.json({ ok: true, status: newStatus });
+  } catch (err) {
+    console.error("PATCH /admin-panel/referrals/:id error:", err);
+    return res.status(500).json({ error: "Erro interno" });
   }
 });
 

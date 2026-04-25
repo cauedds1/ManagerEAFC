@@ -180,8 +180,8 @@ router.get("/stripe/subscription", requireAuth, async (req: AuthRequest, res) =>
 
 router.post("/stripe/checkout-register", async (req, res) => {
   try {
-    const { name, email, password, priceId } = req.body as {
-      name?: string; email?: string; password?: string; priceId?: string;
+    const { name, email, password, priceId, ref } = req.body as {
+      name?: string; email?: string; password?: string; priceId?: string; ref?: string;
     };
 
     if (!name?.trim() || !email?.trim() || !password || !priceId) {
@@ -254,6 +254,7 @@ router.post("/stripe/checkout-register", async (req, res) => {
         userEmail: normalizedEmail,
         userPasswordHash: passwordHash,
         planTier,
+        ...(ref?.trim() ? { referralRef: ref.trim().slice(0, 32) } : {}),
       },
     });
 

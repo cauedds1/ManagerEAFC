@@ -355,6 +355,15 @@ export function AuthPage({ onBack, onAuthSuccess, initialPlan, checkoutDraft, on
   const [loading, setLoading] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
 
+  // Read referral code from URL ?ref= param
+  const referralRef = (() => {
+    try {
+      return new URLSearchParams(window.location.search).get("ref") ?? "";
+    } catch {
+      return "";
+    }
+  })();
+
   useEffect(() => {
     if (hasDraft) onDraftConsumed?.();
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -396,7 +405,7 @@ export function AuthPage({ onBack, onAuthSuccess, initialPlan, checkoutDraft, on
         const res = await fetch(`${API_BASE}/stripe/checkout-register`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: name.trim(), email: email.trim(), password, priceId: match.priceId }),
+          body: JSON.stringify({ name: name.trim(), email: email.trim(), password, priceId: match.priceId, ...(referralRef ? { ref: referralRef } : {}) }),
         });
         const data = await res.json() as { url?: string; error?: string };
         if (!res.ok) throw new Error(data.error ?? t.errPayment);
@@ -408,7 +417,7 @@ export function AuthPage({ onBack, onAuthSuccess, initialPlan, checkoutDraft, on
       const res = await fetch(`${API_BASE}/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), password, name: name.trim() }),
+        body: JSON.stringify({ email: email.trim(), password, name: name.trim(), ...(referralRef ? { ref: referralRef } : {}) }),
       });
       const data = await res.json() as { token?: string; user?: { id: number; email: string; name: string; plan?: Plan }; error?: string; };
       if (!res.ok) { setError(data.error ?? t.errGeneric); return; }
