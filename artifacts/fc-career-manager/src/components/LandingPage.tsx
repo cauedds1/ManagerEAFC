@@ -748,6 +748,9 @@ const DEMO_COPY = {
   },
 };
 
+/** Returns true when this page is itself loaded inside an iframe. */
+const isInsideIframe = typeof window !== "undefined" && window !== window.top;
+
 function InteractiveDemoSection({ lang }: { lang: Lang }) {
   const c = DEMO_COPY[lang];
   const [activeTab, setActiveTab] = useState("painel");
@@ -789,6 +792,10 @@ function InteractiveDemoSection({ lang }: { lang: Lang }) {
     observer.observe(el);
     return () => observer.disconnect();
   }, [triggerLoad]);
+
+  // Don't render inside an iframe — prevents infinite nesting when the demo
+  // loads the full app URL which itself contains this landing page
+  if (isInsideIframe) return null;
 
   return (
     <section

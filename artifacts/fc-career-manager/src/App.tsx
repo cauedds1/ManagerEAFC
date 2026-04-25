@@ -621,7 +621,12 @@ export default function App() {
             setView("career-selection");
           });
         })
-        .catch(() => setView("landing"));
+        .catch(() => {
+          // Don't fall back to landing — in an iframe it would re-trigger the demo loop.
+          // Stay in init state briefly then surface a career-selection fallback.
+          setCareers([]);
+          setView("career-selection");
+        });
       return;
     }
 
