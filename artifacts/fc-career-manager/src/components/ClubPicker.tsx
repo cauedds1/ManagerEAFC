@@ -565,7 +565,7 @@ export function ClubPicker({ allClubs, onSelectClub, initialLeague }: ClubPicker
             {globalSearchResults.length === 0 ? (
               <EmptySearchState label={t.noClub} />
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5">
+              <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 gap-1.5">
                 {globalSearchResults.map((entry, i) => (
                   <CompactClubCard
                     key={entry.id}
@@ -587,7 +587,7 @@ export function ClubPicker({ allClubs, onSelectClub, initialLeague }: ClubPicker
             {clubsInLeague.length === 0 ? (
               <EmptySearchState label={t.noClub} />
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5">
+              <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 gap-1.5">
                 {clubsInLeague.map((entry, i) => (
                   <CompactClubCard
                     key={entry.id}
@@ -604,7 +604,7 @@ export function ClubPicker({ allClubs, onSelectClub, initialLeague }: ClubPicker
             <p className="text-white/25 text-[10px] font-semibold tracking-widest uppercase mb-1.5">
               {t.domesticLeagues}
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5 mb-4">
+            <div className="grid grid-cols-1 sm:grid-cols-4 lg:grid-cols-5 gap-1.5 mb-4">
               {domesticLeagues.map(({ league, count }, i) => (
                 <LeagueCard
                   key={league.id}
