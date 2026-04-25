@@ -2,11 +2,11 @@
  * seed-demo.ts — Set up the demo account for FC Career Manager.
  *
  * Usage (Railway or local, pointing at prod DB):
- *   DATABASE_URL=postgresql://... GEMINI_API_KEY=AIza... pnpm seed:demo
+ *   DATABASE_URL=postgresql://... OPENAI_API_KEY=sk-... pnpm seed:demo
  *
  * Required env:
  *   DATABASE_URL   — PostgreSQL connection string
- *   GEMINI_API_KEY — Google AI Studio key for EN translation
+ *   OPENAI_API_KEY — OpenAI key used for PT→EN translation (gpt-4o-mini)
  *
  * What it does:
  *   1. Finds or creates demo@fc-career-manager.app user (plan=pro)
@@ -41,27 +41,36 @@ function nanoid(size = 12): string {
   return id;
 }
 
-async function geminiTranslate(text: string): Promise<string> {
-  const apiKey = process.env["GEMINI_API_KEY"] ?? process.env["AI_INTEGRATIONS_GEMINI_API_KEY"];
+async function aiTranslate(text: string): Promise<string> {
+  const apiKey = process.env["OPENAI_API_KEY"];
   if (!apiKey) {
-    throw new Error("GEMINI_API_KEY is not set. Export it before running: GEMINI_API_KEY=AIza... pnpm seed:demo");
+    throw new Error(
+      "OPENAI_API_KEY is not set.\n" +
+      "Export it before running:\n" +
+      "  OPENAI_API_KEY=sk-... DATABASE_URL=postgresql://... pnpm seed:demo"
+    );
   }
-  const baseUrl = process.env["GEMINI_BASE_URL"] ?? "https://generativelanguage.googleapis.com";
-  const url = `${baseUrl.replace(/\/$/, "")}/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-  const body = JSON.stringify({
-    contents: [{
-      role: "user",
-      parts: [{
-        text: `You are a professional sports journalist translator. Translate the following Brazilian Portuguese football content to English, preserving all formatting, emojis, structure, and tone. Do NOT alter names, club names, or data. Return ONLY the translated JSON (no markdown, no explanation).\n\n${text}`,
+
+  const resp = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
+    body: JSON.stringify({
+      model: "gpt-4o-mini",
+      temperature: 0.2,
+      max_tokens: 16384,
+      messages: [{
+        role: "system",
+        content: "You are a professional sports journalist translator. Translate Brazilian Portuguese football content to English, preserving all formatting, emojis, structure, and tone. Do NOT alter names, club names, or data. Return ONLY the translated JSON (no markdown, no explanation).",
+      }, {
+        role: "user",
+        content: text,
       }],
-    }],
-    generationConfig: { temperature: 0.3, maxOutputTokens: 16384 },
+    }),
   });
 
-  const resp = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body });
-  if (!resp.ok) throw new Error(`Gemini API error: ${resp.status} ${await resp.text()}`);
-  const result = await resp.json() as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
-  const raw = result.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+  if (!resp.ok) throw new Error(`OpenAI API error: ${resp.status} ${await resp.text()}`);
+  const result = await resp.json() as { choices?: Array<{ message?: { content?: string } }> };
+  const raw = result.choices?.[0]?.message?.content ?? "";
   return raw.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "").trim();
 }
 
@@ -74,7 +83,7 @@ async function translateNewsArray(posts: unknown[]): Promise<unknown[]> {
     const post = posts[i];
     try {
       const ptJson = JSON.stringify(post, null, 2);
-      const enJson = await geminiTranslate(ptJson);
+      const enJson = await aiTranslate(ptJson);
       const parsed = JSON.parse(enJson) as unknown;
       translated.push(parsed);
       console.log(`    [${i + 1}/${posts.length}] ✓`);
@@ -91,7 +100,7 @@ async function translateConversation(messages: unknown[]): Promise<unknown[]> {
   console.log(`  Translating ${messages.length} conversation messages…`);
   const ptJson = JSON.stringify(messages, null, 2);
   try {
-    const enJson = await geminiTranslate(ptJson);
+    const enJson = await aiTranslate(ptJson);
     const parsed = JSON.parse(enJson) as unknown[];
     console.log(`  ✓ Conversation translated (${parsed.length} messages)`);
     return parsed;
