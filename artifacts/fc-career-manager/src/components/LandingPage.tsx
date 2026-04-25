@@ -2,7 +2,6 @@ import { useState, useEffect, useRef, useCallback, useMemo, type CSSProperties }
 import { ClubDemoMockup } from "./ClubDemoMockup";
 import { LangToggle } from "./LangToggle";
 import { LP, getAiTexts, getHeadlineTemplates, getBodyTemplates, getSteps, getFaqItems, getFeaturesExplorer, getTestimonials, type Lang } from "@/lib/i18n";
-import { LandingPageMobile } from "./LandingPageMobile";
 
 /* ─── Types ─────────────────────────────────────────────── */
 interface LandingPageProps {
@@ -1019,6 +1018,7 @@ function LandingPageDesktop({ onStart, onLogin, onStartWithPlan, lang, setLang }
   const [generatedNews, setGeneratedNews]     = useState<{ headline: string; body: string } | null>(null);
   const [homeScore, setHomeScore]             = useState(2);
   const [awayScore, setAwayScore]             = useState(1);
+  const [menuOpen,  setMenuOpen]              = useState(false);
 
   const inputText = customClubInput.trim();
   const club = (() => {
@@ -1040,7 +1040,11 @@ function LandingPageDesktop({ onStart, onLogin, onStartWithPlan, lang, setLang }
 
   /* ── Mobile detection ─── */
   useEffect(() => {
-    const onResize = () => setIsMobile(window.innerWidth < 900);
+    const onResize = () => {
+      const m = window.innerWidth < 900;
+      setIsMobile(m);
+      if (!m) setMenuOpen(false);
+    };
     window.addEventListener("resize", onResize, { passive: true });
     return () => window.removeEventListener("resize", onResize);
   }, []);
@@ -1191,6 +1195,7 @@ function LandingPageDesktop({ onStart, onLogin, onStartWithPlan, lang, setLang }
   const scrollTo = (id: string) => {
     const el = containerRef.current?.querySelector(`#${id}`);
     el?.scrollIntoView({ behavior: "smooth" });
+    setMenuOpen(false);
   };
 
   /* ── Feature mockup renderer ─── */
@@ -1228,7 +1233,7 @@ function LandingPageDesktop({ onStart, onLogin, onStartWithPlan, lang, setLang }
       <button
         onClick={toggleSound}
         title={soundOn ? t.soundOn : t.soundOff}
-        style={{ position: "fixed", bottom: 28, right: 28, zIndex: 200, width: 44, height: 44, borderRadius: "50%", background: "rgba(9,9,15,0.85)", border: `1px solid ${soundOn ? "rgba(245,158,11,0.5)" : "rgba(255,255,255,0.12)"}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, cursor: "none", backdropFilter: "blur(10px)", boxShadow: soundOn ? "0 0 20px rgba(245,158,11,0.25)" : "0 4px 20px rgba(0,0,0,0.4)", transition: "all 0.3s" }}
+        style={{ position: "fixed", bottom: 28, right: 28, zIndex: 200, width: isMobile ? 48 : 44, height: isMobile ? 48 : 44, borderRadius: "50%", background: "rgba(9,9,15,0.85)", border: `1px solid ${soundOn ? "rgba(245,158,11,0.5)" : "rgba(255,255,255,0.12)"}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, cursor: isMobile ? "pointer" : "none", backdropFilter: "blur(10px)", boxShadow: soundOn ? "0 0 20px rgba(245,158,11,0.25)" : "0 4px 20px rgba(0,0,0,0.4)", transition: "all 0.3s" }}
       >
         {soundOn ? "🔊" : "🔇"}
       </button>
@@ -1247,11 +1252,41 @@ function LandingPageDesktop({ onStart, onLogin, onStartWithPlan, lang, setLang }
           {/* ── Language toggle ─── */}
           <LangToggle lang={lang} setLang={setLang} />
 
-          <button data-cursor="ball" onClick={onLogin} style={{ background: "linear-gradient(135deg,#7c5cfc,#5b3fd1)", color: "#fff", border: "none", borderRadius: 10, padding: "9px 20px", minHeight: 44, fontSize: 13, fontWeight: 600, cursor: "none", transition: "all 0.25s", boxShadow: "0 4px 20px rgba(124,92,252,0.3)" }} onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 30px rgba(124,92,252,0.6)"; (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-1px) scale(1.03)"; }} onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 4px 20px rgba(124,92,252,0.3)"; (e.currentTarget as HTMLButtonElement).style.transform = "none"; }}>
+          {/* ── Hamburger (mobile only) ─── */}
+          {isMobile && (
+            <button
+              aria-label="Menu"
+              onClick={() => setMenuOpen(o => !o)}
+              style={{ display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", gap: 5, width: 44, height: 44, background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
+            >
+              <span style={{ display: "block", width: 22, height: 2, background: "#f0f0ff", borderRadius: 2, transition: "transform 0.25s, opacity 0.25s", transform: menuOpen ? "translateY(7px) rotate(45deg)" : "none" }} />
+              <span style={{ display: "block", width: 22, height: 2, background: "#f0f0ff", borderRadius: 2, transition: "opacity 0.25s", opacity: menuOpen ? 0 : 1 }} />
+              <span style={{ display: "block", width: 22, height: 2, background: "#f0f0ff", borderRadius: 2, transition: "transform 0.25s, opacity 0.25s", transform: menuOpen ? "translateY(-7px) rotate(-45deg)" : "none" }} />
+            </button>
+          )}
+
+          {/* ── Desktop login CTA ─── */}
+          {!isMobile && (
+            <button data-cursor="ball" onClick={onLogin} style={{ background: "linear-gradient(135deg,#7c5cfc,#5b3fd1)", color: "#fff", border: "none", borderRadius: 10, padding: "9px 20px", minHeight: 44, fontSize: 13, fontWeight: 600, cursor: isMobile ? "pointer" : "none", transition: "all 0.25s", boxShadow: "0 4px 20px rgba(124,92,252,0.3)" }} onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 30px rgba(124,92,252,0.6)"; (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-1px) scale(1.03)"; }} onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 4px 20px rgba(124,92,252,0.3)"; (e.currentTarget as HTMLButtonElement).style.transform = "none"; }}>
+              {t.navCta}
+            </button>
+          )}
+        </div>
+      </nav>
+
+      {/* ── Mobile drawer ─── */}
+      {isMobile && menuOpen && (
+        <div style={{ position: "sticky", top: 57, zIndex: 49, background: "rgba(9,9,15,0.97)", borderBottom: "1px solid rgba(255,255,255,0.08)", backdropFilter: "blur(16px)", padding: "12px 24px 20px", display: "flex", flexDirection: "column", gap: 4 }}>
+          {[{ label: t.navFeatures, id: "features" }, { label: t.navAI, id: "ia" }, { label: t.navClub, id: "clube" }, { label: t.navHowItWorks, id: "como-funciona" }].map(({ label, id }) => (
+            <button key={id} onClick={() => scrollTo(id)} style={{ background: "transparent", border: "none", textAlign: "left", color: "#c0c0d8", fontSize: 16, padding: "12px 0", cursor: "pointer", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+              {label}
+            </button>
+          ))}
+          <button onClick={onLogin} style={{ marginTop: 8, background: "linear-gradient(135deg,#7c5cfc,#5b3fd1)", color: "#fff", border: "none", borderRadius: 10, padding: "13px 0", fontSize: 15, fontWeight: 700, cursor: "pointer", width: "100%" }}>
             {t.navCta}
           </button>
         </div>
-      </nav>
+      )}
 
       {/* ════════════════ HERO ════════════════ */}
       <section className="lp-hero-section" style={{ position: "relative", minHeight: "100vh", display: "flex", alignItems: "center", overflow: "hidden", padding: "60px 40px" }}>
@@ -1289,7 +1324,7 @@ function LandingPageDesktop({ onStart, onLogin, onStartWithPlan, lang, setLang }
               <MagneticButton
                 onClick={onLogin}
                 label={t.heroCta}
-                style={{ background: "linear-gradient(135deg,#7c5cfc,#5b3fd1)", color: "#fff", border: "none", borderRadius: 14, padding: "15px 0", fontSize: 15, fontWeight: 700, cursor: "none", width: 340, display: "block" }}
+                style={{ background: "linear-gradient(135deg,#7c5cfc,#5b3fd1)", color: "#fff", border: "none", borderRadius: 14, padding: "15px 0", fontSize: 15, fontWeight: 700, cursor: isMobile ? "pointer" : "none", width: 340, display: "block" }}
               />
             </div>
 
@@ -1373,7 +1408,7 @@ function LandingPageDesktop({ onStart, onLogin, onStartWithPlan, lang, setLang }
                     style={{
                       padding: "14px 18px", textAlign: "left", border: "none", background: "transparent",
                       borderLeft: `3px solid ${i === activeFeature ? f.accentColor : "transparent"}`,
-                      cursor: "none", transition: "all 0.2s", display: "flex", alignItems: "center", gap: 10,
+                      cursor: isMobile ? "pointer" : "none", transition: "all 0.2s", display: "flex", alignItems: "center", gap: 10,
                       color: i === activeFeature ? "#f0f0ff" : "#555577",
                       backgroundColor: i === activeFeature ? `rgba(${f.colorType === "tactical" ? "124,92,252" : f.colorType === "financial" ? "61,156,245" : f.colorType === "trophies" ? "245,158,11" : "0,229,160"},0.06)` : "transparent",
                     }}
@@ -1396,7 +1431,7 @@ function LandingPageDesktop({ onStart, onLogin, onStartWithPlan, lang, setLang }
 
                   <div style={{ display: "flex", gap: 6, marginTop: 32 }}>
                     {featuresExplorer.map((_, i) => (
-                      <button key={i} onClick={() => setActiveFeature(i)} style={{ width: i === activeFeature ? 20 : 6, height: 6, borderRadius: 3, background: i === activeFeature ? activeF.accentColor : "rgba(255,255,255,0.12)", border: "none", cursor: "none", transition: "all 0.3s", padding: 0 }} />
+                      <button key={i} onClick={() => setActiveFeature(i)} style={{ width: i === activeFeature ? 20 : 6, height: 6, borderRadius: 3, background: i === activeFeature ? activeF.accentColor : "rgba(255,255,255,0.12)", border: "none", cursor: isMobile ? "pointer" : "none", transition: "all 0.3s", padding: 0 }} />
                     ))}
                   </div>
                 </div>
@@ -1423,7 +1458,7 @@ function LandingPageDesktop({ onStart, onLogin, onStartWithPlan, lang, setLang }
               const isActive = i === activeClub && !customClub;
               return (
                 <button key={c.id} onClick={() => { setActiveClub(i); setCustomClub(null); setCustomClubName(""); setCustomClubInput(""); }}
-                  style={{ padding: "10px 22px", borderRadius: 100, fontSize: 13, fontWeight: 600, cursor: "none", transition: "all 0.3s", background: isActive ? `rgba(${c.accentRgb},0.15)` : "rgba(255,255,255,0.05)", border: isActive ? `1px solid rgba(${c.accentRgb},0.5)` : "1px solid rgba(255,255,255,0.08)", color: isActive ? (c.textDark ? "#111" : c.accent) : "#666688", transform: isActive ? "scale(1.05)" : "scale(1)" }}>
+                  style={{ padding: "10px 22px", borderRadius: 100, fontSize: 13, fontWeight: 600, cursor: isMobile ? "pointer" : "none", transition: "all 0.3s", background: isActive ? `rgba(${c.accentRgb},0.15)` : "rgba(255,255,255,0.05)", border: isActive ? `1px solid rgba(${c.accentRgb},0.5)` : "1px solid rgba(255,255,255,0.08)", color: isActive ? (c.textDark ? "#111" : c.accent) : "#666688", transform: isActive ? "scale(1.05)" : "scale(1)" }}>
                   <span style={{ display: "inline-block", width: 7, height: 7, borderRadius: "50%", background: c.accent, marginRight: 7, verticalAlign: "middle" }} />
                   {c.name}
                 </button>
@@ -1476,7 +1511,7 @@ function LandingPageDesktop({ onStart, onLogin, onStartWithPlan, lang, setLang }
             <div style={{ display: "flex", justifyContent: "center", gap: 12, marginTop: 20 }}>
               {CLUBS.map((c, i) => (
                 <button key={c.id} onClick={() => { setActiveClub(i); setCustomClub(null); setCustomClubName(""); setCustomClubInput(""); }}
-                  style={{ width: 12, height: 12, borderRadius: "50%", background: c.accent, cursor: "none", border: i === activeClub && !customClub ? `2px solid ${c.accent}` : "2px solid transparent", outline: i === activeClub && !customClub ? `3px solid rgba(${c.accentRgb},0.35)` : "none", transform: i === activeClub && !customClub ? "scale(1.4)" : "scale(1)", transition: "all 0.3s" }}
+                  style={{ width: 12, height: 12, borderRadius: "50%", background: c.accent, cursor: isMobile ? "pointer" : "none", border: i === activeClub && !customClub ? `2px solid ${c.accent}` : "2px solid transparent", outline: i === activeClub && !customClub ? `3px solid rgba(${c.accentRgb},0.35)` : "none", transform: i === activeClub && !customClub ? "scale(1.4)" : "scale(1)", transition: "all 0.3s" }}
                   title={c.name} />
               ))}
             </div>
@@ -1516,7 +1551,7 @@ function LandingPageDesktop({ onStart, onLogin, onStartWithPlan, lang, setLang }
                 <input placeholder={t.aiGenClubPlaceholder} value={userClub} onChange={e => setUserClub(e.target.value)} style={{ flex: 1, minWidth: 0, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, padding: "9px 12px", color: "#f0f0ff", fontSize: 12, outline: "none", fontFamily: "DM Sans, sans-serif", cursor: "text", transition: "border-color 0.2s" }} onFocus={e => (e.currentTarget.style.borderColor = "rgba(245,158,11,0.4)")} onBlur={e => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)")} />
                 <input placeholder={t.aiGenResultPlaceholder} value={userResult} onChange={e => setUserResult(e.target.value)} style={{ width: 130, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, padding: "9px 12px", color: "#f0f0ff", fontSize: 12, outline: "none", fontFamily: "JetBrains Mono, monospace", cursor: "text", transition: "border-color 0.2s" }} onFocus={e => (e.currentTarget.style.borderColor = "rgba(245,158,11,0.4)")} onBlur={e => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)")} />
               </div>
-              <button data-cursor="ball" onClick={generateNews} style={{ width: "100%", background: "linear-gradient(135deg,rgba(245,158,11,0.85),rgba(200,110,0,0.8))", border: "none", borderRadius: 8, padding: "10px 0", color: "#09090f", fontSize: 13, fontWeight: 700, cursor: "none", transition: "opacity 0.2s" }} onMouseEnter={e => ((e.currentTarget as HTMLButtonElement).style.opacity = "0.85")} onMouseLeave={e => ((e.currentTarget as HTMLButtonElement).style.opacity = "1")}>
+              <button data-cursor="ball" onClick={generateNews} style={{ width: "100%", background: "linear-gradient(135deg,rgba(245,158,11,0.85),rgba(200,110,0,0.8))", border: "none", borderRadius: 8, padding: "10px 0", color: "#09090f", fontSize: 13, fontWeight: 700, cursor: isMobile ? "pointer" : "none", transition: "opacity 0.2s" }} onMouseEnter={e => ((e.currentTarget as HTMLButtonElement).style.opacity = "0.85")} onMouseLeave={e => ((e.currentTarget as HTMLButtonElement).style.opacity = "1")}>
                 {t.aiGenBtn}
               </button>
               {generatedNews && (
@@ -1627,7 +1662,7 @@ function LandingPageDesktop({ onStart, onLogin, onStartWithPlan, lang, setLang }
               <p style={{ color: "#666688", fontSize: 12, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 12 }}>{t.pricingFreeForever}</p>
               <div className="font-bebas" style={{ fontSize: 48, color: "#f0f0ff", lineHeight: 1 }}>{t.pricingFreePriceWhole}</div>
               <p style={{ color: "#555577", fontSize: 13, marginTop: 8, marginBottom: 28 }}>{t.pricingFreeForWho}</p>
-              <button onClick={onLogin} style={{ width: "100%", padding: "12px 0", borderRadius: 12, fontWeight: 700, fontSize: 14, color: "#888", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", cursor: "none", transition: "all 0.2s" }} onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.08)"; (e.currentTarget as HTMLButtonElement).style.color = "#f0f0ff"; }} onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.05)"; (e.currentTarget as HTMLButtonElement).style.color = "#888"; }}>
+              <button onClick={onLogin} style={{ width: "100%", padding: "12px 0", borderRadius: 12, fontWeight: 700, fontSize: 14, color: "#888", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", cursor: isMobile ? "pointer" : "none", transition: "all 0.2s" }} onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.08)"; (e.currentTarget as HTMLButtonElement).style.color = "#f0f0ff"; }} onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.05)"; (e.currentTarget as HTMLButtonElement).style.color = "#888"; }}>
                 {t.pricingFreeBtn}
               </button>
               <ul style={{ marginTop: 28, listStyle: "none", padding: 0, display: "flex", flexDirection: "column", gap: 12 }}>
@@ -1646,7 +1681,7 @@ function LandingPageDesktop({ onStart, onLogin, onStartWithPlan, lang, setLang }
               <p style={{ color: "#7c5cfc", fontSize: 12, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 12 }}>{t.pricingProForWho}</p>
               <div className="font-bebas" style={{ fontSize: 48, color: "#f0f0ff", lineHeight: 1 }}>{t.pricingProPriceWhole}<span style={{ fontSize: 24 }}>{t.pricingProPriceDec}</span></div>
               <p style={{ color: "#555577", fontSize: 13, marginTop: 8, marginBottom: 28 }}>{t.pricingPerMonth}</p>
-              <button data-cursor="ball" onClick={() => onStartWithPlan("pro")} style={{ width: "100%", padding: "12px 0", borderRadius: 12, fontWeight: 700, fontSize: 14, color: "#fff", background: "linear-gradient(135deg,rgba(124,92,252,0.9),rgba(91,63,209,0.85))", border: "none", cursor: "none", boxShadow: "0 4px 24px rgba(124,92,252,0.4)", transition: "all 0.2s" }} onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 40px rgba(124,92,252,0.6), 0 4px 24px rgba(124,92,252,0.4)"; }} onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 4px 24px rgba(124,92,252,0.4)"; }}>
+              <button data-cursor="ball" onClick={() => onStartWithPlan("pro")} style={{ width: "100%", padding: "12px 0", borderRadius: 12, fontWeight: 700, fontSize: 14, color: "#fff", background: "linear-gradient(135deg,rgba(124,92,252,0.9),rgba(91,63,209,0.85))", border: "none", cursor: isMobile ? "pointer" : "none", boxShadow: "0 4px 24px rgba(124,92,252,0.4)", transition: "all 0.2s" }} onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 40px rgba(124,92,252,0.6), 0 4px 24px rgba(124,92,252,0.4)"; }} onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 4px 24px rgba(124,92,252,0.4)"; }}>
                 {t.pricingProBtn}
               </button>
               <ul style={{ marginTop: 28, listStyle: "none", padding: 0, display: "flex", flexDirection: "column", gap: 12 }}>
@@ -1663,7 +1698,7 @@ function LandingPageDesktop({ onStart, onLogin, onStartWithPlan, lang, setLang }
               <p style={{ color: "#f59e0b", fontSize: 12, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 12 }}>{t.pricingUltraForWho}</p>
               <div className="font-bebas" style={{ fontSize: 48, color: "#f0f0ff", lineHeight: 1 }}>{t.pricingUltraPriceWhole}<span style={{ fontSize: 24 }}>{t.pricingUltraPriceDec}</span></div>
               <p style={{ color: "#555577", fontSize: 13, marginTop: 8, marginBottom: 28 }}>{t.pricingPerMonth}</p>
-              <button data-cursor="ball" onClick={() => onStartWithPlan("ultra")} style={{ width: "100%", padding: "12px 0", borderRadius: 12, fontWeight: 700, fontSize: 14, color: "#fff", background: "linear-gradient(135deg,rgba(245,158,11,0.85),rgba(200,110,0,0.8))", border: "none", cursor: "none", boxShadow: "0 4px 24px rgba(245,158,11,0.3)", transition: "all 0.2s" }} onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 40px rgba(245,158,11,0.5), 0 4px 24px rgba(245,158,11,0.3)"; }} onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 4px 24px rgba(245,158,11,0.3)"; }}>
+              <button data-cursor="ball" onClick={() => onStartWithPlan("ultra")} style={{ width: "100%", padding: "12px 0", borderRadius: 12, fontWeight: 700, fontSize: 14, color: "#fff", background: "linear-gradient(135deg,rgba(245,158,11,0.85),rgba(200,110,0,0.8))", border: "none", cursor: isMobile ? "pointer" : "none", boxShadow: "0 4px 24px rgba(245,158,11,0.3)", transition: "all 0.2s" }} onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 40px rgba(245,158,11,0.5), 0 4px 24px rgba(245,158,11,0.3)"; }} onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 4px 24px rgba(245,158,11,0.3)"; }}>
                 {t.pricingUltraBtn}
               </button>
               <ul style={{ marginTop: 28, listStyle: "none", padding: 0, display: "flex", flexDirection: "column", gap: 12 }}>
@@ -1717,7 +1752,7 @@ function LandingPageDesktop({ onStart, onLogin, onStartWithPlan, lang, setLang }
                 <div key={i} className="lp-reveal" style={{ border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, overflow: "hidden", transition: "border-color 0.3s", borderColor: open ? "rgba(124,92,252,0.25)" : "rgba(255,255,255,0.07)" }}>
                   <button
                     onClick={() => setFaqOpen(open ? null : i)}
-                    style={{ width: "100%", padding: "20px 24px", background: open ? "rgba(124,92,252,0.06)" : "transparent", border: "none", cursor: "none", display: "flex", justifyContent: "space-between", alignItems: "center", transition: "background 0.3s" }}>
+                    style={{ width: "100%", padding: "20px 24px", background: open ? "rgba(124,92,252,0.06)" : "transparent", border: "none", cursor: isMobile ? "pointer" : "none", display: "flex", justifyContent: "space-between", alignItems: "center", transition: "background 0.3s" }}>
                     <span style={{ color: "#f0f0ff", fontSize: 14, fontWeight: 600, textAlign: "left" }}>{item.q}</span>
                     <span style={{ color: "#7c5cfc", fontSize: 18, fontWeight: 300, transition: "transform 0.3s", transform: open ? "rotate(45deg)" : "none", flexShrink: 0, marginLeft: 16 }}>+</span>
                   </button>
@@ -1770,7 +1805,7 @@ function LandingPageDesktop({ onStart, onLogin, onStartWithPlan, lang, setLang }
               {t.ctaLine2}
             </h2>
             <button data-cursor="ball" onClick={onLogin}
-              style={{ background: "linear-gradient(135deg,#7c5cfc,#5b3fd1)", color: "#fff", border: "none", borderRadius: 16, padding: "18px 48px", fontSize: 16, fontWeight: 700, cursor: "none", boxShadow: "0 12px 48px rgba(124,92,252,0.45)", transition: "all 0.25s" }}
+              style={{ background: "linear-gradient(135deg,#7c5cfc,#5b3fd1)", color: "#fff", border: "none", borderRadius: 16, padding: "18px 48px", fontSize: 16, fontWeight: 700, cursor: isMobile ? "pointer" : "none", boxShadow: "0 12px 48px rgba(124,92,252,0.45)", transition: "all 0.25s" }}
               onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 60px rgba(124,92,252,0.7), 0 12px 48px rgba(124,92,252,0.5)"; (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-4px) scale(1.04)"; }}
               onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 12px 48px rgba(124,92,252,0.45)"; (e.currentTarget as HTMLButtonElement).style.transform = "none"; }}>
               {t.ctaBtn}
@@ -1799,21 +1834,10 @@ function LandingPageDesktop({ onStart, onLogin, onStartWithPlan, lang, setLang }
   );
 }
 
-/* ─── Public export: breakpoint router ──────────────────────
-   Only detects viewport size. Desktop hooks never run on mobile
-   because LandingPageDesktop is only mounted when isMobile=false.
+/* ─── Public export ─────────────────────────────────────────
+   LandingPageDesktop handles all breakpoints internally via its
+   isMobile < 900px flag and hamburger drawer.
 ────────────────────────────────────────────────────────────── */
 export function LandingPage(props: LandingPageProps) {
-  const [isMobile, setIsMobile] = useState(
-    () => typeof window !== "undefined" && window.innerWidth < 768
-  );
-
-  useEffect(() => {
-    const onResize = () => setIsMobile(window.innerWidth < 768);
-    window.addEventListener("resize", onResize, { passive: true });
-    return () => window.removeEventListener("resize", onResize);
-  }, []);
-
-  if (isMobile) return <LandingPageMobile {...props} />;
   return <LandingPageDesktop {...props} />;
 }
