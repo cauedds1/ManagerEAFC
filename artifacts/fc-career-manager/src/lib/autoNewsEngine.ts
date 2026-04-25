@@ -128,12 +128,16 @@ function matchSummary(match: MatchRecord, clubName: string, season: string, allP
   } else if (match.hasExtraTime) {
     extraCtx = " [Partida decidida após prorrogação (+30 min).]";
   }
+  const observationsCtx = match.observations?.trim()
+    ? ` Observações do treinador: "${match.observations.trim()}".`
+    : "";
   return (
     `${clubName} ${match.myScore}x${match.opponentScore} ${match.opponent}` +
     ` — ${match.tournament}${match.stage ? ` (${match.stage})` : ""}, temporada ${season}.` +
     timeline +
     ` ` + lineup +
-    extraCtx
+    extraCtx +
+    observationsCtx
   );
 }
 
