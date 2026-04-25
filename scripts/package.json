@@ -11,7 +11,8 @@
   },
   "dependencies": {
     "@workspace/db": "workspace:*",
-    "@workspace/integrations-gemini-ai": "workspace:*"
+    "@workspace/integrations-gemini-ai": "workspace:*",
+    "drizzle-orm": "catalog:"
   },
   "devDependencies": {
     "@types/node": "catalog:",

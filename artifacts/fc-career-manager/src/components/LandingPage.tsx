@@ -724,9 +724,8 @@ function DiretoriaMockup({ t }: { t: Record<string, string> }) {
 
 /* ─── Interactive Demo Section ───────────────────────────── */
 const DEMO_TABS: { tab: string; label: { pt: string; en: string }; icon: string }[] = [
-  { tab: "painel",    label: { pt: "Painel",    en: "Dashboard" }, icon: "📊" },
-  { tab: "noticias",  label: { pt: "Notícias",  en: "News"      }, icon: "📰" },
-  { tab: "diretoria", label: { pt: "Diretoria", en: "Board"     }, icon: "🤝" },
+  { tab: "noticias",  label: { pt: "Notícias IA", en: "AI News" }, icon: "📰" },
+  { tab: "diretoria", label: { pt: "Diretoria",   en: "Board"   }, icon: "🤝" },
 ];
 
 const DEMO_COPY = {
@@ -757,7 +756,7 @@ const isInsideIframe = typeof window !== "undefined" && window !== window.top;
 
 function InteractiveDemoSection({ lang, onLogin }: { lang: Lang; onLogin: () => void }) {
   const c = DEMO_COPY[lang];
-  const [activeTab, setActiveTab] = useState("painel");
+  const [activeTab, setActiveTab] = useState("noticias");
   const [loaded,    setLoaded]    = useState(false);
   const [iframeSrc, setIframeSrc] = useState<string | null>(null);
   const sectionRef = useRef<HTMLElement>(null);
@@ -853,45 +852,37 @@ function InteractiveDemoSection({ lang, onLogin }: { lang: Lang; onLogin: () => 
             </div>
           </div>
 
-          {/* iframe area */}
+          {/* iframe area — skeleton is always shown until iframe finishes loading */}
           <div style={{ position: "relative", width: "100%", height: "clamp(420px,56vw,640px)" }}>
-            {!iframeSrc ? (
-              <div
-                style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 18, cursor: "pointer" }}
-                onClick={triggerLoad}
-              >
-                <div style={{ width: 64, height: 64, borderRadius: "50%", background: "rgba(124,92,252,0.15)", border: "2px solid rgba(124,92,252,0.3)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(124,92,252,0.9)" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
-                    <polygon points="5 3 19 12 5 21 5 3" />
-                  </svg>
-                </div>
-                <span style={{ fontSize: 14, color: "rgba(255,255,255,0.5)", fontWeight: 600 }}>{c.loadLabel}</span>
-              </div>
-            ) : (
-              <>
-                {!loaded && (
-                  <div style={{ position: "absolute", inset: 0, zIndex: 2, background: "#09090f", padding: "20px 16px", overflow: "hidden" }}>
-                    <style>{`@keyframes shimmer-demo{0%{background-position:-600px 0}100%{background-position:600px 0}}`}</style>
-                    {[
-                      { w: "45%", h: 12, mb: 8 }, { w: "30%", h: 12, mb: 20 },
-                      { w: "100%", h: 60, mb: 10 }, { w: "100%", h: 60, mb: 20 },
-                      { w: "60%", h: 10, mb: 6 }, { w: "80%", h: 10, mb: 6 }, { w: "50%", h: 10, mb: 20 },
-                      { w: "100%", h: 100, mb: 0 },
-                    ].map((s, i) => (
-                      <div key={i} style={{
-                        width: s.w, height: s.h, borderRadius: 6, marginBottom: s.mb,
-                        background: "linear-gradient(90deg,rgba(255,255,255,0.04) 0%,rgba(255,255,255,0.09) 50%,rgba(255,255,255,0.04) 100%)",
-                        backgroundSize: "600px 100%",
-                        animation: `shimmer-demo 1.4s ease-in-out infinite`,
-                        animationDelay: `${i * 0.06}s`,
-                      }} />
-                    ))}
-                    <div style={{ position: "absolute", bottom: 16, left: "50%", transform: "translateX(-50%)", display: "flex", alignItems: "center", gap: 8 }}>
+            {(!iframeSrc || !loaded) && (
+              <div style={{ position: "absolute", inset: 0, zIndex: 2, background: "#09090f", padding: "20px 16px", overflow: "hidden" }}>
+                <style>{`@keyframes shimmer-demo{0%{background-position:-600px 0}100%{background-position:600px 0}}`}</style>
+                {[
+                  { w: "45%", h: 12, mb: 8 }, { w: "30%", h: 12, mb: 20 },
+                  { w: "100%", h: 60, mb: 10 }, { w: "100%", h: 60, mb: 20 },
+                  { w: "60%", h: 10, mb: 6 }, { w: "80%", h: 10, mb: 6 }, { w: "50%", h: 10, mb: 20 },
+                  { w: "100%", h: 100, mb: 0 },
+                ].map((s, i) => (
+                  <div key={i} style={{
+                    width: s.w, height: s.h, borderRadius: 6, marginBottom: s.mb,
+                    background: "linear-gradient(90deg,rgba(255,255,255,0.04) 0%,rgba(255,255,255,0.09) 50%,rgba(255,255,255,0.04) 100%)",
+                    backgroundSize: "600px 100%",
+                    animation: `shimmer-demo 1.4s ease-in-out infinite`,
+                    animationDelay: `${i * 0.06}s`,
+                  }} />
+                ))}
+                <div style={{ position: "absolute", bottom: 16, left: "50%", transform: "translateX(-50%)", display: "flex", alignItems: "center", gap: 8 }}>
+                  {iframeSrc && (
+                    <>
                       <div style={{ width: 16, height: 16, borderRadius: "50%", border: "2px solid rgba(124,92,252,0.6)", borderTopColor: "transparent", animation: "spin 0.8s linear infinite" }} />
                       <span style={{ fontSize: 12, color: "rgba(255,255,255,0.3)" }}>{c.loading}</span>
-                    </div>
-                  </div>
-                )}
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+            {iframeSrc && (
+              <>
                 <iframe
                   ref={iframeRef}
                   src={iframeSrc}
