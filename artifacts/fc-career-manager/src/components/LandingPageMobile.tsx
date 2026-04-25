@@ -45,8 +45,6 @@ const FEATURE_COLORS: Record<string, string> = {
   ai:        "#00e5a0",
 };
 
-/* ─── Step numbers ───────────────────────────────────────── */
-const STEP_ICONS = ["1️⃣", "2️⃣", "3️⃣", "4️⃣"];
 
 /* ═══════════════════════════════════════════════════════════
    COMPONENT
