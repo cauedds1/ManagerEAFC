@@ -277,8 +277,8 @@ router.post("/noticias/generate", requireAuth, async (req: AuthRequest, res) => 
   if (!dbUser) { res.status(401).json({ error: "Usuário não encontrado" }); return; }
 
   if (req.demo) {
-    if (checkDemoRateLimit(`noticias:${userId}`)) {
-      res.status(403).json({ error: "Limite da demo atingido (3 gerações/hora)", code: "DEMO_LIMIT_REACHED" });
+    if (checkDemoRateLimit(`demo-ai:${userId}`)) {
+      res.status(403).json({ error: "Limite da demo atingido (3 chamadas IA/hora)", code: "DEMO_LIMIT_REACHED" });
       return;
     }
   }

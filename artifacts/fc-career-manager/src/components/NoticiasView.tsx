@@ -1386,11 +1386,19 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
   }, [seasonId, allPlayers, career.id]);
 
   useEffect(() => {
-    if (isDemo && lang === "en") {
-      const enPosts = getPostsEn(seasonId);
-      if (enPosts.length > 0) {
-        setPosts(enPosts);
-        return;
+    if (isDemo) {
+      if (lang === "en") {
+        const enPosts = getPostsEn(seasonId);
+        if (enPosts.length > 0) {
+          setPosts(enPosts);
+          return;
+        }
+      } else {
+        const ptPosts = getPosts(seasonId);
+        if (ptPosts.length > 0) {
+          setPosts(ptPosts);
+          return;
+        }
       }
     }
     let stored = getPosts(seasonId);
@@ -1480,7 +1488,8 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
         })
         .catch(() => { localStorage.removeItem(welcomePendingKey); });
     }
-  }, [seasonId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seasonId, lang]);
 
   const playerContextStr = useMemo(() => {
     if (allPlayers.length === 0) return "";

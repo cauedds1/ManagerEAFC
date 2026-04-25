@@ -193,10 +193,12 @@ async function main() {
       let valueJson = row.valueJson;
       if (row.key === "news") {
         try {
-          const posts = JSON.parse(row.valueJson) as unknown[];
-          const limited = posts.slice(-8);
+          const posts = JSON.parse(row.valueJson) as Array<{ createdAt?: number }>;
+          // Sort by createdAt descending so the 8 newest are first
+          const sorted = [...posts].sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
+          const limited = sorted.slice(0, 8);
           valueJson = JSON.stringify(limited);
-          console.log(`   → Limiting news: ${posts.length} → ${limited.length} posts`);
+          console.log(`   → Limiting news: ${posts.length} → ${limited.length} posts (newest 8)`);
         } catch {}
       }
       await db.insert(seasonDataTable).values({

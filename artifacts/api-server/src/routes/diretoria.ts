@@ -177,8 +177,8 @@ router.post("/diretoria/chat", requireAuth, async (req: AuthRequest, res) => {
   const plan = req.user!.plan;
   const limits = getPlanLimits(plan);
 
-  if (req.demo && checkDemoRateLimit(`diretoria-chat:${req.user!.id}`)) {
-    res.status(403).json({ error: "Limite da demo atingido (3 mensagens/hora)", code: "DEMO_LIMIT_REACHED" });
+  if (req.demo && checkDemoRateLimit(`demo-ai:${req.user!.id}`)) {
+    res.status(403).json({ error: "Limite da demo atingido (3 chamadas IA/hora)", code: "DEMO_LIMIT_REACHED" });
     return;
   }
 
@@ -319,8 +319,8 @@ router.post("/diretoria/meeting", requireAuth, async (req: AuthRequest, res) => 
     return;
   }
 
-  if (req.demo && checkDemoRateLimit(`diretoria-meeting:${req.user!.id}`)) {
-    res.status(403).json({ error: "Limite da demo atingido (3 reuniões/hora)", code: "DEMO_LIMIT_REACHED" });
+  if (req.demo && checkDemoRateLimit(`demo-ai:${req.user!.id}`)) {
+    res.status(403).json({ error: "Limite da demo atingido (3 chamadas IA/hora)", code: "DEMO_LIMIT_REACHED" });
     return;
   }
 
@@ -967,8 +967,8 @@ router.post("/diretoria/suggest-transfer", requireAuth, async (req: AuthRequest,
     return;
   }
 
-  if (req.demo && checkDemoRateLimit(`diretoria-transfer:${req.user!.id}`)) {
-    res.status(403).json({ error: "Limite da demo atingido (3 sugestões/hora)", code: "DEMO_LIMIT_REACHED" });
+  if (req.demo && checkDemoRateLimit(`demo-ai:${req.user!.id}`)) {
+    res.status(403).json({ error: "Limite da demo atingido (3 chamadas IA/hora)", code: "DEMO_LIMIT_REACHED" });
     return;
   }
 

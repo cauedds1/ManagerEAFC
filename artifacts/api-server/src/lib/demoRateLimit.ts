@@ -5,7 +5,7 @@ const buckets = new Map<string, { count: number; resetAt: number }>();
 /**
  * Check and increment the demo AI rate limit.
  * Returns true if the request should be blocked (limit reached).
- * Key format: "<route>:<userId>" so limits are per-feature, not shared.
+ * Use key format "demo-ai:<userId>" to enforce a shared cap across all demo AI routes.
  */
 export function checkDemoRateLimit(key: string): boolean {
   const now = Date.now();

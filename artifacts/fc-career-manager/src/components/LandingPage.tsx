@@ -778,6 +778,17 @@ function InteractiveDemoSection({ lang, onLogin }: { lang: Lang; onLogin: () => 
     setLoaded(true);
   }, []);
 
+  // Listen for signup requests from inside the iframe demo
+  useEffect(() => {
+    const handler = (e: MessageEvent) => {
+      if (e.data && e.data.type === "fc:open-login") {
+        onLogin();
+      }
+    };
+    window.addEventListener("message", handler);
+    return () => window.removeEventListener("message", handler);
+  }, [onLogin]);
+
   const triggerLoad = useCallback(() => {
     if (!iframeSrc) {
       setIframeSrc(buildSrc(activeTab));

@@ -68,11 +68,12 @@ function ImpersonationBanner({ userName, onEnd }: { userName: string; onEnd: () 
   );
 }
 
-function DemoBanner({ lang, onEnd }: { lang: "pt" | "en"; onEnd: () => void }) {
+function DemoBanner({ lang, onEnd, onSignup }: { lang: "pt" | "en"; onEnd: () => void; onSignup: () => void }) {
   const label = lang === "en"
     ? "Interactive Demo — Watford FC · Championship"
     : "Demo Interativa — Watford FC · Championship";
-  const btn = lang === "en" ? "Exit demo" : "Sair da demo";
+  const signupBtn = lang === "en" ? "Create free account" : "Criar conta grátis";
+  const exitBtn = lang === "en" ? "Exit" : "Sair";
   return (
     <div
       className="fixed top-0 left-0 right-0 z-[200] flex items-center justify-between px-4 py-2 gap-3"
@@ -85,13 +86,22 @@ function DemoBanner({ lang, onEnd }: { lang: "pt" | "en"; onEnd: () => void }) {
         </svg>
         <span className="font-bold text-xs truncate" style={{ color: "#065f46" }}>{label}</span>
       </div>
-      <button
-        onClick={onEnd}
-        className="flex-shrink-0 px-3 py-1 rounded-lg text-xs font-bold transition-all hover:opacity-80"
-        style={{ background: "rgba(0,0,0,0.15)", color: "#065f46" }}
-      >
-        {btn}
-      </button>
+      <div className="flex items-center gap-2 flex-shrink-0">
+        <button
+          onClick={onSignup}
+          className="px-3 py-1 rounded-lg text-xs font-bold transition-all hover:opacity-90"
+          style={{ background: "#065f46", color: "#d1fae5" }}
+        >
+          {signupBtn}
+        </button>
+        <button
+          onClick={onEnd}
+          className="px-3 py-1 rounded-lg text-xs font-bold transition-all hover:opacity-80"
+          style={{ background: "rgba(0,0,0,0.15)", color: "#065f46" }}
+        >
+          {exitBtn}
+        </button>
+      </div>
     </div>
   );
 }
@@ -603,19 +613,19 @@ export default function App() {
       if (demoTab) setDemoInitialTab(demoTab);
       fetch(`${API_BASE}/auth/demo`)
         .then(r => r.ok ? r.json() as Promise<{ token: string; careerId: string; user: AuthUser }> : Promise.reject())
-        .then(({ token, careerId: _careerId, user }) => {
+        .then(({ token, careerId, user }) => {
           sessionStorage.setItem(AUTH_TOKEN_KEY, token);
           setIsDemo(true);
           setAuthUser(user);
           fetchCareersFromApi().then((fetchedCareers) => {
             setCareers(fetchedCareers);
-            const localCached = getCachedClubList();
-            if (localCached && localCached.length > 0) {
-              setAllClubs(localCached);
-              resolveViewAfterClubs(fetchedCareers.length > 0);
-              return;
+            // Auto-open the demo career directly (use careerId from auth, fallback to first)
+            const demoCareer = fetchedCareers.find(c => c.id === careerId) ?? fetchedCareers[0];
+            if (demoCareer) {
+              enterCareer(demoCareer);
+            } else {
+              setView("career-selection");
             }
-            startFetching(fetchedCareers.length > 0);
           }).catch(() => {
             setCareers([]);
             setView("career-selection");
@@ -969,7 +979,19 @@ export default function App() {
         <ImpersonationBanner userName={impersonatedUserName} onEnd={handleEndImpersonation} />
       )}
       {isDemo && !isImpersonating && (
-        <DemoBanner lang={lang} onEnd={handleEndDemo} />
+        <DemoBanner
+          lang={lang}
+          onEnd={handleEndDemo}
+          onSignup={() => {
+            if (window !== window.top) {
+              // Inside iframe: ask the parent (LandingPage) to open the signup modal
+              window.parent.postMessage({ type: "fc:open-login" }, "*");
+            } else {
+              handleEndDemo();
+              setView("landing");
+            }
+          }}
+        />
       )}
       <div className="relative h-full overflow-hidden" style={(isImpersonating || isDemo) ? { paddingTop: "40px" } : undefined}>
         <div
