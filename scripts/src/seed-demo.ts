@@ -77,19 +77,26 @@ async function aiTranslate(text: string): Promise<string> {
 
 async function translateNewsArray(posts: unknown[]): Promise<unknown[]> {
   if (!posts || posts.length === 0) return [];
-  console.log(`  Translating ${posts.length} news posts in parallel…`);
-  const results = await Promise.all(posts.map(async (post, i) => {
-    try {
-      const ptJson = JSON.stringify(post, null, 2);
-      const enJson = await aiTranslate(ptJson);
-      const parsed = JSON.parse(enJson) as unknown;
-      console.log(`    [${i + 1}/${posts.length}] ✓`);
-      return parsed;
-    } catch (err) {
-      console.warn(`    [${i + 1}/${posts.length}] ✗ Translation failed, using original:`, (err as Error).message);
-      return post;
-    }
-  }));
+  const BATCH = 4;
+  console.log(`  Translating ${posts.length} news posts (batch=${BATCH})…`);
+  const results: unknown[] = [];
+  for (let start = 0; start < posts.length; start += BATCH) {
+    const batch = posts.slice(start, start + BATCH);
+    const batchResults = await Promise.all(batch.map(async (post, j) => {
+      const i = start + j;
+      try {
+        const ptJson = JSON.stringify(post, null, 2);
+        const enJson = await aiTranslate(ptJson);
+        const parsed = JSON.parse(enJson) as unknown;
+        console.log(`    [${i + 1}/${posts.length}] ✓`);
+        return parsed;
+      } catch (err) {
+        console.warn(`    [${i + 1}/${posts.length}] ✗ Translation failed, using original:`, (err as Error).message);
+        return post;
+      }
+    }));
+    results.push(...batchResults);
+  }
   return results;
 }
 

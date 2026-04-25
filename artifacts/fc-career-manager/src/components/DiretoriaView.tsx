@@ -1076,6 +1076,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
         <p className="text-white/40 text-sm max-w-sm mb-8 leading-relaxed">
           {t.emptyDesc}
         </p>
+        {!isDemo && (
         <button
           onClick={() => setShowCreateModal(true)}
           className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all hover:scale-[1.02] active:scale-[0.98]"
@@ -1084,7 +1085,8 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
           {t.emptyBtn}
         </button>
-        {showCreateModal && (
+        )}
+        {!isDemo && showCreateModal && (
           <CreateMemberModal
             career={career}
             membersCount={0}
