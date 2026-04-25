@@ -11,7 +11,7 @@ export interface UsePWAInstallReturn {
   status: PWAInstallStatus;
   canInstall: boolean;
   installing: boolean;
-  install: () => Promise<void>;
+  install: () => Promise<"accepted" | "dismissed" | "unavailable">;
 }
 
 function isIOS(): boolean {
@@ -33,49 +33,60 @@ function isMobile(): boolean {
   return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
 }
 
+let _deferredPrompt: BeforeInstallPromptEvent | null = null;
+const _promptListeners = new Set<() => void>();
+
+function notifyPromptListeners() {
+  _promptListeners.forEach((cb) => cb());
+}
+
+if (typeof window !== "undefined") {
+  window.addEventListener("beforeinstallprompt", (e) => {
+    e.preventDefault();
+    _deferredPrompt = e as BeforeInstallPromptEvent;
+    notifyPromptListeners();
+  });
+}
+
+function getDeviceStatus(): PWAInstallStatus {
+  if (typeof window === "undefined") return "unsupported";
+  if (isInStandaloneMode()) return "standalone";
+  if (isIOS()) return "ios";
+  if (isAndroid()) return "android";
+  if (!isMobile()) return "desktop";
+  return "unsupported";
+}
+
 export function usePWAInstall(): UsePWAInstallReturn {
-  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [installing, setInstalling] = useState(false);
-  const [status, setStatus] = useState<PWAInstallStatus>("unsupported");
+  const [hasPrompt, setHasPrompt] = useState(!!_deferredPrompt);
+  const [status] = useState<PWAInstallStatus>(getDeviceStatus);
 
   useEffect(() => {
-    if (isInStandaloneMode()) {
-      setStatus("standalone");
-      return;
-    }
-    if (isIOS()) {
-      setStatus("ios");
-      return;
-    }
-    if (isAndroid()) {
-      const handler = (e: Event) => {
-        e.preventDefault();
-        setDeferredPrompt(e as BeforeInstallPromptEvent);
-        setStatus("android");
-      };
-      window.addEventListener("beforeinstallprompt", handler);
-      return () => window.removeEventListener("beforeinstallprompt", handler);
-    }
-    if (!isMobile()) {
-      setStatus("desktop");
-    }
+    const onPrompt = () => setHasPrompt(true);
+    _promptListeners.add(onPrompt);
+    if (_deferredPrompt) setHasPrompt(true);
+    return () => {
+      _promptListeners.delete(onPrompt);
+    };
   }, []);
 
-  const install = async () => {
-    if (!deferredPrompt) return;
+  const install = async (): Promise<"accepted" | "dismissed" | "unavailable"> => {
+    if (!_deferredPrompt) return "unavailable";
     setInstalling(true);
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
+    _deferredPrompt.prompt();
+    const { outcome } = await _deferredPrompt.userChoice;
     if (outcome === "accepted") {
-      setStatus("standalone");
+      _deferredPrompt = null;
+      setHasPrompt(false);
     }
     setInstalling(false);
-    setDeferredPrompt(null);
+    return outcome === "accepted" ? "accepted" : "dismissed";
   };
 
   return {
     status,
-    canInstall: status === "android" && !!deferredPrompt,
+    canInstall: status === "android" && hasPrompt,
     installing,
     install,
   };

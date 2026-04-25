@@ -27,8 +27,10 @@ export function PWAInstallBanner() {
   };
 
   const handleInstall = async () => {
-    await install();
-    localStorage.setItem(DISMISS_KEY, "1");
+    const outcome = await install();
+    if (outcome === "accepted") {
+      localStorage.setItem(DISMISS_KEY, "1");
+    }
     setShow(false);
   };
 
