@@ -936,9 +936,9 @@ function InteractiveDemoSection({ lang, onLogin }: { lang: Lang; onLogin: () => 
 function MagneticButton({ onClick, label, style }: { onClick: () => void; label: string; style?: CSSProperties }) {
   const btnRef = useRef<HTMLButtonElement>(null);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
-  const [hovered, setHovered] = useState(false);
-  const RADIUS = 130;
-  const STRENGTH = 0.38;
+  const [near, setNear] = useState(false);
+  const RADIUS = 220;
+  const STRENGTH = 0.32;
 
   const handleMouseMove = useCallback((e: MouseEvent) => {
     const btn = btnRef.current;
@@ -950,9 +950,12 @@ function MagneticButton({ onClick, label, style }: { onClick: () => void; label:
     const dy = e.clientY - cy;
     const dist = Math.sqrt(dx * dx + dy * dy);
     if (dist < RADIUS) {
-      setOffset({ x: dx * STRENGTH, y: dy * STRENGTH });
+      const pull = 1 - dist / RADIUS;
+      setOffset({ x: dx * STRENGTH * pull, y: dy * STRENGTH * pull });
+      setNear(true);
     } else {
       setOffset({ x: 0, y: 0 });
+      setNear(false);
     }
   }, []);
 
@@ -966,15 +969,13 @@ function MagneticButton({ onClick, label, style }: { onClick: () => void; label:
       ref={btnRef}
       data-cursor="ball"
       onClick={onClick}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => { setHovered(false); setOffset({ x: 0, y: 0 }); }}
       style={{
         ...style,
         transform: `translate(${offset.x}px, ${offset.y}px)`,
-        boxShadow: hovered
-          ? "0 0 50px rgba(124,92,252,0.7), 0 8px 32px rgba(124,92,252,0.5)"
+        boxShadow: near
+          ? "0 0 50px rgba(124,92,252,0.75), 0 8px 32px rgba(124,92,252,0.55)"
           : "0 8px 32px rgba(124,92,252,0.45)",
-        transition: "transform 0.35s cubic-bezier(0.25,0.46,0.45,0.94), box-shadow 0.25s",
+        transition: "transform 0.4s cubic-bezier(0.23,1,0.32,1), box-shadow 0.3s",
         willChange: "transform",
       }}
     >
