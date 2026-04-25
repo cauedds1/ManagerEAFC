@@ -1002,7 +1002,7 @@ function LandingPageDesktop({ onStart, onLogin, onStartWithPlan, lang, setLang }
   const audioRef      = useRef<HTMLAudioElement | null>(null);
 
   const [activeClub, setActiveClub]           = useState(0);
-  const [isMobile, setIsMobile]               = useState(() => typeof window !== "undefined" && window.innerWidth < 768);
+  const [isMobile, setIsMobile]               = useState(() => typeof window !== "undefined" && window.innerWidth < 900);
   const [typedText, setTypedText]             = useState("");
   const [typingDone, setTypingDone]           = useState(false);
   const [aiTextIdx, setAiTextIdx]             = useState(0);
@@ -1040,7 +1040,7 @@ function LandingPageDesktop({ onStart, onLogin, onStartWithPlan, lang, setLang }
 
   /* ── Mobile detection ─── */
   useEffect(() => {
-    const onResize = () => setIsMobile(window.innerWidth < 768);
+    const onResize = () => setIsMobile(window.innerWidth < 900);
     window.addEventListener("resize", onResize, { passive: true });
     return () => window.removeEventListener("resize", onResize);
   }, []);

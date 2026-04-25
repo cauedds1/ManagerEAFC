@@ -102,11 +102,6 @@ export const LP: Record<Lang, Record<string, string>> = {
     aiNewsMastheadTitle: "A GAZETA DO TÉCNICO",
     aiNewsLive: "ao vivo",
     aiNewsCardGenerated: "Gerado agora",
-    // demo cta
-    demoLabel: "Demo",
-    demoTitle: "Veja o app em ação",
-    demoDesc: "Explore gratuitamente, sem cadastro. Tudo que você vê é o app real — sem dados inventados.",
-    demoCta: "Explorar demo gratuito →",
     // how it works
     howLabel: "Como funciona",
     howTitle: "Quatro passos para começar",
@@ -257,11 +252,6 @@ export const LP: Record<Lang, Record<string, string>> = {
     aiNewsMastheadTitle: "THE MANAGER'S GAZETTE",
     aiNewsLive: "live",
     aiNewsCardGenerated: "Generated now",
-    // demo cta
-    demoLabel: "Demo",
-    demoTitle: "See the app in action",
-    demoDesc: "Explore for free — no sign-up needed. Everything you see is the real app, no fake data.",
-    demoCta: "Explore free demo →",
     // how it works
     howLabel: "How it works",
     howTitle: "Four steps to get started",

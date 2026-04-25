@@ -429,23 +429,35 @@ export function LandingPageMobile({
           textAlign: "center",
         }}
       >
-        <p style={{ fontSize: 11, fontWeight: 700, color: PURPLE, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 10 }}>
-          {t.demoLabel}
-        </p>
-        <h2
+        <div
           style={{
-            fontSize: 26,
-            fontWeight: 800,
-            letterSpacing: "-0.02em",
-            lineHeight: 1.2,
-            marginBottom: 14,
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            background: "rgba(124,92,252,0.12)",
+            border: "1px solid rgba(124,92,252,0.25)",
+            borderRadius: 100,
+            padding: "5px 14px",
+            marginBottom: 20,
           }}
         >
-          {t.demoTitle}
+          <span style={{ fontSize: 10, color: PURPLE, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>
+            {t.pricingFreeForever}
+          </span>
+        </div>
+        <h2
+          style={{
+            fontSize: 28,
+            fontWeight: 900,
+            letterSpacing: "-0.02em",
+            lineHeight: 1.15,
+            marginBottom: 28,
+          }}
+        >
+          {t.ctaLine1}
+          <br />
+          <span style={{ color: PURPLE }}>{t.ctaLine2}</span>
         </h2>
-        <p style={{ fontSize: 15, color: TEXT_DIM, lineHeight: 1.6, maxWidth: 300, margin: "0 auto 32px" }}>
-          {t.demoDesc}
-        </p>
         <button
           onClick={onLogin}
           style={{
@@ -467,11 +479,8 @@ export function LandingPageMobile({
             maxWidth: 300,
           }}
         >
-          {t.demoCta}
+          {t.ctaBtn}
         </button>
-        <p style={{ marginTop: 14, fontSize: 12, color: TEXT_DIM, opacity: 0.7 }}>
-          {t.pricingFreeForever} · {lang === "pt" ? "Sem cartão de crédito" : "No credit card needed"}
-        </p>
       </section>
 
       {/* ════════════ FEATURES ════════════ */}
