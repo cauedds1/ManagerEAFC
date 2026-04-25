@@ -659,7 +659,7 @@ export function MatchDetailPage({
           {t.back}
         </button>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap justify-end">
           {careerId && h2hMatches.length > 0 && (
             <button
               onClick={() => setShowH2H(true)}
@@ -837,7 +837,7 @@ export function MatchDetailPage({
       )}
 
       {/* Main 2-col layout: pitch left, info right */}
-      <div className="grid gap-5 items-start" style={{ gridTemplateColumns: "320px 1fr" }}>
+      <div className="grid gap-5 items-start grid-cols-1 lg:grid-cols-[320px_1fr]">
 
         {/* LEFT: Pitch */}
         <div>
@@ -880,7 +880,7 @@ export function MatchDetailPage({
             }}
           >
         {/* Meta */}
-        <div className="flex items-center justify-between px-5 pt-4 pb-1 gap-3">
+        <div className="flex items-center justify-between flex-wrap px-5 pt-4 pb-1 gap-3">
           <div className="flex items-center gap-2">
             <span className="opacity-50 text-sm" title={getLocationLabel(lang, match.location)}>
               {LOCATION_ICONS[match.location]}
