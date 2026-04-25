@@ -1826,7 +1826,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
                 );
               })}
               {/* Persistent mission "?" reopen button */}
-              {showMissions && !showOnboardingEntry && !showUpgradeEntry && (
+              {showMissions && !showOnboardingEntry && !showUpgradeEntry && !isDemo && (
                 <button
                   onClick={() => {
                     localStorage.setItem(`fc_widget_collapsed_${career.id}`, "0");
@@ -2111,7 +2111,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
       )}
 
       {/* Mission Widget */}
-      {showMissions && !showOnboardingEntry && !showUpgradeEntry && (
+      {showMissions && !showOnboardingEntry && !showUpgradeEntry && !isDemo && (
         <MissionWidget
           key={missionKey}
           careerId={career.id}
