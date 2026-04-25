@@ -7,10 +7,9 @@ import { db, usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { getPlanLimits, getTodayDateString } from "../lib/planLimits";
 
-const router = Router();
+import { checkDemoRateLimit } from "../lib/demoRateLimit";
 
-const demoRateLimit = new Map<number, { count: number; resetAt: number }>();
-const DEMO_AI_LIMIT_PER_HOUR = 3;
+const router = Router();
 
 interface RecentPostSummary {
   title?: string;
@@ -278,17 +277,10 @@ router.post("/noticias/generate", requireAuth, async (req: AuthRequest, res) => 
   if (!dbUser) { res.status(401).json({ error: "Usuário não encontrado" }); return; }
 
   if (req.demo) {
-    const now = Date.now();
-    let entry = demoRateLimit.get(userId);
-    if (!entry || now > entry.resetAt) {
-      entry = { count: 0, resetAt: now + 3_600_000 };
-    }
-    if (entry.count >= DEMO_AI_LIMIT_PER_HOUR) {
+    if (checkDemoRateLimit(`noticias:${userId}`)) {
       res.status(403).json({ error: "Limite da demo atingido (3 gerações/hora)", code: "DEMO_LIMIT_REACHED" });
       return;
     }
-    entry.count += 1;
-    demoRateLimit.set(userId, entry);
   }
 
   const limits = getPlanLimits(dbUser.plan);

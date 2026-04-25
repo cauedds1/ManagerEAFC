@@ -5,6 +5,7 @@ import { requireAuth, type AuthRequest } from "../middleware/auth";
 import { callDiretoriaWithPlan, callDiretoriaChatWithPlan } from "../lib/aiProvider";
 import { getPlanLimits } from "../lib/planLimits";
 import { db, clubInfoCacheTable } from "@workspace/db";
+import { checkDemoRateLimit } from "../lib/demoRateLimit";
 
 const router = Router();
 
@@ -176,6 +177,11 @@ router.post("/diretoria/chat", requireAuth, async (req: AuthRequest, res) => {
   const plan = req.user!.plan;
   const limits = getPlanLimits(plan);
 
+  if (req.demo && checkDemoRateLimit(`diretoria-chat:${req.user!.id}`)) {
+    res.status(403).json({ error: "Limite da demo atingido (3 mensagens/hora)", code: "DEMO_LIMIT_REACHED" });
+    return;
+  }
+
   const { member, message, history, context, squadOvrContext, squadRosterContext, playerPerformanceContext, lang } = req.body as {
     member: MemberProfile & { messageLimit?: number };
     message: string;
@@ -310,6 +316,11 @@ router.post("/diretoria/meeting", requireAuth, async (req: AuthRequest, res) => 
   const limits = getPlanLimits(plan);
   if (!limits.diretoriaEnabled) {
     res.status(403).json({ error: "Diretoria não está disponível no plano Free", code: "PLAN_LIMIT_REACHED", plan });
+    return;
+  }
+
+  if (req.demo && checkDemoRateLimit(`diretoria-meeting:${req.user!.id}`)) {
+    res.status(403).json({ error: "Limite da demo atingido (3 reuniões/hora)", code: "DEMO_LIMIT_REACHED" });
     return;
   }
 
@@ -953,6 +964,11 @@ router.post("/diretoria/suggest-transfer", requireAuth, async (req: AuthRequest,
   const limits = getPlanLimits(plan);
   if (!limits.diretoriaEnabled) {
     res.status(403).json({ error: "Diretoria não está disponível no plano Free", code: "PLAN_LIMIT_REACHED", plan });
+    return;
+  }
+
+  if (req.demo && checkDemoRateLimit(`diretoria-transfer:${req.user!.id}`)) {
+    res.status(403).json({ error: "Limite da demo atingido (3 sugestões/hora)", code: "DEMO_LIMIT_REACHED" });
     return;
   }
 
