@@ -10,6 +10,18 @@ function overridesKey(careerId: string): string {
   return `fc-career-manager-overrides-${careerId}`;
 }
 
+function lsGet<T>(key: string): T | null {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    return JSON.parse(raw) as T;
+  } catch { return null; }
+}
+
+function lsSet(key: string, value: unknown): void {
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
+}
+
 export function defaultStats(playerId: number): PlayerSeasonStats {
   return {
     playerId,
@@ -29,7 +41,9 @@ export function defaultStats(playerId: number): PlayerSeasonStats {
 }
 
 export function getAllPlayerStats(seasonId: string): Record<number, PlayerSeasonStats> {
-  const raw = sessionGet<Record<number, PlayerSeasonStats>>(statsKey(seasonId)) ?? {};
+  const raw = sessionGet<Record<number, PlayerSeasonStats>>(statsKey(seasonId))
+    ?? lsGet<Record<number, PlayerSeasonStats>>(statsKey(seasonId))
+    ?? {};
   for (const [key, stats] of Object.entries(raw)) {
     if (stats.playerId === undefined || stats.playerId === null) {
       stats.playerId = Number(key);
@@ -51,6 +65,7 @@ export function setPlayerStats(
   const all = getAllPlayerStats(seasonId);
   all[playerId] = stats;
   sessionSet(statsKey(seasonId), all);
+  lsSet(statsKey(seasonId), all);
   if (syncDb) {
     void putSeasonData(seasonId, "player_stats", all);
   }
@@ -87,6 +102,7 @@ export function aggregatePlayerStats(seasonIds: string[]): Record<number, Player
 
 export function syncAllPlayerStats(seasonId: string): Promise<void> {
   const all = getAllPlayerStats(seasonId);
+  lsSet(statsKey(seasonId), all);
   return putSeasonData(seasonId, "player_stats", all);
 }
 
@@ -102,11 +118,14 @@ export function copyPlayerMoodsToNewSeason(fromSeasonId: string, toSeasonId: str
     };
   }
   sessionSet(statsKey(toSeasonId), toStats);
+  lsSet(statsKey(toSeasonId), toStats);
   void putSeasonData(toSeasonId, "player_stats", toStats);
 }
 
 export function getAllPlayerOverrides(careerId: string): Record<number, PlayerOverride> {
-  return sessionGet<Record<number, PlayerOverride>>(overridesKey(careerId)) ?? {};
+  return sessionGet<Record<number, PlayerOverride>>(overridesKey(careerId))
+    ?? lsGet<Record<number, PlayerOverride>>(overridesKey(careerId))
+    ?? {};
 }
 
 export function setPlayerOverride(

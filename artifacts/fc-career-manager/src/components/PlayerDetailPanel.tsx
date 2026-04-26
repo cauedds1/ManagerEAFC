@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import type { SquadPlayer, PositionPtBr } from "@/lib/squadCache";
 import { migratePositionOverride } from "@/lib/squadCache";
 import type { PlayerOverride, OvrHistoryEntry } from "@/types/playerStats";
@@ -112,6 +112,10 @@ export function PlayerDetailPanel({
   const [confirmRemove, setConfirmRemove] = useState(false);
   const effectiveSeasonId = seasonId ?? careerId;
   const [stats, setStatsState] = useState(() => getPlayerStats(effectiveSeasonId, player.id));
+
+  useEffect(() => {
+    setStatsState(getPlayerStats(effectiveSeasonId, player.id));
+  }, [effectiveSeasonId, player.id]);
 
   const playerMomentos = useMemo<Momento[]>(() => {
     if (!seasonId) return [];

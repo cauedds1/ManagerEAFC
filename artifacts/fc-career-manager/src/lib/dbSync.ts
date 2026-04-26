@@ -45,7 +45,10 @@ export async function syncSeasonFromDb(seasonId: string): Promise<void> {
   }
 
   if (data.matches !== undefined) sessionSet(matchesKey(seasonId), data.matches);
-  if (data.player_stats !== undefined) sessionSet(statsKey(seasonId), data.player_stats);
+  if (data.player_stats !== undefined) {
+    sessionSet(statsKey(seasonId), data.player_stats);
+    try { localStorage.setItem(statsKey(seasonId), JSON.stringify(data.player_stats)); } catch {}
+  }
   if (data.transfers !== undefined) sessionSet(transfersKey(seasonId), data.transfers);
   if (data.league_position !== undefined) sessionSet(leagueKey(seasonId), data.league_position);
   if (data.finances !== undefined) sessionSet(financeKey(seasonId), data.finances);
