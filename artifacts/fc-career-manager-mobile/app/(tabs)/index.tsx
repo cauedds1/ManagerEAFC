@@ -1,4 +1,5 @@
-import { useState, useCallback } from 'react';
+import type { ComponentProps } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, RefreshControl,
   Image, TouchableOpacity, Platform,
@@ -10,31 +11,51 @@ import { router } from 'expo-router';
 import { useCareer } from '@/contexts/CareerContext';
 import { useClubTheme } from '@/contexts/ClubThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { api, type Season } from '@/lib/api';
+import { api, getMatchResult, type Season, type MatchRecord } from '@/lib/api';
 import { Colors } from '@/constants/colors';
 import { queryClient } from '@/lib/queryClient';
 
+type IoniconName = ComponentProps<typeof Ionicons>['name'];
+
 function SkeletonCard({ height = 100 }: { height?: number }) {
   return (
-    <View
-      style={[
-        styles.skeletonCard,
-        { height },
-      ]}
-    />
+    <View style={[styles.skeletonCard, { height }]} />
   );
 }
 
-function StatCard({ label, value, icon, color }: { label: string; value: string | number; icon: string; color: string }) {
+function StatCard({
+  label,
+  value,
+  icon,
+  color,
+}: {
+  label: string;
+  value: string | number;
+  icon: IoniconName;
+  color: string;
+}) {
   return (
     <View style={[styles.statCard, { borderColor: `${color}30` }]}>
       <View style={[styles.statIconWrap, { backgroundColor: `${color}18` }]}>
-        <Ionicons name={icon as any} size={18} color={color} />
+        <Ionicons name={icon} size={18} color={color} />
       </View>
       <Text style={styles.statValue}>{value}</Text>
       <Text style={styles.statLabel}>{label}</Text>
     </View>
   );
+}
+
+function computeSeasonStats(matches: MatchRecord[]) {
+  let won = 0, drawn = 0, lost = 0, goalsFor = 0, goalsAgainst = 0;
+  for (const m of matches) {
+    const result = getMatchResult(m.myScore, m.opponentScore);
+    if (result === 'vitoria') won++;
+    else if (result === 'empate') drawn++;
+    else lost++;
+    goalsFor += m.myScore;
+    goalsAgainst += m.opponentScore;
+  }
+  return { played: matches.length, won, drawn, lost, goalsFor, goalsAgainst };
 }
 
 export default function DashboardScreen() {
@@ -55,14 +76,35 @@ export default function DashboardScreen() {
     ?? seasons?.find((s) => s.isActive)
     ?? seasons?.[seasons.length - 1];
 
+  const { data: seasonGameData, isLoading: gameDataLoading } = useQuery({
+    queryKey: ['/api/data/season', currentSeason?.id],
+    queryFn: () => currentSeason ? api.seasonData.get(currentSeason.id) : null,
+    enabled: !!currentSeason?.id,
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const matches: MatchRecord[] = useMemo(
+    () => seasonGameData?.data?.matches ?? [],
+    [seasonGameData]
+  );
+
+  const stats = useMemo(() => computeSeasonStats(matches), [matches]);
+
+  const lastMatch: MatchRecord | undefined = matches.length > 0
+    ? [...matches].sort((a, b) => b.createdAt - a.createdAt)[0]
+    : undefined;
+
+  const leaguePos = seasonGameData?.data?.league_position;
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await queryClient.invalidateQueries({ queryKey: ['/api/careers'] });
+    await queryClient.invalidateQueries({ queryKey: ['/api/data/season', currentSeason?.id] });
     if (activeCareer) {
       await loadSeasons(activeCareer.id);
     }
     setRefreshing(false);
-  }, [activeCareer, loadSeasons]);
+  }, [activeCareer, loadSeasons, currentSeason?.id]);
 
   if (!activeCareer) {
     return (
@@ -76,6 +118,7 @@ export default function DashboardScreen() {
   }
 
   const topPad = Platform.OS === 'web' ? 67 : insets.top;
+  const isLoading = seasonsLoading || gameDataLoading;
 
   return (
     <ScrollView
@@ -132,7 +175,6 @@ export default function DashboardScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Coach info */}
         <View style={styles.coachRow}>
           <Ionicons name="person-circle-outline" size={18} color={Colors.mutedForeground} />
           <Text style={styles.coachName}>
@@ -145,44 +187,116 @@ export default function DashboardScreen() {
         {/* Season stats */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Temporada</Text>
-          {seasonsLoading ? (
+          {isLoading ? (
             <View style={styles.statsGrid}>
               {[1, 2, 3, 4].map((i) => <SkeletonCard key={i} height={88} />)}
             </View>
           ) : (
             <View style={styles.statsGrid}>
-              <StatCard label="Partidas" value="—" icon="football-outline" color={theme.primary} />
-              <StatCard label="Vitórias" value="—" icon="trophy-outline" color={Colors.success} />
-              <StatCard label="Gols" value="—" icon="flash-outline" color={Colors.warning} />
-              <StatCard label="Posição" value="—" icon="podium-outline" color={Colors.info} />
+              <StatCard
+                label="Partidas"
+                value={stats.played}
+                icon="football-outline"
+                color={theme.primary}
+              />
+              <StatCard
+                label="Vitórias"
+                value={stats.won}
+                icon="trophy-outline"
+                color={Colors.success}
+              />
+              <StatCard
+                label="Gols"
+                value={stats.goalsFor}
+                icon="flash-outline"
+                color={Colors.warning}
+              />
+              <StatCard
+                label="Posição"
+                value={leaguePos?.position != null ? `${leaguePos.position}º` : '—'}
+                icon="podium-outline"
+                color={Colors.info}
+              />
             </View>
           )}
         </View>
 
-        {/* Last match placeholder */}
+        {/* Record bar */}
+        {!isLoading && stats.played > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Aproveitamento</Text>
+            <View style={styles.recordCard}>
+              <View style={styles.recordItem}>
+                <Text style={[styles.recordNum, { color: Colors.success }]}>{stats.won}</Text>
+                <Text style={styles.recordLabel}>V</Text>
+              </View>
+              <View style={styles.recordDivider} />
+              <View style={styles.recordItem}>
+                <Text style={[styles.recordNum, { color: Colors.mutedForeground }]}>{stats.drawn}</Text>
+                <Text style={styles.recordLabel}>E</Text>
+              </View>
+              <View style={styles.recordDivider} />
+              <View style={styles.recordItem}>
+                <Text style={[styles.recordNum, { color: Colors.destructive }]}>{stats.lost}</Text>
+                <Text style={styles.recordLabel}>D</Text>
+              </View>
+              <View style={styles.recordDivider} />
+              <View style={styles.recordItem}>
+                <Text style={[styles.recordNum, { color: Colors.foreground }]}>
+                  {stats.goalsFor}–{stats.goalsAgainst}
+                </Text>
+                <Text style={styles.recordLabel}>Gols</Text>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Last match */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Última Partida</Text>
-          <View style={[styles.matchCard, { borderColor: `rgba(${theme.primaryRgb}, 0.2)` }]}>
-            <View style={styles.matchCardInner}>
-              <Ionicons name="football-outline" size={24} color={Colors.mutedForeground} />
-              <Text style={styles.noDataText}>
-                Nenhuma partida registrada.{'\n'}Vá para Partidas para adicionar.
-              </Text>
+          {isLoading ? (
+            <SkeletonCard height={80} />
+          ) : lastMatch ? (
+            (() => {
+              const result = getMatchResult(lastMatch.myScore, lastMatch.opponentScore);
+              const resultColor =
+                result === 'vitoria' ? Colors.success :
+                result === 'derrota' ? Colors.destructive :
+                Colors.mutedForeground;
+              const resultLabel =
+                result === 'vitoria' ? 'V' :
+                result === 'derrota' ? 'D' : 'E';
+              return (
+                <TouchableOpacity
+                  style={[styles.matchCard, { borderColor: `${resultColor}30` }]}
+                  onPress={() => router.push('/(tabs)/matches')}
+                  activeOpacity={0.8}
+                >
+                  <View style={styles.matchCardInner}>
+                    <View style={[styles.resultBadge, { backgroundColor: `${resultColor}20`, borderColor: `${resultColor}40` }]}>
+                      <Text style={[styles.resultBadgeText, { color: resultColor }]}>{resultLabel}</Text>
+                    </View>
+                    <View style={styles.matchInfo}>
+                      <Text style={styles.matchOpponent} numberOfLines={1}>vs {lastMatch.opponent}</Text>
+                      <Text style={styles.matchMeta}>{lastMatch.tournament} • {lastMatch.date}</Text>
+                    </View>
+                    <Text style={styles.matchScore}>
+                      {lastMatch.myScore}–{lastMatch.opponentScore}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })()
+          ) : (
+            <View style={[styles.matchCard, { borderColor: `rgba(${theme.primaryRgb}, 0.2)` }]}>
+              <View style={styles.matchCardInner}>
+                <Ionicons name="football-outline" size={24} color={Colors.mutedForeground} />
+                <Text style={styles.noDataText}>
+                  Nenhuma partida registrada.{'\n'}Vá para Partidas para adicionar.
+                </Text>
+              </View>
             </View>
-          </View>
-        </View>
-
-        {/* Next match placeholder */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Próxima Partida</Text>
-          <View style={[styles.matchCard, { borderColor: `rgba(${theme.primaryRgb}, 0.2)` }]}>
-            <View style={styles.matchCardInner}>
-              <Ionicons name="calendar-outline" size={24} color={Colors.mutedForeground} />
-              <Text style={styles.noDataText}>
-                Nenhuma partida agendada.
-              </Text>
-            </View>
-          </View>
+          )}
         </View>
 
         {/* Quick actions */}
@@ -262,13 +376,39 @@ const styles = StyleSheet.create({
     borderRadius: Colors.radius,
     opacity: 0.5,
   },
+  recordCard: {
+    backgroundColor: Colors.card,
+    borderRadius: Colors.radius,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    flexDirection: 'row',
+    padding: 16,
+    justifyContent: 'space-around',
+  },
+  recordItem: { alignItems: 'center', gap: 4 },
+  recordNum: { fontSize: 22, fontWeight: '700' as const, fontFamily: 'Inter_700Bold' },
+  recordLabel: { fontSize: 12, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular' },
+  recordDivider: { width: StyleSheet.hairlineWidth, backgroundColor: Colors.border },
   matchCard: {
     backgroundColor: Colors.card,
     borderRadius: Colors.radius,
     borderWidth: 1,
     overflow: 'hidden',
   },
-  matchCardInner: { padding: 20, alignItems: 'center', gap: 10 },
+  matchCardInner: { padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  resultBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  resultBadgeText: { fontSize: 15, fontWeight: '700' as const, fontFamily: 'Inter_700Bold' },
+  matchInfo: { flex: 1 },
+  matchOpponent: { fontSize: 15, fontWeight: '600' as const, color: Colors.foreground, fontFamily: 'Inter_600SemiBold' },
+  matchMeta: { fontSize: 12, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular', marginTop: 2 },
+  matchScore: { fontSize: 18, fontWeight: '700' as const, color: Colors.foreground, fontFamily: 'Inter_700Bold' },
   noDataText: { color: Colors.mutedForeground, fontSize: 14, fontFamily: 'Inter_400Regular', textAlign: 'center', lineHeight: 20 },
   quickActions: { flexDirection: 'row', gap: 10 },
   quickActionBtn: {

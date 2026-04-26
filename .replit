@@ -67,8 +67,7 @@ outputType = "console"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "EXPO_PUBLIC_API_URL=https://$REPLIT_DEV_DOMAIN PORT=8099 pnpm --filter @workspace/fc-career-manager-mobile run start -- --port 8099"
-waitForPort = 8099
+args = "EXPO_PUBLIC_API_URL=https://$REPLIT_DEV_DOMAIN pnpm --filter @workspace/fc-career-manager-mobile run start -- --port 8081"
 
 [agent]
 stack = "BEST_EFFORT_FALLBACK"

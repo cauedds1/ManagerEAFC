@@ -1,9 +1,16 @@
+import type { ComponentProps } from 'react';
 import { Tabs } from 'expo-router';
-import { Platform, View } from 'react-native';
+import { Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useClubTheme } from '@/contexts/ClubThemeContext';
 import { Colors } from '@/constants/colors';
+
+type IoniconName = ComponentProps<typeof Ionicons>['name'];
+
+function TabIcon({ name, color, size }: { name: IoniconName; color: string; size: number }) {
+  return <Ionicons name={name} size={size} color={color} />;
+}
 
 export default function TabsLayout() {
   const theme = useClubTheme();
@@ -31,7 +38,7 @@ export default function TabsLayout() {
         name="index"
         options={{
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="home" size={size ?? 24} color={color} />
+            <TabIcon name="home" size={size} color={color} />
           ),
           tabBarAccessibilityLabel: 'Dashboard',
         }}
@@ -40,7 +47,7 @@ export default function TabsLayout() {
         name="matches"
         options={{
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="football" size={size ?? 24} color={color} />
+            <TabIcon name="football" size={size} color={color} />
           ),
           tabBarAccessibilityLabel: 'Partidas',
         }}
@@ -49,7 +56,7 @@ export default function TabsLayout() {
         name="squad"
         options={{
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="people" size={size ?? 24} color={color} />
+            <TabIcon name="people" size={size} color={color} />
           ),
           tabBarAccessibilityLabel: 'Elenco',
         }}
@@ -58,7 +65,7 @@ export default function TabsLayout() {
         name="news"
         options={{
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="newspaper" size={size ?? 24} color={color} />
+            <TabIcon name="newspaper" size={size} color={color} />
           ),
           tabBarAccessibilityLabel: 'Notícias',
         }}
@@ -67,9 +74,18 @@ export default function TabsLayout() {
         name="more"
         options={{
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="menu" size={size ?? 24} color={color} />
+            <TabIcon name="menu" size={size} color={color} />
           ),
           tabBarAccessibilityLabel: 'Mais',
+        }}
+      />
+      <Tabs.Screen
+        name="perfil"
+        options={{
+          tabBarIcon: ({ color, size }) => (
+            <TabIcon name="person-circle" size={size} color={color} />
+          ),
+          tabBarAccessibilityLabel: 'Perfil',
         }}
       />
     </Tabs>

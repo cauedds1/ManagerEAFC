@@ -1,4 +1,5 @@
-import { useState, useCallback, useMemo } from 'react';
+import type { ComponentProps } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity,
   ScrollView, FlatList, ActivityIndicator, Alert, Platform,
@@ -33,6 +34,13 @@ export default function CareerCreateScreen() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
   const { data: clubsData, isLoading: clubsLoading } = useQuery({
     queryKey: ['/api/clubs'],
     queryFn: () => api.clubs.list(),
@@ -41,12 +49,12 @@ export default function CareerCreateScreen() {
 
   const filteredClubs = useMemo(() => {
     if (!clubsData?.clubs) return [];
-    if (!search.trim()) return clubsData.clubs.slice(0, 40);
-    const q = search.toLowerCase();
+    if (!debouncedSearch) return clubsData.clubs.slice(0, 40);
+    const q = debouncedSearch.toLowerCase();
     return clubsData.clubs
       .filter((c) => c.name.toLowerCase().includes(q) || (c.league ?? '').toLowerCase().includes(q))
       .slice(0, 40);
-  }, [clubsData?.clubs, search]);
+  }, [clubsData?.clubs, debouncedSearch]);
 
   const stepIndex = STEPS.indexOf(step);
 

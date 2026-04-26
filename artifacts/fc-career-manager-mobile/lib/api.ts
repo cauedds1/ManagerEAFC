@@ -128,6 +128,144 @@ export interface CreateCareerBody {
   season?: string;
 }
 
+export type MatchLocation = 'casa' | 'fora' | 'neutro';
+export type MatchResult = 'vitoria' | 'empate' | 'derrota';
+
+export interface GoalEntry {
+  id: string;
+  minute: number;
+  assistPlayerId?: number;
+  goalType?: string;
+}
+
+export interface OpponentGoalEntry {
+  id: string;
+  minute: number;
+  playerName?: string;
+}
+
+export interface PlayerMatchStats {
+  startedOnBench: boolean;
+  rating: number;
+  goals: GoalEntry[];
+  ownGoal: boolean;
+  injured: boolean;
+  substituted: boolean;
+  yellowCard?: boolean;
+  redCard?: boolean;
+}
+
+export interface MatchStats {
+  myShots: number;
+  opponentShots: number;
+  possessionPct: number;
+  penaltyGoals?: number;
+}
+
+export interface MatchRecord {
+  id: string;
+  careerId: string;
+  season: string;
+  date: string;
+  tournament: string;
+  stage: string;
+  location: MatchLocation;
+  opponent: string;
+  myScore: number;
+  opponentScore: number;
+  starterIds: number[];
+  subIds: number[];
+  playerStats: Record<string, PlayerMatchStats>;
+  matchStats: MatchStats;
+  motmPlayerId?: number;
+  motmPlayerName?: string;
+  opponentGoals?: OpponentGoalEntry[];
+  tablePositionBefore?: number;
+  opponentLogoUrl?: string;
+  observations?: string;
+  createdAt: number;
+}
+
+export interface SquadPlayer {
+  id: number;
+  name: string;
+  age: number;
+  position: string;
+  positionPtBr: string;
+  photo: string;
+  number?: number;
+}
+
+export interface PlayerSeasonStats {
+  playerId: number;
+  goals: number;
+  assists: number;
+  avgRating: number;
+  appearances: number;
+  yellowCards: number;
+  redCards: number;
+}
+
+export interface NewsItem {
+  id: string;
+  headline: string;
+  body: string;
+  type?: string;
+  createdAt: number;
+  matchId?: string;
+}
+
+export interface InjuryRecord {
+  playerId: number;
+  playerName: string;
+  injuryType: string;
+  matchesOut: number;
+  matchesServed?: number;
+  createdAt?: number;
+}
+
+export interface LeaguePosition {
+  position: number;
+  played: number;
+  won: number;
+  drawn: number;
+  lost: number;
+  goalsFor: number;
+  goalsAgainst: number;
+  points: number;
+}
+
+export interface Finances {
+  budget: number;
+  wage: number;
+  transferBudget?: number;
+}
+
+export interface SeasonGameData {
+  matches?: MatchRecord[];
+  player_stats?: PlayerSeasonStats[];
+  news?: NewsItem[];
+  injuries?: InjuryRecord[];
+  league_position?: LeaguePosition;
+  finances?: Finances;
+  transfers?: unknown[];
+  fan_mood?: number;
+}
+
+export interface CareerGameData {
+  lineup?: number[];
+  benchOrder?: number[];
+  formation?: string;
+  trophies?: unknown[];
+  customPlayers?: SquadPlayer[];
+}
+
+export function getMatchResult(myScore: number, opponentScore: number): MatchResult {
+  if (myScore > opponentScore) return 'vitoria';
+  if (myScore < opponentScore) return 'derrota';
+  return 'empate';
+}
+
 export const api = {
   auth: {
     login: (email: string, password: string) =>
@@ -180,5 +318,40 @@ export const api = {
   clubs: {
     list: () =>
       request<{ clubs: Club[]; cachedAt: number }>('/api/clubs'),
+  },
+
+  seasonData: {
+    get: (seasonId: string) =>
+      request<{ data: SeasonGameData }>(`/api/data/season/${seasonId}`),
+
+    set: (seasonId: string, key: keyof SeasonGameData, value: unknown) =>
+      request<{ ok: boolean }>(`/api/data/season/${seasonId}/${key}`, {
+        method: 'PUT',
+        body: JSON.stringify({ value }),
+      }),
+  },
+
+  careerData: {
+    get: (careerId: string) =>
+      request<{ data: CareerGameData }>(`/api/data/career/${careerId}`),
+
+    set: (careerId: string, key: keyof CareerGameData, value: unknown) =>
+      request<{ ok: boolean }>(`/api/data/career/${careerId}/${key}`, {
+        method: 'PUT',
+        body: JSON.stringify({ value }),
+      }),
+  },
+
+  squad: {
+    get: (clubId: number) =>
+      request<{ players: SquadPlayer[]; cachedAt: number }>(`/api/squad/${clubId}`),
+  },
+
+  noticias: {
+    generate: (seasonId: string, matchId?: string) =>
+      request<{ noticia: NewsItem }>('/api/noticias/generate', {
+        method: 'POST',
+        body: JSON.stringify({ seasonId, matchId }),
+      }),
   },
 };

@@ -1,3 +1,4 @@
+import type { ComponentProps } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -8,8 +9,10 @@ import { useCareer } from '@/contexts/CareerContext';
 import { useClubTheme } from '@/contexts/ClubThemeContext';
 import { Colors } from '@/constants/colors';
 
+type IoniconName = ComponentProps<typeof Ionicons>['name'];
+
 interface MenuItemProps {
-  icon: string;
+  icon: IoniconName;
   label: string;
   subtitle?: string;
   onPress: () => void;
@@ -22,7 +25,7 @@ function MenuItem({ icon, label, subtitle, onPress, destructive, color }: MenuIt
   return (
     <TouchableOpacity style={styles.menuItem} onPress={onPress} activeOpacity={0.7}>
       <View style={[styles.menuIconWrap, { backgroundColor: `${itemColor}18` }]}>
-        <Ionicons name={icon as any} size={20} color={itemColor} />
+        <Ionicons name={icon} size={20} color={itemColor} />
       </View>
       <View style={styles.menuContent}>
         <Text style={[styles.menuLabel, { color: itemColor }]}>{label}</Text>
