@@ -1,0 +1,25 @@
+export const Colors = {
+  background: '#0B0714',
+  backgroundLighter: '#120E1F',
+  card: '#130F1E',
+  cardBorder: '#1E1A2E',
+  foreground: '#F5F5F5',
+  foregroundMuted: '#A0A0B0',
+  border: '#1E1A2E',
+  muted: '#191525',
+  mutedForeground: '#737373',
+  primary: '#8B5CF6',
+  primaryForeground: '#FFFFFF',
+  destructive: '#EF4444',
+  destructiveForeground: '#FFFFFF',
+  success: '#22C55E',
+  warning: '#F59E0B',
+  info: '#3B82F6',
+  radius: 10,
+  radiusSm: 6,
+  radiusLg: 16,
+  radiusXl: 24,
+  tabBarHeight: 84,
+};
+
+export type ColorTokens = typeof Colors;

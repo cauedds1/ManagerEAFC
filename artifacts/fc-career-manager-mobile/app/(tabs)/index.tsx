@@ -1,0 +1,283 @@
+import { useState, useCallback } from 'react';
+import {
+  View, Text, StyleSheet, ScrollView, RefreshControl,
+  Image, TouchableOpacity, Platform,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useQuery } from '@tanstack/react-query';
+import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
+import { useCareer } from '@/contexts/CareerContext';
+import { useClubTheme } from '@/contexts/ClubThemeContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { api, type Season } from '@/lib/api';
+import { Colors } from '@/constants/colors';
+import { queryClient } from '@/lib/queryClient';
+
+function SkeletonCard({ height = 100 }: { height?: number }) {
+  return (
+    <View
+      style={[
+        styles.skeletonCard,
+        { height },
+      ]}
+    />
+  );
+}
+
+function StatCard({ label, value, icon, color }: { label: string; value: string | number; icon: string; color: string }) {
+  return (
+    <View style={[styles.statCard, { borderColor: `${color}30` }]}>
+      <View style={[styles.statIconWrap, { backgroundColor: `${color}18` }]}>
+        <Ionicons name={icon as any} size={18} color={color} />
+      </View>
+      <Text style={styles.statValue}>{value}</Text>
+      <Text style={styles.statLabel}>{label}</Text>
+    </View>
+  );
+}
+
+export default function DashboardScreen() {
+  const insets = useSafeAreaInsets();
+  const { activeCareer, activeSeason, loadSeasons } = useCareer();
+  const theme = useClubTheme();
+  const { user } = useAuth();
+  const [refreshing, setRefreshing] = useState(false);
+  const [logoError, setLogoError] = useState(false);
+
+  const { data: seasons, isLoading: seasonsLoading } = useQuery({
+    queryKey: ['/api/careers', activeCareer?.id, 'seasons'],
+    queryFn: () => activeCareer ? api.careers.seasons(activeCareer.id) : Promise.resolve([]),
+    enabled: !!activeCareer,
+  });
+
+  const currentSeason: Season | undefined = activeSeason
+    ?? seasons?.find((s) => s.isActive)
+    ?? seasons?.[seasons.length - 1];
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await queryClient.invalidateQueries({ queryKey: ['/api/careers'] });
+    if (activeCareer) {
+      await loadSeasons(activeCareer.id);
+    }
+    setRefreshing(false);
+  }, [activeCareer, loadSeasons]);
+
+  if (!activeCareer) {
+    return (
+      <View style={styles.centered}>
+        <Text style={styles.emptyText}>Nenhuma carreira selecionada</Text>
+        <TouchableOpacity style={styles.selectBtn} onPress={() => router.push('/career-select')}>
+          <Text style={styles.selectBtnText}>Selecionar carreira</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  const topPad = Platform.OS === 'web' ? 67 : insets.top;
+
+  return (
+    <ScrollView
+      style={styles.scroll}
+      contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          tintColor={theme.primary}
+          colors={[theme.primary]}
+        />
+      }
+      showsVerticalScrollIndicator={false}
+    >
+      {/* Club header */}
+      <View
+        style={[
+          styles.header,
+          {
+            paddingTop: topPad + 16,
+            backgroundColor: `rgba(${theme.primaryRgb}, 0.1)`,
+            borderBottomColor: `rgba(${theme.primaryRgb}, 0.2)`,
+          },
+        ]}
+      >
+        <View style={styles.headerInner}>
+          <View style={styles.clubInfoRow}>
+            {activeCareer.clubLogo && !logoError ? (
+              <Image
+                source={{ uri: activeCareer.clubLogo }}
+                style={styles.clubLogo}
+                onError={() => setLogoError(true)}
+              />
+            ) : (
+              <View style={[styles.clubLogoFallback, { backgroundColor: `rgba(${theme.primaryRgb}, 0.2)` }]}>
+                <Ionicons name="football" size={28} color={theme.primary} />
+              </View>
+            )}
+            <View style={styles.clubText}>
+              <Text style={styles.clubName} numberOfLines={1}>{activeCareer.clubName}</Text>
+              <Text style={styles.clubLeague} numberOfLines={1}>
+                {activeCareer.clubLeague ?? 'Liga'} • {currentSeason?.label ?? activeCareer.season}
+              </Text>
+            </View>
+          </View>
+
+          <TouchableOpacity
+            style={styles.changeCareerBtn}
+            onPress={() => router.push('/career-select')}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons name="swap-horizontal" size={20} color={Colors.mutedForeground} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Coach info */}
+        <View style={styles.coachRow}>
+          <Ionicons name="person-circle-outline" size={18} color={Colors.mutedForeground} />
+          <Text style={styles.coachName}>
+            Treinador: {activeCareer.coach?.name ?? 'Desconhecido'}
+          </Text>
+        </View>
+      </View>
+
+      <View style={styles.body}>
+        {/* Season stats */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Temporada</Text>
+          {seasonsLoading ? (
+            <View style={styles.statsGrid}>
+              {[1, 2, 3, 4].map((i) => <SkeletonCard key={i} height={88} />)}
+            </View>
+          ) : (
+            <View style={styles.statsGrid}>
+              <StatCard label="Partidas" value="—" icon="football-outline" color={theme.primary} />
+              <StatCard label="Vitórias" value="—" icon="trophy-outline" color={Colors.success} />
+              <StatCard label="Gols" value="—" icon="flash-outline" color={Colors.warning} />
+              <StatCard label="Posição" value="—" icon="podium-outline" color={Colors.info} />
+            </View>
+          )}
+        </View>
+
+        {/* Last match placeholder */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Última Partida</Text>
+          <View style={[styles.matchCard, { borderColor: `rgba(${theme.primaryRgb}, 0.2)` }]}>
+            <View style={styles.matchCardInner}>
+              <Ionicons name="football-outline" size={24} color={Colors.mutedForeground} />
+              <Text style={styles.noDataText}>
+                Nenhuma partida registrada.{'\n'}Vá para Partidas para adicionar.
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Next match placeholder */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Próxima Partida</Text>
+          <View style={[styles.matchCard, { borderColor: `rgba(${theme.primaryRgb}, 0.2)` }]}>
+            <View style={styles.matchCardInner}>
+              <Ionicons name="calendar-outline" size={24} color={Colors.mutedForeground} />
+              <Text style={styles.noDataText}>
+                Nenhuma partida agendada.
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Quick actions */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Acesso Rápido</Text>
+          <View style={styles.quickActions}>
+            <TouchableOpacity
+              style={[styles.quickActionBtn, { backgroundColor: `rgba(${theme.primaryRgb}, 0.1)`, borderColor: `rgba(${theme.primaryRgb}, 0.25)` }]}
+              onPress={() => router.push('/(tabs)/matches')}
+            >
+              <Ionicons name="football" size={22} color={theme.primary} />
+              <Text style={[styles.quickActionLabel, { color: theme.primary }]}>Partidas</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.quickActionBtn, { backgroundColor: `rgba(34, 197, 94, 0.1)`, borderColor: `rgba(34, 197, 94, 0.25)` }]}
+              onPress={() => router.push('/(tabs)/squad')}
+            >
+              <Ionicons name="people" size={22} color={Colors.success} />
+              <Text style={[styles.quickActionLabel, { color: Colors.success }]}>Elenco</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.quickActionBtn, { backgroundColor: `rgba(245, 158, 11, 0.1)`, borderColor: `rgba(245, 158, 11, 0.25)` }]}
+              onPress={() => router.push('/(tabs)/news')}
+            >
+              <Ionicons name="newspaper" size={22} color={Colors.warning} />
+              <Text style={[styles.quickActionLabel, { color: Colors.warning }]}>Notícias</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </ScrollView>
+  );
+}
+
+const styles = StyleSheet.create({
+  scroll: { flex: 1, backgroundColor: Colors.background },
+  centered: { flex: 1, backgroundColor: Colors.background, alignItems: 'center', justifyContent: 'center', padding: 24 },
+  emptyText: { color: Colors.mutedForeground, fontSize: 16, marginBottom: 16, fontFamily: 'Inter_400Regular' },
+  selectBtn: { backgroundColor: Colors.primary, paddingHorizontal: 24, paddingVertical: 12, borderRadius: Colors.radius },
+  selectBtnText: { color: '#fff', fontWeight: '600' as const, fontFamily: 'Inter_600SemiBold' },
+  header: {
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+  },
+  headerInner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
+  clubInfoRow: { flexDirection: 'row', alignItems: 'center', flex: 1, gap: 12 },
+  clubLogo: { width: 48, height: 48, borderRadius: 8 },
+  clubLogoFallback: { width: 48, height: 48, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  clubText: { flex: 1 },
+  clubName: { fontSize: 18, fontWeight: '700' as const, color: Colors.foreground, fontFamily: 'Inter_700Bold' },
+  clubLeague: { fontSize: 13, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular', marginTop: 2 },
+  changeCareerBtn: { padding: 4 },
+  coachRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  coachName: { fontSize: 13, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular' },
+  body: { paddingHorizontal: 16, paddingTop: 16 },
+  section: { marginBottom: 24 },
+  sectionTitle: { fontSize: 15, fontWeight: '600' as const, color: Colors.foreground, fontFamily: 'Inter_600SemiBold', marginBottom: 12 },
+  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  statCard: {
+    flex: 1,
+    minWidth: '45%',
+    backgroundColor: Colors.card,
+    borderRadius: Colors.radius,
+    borderWidth: 1,
+    padding: 14,
+    alignItems: 'flex-start',
+    gap: 8,
+  },
+  statIconWrap: { width: 36, height: 36, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  statValue: { fontSize: 22, fontWeight: '700' as const, color: Colors.foreground, fontFamily: 'Inter_700Bold' },
+  statLabel: { fontSize: 12, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular' },
+  skeletonCard: {
+    flex: 1,
+    minWidth: '45%',
+    backgroundColor: Colors.muted,
+    borderRadius: Colors.radius,
+    opacity: 0.5,
+  },
+  matchCard: {
+    backgroundColor: Colors.card,
+    borderRadius: Colors.radius,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  matchCardInner: { padding: 20, alignItems: 'center', gap: 10 },
+  noDataText: { color: Colors.mutedForeground, fontSize: 14, fontFamily: 'Inter_400Regular', textAlign: 'center', lineHeight: 20 },
+  quickActions: { flexDirection: 'row', gap: 10 },
+  quickActionBtn: {
+    flex: 1,
+    borderRadius: Colors.radius,
+    borderWidth: 1,
+    padding: 16,
+    alignItems: 'center',
+    gap: 8,
+  },
+  quickActionLabel: { fontSize: 12, fontWeight: '600' as const, fontFamily: 'Inter_600SemiBold' },
+});

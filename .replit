@@ -30,6 +30,10 @@ args = "Start application"
 task = "workflow.run"
 args = "Backend API"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Expo Mobile App"
+
 [[workflows.workflow]]
 name = "Start application"
 author = "agent"
@@ -53,6 +57,18 @@ outputType = "console"
 task = "shell.exec"
 args = "PORT=8080 NODE_ENV=development MIGRATIONS_PATH=/home/runner/workspace/lib/db/migrations node --enable-source-maps /home/runner/workspace/artifacts/api-server/dist/index.mjs"
 waitForPort = 8080
+
+[[workflows.workflow]]
+name = "Expo Mobile App"
+author = "agent"
+
+[workflows.workflow.metadata]
+outputType = "console"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "EXPO_PUBLIC_API_URL=https://$REPLIT_DEV_DOMAIN PORT=8099 pnpm --filter @workspace/fc-career-manager-mobile run start -- --port 8099"
+waitForPort = 8099
 
 [agent]
 stack = "BEST_EFFORT_FALLBACK"

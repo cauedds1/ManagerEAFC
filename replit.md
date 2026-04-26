@@ -7,8 +7,9 @@ A full-stack web application for managing football career mode progress, inspire
 This is a pnpm monorepo with the following packages:
 
 ### Applications (`artifacts/`)
-- **`fc-career-manager/`** — React + Vite frontend (port 3000, preview path `/`)
+- **`fc-career-manager/`** — React + Vite frontend (port 5000, preview path `/`)
 - **`api-server/`** — Express.js backend API (port 8080, mounted at `/api`)
+- **`fc-career-manager-mobile/`** — Expo React Native mobile app (port 8099, Expo Go via QR)
 - **`mockup-sandbox/`** — UI component prototyping environment
 
 ### Shared Libraries (`lib/`)
@@ -22,6 +23,7 @@ This is a pnpm monorepo with the following packages:
 ## Tech Stack
 
 - **Frontend**: React 19, Vite 7, Tailwind CSS 4, TanStack Query, Framer Motion, Shadcn UI, vite-plugin-pwa (PWA/installable)
+- **Mobile**: Expo SDK 53, React Native 0.79, expo-router 5, TanStack Query, expo-secure-store (JWT), dark theme with dynamic club colors
 - **Backend**: Express.js 5, Node.js, TypeScript
 - **Database**: PostgreSQL with Drizzle ORM
 - **AI**: OpenAI via Replit AI Integrations (provisioned)
@@ -30,9 +32,20 @@ This is a pnpm monorepo with the following packages:
 
 ## Running Services
 
-- Frontend dev server: `pnpm --filter @workspace/fc-career-manager run dev` (port 3000)
-- Backend API: `pnpm --filter @workspace/api-server run dev` (port 8080)
+- Frontend dev server: `pnpm --filter @workspace/fc-career-manager run dev` (port 5000)
+- Backend API: `PORT=8080 NODE_ENV=development node ... dist/index.mjs` (port 8080)
+- Expo Metro Bundler: `pnpm --filter @workspace/fc-career-manager-mobile run start -- --port 8099` (port 8099)
 - Frontend proxies `/api/*` to the backend via Vite proxy config
+
+### Mobile App (Expo)
+- Located at `artifacts/fc-career-manager-mobile`
+- Package: `@workspace/fc-career-manager-mobile`
+- Stack: Expo SDK 53 + React Native 0.79 + expo-router 5
+- Navigation: Root Stack → (auth) login/register → career-select → (tabs) home/matches/squad/news/more
+- Auth: JWT stored via expo-secure-store (SecureStore), falls back to localStorage on web
+- API: calls `EXPO_PUBLIC_API_URL` (defaults to `http://localhost:8080`), set to backend HTTPS URL in workflow
+- Theme: Dark — background `#0B0714`, card `#120E1F`, primary `#8B5CF6` + dynamic club color overrides
+- To test natively: scan the QR code in the Expo Mobile App workflow console with Expo Go app
 
 ## Authentication
 
