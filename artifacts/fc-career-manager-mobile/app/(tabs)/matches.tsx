@@ -2,7 +2,7 @@ import type { ComponentProps } from 'react';
 import { useState, useCallback, useMemo } from 'react';
 import {
   View, Text, StyleSheet, SectionList, TouchableOpacity, Platform,
-  RefreshControl,
+  RefreshControl, Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
@@ -132,12 +132,17 @@ export default function MatchesScreen() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await queryClient.invalidateQueries({ queryKey: ['/api/data/season', currentSeason?.id] });
-    setRefreshing(false);
+    try {
+      await queryClient.invalidateQueries({ queryKey: ['/api/data/season', currentSeason?.id] });
+    } catch {
+      Alert.alert('Erro', 'Não foi possível atualizar as partidas. Tente novamente.');
+    } finally {
+      setRefreshing(false);
+    }
   }, [currentSeason?.id]);
 
   const handleRegister = useCallback(() => {
-    if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    if (Platform.OS !== 'web') void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     router.push('/registrar-partida');
   }, []);
 

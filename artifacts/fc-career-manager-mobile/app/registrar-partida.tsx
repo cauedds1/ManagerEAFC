@@ -297,8 +297,8 @@ export default function RegistrarPartidaScreen() {
       return newMatch;
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['/api/data/season', activeSeason?.id] });
-      if (Platform.OS !== 'web') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      void qc.invalidateQueries({ queryKey: ['/api/data/season', activeSeason?.id] }).catch(() => {});
+      if (Platform.OS !== 'web') void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       router.back();
     },
     onError: (err: Error) => Alert.alert('Erro', err.message),
@@ -308,13 +308,13 @@ export default function RegistrarPartidaScreen() {
 
   const handleNext = useCallback(() => {
     if (step === 1 && !canProceedStep1) return;
-    if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (Platform.OS !== 'web') void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     setStep((prev) => (prev < TOTAL_STEPS ? ((prev + 1) as Step) : prev));
   }, [step, canProceedStep1]);
 
   const handleBack = useCallback(() => {
     if (step > 1) {
-      if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      if (Platform.OS !== 'web') void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
       setStep((prev) => ((prev - 1) as Step));
     } else {
       router.back();

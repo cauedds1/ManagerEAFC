@@ -67,7 +67,7 @@ export default function CareerCreateScreen() {
   };
 
   const handleClubSelect = (club: Club) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     setSelectedClub(club);
     setStep('coach');
   };
@@ -122,13 +122,13 @@ export default function CareerCreateScreen() {
       setActiveCareer(freshCareer);
       await loadSeasons(id);
 
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       router.replace('/(tabs)');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro ao criar carreira';
       setError(msg);
       setSaving(false);
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
     }
   };
 

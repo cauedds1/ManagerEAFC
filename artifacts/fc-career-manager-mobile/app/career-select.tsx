@@ -114,8 +114,13 @@ export default function CareerSelectScreen() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await queryClient.invalidateQueries({ queryKey: ['/api/careers'] });
-    setRefreshing(false);
+    try {
+      await queryClient.invalidateQueries({ queryKey: ['/api/careers'] });
+    } catch {
+      Alert.alert('Erro', 'Não foi possível atualizar as carreiras. Tente novamente.');
+    } finally {
+      setRefreshing(false);
+    }
   }, []);
 
   const handleSelect = useCallback(async (career: Career) => {
@@ -134,8 +139,8 @@ export default function CareerSelectScreen() {
   const handleDelete = useCallback(async (career: Career) => {
     try {
       await api.careers.delete(career.id);
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      queryClient.invalidateQueries({ queryKey: ['/api/careers'] });
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      void queryClient.invalidateQueries({ queryKey: ['/api/careers'] }).catch(() => {});
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro ao excluir';
       if (Platform.OS === 'web') {
