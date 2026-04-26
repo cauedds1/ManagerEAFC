@@ -1621,7 +1621,7 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
               {/* ── Android APK ── */}
               {(() => {
                 const APK_URL: string | null = null;
-                const EAS_BUILD_URL = "https://expo.dev/accounts/cauedds/projects/fc-career-manager-mobile/builds/610f3c8c-6216-4e31-8aa9-84bf508ee5de";
+                const EAS_BUILD_URL = "https://expo.dev/accounts/cauedds/projects/fc-career-manager-mobile/builds/a4567a6d-164e-4315-a163-9dc84936f287";
                 return (
                   <SectionCard
                     title={lang === "pt" ? "App Android Nativo" : "Native Android App"}
