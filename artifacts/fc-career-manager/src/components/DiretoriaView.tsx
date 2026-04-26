@@ -1309,7 +1309,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
         </div>
 
         {panel === "chat" && selectedMember && (
-          <div className="flex flex-col min-h-0" style={{ height: "100%" }}>
+          <div className="flex flex-col min-h-0 col-start-1 sm:col-start-2" style={{ height: "100%" }}>
             <div
               className="flex items-center gap-3 px-5 py-3 flex-shrink-0"
               style={{ borderBottom: "1px solid var(--surface-border)", background: "rgba(255,255,255,0.02)" }}
@@ -1449,7 +1449,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
         )}
 
         {panel === "meeting" && activeMeeting && (
-          <div className="flex flex-col min-h-0" style={{ height: "100%" }}>
+          <div className="flex flex-col min-h-0 col-start-1 sm:col-start-2" style={{ height: "100%" }}>
             <div
               className="flex items-center justify-between px-5 py-3 flex-shrink-0"
               style={{ borderBottom: "1px solid var(--surface-border)", background: "rgba(255,255,255,0.02)" }}
@@ -1602,7 +1602,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
         )}
 
         {panel === "history" && (
-          <div className="flex flex-col min-h-0" style={{ height: "100%" }}>
+          <div className="flex flex-col min-h-0 col-start-1 sm:col-start-2" style={{ height: "100%" }}>
             <div
               className="flex items-center gap-3 px-5 py-3 flex-shrink-0"
               style={{ borderBottom: "1px solid var(--surface-border)", background: "rgba(255,255,255,0.02)" }}
@@ -1675,7 +1675,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
         )}
 
         {panel === "history-detail" && historyMeeting && (
-          <div className="flex flex-col min-h-0" style={{ height: "100%" }}>
+          <div className="flex flex-col min-h-0 col-start-1 sm:col-start-2" style={{ height: "100%" }}>
             <div
               className="flex items-center gap-3 px-5 py-3 flex-shrink-0"
               style={{ borderBottom: "1px solid var(--surface-border)", background: "rgba(255,255,255,0.02)" }}
