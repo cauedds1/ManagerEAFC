@@ -1,0 +1,90 @@
+	Olá,	
+ 
+ 
+ 
+ 
+Tivemos dificuldades para enviar solicitações no modo de produção para um endpoint de webhook associado à sua conta CDSystems. A Stripe envia eventos de webhook ao seu servidor para relatar atividades na sua conta, como repasses feitos ou novas faturas.	
+ 
+ 
+ 
+ 
+URL do endpoint de webhook com erro: https://managereafc-production.up.railway.app/api/stripe/webhook	
+ 
+ 
+ 
+ 
+Você (ou alguém de sua equipe) configurou sua conta Stripe para enviar eventos a esse URL. Para alterar os endpoints de webhook de sua conta, acesse o Dashboard.	
+ 
+ 
+ 
+ 
+Na maioria das vezes, um webhook com erro não afeta seus pagamentos nem repasses. Porém:	
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Se você usa assinaturas, precisamos do endpoint de webhook para enviar notificações de novas faturas. Essas faturas podem atrasar até três dias se o seu endpoint não conseguir recebê-las.
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Se você usa o Checkout e precisa do evento checkout.session.completed em seu processo de execução de compra, confira os pagamentos concluídos para ver se executou todas as compras recentes.
+
+ 
+ 
+ 
+ 
+ 
+Tentamos enviar notificações de eventos para este endpoint 218 vezes desde o primeiro erro, em 23 de abril de 2026 às 03:27:02 UTC. Se esse endpoint for importante para o seu uso, tente resolver o problema. Se não precisa desse endpoint de webhook, você pode removê-lo nas configurações de webhook da Stripe. Vamos parar de enviar notificações de eventos para esse endpoint de webhook em 2 de maio de 2026 às 03:27:02 UTC.	
+ 
+ 
+ 
+ 
+Veja este resumo dos erros que recebemos ao tentar enviar eventos de webhook:	
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+218 requests had other errors while sending the webhook event.	
+ 
+ 
+ 
+ 
+ 
+É preciso retornar um código de status entre HTTP 200 e 299 para que a Stripe considere o evento de webhook entregue.	
+ 
+ 
+ 
+ 
+Para saber mais detalhes sobre esses erros e conferir as últimas atividades de sua conta, veja o conjunto completo de eventos e logs de solicitações no Dashboard.	
+ 
+ 
+ 
+ 
+Para obter informações mais detalhadas sobre o uso de webhooks, recomendamos ler nossa documentação.	
+ 
+ 
+ 
+ 
+– Equipe da Stripe	
+ 
+ 
+ 

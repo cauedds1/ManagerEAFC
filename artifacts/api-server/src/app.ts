@@ -72,10 +72,8 @@ app.post(
   express.raw({ type: "application/json" }),
   async (req: Request, res: Response) => {
     const sig = req.headers["stripe-signature"];
-    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-
-    if (!webhookSecret || !sig) {
-      res.status(400).json({ error: "Missing webhook secret or signature" });
+    if (!sig) {
+      res.status(400).json({ error: "Missing Stripe signature" });
       return;
     }
 
@@ -87,24 +85,55 @@ app.post(
         res.status(503).json({ error: "Stripe not initialized" });
         return;
       }
+
+      let webhookSecret = process.env.STRIPE_WEBHOOK_SECRET ?? null;
+
+      if (!webhookSecret) {
+        try {
+          const accountId = await stripeSync.getAccountId();
+          const { db: pgDb } = await import("@workspace/db");
+          const { sql: pgSql } = await import("drizzle-orm");
+          const result = await pgDb.execute(
+            pgSql`SELECT secret FROM stripe._managed_webhooks WHERE account_id = ${accountId} LIMIT 1`
+          );
+          const rows = (result as unknown as { rows: Record<string, unknown>[] }).rows;
+          webhookSecret = (rows?.[0]?.secret as string) ?? null;
+        } catch (dbErr) {
+          logger.warn({ err: dbErr }, "Could not fetch webhook secret from DB");
+        }
+      }
+
+      if (!webhookSecret) {
+        logger.error("No webhook secret available — set STRIPE_WEBHOOK_SECRET or run findOrCreateManagedWebhook first");
+        res.status(503).json({ error: "Webhook secret not configured" });
+        return;
+      }
+
       event = stripeSync.stripe.webhooks.constructEvent(
         req.body as Buffer,
-        sig,
+        sig as string,
         webhookSecret,
       );
+
+      res.json({ received: true });
+
+      try {
+        await stripeSync.processEvent(event);
+      } catch (syncErr) {
+        logger.warn({ err: syncErr, eventType: event.type }, "Stripe sync error (non-fatal)");
+      }
+
+      try {
+        await handleStripeEvent(event);
+      } catch (bizErr) {
+        logger.error({ err: bizErr, eventType: event.type }, "Stripe business logic error");
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Unknown error";
-      logger.error({ err }, `Webhook signature verification failed: ${msg}`);
-      res.status(400).json({ error: `Webhook Error: ${msg}` });
-      return;
-    }
-
-    try {
-      await handleStripeEvent(event);
-      res.json({ received: true });
-    } catch (err) {
-      logger.error({ err }, "Stripe webhook handler error");
-      res.status(500).json({ error: "Internal server error" });
+      logger.error({ err }, `Webhook processing failed: ${msg}`);
+      if (!res.headersSent) {
+        res.status(400).json({ error: `Webhook Error: ${msg}` });
+      }
     }
   },
 );
