@@ -2,7 +2,7 @@ import type { ComponentProps } from 'react';
 import { useState, useCallback, useMemo } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, RefreshControl,
-  Image, TouchableOpacity, Platform,
+  Image, TouchableOpacity, Platform, Modal,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -18,6 +18,64 @@ import { queryClient } from '@/lib/queryClient';
 import MissionsCard from '@/app/components/MissionsCard';
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
+
+function SeasonPickerModal({
+  seasons,
+  active,
+  onSelect,
+  onClose,
+}: {
+  seasons: Season[];
+  active: Season | null;
+  onSelect: (s: Season) => void;
+  onClose: () => void;
+}) {
+  const insets = useSafeAreaInsets();
+  return (
+    <Modal visible transparent animationType="slide" onRequestClose={onClose}>
+      <TouchableOpacity
+        style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.65)' }}
+        activeOpacity={1}
+        onPress={onClose}
+      >
+        <TouchableOpacity
+          activeOpacity={1}
+          style={{
+            backgroundColor: Colors.card, borderTopLeftRadius: 24, borderTopRightRadius: 24,
+            paddingHorizontal: 20, paddingTop: 12, paddingBottom: insets.bottom + 24,
+          }}
+        >
+          <View style={{ width: 40, height: 4, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 2, alignSelf: 'center', marginBottom: 20 }} />
+          <Text style={{ fontSize: 16, fontWeight: '700' as const, color: Colors.foreground, fontFamily: 'Inter_700Bold', marginBottom: 16, textAlign: 'center' }}>
+            Temporadas
+          </Text>
+          {seasons.map((s) => (
+            <TouchableOpacity
+              key={s.id}
+              style={{
+                flexDirection: 'row', alignItems: 'center', gap: 10,
+                paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: Colors.border,
+                backgroundColor: s.id === active?.id ? `${Colors.primary}0A` : 'transparent',
+                paddingHorizontal: 4,
+              }}
+              onPress={() => { onSelect(s); onClose(); }}
+            >
+              <Text style={{ flex: 1, fontSize: 15, color: s.id === active?.id ? Colors.primary : Colors.foreground, fontFamily: s.id === active?.id ? 'Inter_600SemiBold' : 'Inter_400Regular' }}>
+                {s.label}
+              </Text>
+              {s.isActive && (
+                <Text style={{ fontSize: 11, color: Colors.success, fontFamily: 'Inter_600SemiBold', backgroundColor: `${Colors.success}18`, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6 }}>
+                  Ativa
+                </Text>
+              )}
+              {s.id === active?.id && <Ionicons name="checkmark" size={16} color={Colors.primary} />}
+            </TouchableOpacity>
+          ))}
+        </TouchableOpacity>
+      </TouchableOpacity>
+    </Modal>
+  );
+}
 
 function SkeletonCard({ height = 100 }: { height?: number }) {
   return (
@@ -66,11 +124,12 @@ function computeTotalAssists(playerStats: import('@/lib/api').PlayerSeasonStats[
 
 export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
-  const { activeCareer, activeSeason, loadSeasons } = useCareer();
+  const { activeCareer, activeSeason, setActiveSeason, loadSeasons } = useCareer();
   const theme = useClubTheme();
   const { user } = useAuth();
   const [refreshing, setRefreshing] = useState(false);
   const [logoError, setLogoError] = useState(false);
+  const [showSeasonPicker, setShowSeasonPicker] = useState(false);
 
   const { data: seasons, isLoading: seasonsLoading } = useQuery({
     queryKey: ['/api/careers', activeCareer?.id, 'seasons'],
@@ -150,6 +209,7 @@ export default function DashboardScreen() {
   const isLoading = seasonsLoading || gameDataLoading;
 
   return (
+    <>
     <ScrollView
       style={styles.scroll}
       contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
@@ -195,9 +255,18 @@ export default function DashboardScreen() {
             )}
             <View style={styles.clubText}>
               <Text style={styles.clubName} numberOfLines={1}>{activeCareer.clubName}</Text>
-              <Text style={styles.clubLeague} numberOfLines={1}>
-                {activeCareer.clubLeague ?? 'Liga'} • {currentSeason?.label ?? activeCareer.season}
-              </Text>
+              <TouchableOpacity
+                onPress={() => seasons && seasons.length > 1 ? setShowSeasonPicker(true) : undefined}
+                activeOpacity={0.7}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+              >
+                <Text style={styles.clubLeague} numberOfLines={1}>
+                  {activeCareer.clubLeague ?? 'Liga'} • {currentSeason?.label ?? activeCareer.season}
+                </Text>
+                {seasons && seasons.length > 1 && (
+                  <Ionicons name="chevron-down" size={12} color={Colors.mutedForeground} />
+                )}
+              </TouchableOpacity>
             </View>
           </View>
 
@@ -423,6 +492,16 @@ export default function DashboardScreen() {
         )}
       </View>
     </ScrollView>
+
+    {showSeasonPicker && seasons && (
+      <SeasonPickerModal
+        seasons={seasons}
+        active={activeSeason}
+        onSelect={setActiveSeason}
+        onClose={() => setShowSeasonPicker(false)}
+      />
+    )}
+  </>
   );
 }
 
