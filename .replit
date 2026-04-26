@@ -67,7 +67,7 @@ outputType = "console"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "EXPO_PUBLIC_API_URL=https://managereafc-production.up.railway.app pnpm --filter @workspace/fc-career-manager-mobile run start -- --tunnel"
+args = "mkdir -p ~/.ngrok2 && echo 'authtoken: 3Cu5SyGSIqgjCgP7kda5ZhlUsne_mNJNqdDtppe9SkA7g7fz' > ~/.ngrok2/ngrok.yml && EXPO_PUBLIC_API_URL=https://managereafc-production.up.railway.app pnpm --filter @workspace/fc-career-manager-mobile exec expo start --tunnel"
 
 [agent]
 stack = "BEST_EFFORT_FALLBACK"
@@ -93,6 +93,7 @@ GEMINI_API_KEY = "AIzaSyBY05_Uay-vk_385eqmZ4v8dZO28UTeUuk"
 JWT_SECRET = "fb8758bef5332a115c07a5f21bfff44c03c3711ff8cc05ffa9d651424f6d6106"
 MIGRATIONS_PATH = "/home/runner/workspace/lib/db/migrations"
 EXPO_TOKEN = "Cb1-gfSWt4DjbZsmFX4rE-3p4fD69IqQLNOXOE8M"
+NGROK_AUTHTOKEN = "3Cu5SyGSIqgjCgP7kda5ZhlUsne_mNJNqdDtppe9SkA7g7fz"
 
 [[ports]]
 localPort = 5000
