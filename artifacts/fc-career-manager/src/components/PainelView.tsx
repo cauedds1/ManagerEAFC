@@ -263,12 +263,12 @@ function LeagueCard({ careerId, isReadOnly }: { careerId: string; isReadOnly?: b
 }
 
 function TopPerformers({
-  careerId,
+  seasonId,
   allPlayers,
   type,
   matchCount,
 }: {
-  careerId: string;
+  seasonId: string;
   allPlayers: SquadPlayer[];
   type: "goals" | "assists";
   matchCount: number;
@@ -279,7 +279,7 @@ function TopPerformers({
   );
 
   const ranked = useMemo(() => {
-    const allStats = getAllPlayerStats(careerId);
+    const allStats = getAllPlayerStats(seasonId);
     return Object.values(allStats)
       .filter((s) => s[type] > 0)
       .sort((a, b) => b[type] - a[type])
@@ -289,7 +289,7 @@ function TopPerformers({
         player: playerMap.get(s.playerId) ?? null,
       }))
       .filter((r) => r.player !== null);
-  }, [careerId, playerMap, type, matchCount]);
+  }, [seasonId, playerMap, type, matchCount]);
 
   const [lang] = useLang();
   const t = PAINEL[lang];
@@ -714,8 +714,8 @@ export function PainelView({
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <LeagueCard careerId={careerId} isReadOnly={isReadOnly} />
-        <TopPerformers careerId={careerId} allPlayers={allPlayers} type="goals" matchCount={matches.length} />
-        <TopPerformers careerId={careerId} allPlayers={allPlayers} type="assists" matchCount={matches.length} />
+        <TopPerformers seasonId={seasonId} allPlayers={allPlayers} type="goals" matchCount={matches.length} />
+        <TopPerformers seasonId={seasonId} allPlayers={allPlayers} type="assists" matchCount={matches.length} />
       </div>
 
       <MessagesSection />
