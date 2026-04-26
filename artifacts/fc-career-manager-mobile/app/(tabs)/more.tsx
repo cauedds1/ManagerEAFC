@@ -166,6 +166,20 @@ export default function MoreScreen() {
             onPress={() => router.push('/trophies')}
             color='#f59e0b'
           />
+          <MenuItem
+            icon="football-outline"
+            label="Competições"
+            subtitle="Mata-mata e pontos corridos"
+            onPress={() => router.push('/competicoes')}
+            color={Colors.info}
+          />
+          <MenuItem
+            icon="images-outline"
+            label="Momentos"
+            subtitle="Fotos e memórias da temporada"
+            onPress={() => router.push('/momentos')}
+            color='#ec4899'
+          />
         </Section>
       )}
 
