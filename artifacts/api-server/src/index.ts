@@ -159,18 +159,18 @@ process.on("SIGINT", () => {
   process.exit(0);
 });
 
-applyMigrations()
-  .then(purgeInvalidSquadRows)
-  .then(migratePositionGroups)
-  .then(clearCardPhotos)
-  .then(initStripe)
-  .then(() => {
-    app.listen(port, "0.0.0.0", (err) => {
-      if (err) {
-        logger.error({ err }, "Error listening on port");
-        process.exit(1);
-      }
+app.listen(port, "0.0.0.0", (err) => {
+  if (err) {
+    logger.error({ err }, "Error listening on port");
+    process.exit(1);
+  }
 
-      logger.info({ port }, "Server listening");
-    });
-  });
+  logger.info({ port }, "Server listening");
+
+  applyMigrations()
+    .then(purgeInvalidSquadRows)
+    .then(migratePositionGroups)
+    .then(clearCardPhotos)
+    .then(initStripe)
+    .catch((err) => logger.error({ err }, "Background startup tasks failed"));
+});
