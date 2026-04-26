@@ -8,7 +8,6 @@ import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { LandingPage } from "@/components/LandingPage";
 import { AuthPage } from "@/components/AuthPage";
 import { WelcomeScreen } from "@/components/WelcomeScreen";
-import { PWAInstallBanner } from "@/components/PWAInstallBanner";
 import { applyTheme, resetTheme, extractColorsFromImage } from "@/lib/themeManager";
 import { getClubColors } from "@/lib/clubColors";
 import { APIFOOTBALL_TO_FC26_NAME } from "@/lib/footballApiMap";
@@ -1024,8 +1023,6 @@ export default function App() {
           </div>
         </div>
       )}
-
-      <PWAInstallBanner />
 
       {checkoutConfirmed && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-2xl flex items-center gap-3 shadow-lg"
