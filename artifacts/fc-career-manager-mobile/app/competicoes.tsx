@@ -610,6 +610,7 @@ export default function CompeticoesScreen() {
 
   const [showNew, setShowNew] = useState(false);
   const [editing, setEditing] = useState<CompetitionResult | null>(null);
+  const [showAllSeasons, setShowAllSeasons] = useState(false);
 
   const { data: careerData, isLoading } = useQuery({
     queryKey: ['/api/data/career', activeCareer?.id],
@@ -640,17 +641,24 @@ export default function CompeticoesScreen() {
     saveMutation.mutate(results.filter((r) => r.id !== id));
   };
 
+  const activeSeasonLabel = activeSeason?.label ?? '';
+
+  const filteredResults = useMemo(() => {
+    if (showAllSeasons || !activeSeasonLabel) return results;
+    return results.filter((r) => r.seasonLabel === activeSeasonLabel);
+  }, [results, showAllSeasons, activeSeasonLabel]);
+
   const grouped = useMemo(() => {
     const map = new Map<string, CompetitionResult[]>();
-    for (const r of results) {
+    for (const r of filteredResults) {
       const k = r.seasonLabel;
       if (!map.has(k)) map.set(k, []);
       map.get(k)!.push(r);
     }
     return [...map.entries()].sort((a, b) => b[0].localeCompare(a[0]));
-  }, [results]);
+  }, [filteredResults]);
 
-  const champions = results.filter((r) => r.isChampion);
+  const champions = filteredResults.filter((r) => r.isChampion);
 
   return (
     <View style={[styles.container, { paddingTop: topPad }]}>
@@ -668,16 +676,39 @@ export default function CompeticoesScreen() {
         </TouchableOpacity>
       </View>
 
+      {results.length > 0 && activeSeasonLabel && (
+        <View style={styles.filterRow}>
+          <TouchableOpacity
+            style={[styles.filterTab, !showAllSeasons && { backgroundColor: `rgba(${theme.primaryRgb},0.15)`, borderColor: `rgba(${theme.primaryRgb},0.4)` }]}
+            onPress={() => setShowAllSeasons(false)}
+          >
+            <Text style={[styles.filterTabText, !showAllSeasons && { color: theme.primary }]}>
+              {activeSeasonLabel}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.filterTab, showAllSeasons && { backgroundColor: `rgba(${theme.primaryRgb},0.15)`, borderColor: `rgba(${theme.primaryRgb},0.4)` }]}
+            onPress={() => setShowAllSeasons(true)}
+          >
+            <Text style={[styles.filterTabText, showAllSeasons && { color: theme.primary }]}>
+              Todas
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {isLoading ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color={theme.primary} />
         </View>
-      ) : results.length === 0 ? (
+      ) : filteredResults.length === 0 ? (
         <View style={styles.center}>
           <Text style={{ fontSize: 56 }}>🏟️</Text>
           <Text style={styles.emptyTitle}>Nenhuma competição</Text>
           <Text style={styles.emptyText}>
-            Registe os resultados das competições que o seu clube participa.
+            {!showAllSeasons && activeSeasonLabel
+              ? `Nenhuma competição registada em ${activeSeasonLabel}.`
+              : 'Registe os resultados das competições que o seu clube participa.'}
           </Text>
           <TouchableOpacity
             style={[styles.emptyAddBtn, { backgroundColor: `rgba(${theme.primaryRgb},0.15)`, borderColor: `rgba(${theme.primaryRgb},0.3)` }]}
@@ -846,6 +877,19 @@ const styles = StyleSheet.create({
   },
   championsBarTitle: { fontSize: 14, fontWeight: '700' as const, color: '#f59e0b', fontFamily: 'Inter_700Bold' },
   championsBarNames: { fontSize: 12, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular' },
+  filterRow: {
+    flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingVertical: 10,
+    borderBottomWidth: 1, borderBottomColor: Colors.border,
+  },
+  filterTab: {
+    paddingHorizontal: 14, paddingVertical: 7,
+    borderRadius: 10, borderWidth: 1, borderColor: Colors.border,
+    backgroundColor: Colors.card,
+  },
+  filterTabText: {
+    fontSize: 13, fontWeight: '600' as const,
+    color: Colors.mutedForeground, fontFamily: 'Inter_600SemiBold',
+  },
   seasonGroup: { marginBottom: 16 },
   groupLabel: {
     fontSize: 11, fontWeight: '600' as const, color: Colors.mutedForeground,
