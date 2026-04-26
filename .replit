@@ -92,6 +92,7 @@ R2_SECRET_ACCESS_KEY = "5206ba3269570a22fe3c7deeabe29cd889eaf5dfbfb5f537011a6361
 GEMINI_API_KEY = "AIzaSyBY05_Uay-vk_385eqmZ4v8dZO28UTeUuk"
 JWT_SECRET = "fb8758bef5332a115c07a5f21bfff44c03c3711ff8cc05ffa9d651424f6d6106"
 MIGRATIONS_PATH = "/home/runner/workspace/lib/db/migrations"
+EXPO_TOKEN = "Cb1-gfSWt4DjbZsmFX4rE-3p4fD69IqQLNOXOE8M"
 
 [[ports]]
 localPort = 5000
