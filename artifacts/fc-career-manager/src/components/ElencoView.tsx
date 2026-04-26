@@ -321,10 +321,14 @@ export function ElencoView({
     return list.sort((a, b) => b.date - a.date);
   }, [transfers, formerPlayers, hiddenSet, customPlayers, seasonId, careerId]);
 
-  const mergedPlayers = useMemo<SquadPlayer[]>(
-    () => [...allPlayers, ...customPlayers].filter((p) => !hiddenSet.has(p.id)),
-    [allPlayers, customPlayers, hiddenSet]
-  );
+  const mergedPlayers = useMemo<SquadPlayer[]>(() => {
+    const seenIds = new Set<number>();
+    return [...allPlayers, ...customPlayers].filter((p) => {
+      if (hiddenSet.has(p.id) || seenIds.has(p.id)) return false;
+      seenIds.add(p.id);
+      return true;
+    });
+  }, [allPlayers, customPlayers, hiddenSet]);
 
   const handleRemovePlayer = (player: SquadPlayer) => {
     const ovr = overrides[player.id];

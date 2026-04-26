@@ -981,9 +981,15 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
   }, []);
 
   const allPlayers = useMemo(() => {
+    const customNames = new Set(customPlayers.map((p) => p.name.toLowerCase().trim()));
     const base = [
-      ...squadPlayers.filter((p) => !removedIds.has(p.id) && !removedNames.has(p.name.toLowerCase().trim())),
-      ...newTransferredPlayers,
+      ...squadPlayers.filter(
+        (p) =>
+          !removedIds.has(p.id) &&
+          !removedNames.has(p.name.toLowerCase().trim()) &&
+          !customNames.has(p.name.toLowerCase().trim()),
+      ),
+      ...newTransferredPlayers.filter((p) => !customNames.has(p.name.toLowerCase().trim())),
     ];
     const baseIds = new Set(base.map((p) => p.id));
     const extra = customPlayers.filter((p) => !baseIds.has(p.id) && !removedIds.has(p.id));
