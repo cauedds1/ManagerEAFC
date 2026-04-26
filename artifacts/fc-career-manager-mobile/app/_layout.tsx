@@ -33,6 +33,26 @@ function RootLayoutInner() {
         name="match-detail"
         options={{ animation: 'slide_from_right' }}
       />
+      <Stack.Screen
+        name="transfers"
+        options={{ animation: 'slide_from_right' }}
+      />
+      <Stack.Screen
+        name="injuries"
+        options={{ animation: 'slide_from_right' }}
+      />
+      <Stack.Screen
+        name="financeiro"
+        options={{ animation: 'slide_from_right' }}
+      />
+      <Stack.Screen
+        name="trophies"
+        options={{ animation: 'slide_from_right' }}
+      />
+      <Stack.Screen
+        name="diretoria"
+        options={{ animation: 'slide_from_right' }}
+      />
     </Stack>
   );
 }

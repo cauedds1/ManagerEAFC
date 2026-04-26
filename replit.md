@@ -41,11 +41,15 @@ This is a pnpm monorepo with the following packages:
 - Located at `artifacts/fc-career-manager-mobile`
 - Package: `@workspace/fc-career-manager-mobile`
 - Stack: Expo SDK 53 + React Native 0.79 + expo-router 5
-- Navigation: Root Stack → (auth) login/register → career-select → (tabs) home/matches/squad/news/more
+- Navigation: Root Stack → (auth) login/register → career-select → (tabs) home/matches/squad/news/more + stack routes: match-detail, transfers, injuries, financeiro, trophies, diretoria
 - Auth: JWT stored via expo-secure-store (SecureStore), falls back to localStorage on web
 - API: calls `EXPO_PUBLIC_API_URL` (defaults to `http://localhost:8080`), set to backend HTTPS URL in workflow
 - Theme: Dark — background `#0B0714`, card `#120E1F`, primary `#8B5CF6` + dynamic club color overrides
 - To test natively: scan the QR code in the Expo Mobile App workflow console with Expo Go app
+- Screens: Dashboard, Partidas (matches list + detail), Elenco (squad with search/filter/bottom sheet), Notícias (news feed), Mais (links hub), Perfil
+- Stack screens (from Mais tab): Transferências, Lesões, Financeiro, Troféus, Diretoria
+- Push notifications: `services/notifications.ts` — expo-notifications 0.31.x, permission request, local scheduling
+- Offline cache: `hooks/useOfflineCache.ts` — AsyncStorage-backed TTL cache
 
 ## Authentication
 

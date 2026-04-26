@@ -18,9 +18,10 @@ interface MenuItemProps {
   onPress: () => void;
   destructive?: boolean;
   color?: string;
+  badge?: string;
 }
 
-function MenuItem({ icon, label, subtitle, onPress, destructive, color }: MenuItemProps) {
+function MenuItem({ icon, label, subtitle, onPress, destructive, color, badge }: MenuItemProps) {
   const itemColor = destructive ? Colors.destructive : color ?? Colors.foreground;
   return (
     <TouchableOpacity style={styles.menuItem} onPress={onPress} activeOpacity={0.7}>
@@ -31,9 +32,13 @@ function MenuItem({ icon, label, subtitle, onPress, destructive, color }: MenuIt
         <Text style={[styles.menuLabel, { color: itemColor }]}>{label}</Text>
         {subtitle ? <Text style={styles.menuSubtitle}>{subtitle}</Text> : null}
       </View>
-      {!destructive && (
+      {badge ? (
+        <View style={[styles.badge, { backgroundColor: `${Colors.destructive}22` }]}>
+          <Text style={styles.badgeText}>{badge}</Text>
+        </View>
+      ) : !destructive ? (
         <Ionicons name="chevron-forward" size={16} color={Colors.mutedForeground} />
-      )}
+      ) : null}
     </TouchableOpacity>
   );
 }
@@ -50,7 +55,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 export default function MoreScreen() {
   const insets = useSafeAreaInsets();
   const { user, logout } = useAuth();
-  const { activeCareer, setActiveCareer } = useCareer();
+  const { activeCareer } = useCareer();
   const theme = useClubTheme();
   const topPad = Platform.OS === 'web' ? 67 : insets.top;
 
@@ -90,7 +95,6 @@ export default function MoreScreen() {
       }}
       showsVerticalScrollIndicator={false}
     >
-      {/* Profile header */}
       <View style={[styles.profileCard, { borderColor: `rgba(${theme.primaryRgb}, 0.2)` }]}>
         <View style={[styles.avatar, { backgroundColor: `rgba(${theme.primaryRgb}, 0.15)` }]}>
           <Text style={[styles.avatarText, { color: theme.primary }]}>
@@ -105,6 +109,51 @@ export default function MoreScreen() {
           </View>
         </View>
       </View>
+
+      {activeCareer && (
+        <Section title="Gestão">
+          <MenuItem
+            icon="swap-horizontal-outline"
+            label="Transferências"
+            subtitle="Entradas e saídas da temporada"
+            onPress={() => router.push('/transfers')}
+            color={Colors.success}
+          />
+          <MenuItem
+            icon="medkit-outline"
+            label="Lesões"
+            subtitle="Jogadores lesionados"
+            onPress={() => router.push('/injuries')}
+            color={Colors.destructive}
+          />
+          <MenuItem
+            icon="cash-outline"
+            label="Financeiro"
+            subtitle="Orçamento e folha salarial"
+            onPress={() => router.push('/financeiro')}
+            color={Colors.info}
+          />
+        </Section>
+      )}
+
+      {activeCareer && (
+        <Section title="Clube">
+          <MenuItem
+            icon="business-outline"
+            label="Diretoria"
+            subtitle="Membros e reuniões"
+            onPress={() => router.push('/diretoria')}
+            color={Colors.warning}
+          />
+          <MenuItem
+            icon="trophy-outline"
+            label="Troféus"
+            subtitle="Vitrine de conquistas"
+            onPress={() => router.push('/trophies')}
+            color='#f59e0b'
+          />
+        </Section>
+      )}
 
       <Section title="Carreira">
         {activeCareer && (
@@ -223,6 +272,12 @@ const styles = StyleSheet.create({
   menuContent: { flex: 1 },
   menuLabel: { fontSize: 15, fontFamily: 'Inter_500Medium', fontWeight: '500' as const },
   menuSubtitle: { fontSize: 12, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular', marginTop: 1 },
+  badge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 99,
+  },
+  badgeText: { fontSize: 11, fontWeight: '700' as const, color: Colors.destructive, fontFamily: 'Inter_700Bold' },
   version: {
     textAlign: 'center',
     color: Colors.mutedForeground,
