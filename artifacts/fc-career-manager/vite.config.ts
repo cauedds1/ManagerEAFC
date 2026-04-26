@@ -52,7 +52,7 @@ export default defineConfig({
       workbox: {
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
         navigateFallback: "/index.html",
-        navigateFallbackDenylist: [/^\/api\//],
+        navigateFallbackDenylist: [/^\/api\//, /^\/admin/],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
@@ -110,6 +110,10 @@ export default defineConfig({
     allowedHosts: true,
     proxy: {
       "/api": {
+        target: "http://localhost:8080",
+        changeOrigin: true,
+      },
+      "/admin": {
         target: "http://localhost:8080",
         changeOrigin: true,
       },
