@@ -1761,7 +1761,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
 
         <div
           data-dashboard-nav="1"
-          className="hidden sm:flex sticky top-0 z-30 flex-col"
+          className="flex sticky top-0 z-30 flex-col"
           style={{ background: "rgba(var(--club-primary-rgb), 0.06)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", borderBottom: "1px solid var(--surface-border)" }}
         >
           <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
@@ -1904,7 +1904,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
         )}
 
         {activeTab === "clube" && (
-          <div className="pb-24 sm:pb-0">
+          <div className="pb-0">
           <ClubeView
             careerId={career.id}
             seasonId={activeSeasonId}
@@ -1933,7 +1933,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
           </div>
         )}
         {activeTab !== "clube" && (
-          <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 pt-6 pb-24 sm:pb-6">
+          <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 pt-6 pb-6">
             {activeTab === "resumo" && isFinalized && (
               <SeasonSummaryView
                 careerId={career.id}
@@ -2156,7 +2156,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
 
       {/* Mobile Bottom Navigation */}
       <nav
-        className="fixed bottom-0 left-0 right-0 z-40 sm:hidden"
+        className="fixed bottom-0 left-0 right-0 z-40 hidden"
         style={{
           background: "rgba(10,8,20,0.95)",
           borderTop: "1px solid rgba(255,255,255,0.08)",
