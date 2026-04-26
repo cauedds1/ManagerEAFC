@@ -831,17 +831,23 @@ export default function SquadScreen() {
 
   const statsMap = useMemo<Map<number, PlayerSeasonStats>>(() => {
     const map = new Map<number, PlayerSeasonStats>();
-    for (const s of seasonData?.data?.player_stats ?? []) {
-      map.set(s.playerId, s);
+    const arr = seasonData?.data?.player_stats;
+    if (Array.isArray(arr)) {
+      for (const s of arr) {
+        if (s?.playerId != null) map.set(s.playerId, s);
+      }
     }
     return map;
   }, [seasonData]);
 
   const injuryMap = useMemo<Map<number, InjuryRecord>>(() => {
     const map = new Map<number, InjuryRecord>();
-    for (const inj of (seasonData?.data?.injuries ?? []) as InjuryRecord[]) {
-      const remaining = Math.max(0, inj.matchesOut - (inj.matchesServed ?? 0));
-      if (remaining > 0) map.set(inj.playerId, inj);
+    const arr = seasonData?.data?.injuries;
+    if (Array.isArray(arr)) {
+      for (const inj of arr as InjuryRecord[]) {
+        const remaining = Math.max(0, inj.matchesOut - (inj.matchesServed ?? 0));
+        if (remaining > 0) map.set(inj.playerId, inj);
+      }
     }
     return map;
   }, [seasonData]);
@@ -912,9 +918,12 @@ export default function SquadScreen() {
 
   const motmCountMap = useMemo(() => {
     const map = new Map<number, number>();
-    for (const m of seasonData?.data?.matches ?? []) {
-      if (m.motmPlayerId != null) {
-        map.set(m.motmPlayerId, (map.get(m.motmPlayerId) ?? 0) + 1);
+    const arr = seasonData?.data?.matches;
+    if (Array.isArray(arr)) {
+      for (const m of arr) {
+        if (m?.motmPlayerId != null) {
+          map.set(m.motmPlayerId, (map.get(m.motmPlayerId) ?? 0) + 1);
+        }
       }
     }
     return map;
@@ -922,7 +931,9 @@ export default function SquadScreen() {
 
   const salaryMap = useMemo(() => {
     const map = new Map<number, number>();
-    for (const po of careerGameData?.data?.playerOverrides ?? []) {
+    const overrides = careerGameData?.data?.playerOverrides;
+    if (!Array.isArray(overrides)) return map;
+    for (const po of overrides) {
       if (po.salary != null) map.set(po.playerId, po.salary);
     }
     return map;
