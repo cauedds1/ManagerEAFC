@@ -222,6 +222,10 @@ export interface InjuryRecord {
   matchesOut: number;
   matchesServed?: number;
   createdAt?: number;
+  playerPosition?: string;
+  position?: string;
+  returnDate?: string;
+  expectedReturn?: string;
 }
 
 export interface LeaguePosition {

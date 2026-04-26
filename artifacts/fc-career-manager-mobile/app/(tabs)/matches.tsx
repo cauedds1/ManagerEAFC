@@ -31,7 +31,7 @@ const RESULT_CONFIG = {
 
 interface MatchSection {
   title: string;
-  tournament: string;
+  stage: string;
   data: MatchRecord[];
 }
 
@@ -54,7 +54,7 @@ function MatchRow({
       <View style={styles.matchRowBody}>
         <Text style={styles.opponentText} numberOfLines={1}>vs {match.opponent}</Text>
         <Text style={styles.matchMeta} numberOfLines={1}>
-          {match.stage} • {LOCATION_LABELS[match.location] ?? match.location} • {match.date}
+          {match.tournament} • {LOCATION_LABELS[match.location] ?? match.location} • {match.date}
         </Text>
       </View>
       <Text style={styles.scoreText}>
@@ -116,14 +116,14 @@ export default function MatchesScreen() {
 
     const grouped = new Map<string, MatchRecord[]>();
     for (const m of sorted) {
-      const key = m.tournament || 'Outros';
+      const key = m.stage || 'Rodada';
       if (!grouped.has(key)) grouped.set(key, []);
       grouped.get(key)!.push(m);
     }
 
-    return [...grouped.entries()].map(([tournament, matches]) => ({
-      title: tournament,
-      tournament,
+    return [...grouped.entries()].map(([stage, matches]) => ({
+      title: stage,
+      stage,
       data: matches,
     }));
   }, [seasonGameData]);

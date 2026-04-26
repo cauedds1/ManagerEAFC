@@ -15,18 +15,24 @@ function InjuryCard({ item }: { item: InjuryRecord }) {
   const remaining = Math.max(0, item.matchesOut - (item.matchesServed ?? 0));
   const isRecovered = remaining === 0;
   const statusColor = isRecovered ? Colors.success : Colors.destructive;
+  const position = item.playerPosition ?? item.position ?? null;
+  const returnInfo = item.returnDate ?? item.expectedReturn ?? null;
 
   return (
     <View style={[styles.card, isRecovered && styles.cardRecovered]}>
-      <View style={styles.cardLeft}>
-        <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
-      </View>
+      <View style={[styles.cardLeft, { backgroundColor: isRecovered ? Colors.success : Colors.destructive }]} />
       <View style={styles.cardContent}>
         <View style={styles.cardTop}>
-          <Text style={styles.playerName}>{item.playerName}</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.playerName}>{item.playerName}</Text>
+            {position && (
+              <Text style={styles.positionText}>{position}</Text>
+            )}
+          </View>
           <View style={[styles.statusPill, { backgroundColor: `${statusColor}18`, borderColor: `${statusColor}30` }]}>
+            <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
             <Text style={[styles.statusText, { color: statusColor }]}>
-              {isRecovered ? '✓ Recuperado' : '🤕 Lesionado'}
+              {isRecovered ? 'Recuperado' : 'Lesionado'}
             </Text>
           </View>
         </View>
@@ -35,13 +41,25 @@ function InjuryCard({ item }: { item: InjuryRecord }) {
         ) : null}
         <View style={styles.cardMeta}>
           <Text style={styles.metaText}>
-            <Text style={styles.metaLabel}>Partidas fora: </Text>
-            {item.matchesOut}
+            <Text style={styles.metaLabel}>Fora: </Text>
+            {item.matchesOut} {item.matchesOut === 1 ? 'jogo' : 'jogos'}
           </Text>
           {!isRecovered && (
             <Text style={[styles.metaText, { color: Colors.destructive }]}>
               <Text style={styles.metaLabel}>Restam: </Text>
               {remaining} jogo{remaining !== 1 ? 's' : ''}
+            </Text>
+          )}
+          {returnInfo && (
+            <Text style={[styles.metaText, { color: Colors.warning }]}>
+              <Text style={styles.metaLabel}>Previsão: </Text>
+              {returnInfo}
+            </Text>
+          )}
+          {!isRecovered && !returnInfo && remaining > 0 && (
+            <Text style={[styles.metaText, { color: Colors.mutedForeground }]}>
+              <Text style={styles.metaLabel}>Previsão: </Text>
+              ~{remaining} {remaining === 1 ? 'partida' : 'partidas'}
             </Text>
           )}
         </View>
@@ -159,12 +177,14 @@ const styles = StyleSheet.create({
   },
   cardRecovered: { borderColor: `${Colors.success}20`, opacity: 0.75 },
   statusDot: { width: 8, height: 8, borderRadius: 4 },
-  cardLeft: { width: 4, backgroundColor: Colors.destructive },
+  positionText: { fontSize: 12, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular', marginTop: 1 },
+  cardLeft: { width: 4 },
   cardContent: { flex: 1, padding: 14, gap: 6 },
   cardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6 },
   playerName: { fontSize: 16, fontWeight: '600' as const, color: Colors.foreground, fontFamily: 'Inter_600SemiBold' },
   statusPill: {
     paddingHorizontal: 8, paddingVertical: 3, borderRadius: 99, borderWidth: 1,
+    flexDirection: 'row', alignItems: 'center', gap: 4,
   },
   statusText: { fontSize: 11, fontWeight: '600' as const, fontFamily: 'Inter_600SemiBold' },
   injuryType: { fontSize: 13, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular' },
