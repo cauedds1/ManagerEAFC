@@ -413,6 +413,11 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ label, isActive }),
       }),
+
+    finalizeSeason: (seasonId: string) =>
+      request<{ ok: boolean }>(`/api/seasons/${seasonId}/finalize`, {
+        method: 'PATCH',
+      }),
   },
 
   clubs: {

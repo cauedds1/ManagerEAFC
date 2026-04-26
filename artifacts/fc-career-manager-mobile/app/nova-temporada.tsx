@@ -123,10 +123,25 @@ export default function NovaTemporadaScreen() {
       const { id } = await api.careers.createSeason(activeCareer.id, label.trim(), setAsActive);
 
       if (selectedComps.size > 0) {
-        const competitions = COMPETITION_PRESETS
-          .filter((c) => selectedComps.has(c.id))
-          .map((c) => ({ id: c.id, name: c.label, type: 'league' as const, standings: [], matches: [] }));
-        await api.seasonData.set(id, 'comp_results' as never, competitions);
+        const existingData = await api.careerData.get(activeCareer.id).catch(() => null);
+        const existing: unknown[] = (existingData?.data?.comp_results as unknown[] | undefined) ?? [];
+        const existingIds = new Set(existing.map((c: unknown) => (c as { id?: string }).id).filter(Boolean));
+        const newEntries = COMPETITION_PRESETS
+          .filter((c) => selectedComps.has(c.id) && !existingIds.has(c.id))
+          .map((c) => ({
+            id: `${c.id}_${id}`,
+            careerId: activeCareer.id,
+            seasonId: id,
+            seasonLabel: label.trim(),
+            competitionName: c.label,
+            type: 'pontos-corridos' as const,
+            isChampion: false,
+            standings: [],
+            bracket: [],
+          }));
+        if (newEntries.length > 0) {
+          await api.careerData.set(activeCareer.id, 'comp_results', [...existing, ...newEntries]);
+        }
       }
 
       if (Platform.OS !== 'web') {

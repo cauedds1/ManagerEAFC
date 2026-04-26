@@ -184,21 +184,39 @@ export default function ConfiguracoesScreen() {
   };
 
   const handleFinalizeSeasonConfirm = () => {
-    if (!activeSeason) return;
+    if (!activeCareer) {
+      Alert.alert('Carreira não selecionada', 'Selecione uma carreira primeiro.');
+      return;
+    }
+    if (!activeSeason) {
+      Alert.alert('Nenhuma temporada ativa', 'Não há temporada ativa para finalizar.');
+      return;
+    }
     Alert.alert(
       'Finalizar temporada',
-      `Deseja finalizar "${activeSeason.label}"? Esta ação não pode ser desfeita.`,
+      `Deseja finalizar "${activeSeason.label}"? Esta ação não pode ser desfeita e a temporada ficará como encerrada no histórico.`,
       [
         { text: 'Cancelar', style: 'cancel' },
         {
           text: 'Finalizar',
           style: 'destructive',
-          onPress: () => {
-            Alert.alert(
-              'Temporada finalizada',
-              `"${activeSeason.label}" foi finalizada. Crie uma nova temporada para continuar.`,
-              [{ text: 'OK' }]
-            );
+          onPress: async () => {
+            try {
+              await api.careers.finalizeSeason(activeSeason.id);
+              await loadSeasons(activeCareer.id);
+              await qc.invalidateQueries({ queryKey: ['/api/careers', activeCareer.id, 'seasons'] });
+              if (Platform.OS !== 'web') {
+                void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+              }
+              Alert.alert(
+                'Temporada finalizada',
+                `"${activeSeason.label}" foi encerrada. Crie uma nova temporada para continuar.`,
+                [{ text: 'OK' }]
+              );
+            } catch (err) {
+              const msg = err instanceof Error ? err.message : 'Erro ao finalizar a temporada.';
+              Alert.alert('Erro', msg);
+            }
           },
         },
       ]
