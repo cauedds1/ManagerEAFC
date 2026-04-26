@@ -67,7 +67,7 @@ outputType = "console"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "mkdir -p ~/.ngrok2 && echo 'authtoken: 3Cu5SyGSIqgjCgP7kda5ZhlUsne_mNJNqdDtppe9SkA7g7fz' > ~/.ngrok2/ngrok.yml && EXPO_PUBLIC_API_URL=https://managereafc-production.up.railway.app pnpm --filter @workspace/fc-career-manager-mobile exec expo start --tunnel"
+args = "mkdir -p ~/.ngrok2 && echo \"authtoken: $NGROK_AUTHTOKEN\" > ~/.ngrok2/ngrok.yml && EXPO_PUBLIC_API_URL=https://managereafc-production.up.railway.app pnpm --filter @workspace/fc-career-manager-mobile exec expo start --tunnel"
 
 [agent]
 stack = "BEST_EFFORT_FALLBACK"
