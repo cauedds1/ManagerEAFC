@@ -42,9 +42,12 @@ type LineupRole = 'starter' | 'bench' | 'none';
 
 interface PlayerDetailedStats {
   shots: number;
+  shotsOnTarget: number;
+  passes: number;
   passAccuracy: number;
   dribbles: number;
   recoveries: number;
+  turnovers: number;
   saves: number;
   goalsConceded: number;
   penaltySaved: number;
@@ -53,7 +56,8 @@ interface PlayerDetailedStats {
 }
 
 const EMPTY_DS: PlayerDetailedStats = {
-  shots: 0, passAccuracy: 0, dribbles: 0, recoveries: 0,
+  shots: 0, shotsOnTarget: 0, passes: 0, passAccuracy: 0,
+  dribbles: 0, recoveries: 0, turnovers: 0,
   saves: 0, goalsConceded: 0, penaltySaved: 0, penaltyScored: 0, penaltyMissed: 0,
 };
 
@@ -392,10 +396,6 @@ export default function RegistrarPartidaScreen() {
     AsyncStorage.setItem(draftKey, JSON.stringify(draft)).catch(() => {});
   }, [step, getDraftState, draftKey]);
 
-  useEffect(() => {
-    if (motm || !squadPlayers.length) return;
-  }, [squadPlayers, motm]);
-
   const handleOpponentQueryChange = useCallback((text: string) => {
     setOpponentQuery(text);
     setOpponent(text);
@@ -469,9 +469,12 @@ export default function RegistrarPartidaScreen() {
         };
         if (ds) {
           if (ds.shots) entry.shots = ds.shots;
+          if (ds.shotsOnTarget) entry.shotsOnTarget = ds.shotsOnTarget;
+          if (ds.passes) entry.passes = ds.passes;
           if (ds.passAccuracy) entry.passAccuracy = ds.passAccuracy;
           if (ds.dribbles) entry.dribbles = ds.dribbles;
           if (ds.recoveries) entry.recoveries = ds.recoveries;
+          if (ds.turnovers) entry.turnovers = ds.turnovers;
           if (ds.saves) entry.saves = ds.saves;
           if (ds.goalsConceded) entry.goalsConceded = ds.goalsConceded;
           if (ds.penaltySaved) entry.penaltySaved = ds.penaltySaved;
@@ -987,15 +990,14 @@ export default function RegistrarPartidaScreen() {
                           ) : (
                             <>
                               <StatStepper label="Finalizações" value={ds.shots} onChange={(v) => updateDetailedStat(p.name, 'shots', v)} />
+                              <StatStepper label="Fin. no gol" value={ds.shotsOnTarget} onChange={(v) => updateDetailedStat(p.name, 'shotsOnTarget', v)} />
+                              <StatStepper label="Passes" value={ds.passes} onChange={(v) => updateDetailedStat(p.name, 'passes', v)} />
                               <StatStepper label="Precisão de passe (%)" value={ds.passAccuracy} onChange={(v) => updateDetailedStat(p.name, 'passAccuracy', v)} suffix="%" />
                               <StatStepper label="Dribles" value={ds.dribbles} onChange={(v) => updateDetailedStat(p.name, 'dribbles', v)} />
                               <StatStepper label="Recuperações" value={ds.recoveries} onChange={(v) => updateDetailedStat(p.name, 'recoveries', v)} />
-                              {(isATA || true) && (
-                                <>
-                                  <StatStepper label="Pênaltis marcados" value={ds.penaltyScored} onChange={(v) => updateDetailedStat(p.name, 'penaltyScored', v)} />
-                                  <StatStepper label="Pênaltis errados" value={ds.penaltyMissed} onChange={(v) => updateDetailedStat(p.name, 'penaltyMissed', v)} />
-                                </>
-                              )}
+                              <StatStepper label="Perdas de bola" value={ds.turnovers} onChange={(v) => updateDetailedStat(p.name, 'turnovers', v)} />
+                              <StatStepper label="Pênaltis marcados" value={ds.penaltyScored} onChange={(v) => updateDetailedStat(p.name, 'penaltyScored', v)} />
+                              <StatStepper label="Pênaltis errados" value={ds.penaltyMissed} onChange={(v) => updateDetailedStat(p.name, 'penaltyMissed', v)} />
                             </>
                           )}
                         </View>

@@ -154,9 +154,12 @@ export interface PlayerMatchStats {
   yellowCard?: boolean;
   redCard?: boolean;
   shots?: number;
+  shotsOnTarget?: number;
+  passes?: number;
   passAccuracy?: number;
   dribbles?: number;
   recoveries?: number;
+  turnovers?: number;
   saves?: number;
   goalsConceded?: number;
   penaltySaved?: number;
