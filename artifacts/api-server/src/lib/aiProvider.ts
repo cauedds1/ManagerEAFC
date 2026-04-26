@@ -78,10 +78,10 @@ export async function callNewsWithPlan(
     const serverClient = getServerOpenAIClient();
     if (serverClient) {
       try {
-        return await callOpenAI(serverClient, systemPrompt, userPrompt, maxTokens, "gpt-4o");
+        return await callOpenAI(serverClient, systemPrompt, userPrompt, maxTokens, "gpt-4.1");
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        console.warn("[aiProvider] GPT-4o falhou para Ultra, usando Gemini fallback:", msg);
+        console.warn("[aiProvider] GPT-4.1 falhou para Ultra, usando Gemini fallback:", msg);
       }
     }
   }
@@ -111,7 +111,7 @@ export async function callDiretoriaWithPlan(
     const serverClient = getServerOpenAIClient();
     if (serverClient) {
       try {
-        return await callOpenAI(serverClient, systemPrompt, userPrompt, maxTokens, "gpt-4o");
+        return await callOpenAI(serverClient, systemPrompt, userPrompt, maxTokens, "gpt-4.1");
       } catch {}
     }
   }
@@ -204,7 +204,7 @@ export async function callDiretoriaChatWithPlan(
     const serverClient = getServerOpenAIClient();
     if (serverClient) {
       try {
-        return await callOpenAIMessages(serverClient, messages, maxTokens, "gpt-4o");
+        return await callOpenAIMessages(serverClient, messages, maxTokens, "gpt-4.1");
       } catch {}
     }
   }

@@ -1129,7 +1129,7 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
           <div className="grid grid-cols-1 gap-2">
             {[
               { label: t.aiGenerationsLabel, value: planLimits.aiGenerationsPerDay === Infinity ? t.unlimited : String(planLimits.aiGenerationsPerDay) },
-              { label: t.aiModelLabel, value: resolvedPlan === "ultra" ? "GPT-4o" : "Gemini Flash" },
+              { label: t.aiModelLabel, value: resolvedPlan === "ultra" ? "GPT-4.1" : "Gemini Flash" },
               { label: t.diretoriaLabel, value: planLimits.diretoriaEnabled ? t.enabled : t.lockedSingle },
               { label: t.customPortaisLabel, value: planLimits.maxCustomPortals === 0 ? t.blockedSingle : t.upTo.replace("{n}", String(planLimits.maxCustomPortals)) },
               { label: t.autoNewsLabel, value: planLimits.autoNewsEnabled ? t.enabledPl : t.lockedPl },

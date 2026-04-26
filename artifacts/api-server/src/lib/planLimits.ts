@@ -43,7 +43,7 @@ export const PLAN_LIMITS: Record<Plan, PlanLimits> = {
     autoNewsEnabled: true,
     rumorsEnabled: true,
     diretoriaEnabled: true,
-    aiModel: "gpt-4o",
+    aiModel: "gpt-4.1",
   },
 };
 
