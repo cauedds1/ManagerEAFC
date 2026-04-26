@@ -121,14 +121,13 @@ export default function CareerSelectScreen() {
   const handleSelect = useCallback(async (career: Career) => {
     try {
       if (Platform.OS !== 'web') {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
       }
       setActiveCareer(career);
       router.replace('/(tabs)');
       await loadSeasons(career.id);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Erro ao carregar carreira';
-      Alert.alert('Erro', msg);
+    } catch {
+      Alert.alert('Erro', 'Não foi possível carregar a carreira. Tente novamente.');
     }
   }, [setActiveCareer, loadSeasons]);
 
