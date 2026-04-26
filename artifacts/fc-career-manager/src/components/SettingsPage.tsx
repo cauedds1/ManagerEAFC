@@ -1620,7 +1620,7 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
 
               {/* ── Android APK ── */}
               {(() => {
-                const APK_URL: string | null = null;
+                const APK_URL: string | null = "https://expo.dev/artifacts/eas/mi16JCLtoKH4CFyYfsZXHZ.apk";
                 const EAS_BUILD_URL = "https://expo.dev/accounts/cauedds/projects/fc-career-manager-mobile/builds/a4567a6d-164e-4315-a163-9dc84936f287";
                 return (
                   <SectionCard
