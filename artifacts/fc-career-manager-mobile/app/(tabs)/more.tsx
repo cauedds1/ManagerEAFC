@@ -165,6 +165,13 @@ export default function MoreScreen() {
       {activeCareer && (
         <Section title="Clube">
           <MenuItem
+            icon="podium-outline"
+            label="Estatísticas"
+            subtitle="Métricas completas do elenco"
+            onPress={() => router.push('/estatisticas')}
+            color={Colors.primary}
+          />
+          <MenuItem
             icon="stats-chart-outline"
             label="Rivais"
             subtitle="Adversários e estatísticas"

@@ -14,28 +14,35 @@ import { Colors } from '@/constants/colors';
 
 type StatsTab = 'ataque' | 'inter' | 'defesa' | 'goleiro';
 
-interface AggregatedPlayerStats {
+interface AggregatedStats {
   playerId: number;
   name: string;
   positionPtBr: string;
   apps: number;
+  starts: number;
   goals: number;
   assists: number;
-  avgRating: number;
+  gPlusA: number;
+  hatTricks: number;
+  penaltyScored: number;
+  penaltyMissed: number;
+  shots: number;
+  avgPassAccuracy: number;
+  dribbles: number;
+  recoveries: number;
   yellowCards: number;
   redCards: number;
-  totalShots: number;
-  totalPasses: number;
-  totalDribbles: number;
-  totalRecoveries: number;
+  avgRating: number;
   motmCount: number;
+  saves: number;
+  goalsConceded: number;
+  penaltySaved: number;
 }
 
+type SortKey = keyof Omit<AggregatedStats, 'name' | 'positionPtBr'>;
+
 const POS_GROUP: Record<string, StatsTab> = {
-  GOL: 'goleiro',
-  DEF: 'defesa',
-  MID: 'inter',
-  ATA: 'ataque',
+  GOL: 'goleiro', DEF: 'defesa', MID: 'inter', ATA: 'ataque',
 };
 
 const TAB_LABELS: Record<StatsTab, string> = {
@@ -45,72 +52,76 @@ const TAB_LABELS: Record<StatsTab, string> = {
   goleiro: 'Goleiro',
 };
 
-function ratingColor(r: number): string {
-  if (r >= 8.5) return Colors.info;
-  if (r >= 7.5) return Colors.success;
-  if (r >= 6.5) return Colors.warning;
-  return '#f87171';
-}
-
-type SortKey = 'name' | 'apps' | 'goals' | 'assists' | 'avgRating' | 'yellowCards' | 'redCards' | 'totalShots' | 'totalPasses' | 'totalDribbles' | 'totalRecoveries' | 'motmCount';
-
-const TAB_COLUMNS: Record<StatsTab, { key: SortKey; label: string; minWidth?: number }[]> = {
+const COLS: Record<StatsTab, { key: SortKey; label: string; width: number }[]> = {
   ataque: [
-    { key: 'name', label: 'Jogador', minWidth: 120 },
-    { key: 'apps', label: 'JO' },
-    { key: 'goals', label: 'GL' },
-    { key: 'assists', label: 'AS' },
-    { key: 'totalShots', label: 'FIN' },
-    { key: 'motmCount', label: 'MOTM' },
-    { key: 'avgRating', label: 'NOTA' },
+    { key: 'apps',          label: 'JO',   width: 40 },
+    { key: 'starts',        label: 'TIT',  width: 40 },
+    { key: 'goals',         label: 'GL',   width: 40 },
+    { key: 'assists',       label: 'AS',   width: 40 },
+    { key: 'gPlusA',        label: 'G+A',  width: 44 },
+    { key: 'hatTricks',     label: 'HAT',  width: 44 },
+    { key: 'penaltyScored', label: 'PM',   width: 40 },
+    { key: 'penaltyMissed', label: 'PE',   width: 40 },
+    { key: 'shots',         label: 'FIN',  width: 44 },
+    { key: 'motmCount',     label: 'MOTM', width: 48 },
+    { key: 'avgRating',     label: 'NOTA', width: 48 },
   ],
   inter: [
-    { key: 'name', label: 'Jogador', minWidth: 120 },
-    { key: 'apps', label: 'JO' },
-    { key: 'assists', label: 'AS' },
-    { key: 'totalPasses', label: 'PAS' },
-    { key: 'totalDribbles', label: 'DRI' },
-    { key: 'totalRecoveries', label: 'REC' },
-    { key: 'avgRating', label: 'NOTA' },
+    { key: 'apps',             label: 'JO',   width: 40 },
+    { key: 'assists',          label: 'DEC',  width: 44 },
+    { key: 'avgPassAccuracy',  label: 'PAS%', width: 48 },
+    { key: 'dribbles',         label: 'DRI',  width: 44 },
+    { key: 'recoveries',       label: 'REC',  width: 44 },
+    { key: 'yellowCards',      label: 'AM',   width: 40 },
+    { key: 'avgRating',        label: 'NOTA', width: 48 },
   ],
   defesa: [
-    { key: 'name', label: 'Jogador', minWidth: 120 },
-    { key: 'apps', label: 'JO' },
-    { key: 'totalRecoveries', label: 'REC' },
-    { key: 'yellowCards', label: 'AM' },
-    { key: 'redCards', label: 'VE' },
-    { key: 'goals', label: 'GL' },
-    { key: 'avgRating', label: 'NOTA' },
+    { key: 'apps',        label: 'JO',   width: 40 },
+    { key: 'starts',      label: 'TIT',  width: 40 },
+    { key: 'recoveries',  label: 'REC',  width: 44 },
+    { key: 'yellowCards', label: 'AM',   width: 40 },
+    { key: 'redCards',    label: 'VE',   width: 40 },
+    { key: 'goals',       label: 'GL',   width: 40 },
+    { key: 'avgRating',   label: 'NOTA', width: 48 },
   ],
   goleiro: [
-    { key: 'name', label: 'Jogador', minWidth: 120 },
-    { key: 'apps', label: 'JO' },
-    { key: 'avgRating', label: 'NOTA' },
-    { key: 'yellowCards', label: 'AM' },
-    { key: 'redCards', label: 'VE' },
-    { key: 'motmCount', label: 'MOTM' },
+    { key: 'apps',          label: 'JO',    width: 40 },
+    { key: 'saves',         label: 'DEF',   width: 44 },
+    { key: 'goalsConceded', label: 'GS',    width: 44 },
+    { key: 'penaltySaved',  label: 'PD',    width: 44 },
+    { key: 'yellowCards',   label: 'AM',    width: 40 },
+    { key: 'avgRating',     label: 'NOTA',  width: 48 },
   ],
 };
 
 const DEFAULT_SORT: Record<StatsTab, SortKey> = {
-  ataque: 'goals',
-  inter: 'totalPasses',
-  defesa: 'totalRecoveries',
-  goleiro: 'avgRating',
+  ataque:  'goals',
+  inter:   'assists',
+  defesa:  'recoveries',
+  goleiro: 'saves',
 };
 
-function formatVal(key: SortKey, val: number): string {
-  if (key === 'avgRating') return val > 0 ? val.toFixed(1) : '—';
-  if (val === 0) return '—';
-  return String(val);
+function fmtVal(key: SortKey, v: number): string {
+  if (key === 'avgRating') return v > 0 ? v.toFixed(1) : '—';
+  if (key === 'avgPassAccuracy') return v > 0 ? `${Math.round(v)}%` : '—';
+  if (v === 0) return '—';
+  return String(v);
 }
 
-function valColor(key: SortKey, val: number): string | undefined {
-  if (key === 'avgRating' && val > 0) return ratingColor(val);
-  if (key === 'goals' && val > 0) return Colors.success;
-  if (key === 'assists' && val > 0) return Colors.info;
-  if (key === 'yellowCards' && val > 0) return Colors.warning;
-  if (key === 'redCards' && val > 0) return Colors.destructive;
+function cellColor(key: SortKey, v: number): string | undefined {
+  if (key === 'avgRating' && v > 0) {
+    if (v > 8.5) return Colors.success;
+    if (v > 7) return '#34d399';
+    if (v >= 6) return Colors.warning;
+    return Colors.destructive;
+  }
+  if ((key === 'goals' || key === 'gPlusA' || key === 'hatTricks') && v > 0) return Colors.success;
+  if (key === 'assists' && v > 0) return Colors.info;
+  if (key === 'yellowCards' && v > 0) return Colors.warning;
+  if (key === 'redCards' && v > 0) return Colors.destructive;
+  if (key === 'penaltyMissed' && v > 0) return Colors.destructive;
+  if (key === 'penaltyScored' && v > 0) return Colors.success;
+  if (key === 'motmCount' && v > 0) return '#fbbf24';
   return undefined;
 }
 
@@ -147,76 +158,102 @@ export default function EstatisticasScreen() {
     return m;
   }, [squadPlayers]);
 
-  const apiStatByName = useMemo<Map<string, PlayerSeasonStats>>(() => {
-    const m = new Map<string, PlayerSeasonStats>();
-    apiStats.forEach((s) => {
-      const p = playerById.get(s.playerId);
-      if (p) m.set(p.name, s);
-    });
+  const apiStatByPlayerId = useMemo<Map<number, PlayerSeasonStats>>(() => {
+    const m = new Map<number, PlayerSeasonStats>();
+    apiStats.forEach((s) => m.set(s.playerId, s));
     return m;
-  }, [apiStats, playerById]);
+  }, [apiStats]);
 
-  const aggregated = useMemo<AggregatedPlayerStats[]>(() => {
-    const map = new Map<string, AggregatedPlayerStats>();
+  const aggregated = useMemo<AggregatedStats[]>(() => {
+    const map = new Map<number, AggregatedStats>();
 
     squadPlayers.forEach((p) => {
-      const apiStat = apiStatByName.get(p.name);
-      map.set(p.name, {
+      const s = apiStatByPlayerId.get(p.id);
+      const goals = s?.goals ?? 0;
+      const assists = s?.assists ?? 0;
+      map.set(p.id, {
         playerId: p.id,
         name: p.name,
         positionPtBr: p.positionPtBr,
-        apps: apiStat?.appearances ?? 0,
-        goals: apiStat?.goals ?? 0,
-        assists: apiStat?.assists ?? 0,
-        avgRating: apiStat?.avgRating ?? 0,
-        yellowCards: apiStat?.yellowCards ?? 0,
-        redCards: apiStat?.redCards ?? 0,
-        totalShots: 0,
-        totalPasses: 0,
-        totalDribbles: 0,
-        totalRecoveries: 0,
+        apps: s?.appearances ?? 0,
+        starts: 0,
+        goals,
+        assists,
+        gPlusA: goals + assists,
+        hatTricks: 0,
+        penaltyScored: 0,
+        penaltyMissed: 0,
+        shots: 0,
+        avgPassAccuracy: 0,
+        dribbles: 0,
+        recoveries: 0,
+        yellowCards: s?.yellowCards ?? 0,
+        redCards: s?.redCards ?? 0,
+        avgRating: s?.avgRating ?? 0,
         motmCount: 0,
+        saves: 0,
+        goalsConceded: 0,
+        penaltySaved: 0,
       });
     });
 
+    const passAccuracySums = new Map<number, { sum: number; count: number }>();
+
     matches.forEach((match) => {
-      if (match.motmPlayerName) {
-        const entry = map.get(match.motmPlayerName);
+      if (match.motmPlayerId != null) {
+        const entry = map.get(match.motmPlayerId);
         if (entry) entry.motmCount += 1;
       }
-      Object.entries(match.playerStats ?? {}).forEach(([playerName, ms]: [string, PlayerMatchStats]) => {
-        const entry = map.get(playerName);
+
+      const starterSet = new Set(match.starterIds ?? []);
+
+      Object.entries(match.playerStats ?? {}).forEach(([pName, ms]: [string, PlayerMatchStats]) => {
+        const player = squadPlayers.find((p) => p.name === pName);
+        if (!player) return;
+        const entry = map.get(player.id);
         if (!entry) return;
-        if (ms.shots) entry.totalShots += ms.shots;
-        if (ms.passes) entry.totalPasses += ms.passes;
-        if (ms.dribbles) entry.totalDribbles += ms.dribbles;
-        if (ms.recoveries) entry.totalRecoveries += ms.recoveries;
+
+        if (starterSet.has(player.id)) entry.starts += 1;
+        if (ms.shots) entry.shots += ms.shots;
+        if (ms.dribbles) entry.dribbles += ms.dribbles;
+        if (ms.recoveries) entry.recoveries += ms.recoveries;
+        if (ms.penaltyScored) entry.penaltyScored += ms.penaltyScored;
+        if (ms.penaltyMissed) entry.penaltyMissed += ms.penaltyMissed;
+        if (ms.saves) entry.saves += ms.saves;
+        if (ms.goalsConceded) entry.goalsConceded += ms.goalsConceded;
+        if (ms.penaltySaved) entry.penaltySaved += ms.penaltySaved;
+        if (ms.passAccuracy && ms.passAccuracy > 0) {
+          const acc = passAccuracySums.get(player.id) ?? { sum: 0, count: 0 };
+          acc.sum += ms.passAccuracy;
+          acc.count += 1;
+          passAccuracySums.set(player.id, acc);
+        }
+
+        const playerGoals = ms.goals?.length ?? 0;
+        if (playerGoals >= 3) entry.hatTricks += 1;
       });
+    });
+
+    passAccuracySums.forEach((acc, playerId) => {
+      const entry = map.get(playerId);
+      if (entry && acc.count > 0) {
+        entry.avgPassAccuracy = acc.sum / acc.count;
+      }
     });
 
     return Array.from(map.values());
-  }, [squadPlayers, matches, apiStatByName]);
+  }, [squadPlayers, matches, apiStatByPlayerId]);
 
-  const filteredAndSorted = useMemo<AggregatedPlayerStats[]>(() => {
-    const tabGroup = activeTab;
-    const filtered = aggregated.filter((p) => {
-      const group = POS_GROUP[p.positionPtBr];
-      return group === tabGroup;
-    });
-
+  const filteredAndSorted = useMemo<AggregatedStats[]>(() => {
+    const filtered = aggregated.filter((p) => POS_GROUP[p.positionPtBr] === activeTab);
     return [...filtered].sort((a, b) => {
       const av = a[sortKey] as number;
       const bv = b[sortKey] as number;
-      if (sortKey === 'name') {
-        return sortAsc
-          ? (a.name).localeCompare(b.name)
-          : (b.name).localeCompare(a.name);
-      }
       return sortAsc ? av - bv : bv - av;
     });
   }, [aggregated, activeTab, sortKey, sortAsc]);
 
-  const columns = TAB_COLUMNS[activeTab];
+  const columns = COLS[activeTab];
 
   const handleTabChange = (tab: StatsTab) => {
     setActiveTab(tab);
@@ -225,12 +262,8 @@ export default function EstatisticasScreen() {
   };
 
   const handleSort = (key: SortKey) => {
-    if (sortKey === key) {
-      setSortAsc((v) => !v);
-    } else {
-      setSortKey(key);
-      setSortAsc(false);
-    }
+    if (sortKey === key) setSortAsc((v) => !v);
+    else { setSortKey(key); setSortAsc(false); }
   };
 
   const isLoading = seasonLoading || squadLoading;
@@ -278,31 +311,24 @@ export default function EstatisticasScreen() {
           <Text style={styles.emptyText}>Nenhum jogador nesta posição.</Text>
         </View>
       ) : (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ flexGrow: 1 }}
-        >
-          <View style={{ flex: 1 }}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1 }}>
+          <View>
             <View style={styles.tableHeader}>
+              <View style={styles.nameHeaderCell}>
+                <Text style={styles.headerText}>Jogador</Text>
+              </View>
               {columns.map((col) => {
                 const isActive = sortKey === col.key;
                 return (
                   <TouchableOpacity
                     key={col.key}
-                    style={[styles.headerCell, col.minWidth ? { width: col.minWidth } : styles.numCell]}
+                    style={[styles.numHeaderCell, { width: col.width }]}
                     onPress={() => handleSort(col.key)}
                     activeOpacity={0.7}
                   >
-                    <Text style={[styles.headerText, isActive && { color: theme.primary }]}>
-                      {col.label}
-                    </Text>
+                    <Text style={[styles.headerText, isActive && { color: theme.primary }]}>{col.label}</Text>
                     {isActive && (
-                      <Ionicons
-                        name={sortAsc ? 'chevron-up' : 'chevron-down'}
-                        size={10}
-                        color={theme.primary}
-                      />
+                      <Ionicons name={sortAsc ? 'chevron-up' : 'chevron-down'} size={10} color={theme.primary} />
                     )}
                   </TouchableOpacity>
                 );
@@ -313,30 +339,26 @@ export default function EstatisticasScreen() {
               data={filteredAndSorted}
               keyExtractor={(item) => String(item.playerId)}
               showsVerticalScrollIndicator={false}
-              contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
+              contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
               ItemSeparatorComponent={() => <View style={styles.rowSep} />}
               renderItem={({ item, index }) => (
                 <View style={[styles.tableRow, index % 2 === 1 && styles.tableRowAlt]}>
+                  <View style={styles.nameCell}>
+                    <Text style={styles.playerName} numberOfLines={1}>{item.name}</Text>
+                    <Text style={styles.playerPos}>{item.positionPtBr}</Text>
+                  </View>
                   {columns.map((col) => {
-                    if (col.key === 'name') {
-                      return (
-                        <View key="name" style={[styles.nameCell, { width: col.minWidth }]}>
-                          <Text style={styles.playerName} numberOfLines={1}>{item.name}</Text>
-                          <Text style={styles.playerPos}>{item.positionPtBr}</Text>
-                        </View>
-                      );
-                    }
-                    const val = item[col.key] as number;
-                    const color = valColor(col.key, val);
+                    const v = item[col.key] as number;
+                    const color = cellColor(col.key, v);
                     const isSorted = sortKey === col.key;
                     return (
-                      <View key={col.key} style={styles.numCell}>
+                      <View key={col.key} style={[styles.numCell, { width: col.width }]}>
                         <Text style={[
                           styles.cellValue,
                           color ? { color } : {},
                           isSorted && { fontFamily: 'Inter_700Bold' },
                         ]}>
-                          {formatVal(col.key, val)}
+                          {fmtVal(col.key, v)}
                         </Text>
                       </View>
                     );
@@ -365,31 +387,29 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: Colors.border,
     backgroundColor: Colors.card,
   },
-  tab: {
-    flex: 1, alignItems: 'center', paddingVertical: 12,
-    borderBottomWidth: 2, borderBottomColor: 'transparent',
-  },
-  tabText: { fontSize: 12, fontWeight: '600' as const, color: Colors.mutedForeground, fontFamily: 'Inter_600SemiBold' },
+  tab: { flex: 1, alignItems: 'center', paddingVertical: 12, borderBottomWidth: 2, borderBottomColor: 'transparent' },
+  tabText: { fontSize: 11, fontWeight: '600' as const, color: Colors.mutedForeground, fontFamily: 'Inter_600SemiBold' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 32 },
   emptyText: { fontSize: 14, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular', textAlign: 'center' },
   tableHeader: {
     flexDirection: 'row', alignItems: 'center',
     backgroundColor: Colors.card,
-    paddingHorizontal: 12, paddingVertical: 10,
+    paddingLeft: 12, paddingRight: 8, paddingVertical: 10,
     borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
-  headerCell: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  numCell: { width: 44, alignItems: 'center' },
-  headerText: { fontSize: 11, fontWeight: '700' as const, color: Colors.mutedForeground, fontFamily: 'Inter_700Bold', letterSpacing: 0.5 },
+  nameHeaderCell: { width: 130, paddingRight: 8 },
+  numHeaderCell: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 2 },
+  headerText: { fontSize: 10, fontWeight: '700' as const, color: Colors.mutedForeground, fontFamily: 'Inter_700Bold', letterSpacing: 0.5 },
   tableRow: {
     flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 12, paddingVertical: 12,
+    paddingLeft: 12, paddingRight: 8, paddingVertical: 11,
     backgroundColor: Colors.background,
   },
   tableRowAlt: { backgroundColor: Colors.card },
   rowSep: { height: StyleSheet.hairlineWidth, backgroundColor: Colors.border },
-  nameCell: { justifyContent: 'center', paddingRight: 8 },
-  playerName: { fontSize: 13, fontWeight: '600' as const, color: Colors.foreground, fontFamily: 'Inter_600SemiBold' },
-  playerPos: { fontSize: 11, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular', marginTop: 1 },
-  cellValue: { fontSize: 13, color: Colors.foreground, fontFamily: 'Inter_500Medium', textAlign: 'center' },
+  nameCell: { width: 130, justifyContent: 'center', paddingRight: 8 },
+  playerName: { fontSize: 12, fontWeight: '600' as const, color: Colors.foreground, fontFamily: 'Inter_600SemiBold' },
+  playerPos: { fontSize: 10, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular', marginTop: 1 },
+  numCell: { alignItems: 'center', justifyContent: 'center' },
+  cellValue: { fontSize: 12, color: Colors.foreground, fontFamily: 'Inter_500Medium', textAlign: 'center' },
 });
