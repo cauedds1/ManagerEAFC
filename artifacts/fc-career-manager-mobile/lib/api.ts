@@ -241,14 +241,61 @@ export interface Finances {
   transferBudget?: number;
 }
 
+export type TransferType = 'in' | 'out' | 'loan_in' | 'loan_out';
+
+export interface Transfer {
+  id: string;
+  playerId: number;
+  playerName: string;
+  club: string;
+  fee: number;
+  type: TransferType;
+  season: string;
+  date: string;
+}
+
+export interface DiretoraaMember {
+  id: string;
+  name: string;
+  role: string;
+  satisfaction: number;
+  goals?: string;
+}
+
+export interface DiretoraaMeeting {
+  id: string;
+  memberId: string;
+  date: string;
+  topic: string;
+  outcome: string;
+  createdAt: number;
+}
+
+export interface Diretoria {
+  members?: DiretoraaMember[];
+  meetings?: DiretoraaMeeting[];
+  notifications?: { id: string; message: string; read: boolean; createdAt: number }[];
+}
+
+export interface ScheduledMatch {
+  id: string;
+  date: string;
+  opponent: string;
+  location: MatchLocation;
+  tournament: string;
+  stage: string;
+  opponentLogoUrl?: string;
+}
+
 export interface SeasonGameData {
   matches?: MatchRecord[];
+  scheduled_matches?: ScheduledMatch[];
   player_stats?: PlayerSeasonStats[];
   news?: NewsItem[];
   injuries?: InjuryRecord[];
   league_position?: LeaguePosition;
   finances?: Finances;
-  transfers?: unknown[];
+  transfers?: Transfer[];
   fan_mood?: number;
 }
 
@@ -258,6 +305,11 @@ export interface CareerGameData {
   formation?: string;
   trophies?: unknown[];
   customPlayers?: SquadPlayer[];
+  diretoria_members?: DiretoraaMember[];
+  diretoria_meetings?: DiretoraaMeeting[];
+  diretoria_notifications?: { id: string; message: string; read: boolean; createdAt: number }[];
+  comp_results?: unknown[];
+  formerPlayers?: SquadPlayer[];
 }
 
 export function getMatchResult(myScore: number, opponentScore: number): MatchResult {
@@ -353,5 +405,52 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ seasonId, matchId }),
       }),
+  },
+
+  matches: {
+    list: (seasonId: string) =>
+      api.seasonData.get(seasonId).then((res) => res.data?.matches ?? []),
+
+    save: (seasonId: string, matches: MatchRecord[]) =>
+      api.seasonData.set(seasonId, 'matches', matches),
+  },
+
+  transfers: {
+    list: (seasonId: string) =>
+      api.seasonData.get(seasonId).then((res) => res.data?.transfers ?? []),
+
+    save: (seasonId: string, transfers: Transfer[]) =>
+      api.seasonData.set(seasonId, 'transfers', transfers),
+  },
+
+  injuries: {
+    list: (seasonId: string) =>
+      api.seasonData.get(seasonId).then((res) => res.data?.injuries ?? []),
+
+    save: (seasonId: string, injuries: InjuryRecord[]) =>
+      api.seasonData.set(seasonId, 'injuries', injuries),
+  },
+
+  finances: {
+    get: (seasonId: string) =>
+      api.seasonData.get(seasonId).then((res) => res.data?.finances ?? null),
+
+    save: (seasonId: string, finances: Finances) =>
+      api.seasonData.set(seasonId, 'finances', finances),
+  },
+
+  diretoria: {
+    get: (careerId: string) =>
+      api.careerData.get(careerId).then((res) => ({
+        members: res.data?.diretoria_members,
+        meetings: res.data?.diretoria_meetings,
+        notifications: res.data?.diretoria_notifications,
+      })),
+
+    saveMembers: (careerId: string, members: DiretoraaMember[]) =>
+      api.careerData.set(careerId, 'diretoria_members', members),
+
+    saveMeetings: (careerId: string, meetings: DiretoraaMeeting[]) =>
+      api.careerData.set(careerId, 'diretoria_meetings', meetings),
   },
 };

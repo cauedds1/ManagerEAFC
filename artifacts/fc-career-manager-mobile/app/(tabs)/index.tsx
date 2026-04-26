@@ -90,9 +90,15 @@ export default function DashboardScreen() {
 
   const stats = useMemo(() => computeSeasonStats(matches), [matches]);
 
-  const lastMatch: MatchRecord | undefined = matches.length > 0
-    ? [...matches].sort((a, b) => b.createdAt - a.createdAt)[0]
-    : undefined;
+  const sortedMatches = useMemo(
+    () => [...matches].sort((a, b) => b.createdAt - a.createdAt),
+    [matches]
+  );
+
+  const lastMatch: MatchRecord | undefined = sortedMatches[0];
+
+  const scheduledMatches = seasonGameData?.data?.scheduled_matches ?? [];
+  const nextMatch = scheduledMatches.length > 0 ? scheduledMatches[0] : undefined;
 
   const leaguePos = seasonGameData?.data?.league_position;
 
@@ -294,6 +300,36 @@ export default function DashboardScreen() {
                 <Text style={styles.noDataText}>
                   Nenhuma partida registrada.{'\n'}Vá para Partidas para adicionar.
                 </Text>
+              </View>
+            </View>
+          )}
+        </View>
+
+        {/* Next match */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Próxima Partida</Text>
+          {isLoading ? (
+            <SkeletonCard height={80} />
+          ) : nextMatch ? (
+            <View style={[styles.matchCard, { borderColor: `rgba(${theme.primaryRgb}, 0.3)` }]}>
+              <View style={styles.matchCardInner}>
+                <View style={[styles.resultBadge, { backgroundColor: `rgba(${theme.primaryRgb}, 0.15)`, borderColor: `rgba(${theme.primaryRgb}, 0.35)` }]}>
+                  <Ionicons name="calendar" size={18} color={theme.primary} />
+                </View>
+                <View style={styles.matchInfo}>
+                  <Text style={styles.matchOpponent} numberOfLines={1}>vs {nextMatch.opponent}</Text>
+                  <Text style={styles.matchMeta}>
+                    {nextMatch.tournament} • {nextMatch.date} • {nextMatch.location === 'casa' ? 'Casa' : nextMatch.location === 'fora' ? 'Fora' : 'Neutro'}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={16} color={Colors.mutedForeground} />
+              </View>
+            </View>
+          ) : (
+            <View style={[styles.matchCard, { borderColor: `rgba(${theme.primaryRgb}, 0.2)` }]}>
+              <View style={styles.matchCardInner}>
+                <Ionicons name="calendar-outline" size={24} color={Colors.mutedForeground} />
+                <Text style={styles.noDataText}>Nenhuma partida agendada.</Text>
               </View>
             </View>
           )}

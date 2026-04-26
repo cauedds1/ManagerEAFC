@@ -29,6 +29,10 @@ function RootLayoutInner() {
         options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
       />
       <Stack.Screen name="(tabs)" />
+      <Stack.Screen
+        name="match-detail"
+        options={{ animation: 'slide_from_right' }}
+      />
     </Stack>
   );
 }

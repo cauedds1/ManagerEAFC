@@ -134,7 +134,7 @@ export default function MoreScreen() {
           icon="person-outline"
           label="Perfil"
           subtitle={user?.email}
-          onPress={() => {}}
+          onPress={() => router.push('/(tabs)/perfil')}
         />
       </Section>
 
