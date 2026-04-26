@@ -122,56 +122,50 @@ export function pickBestEleven(
   formationKey: FormationKey,
 ): number[] {
   const positions = FORMATION_POSITIONS[formationKey];
-  const slots: number[] = Array(11).fill(0);
+  const numSlots = Math.min(11, positions.length);
+  const slots: number[] = Array(numSlots).fill(0);
   const used = new Set<number>();
 
-  const byGroup: Record<PosGroup, { id: number; positionPtBr: string }[]> = {
-    GOL: [], DEF: [], MID: [], ATA: [],
-  };
+  const validGroups: PosGroup[] = ['GOL', 'DEF', 'MID', 'ATA'];
+  const byGroup: Record<PosGroup, { id: number }[]> = { GOL: [], DEF: [], MID: [], ATA: [] };
   for (const p of players) {
-    const g = (p.positionPtBr as PosGroup) in byGroup ? (p.positionPtBr as PosGroup) : 'MID';
+    const g: PosGroup = validGroups.includes(p.positionPtBr as PosGroup)
+      ? (p.positionPtBr as PosGroup)
+      : 'MID';
     byGroup[g].push(p);
   }
 
-  const numSlots = Math.min(11, positions.length);
+  const pick = (pool: { id: number }[]): { id: number } | undefined =>
+    pool.find((p) => !used.has(p.id));
 
-  const gks = byGroup.GOL.filter((p) => !used.has(p.id));
-  if (gks[0] && numSlots > 0) { slots[0] = gks[0].id; used.add(gks[0].id); }
+  const assign = (si: number, p: { id: number } | undefined) => {
+    if (!p || si >= numSlots) return;
+    slots[si] = p.id;
+    used.add(p.id);
+  };
 
-  const defCount = positions.filter(([,y]) => y >= 310 && y <= 350).length;
-  const defs = byGroup.DEF.filter((p) => !used.has(p.id));
-  for (let i = 0; i < defCount && i < defs.length; i++) {
-    const si = 1 + i;
-    if (si < numSlots) { slots[si] = defs[i].id; used.add(defs[i].id); }
+  // Slot 0 → GK
+  assign(0, pick(byGroup.GOL));
+
+  // Classify remaining slots by y-coordinate
+  const defSlots: number[] = [];
+  const midSlots: number[] = [];
+  const atkSlots: number[] = [];
+  for (let i = 1; i < numSlots; i++) {
+    const y = positions[i][1];
+    if (y >= 300) defSlots.push(i);
+    else if (y < 160) atkSlots.push(i);
+    else midSlots.push(i);
   }
 
-  const overflow: { id: number; positionPtBr: string }[] = [];
-  for (const p of players) {
-    if (!used.has(p.id)) overflow.push(p);
-  }
+  for (const si of defSlots) assign(si, pick(byGroup.DEF));
+  for (const si of atkSlots) assign(si, pick(byGroup.ATA));
+  for (const si of midSlots) assign(si, pick(byGroup.MID));
 
-  const mids = [...byGroup.MID.filter((p) => !used.has(p.id)), ...overflow.filter((p) => p.positionPtBr === 'MID')];
-  const atks = [...byGroup.ATA.filter((p) => !used.has(p.id)), ...overflow.filter((p) => p.positionPtBr === 'ATA')];
-  const remaining = players.filter((p) => !used.has(p.id));
-
-  let mi = 0;
-  let ai = 0;
-  let ri = 0;
-  for (let i = 1 + defCount; i < numSlots; i++) {
-    if (slots[i] !== 0) continue;
-    const y = positions[i]?.[1] ?? 200;
-    if (y < 200) {
-      const atk = atks[ai] ?? remaining[ri];
-      if (atk) { slots[i] = atk.id; used.add(atk.id); if (atks[ai]) ai++; else ri++; }
-    } else {
-      const mid = mids[mi] ?? remaining[ri];
-      if (mid) { slots[i] = mid.id; used.add(mid.id); if (mids[mi]) mi++; else ri++; }
-    }
-  }
-
+  // Fill any remaining empty slots with any unused player
   for (let i = 0; i < numSlots; i++) {
     if (slots[i] === 0) {
-      const p = remaining.find((r) => !used.has(r.id));
+      const p = players.find((pl) => !used.has(pl.id));
       if (p) { slots[i] = p.id; used.add(p.id); }
     }
   }

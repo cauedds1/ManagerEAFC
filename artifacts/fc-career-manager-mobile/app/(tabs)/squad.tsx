@@ -5,7 +5,7 @@ import {
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput,
   Modal, ScrollView, Image, Platform, RefreshControl, ActivityIndicator,
-  LayoutChangeEvent, KeyboardAvoidingView,
+  LayoutChangeEvent, KeyboardAvoidingView, Pressable,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -13,7 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useCareer } from '@/contexts/CareerContext';
 import { useClubTheme } from '@/contexts/ClubThemeContext';
-import { api, type SquadPlayer, type PlayerSeasonStats, type InjuryRecord, type Season } from '@/lib/api';
+import { api, type SquadPlayer, type PlayerSeasonStats, type InjuryRecord, type Season, type Transfer } from '@/lib/api';
 import { Colors } from '@/constants/colors';
 import {
   type FormationKey, FORMATION_GROUPS, getFormationPositions, getFormationLabel,
@@ -71,15 +71,22 @@ function PlayerBottomSheet({
   injury,
   inLineup,
   onClose,
+  onSaveEdit,
 }: {
   player: SquadPlayer;
   stats?: PlayerSeasonStats;
   injury?: InjuryRecord;
   inLineup: boolean;
   onClose: () => void;
+  onSaveEdit?: (updates: { name?: string; number?: number | null }) => Promise<void>;
 }) {
   const insets = useSafeAreaInsets();
   const posCfg = POS_CONFIG[player.positionPtBr] ?? POS_CONFIG.MID;
+  const isCustom = player.id < 0;
+  const [editMode, setEditMode] = useState(false);
+  const [editName, setEditName] = useState(player.name);
+  const [editNumber, setEditNumber] = useState(player.number != null ? String(player.number) : '');
+  const [saving, setSaving] = useState(false);
 
   const statItems = [
     { label: 'Partidas', value: stats?.appearances ?? 0, icon: 'football-outline' as IoniconName },
@@ -159,7 +166,69 @@ function PlayerBottomSheet({
             );
           })()}
 
-          <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
+          {isCustom && onSaveEdit && (
+            <>
+              <View style={styles.sheetDivider} />
+              {!editMode ? (
+                <TouchableOpacity
+                  style={[styles.closeBtn, { borderColor: Colors.primary }]}
+                  onPress={() => setEditMode(true)}
+                >
+                  <Text style={[styles.closeBtnText, { color: Colors.primary }]}>Editar jogador</Text>
+                </TouchableOpacity>
+              ) : (
+                <View>
+                  <Text style={styles.sheetSectionLabel}>Editar Jogador</Text>
+                  <View style={[styles.addField]}>
+                    <Text style={styles.addLabel}>Nome</Text>
+                    <TextInput
+                      style={styles.addInput}
+                      value={editName}
+                      onChangeText={setEditName}
+                      placeholder="Nome do jogador"
+                      placeholderTextColor={Colors.mutedForeground}
+                    />
+                  </View>
+                  <View style={[styles.addField]}>
+                    <Text style={styles.addLabel}>Número da camisa</Text>
+                    <TextInput
+                      style={styles.addInput}
+                      value={editNumber}
+                      onChangeText={setEditNumber}
+                      placeholder="Ex: 10"
+                      placeholderTextColor={Colors.mutedForeground}
+                      keyboardType="number-pad"
+                    />
+                  </View>
+                  <View style={{ flexDirection: 'row', gap: 10 }}>
+                    <TouchableOpacity
+                      style={[styles.closeBtn, { flex: 1 }]}
+                      onPress={() => { setEditMode(false); setEditName(player.name); setEditNumber(player.number != null ? String(player.number) : ''); }}
+                    >
+                      <Text style={styles.closeBtnText}>Cancelar</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.saveBtn, { flex: 1, paddingVertical: 14, opacity: saving ? 0.6 : 1 }]}
+                      disabled={saving}
+                      onPress={async () => {
+                        setSaving(true);
+                        await onSaveEdit({
+                          name: editName.trim() || player.name,
+                          number: editNumber.trim() ? Number(editNumber.trim()) : null,
+                        });
+                        setSaving(false);
+                        setEditMode(false);
+                      }}
+                    >
+                      <Text style={styles.saveBtnText}>{saving ? 'Salvando…' : 'Salvar'}</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+            </>
+          )}
+
+          <TouchableOpacity style={[styles.closeBtn, { marginTop: isCustom && onSaveEdit ? 0 : 0 }]} onPress={onClose}>
             <Text style={styles.closeBtnText}>Fechar</Text>
           </TouchableOpacity>
         </TouchableOpacity>
@@ -560,6 +629,7 @@ export default function SquadScreen() {
   const [pickerSlot, setPickerSlot] = useState<number | null>(null);
   const [showAddPlayer, setShowAddPlayer] = useState(false);
   const [showSeasonPicker, setShowSeasonPicker] = useState(false);
+  const [slotAction, setSlotAction] = useState<{ slotIndex: number; playerId: number } | null>(null);
 
   const topPad = Platform.OS === 'web' ? 67 : insets.top;
 
@@ -644,7 +714,7 @@ export default function SquadScreen() {
   const saveLineupAndFormation = useCallback(async (newLineup: number[], newFormation: FormationKey) => {
     if (!activeCareer) return;
     await api.careerData.set(activeCareer.id, 'lineup', newLineup);
-    await api.careerData.set(activeCareer.id, 'formation', newFormation as unknown as never);
+    await (api.careerData.set as (c: string, k: string, v: unknown) => Promise<unknown>)(activeCareer.id, 'formation', newFormation);
     await qc.invalidateQueries({ queryKey: ['/api/data/career', activeCareer.id] });
   }, [activeCareer, qc]);
 
@@ -663,12 +733,19 @@ export default function SquadScreen() {
   const handleSlotPress = useCallback((slotIndex: number, currentPlayerId: number) => {
     if (Platform.OS !== 'web') Haptics.selectionAsync();
     if (currentPlayerId) {
-      const player = allPlayers.find((p) => p.id === currentPlayerId);
-      if (player) setSelectedPlayer(player);
+      setSlotAction({ slotIndex, playerId: currentPlayerId });
     } else {
       setPickerSlot(slotIndex);
     }
-  }, [allPlayers]);
+  }, []);
+
+  const handleRemoveFromSlot = useCallback((slotIndex: number) => {
+    const newLineup = [...lineup];
+    newLineup[slotIndex] = 0;
+    setLineup(newLineup);
+    setSlotAction(null);
+    saveLineupAndFormation(newLineup, formation);
+  }, [lineup, formation, saveLineupAndFormation]);
 
   const handlePickerSelect = useCallback((player: SquadPlayer) => {
     if (pickerSlot === null) return;
@@ -680,6 +757,16 @@ export default function SquadScreen() {
     setPickerSlot(null);
     saveLineupAndFormation(newLineup, formation);
   }, [pickerSlot, lineup, formation, saveLineupAndFormation]);
+
+  const handleSavePlayerEdit = useCallback(async (player: SquadPlayer, updates: { name?: string; number?: number | null }) => {
+    if (!activeCareer) return;
+    const customPlayers = careerGameData?.data?.customPlayers ?? [];
+    const updated = customPlayers.map((p) =>
+      p.id === player.id ? { ...p, ...updates } : p
+    );
+    await api.careerData.set(activeCareer.id, 'customPlayers', updated);
+    await qc.invalidateQueries({ queryKey: ['/api/data/career', activeCareer.id] });
+  }, [activeCareer, careerGameData, qc]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -901,36 +988,83 @@ export default function SquadScreen() {
             </View>
           )}
 
-          {tab === 'saidas' && (
-            <FlatList
-              data={formerPlayers}
-              keyExtractor={(p) => String(p.id)}
-              contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 24 }]}
-              showsVerticalScrollIndicator={false}
-              ListEmptyComponent={
-                <View style={styles.center}>
-                  <Ionicons name="exit-outline" size={48} color={Colors.mutedForeground} />
-                  <Text style={styles.emptyText}>Nenhum jogador foi removido do elenco.</Text>
-                </View>
-              }
-              ItemSeparatorComponent={() => <View style={styles.separator} />}
-              renderItem={({ item }) => {
-                const posCfg = POS_CONFIG[item.positionPtBr] ?? POS_CONFIG.MID;
-                return (
-                  <View style={styles.playerRow}>
-                    <PlayerPhoto src={item.photo} name={item.name} size={44} />
-                    <View style={styles.playerInfo}>
-                      <Text style={styles.playerName} numberOfLines={1}>{item.name}</Text>
-                      <Text style={styles.playerAge}>{item.age} anos</Text>
-                    </View>
-                    <View style={[styles.posBadge, { backgroundColor: posCfg.bg }]}>
-                      <Text style={[styles.posBadgeText, { color: posCfg.color }]}>{item.positionPtBr}</Text>
-                    </View>
+          {tab === 'saidas' && (() => {
+            const transfers: Transfer[] = seasonData?.data?.transfers ?? [];
+            const outTransfers = transfers.filter((t) => t.type === 'out' || t.type === 'loan_out');
+            const transferPlayerIds = new Set(outTransfers.map((t) => t.playerId));
+
+            type ExitEntry = {
+              key: string;
+              name: string;
+              positionPtBr: string;
+              age: number;
+              photo: string;
+              reason: string;
+              date: string;
+              reasonColor: string;
+            };
+
+            const exitList: ExitEntry[] = [
+              ...outTransfers.map((t) => ({
+                key: `t-${t.id}`,
+                name: t.playerName,
+                positionPtBr: 'MID',
+                age: 0,
+                photo: '',
+                reason: t.type === 'loan_out' ? 'Emprestado' : 'Vendido',
+                date: t.date,
+                reasonColor: t.type === 'loan_out' ? Colors.info : Colors.warning,
+              })),
+              ...formerPlayers
+                .filter((p) => !transferPlayerIds.has(p.id))
+                .map((p) => ({
+                  key: `f-${p.id}`,
+                  name: p.name,
+                  positionPtBr: p.positionPtBr,
+                  age: p.age,
+                  photo: p.photo,
+                  reason: 'Removido',
+                  date: '—',
+                  reasonColor: Colors.mutedForeground,
+                })),
+            ];
+
+            return (
+              <FlatList
+                data={exitList}
+                keyExtractor={(e) => e.key}
+                contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 24 }]}
+                showsVerticalScrollIndicator={false}
+                ListEmptyComponent={
+                  <View style={styles.center}>
+                    <Ionicons name="exit-outline" size={48} color={Colors.mutedForeground} />
+                    <Text style={styles.emptyText}>Nenhum jogador saiu do elenco ainda.</Text>
                   </View>
-                );
-              }}
-            />
-          )}
+                }
+                ItemSeparatorComponent={() => <View style={styles.separator} />}
+                renderItem={({ item }) => {
+                  const posCfg = POS_CONFIG[item.positionPtBr] ?? POS_CONFIG.MID;
+                  return (
+                    <View style={styles.playerRow}>
+                      <PlayerPhoto src={item.photo} name={item.name} size={44} />
+                      <View style={styles.playerInfo}>
+                        <Text style={styles.playerName} numberOfLines={1}>{item.name}</Text>
+                        <Text style={styles.playerAge}>{item.date !== '—' ? item.date : item.age > 0 ? `${item.age} anos` : '—'}</Text>
+                      </View>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <View style={[styles.posBadge, { backgroundColor: `${item.reasonColor}22` }]}>
+                          <Text style={[styles.posBadgeText, { color: item.reasonColor }]}>{item.reason}</Text>
+                        </View>
+                        <View style={[styles.posBadge, { backgroundColor: posCfg.bg }]}>
+                          <Text style={[styles.posBadgeText, { color: posCfg.color }]}>{item.positionPtBr}</Text>
+                        </View>
+                      </View>
+                    </View>
+                  );
+                }}
+              />
+            );
+          })()}
         </>
       )}
 
@@ -941,6 +1075,7 @@ export default function SquadScreen() {
           injury={injuryMap.get(selectedPlayer.id)}
           inLineup={lineupSet.has(selectedPlayer.id)}
           onClose={() => setSelectedPlayer(null)}
+          onSaveEdit={selectedPlayer.id < 0 ? (updates) => handleSavePlayerEdit(selectedPlayer, updates) : undefined}
         />
       )}
 
@@ -978,6 +1113,43 @@ export default function SquadScreen() {
           onClose={() => setShowSeasonPicker(false)}
         />
       )}
+
+      {slotAction && (() => {
+        const player = allPlayers.find((p) => p.id === slotAction.playerId);
+        return (
+          <Modal transparent animationType="fade" visible onRequestClose={() => setSlotAction(null)}>
+            <Pressable style={styles.slotOverlay} onPress={() => setSlotAction(null)}>
+              <Pressable style={styles.slotSheet} onPress={(e) => e.stopPropagation()}>
+                <Text style={styles.slotSheetTitle}>{player?.name ?? 'Jogador'}</Text>
+                <TouchableOpacity
+                  style={styles.slotAction}
+                  onPress={() => { setSlotAction(null); if (player) setSelectedPlayer(player); }}
+                >
+                  <Ionicons name="person-outline" size={20} color={Colors.foreground} />
+                  <Text style={styles.slotActionText}>Ver detalhes</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.slotAction}
+                  onPress={() => { setPickerSlot(slotAction.slotIndex); setSlotAction(null); }}
+                >
+                  <Ionicons name="swap-horizontal-outline" size={20} color={Colors.foreground} />
+                  <Text style={styles.slotActionText}>Trocar jogador</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.slotAction}
+                  onPress={() => handleRemoveFromSlot(slotAction.slotIndex)}
+                >
+                  <Ionicons name="remove-circle-outline" size={20} color={Colors.destructive} />
+                  <Text style={[styles.slotActionText, { color: Colors.destructive }]}>Remover do XI</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.slotCancel} onPress={() => setSlotAction(null)}>
+                  <Text style={styles.slotCancelText}>Cancelar</Text>
+                </TouchableOpacity>
+              </Pressable>
+            </Pressable>
+          </Modal>
+        );
+      })()}
     </View>
   );
 }
@@ -1208,5 +1380,32 @@ const styles = StyleSheet.create({
   seasonActivePill: {
     fontSize: 11, color: Colors.success, fontFamily: 'Inter_600SemiBold',
     backgroundColor: `${Colors.success}18`, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6,
+  },
+
+  slotOverlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end',
+  },
+  slotSheet: {
+    backgroundColor: Colors.card, borderTopLeftRadius: 20, borderTopRightRadius: 20,
+    paddingHorizontal: 20, paddingTop: 8, paddingBottom: 32,
+  },
+  slotSheetTitle: {
+    fontSize: 16, fontWeight: '700' as const, color: Colors.foreground,
+    fontFamily: 'Inter_700Bold', textAlign: 'center', paddingVertical: 12,
+    marginBottom: 4, borderBottomWidth: 1, borderBottomColor: Colors.border,
+  },
+  slotAction: {
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: `${Colors.border}55`,
+  },
+  slotActionText: {
+    fontSize: 15, color: Colors.foreground, fontFamily: 'Inter_400Regular',
+  },
+  slotCancel: {
+    marginTop: 12, paddingVertical: 12, borderRadius: Colors.radius,
+    backgroundColor: 'rgba(255,255,255,0.06)', alignItems: 'center',
+  },
+  slotCancelText: {
+    fontSize: 15, color: Colors.mutedForeground, fontFamily: 'Inter_600SemiBold', fontWeight: '600' as const,
   },
 });
