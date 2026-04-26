@@ -13,7 +13,8 @@ import { useClubTheme } from '@/contexts/ClubThemeContext';
 import { api, type MatchLocation, type MatchRecord, type PlayerMatchStats, type SquadPlayer } from '@/lib/api';
 import { Colors } from '@/constants/colors';
 
-type Step = 1 | 2 | 3 | 4 | 5;
+type Step = 1 | 2 | 3 | 4 | 5 | 6;
+const TOTAL_STEPS = 6;
 
 const LOCATION_OPTIONS: { value: MatchLocation; label: string; icon: string }[] = [
   { value: 'casa', label: 'Casa', icon: '🏠' },
@@ -27,9 +28,14 @@ const COMMON_TOURNAMENTS = [
   'Serie A', 'Ligue 1', 'Amistoso',
 ];
 
-const TOTAL_STEPS = 5;
+interface GoalRow {
+  scorerName: string;
+  scorerId: number | null;
+  assistName: string;
+  assistId: number | null;
+}
 
-interface GoalRow { scorerName: string; scorerId: number | null; assistName: string; assistId: number | null }
+type LineupRole = 'starter' | 'bench' | 'none';
 
 function StepIndicator({ current, total }: { current: number; total: number }) {
   return (
@@ -94,10 +100,7 @@ function PlayerPickerModal({
             renderItem={({ item }) => (
               <TouchableOpacity
                 style={styles.pickerRow}
-                onPress={() => {
-                  onSelect(item);
-                  onClose();
-                }}
+                onPress={() => { onSelect(item); onClose(); }}
                 activeOpacity={0.75}
               >
                 <Text style={styles.pickerPlayerName}>{item.name}</Text>
@@ -116,6 +119,17 @@ function PlayerPickerModal({
   );
 }
 
+function SummaryRow({ label, value, valueColor }: { label: string; value: string; valueColor?: string }) {
+  return (
+    <View style={styles.summaryRow}>
+      <Text style={styles.summaryLabel}>{label}</Text>
+      <Text style={[styles.summaryValue, valueColor ? { color: valueColor } : {}]} numberOfLines={4}>
+        {value}
+      </Text>
+    </View>
+  );
+}
+
 export default function RegistrarPartidaScreen() {
   const insets = useSafeAreaInsets();
   const { activeCareer, activeSeason } = useCareer();
@@ -125,20 +139,27 @@ export default function RegistrarPartidaScreen() {
 
   const [step, setStep] = useState<Step>(1);
 
+  // Step 1
   const [tournament, setTournament] = useState('');
   const [opponent, setOpponent] = useState('');
   const [location, setLocation] = useState<MatchLocation>('casa');
   const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [stage, setStage] = useState('Rodada 1');
 
+  // Step 2
   const [myScore, setMyScore] = useState(0);
   const [opponentScore, setOpponentScore] = useState(0);
   const [possession, setPossession] = useState(50);
   const [observations, setObservations] = useState('');
 
+  // Step 3: lineup
+  const [lineupRoles, setLineupRoles] = useState<Record<number, LineupRole>>({});
+
+  // Step 4: goals with squad-driven pickers
   const [goalRows, setGoalRows] = useState<GoalRow[]>([]);
   const [pickerTarget, setPickerTarget] = useState<null | { type: 'scorer' | 'assist'; goalIdx: number }>(null);
 
+  // Step 5: ratings + MOTM
   const [playerRatings, setPlayerRatings] = useState<Record<string, number>>({});
   const [motm, setMotm] = useState<SquadPlayer | null>(null);
   const [motmPickerOpen, setMotmPickerOpen] = useState(false);
@@ -157,6 +178,15 @@ export default function RegistrarPartidaScreen() {
   });
 
   const squadPlayers = useMemo<SquadPlayer[]>(() => squadData?.players ?? [], [squadData]);
+
+  const starterPlayers = useMemo(
+    () => squadPlayers.filter((p) => lineupRoles[p.id] === 'starter'),
+    [squadPlayers, lineupRoles],
+  );
+  const benchPlayers = useMemo(
+    () => squadPlayers.filter((p) => lineupRoles[p.id] === 'bench'),
+    [squadPlayers, lineupRoles],
+  );
 
   const syncGoalRows = useCallback((newScore: number) => {
     setGoalRows((prev) => {
@@ -177,28 +207,62 @@ export default function RegistrarPartidaScreen() {
     });
   }, [syncGoalRows]);
 
+  const toggleLineupRole = useCallback((playerId: number) => {
+    setLineupRoles((prev) => {
+      const current: LineupRole = prev[playerId] ?? 'none';
+      const next: LineupRole = current === 'none' ? 'starter' : current === 'starter' ? 'bench' : 'none';
+      return { ...prev, [playerId]: next };
+    });
+  }, []);
+
   const saveMutation = useMutation({
     mutationFn: async () => {
       if (!activeCareer || !activeSeason) throw new Error('Nenhuma carreira/temporada ativa');
       const existingMatches: MatchRecord[] = seasonData?.data?.matches ?? [];
 
+      const playerIdByName: Record<string, number> = {};
+      squadPlayers.forEach((p) => { playerIdByName[p.name] = p.id; });
+
       const playerStats: Record<string, PlayerMatchStats> = {};
 
-      goalRows.forEach(({ scorerName, assistName }, idx) => {
+      // seed lineup members into playerStats
+      squadPlayers.forEach((p) => {
+        const role = lineupRoles[p.id] ?? 'none';
+        if (role === 'none') return;
+        playerStats[p.name] = {
+          startedOnBench: role === 'bench',
+          rating: 0,
+          goals: [],
+          ownGoal: false,
+          injured: false,
+          substituted: false,
+        };
+      });
+
+      // goals with assist linkage
+      goalRows.forEach(({ scorerName, assistId }, idx) => {
         const name = scorerName.trim();
         if (!name) return;
         if (!playerStats[name]) {
           playerStats[name] = { startedOnBench: false, rating: 0, goals: [], ownGoal: false, injured: false, substituted: false };
         }
-        playerStats[name].goals.push({ id: `g_${Date.now()}_${idx}`, minute: 0 });
-        if (assistName.trim()) {
-          const asst = assistName.trim();
-          if (!playerStats[asst]) {
-            playerStats[asst] = { startedOnBench: false, rating: 0, goals: [], ownGoal: false, injured: false, substituted: false };
-          }
+        playerStats[name].goals.push({
+          id: `g_${Date.now()}_${idx}`,
+          minute: 0,
+          ...(assistId !== null ? { assistPlayerId: assistId } : {}),
+        });
+      });
+
+      // ensure assist players exist in playerStats
+      goalRows.forEach(({ assistName }) => {
+        const name = assistName.trim();
+        if (!name) return;
+        if (!playerStats[name]) {
+          playerStats[name] = { startedOnBench: false, rating: 0, goals: [], ownGoal: false, injured: false, substituted: false };
         }
       });
 
+      // merge ratings
       Object.entries(playerRatings).forEach(([name, rating]) => {
         if (!name.trim() || rating === 0) return;
         if (playerStats[name]) {
@@ -219,8 +283,8 @@ export default function RegistrarPartidaScreen() {
         opponent: opponent.trim() || 'Adversário',
         myScore,
         opponentScore,
-        starterIds: [],
-        subIds: [],
+        starterIds: starterPlayers.map((p) => p.id),
+        subIds: benchPlayers.map((p) => p.id),
         playerStats,
         matchStats: { myShots: 0, opponentShots: 0, possessionPct: possession },
         motmPlayerId: motm?.id,
@@ -237,9 +301,7 @@ export default function RegistrarPartidaScreen() {
       if (Platform.OS !== 'web') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.back();
     },
-    onError: (err: Error) => {
-      Alert.alert('Erro', err.message);
-    },
+    onError: (err: Error) => Alert.alert('Erro', err.message),
   });
 
   const canProceedStep1 = opponent.trim().length > 0 && tournament.trim().length > 0;
@@ -259,22 +321,11 @@ export default function RegistrarPartidaScreen() {
     }
   }, [step]);
 
-  const handleConfirm = useCallback(() => {
-    if (saveMutation.isPending) return;
-    saveMutation.mutate();
-  }, [saveMutation]);
-
-  const resultLabel = myScore > opponentScore ? 'VITÓRIA' : myScore < opponentScore ? 'DERROTA' : 'EMPATE';
-  const resultColor = myScore > opponentScore ? Colors.success : myScore < opponentScore ? Colors.destructive : Colors.warning;
-
   const updateGoalRowPlayer = (idx: number, field: 'scorer' | 'assist', player: SquadPlayer) => {
     setGoalRows((prev) => {
       const next = [...prev];
-      if (field === 'scorer') {
-        next[idx] = { ...next[idx], scorerName: player.name, scorerId: player.id };
-      } else {
-        next[idx] = { ...next[idx], assistName: player.name, assistId: player.id };
-      }
+      if (field === 'scorer') next[idx] = { ...next[idx], scorerName: player.name, scorerId: player.id };
+      else next[idx] = { ...next[idx], assistName: player.name, assistId: player.id };
       return next;
     });
   };
@@ -288,7 +339,11 @@ export default function RegistrarPartidaScreen() {
     });
   };
 
-  const stepLabel = ['Informações', 'Resultado', 'Gols & Assistências', 'Avaliações', 'Confirmar'][step - 1];
+  const resultLabel = myScore > opponentScore ? 'VITÓRIA' : myScore < opponentScore ? 'DERROTA' : 'EMPATE';
+  const resultColor = myScore > opponentScore ? Colors.success : myScore < opponentScore ? Colors.destructive : Colors.warning;
+
+  const stepLabels = ['Informações', 'Resultado', 'Escalação', 'Gols & Assistências', 'Avaliações', 'Confirmar'];
+  const stepLabel = stepLabels[step - 1];
 
   return (
     <KeyboardAvoidingView
@@ -313,6 +368,7 @@ export default function RegistrarPartidaScreen() {
       >
         <Text style={styles.stepHeading}>{stepLabel}</Text>
 
+        {/* ── Step 1: Informações ─────────────────────────────────── */}
         {step === 1 && (
           <View style={styles.stepContent}>
             <View style={styles.field}>
@@ -359,7 +415,7 @@ export default function RegistrarPartidaScreen() {
                     key={opt.value}
                     style={[
                       styles.locationChip,
-                      location === opt.value && { backgroundColor: theme.primary, borderColor: theme.primary }
+                      location === opt.value && { backgroundColor: theme.primary, borderColor: theme.primary },
                     ]}
                     onPress={() => setLocation(opt.value)}
                     activeOpacity={0.7}
@@ -396,6 +452,7 @@ export default function RegistrarPartidaScreen() {
           </View>
         )}
 
+        {/* ── Step 2: Resultado ───────────────────────────────────── */}
         {step === 2 && (
           <View style={styles.stepContent}>
             <Text style={styles.matchLabel}>{activeCareer?.clubName ?? 'Seu time'} vs {opponent}</Text>
@@ -455,7 +512,57 @@ export default function RegistrarPartidaScreen() {
           </View>
         )}
 
+        {/* ── Step 3: Escalação ───────────────────────────────────── */}
         {step === 3 && (
+          <View style={styles.stepContent}>
+            <Text style={styles.lineupHint}>
+              Toque para alternar: <Text style={{ color: Colors.success }}>Titular</Text>{' → '}
+              <Text style={{ color: Colors.warning }}>Reserva</Text>{' → '}
+              <Text style={{ color: Colors.mutedForeground }}>Sem escalar</Text>
+            </Text>
+            <View style={styles.lineupCounter}>
+              <Text style={styles.lineupCounterText}>
+                {starterPlayers.length} titulares · {benchPlayers.length} reservas
+              </Text>
+            </View>
+            {squadPlayers.length === 0 ? (
+              <View style={styles.emptyStep}>
+                <ActivityIndicator color={theme.primary} />
+                <Text style={styles.emptyStepText}>Carregando elenco…</Text>
+              </View>
+            ) : (
+              squadPlayers.map((p) => {
+                const role: LineupRole = lineupRoles[p.id] ?? 'none';
+                const roleConfig: Record<LineupRole, { label: string; color: string; icon: string }> = {
+                  starter: { label: 'Titular', color: Colors.success, icon: 'checkmark-circle' },
+                  bench: { label: 'Reserva', color: Colors.warning, icon: 'ellipsis-horizontal-circle' },
+                  none: { label: 'Fora', color: Colors.border, icon: 'remove-circle-outline' },
+                };
+                const cfg = roleConfig[role];
+                return (
+                  <TouchableOpacity
+                    key={p.id}
+                    style={[styles.lineupRow, role !== 'none' && { borderColor: `${cfg.color}50`, backgroundColor: `${cfg.color}08` }]}
+                    onPress={() => toggleLineupRole(p.id)}
+                    activeOpacity={0.75}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.lineupPlayerName}>{p.name}</Text>
+                      <Text style={styles.lineupPlayerPos}>{p.positionPtBr}{p.number ? ` · #${p.number}` : ''}</Text>
+                    </View>
+                    <View style={styles.lineupRoleBadge}>
+                      <Ionicons name={cfg.icon as never} size={18} color={cfg.color} />
+                      <Text style={[styles.lineupRoleText, { color: cfg.color }]}>{cfg.label}</Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })
+            )}
+          </View>
+        )}
+
+        {/* ── Step 4: Gols & Assistências ─────────────────────────── */}
+        {step === 4 && (
           <View style={styles.stepContent}>
             {myScore === 0 ? (
               <View style={styles.emptyStep}>
@@ -472,7 +579,7 @@ export default function RegistrarPartidaScreen() {
                     <Text style={styles.fieldLabel}>Artilheiro</Text>
                     {row.scorerName ? (
                       <View style={styles.pickedPlayer}>
-                        <Ionicons name="person" size={16} color={Colors.success} />
+                        <Ionicons name="football" size={16} color={Colors.success} />
                         <Text style={styles.pickedPlayerName}>{row.scorerName}</Text>
                         <TouchableOpacity onPress={() => clearGoalRowPlayer(idx, 'scorer')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                           <Ionicons name="close-circle" size={18} color={Colors.mutedForeground} />
@@ -485,7 +592,7 @@ export default function RegistrarPartidaScreen() {
                         activeOpacity={0.7}
                       >
                         <Ionicons name="person-add-outline" size={16} color={theme.primary} />
-                        <Text style={[styles.pickerBtnText, { color: theme.primary }]}>Selecionar jogador</Text>
+                        <Text style={[styles.pickerBtnText, { color: theme.primary }]}>Selecionar artilheiro</Text>
                       </TouchableOpacity>
                     )}
                   </View>
@@ -494,7 +601,7 @@ export default function RegistrarPartidaScreen() {
                     <Text style={styles.fieldLabel}>Assistência (opcional)</Text>
                     {row.assistName ? (
                       <View style={styles.pickedPlayer}>
-                        <Ionicons name="person" size={16} color={Colors.info} />
+                        <Ionicons name="hand-left" size={16} color={Colors.info} />
                         <Text style={styles.pickedPlayerName}>{row.assistName}</Text>
                         <TouchableOpacity onPress={() => clearGoalRowPlayer(idx, 'assist')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                           <Ionicons name="close-circle" size={18} color={Colors.mutedForeground} />
@@ -517,7 +624,8 @@ export default function RegistrarPartidaScreen() {
           </View>
         )}
 
-        {step === 4 && (
+        {/* ── Step 5: Avaliações ──────────────────────────────────── */}
+        {step === 5 && (
           <View style={styles.stepContent}>
             <View style={styles.field}>
               <Text style={styles.fieldLabel}>Melhor em campo (MOTM)</Text>
@@ -544,7 +652,7 @@ export default function RegistrarPartidaScreen() {
             {squadPlayers.length > 0 ? (
               <>
                 <View style={styles.sectionDivider}>
-                  <Text style={styles.sectionDividerText}>AVALIAÇÕES DO ELENCO (opcional)</Text>
+                  <Text style={styles.sectionDividerText}>AVALIAÇÕES DO ELENCO (opcional · 0 = sem nota)</Text>
                 </View>
                 {squadPlayers.map((p) => {
                   const rating = playerRatings[p.name] ?? 0;
@@ -585,13 +693,15 @@ export default function RegistrarPartidaScreen() {
               </>
             ) : (
               <View style={styles.emptyStep}>
+                <ActivityIndicator color={theme.primary} />
                 <Text style={styles.emptyStepText}>Carregando elenco…</Text>
               </View>
             )}
           </View>
         )}
 
-        {step === 5 && (
+        {/* ── Step 6: Confirmar ───────────────────────────────────── */}
+        {step === 6 && (
           <View style={styles.stepContent}>
             <View style={styles.summaryCard}>
               <SummaryRow label="Torneio" value={tournament} />
@@ -609,12 +719,24 @@ export default function RegistrarPartidaScreen() {
               <SummaryRow label="Resultado" value={resultLabel} valueColor={resultColor} />
               <View style={styles.summaryDivider} />
               <SummaryRow label="Posse" value={`${possession}%`} />
+              {starterPlayers.length > 0 && (
+                <>
+                  <View style={styles.summaryDivider} />
+                  <SummaryRow
+                    label={`Escalação (${starterPlayers.length})`}
+                    value={starterPlayers.map((p) => p.name).join(', ')}
+                  />
+                </>
+              )}
               {goalRows.some((r) => r.scorerName) && (
                 <>
                   <View style={styles.summaryDivider} />
                   <SummaryRow
                     label="Artilheiros"
-                    value={goalRows.filter((r) => r.scorerName).map((r) => r.scorerName).join(', ')}
+                    value={goalRows
+                      .filter((r) => r.scorerName)
+                      .map((r) => r.assistName ? `${r.scorerName} (ast: ${r.assistName})` : r.scorerName)
+                      .join(', ')}
                   />
                 </>
               )}
@@ -629,10 +751,7 @@ export default function RegistrarPartidaScreen() {
                   <View style={styles.summaryDivider} />
                   <SummaryRow
                     label="Avaliações"
-                    value={Object.entries(playerRatings)
-                      .filter(([, v]) => v > 0)
-                      .map(([n, r]) => `${n} ${r}/10`)
-                      .join(', ')}
+                    value={Object.entries(playerRatings).filter(([, v]) => v > 0).map(([n, r]) => `${n} ${r}/10`).join(', ')}
                   />
                 </>
               )}
@@ -647,10 +766,15 @@ export default function RegistrarPartidaScreen() {
         )}
       </ScrollView>
 
+      {/* ── Bottom bar ──────────────────────────────────────────────── */}
       <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 12 }]}>
         {step < TOTAL_STEPS ? (
           <TouchableOpacity
-            style={[styles.nextBtn, { backgroundColor: theme.primary }, (!canProceedStep1 && step === 1) && { opacity: 0.4 }]}
+            style={[
+              styles.nextBtn,
+              { backgroundColor: theme.primary },
+              step === 1 && !canProceedStep1 && { opacity: 0.4 },
+            ]}
             onPress={handleNext}
             disabled={step === 1 && !canProceedStep1}
             activeOpacity={0.8}
@@ -661,7 +785,7 @@ export default function RegistrarPartidaScreen() {
         ) : (
           <TouchableOpacity
             style={[styles.nextBtn, { backgroundColor: Colors.success }]}
-            onPress={handleConfirm}
+            onPress={() => saveMutation.mutate()}
             disabled={saveMutation.isPending}
             activeOpacity={0.8}
           >
@@ -677,40 +801,24 @@ export default function RegistrarPartidaScreen() {
         )}
       </View>
 
+      {/* ── Picker modals ───────────────────────────────────────────── */}
       {pickerTarget && (
         <PlayerPickerModal
           players={squadPlayers}
           title={pickerTarget.type === 'scorer' ? 'Selecionar Artilheiro' : 'Selecionar Assistente'}
-          onSelect={(player) => {
-            updateGoalRowPlayer(pickerTarget.goalIdx, pickerTarget.type, player);
-          }}
+          onSelect={(player) => updateGoalRowPlayer(pickerTarget.goalIdx, pickerTarget.type, player)}
           onClose={() => setPickerTarget(null)}
         />
       )}
-
       {motmPickerOpen && (
         <PlayerPickerModal
           players={squadPlayers}
           title="Melhor em Campo (MOTM)"
-          onSelect={(player) => {
-            setMotm(player);
-            setMotmPickerOpen(false);
-          }}
+          onSelect={(player) => { setMotm(player); setMotmPickerOpen(false); }}
           onClose={() => setMotmPickerOpen(false)}
         />
       )}
     </KeyboardAvoidingView>
-  );
-}
-
-function SummaryRow({ label, value, valueColor }: { label: string; value: string; valueColor?: string }) {
-  return (
-    <View style={styles.summaryRow}>
-      <Text style={styles.summaryLabel}>{label}</Text>
-      <Text style={[styles.summaryValue, valueColor ? { color: valueColor } : {}]} numberOfLines={3}>
-        {value}
-      </Text>
-    </View>
   );
 }
 
@@ -728,18 +836,13 @@ const styles = StyleSheet.create({
   stepDotActive: { backgroundColor: Colors.primary, width: 16 },
   stepDotDone: { backgroundColor: Colors.success },
   scrollContent: { padding: 20 },
-  stepContent: { gap: 20 },
-  stepHeading: {
-    fontSize: 20, fontWeight: '700' as const, color: Colors.foreground,
-    fontFamily: 'Inter_700Bold', marginBottom: 8,
-  },
+  stepContent: { gap: 16 },
+  stepHeading: { fontSize: 20, fontWeight: '700' as const, color: Colors.foreground, fontFamily: 'Inter_700Bold', marginBottom: 8 },
   field: { gap: 6 },
   fieldLabel: { fontSize: 13, fontWeight: '600' as const, color: Colors.mutedForeground, fontFamily: 'Inter_600SemiBold' },
   input: {
-    backgroundColor: Colors.card, borderRadius: Colors.radius,
-    borderWidth: 1, borderColor: Colors.border,
-    paddingHorizontal: 14, paddingVertical: 12,
-    color: Colors.foreground, fontFamily: 'Inter_400Regular', fontSize: 15,
+    backgroundColor: Colors.card, borderRadius: Colors.radius, borderWidth: 1, borderColor: Colors.border,
+    paddingHorizontal: 14, paddingVertical: 12, color: Colors.foreground, fontFamily: 'Inter_400Regular', fontSize: 15,
   },
   chip: {
     paddingHorizontal: 10, paddingVertical: 6,
@@ -768,11 +871,21 @@ const styles = StyleSheet.create({
   },
   scoreDigit: { fontSize: 42, fontWeight: '700' as const, color: Colors.foreground, fontFamily: 'Inter_700Bold', minWidth: 48, textAlign: 'center' },
   scoreSep: { fontSize: 24, color: Colors.mutedForeground, fontFamily: 'Inter_700Bold' },
-  resultBadge: {
-    alignSelf: 'center', paddingHorizontal: 20, paddingVertical: 8, borderRadius: 99, borderWidth: 1,
-  },
+  resultBadge: { alignSelf: 'center', paddingHorizontal: 20, paddingVertical: 8, borderRadius: 99, borderWidth: 1 },
   resultBadgeText: { fontSize: 15, fontWeight: '700' as const, fontFamily: 'Inter_700Bold' },
   possessionRow: { flexDirection: 'row', gap: 8 },
+  lineupHint: { fontSize: 13, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular', textAlign: 'center' },
+  lineupCounter: { alignSelf: 'center', marginBottom: 4 },
+  lineupCounterText: { fontSize: 13, fontWeight: '600' as const, color: Colors.foreground, fontFamily: 'Inter_600SemiBold' },
+  lineupRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: Colors.card, borderRadius: Colors.radius, borderWidth: 1, borderColor: Colors.border,
+    paddingHorizontal: 14, paddingVertical: 12,
+  },
+  lineupPlayerName: { fontSize: 14, fontWeight: '600' as const, color: Colors.foreground, fontFamily: 'Inter_600SemiBold' },
+  lineupPlayerPos: { fontSize: 12, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular', marginTop: 2 },
+  lineupRoleBadge: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  lineupRoleText: { fontSize: 12, fontWeight: '600' as const, fontFamily: 'Inter_600SemiBold' },
   emptyStep: { alignItems: 'center', gap: 12, paddingVertical: 40 },
   emptyStepText: { fontSize: 14, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular', textAlign: 'center' },
   goalCard: {
@@ -806,40 +919,25 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   ratingValue: { fontSize: 18, fontWeight: '700' as const, fontFamily: 'Inter_700Bold', minWidth: 24, textAlign: 'center' },
-  sectionDivider: { paddingVertical: 4 },
+  sectionDivider: { paddingTop: 8 },
   sectionDividerText: { fontSize: 11, color: Colors.mutedForeground, fontFamily: 'Inter_600SemiBold', letterSpacing: 0.8 },
-  summaryCard: {
-    backgroundColor: Colors.card, borderRadius: Colors.radius, borderWidth: 1, borderColor: Colors.border, overflow: 'hidden',
-  },
-  summaryRow: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start',
-    paddingHorizontal: 16, paddingVertical: 13, gap: 12,
-  },
+  summaryCard: { backgroundColor: Colors.card, borderRadius: Colors.radius, borderWidth: 1, borderColor: Colors.border, overflow: 'hidden' },
+  summaryRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingHorizontal: 16, paddingVertical: 13, gap: 12 },
   summaryDivider: { height: StyleSheet.hairlineWidth, backgroundColor: Colors.border },
   summaryLabel: { fontSize: 14, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular', flex: 0.45 },
   summaryValue: { fontSize: 14, fontWeight: '500' as const, color: Colors.foreground, fontFamily: 'Inter_500Medium', flex: 0.55, textAlign: 'right' },
-  bottomBar: {
-    padding: 16, paddingTop: 12, borderTopWidth: 1, borderTopColor: Colors.border, backgroundColor: Colors.background,
-  },
-  nextBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: Colors.radius, paddingVertical: 16,
-  },
+  bottomBar: { padding: 16, paddingTop: 12, borderTopWidth: 1, borderTopColor: Colors.border, backgroundColor: Colors.background },
+  nextBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: Colors.radius, paddingVertical: 16 },
   nextBtnText: { color: '#fff', fontSize: 16, fontWeight: '600' as const, fontFamily: 'Inter_600SemiBold' },
   pickerOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.6)' },
-  pickerSheet: {
-    backgroundColor: Colors.card, borderTopLeftRadius: 24, borderTopRightRadius: 24,
-    paddingHorizontal: 20, paddingTop: 12, gap: 12,
-  },
+  pickerSheet: { backgroundColor: Colors.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 20, paddingTop: 12, gap: 12 },
   pickerHandle: { width: 40, height: 4, backgroundColor: Colors.border, borderRadius: 2, alignSelf: 'center', marginBottom: 8 },
   pickerTitle: { fontSize: 17, fontWeight: '600' as const, color: Colors.foreground, fontFamily: 'Inter_600SemiBold', textAlign: 'center' },
   pickerSearch: {
     backgroundColor: Colors.background, borderRadius: Colors.radius, borderWidth: 1, borderColor: Colors.border,
     paddingHorizontal: 14, paddingVertical: 10, color: Colors.foreground, fontFamily: 'Inter_400Regular', fontSize: 14,
   },
-  pickerRow: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 4, paddingVertical: 14,
-  },
+  pickerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 4, paddingVertical: 14 },
   pickerPlayerName: { fontSize: 14, fontWeight: '600' as const, color: Colors.foreground, fontFamily: 'Inter_600SemiBold' },
   pickerPlayerPos: { fontSize: 12, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular' },
   pickerEmpty: { padding: 24, alignItems: 'center' },

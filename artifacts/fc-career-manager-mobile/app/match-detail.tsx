@@ -1,4 +1,5 @@
 import type { ComponentProps } from 'react';
+import { useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -87,6 +88,19 @@ export default function MatchDetailScreen() {
     enabled: !!seasonId,
     staleTime: 1000 * 60 * 5,
   });
+
+  const { data: squadData } = useQuery({
+    queryKey: ['/api/squad', activeCareer?.clubId],
+    queryFn: () => activeCareer?.clubId ? api.squad.get(activeCareer.clubId) : null,
+    enabled: !!activeCareer?.clubId,
+    staleTime: 1000 * 60 * 30,
+  });
+
+  const playerIdToName = useMemo<Map<number, string>>(() => {
+    const map = new Map<number, string>();
+    (squadData?.players ?? []).forEach((p) => map.set(p.id, p.name));
+    return map;
+  }, [squadData]);
 
   const match: MatchRecord | undefined = seasonGameData?.data?.matches?.find(
     (m) => m.id === matchId
@@ -225,7 +239,46 @@ export default function MatchDetailScreen() {
             </View>
           </View>
 
-          {/* Player stats — lineup, goals, ratings */}
+          {/* Lineup */}
+          {((match.starterIds?.length ?? 0) > 0 || (match.subIds?.length ?? 0) > 0) && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Escalação</Text>
+              <View style={styles.card}>
+                {(match.starterIds ?? []).map((id, idx) => {
+                  const name = playerIdToName.get(id) ?? `Jogador #${id}`;
+                  return (
+                    <View key={id}>
+                      {idx > 0 && <View style={styles.divider} />}
+                      <View style={styles.lineupRow}>
+                        <View style={[styles.lineupBadge, { backgroundColor: `${Colors.success}15` }]}>
+                          <Text style={[styles.lineupBadgeText, { color: Colors.success }]}>T</Text>
+                        </View>
+                        <Text style={styles.lineupName}>{name}</Text>
+                      </View>
+                    </View>
+                  );
+                })}
+                {(match.subIds ?? []).map((id, idx) => {
+                  const name = playerIdToName.get(id) ?? `Jogador #${id}`;
+                  const startIdx = (match.starterIds?.length ?? 0) + idx;
+                  return (
+                    <View key={id}>
+                      {startIdx > 0 && <View style={styles.divider} />}
+                      <View style={styles.lineupRow}>
+                        <View style={[styles.lineupBadge, { backgroundColor: `${Colors.warning}15` }]}>
+                          <Text style={[styles.lineupBadgeText, { color: Colors.warning }]}>R</Text>
+                        </View>
+                        <Text style={styles.lineupName}>{name}</Text>
+                        <Text style={styles.lineupSubLabel}>Reserva</Text>
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+            </View>
+          )}
+
+          {/* Goals & Assists + Ratings */}
           {match.playerStats && Object.keys(match.playerStats).length > 0 && (() => {
             const entries = Object.entries(match.playerStats as Record<string, PlayerMatchStats>);
             const scorers = entries.filter(([, s]) => (s.goals?.length ?? 0) > 0);
@@ -236,12 +289,41 @@ export default function MatchDetailScreen() {
                   <View style={styles.section}>
                     <Text style={styles.sectionTitle}>Artilheiros & Assistências</Text>
                     <View style={styles.card}>
-                      {scorers.map(([name, s], idx) => (
-                        <View key={name}>
-                          {idx > 0 && <View style={styles.divider} />}
-                          <PlayerStatsRow name={name} stats={s} />
-                        </View>
-                      ))}
+                      {scorers.map(([name, s], idx) => {
+                        const assists = s.goals
+                          .filter((g) => g.assistPlayerId != null)
+                          .map((g) => playerIdToName.get(g.assistPlayerId!) ?? `#${g.assistPlayerId}`)
+                          .filter((v, i, arr) => arr.indexOf(v) === i);
+                        return (
+                          <View key={name}>
+                            {idx > 0 && <View style={styles.divider} />}
+                            <View style={styles.playerRow}>
+                              <View style={styles.playerRowLeft}>
+                                <Text style={styles.playerName}>{name}</Text>
+                                <View style={styles.playerBadges}>
+                                  <View style={[styles.badge, { backgroundColor: `${Colors.success}18`, borderColor: `${Colors.success}30` }]}>
+                                    <Text style={[styles.badgeText, { color: Colors.success }]}>
+                                      ⚽ {s.goals.length > 1 ? `x${s.goals.length}` : 'Gol'}
+                                    </Text>
+                                  </View>
+                                  {assists.length > 0 && (
+                                    <View style={[styles.badge, { backgroundColor: `${Colors.info}18`, borderColor: `${Colors.info}30` }]}>
+                                      <Text style={[styles.badgeText, { color: Colors.info }]}>
+                                        🤝 {assists.join(', ')}
+                                      </Text>
+                                    </View>
+                                  )}
+                                </View>
+                              </View>
+                              {s.rating > 0 && (
+                                <View style={[styles.ratingChip, { backgroundColor: `${ratingColor(s.rating)}18` }]}>
+                                  <Text style={[styles.ratingText, { color: ratingColor(s.rating) }]}>{s.rating}</Text>
+                                </View>
+                              )}
+                            </View>
+                          </View>
+                        );
+                      })}
                     </View>
                   </View>
                 )}
@@ -419,4 +501,12 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   ratingText: { fontSize: 15, fontWeight: '700' as const, fontFamily: 'Inter_700Bold' },
+  lineupRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    paddingHorizontal: 16, paddingVertical: 11,
+  },
+  lineupBadge: { width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  lineupBadgeText: { fontSize: 11, fontWeight: '700' as const, fontFamily: 'Inter_700Bold' },
+  lineupName: { flex: 1, fontSize: 14, color: Colors.foreground, fontFamily: 'Inter_400Regular' },
+  lineupSubLabel: { fontSize: 11, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular' },
 });
