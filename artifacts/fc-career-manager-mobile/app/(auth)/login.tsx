@@ -29,7 +29,7 @@ export default function LoginScreen() {
     try {
       await login(email.trim(), password);
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      router.replace('/career-select');
+      router.replace('/');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro ao entrar';
       setError(msg);

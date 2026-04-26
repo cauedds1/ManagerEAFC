@@ -34,7 +34,7 @@ export default function RegisterScreen() {
     try {
       await register(email.trim(), password, name.trim());
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      router.replace('/career-select');
+      router.replace('/');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro ao criar conta';
       setError(msg);
