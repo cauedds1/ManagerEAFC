@@ -706,8 +706,8 @@ export default function CompeticoesScreen() {
         </TouchableOpacity>
         <Text style={styles.title}>Competições</Text>
         <TouchableOpacity
-          style={styles.addBtn}
-          onPress={() => setShowNew(true)}
+          style={[styles.addBtn, !activeSeason && { opacity: 0.3 }]}
+          onPress={() => activeSeason ? setShowNew(true) : Alert.alert('Sem temporada ativa', 'Ative uma temporada para registar competições.')}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
           <Ionicons name="add" size={24} color={theme.primary} />
