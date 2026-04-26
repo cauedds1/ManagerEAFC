@@ -761,6 +761,7 @@ export default function DiretoraScreen() {
   const [localMessages, setLocalMessages] = useState<LocalMessage[]>([]);
   const [showManage, setShowManage] = useState(false);
   const [showMeeting, setShowMeeting] = useState(false);
+  const [activeTab, setActiveTab] = useState<'chat' | 'reunioes'>('chat');
 
   const { data, isLoading } = useQuery({
     queryKey: ['/api/data/career/diretoria', activeCareer?.id],
@@ -1003,7 +1004,73 @@ export default function DiretoraScreen() {
         </ScrollView>
       )}
 
-      {isLoading ? (
+      {rawMembers.length > 0 && (
+        <View style={styles.tabBar}>
+          <TouchableOpacity
+            style={[styles.tabBtn, activeTab === 'chat' && { borderBottomColor: theme.primary, borderBottomWidth: 2 }]}
+            onPress={() => setActiveTab('chat')}
+          >
+            <Text style={[styles.tabBtnText, { color: activeTab === 'chat' ? theme.primary : Colors.mutedForeground }]}>
+              Chat
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tabBtn, activeTab === 'reunioes' && { borderBottomColor: Colors.info, borderBottomWidth: 2 }]}
+            onPress={() => setActiveTab('reunioes')}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Text style={[styles.tabBtnText, { color: activeTab === 'reunioes' ? Colors.info : Colors.mutedForeground }]}>
+                Reuniões
+              </Text>
+              {rawMeetings.length > 0 && (
+                <View style={[styles.tabBadge, { backgroundColor: `${Colors.info}22` }]}>
+                  <Text style={[styles.tabBadgeText, { color: Colors.info }]}>{rawMeetings.length}</Text>
+                </View>
+              )}
+            </View>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {activeTab === 'reunioes' ? (
+        rawMeetings.length === 0 ? (
+          <View style={styles.center}>
+            <Text style={{ fontSize: 40 }}>📋</Text>
+            <Text style={styles.emptyTitle}>Nenhuma reunião</Text>
+            <Text style={styles.emptyText}>Toque em 📅 para convocar uma reunião com a diretoria.</Text>
+            <TouchableOpacity
+              style={[styles.openManageBtn, { backgroundColor: `${Colors.info}15`, borderColor: `${Colors.info}30` }]}
+              onPress={() => setShowMeeting(true)}
+            >
+              <Ionicons name="calendar-outline" size={18} color={Colors.info} />
+              <Text style={[styles.openManageBtnText, { color: Colors.info }]}>Convocar Reunião</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <ScrollView
+            contentContainerStyle={[styles.meetingsList, { paddingBottom: insets.bottom + 24 }]}
+            showsVerticalScrollIndicator={false}
+          >
+            {[...rawMeetings].sort((a, b) => b.createdAt - a.createdAt).map((meeting) => {
+              const member = rawMembers.find((m) => m.id === meeting.memberId);
+              return (
+                <View key={meeting.id} style={styles.meetingCard}>
+                  <View style={styles.meetingCardTop}>
+                    <Text style={styles.meetingTopic} numberOfLines={1}>{meeting.topic}</Text>
+                    <Text style={styles.meetingDate}>{meeting.date}</Text>
+                  </View>
+                  {member && (
+                    <Text style={styles.meetingMember}>👤 {member.name} — {member.role}</Text>
+                  )}
+                  {meeting.outcome && (
+                    <Text style={styles.meetingOutcome} numberOfLines={4}>{meeting.outcome}</Text>
+                  )}
+                </View>
+              );
+            })}
+          </ScrollView>
+        )
+      ) : isLoading ? (
         <View style={styles.center}><ActivityIndicator color={theme.primary} size="large" /></View>
       ) : allMessages.length === 0 ? (
         <View style={styles.center}>
@@ -1039,7 +1106,7 @@ export default function DiretoraScreen() {
         />
       )}
 
-      {sendMutation.isPending && (
+      {activeTab === 'chat' && sendMutation.isPending && (
         <View style={styles.typingBar}>
           <ActivityIndicator size="small" color={theme.primary} />
           <Text style={styles.typingText}>
@@ -1048,37 +1115,39 @@ export default function DiretoraScreen() {
         </View>
       )}
 
-      <View style={[styles.inputBar, { paddingBottom: insets.bottom + 8 }]}>
-        <TextInput
-          style={styles.input}
-          placeholder={
-            !canSend
-              ? 'Adicione membros da diretoria'
-              : selectedMember
-                ? `Mensagem para ${selectedMember.name.split(' ')[0]}…`
-                : 'Escreva uma pauta ou pergunta…'
-          }
-          placeholderTextColor={Colors.mutedForeground}
-          value={inputText}
-          onChangeText={setInputText}
-          multiline
-          maxLength={500}
-          editable={canSend && !sendMutation.isPending}
-          returnKeyType="send"
-          onSubmitEditing={handleSend}
-        />
-        <TouchableOpacity
-          style={[styles.sendBtn, { backgroundColor: inputText.trim() && canSend ? theme.primary : Colors.card }]}
-          onPress={handleSend}
-          disabled={!inputText.trim() || sendMutation.isPending || !canSend}
-          activeOpacity={0.75}
-        >
-          {sendMutation.isPending
-            ? <ActivityIndicator size="small" color="#fff" />
-            : <Ionicons name="send" size={18} color={inputText.trim() && canSend ? '#fff' : Colors.mutedForeground} />
-          }
-        </TouchableOpacity>
-      </View>
+      {activeTab === 'chat' && (
+        <View style={[styles.inputBar, { paddingBottom: insets.bottom + 8 }]}>
+          <TextInput
+            style={styles.input}
+            placeholder={
+              !canSend
+                ? 'Adicione membros da diretoria'
+                : selectedMember
+                  ? `Mensagem para ${selectedMember.name.split(' ')[0]}…`
+                  : 'Escreva uma pauta ou pergunta…'
+            }
+            placeholderTextColor={Colors.mutedForeground}
+            value={inputText}
+            onChangeText={setInputText}
+            multiline
+            maxLength={500}
+            editable={canSend && !sendMutation.isPending}
+            returnKeyType="send"
+            onSubmitEditing={handleSend}
+          />
+          <TouchableOpacity
+            style={[styles.sendBtn, { backgroundColor: inputText.trim() && canSend ? theme.primary : Colors.card }]}
+            onPress={handleSend}
+            disabled={!inputText.trim() || sendMutation.isPending || !canSend}
+            activeOpacity={0.75}
+          >
+            {sendMutation.isPending
+              ? <ActivityIndicator size="small" color="#fff" />
+              : <Ionicons name="send" size={18} color={inputText.trim() && canSend ? '#fff' : Colors.mutedForeground} />
+            }
+          </TouchableOpacity>
+        </View>
+      )}
 
       <MemberManagementModal
         visible={showManage}
@@ -1235,6 +1304,19 @@ const styles = StyleSheet.create({
   aiHint: { fontSize: 13, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular', fontStyle: 'italic', lineHeight: 20 },
   saveBtn: { borderRadius: Colors.radius, paddingVertical: 14, borderWidth: 1, alignItems: 'center' },
   saveBtnText: { fontSize: 15, fontWeight: '600' as const, fontFamily: 'Inter_600SemiBold' },
+  tabBar: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+    backgroundColor: Colors.background,
+  },
+  tabBtn: {
+    flex: 1, alignItems: 'center', justifyContent: 'center',
+    paddingVertical: 12, borderBottomWidth: 2, borderBottomColor: 'transparent',
+  },
+  tabBtnText: { fontSize: 14, fontWeight: '600' as const, fontFamily: 'Inter_600SemiBold' },
+  tabBadge: { paddingHorizontal: 6, paddingVertical: 1, borderRadius: 99 },
+  tabBadgeText: { fontSize: 11, fontWeight: '700' as const, fontFamily: 'Inter_700Bold' },
   meetingsList: { padding: 16, gap: 12 },
   meetingCard: {
     backgroundColor: Colors.card, borderRadius: Colors.radiusLg,

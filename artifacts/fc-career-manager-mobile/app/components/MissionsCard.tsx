@@ -20,6 +20,7 @@ interface MissionDef {
   desc: string;
   rewardDesc: string;
   dataKey?: string;
+  target?: number;
 }
 
 const MISSIONS: MissionDef[] = [
@@ -31,6 +32,7 @@ const MISSIONS: MissionDef[] = [
     desc: 'Registre o resultado de uma partida da temporada.',
     rewardDesc: 'Histórico de partidas desbloqueado!',
     dataKey: 'matches',
+    target: 1,
   },
   {
     id: 'free_gen_news',
@@ -39,6 +41,8 @@ const MISSIONS: MissionDef[] = [
     title: 'Gere sua 1ª Notícia',
     desc: 'Gere uma notícia sobre o clube com IA.',
     rewardDesc: 'Feed de notícias ativado!',
+    dataKey: 'news',
+    target: 1,
   },
   {
     id: 'free_view_squad',
@@ -56,6 +60,7 @@ const MISSIONS: MissionDef[] = [
     desc: 'Adicione pelo menos um rival ao seu clube.',
     rewardDesc: 'Rivalidades ativadas!',
     dataKey: 'rivals',
+    target: 1,
   },
   {
     id: 'pro_setup_diretoria',
@@ -65,6 +70,7 @@ const MISSIONS: MissionDef[] = [
     desc: 'Adicione um membro à diretoria.',
     rewardDesc: 'Diretoria configurada!',
     dataKey: 'diretoria_members',
+    target: 1,
   },
   {
     id: 'pro_save_momento',
@@ -74,6 +80,7 @@ const MISSIONS: MissionDef[] = [
     desc: 'Registre um momento especial da temporada.',
     rewardDesc: 'Álbum de momentos ativo!',
     dataKey: 'momentos',
+    target: 1,
   },
   {
     id: 'pro_gen_3_news',
@@ -82,6 +89,8 @@ const MISSIONS: MissionDef[] = [
     title: 'Gere 3 Notícias',
     desc: 'Use a IA para gerar ao menos 3 notícias.',
     rewardDesc: 'Jornalismo em massa!',
+    dataKey: 'news',
+    target: 3,
   },
   {
     id: 'ultra_auto_news',
@@ -90,6 +99,8 @@ const MISSIONS: MissionDef[] = [
     title: 'Auto-Notícia Ativada',
     desc: 'Receba uma notícia gerada automaticamente após uma partida.',
     rewardDesc: 'Motor de notícias ativo!',
+    dataKey: 'news',
+    target: 1,
   },
   {
     id: 'ultra_rumor',
@@ -98,6 +109,8 @@ const MISSIONS: MissionDef[] = [
     title: 'Gere um Rumor',
     desc: 'Gere um rumor de mercado de transferências.',
     rewardDesc: 'Bastidores revelados!',
+    dataKey: 'news',
+    target: 5,
   },
   {
     id: 'ultra_portal',
@@ -106,6 +119,8 @@ const MISSIONS: MissionDef[] = [
     title: 'Crie um Portal',
     desc: 'Crie um portal personalizado nas configurações.',
     rewardDesc: 'Imprensa personalizada!',
+    dataKey: 'portals',
+    target: 1,
   },
 ];
 
@@ -153,12 +168,18 @@ export default function MissionsCard({ careerId, plan, data, compact }: Missions
 
   const missions = getMissionsForPlan(plan);
 
-  const checkDataCondition = useCallback((mission: MissionDef): boolean => {
-    if (!data || !mission.dataKey) return false;
+  const getDataCount = useCallback((mission: MissionDef): number => {
+    if (!data || !mission.dataKey) return 0;
     const key = mission.dataKey as keyof MissionsCardData;
     const arr = data[key] as unknown[] | undefined;
-    return Array.isArray(arr) && arr.length > 0;
+    return Array.isArray(arr) ? arr.length : 0;
   }, [data]);
+
+  const checkDataCondition = useCallback((mission: MissionDef): boolean => {
+    const count = getDataCount(mission);
+    if (count === 0) return false;
+    return count >= (mission.target ?? 1);
+  }, [getDataCount]);
 
   const loadCompletions = useCallback(async () => {
     if (!careerId) return;
@@ -217,6 +238,10 @@ export default function MissionsCard({ careerId, plan, data, compact }: Missions
               const done = !!completions[m.id];
               const prevDone = idx === 0 || !!completions[missions[idx - 1].id];
               const locked = !prevDone && !done;
+              const count = getDataCount(m);
+              const target = m.target ?? 0;
+              const hasProgress = !done && target > 1 && count > 0;
+              const progressPct = target > 0 ? Math.min(count / target, 1) : 0;
               return (
                 <View
                   key={m.id}
@@ -230,14 +255,24 @@ export default function MissionsCard({ careerId, plan, data, compact }: Missions
                   <View style={[styles.iconWrap, done && { backgroundColor: `${Colors.success}20` }]}>
                     <Text style={styles.missionIcon}>{done ? '✅' : locked ? '🔒' : m.icon}</Text>
                   </View>
-                  <View style={{ flex: 1, gap: 2 }}>
-                    <Text style={[styles.missionTitle, done && { color: Colors.mutedForeground, textDecorationLine: 'line-through' }]}>
-                      {m.title}
-                    </Text>
+                  <View style={{ flex: 1, gap: 4 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <Text style={[styles.missionTitle, done && { color: Colors.mutedForeground, textDecorationLine: 'line-through' }, { flex: 1 }]}>
+                        {m.title}
+                      </Text>
+                      {target > 0 && !done && (
+                        <Text style={styles.progressCount}>{Math.min(count, target)}/{target}</Text>
+                      )}
+                    </View>
                     {done ? (
                       <Text style={styles.rewardText}>🏅 {m.rewardDesc}</Text>
                     ) : (
                       <Text style={styles.missionDesc}>{m.desc}</Text>
+                    )}
+                    {hasProgress && (
+                      <View style={styles.progressBar}>
+                        <View style={[styles.progressFill, { width: `${progressPct * 100}%` }]} />
+                      </View>
                     )}
                   </View>
                 </View>
@@ -293,6 +328,13 @@ const styles = StyleSheet.create({
   missionTitle: { fontSize: 13, fontWeight: '600' as const, color: Colors.foreground, fontFamily: 'Inter_600SemiBold' },
   missionDesc: { fontSize: 12, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular', lineHeight: 18 },
   rewardText: { fontSize: 12, color: Colors.success, fontFamily: 'Inter_400Regular' },
+  progressCount: { fontSize: 11, fontWeight: '600' as const, color: Colors.mutedForeground, fontFamily: 'Inter_600SemiBold', marginLeft: 6 },
+  progressBar: {
+    height: 4, borderRadius: 2, backgroundColor: Colors.border, overflow: 'hidden',
+  },
+  progressFill: {
+    height: 4, borderRadius: 2, backgroundColor: Colors.success,
+  },
   allDoneBanner: {
     padding: 12, alignItems: 'center',
     borderTopWidth: 1, borderTopColor: Colors.border,

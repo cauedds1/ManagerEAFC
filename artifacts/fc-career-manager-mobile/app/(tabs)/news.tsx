@@ -11,7 +11,7 @@ import * as SecureStore from 'expo-secure-store';
 import { useCareer } from '@/contexts/CareerContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useClubTheme } from '@/contexts/ClubThemeContext';
-import { api, type NewsItem } from '@/lib/api';
+import { api, type NewsItem, type CustomPortal } from '@/lib/api';
 import { Colors } from '@/constants/colors';
 import { queryClient } from '@/lib/queryClient';
 
@@ -66,46 +66,175 @@ function socialPostToNewsItem(raw: Record<string, unknown>, type?: string): News
   };
 }
 
-type GenType = 'noticia' | 'rumor' | 'boas_vindas';
+type GenType = 'noticia' | 'rumor' | 'boas_vindas' | 'leak';
 
-const GEN_OPTIONS: { id: GenType; icon: string; label: string; desc: string; planRequired?: 'ultra' }[] = [
+const GEN_OPTIONS: { id: GenType; icon: string; label: string; desc: string; planRequired?: 'pro' | 'ultra'; needsPortal?: boolean }[] = [
   { id: 'noticia',     icon: '📰', label: 'Gerar Notícia',         desc: 'Notícia sobre o clube com IA' },
   { id: 'rumor',       icon: '🕵️', label: 'Gerar Rumor',           desc: 'Rumor de mercado de transferências', planRequired: 'ultra' },
   { id: 'boas_vindas', icon: '👋', label: 'Post de Boas-Vindas',   desc: 'Apresentação do treinador ao clube' },
+  { id: 'leak',        icon: '🔓', label: 'Gerar Vazamento',        desc: 'Bastidores vazados para a imprensa', planRequired: 'pro', needsPortal: true },
 ];
 
-function NewsModal({ item, onClose }: { item: NewsItem; onClose: () => void }) {
+const OPENAI_KEY_STORE = 'fc_openai_key';
+
+async function getStoredOpenAiKey(): Promise<string> {
+  if (Platform.OS === 'web') return localStorage.getItem(OPENAI_KEY_STORE) ?? '';
+  return (await SecureStore.getItemAsync(OPENAI_KEY_STORE)) ?? '';
+}
+async function saveOpenAiKey(key: string): Promise<void> {
+  if (Platform.OS === 'web') { localStorage.setItem(OPENAI_KEY_STORE, key); return; }
+  await SecureStore.setItemAsync(OPENAI_KEY_STORE, key);
+}
+
+function ImageKeyModal({ visible, onClose, onConfirm }: { visible: boolean; onClose: () => void; onConfirm: (key: string) => void }) {
+  const insets = useSafeAreaInsets();
+  const [key, setKey] = useState('');
+  return (
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+      <View style={styles.modalOverlay}>
+        <View style={[styles.genSheet, { paddingBottom: insets.bottom + 16 }]}>
+          <View style={styles.sheetHandle} />
+          <View style={styles.genHeader}>
+            <Text style={styles.genTitle}>🔑 Chave OpenAI</Text>
+            <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Ionicons name="close" size={22} color={Colors.mutedForeground} />
+            </TouchableOpacity>
+          </View>
+          <View style={[styles.genBody, { gap: 12 }]}>
+            <Text style={styles.optionDesc}>
+              Para gerar imagens, insira sua chave de API da OpenAI (começa com sk-). Ela é salva localmente no dispositivo.
+            </Text>
+            <TextInput
+              style={styles.descInput}
+              value={key}
+              onChangeText={setKey}
+              placeholder="sk-..."
+              placeholderTextColor={Colors.mutedForeground}
+              autoCapitalize="none"
+              autoCorrect={false}
+              secureTextEntry
+            />
+          </View>
+          <View style={styles.genFooter}>
+            <TouchableOpacity
+              style={[styles.genBtn, { backgroundColor: `${Colors.primary}22`, borderColor: `${Colors.primary}44` }, !key.startsWith('sk-') && { opacity: 0.5 }]}
+              onPress={() => { if (key.startsWith('sk-')) { saveOpenAiKey(key); onConfirm(key); } }}
+              disabled={!key.startsWith('sk-')}
+            >
+              <Ionicons name="checkmark" size={18} color={Colors.primary} />
+              <Text style={[styles.genBtnText, { color: Colors.primary }]}>Confirmar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+interface NewsModalProps {
+  item: NewsItem;
+  onClose: () => void;
+  userPlan?: 'free' | 'pro' | 'ultra';
+  clubName?: string;
+  onImageGenerated?: (newsId: string, imageUrl: string) => void;
+}
+
+function NewsModal({ item, onClose, userPlan, clubName, onImageGenerated }: NewsModalProps) {
   const insets = useSafeAreaInsets();
   const cfg = getTypeCfg(item.type);
+  const [imgLoading, setImgLoading] = useState(false);
+  const [imgError, setImgError] = useState<string | null>(null);
+  const [showKeyModal, setShowKeyModal] = useState(false);
+  const canGenImage = userPlan === 'pro' || userPlan === 'ultra';
+
+  const doGenerateImage = async (openAiKey: string) => {
+    if (!clubName) return;
+    setImgLoading(true);
+    setImgError(null);
+    try {
+      const eventType = item.type === 'vitoria' ? 'victory' : item.type === 'derrota' ? 'defeat' : 'general';
+      const result = await api.noticias.generateImage(
+        { clubName, imagePromptContext: { eventType } },
+        openAiKey,
+      );
+      onImageGenerated?.(item.id, result.imageUrl);
+      setShowKeyModal(false);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg.includes('OpenAI') || msg.includes('sk-') || msg.includes('402')) {
+        setShowKeyModal(true);
+      } else {
+        setImgError('Erro ao gerar imagem. Tente novamente.');
+      }
+    }
+    setImgLoading(false);
+  };
+
+  const handleGenerateImage = async () => {
+    const storedKey = await getStoredOpenAiKey();
+    if (storedKey.startsWith('sk-')) {
+      await doGenerateImage(storedKey);
+    } else {
+      setShowKeyModal(true);
+    }
+  };
+
   return (
-    <Modal visible transparent animationType="slide" onRequestClose={onClose}>
-      <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={onClose}>
-        <TouchableOpacity activeOpacity={1} style={[styles.modalContainer, { paddingBottom: insets.bottom + 24 }]}>
-          <View style={styles.sheetHandle} />
-          {item.imageUrl ? (
-            <Image source={{ uri: item.imageUrl }} style={styles.modalImage} resizeMode="cover" />
-          ) : null}
-          <View style={[styles.typeChip, { backgroundColor: `${cfg.color}18`, borderColor: `${cfg.color}33` }]}>
-            <Text style={styles.typeChipEmoji}>{cfg.icon}</Text>
-            <Text style={[styles.typeChipText, { color: cfg.color }]}>{cfg.label}</Text>
-          </View>
-          <Text style={styles.modalHeadline}>{item.headline}</Text>
-          <View style={styles.modalMeta}>
-            <Text style={styles.modalDate}>{formatDate(item.createdAt)}</Text>
-            {item.source ? (
-              <Text style={styles.modalSource}>Fonte: {item.source}</Text>
+    <>
+      <Modal visible transparent animationType="slide" onRequestClose={onClose}>
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={onClose}>
+          <TouchableOpacity activeOpacity={1} style={[styles.modalContainer, { paddingBottom: insets.bottom + 24 }]}>
+            <View style={styles.sheetHandle} />
+            {item.imageUrl ? (
+              <Image source={{ uri: item.imageUrl }} style={styles.modalImage} resizeMode="cover" />
             ) : null}
-          </View>
-          <View style={styles.modalDivider} />
-          <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 280 }}>
-            <Text style={styles.modalBody}>{item.body}</Text>
-          </ScrollView>
-          <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
-            <Text style={styles.closeBtnText}>Fechar</Text>
+            <View style={[styles.typeChip, { backgroundColor: `${cfg.color}18`, borderColor: `${cfg.color}33` }]}>
+              <Text style={styles.typeChipEmoji}>{cfg.icon}</Text>
+              <Text style={[styles.typeChipText, { color: cfg.color }]}>{cfg.label}</Text>
+            </View>
+            <Text style={styles.modalHeadline}>{item.headline}</Text>
+            <View style={styles.modalMeta}>
+              <Text style={styles.modalDate}>{formatDate(item.createdAt)}</Text>
+              {item.source ? (
+                <Text style={styles.modalSource}>Fonte: {item.source}</Text>
+              ) : null}
+            </View>
+            <View style={styles.modalDivider} />
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 220 }}>
+              <Text style={styles.modalBody}>{item.body}</Text>
+            </ScrollView>
+            {imgError ? (
+              <Text style={{ color: Colors.destructive, fontSize: 12, textAlign: 'center', marginTop: 6 }}>{imgError}</Text>
+            ) : null}
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
+              {canGenImage && !item.imageUrl && onImageGenerated && (
+                <TouchableOpacity
+                  style={[styles.closeBtn, { flex: 1, flexDirection: 'row', gap: 6, backgroundColor: `${Colors.info}18`, borderColor: `${Colors.info}33`, borderWidth: 1 }]}
+                  onPress={handleGenerateImage}
+                  disabled={imgLoading}
+                >
+                  {imgLoading
+                    ? <ActivityIndicator size="small" color={Colors.info} />
+                    : <Ionicons name="image-outline" size={16} color={Colors.info} />
+                  }
+                  <Text style={[styles.closeBtnText, { color: Colors.info }]}>
+                    {imgLoading ? 'Gerando…' : 'Gerar Imagem'}
+                  </Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity style={[styles.closeBtn, { flex: 1 }]} onPress={onClose}>
+                <Text style={styles.closeBtnText}>Fechar</Text>
+              </TouchableOpacity>
+            </View>
           </TouchableOpacity>
         </TouchableOpacity>
-      </TouchableOpacity>
-    </Modal>
+      </Modal>
+      <ImageKeyModal
+        visible={showKeyModal}
+        onClose={() => setShowKeyModal(false)}
+        onConfirm={(k) => doGenerateImage(k)}
+      />
+    </>
   );
 }
 
@@ -121,12 +250,13 @@ interface GenerateModalProps {
   coachNationality?: string;
   seasonLabel?: string;
   userPlan: 'free' | 'pro' | 'ultra';
+  portals?: CustomPortal[];
 }
 
 function GenerateModal({
   visible, onClose, onGenerated,
   clubName, clubLeague, clubDescription, projeto,
-  coachName, coachNationality, seasonLabel, userPlan,
+  coachName, coachNationality, seasonLabel, userPlan, portals,
 }: GenerateModalProps) {
   const theme = useClubTheme();
   const insets = useSafeAreaInsets();
@@ -162,6 +292,22 @@ function GenerateModal({
           projeto,
           lang: 'pt',
         });
+      } else if (selected === 'leak') {
+        const portal = portals?.[0];
+        if (!portal) {
+          setError('Crie um portal personalizado nas Configurações para usar esta opção.');
+          setLoading(false);
+          return;
+        }
+        const ctx = description.trim() || `Bastidores do ${clubName} na temporada ${seasonLabel ?? ''}`;
+        raw = await api.noticias.generateLeak({
+          clubName,
+          season: seasonLabel,
+          clubLeague,
+          notificationPreview: ctx,
+          customPortal: { name: portal.name, tone: portal.tone },
+          lang: 'pt',
+        });
       } else {
         raw = await api.noticias.generateWelcome({
           coachName: coachName ?? 'Técnico',
@@ -173,12 +319,12 @@ function GenerateModal({
           lang: 'pt',
         });
       }
-      const item = socialPostToNewsItem(raw, selected === 'rumor' ? 'transferencia' : 'geral');
+      const item = socialPostToNewsItem(raw, selected === 'rumor' ? 'transferencia' : selected === 'leak' ? 'geral' : 'geral');
       onGenerated(item);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
-      if (msg.includes('Ultra') || msg.includes('PLAN')) {
-        setError('Este recurso requer o plano Ultra.');
+      if (msg.includes('Ultra') || msg.includes('Pro') || msg.includes('PLAN')) {
+        setError('Este recurso requer o plano Pro ou superior.');
       } else if (msg.includes('Limite')) {
         setError('Limite de gerações do dia atingido. Tente amanhã.');
       } else {
@@ -204,8 +350,15 @@ function GenerateModal({
             <Text style={styles.genSectionLabel}>TIPO</Text>
             <View style={styles.optionList}>
               {GEN_OPTIONS.map((opt) => {
-                const locked = opt.planRequired === 'ultra' && userPlan !== 'ultra';
+                const planLocked =
+                  (opt.planRequired === 'ultra' && userPlan !== 'ultra') ||
+                  (opt.planRequired === 'pro' && userPlan === 'free');
+                const portalLocked = opt.needsPortal && (!portals || portals.length === 0);
+                const locked = planLocked || portalLocked;
                 const active = selected === opt.id;
+                const lockLabel = planLocked
+                  ? (opt.planRequired === 'ultra' ? '  •  Ultra' : '  •  Pro')
+                  : portalLocked ? '  •  Portal necessário' : '';
                 return (
                   <TouchableOpacity
                     key={opt.id}
@@ -220,7 +373,7 @@ function GenerateModal({
                     <Text style={styles.optionIcon}>{opt.icon}</Text>
                     <View style={{ flex: 1 }}>
                       <Text style={[styles.optionLabel, active && { color: theme.primary }]}>{opt.label}</Text>
-                      <Text style={styles.optionDesc}>{opt.desc}{locked ? '  •  Ultra' : ''}</Text>
+                      <Text style={styles.optionDesc}>{opt.desc}{locked ? lockLabel : ''}</Text>
                     </View>
                     {active && <Ionicons name="checkmark-circle" size={20} color={theme.primary} />}
                     {locked && <Ionicons name="lock-closed" size={16} color={Colors.mutedForeground} />}
@@ -229,18 +382,27 @@ function GenerateModal({
               })}
             </View>
 
-            {selected === 'noticia' && (
+            {(selected === 'noticia' || selected === 'leak') && (
               <View style={{ marginTop: 12, gap: 6 }}>
-                <Text style={styles.genSectionLabel}>DESCRIÇÃO (opcional)</Text>
+                <Text style={styles.genSectionLabel}>
+                  {selected === 'leak' ? 'CONTEXTO DO VAZAMENTO (opcional)' : 'DESCRIÇÃO (opcional)'}
+                </Text>
                 <TextInput
                   style={styles.descInput}
                   value={description}
                   onChangeText={setDescription}
-                  placeholder={`Ex: Fale sobre a última vitória do ${clubName}…`}
+                  placeholder={
+                    selected === 'leak'
+                      ? `Ex: Reunião tensa sobre contratações no ${clubName}…`
+                      : `Ex: Fale sobre a última vitória do ${clubName}…`
+                  }
                   placeholderTextColor={Colors.mutedForeground}
                   multiline
                   maxLength={300}
                 />
+                {selected === 'leak' && portals && portals.length > 0 && (
+                  <Text style={styles.optionDesc}>Portal: {portals[0].name}</Text>
+                )}
               </View>
             )}
 
@@ -290,6 +452,13 @@ export default function NewsScreen() {
     queryFn: () => activeSeason ? api.seasonData.get(activeSeason.id) : null,
     enabled: !!activeSeason?.id,
     staleTime: 1000 * 60 * 2,
+  });
+
+  const { data: portals } = useQuery({
+    queryKey: ['/api/portals', activeCareer?.id],
+    queryFn: () => activeCareer ? api.portals.list(activeCareer.id) : null,
+    enabled: !!activeCareer?.id,
+    staleTime: 1000 * 60 * 10,
   });
 
   const news: NewsItem[] = [...(seasonData?.data?.news ?? [])].sort((a, b) => b.createdAt - a.createdAt);
@@ -426,7 +595,24 @@ export default function NewsScreen() {
         />
       )}
 
-      {selected && <NewsModal item={selected} onClose={() => setSelected(null)} />}
+      {selected && (
+        <NewsModal
+          item={selected}
+          onClose={() => setSelected(null)}
+          userPlan={user?.plan ?? 'free'}
+          clubName={activeCareer?.clubName}
+          onImageGenerated={async (newsId, imageUrl) => {
+            if (!activeSeason) return;
+            try {
+              const currentNews: NewsItem[] = seasonData?.data?.news ?? [];
+              const updated = currentNews.map((n) => n.id === newsId ? { ...n, imageUrl } : n);
+              await api.seasonData.set(activeSeason.id, 'news', updated);
+              await queryClient.invalidateQueries({ queryKey: ['/api/data/season', activeSeason.id] });
+              setSelected((prev) => prev && prev.id === newsId ? { ...prev, imageUrl } : prev);
+            } catch {}
+          }}
+        />
+      )}
 
       {showGenerate && activeCareer && activeSeason && (
         <GenerateModal
@@ -441,6 +627,7 @@ export default function NewsScreen() {
           coachNationality={activeCareer.coach?.nationality}
           seasonLabel={activeSeason.label}
           userPlan={user?.plan ?? 'free'}
+          portals={portals ?? []}
         />
       )}
     </View>

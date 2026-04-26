@@ -510,6 +510,36 @@ export const api = {
         method: 'POST',
         body: JSON.stringify(payload),
       }),
+
+    generateLeak: (payload: {
+      clubName: string;
+      season?: string;
+      clubLeague?: string;
+      notificationPreview: string;
+      memberName?: string;
+      meetingReason?: string;
+      customPortal: { name: string; tone: string; description?: string };
+      lang?: string;
+    }) =>
+      request<Record<string, unknown>>('/api/noticias/generate-leak', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }),
+
+    generateImage: (
+      payload: {
+        clubName: string;
+        imagePromptContext: { eventType: string; opponent?: string; score?: string };
+        isClassico?: boolean;
+        rivalName?: string;
+      },
+      openAiKey: string,
+    ) =>
+      request<{ imageUrl: string }>('/api/noticias/generate-image', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+        headers: { 'x-openai-key': openAiKey },
+      }),
   },
 
   matches: {
