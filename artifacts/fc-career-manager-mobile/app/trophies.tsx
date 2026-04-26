@@ -4,6 +4,8 @@ import {
   Platform, ActivityIndicator, Modal, TextInput,
   ScrollView, Alert, Image,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
@@ -70,9 +72,12 @@ function AddTrophyModal({
   const [season, setSeason] = useState(activeSeasonLabel);
   const [type, setType] = useState('league');
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [customPhotoUri, setCustomPhotoUri] = useState<string | null>(null);
+  const [pickingPhoto, setPickingPhoto] = useState(false);
 
   const suggestions = useMemo(() => searchTrophyEntries(name), [name]);
-  const photoUrl = useMemo(() => name.trim() ? findTrophyPhoto(name.trim()) : null, [name]);
+  const officialPhotoUrl = useMemo(() => name.trim() ? findTrophyPhoto(name.trim()) : null, [name]);
+  const previewUrl = customPhotoUri ?? officialPhotoUrl;
 
   const pickSuggestion = (entry: TrophyEntry) => {
     setName(entry.label);
@@ -89,13 +94,46 @@ function AddTrophyModal({
     }
   };
 
+  const handlePickPhoto = async () => {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert('Permissão necessária', 'Permita acesso à galeria para escolher uma foto.');
+      return;
+    }
+    setPickingPhoto(true);
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.6,
+      });
+      if (!result.canceled && result.assets.length > 0) {
+        const uri = result.assets[0].uri;
+        const base64 = await FileSystem.readAsStringAsync(uri, { encoding: 'base64' });
+        const ext = uri.toLowerCase().endsWith('.png') ? 'png' : 'jpeg';
+        setCustomPhotoUri(`data:image/${ext};base64,${base64}`);
+      }
+    } catch {
+      Alert.alert('Erro', 'Não foi possível carregar a imagem.');
+    } finally {
+      setPickingPhoto(false);
+    }
+  };
+
   const handleSave = () => {
     if (!name.trim()) return;
-    onSave({ name: name.trim(), season: season.trim() || activeSeasonLabel, type });
+    onSave({
+      name: name.trim(),
+      season: season.trim() || activeSeasonLabel,
+      type,
+      photoUrl: customPhotoUri ?? undefined,
+    });
     setName('');
     setSeason(activeSeasonLabel);
     setType('league');
     setShowSuggestions(false);
+    setCustomPhotoUri(null);
     onClose();
   };
 
@@ -125,12 +163,29 @@ function AddTrophyModal({
                     placeholderTextColor={Colors.mutedForeground}
                     autoFocus
                   />
-                  {photoUrl && (
+                  {previewUrl && (
                     <Image
-                      source={{ uri: photoUrl }}
+                      source={{ uri: previewUrl }}
                       style={styles.trophyPreviewImg}
                       resizeMode="contain"
                     />
+                  )}
+                </View>
+                <View style={styles.photoPickerRow}>
+                  <TouchableOpacity
+                    style={styles.photoPickerBtn}
+                    onPress={handlePickPhoto}
+                    disabled={pickingPhoto}
+                  >
+                    <Ionicons name="image-outline" size={15} color={Colors.mutedForeground} />
+                    <Text style={styles.photoPickerText}>
+                      {pickingPhoto ? 'Carregando…' : customPhotoUri ? 'Trocar foto personalizada' : 'Adicionar foto personalizada'}
+                    </Text>
+                  </TouchableOpacity>
+                  {customPhotoUri && (
+                    <TouchableOpacity onPress={() => setCustomPhotoUri(null)}>
+                      <Ionicons name="close-circle" size={18} color={Colors.destructive} />
+                    </TouchableOpacity>
                   )}
                 </View>
                 {showSuggestions && suggestions.length > 0 && (
@@ -253,13 +308,12 @@ export default function TrophiesScreen() {
 
   const groups = useMemo(() => groupTrophies(trophies), [trophies]);
 
-  const renderTrophyIcon = (name: string, type?: string, size = 52) => {
-    const photoUrl = findTrophyPhoto(name);
+  const renderTrophyIcon = (name: string, type?: string, size = 52, customPhoto?: string) => {
+    const displayUrl = customPhoto ?? findTrophyPhoto(name);
     const icon = trophyIcon(type, name);
-    const isGold = false;
-    if (photoUrl) {
+    if (displayUrl) {
       return (
-        <Image source={{ uri: photoUrl }} style={{ width: size, height: size }} resizeMode="contain" />
+        <Image source={{ uri: displayUrl }} style={{ width: size, height: size }} resizeMode="contain" />
       );
     }
     return (
@@ -274,7 +328,7 @@ export default function TrophiesScreen() {
     const borderColor = isGold ? '#f59e0b' : index < 3 ? 'rgba(165,180,252,0.4)' : Colors.border;
     return (
       <View style={[styles.card, { borderColor }]}>
-        {renderTrophyIcon(item.name, item.type)}
+        {renderTrophyIcon(item.name, item.type, 52, item.photoUrl)}
         <View style={{ flex: 1, gap: 2 }}>
           <Text style={styles.cardName} numberOfLines={2}>{item.name}</Text>
           {item.season && <Text style={styles.cardSeason}>{item.season}</Text>}
@@ -295,7 +349,7 @@ export default function TrophiesScreen() {
     const isGold = index === 0;
     return (
       <View style={[styles.card, { borderColor: isGold ? '#f59e0b' : Colors.border }]}>
-        {renderTrophyIcon(item.name, item.trophies[0].type)}
+        {renderTrophyIcon(item.name, item.trophies[0].type, 52, item.trophies[0].photoUrl)}
         <View style={{ flex: 1, gap: 2 }}>
           <Text style={styles.cardName} numberOfLines={2}>{item.name}</Text>
           <Text style={styles.cardSeason} numberOfLines={1}>
@@ -491,4 +545,21 @@ const styles = StyleSheet.create({
   suggestionLabel: { fontSize: 14, color: Colors.foreground, fontFamily: 'Inter_400Regular', flex: 1 },
   suggestionDismiss: { paddingVertical: 10, alignItems: 'center' },
   suggestionDismissText: { fontSize: 12, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular' },
+  photoPickerRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 6,
+  },
+  photoPickerBtn: {
+    flexDirection: 'row' as const,
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: Colors.radius,
+    backgroundColor: 'rgba(100,116,139,0.12)',
+    flex: 1,
+  },
+  photoPickerText: { fontSize: 12, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular' },
 });

@@ -324,6 +324,7 @@ export interface Trophy {
   season?: string;
   type?: string;
   tournament?: string;
+  photoUrl?: string;
 }
 
 export interface CareerGameData {
