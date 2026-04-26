@@ -118,8 +118,9 @@ function computeSeasonStats(matches: MatchRecord[]) {
   return { played: matches.length, won, drawn, lost, goalsFor, goalsAgainst };
 }
 
-function computeTotalAssists(playerStats: import('@/lib/api').PlayerSeasonStats[]): number {
-  return playerStats.reduce((sum, p) => sum + (p.assists ?? 0), 0);
+function computeTotalAssists(playerStats: import('@/lib/api').PlayerSeasonStats[] | undefined | null): number {
+  if (!Array.isArray(playerStats)) return 0;
+  return playerStats.reduce((sum, p) => sum + (p?.assists ?? 0), 0);
 }
 
 export default function DashboardScreen() {
@@ -162,14 +163,17 @@ export default function DashboardScreen() {
     staleTime: 1000 * 60 * 10,
   });
 
-  const matches: MatchRecord[] = useMemo(
-    () => seasonGameData?.data?.matches ?? [],
-    [seasonGameData]
-  );
+  const matches: MatchRecord[] = useMemo(() => {
+    const raw = seasonGameData?.data?.matches;
+    return Array.isArray(raw) ? raw : [];
+  }, [seasonGameData]);
 
   const stats = useMemo(() => computeSeasonStats(matches), [matches]);
 
-  const playerStats = seasonGameData?.data?.player_stats ?? [];
+  const playerStats = useMemo(() => {
+    const raw = seasonGameData?.data?.player_stats;
+    return Array.isArray(raw) ? raw : [];
+  }, [seasonGameData]);
   const totalAssists = useMemo(() => computeTotalAssists(playerStats), [playerStats]);
 
   const sortedMatches = useMemo(
