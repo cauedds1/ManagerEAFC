@@ -1,0 +1,260 @@
+scheduling build on Metal builder "production-builderv3-us-east4-xscs"
+unpacking archive
+156.7 MB
+681ms
+
+load build definition from Dockerfile
+1ms
+
+load metadata for docker.io/library/node:22-slim
+114ms
+
+load metadata for docker.io/library/node:22
+112ms
+
+load .dockerignore
+0ms
+
+load build context
+0ms
+
+FROM docker.io/library/node:22@sha256:9059d9d7db987b86299e052ff6630cd95e5a770336967c21110e53289a877433 cached
+16ms
+
+FROM docker.io/library/node:22-slim@sha256:d415caac2f1f77b98caaf9415c5f807e14bc8d7bdea62561ea2fef4fbd08a73c
+18ms
+
+WORKDIR /app cached
+0ms
+
+RUN npm install -g pnpm@10.26.1 cached
+50ms
+npm notice
+
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+409ms
+
+COPY tsconfig.json tsconfig.base.json ./
+149ms
+
+COPY lib/ ./lib/
+192ms
+
+COPY artifacts/api-server/ ./artifacts/api-server/
+142ms
+
+COPY artifacts/fc-career-manager/ ./artifacts/fc-career-manager/
+241ms
+
+COPY artifacts/admin-panel/ ./artifacts/admin-panel/
+153ms
+
+RUN pnpm install --frozen-lockfile
+5s
+Done in 3.8s using pnpm v10.26.1
+uploading snapshot
+148.4 MB
+4.8s
+
+RUN BASE_PATH=/ pnpm --filter @workspace/fc-career-manager run build
+14s
+✓ built in 2.96s
+
+RUN mkdir -p artifacts/api-server/public &&     cp -r artifacts/fc-career-manager/dist/public/. artifacts/api-server/public/
+292ms
+
+RUN pnpm --filter @workspace/api-server run build
+3s
+Copied admin panel → /app/artifacts/api-server/dist/admin-panel
+
+WORKDIR /app cached
+0ms
+
+COPY --from=builder /app/artifacts/api-server/dist/ ./dist/
+97ms
+
+COPY --from=builder /app/artifacts/api-server/public/ ./public/
+143ms
+
+COPY --from=builder /app/lib/db/migrations/ ./migrations/
+68ms
+
+exporting to docker image format
+1s
+containerimage.digest: sha256:ee0d24a7e9f9ed20e673a8892c2dbefa85d1455c3458ff1054feaecd736874a0
+containerimage.descriptor: eyJtZWRpYVR5cGUiOiJhcHBsaWNhdGlvbi92bmQub2NpLmltYWdlLm1hbmlmZXN0LnYxK2pzb24iLCJkaWdlc3QiOiJzaGEyNTY6ZWUwZDI0YTdlOWY5ZWQyMGU2NzNhODg5MmMyZGJlZmE4NWQxNDU1YzM0NThmZjEwNTRmZWFlY2Q3MzY4NzRhMCIsInNpemUiOjIwMDUsImFubm90YXRpb25zIjp7Im9yZy5vcGVuY29udGFpbmVycy5pbWFnZS5jcmVhdGVkIjoiMjAyNi0wNC0yNlQyMDozNzowN1oifSwicGxhdGZvcm0iOnsiYXJjaGl0ZWN0dXJlIjoiYW1kNjQiLCJvcyI6ImxpbnV4In19
+containerimage.config.digest: sha256:7f563f832e261ea272d05239a2aaeee679c8b6d306e3dd75d7a2a43f7c29436f
+scheduling build on Metal builder "production-builderv3-us-east4-p9w9"
+
+load build definition from Dockerfile
+0ms
+
+load .dockerignore
+0ms
+
+load build context
+0ms
+
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+123ms
+
+COPY tsconfig.json tsconfig.base.json ./
+65ms
+
+COPY lib/ ./lib/
+68ms
+
+COPY artifacts/api-server/ ./artifacts/api-server/
+91ms
+
+COPY artifacts/fc-career-manager/ ./artifacts/fc-career-manager/
+165ms
+
+COPY artifacts/admin-panel/ ./artifacts/admin-panel/
+62ms
+
+RUN pnpm install --frozen-lockfile
+4s
+Done in 4.2s using pnpm v10.26.1
+
+RUN BASE_PATH=/ pnpm --filter @workspace/fc-career-manager run build
+5s
+✓ built in 3.42s
+
+RUN mkdir -p artifacts/api-server/public &&     cp -r artifacts/fc-career-manager/dist/public/. artifacts/api-server/public/
+822ms
+
+RUN pnpm --filter @workspace/api-server run build
+4s
+Copied admin panel → /app/artifacts/api-server/dist/admin-panel
+
+COPY --from=builder /app/artifacts/api-server/dist/ ./dist/
+83ms
+
+COPY --from=builder /app/artifacts/api-server/public/ ./public/
+159ms
+
+COPY --from=builder /app/lib/db/migrations/ ./migrations/
+73ms
+
+exporting to docker image format
+863ms
+containerimage.descriptor: eyJtZWRpYVR5cGUiOiJhcHBsaWNhdGlvbi92bmQub2NpLmltYWdlLm1hbmlmZXN0LnYxK2pzb24iLCJkaWdlc3QiOiJzaGEyNTY6MjJmODFhZWFmODg0ODIxNDJlOTBiMDcyNTI1OWE1NjYyOTYyMDQ0YmI2ZmM0Mjc1ODVjMzcxODk0ZTdiMTQ1NSIsInNpemUiOjIwMDUsImFubm90YXRpb25zIjp7Im9yZy5vcGVuY29udGFpbmVycy5pbWFnZS5jcmVhdGVkIjoiMjAyNi0wNC0yNlQyMDozODowNFoifSwicGxhdGZvcm0iOnsiYXJjaGl0ZWN0dXJlIjoiYW1kNjQiLCJvcyI6ImxpbnV4In19
+containerimage.config.digest: sha256:481d9013f643c9f8d0ecd85d52725d2cb5baaf393f3eff7cf96274d770732b0a
+containerimage.digest: sha256:22f81aeaf88482142e90b0725259a5662962044bb6fc427585c371894e7b1455
+scheduling build on Metal builder "production-builderv3-us-east4-hjtr"
+
+load build definition from Dockerfile
+0ms
+
+load .dockerignore
+0ms
+
+load build context
+0ms
+
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+334ms
+
+COPY tsconfig.json tsconfig.base.json ./
+310ms
+
+COPY lib/ ./lib/
+220ms
+
+COPY artifacts/api-server/ ./artifacts/api-server/
+248ms
+
+COPY artifacts/fc-career-manager/ ./artifacts/fc-career-manager/
+379ms
+
+COPY artifacts/admin-panel/ ./artifacts/admin-panel/
+175ms
+
+RUN pnpm install --frozen-lockfile
+5s
+Done in 3.9s using pnpm v10.26.1
+
+RUN BASE_PATH=/ pnpm --filter @workspace/fc-career-manager run build
+4s
+✓ built in 3.05s
+
+RUN mkdir -p artifacts/api-server/public &&     cp -r artifacts/fc-career-manager/dist/public/. artifacts/api-server/public/
+283ms
+
+RUN pnpm --filter @workspace/api-server run build
+6s
+Copied admin panel → /app/artifacts/api-server/dist/admin-panel
+
+COPY --from=builder /app/artifacts/api-server/dist/ ./dist/
+383ms
+
+COPY --from=builder /app/artifacts/api-server/public/ ./public/
+216ms
+
+COPY --from=builder /app/lib/db/migrations/ ./migrations/
+143ms
+
+exporting to docker image format
+911ms
+containerimage.digest: sha256:9c9f34366bf1039ace0fd551ec4c7d566f983b58853d7012e42fb82a637822c4
+containerimage.descriptor: eyJtZWRpYVR5cGUiOiJhcHBsaWNhdGlvbi92bmQub2NpLmltYWdlLm1hbmlmZXN0LnYxK2pzb24iLCJkaWdlc3QiOiJzaGEyNTY6OWM5ZjM0MzY2YmYxMDM5YWNlMGZkNTUxZWM0YzdkNTY2Zjk4M2I1ODg1M2Q3MDEyZTQyZmI4MmE2Mzc4MjJjNCIsInNpemUiOjIwMDUsImFubm90YXRpb25zIjp7Im9yZy5vcGVuY29udGFpbmVycy5pbWFnZS5jcmVhdGVkIjoiMjAyNi0wNC0yNlQyMDozOTo1N1oifSwicGxhdGZvcm0iOnsiYXJjaGl0ZWN0dXJlIjoiYW1kNjQiLCJvcyI6ImxpbnV4In19
+containerimage.config.digest: sha256:1e1e781963d88987cde08cadf818ae04c2c5c46ea05aaceeceed3d8af1d06ea6
+scheduling build on Metal builder "production-builderv3-us-east4-b704"
+
+load build definition from Dockerfile
+0ms
+
+load .dockerignore
+0ms
+
+load build context
+0ms
+
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+175ms
+
+COPY tsconfig.json tsconfig.base.json ./
+77ms
+
+COPY lib/ ./lib/
+82ms
+
+COPY artifacts/api-server/ ./artifacts/api-server/
+76ms
+
+COPY artifacts/fc-career-manager/ ./artifacts/fc-career-manager/
+231ms
+
+COPY artifacts/admin-panel/ ./artifacts/admin-panel/
+757ms
+
+RUN pnpm install --frozen-lockfile
+6s
+Done in 6.1s using pnpm v10.26.1
+
+RUN BASE_PATH=/ pnpm --filter @workspace/fc-career-manager run build
+6s
+✓ built in 3.23s
+
+RUN mkdir -p artifacts/api-server/public &&     cp -r artifacts/fc-career-manager/dist/public/. artifacts/api-server/public/
+2s
+
+RUN pnpm --filter @workspace/api-server run build
+3s
+Copied admin panel → /app/artifacts/api-server/dist/admin-panel
+
+COPY --from=builder /app/artifacts/api-server/dist/ ./dist/
+106ms
+
+COPY --from=builder /app/artifacts/api-server/public/ ./public/
+115ms
+
+COPY --from=builder /app/lib/db/migrations/ ./migrations/
+35ms
+
+exporting to docker image format
+715ms
+containerimage.descriptor: eyJtZWRpYVR5cGUiOiJhcHBsaWNhdGlvbi92bmQub2NpLmltYWdlLm1hbmlmZXN0LnYxK2pzb24iLCJkaWdlc3QiOiJzaGEyNTY6OGIyMzljZmVlZTU4MzFkMzZhZmNkMzQ4YWNmOTQwMDVjM2E0MGJkYzFhYTYzMmIyNzM3NTQwZWM1ODNiOTE5NyIsInNpemUiOjIwMDUsImFubm90YXRpb25zIjp7Im9yZy5vcGVuY29udGFpbmVycy5pbWFnZS5jcmVhdGVkIjoiMjAyNi0wNC0yNlQyMDo0MzoyOVoifSwicGxhdGZvcm0iOnsiYXJjaGl0ZWN0dXJlIjoiYW1kNjQiLCJvcyI6ImxpbnV4In19
+containerimage.config.digest: sha256:4c6143858a9c04a41956e5dc5a714a3696d1fa2bc4c47a8ffa5e4594db1aaff6
+containerimage.digest: sha256:8b239cfeee5831d36afcd348acf94005c3a40bdc1aa632b2737540ec583b9197
