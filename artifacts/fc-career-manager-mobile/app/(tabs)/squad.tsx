@@ -141,10 +141,18 @@ function PlayerBottomSheet({
                 <View style={[styles.posBadge, { backgroundColor: posCfg.bg }]}>
                   <Text style={[styles.posBadgeText, { color: posCfg.color }]}>{player.positionPtBr}</Text>
                 </View>
+                {player.overallRating != null && (
+                  <View style={[styles.posBadge, { backgroundColor: 'rgba(139,92,246,0.18)' }]}>
+                    <Text style={[styles.posBadgeText, { color: Colors.primary }]}>OVR {player.overallRating}</Text>
+                  </View>
+                )}
                 {player.number != null && (
                   <Text style={styles.shirtNum}>#{player.number}</Text>
                 )}
                 <Text style={styles.ageText}>{player.age} anos</Text>
+                {player.nationality ? (
+                  <Text style={styles.ageText}>{player.nationality}</Text>
+                ) : null}
               </View>
             </View>
           </View>
@@ -425,7 +433,7 @@ function AddPlayerSheet({
   const [name, setName] = useState('');
   const [pos, setPos] = useState<PosFilter>('MID');
   const [age, setAge] = useState('');
-  const [ovr, setOvr] = useState('');
+  const [ovr, setOvr] = useState(75);
   const [number, setNumber] = useState('');
   const [photo, setPhoto] = useState('');
   const [photoBase64, setPhotoBase64] = useState('');
@@ -466,7 +474,7 @@ function AddPlayerSheet({
         age: parseInt(age, 10) || 20,
         position: pos,
         positionPtBr: pos,
-        overallRating: parseInt(ovr, 10) || 70,
+        overallRating: ovr,
         number: number ? parseInt(number, 10) : undefined,
         photo: displayPhoto || '',
       });
@@ -526,15 +534,22 @@ function AddPlayerSheet({
                 />
               </View>
               <View style={[styles.addField, { flex: 1 }]}>
-                <Text style={styles.addLabel}>OVR</Text>
-                <TextInput
-                  style={styles.addInput}
-                  value={ovr}
-                  onChangeText={setOvr}
-                  placeholder="75"
-                  placeholderTextColor={Colors.mutedForeground}
-                  keyboardType="number-pad"
-                />
+                <Text style={styles.addLabel}>OVR (1–99)</Text>
+                <View style={styles.ovrStepper}>
+                  <TouchableOpacity
+                    style={styles.ovrStepBtn}
+                    onPress={() => setOvr((v) => Math.max(1, v - 1))}
+                  >
+                    <Text style={styles.ovrStepTxt}>−</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.ovrValue}>{ovr}</Text>
+                  <TouchableOpacity
+                    style={styles.ovrStepBtn}
+                    onPress={() => setOvr((v) => Math.min(99, v + 1))}
+                  >
+                    <Text style={styles.ovrStepTxt}>+</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
               <View style={[styles.addField, { flex: 1 }]}>
                 <Text style={styles.addLabel}>Camisa</Text>
@@ -711,6 +726,9 @@ function SquadPitch({
                 <Text style={styles.slotName} numberOfLines={1}>
                   {player.name.split(' ')[0]}
                 </Text>
+                {player.overallRating != null && (
+                  <Text style={styles.slotOvr}>{player.overallRating}</Text>
+                )}
               </View>
             )}
           </TouchableOpacity>
@@ -780,12 +798,8 @@ export default function SquadScreen() {
   );
 
   useEffect(() => {
-    if (careerGameData?.data?.formation) {
-      setFormation(careerGameData.data.formation as FormationKey);
-    }
-    if (careerGameData?.data?.lineup) {
-      setLineup(careerGameData.data.lineup as number[]);
-    }
+    setFormation((careerGameData?.data?.formation as FormationKey | undefined) ?? DEFAULT_FORMATION);
+    setLineup(careerGameData?.data?.lineup ?? Array(11).fill(0));
   }, [careerGameData]);
 
   const statsMap = useMemo<Map<number, PlayerSeasonStats>>(() => {
@@ -822,7 +836,7 @@ export default function SquadScreen() {
   const saveLineupAndFormation = useCallback(async (newLineup: number[], newFormation: FormationKey) => {
     if (!activeCareer) return;
     await api.careerData.set(activeCareer.id, 'lineup', newLineup);
-    await (api.careerData.set as (c: string, k: string, v: unknown) => Promise<unknown>)(activeCareer.id, 'formation', newFormation);
+    await api.careerData.set(activeCareer.id, 'formation', newFormation);
     await qc.invalidateQueries({ queryKey: ['/api/data/career', activeCareer.id] });
   }, [activeCareer, qc]);
 
@@ -1361,6 +1375,7 @@ const styles = StyleSheet.create({
     borderRadius: 4, paddingHorizontal: 4, paddingVertical: 1, maxWidth: 64,
   },
   slotName: { fontSize: 9, color: '#fff', fontFamily: 'Inter_600SemiBold', textAlign: 'center' },
+  slotOvr: { fontSize: 8, color: 'rgba(255,255,255,0.7)', fontFamily: 'Inter_400Regular', textAlign: 'center' },
 
   benchSection: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 4 },
   sectionTitle: { fontSize: 14, fontWeight: '600' as const, color: Colors.foreground, fontFamily: 'Inter_600SemiBold', marginBottom: 10 },
@@ -1534,5 +1549,20 @@ const styles = StyleSheet.create({
   },
   slotCancelText: {
     fontSize: 15, color: Colors.mutedForeground, fontFamily: 'Inter_600SemiBold', fontWeight: '600' as const,
+  },
+
+  ovrStepper: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: Colors.border,
+    borderRadius: Colors.radius, height: 42, overflow: 'hidden',
+  },
+  ovrStepBtn: {
+    width: 40, height: 42, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+  },
+  ovrStepTxt: { fontSize: 20, color: Colors.foreground, fontFamily: 'Inter_400Regular', lineHeight: 22 },
+  ovrValue: {
+    flex: 1, textAlign: 'center', fontSize: 16, fontWeight: '700' as const,
+    color: Colors.primary, fontFamily: 'Inter_700Bold',
   },
 });

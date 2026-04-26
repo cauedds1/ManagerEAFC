@@ -195,6 +195,7 @@ export interface SquadPlayer {
   photo: string;
   number?: number;
   overallRating?: number;
+  nationality?: string;
 }
 
 export type Mood = 'excelente' | 'bom' | 'neutro' | 'insatisfeito' | 'irritado';
