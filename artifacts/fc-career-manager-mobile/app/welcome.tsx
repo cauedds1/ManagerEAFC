@@ -13,6 +13,10 @@ import { Colors } from '@/constants/colors';
 
 export const WELCOME_SEEN_KEY = 'fc_welcome_seen';
 
+export function getWelcomeSeenKey(userId?: string | number): string {
+  return userId != null ? `fc_welcome_seen_${userId}` : WELCOME_SEEN_KEY;
+}
+
 const FEATURES = [
   { icon: 'football-outline' as const, label: 'Partidas', desc: 'Registre resultados e estatísticas', color: Colors.primary },
   { icon: 'people-outline' as const, label: 'Elenco', desc: 'Gerencie seus jogadores', color: Colors.success },
@@ -38,10 +42,11 @@ export default function WelcomeScreen() {
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     }
     try {
+      const key = getWelcomeSeenKey(user?.id);
       if (Platform.OS === 'web') {
-        localStorage.setItem(WELCOME_SEEN_KEY, '1');
+        localStorage.setItem(key, '1');
       } else {
-        await SecureStore.setItemAsync(WELCOME_SEEN_KEY, '1');
+        await SecureStore.setItemAsync(key, '1');
       }
     } catch {}
     router.replace('/career-select');

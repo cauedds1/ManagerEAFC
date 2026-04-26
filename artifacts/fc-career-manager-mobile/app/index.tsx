@@ -5,15 +5,17 @@ import * as SecureStore from 'expo-secure-store';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCareer } from '@/contexts/CareerContext';
 import { Colors } from '@/constants/colors';
+import { getWelcomeSeenKey } from './welcome';
 
 export const WELCOME_SEEN_KEY = 'fc_welcome_seen';
 
-async function getWelcomeSeen(): Promise<boolean> {
+async function getWelcomeSeen(userId?: string | number): Promise<boolean> {
   try {
+    const key = getWelcomeSeenKey(userId);
     if (Platform.OS === 'web') {
-      return !!localStorage.getItem(WELCOME_SEEN_KEY);
+      return !!localStorage.getItem(key);
     }
-    const val = await SecureStore.getItemAsync(WELCOME_SEEN_KEY);
+    const val = await SecureStore.getItemAsync(key);
     return !!val;
   } catch {
     return true;
@@ -31,7 +33,7 @@ export default function Index() {
       setWelcomeChecked(true);
       return;
     }
-    getWelcomeSeen().then((seen) => {
+    getWelcomeSeen(user.id).then((seen) => {
       setWelcomeSeen(seen);
       setWelcomeChecked(true);
     });

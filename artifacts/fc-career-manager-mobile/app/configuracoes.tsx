@@ -1,4 +1,4 @@
-import { useState, useRef, type ComponentProps } from 'react';
+import { useState, useEffect, type ComponentProps } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform,
   Alert, Switch, Linking, Image, TextInput, Modal, ActivityIndicator,
@@ -14,6 +14,20 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, PORTAL_TONES, type CustomPortal, type PortalTone, getApiUrl, TOKEN_KEY } from '@/lib/api';
 import { Colors } from '@/constants/colors';
 import * as SecureStore from 'expo-secure-store';
+
+async function loadPref(key: string, fallback: string): Promise<string> {
+  try {
+    if (Platform.OS === 'web') return localStorage.getItem(key) ?? fallback;
+    return (await SecureStore.getItemAsync(key)) ?? fallback;
+  } catch { return fallback; }
+}
+
+async function savePref(key: string, value: string): Promise<void> {
+  try {
+    if (Platform.OS === 'web') localStorage.setItem(key, value);
+    else await SecureStore.setItemAsync(key, value);
+  } catch {}
+}
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -141,6 +155,7 @@ export default function ConfiguracoesScreen() {
   const [aiEnabled, setAiEnabled] = useState(true);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [language, setLanguage] = useState<'pt' | 'en'>('pt');
+  const [prefsLoaded, setPrefsLoaded] = useState(false);
   const [showNewPortal, setShowNewPortal] = useState(false);
   const [newPortal, setNewPortal] = useState<NewPortalForm>({ name: '', description: '', tone: 'jornalistico' });
   const [savingPortal, setSavingPortal] = useState(false);
@@ -152,6 +167,39 @@ export default function ConfiguracoesScreen() {
   const planColor = PLAN_COLORS[planKey] ?? Colors.mutedForeground;
   const planIcon = PLAN_ICONS[planKey] ?? 'star-outline';
   const isProOrAbove = planKey === 'pro' || planKey === 'ultra';
+
+  const prefKey = (k: string) => `fc_pref_${user?.id ?? 'guest'}_${k}`;
+
+  useEffect(() => {
+    const load = async () => {
+      const [ai, sound, lang] = await Promise.all([
+        loadPref(prefKey('ai_enabled'), '1'),
+        loadPref(prefKey('sound_enabled'), '1'),
+        loadPref(prefKey('language'), 'pt'),
+      ]);
+      setAiEnabled(ai === '1');
+      setSoundEnabled(sound === '1');
+      setLanguage(lang as 'pt' | 'en');
+      setPrefsLoaded(true);
+    };
+    void load();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
+  const toggleAi = (v: boolean) => {
+    setAiEnabled(v);
+    void savePref(prefKey('ai_enabled'), v ? '1' : '0');
+  };
+
+  const toggleSound = (v: boolean) => {
+    setSoundEnabled(v);
+    void savePref(prefKey('sound_enabled'), v ? '1' : '0');
+  };
+
+  const changeLanguage = (lang: 'pt' | 'en') => {
+    setLanguage(lang);
+    void savePref(prefKey('language'), lang);
+  };
 
   const { data: portals, isLoading: portalsLoading } = useQuery({
     queryKey: ['/api/careers', activeCareer?.id, 'portals'],
@@ -172,8 +220,8 @@ export default function ConfiguracoesScreen() {
 
   const handleLanguage = () => {
     Alert.alert('Idioma', 'Selecione o idioma', [
-      { text: 'Português (BR)', onPress: () => setLanguage('pt') },
-      { text: 'English', onPress: () => setLanguage('en') },
+      { text: 'Português (BR)', onPress: () => changeLanguage('pt') },
+      { text: 'English', onPress: () => changeLanguage('en') },
       { text: 'Cancelar', style: 'cancel' },
     ]);
   };
@@ -526,8 +574,8 @@ export default function ConfiguracoesScreen() {
             iconColor={Colors.warning}
             label="IA ativada"
             hint="Notícias geradas por IA, análises e Diretoria"
-            value={aiEnabled}
-            onToggle={setAiEnabled}
+            value={prefsLoaded ? aiEnabled : true}
+            onToggle={toggleAi}
           />
           <Row
             icon="chatbubble-ellipses-outline"
@@ -545,8 +593,8 @@ export default function ConfiguracoesScreen() {
             iconColor={Colors.success}
             label="Som e vibrações"
             hint="Feedback tátil ao registrar partidas e ações"
-            value={soundEnabled}
-            onToggle={setSoundEnabled}
+            value={prefsLoaded ? soundEnabled : true}
+            onToggle={toggleSound}
           />
         </Section>
 
