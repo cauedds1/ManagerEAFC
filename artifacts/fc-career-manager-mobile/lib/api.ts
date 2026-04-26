@@ -260,6 +260,7 @@ export interface Transfer {
   type: TransferType;
   season: string;
   date: string;
+  pending?: boolean;
 }
 
 export interface DiretoraaMember {
@@ -311,6 +312,7 @@ export interface SeasonGameData {
   transfers?: Transfer[];
   fan_mood?: number;
   rivalsLocked?: boolean;
+  transferWindow?: { open: boolean; openCount: number };
 }
 
 export interface Trophy {

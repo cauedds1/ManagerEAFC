@@ -175,7 +175,7 @@ export default function FinanceiroScreen() {
   });
 
   const finances = seasonData?.data?.finances ?? null;
-  const transfers = seasonData?.data?.transfers ?? [];
+  const allTransfers: Array<{ type: string; fee: number; playerName: string; club: string; salary?: number }> = (seasonData?.data?.transfers ?? []) as Array<{ type: string; fee: number; playerName: string; club: string; salary?: number }>;
 
   const saveMutation = useMutation({
     mutationFn: (f: Finances) => {
@@ -189,22 +189,35 @@ export default function FinanceiroScreen() {
     onError: () => Alert.alert('Erro', 'Não foi possível salvar o orçamento.'),
   });
 
-  const totalSpent = transfers.filter((t) => t.type === 'in').reduce((s, t) => s + t.fee, 0);
-  const totalEarned = transfers.filter((t) => t.type === 'out').reduce((s, t) => s + t.fee, 0);
+  const signings = allTransfers.filter((t) => t.type === 'in' || t.type === 'loan_in');
+  const sales = allTransfers.filter((t) => t.type === 'out' || t.type === 'loan_out');
+
+  const totalSpent = signings.filter((t) => t.type === 'in').reduce((s, t) => s + (t.fee ?? 0), 0);
+  const totalEarned = sales.filter((t) => t.type === 'out').reduce((s, t) => s + (t.fee ?? 0), 0);
   const netSpend = totalSpent - totalEarned;
 
   const transferBudget = finances?.transferBudget ?? 0;
-  const weeklyWage = finances?.wage ?? 0;
+  const salaryBudget = finances?.wage ?? 0;
   const totalBudget = finances?.budget ?? 0;
   const budgetLeft = transferBudget > 0 ? transferBudget - netSpend : 0;
   const budgetPct = transferBudget > 0 ? (netSpend / transferBudget) * 100 : 0;
 
-  const topEarners = transfers
+  const soldNames = new Set(sales.map((s) => s.playerName.toLowerCase().trim()));
+  const activeSignings = signings.filter((t) => !soldNames.has(t.playerName.toLowerCase().trim()));
+  const currentWageBill = activeSignings.reduce((s, t) => s + (t.salary ?? 0), 0);
+  const wageRoom = salaryBudget > 0 ? salaryBudget - currentWageBill : 0;
+  const wageOverflow = salaryBudget > 0 && currentWageBill > salaryBudget;
+  const wagePct = salaryBudget > 0 ? Math.min(100, (currentWageBill / salaryBudget) * 100) : 0;
+
+  const topEarnersBySalary = [...activeSignings]
+    .filter((t) => (t.salary ?? 0) > 0)
+    .sort((a, b) => (b.salary ?? 0) - (a.salary ?? 0))
+    .slice(0, 5);
+
+  const topEarnersByFee = signings
     .filter((t) => t.type === 'in')
     .sort((a, b) => b.fee - a.fee)
     .slice(0, 5);
-
-  const wageRoomOk = weeklyWage > 0 && totalSpent < transferBudget * 0.9;
 
   return (
     <View style={[styles.container, { paddingTop: topPad }]}>
@@ -225,7 +238,7 @@ export default function FinanceiroScreen() {
           contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 32 }]}
           showsVerticalScrollIndicator={false}
         >
-          {transferBudget === 0 && weeklyWage === 0 && (
+          {transferBudget === 0 && salaryBudget === 0 && (
             <TouchableOpacity
               style={styles.setupBanner}
               onPress={() => setShowEditor(true)}
@@ -257,14 +270,14 @@ export default function FinanceiroScreen() {
               icon="📥"
               label="Gasto em contrat."
               value={formatMoney(totalSpent)}
-              sub={`${transfers.filter((t) => t.type === 'in').length} contrat.`}
+              sub={`${allTransfers.filter((t) => t.type === 'in').length} contrat.`}
               color={Colors.destructive}
             />
             <StatCard
               icon="📤"
               label="Arrecadado"
               value={totalEarned > 0 ? formatMoney(totalEarned) : '—'}
-              sub={`${transfers.filter((t) => t.type === 'out').length} vendas`}
+              sub={`${allTransfers.filter((t) => t.type === 'out').length} vendas`}
               color={Colors.success}
             />
             <StatCard
@@ -275,11 +288,18 @@ export default function FinanceiroScreen() {
               color={netSpend > 0 ? Colors.warning : netSpend < 0 ? Colors.success : Colors.mutedForeground}
             />
             <StatCard
-              icon="💼"
-              label="Folha salarial"
-              value={weeklyWage > 0 ? formatMoney(weeklyWage) : '—'}
-              sub="por semana"
-              color={Colors.info}
+              icon={wageOverflow ? '⚠️' : '💼'}
+              label="Folha atual"
+              value={currentWageBill > 0 ? formatMoney(currentWageBill) + '/sem' : salaryBudget > 0 ? '€0' : '—'}
+              sub={salaryBudget > 0 ? `limite: ${formatMoney(salaryBudget)}/sem` : 'sem limite definido'}
+              color={wageOverflow ? Colors.destructive : Colors.info}
+            />
+            <StatCard
+              icon={wageRoom >= 0 ? '📋' : '🔴'}
+              label="Espaço salarial"
+              value={salaryBudget > 0 ? formatMoney(Math.abs(wageRoom)) + '/sem' : '—'}
+              sub={salaryBudget > 0 ? (wageRoom >= 0 ? 'disponível por semana' : 'acima do limite') : 'configure a folha'}
+              color={wageRoom < 0 ? Colors.destructive : Colors.success}
             />
           </View>
 
@@ -299,19 +319,60 @@ export default function FinanceiroScreen() {
                 {budgetLeft < 0 && (
                   <View style={styles.warningRow}>
                     <Ionicons name="warning-outline" size={14} color={Colors.destructive} />
-                    <Text style={styles.warningText}>Orçamento estourado</Text>
+                    <Text style={styles.warningText}>Orçamento de transferências estourado</Text>
                   </View>
                 )}
               </View>
             </View>
           )}
 
-          {topEarners.length > 0 && (
+          {salaryBudget > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>USO DA FOLHA SALARIAL</Text>
+              <View style={styles.sectionCard}>
+                <View style={styles.barRow}>
+                  <Text style={styles.barLabel}>Folha atual</Text>
+                  <Text style={styles.barValue}>{formatMoney(currentWageBill)} / {formatMoney(salaryBudget)}/sem</Text>
+                </View>
+                <BarTrack pct={wagePct} color={wageOverflow ? Colors.destructive : Colors.info} />
+                <Text style={styles.barMeta}>
+                  {wagePct.toFixed(0)}% da folha utilizada
+                  {wageRoom >= 0 ? ` · ${formatMoney(wageRoom)}/sem disponível` : ` · ${formatMoney(Math.abs(wageRoom))}/sem acima`}
+                </Text>
+                {wageOverflow && (
+                  <View style={styles.warningRow}>
+                    <Ionicons name="warning-outline" size={14} color={Colors.destructive} />
+                    <Text style={styles.warningText}>Folha salarial estourada</Text>
+                  </View>
+                )}
+              </View>
+            </View>
+          )}
+
+          {topEarnersBySalary.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>MAIORES SALÁRIOS</Text>
+              <View style={styles.sectionCard}>
+                {topEarnersBySalary.map((t, i) => (
+                  <View key={`sal_${i}`} style={[styles.earnerRow, i < topEarnersBySalary.length - 1 && styles.earnerSep]}>
+                    <Text style={styles.earnerRank}>{i + 1}</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.earnerName}>{t.playerName}</Text>
+                      <Text style={styles.earnerClub}>{t.club}</Text>
+                    </View>
+                    <Text style={[styles.earnerFee, { color: Colors.info }]}>{formatMoney(t.salary ?? 0)}/sem</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {topEarnersByFee.length > 0 && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>MAIORES CONTRATAÇÕES</Text>
               <View style={styles.sectionCard}>
-                {topEarners.map((t, i) => (
-                  <View key={t.id} style={[styles.earnerRow, i < topEarners.length - 1 && styles.earnerSep]}>
+                {topEarnersByFee.map((t, i) => (
+                  <View key={`fee_${i}`} style={[styles.earnerRow, i < topEarnersByFee.length - 1 && styles.earnerSep]}>
                     <Text style={styles.earnerRank}>{i + 1}</Text>
                     <View style={{ flex: 1 }}>
                       <Text style={styles.earnerName}>{t.playerName}</Text>
@@ -324,7 +385,7 @@ export default function FinanceiroScreen() {
             </View>
           )}
 
-          {transfers.length === 0 && !transferBudget && (
+          {allTransfers.length === 0 && !transferBudget && (
             <View style={styles.emptyWrap}>
               <Text style={{ fontSize: 48 }}>💰</Text>
               <Text style={styles.emptyTitle}>Sem movimentações</Text>

@@ -223,11 +223,13 @@ export default function InjuriesScreen() {
 
   const confirmDischarge = () => {
     if (!dischargeTarget) return;
-    const updated = injuries.map((i) =>
-      i.playerName === dischargeTarget.playerName && i.matchesOut === dischargeTarget.matchesOut
+    const dischargeKey = dischargeTarget.createdAt ?? dischargeTarget.playerName;
+    const updated = injuries.map((i) => {
+      const key = i.createdAt ?? i.playerName;
+      return key === dischargeKey
         ? { ...i, matchesServed: i.matchesOut, returnDate: dischargeReturnDate.trim() || undefined }
-        : i
-    );
+        : i;
+    });
     saveMutation.mutate(updated);
     setDischargeTarget(null);
     setDischargeReturnDate('');
@@ -240,11 +242,11 @@ export default function InjuriesScreen() {
 
   const handleSaveInjury = (data: Partial<InjuryRecord> & { playerName: string }) => {
     if (editingInjury) {
-      const updated = injuries.map((i) =>
-        i.playerName === editingInjury.playerName && i.matchesOut === editingInjury.matchesOut
-          ? { ...i, ...data }
-          : i
-      );
+      const editKey = editingInjury.createdAt ?? editingInjury.playerName;
+      const updated = injuries.map((i) => {
+        const key = i.createdAt ?? i.playerName;
+        return key === editKey ? { ...i, ...data } : i;
+      });
       saveMutation.mutate(updated);
     } else {
       const newInjury: InjuryRecord = {

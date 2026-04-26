@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
   Platform, ActivityIndicator, Modal, TextInput,
@@ -53,13 +53,22 @@ function parseFee(raw: string): number {
   return isNaN(num) ? 0 : Math.round(num);
 }
 
-function TransferCard({ item, onDelete }: { item: Transfer; onDelete: (id: string) => void }) {
+function TransferCard({
+  item, onDelete, onLoanAction, windowOpen,
+}: {
+  item: Transfer;
+  onDelete: (id: string) => void;
+  onLoanAction?: (id: string, action: 'recall' | 'end') => void;
+  windowOpen: boolean;
+}) {
   const cfg = TRANSFER_LABELS[item.type] ?? TRANSFER_LABELS.in;
   const isIn = item.type === 'in' || item.type === 'loan_in';
   const feeColor = isIn ? Colors.destructive : Colors.success;
+  const isLoan = item.type === 'loan_in' || item.type === 'loan_out';
+  const isPending = !!(item as Transfer & { pending?: boolean }).pending;
 
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, isPending && styles.cardPending]}>
       <View style={[styles.cardAccent, { backgroundColor: isIn ? Colors.success : Colors.destructive }]} />
       <View style={styles.cardContent}>
         <View style={styles.cardTop}>
@@ -70,6 +79,12 @@ function TransferCard({ item, onDelete }: { item: Transfer; onDelete: (id: strin
           <Text style={styles.transferSeason}>{item.season}</Text>
         </View>
         <Text style={styles.playerName}>{item.playerName}</Text>
+        {(item as Transfer & { salary?: number; contractYears?: number }).salary ? (
+          <Text style={styles.salaryText}>
+            Salário: {formatFee((item as Transfer & { salary?: number }).salary ?? 0)}/sem
+            {(item as Transfer & { contractYears?: number }).contractYears ? ` · ${(item as Transfer & { contractYears?: number }).contractYears}a` : ''}
+          </Text>
+        ) : null}
         <View style={styles.cardBottom}>
           <View style={styles.clubRow}>
             <Ionicons name={isIn ? 'arrow-down-outline' : 'arrow-up-outline'} size={13} color={Colors.mutedForeground} />
@@ -86,6 +101,28 @@ function TransferCard({ item, onDelete }: { item: Transfer; onDelete: (id: strin
             </TouchableOpacity>
           </View>
         </View>
+        {isLoan && onLoanAction && (
+          <View style={styles.loanActions}>
+            {item.type === 'loan_in' && (
+              <TouchableOpacity
+                style={styles.loanActionBtn}
+                onPress={() => onLoanAction(item.id, 'recall')}
+              >
+                <Ionicons name="return-up-back-outline" size={13} color={Colors.warning} />
+                <Text style={[styles.loanActionText, { color: Colors.warning }]}>Chamar de volta</Text>
+              </TouchableOpacity>
+            )}
+            {item.type === 'loan_out' && (
+              <TouchableOpacity
+                style={styles.loanActionBtn}
+                onPress={() => onLoanAction(item.id, 'end')}
+              >
+                <Ionicons name="checkmark-circle-outline" size={13} color={Colors.success} />
+                <Text style={[styles.loanActionText, { color: Colors.success }]}>Encerrar empréstimo</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
       </View>
     </View>
   );
@@ -326,6 +363,8 @@ function NewTransferModal({ visible, seasonLabel, onClose, onSave }: NewTransfer
   );
 }
 
+const MAX_WINDOW_OPENS = 2;
+
 export default function TransfersScreen() {
   const insets = useSafeAreaInsets();
   const { activeSeason } = useCareer();
@@ -333,6 +372,7 @@ export default function TransfersScreen() {
   const qc = useQueryClient();
   const [tab, setTab] = useState<Tab>('in');
   const [showNew, setShowNew] = useState(false);
+  const [seasonFilter, setSeasonFilter] = useState<string>('');
 
   const topPad = Platform.OS === 'web' ? 0 : insets.top;
 
@@ -343,9 +383,15 @@ export default function TransfersScreen() {
     staleTime: 1000 * 60 * 5,
   });
 
-  const transfers: Transfer[] = (data?.data?.transfers ?? []) as Transfer[];
+  const transfers: Array<Transfer & { salary?: number; contractYears?: number; pending?: boolean }> =
+    (data?.data?.transfers ?? []) as Array<Transfer & { salary?: number; contractYears?: number; pending?: boolean }>;
 
-  const saveMutation = useMutation({
+  const windowState: { open: boolean; openCount: number } =
+    (data?.data as Record<string, unknown>)?.transferWindow as { open: boolean; openCount: number } ?? { open: true, openCount: 0 };
+  const windowOpen = windowState.open !== false;
+  const canOpenWindow = !windowOpen && windowState.openCount < MAX_WINDOW_OPENS;
+
+  const saveTransfersMutation = useMutation({
     mutationFn: (updated: Transfer[]) => {
       if (!activeSeason) throw new Error('no season');
       return api.transfers.save(activeSeason.id, updated);
@@ -353,8 +399,39 @@ export default function TransfersScreen() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['/api/data/season/transfers', activeSeason?.id] }),
   });
 
+  const saveWindowMutation = useMutation({
+    mutationFn: async (newWindow: { open: boolean; openCount: number }) => {
+      if (!activeSeason) throw new Error('no season');
+      return api.seasonData.set(activeSeason.id, 'transferWindow', newWindow);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['/api/data/season/transfers', activeSeason?.id] }),
+  });
+
+  const toggleWindow = () => {
+    if (windowOpen) {
+      Alert.alert('Fechar janela', 'As próximas transferências ficam pendentes até a janela abrir.', [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Fechar janela', style: 'destructive',
+          onPress: () => saveWindowMutation.mutate({ open: false, openCount: windowState.openCount }),
+        },
+      ]);
+    } else if (canOpenWindow) {
+      Alert.alert('Abrir janela', `Abre a janela de transferências (${windowState.openCount + 1}/${MAX_WINDOW_OPENS}).`, [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Abrir janela',
+          onPress: () => saveWindowMutation.mutate({ open: true, openCount: windowState.openCount + 1 }),
+        },
+      ]);
+    } else {
+      Alert.alert('Limite atingido', `Já foram abertas ${MAX_WINDOW_OPENS} janelas esta temporada.`);
+    }
+  };
+
   const handleAdd = (t: Omit<Transfer, 'id'>) => {
-    saveMutation.mutate([...transfers, { ...t, id: genId() }]);
+    const pending = !windowOpen;
+    saveTransfersMutation.mutate([...transfers, { ...t, id: genId(), pending } as Transfer]);
   };
 
   const handleDelete = (id: string) => {
@@ -362,14 +439,37 @@ export default function TransfersScreen() {
       { text: 'Cancelar', style: 'cancel' },
       {
         text: 'Excluir', style: 'destructive',
-        onPress: () => saveMutation.mutate(transfers.filter((t) => t.id !== id)),
+        onPress: () => saveTransfersMutation.mutate(transfers.filter((t) => t.id !== id)),
       },
     ]);
   };
 
-  const filtered = transfers.filter((t) =>
-    tab === 'in' ? (t.type === 'in' || t.type === 'loan_in') : (t.type === 'out' || t.type === 'loan_out')
+  const handleLoanAction = (id: string, action: 'recall' | 'end') => {
+    const label = action === 'recall' ? 'Chamar de volta' : 'Encerrar empréstimo';
+    const msg = action === 'recall'
+      ? 'O jogador será removido das contratações por empréstimo.'
+      : 'O empréstimo será encerrado e o jogador removido da lista de vendas.';
+    Alert.alert(label, msg, [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: label,
+        onPress: () => saveTransfersMutation.mutate(transfers.filter((t) => t.id !== id)),
+      },
+    ]);
+  };
+
+  const allSeasons = useMemo(() =>
+    [...new Set(transfers.map((t) => t.season).filter(Boolean))].sort().reverse(),
+    [transfers]
   );
+
+  const filtered = useMemo(() => {
+    let list = transfers.filter((t) =>
+      tab === 'in' ? (t.type === 'in' || t.type === 'loan_in') : (t.type === 'out' || t.type === 'loan_out')
+    );
+    if (seasonFilter) list = list.filter((t) => t.season === seasonFilter);
+    return list;
+  }, [transfers, tab, seasonFilter]);
 
   const spent = transfers.filter((t) => t.type === 'in').reduce((s, t) => s + (t.fee ?? 0), 0);
   const earned = transfers.filter((t) => t.type === 'out').reduce((s, t) => s + (t.fee ?? 0), 0);
@@ -386,6 +486,17 @@ export default function TransfersScreen() {
           <Ionicons name="add" size={24} color={theme.primary} />
         </TouchableOpacity>
       </View>
+
+      <TouchableOpacity
+        style={[styles.windowBanner, { backgroundColor: windowOpen ? 'rgba(34,197,94,0.1)' : 'rgba(100,116,139,0.1)' }]}
+        onPress={toggleWindow}
+      >
+        <View style={[styles.windowDot, { backgroundColor: windowOpen ? Colors.success : Colors.mutedForeground }]} />
+        <Text style={[styles.windowText, { color: windowOpen ? Colors.success : Colors.mutedForeground }]}>
+          {windowOpen ? 'Janela aberta' : canOpenWindow ? `Janela fechada — toque para abrir (${windowState.openCount}/${MAX_WINDOW_OPENS})` : 'Janela fechada (limite atingido)'}
+        </Text>
+        <Ionicons name={windowOpen ? 'lock-open-outline' : 'lock-closed-outline'} size={14} color={windowOpen ? Colors.success : Colors.mutedForeground} />
+      </TouchableOpacity>
 
       <View style={styles.summaryRow}>
         <View style={[styles.summaryCard, { borderColor: `${Colors.destructive}30` }]}>
@@ -420,6 +531,26 @@ export default function TransfersScreen() {
         })}
       </View>
 
+      {allSeasons.length > 1 && (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.seasonFilterRow}>
+          <TouchableOpacity
+            style={[styles.seasonChip, !seasonFilter && { backgroundColor: `rgba(${theme.primaryRgb},0.15)`, borderColor: `rgba(${theme.primaryRgb},0.4)` }]}
+            onPress={() => setSeasonFilter('')}
+          >
+            <Text style={[styles.seasonChipText, !seasonFilter && { color: theme.primary }]}>Todas</Text>
+          </TouchableOpacity>
+          {allSeasons.map((s) => (
+            <TouchableOpacity
+              key={s}
+              style={[styles.seasonChip, seasonFilter === s && { backgroundColor: `rgba(${theme.primaryRgb},0.15)`, borderColor: `rgba(${theme.primaryRgb},0.4)` }]}
+              onPress={() => setSeasonFilter(s === seasonFilter ? '' : s)}
+            >
+              <Text style={[styles.seasonChipText, seasonFilter === s && { color: theme.primary }]}>{s}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      )}
+
       {isLoading ? (
         <View style={styles.center}><ActivityIndicator color={theme.primary} size="large" /></View>
       ) : filtered.length === 0 ? (
@@ -442,7 +573,14 @@ export default function TransfersScreen() {
           contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 24 }]}
           showsVerticalScrollIndicator={false}
           ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
-          renderItem={({ item }) => <TransferCard item={item} onDelete={handleDelete} />}
+          renderItem={({ item }) => (
+            <TransferCard
+              item={item}
+              onDelete={handleDelete}
+              onLoanAction={handleLoanAction}
+              windowOpen={windowOpen}
+            />
+          )}
         />
       )}
 
@@ -562,4 +700,27 @@ const styles = StyleSheet.create({
   feePreview: { fontSize: 12, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular', fontStyle: 'italic', marginTop: 2 },
   saveBtn: { borderRadius: Colors.radius, paddingVertical: 14, borderWidth: 1, alignItems: 'center' },
   saveBtnText: { fontSize: 15, fontWeight: '600' as const, fontFamily: 'Inter_600SemiBold' },
+  windowBanner: {
+    flexDirection: 'row' as const, alignItems: 'center', gap: 8,
+    marginHorizontal: 16, marginVertical: 8,
+    paddingHorizontal: 12, paddingVertical: 8,
+    borderRadius: Colors.radius, borderWidth: 1, borderColor: Colors.border,
+  },
+  windowDot: { width: 8, height: 8, borderRadius: 4 },
+  windowText: { flex: 1, fontSize: 12, fontFamily: 'Inter_400Regular' },
+  cardPending: { opacity: 0.7, borderStyle: 'dashed' as const },
+  salaryText: { fontSize: 12, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular' },
+  loanActions: {
+    flexDirection: 'row' as const, gap: 12, paddingTop: 6,
+    borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: Colors.border, marginTop: 4,
+  },
+  loanActionBtn: { flexDirection: 'row' as const, alignItems: 'center', gap: 4 },
+  loanActionText: { fontSize: 12, fontFamily: 'Inter_600SemiBold', fontWeight: '600' as const },
+  seasonFilterRow: { paddingHorizontal: 16, paddingVertical: 8, gap: 8 },
+  seasonChip: {
+    paddingHorizontal: 12, paddingVertical: 6,
+    borderRadius: Colors.radius, borderWidth: 1, borderColor: Colors.border,
+    backgroundColor: Colors.card,
+  },
+  seasonChipText: { fontSize: 12, color: Colors.mutedForeground, fontFamily: 'Inter_600SemiBold' },
 });

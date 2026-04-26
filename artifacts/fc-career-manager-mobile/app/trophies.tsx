@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
   Platform, ActivityIndicator, Modal, TextInput,
-  ScrollView, Alert,
+  ScrollView, Alert, Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -12,6 +12,7 @@ import { useCareer } from '@/contexts/CareerContext';
 import { useClubTheme } from '@/contexts/ClubThemeContext';
 import { api, type Trophy } from '@/lib/api';
 import { Colors } from '@/constants/colors';
+import { findTrophyPhoto, searchTrophyEntries, TROPHY_ENTRIES, type TrophyEntry } from '@/lib/trophyPhotoMap';
 
 const TROPHY_TYPES = [
   { key: 'league', label: 'Liga', icon: '🏆' },
@@ -68,6 +69,25 @@ function AddTrophyModal({
   const [name, setName] = useState('');
   const [season, setSeason] = useState(activeSeasonLabel);
   const [type, setType] = useState('league');
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
+  const suggestions = useMemo(() => searchTrophyEntries(name), [name]);
+  const photoUrl = useMemo(() => name.trim() ? findTrophyPhoto(name.trim()) : null, [name]);
+
+  const pickSuggestion = (entry: TrophyEntry) => {
+    setName(entry.label);
+    setShowSuggestions(false);
+    const lower = entry.label.toLowerCase();
+    if (lower.includes('cup') || lower.includes('copa') || lower.includes('coupe') || lower.includes('pokal') || lower.includes('taça')) {
+      setType('cup');
+    } else if (lower.includes('champion') || lower.includes('libertador') || lower.includes('conference') || lower.includes('europa') || lower.includes('sudamer')) {
+      setType('continental');
+    } else if (lower.includes('super')) {
+      setType('supercup');
+    } else {
+      setType('league');
+    }
+  };
 
   const handleSave = () => {
     if (!name.trim()) return;
@@ -75,6 +95,7 @@ function AddTrophyModal({
     setName('');
     setSeason(activeSeasonLabel);
     setType('league');
+    setShowSuggestions(false);
     onClose();
   };
 
@@ -93,14 +114,52 @@ function AddTrophyModal({
           <ScrollView contentContainerStyle={styles.modalBody} keyboardShouldPersistTaps="handled">
             <View style={styles.field}>
               <Text style={styles.fieldLabel}>NOME DA CONQUISTA</Text>
-              <TextInput
-                style={styles.textInput}
-                value={name}
-                onChangeText={setName}
-                placeholder="Ex: Premier League, Copa do Brasil…"
-                placeholderTextColor={Colors.mutedForeground}
-                autoFocus
-              />
+              <View>
+                <View style={styles.searchRow}>
+                  <TextInput
+                    style={[styles.textInput, { flex: 1 }]}
+                    value={name}
+                    onChangeText={(v) => { setName(v); setShowSuggestions(true); }}
+                    onFocus={() => setShowSuggestions(true)}
+                    placeholder="Ex: Premier League, Copa do Brasil…"
+                    placeholderTextColor={Colors.mutedForeground}
+                    autoFocus
+                  />
+                  {photoUrl && (
+                    <Image
+                      source={{ uri: photoUrl }}
+                      style={styles.trophyPreviewImg}
+                      resizeMode="contain"
+                    />
+                  )}
+                </View>
+                {showSuggestions && suggestions.length > 0 && (
+                  <View style={styles.suggestionList}>
+                    {suggestions.map((entry) => {
+                      const url = entry.slug ? `${findTrophyPhoto(entry.label)}` : null;
+                      return (
+                        <TouchableOpacity
+                          key={entry.label}
+                          style={styles.suggestionRow}
+                          onPress={() => pickSuggestion(entry)}
+                        >
+                          {url ? (
+                            <Image source={{ uri: url }} style={styles.suggestionImg} resizeMode="contain" />
+                          ) : (
+                            <View style={styles.suggestionImgPlaceholder}>
+                              <Text>🏆</Text>
+                            </View>
+                          )}
+                          <Text style={styles.suggestionLabel}>{entry.label}</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                    <TouchableOpacity style={styles.suggestionDismiss} onPress={() => setShowSuggestions(false)}>
+                      <Text style={styles.suggestionDismissText}>Fechar sugestões</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
             </View>
 
             <View style={styles.field}>
@@ -194,16 +253,28 @@ export default function TrophiesScreen() {
 
   const groups = useMemo(() => groupTrophies(trophies), [trophies]);
 
+  const renderTrophyIcon = (name: string, type?: string, size = 52) => {
+    const photoUrl = findTrophyPhoto(name);
+    const icon = trophyIcon(type, name);
+    const isGold = false;
+    if (photoUrl) {
+      return (
+        <Image source={{ uri: photoUrl }} style={{ width: size, height: size }} resizeMode="contain" />
+      );
+    }
+    return (
+      <View style={[styles.iconWrap, { width: size, height: size, backgroundColor: 'rgba(139,92,246,0.12)' }]}>
+        <Text style={[styles.icon, { fontSize: size * 0.52 }]}>{icon}</Text>
+      </View>
+    );
+  };
+
   const renderTrophy = ({ item, index }: { item: Trophy; index: number }) => {
-    const icon = trophyIcon(item.type, item.name);
     const isGold = index === 0;
     const borderColor = isGold ? '#f59e0b' : index < 3 ? 'rgba(165,180,252,0.4)' : Colors.border;
-    const iconBg = isGold ? 'rgba(245,158,11,0.15)' : 'rgba(139,92,246,0.12)';
     return (
       <View style={[styles.card, { borderColor }]}>
-        <View style={[styles.iconWrap, { backgroundColor: iconBg }]}>
-          <Text style={styles.icon}>{icon}</Text>
-        </View>
+        {renderTrophyIcon(item.name, item.type)}
         <View style={{ flex: 1, gap: 2 }}>
           <Text style={styles.cardName} numberOfLines={2}>{item.name}</Text>
           {item.season && <Text style={styles.cardSeason}>{item.season}</Text>}
@@ -221,13 +292,10 @@ export default function TrophiesScreen() {
   };
 
   const renderGroup = ({ item, index }: { item: TrophyGroup; index: number }) => {
-    const icon = trophyIcon(item.trophies[0].type, item.name);
     const isGold = index === 0;
     return (
       <View style={[styles.card, { borderColor: isGold ? '#f59e0b' : Colors.border }]}>
-        <View style={[styles.iconWrap, { backgroundColor: isGold ? 'rgba(245,158,11,0.15)' : 'rgba(139,92,246,0.12)' }]}>
-          <Text style={styles.icon}>{icon}</Text>
-        </View>
+        {renderTrophyIcon(item.name, item.trophies[0].type)}
         <View style={{ flex: 1, gap: 2 }}>
           <Text style={styles.cardName} numberOfLines={2}>{item.name}</Text>
           <Text style={styles.cardSeason} numberOfLines={1}>
@@ -407,4 +475,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   saveBtnText: { fontSize: 15, fontWeight: '600' as const, fontFamily: 'Inter_600SemiBold' },
+  searchRow: { flexDirection: 'row' as const, alignItems: 'center', gap: 8 },
+  trophyPreviewImg: { width: 44, height: 44 },
+  suggestionList: {
+    marginTop: 4, backgroundColor: Colors.card,
+    borderRadius: Colors.radius, borderWidth: 1, borderColor: Colors.border, overflow: 'hidden',
+  },
+  suggestionRow: {
+    flexDirection: 'row' as const, alignItems: 'center', gap: 10,
+    paddingHorizontal: 12, paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: Colors.border,
+  },
+  suggestionImg: { width: 28, height: 28 },
+  suggestionImgPlaceholder: { width: 28, height: 28, alignItems: 'center', justifyContent: 'center' },
+  suggestionLabel: { fontSize: 14, color: Colors.foreground, fontFamily: 'Inter_400Regular', flex: 1 },
+  suggestionDismiss: { paddingVertical: 10, alignItems: 'center' },
+  suggestionDismissText: { fontSize: 12, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular' },
 });

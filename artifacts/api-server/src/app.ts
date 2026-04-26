@@ -141,6 +141,11 @@ app.post(
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
+const trophiesDir = path.resolve(__dirname, "../public/trophies");
+if (existsSync(trophiesDir)) {
+  app.use("/trophies", express.static(trophiesDir, { maxAge: "30d" }));
+}
+
 app.use("/api", blockImpersonatedWrites, router);
 
 const adminDist =

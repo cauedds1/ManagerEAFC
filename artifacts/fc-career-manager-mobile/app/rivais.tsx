@@ -111,19 +111,28 @@ function FrequentRow({ rival }: { rival: RivalStats }) {
 }
 
 function AddRivalModal({
-  visible, onClose, onAdd,
+  visible, onClose, onAdd, opponentSuggestions,
 }: {
   visible: boolean;
   onClose: () => void;
   onAdd: (name: string) => void;
+  opponentSuggestions: string[];
 }) {
   const theme = useClubTheme();
   const [name, setName] = useState('');
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
+  const filteredSuggestions = useMemo(() => {
+    if (!name.trim()) return opponentSuggestions.slice(0, 8);
+    const q = name.trim().toLowerCase();
+    return opponentSuggestions.filter((s) => s.toLowerCase().includes(q)).slice(0, 8);
+  }, [name, opponentSuggestions]);
 
   const handleAdd = () => {
     if (!name.trim()) return;
     onAdd(name.trim());
     setName('');
+    setShowSuggestions(false);
     onClose();
   };
 
@@ -144,13 +153,34 @@ function AddRivalModal({
               <TextInput
                 style={styles.textInput}
                 value={name}
-                onChangeText={setName}
+                onChangeText={(v) => { setName(v); setShowSuggestions(true); }}
+                onFocus={() => setShowSuggestions(true)}
                 placeholder="Ex: Real Madrid, Manchester City…"
                 placeholderTextColor={Colors.mutedForeground}
                 autoFocus
                 onSubmitEditing={handleAdd}
                 returnKeyType="done"
               />
+              {showSuggestions && filteredSuggestions.length > 0 && (
+                <View style={styles.suggestionList}>
+                  {filteredSuggestions.map((s) => (
+                    <TouchableOpacity
+                      key={s}
+                      style={styles.suggestionRow}
+                      onPress={() => { setName(s); setShowSuggestions(false); }}
+                    >
+                      <Ionicons name="football-outline" size={14} color={Colors.mutedForeground} />
+                      <Text style={styles.suggestionLabel}>{s}</Text>
+                    </TouchableOpacity>
+                  ))}
+                  <TouchableOpacity
+                    style={[styles.suggestionRow, { justifyContent: 'center' }]}
+                    onPress={() => setShowSuggestions(false)}
+                  >
+                    <Text style={[styles.suggestionLabel, { color: Colors.mutedForeground, fontSize: 11 }]}>Fechar sugestões</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
             <Text style={styles.hintText}>
               Retrospecto será calculado a partir de partidas registradas.
@@ -257,6 +287,11 @@ export default function RivaisScreen() {
     });
     return padded;
   }, [matches]);
+
+  const opponentSuggestions = useMemo(
+    () => [...new Set(matches.map((m) => m.opponent))].sort(),
+    [matches]
+  );
 
   const frequentOpponents: RivalStats[] = useMemo(() => {
     const map = new Map<string, RivalStats>();
@@ -417,6 +452,7 @@ export default function RivaisScreen() {
         visible={showAdd}
         onClose={() => setShowAdd(false)}
         onAdd={handleAddRival}
+        opponentSuggestions={opponentSuggestions}
       />
     </View>
   );
@@ -528,4 +564,14 @@ const styles = StyleSheet.create({
   hintText: { fontSize: 12, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular', fontStyle: 'italic' },
   saveBtn: { borderRadius: Colors.radius, paddingVertical: 14, borderWidth: 1, alignItems: 'center' },
   saveBtnText: { fontSize: 15, fontWeight: '600' as const, fontFamily: 'Inter_600SemiBold' },
+  suggestionList: {
+    marginTop: 4, backgroundColor: Colors.card,
+    borderRadius: Colors.radius, borderWidth: 1, borderColor: Colors.border, overflow: 'hidden',
+  },
+  suggestionRow: {
+    flexDirection: 'row' as const, alignItems: 'center', gap: 10,
+    paddingHorizontal: 12, paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: Colors.border,
+  },
+  suggestionLabel: { fontSize: 14, color: Colors.foreground, fontFamily: 'Inter_400Regular', flex: 1 },
 });
