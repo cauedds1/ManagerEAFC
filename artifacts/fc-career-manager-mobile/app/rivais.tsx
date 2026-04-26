@@ -95,25 +95,29 @@ export default function RivaisScreen() {
   }, [matches]);
 
   const { currentStreak, maxWinStreak, maxLossStreak } = useMemo(() => {
-    let currentStreak = 0;
-    let currentType: 'vitoria' | 'derrota' | 'empate' | null = null;
     let maxWin = 0, maxLoss = 0, curWin = 0, curLoss = 0;
-
     for (const m of matches) {
       const r = getMatchResult(m.myScore, m.opponentScore);
-      if (r === currentType) {
-        currentStreak++;
-      } else {
-        currentType = r;
-        currentStreak = 1;
-      }
       if (r === 'vitoria') { curWin++; curLoss = 0; maxWin = Math.max(maxWin, curWin); }
       else if (r === 'derrota') { curLoss++; curWin = 0; maxLoss = Math.max(maxLoss, curLoss); }
       else { curWin = 0; curLoss = 0; }
     }
 
-    const lastResult = matches.length > 0 ? getMatchResult(matches[matches.length - 1].myScore, matches[matches.length - 1].opponentScore) : null;
-    const currentStreakStr = lastResult === 'vitoria' ? `${curWin}V` : lastResult === 'derrota' ? `${curLoss}D` : '0';
+    // compute current streak by scanning backwards from the latest match
+    let currentStreakStr = '0';
+    if (matches.length > 0) {
+      const lastResult = getMatchResult(
+        matches[matches.length - 1].myScore,
+        matches[matches.length - 1].opponentScore,
+      );
+      let streak = 0;
+      for (let i = matches.length - 1; i >= 0; i--) {
+        if (getMatchResult(matches[i].myScore, matches[i].opponentScore) === lastResult) streak++;
+        else break;
+      }
+      const label = lastResult === 'vitoria' ? 'V' : lastResult === 'derrota' ? 'D' : 'E';
+      currentStreakStr = `${streak}${label}`;
+    }
 
     return { currentStreak: currentStreakStr, maxWinStreak: maxWin, maxLossStreak: maxLoss };
   }, [matches]);

@@ -11,6 +11,23 @@ Notifications.setNotificationHandler({
   }),
 });
 
+const ANDROID_CHANNEL_ID = 'fc-career-default';
+
+async function ensureAndroidChannel(): Promise<void> {
+  if (Platform.OS !== 'android') return;
+  await Notifications.setNotificationChannelAsync(ANDROID_CHANNEL_ID, {
+    name: 'FC Career Manager',
+    description: 'Notificações do FC Career Manager',
+    importance: Notifications.AndroidImportance.HIGH,
+    vibrationPattern: [0, 250, 250, 250],
+    lightColor: '#8B5CF6',
+    enableVibrate: true,
+    showBadge: false,
+  });
+}
+
+ensureAndroidChannel().catch(() => {});
+
 export async function requestNotificationPermissions(): Promise<boolean> {
   if (Platform.OS === 'web') return false;
 
@@ -25,6 +42,7 @@ export async function getExpoPushToken(): Promise<string | null> {
   try {
     const granted = await requestNotificationPermissions();
     if (!granted) return null;
+
     const tokenData = await Notifications.getExpoPushTokenAsync();
     return tokenData.data;
   } catch {
