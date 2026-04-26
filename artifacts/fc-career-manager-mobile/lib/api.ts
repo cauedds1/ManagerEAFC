@@ -542,4 +542,50 @@ export const api = {
         body: JSON.stringify({ token, platform: Platform.OS }),
       }),
   },
+
+  portals: {
+    list: (careerId: string) =>
+      request<CustomPortal[]>(`/api/careers/${encodeURIComponent(careerId)}/portals`),
+
+    create: (careerId: string, data: { name: string; description: string; tone: PortalTone; photo?: string }) =>
+      request<CustomPortal>(`/api/careers/${encodeURIComponent(careerId)}/portals`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+
+    update: (careerId: string, portalId: string, data: Partial<{ name: string; description: string; tone: PortalTone; photo: string | null }>) =>
+      request<{ ok: boolean }>(`/api/careers/${encodeURIComponent(careerId)}/portals/${encodeURIComponent(portalId)}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+
+    delete: (careerId: string, portalId: string) =>
+      request<{ ok: boolean }>(`/api/careers/${encodeURIComponent(careerId)}/portals/${encodeURIComponent(portalId)}`, {
+        method: 'DELETE',
+      }),
+  },
 };
+
+export type PortalTone =
+  | 'humoristico' | 'serio' | 'jornalistico' | 'apaixonado'
+  | 'critico' | 'ironico' | 'agressivo';
+
+export interface CustomPortal {
+  id: string;
+  careerId: string;
+  name: string;
+  description: string;
+  tone: PortalTone;
+  photo?: string;
+  createdAt: number;
+}
+
+export const PORTAL_TONES: { id: PortalTone; emoji: string; label: string }[] = [
+  { id: 'humoristico',  emoji: '😂', label: 'Humorístico' },
+  { id: 'apaixonado',   emoji: '❤️', label: 'Apaixonado' },
+  { id: 'critico',      emoji: '🔥', label: 'Crítico' },
+  { id: 'ironico',      emoji: '😏', label: 'Irônico' },
+  { id: 'jornalistico', emoji: '📰', label: 'Jornalístico' },
+  { id: 'serio',        emoji: '🎯', label: 'Sério' },
+  { id: 'agressivo',    emoji: '💢', label: 'Agressivo' },
+];

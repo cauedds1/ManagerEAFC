@@ -1,14 +1,19 @@
-import { useState, type ComponentProps } from 'react';
+import { useState, useRef, type ComponentProps } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, Alert, Switch, Linking,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform,
+  Alert, Switch, Linking, Image, TextInput, Modal, ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import * as SecureStore from 'expo-secure-store';
+import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCareer } from '@/contexts/CareerContext';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { api, PORTAL_TONES, type CustomPortal, type PortalTone, getApiUrl, TOKEN_KEY } from '@/lib/api';
 import { Colors } from '@/constants/colors';
+import * as SecureStore from 'expo-secure-store';
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -22,30 +27,15 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 function Row({
-  icon,
-  iconColor,
-  label,
-  value,
-  onPress,
-  trailing,
-  destructive,
+  icon, iconColor, label, value, onPress, trailing, destructive,
 }: {
-  icon: IoniconName;
-  iconColor?: string;
-  label: string;
-  value?: string;
-  onPress?: () => void;
-  trailing?: React.ReactNode;
-  destructive?: boolean;
+  icon: IoniconName; iconColor?: string; label: string; value?: string;
+  onPress?: () => void; trailing?: React.ReactNode; destructive?: boolean;
 }) {
   const color = destructive ? Colors.destructive : (iconColor ?? Colors.primary);
   return (
     <>
-      <TouchableOpacity
-        style={styles.row}
-        onPress={onPress}
-        activeOpacity={onPress ? 0.7 : 1}
-      >
+      <TouchableOpacity style={styles.row} onPress={onPress} activeOpacity={onPress ? 0.7 : 1}>
         <View style={[styles.rowIcon, { backgroundColor: `${color}18` }]}>
           <Ionicons name={icon} size={20} color={color} />
         </View>
@@ -62,19 +52,10 @@ function Row({
 }
 
 function ToggleRow({
-  icon,
-  iconColor,
-  label,
-  hint,
-  value,
-  onToggle,
+  icon, iconColor, label, hint, value, onToggle,
 }: {
-  icon: IoniconName;
-  iconColor?: string;
-  label: string;
-  hint?: string;
-  value: boolean;
-  onToggle: (v: boolean) => void;
+  icon: IoniconName; iconColor?: string; label: string; hint?: string;
+  value: boolean; onToggle: (v: boolean) => void;
 }) {
   const color = iconColor ?? Colors.primary;
   return (
@@ -102,33 +83,79 @@ function ToggleRow({
   );
 }
 
+async function uploadPortalPhoto(uri: string, careerId: string): Promise<string | null> {
+  try {
+    const token = Platform.OS === 'web'
+      ? localStorage.getItem(TOKEN_KEY)
+      : await SecureStore.getItemAsync(TOKEN_KEY);
+    const blob = await (await fetch(uri)).blob();
+    const ext = uri.toLowerCase().endsWith('.png') ? 'png' : 'jpeg';
+    const mime = `image/${ext}`;
+    const name = `portal_${Date.now()}.${ext}`;
+    const urlRes = await fetch(
+      `${getApiUrl()}/api/storage/uploads/request-url?folder=portals`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ name, size: blob.size, contentType: mime }),
+      },
+    );
+    if (!urlRes.ok) return null;
+    const { uploadURL, objectPath } = (await urlRes.json()) as { uploadURL: string; objectPath: string };
+    const putRes = await fetch(uploadURL, { method: 'PUT', headers: { 'Content-Type': mime }, body: blob });
+    if (!putRes.ok) return null;
+    return `${getApiUrl()}/api/storage/uploads/file/${objectPath}`;
+  } catch {
+    return null;
+  }
+}
+
 const PLAN_LABELS: Record<string, string> = { free: 'Gratuito', pro: 'Pro', ultra: 'Ultra' };
 const PLAN_COLORS: Record<string, string> = { free: Colors.mutedForeground, pro: Colors.primary, ultra: '#f59e0b' };
+const PLAN_ICONS: Record<string, 'star-outline' | 'star' | 'diamond'> = { free: 'star-outline', pro: 'star', ultra: 'diamond' };
+
+interface NewPortalForm {
+  name: string;
+  description: string;
+  tone: PortalTone;
+}
 
 export default function ConfiguracoesScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
+  const { activeCareer, activeSeason, loadSeasons } = useCareer();
+  const qc = useQueryClient();
   const topPad = Platform.OS === 'web' ? 67 : insets.top;
 
   const [aiEnabled, setAiEnabled] = useState(true);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [language, setLanguage] = useState<'pt' | 'en'>('pt');
+  const [showNewPortal, setShowNewPortal] = useState(false);
+  const [newPortal, setNewPortal] = useState<NewPortalForm>({ name: '', description: '', tone: 'jornalistico' });
+  const [savingPortal, setSavingPortal] = useState(false);
+  const [uploadingPortalId, setUploadingPortalId] = useState<string | null>(null);
 
   const planKey = user?.plan ?? 'free';
   const planLabel = PLAN_LABELS[planKey] ?? planKey;
   const planColor = PLAN_COLORS[planKey] ?? Colors.mutedForeground;
+  const planIcon = PLAN_ICONS[planKey] ?? 'star-outline';
   const isProOrAbove = planKey === 'pro' || planKey === 'ultra';
 
+  const { data: portals, isLoading: portalsLoading } = useQuery({
+    queryKey: ['/api/careers', activeCareer?.id, 'portals'],
+    queryFn: () => activeCareer ? api.portals.list(activeCareer.id) : Promise.resolve([]),
+    enabled: !!activeCareer,
+  });
+
   const handleLanguage = () => {
-    Alert.alert(
-      'Idioma',
-      'Selecione o idioma do aplicativo',
-      [
-        { text: 'Português (BR)', onPress: () => setLanguage('pt') },
-        { text: 'English', onPress: () => setLanguage('en') },
-        { text: 'Cancelar', style: 'cancel' },
-      ]
-    );
+    Alert.alert('Idioma', 'Selecione o idioma', [
+      { text: 'Português (BR)', onPress: () => setLanguage('pt') },
+      { text: 'English', onPress: () => setLanguage('en') },
+      { text: 'Cancelar', style: 'cancel' },
+    ]);
   };
 
   const handleSupport = () => {
@@ -137,20 +164,8 @@ export default function ConfiguracoesScreen() {
     });
   };
 
-  const handleInvite = () => {
-    Alert.alert(
-      'Convidar amigos',
-      'Compartilhe o FC Career Manager com seus amigos!',
-      [{ text: 'OK' }]
-    );
-  };
-
   const handleUpgrade = () => {
-    Alert.alert(
-      'Upgrade de plano',
-      'Para fazer upgrade, acesse fc.replit.app no seu navegador.',
-      [{ text: 'OK' }]
-    );
+    Alert.alert('Upgrade', 'Para fazer upgrade acesse fc.replit.app no navegador.', [{ text: 'OK' }]);
   };
 
   const handleDeleteAccount = () => {
@@ -162,19 +177,114 @@ export default function ConfiguracoesScreen() {
         {
           text: 'Excluir',
           style: 'destructive',
-          onPress: () => Alert.alert('Exclusão solicitada', 'Entraremos em contato pelo e-mail cadastrado para confirmar a exclusão.'),
+          onPress: () => Alert.alert('Exclusão solicitada', 'Entraremos em contato pelo e-mail cadastrado para confirmar.'),
         },
       ]
     );
   };
 
+  const handleFinalizeSeasonConfirm = () => {
+    if (!activeSeason) return;
+    Alert.alert(
+      'Finalizar temporada',
+      `Deseja finalizar "${activeSeason.label}"? Esta ação não pode ser desfeita.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Finalizar',
+          style: 'destructive',
+          onPress: () => {
+            Alert.alert(
+              'Temporada finalizada',
+              `"${activeSeason.label}" foi finalizada. Crie uma nova temporada para continuar.`,
+              [{ text: 'OK' }]
+            );
+          },
+        },
+      ]
+    );
+  };
+
+  const handlePortalPhotoChange = async (portal: CustomPortal) => {
+    if (!activeCareer) return;
+    setUploadingPortalId(portal.id);
+    try {
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert('Permissão necessária', 'Permita o acesso à galeria para escolher uma foto.');
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.7,
+      });
+      if (!result.canceled && result.assets.length > 0) {
+        const uri = result.assets[0].uri;
+        const uploaded = await uploadPortalPhoto(uri, activeCareer.id);
+        if (uploaded) {
+          await api.portals.update(activeCareer.id, portal.id, { photo: uploaded });
+          await qc.invalidateQueries({ queryKey: ['/api/careers', activeCareer.id, 'portals'] });
+          if (Platform.OS !== 'web') void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+        }
+      }
+    } catch {
+      Alert.alert('Erro', 'Não foi possível atualizar a foto do portal.');
+    } finally {
+      setUploadingPortalId(null);
+    }
+  };
+
+  const handleDeletePortal = (portal: CustomPortal) => {
+    if (!activeCareer) return;
+    Alert.alert(
+      'Excluir portal',
+      `Deseja excluir o portal "${portal.name}"?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Excluir',
+          style: 'destructive',
+          onPress: async () => {
+            await api.portals.delete(activeCareer.id, portal.id);
+            await qc.invalidateQueries({ queryKey: ['/api/careers', activeCareer.id, 'portals'] });
+          },
+        },
+      ]
+    );
+  };
+
+  const handleCreatePortal = async () => {
+    if (!activeCareer) return;
+    if (!newPortal.name.trim()) {
+      Alert.alert('Nome obrigatório', 'Digite o nome do portal.');
+      return;
+    }
+    setSavingPortal(true);
+    try {
+      await api.portals.create(activeCareer.id, {
+        name: newPortal.name.trim(),
+        description: newPortal.description.trim() || `Portal ${newPortal.name.trim()}`,
+        tone: newPortal.tone,
+      });
+      await qc.invalidateQueries({ queryKey: ['/api/careers', activeCareer.id, 'portals'] });
+      setNewPortal({ name: '', description: '', tone: 'jornalistico' });
+      setShowNewPortal(false);
+      if (Platform.OS !== 'web') void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    } catch {
+      Alert.alert('Erro', 'Não foi possível criar o portal.');
+    } finally {
+      setSavingPortal(false);
+    }
+  };
+
+  const toneInfo = (tone: PortalTone) => PORTAL_TONES.find((t) => t.id === tone);
+
   return (
     <View style={[styles.container, { paddingTop: topPad }]}>
       <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => router.back()}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        >
+        <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
           <Ionicons name="arrow-back" size={24} color={Colors.foreground} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Configurações</Text>
@@ -186,6 +296,108 @@ export default function ConfiguracoesScreen() {
         contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 32 }]}
         showsVerticalScrollIndicator={false}
       >
+        {/* PORTAIS */}
+        {activeCareer && (
+          <Section title="Portais de Notícias">
+            {portalsLoading ? (
+              <View style={styles.loadingRow}>
+                <ActivityIndicator color={Colors.primary} size="small" />
+                <Text style={styles.loadingText}>Carregando portais…</Text>
+              </View>
+            ) : (
+              <>
+                {(!portals || portals.length === 0) && (
+                  <View style={styles.emptyPortals}>
+                    <Ionicons name="newspaper-outline" size={32} color={Colors.mutedForeground} />
+                    <Text style={styles.emptyPortalsText}>Nenhum portal configurado</Text>
+                    <Text style={styles.emptyPortalsHint}>
+                      Portais são personagens fictícios que geram notícias com tom e estilo únicos.
+                    </Text>
+                  </View>
+                )}
+                {portals?.map((portal) => {
+                  const tone = toneInfo(portal.tone);
+                  const isUploading = uploadingPortalId === portal.id;
+                  return (
+                    <View key={portal.id} style={styles.portalRow}>
+                      <TouchableOpacity
+                        style={styles.portalAvatar}
+                        onPress={() => handlePortalPhotoChange(portal)}
+                        disabled={isUploading}
+                        activeOpacity={0.8}
+                      >
+                        {isUploading ? (
+                          <ActivityIndicator color={Colors.primary} />
+                        ) : portal.photo ? (
+                          <Image source={{ uri: portal.photo }} style={styles.portalAvatarImg} />
+                        ) : (
+                          <Text style={styles.portalAvatarLetter}>
+                            {portal.name.charAt(0).toUpperCase()}
+                          </Text>
+                        )}
+                        <View style={styles.portalCameraIcon}>
+                          <Ionicons name="camera" size={10} color="#fff" />
+                        </View>
+                      </TouchableOpacity>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.portalName} numberOfLines={1}>{portal.name}</Text>
+                        <Text style={styles.portalTone}>{tone?.emoji} {tone?.label}</Text>
+                      </View>
+                      <TouchableOpacity
+                        onPress={() => handleDeletePortal(portal)}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        <Ionicons name="trash-outline" size={18} color={Colors.destructive} />
+                      </TouchableOpacity>
+                    </View>
+                  );
+                })}
+                {(portals?.length ?? 0) < 3 && (
+                  <>
+                    <View style={styles.rowDivider} />
+                    <TouchableOpacity
+                      style={styles.addPortalBtn}
+                      onPress={() => setShowNewPortal(true)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={[styles.rowIcon, { backgroundColor: `${Colors.success}18` }]}>
+                        <Ionicons name="add" size={20} color={Colors.success} />
+                      </View>
+                      <Text style={[styles.rowLabel, { color: Colors.success }]}>Adicionar portal</Text>
+                      <Ionicons name="chevron-forward" size={16} color={Colors.mutedForeground} />
+                    </TouchableOpacity>
+                  </>
+                )}
+              </>
+            )}
+          </Section>
+        )}
+
+        {/* TEMPORADA */}
+        {activeCareer && (
+          <Section title="Temporada">
+            <Row
+              icon="calendar-outline"
+              iconColor={Colors.info}
+              label="Temporada ativa"
+              value={activeSeason?.label ?? activeCareer.season}
+            />
+            <Row
+              icon="add-circle-outline"
+              iconColor={Colors.success}
+              label="Nova temporada"
+              onPress={() => router.push('/nova-temporada')}
+            />
+            <Row
+              icon="flag-outline"
+              iconColor={Colors.warning}
+              label="Finalizar temporada"
+              onPress={handleFinalizeSeasonConfirm}
+            />
+          </Section>
+        )}
+
+        {/* IA */}
         <Section title="Inteligência Artificial">
           <ToggleRow
             icon="sparkles-outline"
@@ -204,6 +416,7 @@ export default function ConfiguracoesScreen() {
           />
         </Section>
 
+        {/* SOM */}
         <Section title="Som e Haptics">
           <ToggleRow
             icon="volume-high-outline"
@@ -215,6 +428,7 @@ export default function ConfiguracoesScreen() {
           />
         </Section>
 
+        {/* IDIOMA */}
         <Section title="Idioma">
           <Row
             icon="language-outline"
@@ -225,6 +439,7 @@ export default function ConfiguracoesScreen() {
           />
         </Section>
 
+        {/* CONTA */}
         <Section title="Conta">
           <Row
             icon="person-outline"
@@ -232,10 +447,16 @@ export default function ConfiguracoesScreen() {
             value={user?.email ?? '—'}
           />
           <Row
-            icon="ribbon-outline"
+            icon={planIcon}
             iconColor={planColor}
             label="Plano atual"
             value={planLabel}
+            trailing={
+              <View style={[styles.planBadge, { backgroundColor: `${planColor}18`, borderColor: `${planColor}35` }]}>
+                <Ionicons name={planIcon} size={10} color={planColor} />
+                <Text style={[styles.planBadgeText, { color: planColor }]}>{planLabel}</Text>
+              </View>
+            }
           />
           {!isProOrAbove && (
             <Row
@@ -247,6 +468,7 @@ export default function ConfiguracoesScreen() {
           )}
         </Section>
 
+        {/* SUPORTE */}
         <Section title="Suporte">
           <Row
             icon="help-circle-outline"
@@ -258,7 +480,7 @@ export default function ConfiguracoesScreen() {
             icon="mail-outline"
             iconColor={Colors.info}
             label="Falar com suporte"
-            value="suporte@fccareermanager.app"
+            value="E-mail"
             onPress={handleSupport}
           />
           <Row
@@ -269,15 +491,17 @@ export default function ConfiguracoesScreen() {
           />
         </Section>
 
+        {/* COMUNIDADE */}
         <Section title="Comunidade">
           <Row
             icon="person-add-outline"
             iconColor={Colors.success}
             label="Convidar amigos"
-            onPress={handleInvite}
+            onPress={() => Alert.alert('Convidar amigos', 'Compartilhe o FC Career Manager com seus amigos!')}
           />
         </Section>
 
+        {/* ZONA DE PERIGO */}
         <Section title="Zona de perigo">
           <Row
             icon="trash-outline"
@@ -287,6 +511,80 @@ export default function ConfiguracoesScreen() {
           />
         </Section>
       </ScrollView>
+
+      {/* MODAL: Novo portal */}
+      <Modal
+        visible={showNewPortal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowNewPortal(false)}
+      >
+        <View style={[styles.modalContainer, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 24 }]}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setShowNewPortal(false)}>
+              <Text style={styles.modalCancel}>Cancelar</Text>
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Novo portal</Text>
+            <TouchableOpacity onPress={handleCreatePortal} disabled={savingPortal}>
+              {savingPortal ? (
+                <ActivityIndicator color={Colors.primary} size="small" />
+              ) : (
+                <Text style={styles.modalSave}>Criar</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={{ padding: 20, gap: 16 }}
+            keyboardShouldPersistTaps="handled"
+          >
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>Nome do portal *</Text>
+              <TextInput
+                style={styles.input}
+                value={newPortal.name}
+                onChangeText={(v) => setNewPortal((p) => ({ ...p, name: v }))}
+                placeholder="Ex: Folha do Torcedor"
+                placeholderTextColor={Colors.mutedForeground}
+                autoFocus
+              />
+            </View>
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>Descrição</Text>
+              <TextInput
+                style={[styles.input, { minHeight: 70, textAlignVertical: 'top' }]}
+                value={newPortal.description}
+                onChangeText={(v) => setNewPortal((p) => ({ ...p, description: v }))}
+                placeholder="Como este portal cobre as notícias…"
+                placeholderTextColor={Colors.mutedForeground}
+                multiline
+              />
+            </View>
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>Tom de escrita</Text>
+              <View style={styles.toneGrid}>
+                {PORTAL_TONES.map((t) => {
+                  const selected = newPortal.tone === t.id;
+                  return (
+                    <TouchableOpacity
+                      key={t.id}
+                      style={[styles.toneChip, selected && styles.toneChipSelected]}
+                      onPress={() => setNewPortal((p) => ({ ...p, tone: t.id }))}
+                      activeOpacity={0.75}
+                    >
+                      <Text style={styles.toneEmoji}>{t.emoji}</Text>
+                      <Text style={[styles.toneLabel, selected && styles.toneLabelSelected]}>
+                        {t.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+          </ScrollView>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -340,4 +638,106 @@ const styles = StyleSheet.create({
   rowValue: { fontSize: 13, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular', maxWidth: 160, textAlign: 'right' },
   rowHint: { fontSize: 12, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular', marginTop: 1 },
   rowDivider: { height: StyleSheet.hairlineWidth, backgroundColor: Colors.border, marginLeft: 62 },
+  loadingRow: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 16 },
+  loadingText: { fontSize: 14, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular' },
+  emptyPortals: { alignItems: 'center', padding: 24, gap: 8 },
+  emptyPortalsText: { fontSize: 15, fontWeight: '500' as const, color: Colors.foreground, fontFamily: 'Inter_500Medium' },
+  emptyPortalsHint: { fontSize: 13, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular', textAlign: 'center', lineHeight: 19 },
+  portalRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Colors.border,
+  },
+  portalAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: Colors.muted,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  portalAvatarImg: { width: 44, height: 44, borderRadius: 22 },
+  portalAvatarLetter: { fontSize: 18, fontWeight: '700' as const, color: Colors.foreground, fontFamily: 'Inter_700Bold' },
+  portalCameraIcon: {
+    position: 'absolute',
+    bottom: -1,
+    right: -1,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: Colors.card,
+  },
+  portalName: { fontSize: 14, fontWeight: '500' as const, color: Colors.foreground, fontFamily: 'Inter_500Medium' },
+  portalTone: { fontSize: 12, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular', marginTop: 1 },
+  addPortalBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+    gap: 12,
+  },
+  planBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 99,
+    borderWidth: 1,
+  },
+  planBadgeText: { fontSize: 11, fontWeight: '600' as const, fontFamily: 'Inter_600SemiBold' },
+  modalContainer: { flex: 1, backgroundColor: Colors.background },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  modalCancel: { fontSize: 16, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular' },
+  modalTitle: { fontSize: 16, fontWeight: '600' as const, color: Colors.foreground, fontFamily: 'Inter_600SemiBold' },
+  modalSave: { fontSize: 16, color: Colors.primary, fontWeight: '600' as const, fontFamily: 'Inter_600SemiBold' },
+  field: { gap: 6 },
+  fieldLabel: { fontSize: 13, fontWeight: '500' as const, color: Colors.mutedForeground, fontFamily: 'Inter_500Medium' },
+  input: {
+    backgroundColor: Colors.card,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: Colors.radius,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 15,
+    color: Colors.foreground,
+    fontFamily: 'Inter_400Regular',
+  },
+  toneGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  toneChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: Colors.radius,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.card,
+  },
+  toneChipSelected: {
+    borderColor: Colors.primary,
+    backgroundColor: 'rgba(139, 92, 246, 0.1)',
+  },
+  toneEmoji: { fontSize: 14 },
+  toneLabel: { fontSize: 13, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular' },
+  toneLabelSelected: { color: Colors.primary, fontWeight: '500' as const, fontFamily: 'Inter_500Medium' },
 });

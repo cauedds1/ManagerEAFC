@@ -78,15 +78,41 @@ export default function WelcomeScreen() {
           ))}
         </View>
 
-        {user?.plan === 'free' && (
-          <View style={styles.planBanner}>
-            <Ionicons name="rocket-outline" size={16} color="#f59e0b" />
-            <Text style={styles.planBannerText}>
-              Você está no plano <Text style={{ color: '#f59e0b', fontFamily: 'Inter_600SemiBold' }}>Gratuito</Text>.
-              Upgrade para Pro ou Ultra para recursos avançados.
-            </Text>
-          </View>
-        )}
+        {(() => {
+          const plan = user?.plan ?? 'free';
+          const planConfig: Record<string, { icon: 'star-outline' | 'star' | 'diamond'; color: string; label: string; hint: string }> = {
+            free: {
+              icon: 'star-outline',
+              color: Colors.mutedForeground,
+              label: 'Gratuito',
+              hint: 'Upgrade para Pro ou Ultra para recursos avançados de IA e análise.',
+            },
+            pro: {
+              icon: 'star',
+              color: Colors.primary,
+              label: 'Pro',
+              hint: 'Você tem acesso à Diretoria IA, análises avançadas e múltiplas temporadas.',
+            },
+            ultra: {
+              icon: 'diamond',
+              color: '#f59e0b',
+              label: 'Ultra',
+              hint: 'Você tem acesso completo a todos os recursos premium do app.',
+            },
+          };
+          const cfg = planConfig[plan] ?? planConfig.free;
+          return (
+            <View style={[styles.planBanner, { backgroundColor: `${cfg.color}10`, borderColor: `${cfg.color}30` }]}>
+              <View style={[styles.planIconWrap, { backgroundColor: `${cfg.color}18` }]}>
+                <Ionicons name={cfg.icon} size={18} color={cfg.color} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.planBadgeLabel, { color: cfg.color }]}>Plano {cfg.label}</Text>
+                <Text style={styles.planBannerText}>{cfg.hint}</Text>
+              </View>
+            </View>
+          );
+        })()}
 
         <TouchableOpacity style={styles.startBtn} onPress={handleStart} activeOpacity={0.85}>
           <Text style={styles.startBtnText}>Começar</Text>
@@ -149,20 +175,31 @@ const styles = StyleSheet.create({
   planBanner: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 8,
-    backgroundColor: 'rgba(245, 158, 11, 0.08)',
+    gap: 10,
     borderRadius: Colors.radius,
     borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.25)',
     padding: 12,
     marginBottom: 8,
   },
-  planBannerText: {
-    flex: 1,
+  planIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  planBadgeLabel: {
     fontSize: 13,
+    fontWeight: '600' as const,
+    fontFamily: 'Inter_600SemiBold',
+    marginBottom: 2,
+  },
+  planBannerText: {
+    fontSize: 12,
     color: Colors.mutedForeground,
     fontFamily: 'Inter_400Regular',
-    lineHeight: 19,
+    lineHeight: 17,
   },
   startBtn: {
     flexDirection: 'row',
