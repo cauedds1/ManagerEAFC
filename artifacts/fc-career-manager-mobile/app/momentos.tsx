@@ -555,7 +555,8 @@ export default function MomentosScreen() {
     };
     const updatedMetas = [newMeta, ...apiMomentos];
     await saveMutation.mutateAsync(updatedMetas);
-    const newCache = { ...uriCache, [newMeta.id]: localUri };
+    const cacheUri = photoUrl ?? localUri;
+    const newCache = { ...uriCache, [newMeta.id]: cacheUri };
     setUriCache(newCache);
     await saveUriCache(activeSeason.id, newCache);
   }, [activeSeason?.id, apiMomentos, uriCache, saveMutation]);
@@ -613,7 +614,11 @@ export default function MomentosScreen() {
           <Ionicons name="chevron-back" size={24} color={Colors.foreground} />
         </TouchableOpacity>
         <Text style={styles.title}>Momentos</Text>
-        <TouchableOpacity style={styles.addBtn} onPress={() => setShowAdd(true)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+        <TouchableOpacity
+          style={[styles.addBtn, !activeSeason && { opacity: 0.3 }]}
+          onPress={() => activeSeason ? setShowAdd(true) : Alert.alert('Sem temporada ativa', 'Ative uma temporada para adicionar momentos.')}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
           <Ionicons name="add" size={24} color={theme.primary} />
         </TouchableOpacity>
       </View>
