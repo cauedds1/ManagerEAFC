@@ -1,15 +1,27 @@
+import { useState, useRef, useCallback, useEffect } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  Platform, ActivityIndicator,
+  Platform, ActivityIndicator, TextInput, KeyboardAvoidingView,
+  ScrollView, Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import * as Haptics from 'expo-haptics';
 import { useCareer } from '@/contexts/CareerContext';
 import { useClubTheme } from '@/contexts/ClubThemeContext';
-import { api, type DiretoraaMember, type DiretoraaMeeting } from '@/lib/api';
+import { api, type DiretoraaMember, type CareerGameData } from '@/lib/api';
 import { Colors } from '@/constants/colors';
+
+interface ChatMessage {
+  id: string;
+  text: string;
+  fromBoard: boolean;
+  memberName?: string;
+  createdAt: number;
+  read?: boolean;
+}
 
 function satisfactionColor(s: number): string {
   if (s >= 80) return Colors.success;
@@ -17,63 +29,51 @@ function satisfactionColor(s: number): string {
   return Colors.destructive;
 }
 
-function SatisfactionBar({ value }: { value: number }) {
-  const color = satisfactionColor(value);
+function MemberAvatar({ member, size = 36 }: { member?: DiretoraaMember; size?: number }) {
+  const initials = member
+    ? member.name.trim().split(' ').slice(0, 2).map((w) => w[0]).join('').toUpperCase()
+    : '🏢';
   return (
-    <View style={styles.barTrack}>
-      <View style={[styles.barFill, { width: `${Math.min(100, value)}%`, backgroundColor: color }]} />
+    <View style={[
+      styles.memberAvatarSmall,
+      { width: size, height: size, borderRadius: size / 2 }
+    ]}>
+      <Text style={[styles.memberAvatarText, { fontSize: size * 0.35 }]}>{initials}</Text>
     </View>
   );
 }
 
-function MemberCard({ member }: { member: DiretoraaMember }) {
-  const satColor = satisfactionColor(member.satisfaction);
-  const initials = member.name.trim().split(' ').slice(0, 2).map((w) => w[0]).join('').toUpperCase();
-  return (
-    <View style={styles.memberCard}>
-      <View style={styles.memberAvatar}>
-        <Text style={styles.memberInitials}>{initials}</Text>
-      </View>
-      <View style={{ flex: 1, gap: 6 }}>
-        <View style={styles.memberTop}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.memberName}>{member.name}</Text>
-            <Text style={styles.memberRole}>{member.role}</Text>
-          </View>
-          <View style={[styles.satBadge, { backgroundColor: `${satColor}18`, borderColor: `${satColor}30` }]}>
-            <Text style={[styles.satText, { color: satColor }]}>{member.satisfaction}%</Text>
-          </View>
-        </View>
-        <SatisfactionBar value={member.satisfaction} />
-        {member.goals && (
-          <Text style={styles.memberGoals} numberOfLines={2}>🎯 {member.goals}</Text>
-        )}
-      </View>
-    </View>
-  );
-}
+function ChatBubble({ msg, members }: { msg: ChatMessage; members: DiretoraaMember[] }) {
+  const member = members.find((m) => m.name === msg.memberName);
+  const isBoard = msg.fromBoard;
+  const timeStr = new Date(msg.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
-function formatDate(dateStr: string): string {
-  const [y, m, d] = dateStr.split('-');
-  if (!y || !m || !d) return dateStr;
-  return `${d}/${m}/${y}`;
-}
-
-function MeetingCard({ meeting, memberMap }: { meeting: DiretoraaMeeting; memberMap: Map<string, DiretoraaMember> }) {
-  const member = memberMap.get(meeting.memberId);
-  return (
-    <View style={styles.meetingCard}>
-      <View style={styles.meetingHeader}>
-        <View style={styles.meetingMeta}>
-          <Ionicons name="calendar-outline" size={13} color={Colors.mutedForeground} />
-          <Text style={styles.meetingDate}>{formatDate(meeting.date)}</Text>
-          {member && <Text style={styles.meetingMember}>· {member.name}</Text>}
+  if (isBoard) {
+    return (
+      <View style={styles.bubbleRowLeft}>
+        <MemberAvatar member={member} />
+        <View style={{ flex: 1, maxWidth: '80%' }}>
+          {msg.memberName && (
+            <Text style={styles.senderName}>{msg.memberName}</Text>
+          )}
+          <View style={styles.bubbleLeft}>
+            <Text style={styles.bubbleTextLeft}>{msg.text}</Text>
+          </View>
+          <Text style={styles.bubbleTime}>{timeStr}</Text>
         </View>
       </View>
-      <Text style={styles.meetingTopic}>{meeting.topic}</Text>
-      {meeting.outcome && (
-        <Text style={styles.meetingOutcome}>💬 {meeting.outcome}</Text>
-      )}
+    );
+  }
+
+  return (
+    <View style={styles.bubbleRowRight}>
+      <View style={{ flex: 1, maxWidth: '80%', alignItems: 'flex-end' }}>
+        <Text style={styles.senderNameRight}>Você</Text>
+        <View style={styles.bubbleRight}>
+          <Text style={styles.bubbleTextRight}>{msg.text}</Text>
+        </View>
+        <Text style={styles.bubbleTimeRight}>{timeStr}</Text>
+      </View>
     </View>
   );
 }
@@ -82,95 +82,191 @@ export default function DiretoraScreen() {
   const insets = useSafeAreaInsets();
   const { activeCareer } = useCareer();
   const theme = useClubTheme();
+  const qc = useQueryClient();
   const topPad = Platform.OS === 'web' ? 0 : insets.top;
+  const listRef = useRef<FlatList>(null);
+  const [message, setMessage] = useState('');
+  const [selectedMember, setSelectedMember] = useState<DiretoraaMember | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['/api/data/career/diretoria', activeCareer?.id],
-    queryFn: () => activeCareer ? api.diretoria.get(activeCareer.id) : null,
+    queryFn: () => activeCareer ? api.careerData.get(activeCareer.id) : null,
     enabled: !!activeCareer?.id,
     staleTime: 1000 * 60 * 5,
   });
 
-  const members: DiretoraaMember[] = data?.members ?? [];
-  const meetings: DiretoraaMeeting[] = [...(data?.meetings ?? [])].sort((a, b) => b.createdAt - a.createdAt);
-  const notifications = data?.notifications?.filter((n) => !n.read) ?? [];
+  const members: DiretoraaMember[] = data?.data?.diretoria_members ?? [];
+  const rawNotifications = data?.data?.diretoria_notifications ?? [];
 
-  const memberMap = new Map<string, DiretoraaMember>(members.map((m) => [m.id, m]));
+  const chatMessages: ChatMessage[] = rawNotifications
+    .map((n) => ({
+      id: n.id,
+      text: n.message,
+      fromBoard: true,
+      createdAt: n.createdAt,
+      read: n.read,
+    }))
+    .sort((a, b) => a.createdAt - b.createdAt);
+
   const avgSat = members.length > 0
     ? Math.round(members.reduce((s, m) => s + m.satisfaction, 0) / members.length)
     : null;
 
-  const sections = [
-    { key: 'header', type: 'header' as const },
-    ...(members.length > 0 ? [{ key: 'membersTitle', type: 'membersTitle' as const }] : []),
-    ...members.map((m) => ({ key: `member-${m.id}`, type: 'member' as const, member: m })),
-    ...(meetings.length > 0 ? [{ key: 'meetingsTitle', type: 'meetingsTitle' as const }] : []),
-    ...meetings.map((m) => ({ key: `meeting-${m.id}`, type: 'meeting' as const, meeting: m })),
-  ];
+  useEffect(() => {
+    if (chatMessages.length > 0) {
+      setTimeout(() => listRef.current?.scrollToEnd({ animated: false }), 200);
+    }
+  }, [chatMessages.length]);
+
+  const markReadMutation = useMutation({
+    mutationFn: async () => {
+      if (!activeCareer || !data) return;
+      const updated = rawNotifications.map((n) => ({ ...n, read: true }));
+      await api.careerData.set(activeCareer.id, 'diretoria_notifications', updated);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['/api/data/career/diretoria', activeCareer?.id] });
+    },
+  });
+
+  const sendMutation = useMutation({
+    mutationFn: async (text: string) => {
+      if (!activeCareer || !data) return;
+      const newMsg = {
+        id: `msg_${Date.now()}`,
+        message: text,
+        read: true,
+        createdAt: Date.now(),
+        fromCoach: true,
+      };
+      const updated = [...rawNotifications, newMsg as unknown as typeof rawNotifications[0]];
+      await api.careerData.set(activeCareer.id, 'diretoria_notifications', updated);
+    },
+    onSuccess: () => {
+      setMessage('');
+      qc.invalidateQueries({ queryKey: ['/api/data/career/diretoria', activeCareer?.id] });
+      setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100);
+    },
+  });
+
+  const handleSend = useCallback(() => {
+    const trimmed = message.trim();
+    if (!trimmed || sendMutation.isPending) return;
+    if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    sendMutation.mutate(trimmed);
+  }, [message, sendMutation]);
+
+  const unreadCount = rawNotifications.filter((n) => !n.read).length;
 
   return (
-    <View style={[styles.container, { paddingTop: topPad }]}>
+    <KeyboardAvoidingView
+      style={[styles.container, { paddingTop: topPad }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={topPad + 10}
+    >
       <View style={styles.topBar}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
           <Ionicons name="chevron-back" size={24} color={Colors.foreground} />
         </TouchableOpacity>
-        <Text style={styles.title}>Diretoria</Text>
-        <View style={{ width: 40 }} />
+        <View style={{ flex: 1, alignItems: 'center' }}>
+          <Text style={styles.title}>Diretoria</Text>
+          {avgSat !== null && (
+            <Text style={[styles.satSub, { color: satisfactionColor(avgSat) }]}>
+              Satisfação: {avgSat}%
+            </Text>
+          )}
+        </View>
+        <View style={{ width: 40 }}>
+          {unreadCount > 0 && (
+            <TouchableOpacity
+              style={styles.unreadBtn}
+              onPress={() => markReadMutation.mutate()}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Text style={styles.unreadBadge}>{unreadCount}</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
+
+      {members.length > 0 && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.memberStrip}
+        >
+          {members.map((m) => {
+            const satColor = satisfactionColor(m.satisfaction);
+            return (
+              <TouchableOpacity
+                key={m.id}
+                style={[styles.memberChip, selectedMember?.id === m.id && { borderColor: theme.primary }]}
+                onPress={() => setSelectedMember(selectedMember?.id === m.id ? null : m)}
+                activeOpacity={0.7}
+              >
+                <MemberAvatar member={m} size={32} />
+                <View style={{ alignItems: 'center', gap: 1 }}>
+                  <Text style={styles.memberChipName} numberOfLines={1}>{m.name.split(' ')[0]}</Text>
+                  <Text style={[styles.memberChipSat, { color: satColor }]}>{m.satisfaction}%</Text>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      )}
 
       {isLoading ? (
         <View style={styles.center}><ActivityIndicator color={theme.primary} size="large" /></View>
-      ) : members.length === 0 && meetings.length === 0 ? (
+      ) : chatMessages.length === 0 ? (
         <View style={styles.center}>
           <Text style={{ fontSize: 48 }}>🏢</Text>
-          <Text style={styles.emptyTitle}>Sem dados</Text>
+          <Text style={styles.emptyTitle}>Sem mensagens</Text>
           <Text style={styles.emptyText}>
-            Configure a diretoria no aplicativo web para ver membros e reuniões aqui.
+            Mensagens da diretoria aparecerão aqui. Envie uma mensagem para iniciar o diálogo.
           </Text>
         </View>
       ) : (
         <FlatList
-          data={sections}
-          keyExtractor={(item) => item.key}
-          contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 24 }]}
+          ref={listRef}
+          data={chatMessages}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={[styles.chatList, { paddingBottom: 12 }]}
           showsVerticalScrollIndicator={false}
-          renderItem={({ item }) => {
-            if (item.type === 'header') {
-              return (
-                <View style={styles.headerCard}>
-                  {notifications.length > 0 && (
-                    <View style={styles.notifBanner}>
-                      <Ionicons name="notifications-outline" size={15} color={Colors.warning} />
-                      <Text style={styles.notifText}>{notifications.length} notificaç{notifications.length !== 1 ? 'ões' : 'ão'} pendente{notifications.length !== 1 ? 's' : ''}</Text>
-                    </View>
-                  )}
-                  {avgSat !== null && (
-                    <View style={styles.satOverview}>
-                      <Text style={styles.satOverviewLabel}>Satisfação média da diretoria</Text>
-                      <Text style={[styles.satOverviewVal, { color: satisfactionColor(avgSat) }]}>{avgSat}%</Text>
-                    </View>
-                  )}
-                </View>
-              );
-            }
-            if (item.type === 'membersTitle') {
-              return <Text style={styles.sectionLabel}>MEMBROS</Text>;
-            }
-            if (item.type === 'member' && item.member) {
-              return <MemberCard member={item.member} />;
-            }
-            if (item.type === 'meetingsTitle') {
-              return <Text style={[styles.sectionLabel, { marginTop: 8 }]}>REUNIÕES</Text>;
-            }
-            if (item.type === 'meeting' && item.meeting) {
-              return <MeetingCard meeting={item.meeting} memberMap={memberMap} />;
-            }
-            return null;
-          }}
+          onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: false })}
           ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
+          renderItem={({ item }) => <ChatBubble msg={item} members={members} />}
         />
       )}
-    </View>
+
+      <View style={[styles.inputBar, { paddingBottom: insets.bottom + 8 }]}>
+        <TextInput
+          style={styles.input}
+          placeholder={selectedMember ? `Mensagem para ${selectedMember.name}…` : 'Escreva uma mensagem…'}
+          placeholderTextColor={Colors.mutedForeground}
+          value={message}
+          onChangeText={setMessage}
+          multiline
+          maxLength={500}
+          returnKeyType="send"
+          onSubmitEditing={handleSend}
+        />
+        <TouchableOpacity
+          style={[
+            styles.sendBtn,
+            { backgroundColor: message.trim() ? theme.primary : Colors.card }
+          ]}
+          onPress={handleSend}
+          disabled={!message.trim() || sendMutation.isPending}
+          activeOpacity={0.75}
+        >
+          {sendMutation.isPending ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <Ionicons name="send" size={18} color={message.trim() ? '#fff' : Colors.mutedForeground} />
+          )}
+        </TouchableOpacity>
+      </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -182,60 +278,72 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
   backBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  title: { flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '600' as const, color: Colors.foreground, fontFamily: 'Inter_600SemiBold' },
+  title: { fontSize: 17, fontWeight: '600' as const, color: Colors.foreground, fontFamily: 'Inter_600SemiBold' },
+  satSub: { fontSize: 11, fontFamily: 'Inter_400Regular', marginTop: 1 },
+  unreadBtn: {
+    backgroundColor: Colors.destructive,
+    borderRadius: 99, minWidth: 20, height: 20,
+    alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4,
+  },
+  unreadBadge: { fontSize: 11, fontWeight: '700' as const, color: '#fff', fontFamily: 'Inter_700Bold' },
+  memberStrip: {
+    paddingHorizontal: 12, paddingVertical: 10, gap: 8,
+    borderBottomWidth: 1, borderBottomColor: Colors.border,
+  },
+  memberChip: {
+    alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 6,
+    backgroundColor: Colors.card, borderRadius: 12,
+    borderWidth: 1, borderColor: Colors.border, minWidth: 60,
+  },
+  memberChipName: { fontSize: 10, fontWeight: '600' as const, color: Colors.foreground, fontFamily: 'Inter_600SemiBold' },
+  memberChipSat: { fontSize: 10, fontFamily: 'Inter_400Regular' },
+  memberAvatarSmall: {
+    backgroundColor: 'rgba(139,92,246,0.2)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  memberAvatarText: { fontWeight: '700' as const, color: '#8B5CF6', fontFamily: 'Inter_700Bold' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16, padding: 40 },
   emptyTitle: { fontSize: 18, fontWeight: '600' as const, color: Colors.foreground, fontFamily: 'Inter_600SemiBold' },
   emptyText: { fontSize: 14, color: Colors.mutedForeground, textAlign: 'center', fontFamily: 'Inter_400Regular', lineHeight: 22 },
-  list: { padding: 16, gap: 0 },
-  headerCard: { marginBottom: 8, gap: 8 },
-  notifBanner: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    padding: 12, borderRadius: Colors.radius,
-    backgroundColor: 'rgba(245,158,11,0.1)', borderWidth: 1, borderColor: 'rgba(245,158,11,0.2)',
+  chatList: { padding: 16 },
+  bubbleRowLeft: {
+    flexDirection: 'row', gap: 8, alignItems: 'flex-end',
   },
-  notifText: { fontSize: 13, color: Colors.warning, fontFamily: 'Inter_400Regular' },
-  satOverview: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: Colors.card, borderRadius: Colors.radius, borderWidth: 1,
-    borderColor: Colors.border, paddingHorizontal: 16, paddingVertical: 12,
+  bubbleRowRight: {
+    flexDirection: 'row', justifyContent: 'flex-end',
   },
-  satOverviewLabel: { fontSize: 14, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular' },
-  satOverviewVal: { fontSize: 20, fontWeight: '700' as const, fontFamily: 'Inter_700Bold' },
-  sectionLabel: {
-    fontSize: 11, fontWeight: '600' as const, color: Colors.mutedForeground,
-    textTransform: 'uppercase', letterSpacing: 0.8, fontFamily: 'Inter_600SemiBold',
-    paddingHorizontal: 2, paddingVertical: 8,
+  bubbleLeft: {
+    backgroundColor: Colors.card,
+    borderRadius: 18, borderBottomLeftRadius: 4,
+    borderWidth: 1, borderColor: Colors.border,
+    paddingHorizontal: 14, paddingVertical: 10,
   },
-  memberCard: {
-    flexDirection: 'row', gap: 12,
-    backgroundColor: Colors.card, borderRadius: Colors.radiusLg,
-    borderWidth: 1, borderColor: Colors.border, padding: 14,
+  bubbleRight: {
+    backgroundColor: '#8B5CF6',
+    borderRadius: 18, borderBottomRightRadius: 4,
+    paddingHorizontal: 14, paddingVertical: 10,
   },
-  memberAvatar: {
-    width: 46, height: 46, borderRadius: 23,
-    backgroundColor: 'rgba(139,92,246,0.15)',
+  bubbleTextLeft: { fontSize: 14, color: Colors.foreground, fontFamily: 'Inter_400Regular', lineHeight: 20 },
+  bubbleTextRight: { fontSize: 14, color: '#fff', fontFamily: 'Inter_400Regular', lineHeight: 20 },
+  senderName: { fontSize: 11, fontWeight: '600' as const, color: Colors.mutedForeground, fontFamily: 'Inter_600SemiBold', marginLeft: 4, marginBottom: 3 },
+  senderNameRight: { fontSize: 11, fontWeight: '600' as const, color: Colors.mutedForeground, fontFamily: 'Inter_600SemiBold', marginRight: 4, marginBottom: 3 },
+  bubbleTime: { fontSize: 10, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular', marginTop: 3, marginLeft: 4 },
+  bubbleTimeRight: { fontSize: 10, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular', marginTop: 3, marginRight: 4 },
+  inputBar: {
+    flexDirection: 'row', alignItems: 'flex-end', gap: 8,
+    paddingHorizontal: 12, paddingTop: 10,
+    borderTopWidth: 1, borderTopColor: Colors.border,
+    backgroundColor: Colors.background,
+  },
+  input: {
+    flex: 1, backgroundColor: Colors.card,
+    borderRadius: 20, borderWidth: 1, borderColor: Colors.border,
+    paddingHorizontal: 16, paddingVertical: 10,
+    color: Colors.foreground, fontFamily: 'Inter_400Regular', fontSize: 15,
+    maxHeight: 120,
+  },
+  sendBtn: {
+    width: 44, height: 44, borderRadius: 22,
     alignItems: 'center', justifyContent: 'center',
   },
-  memberInitials: { fontSize: 16, fontWeight: '700' as const, color: '#8B5CF6', fontFamily: 'Inter_700Bold' },
-  memberTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
-  memberName: { fontSize: 15, fontWeight: '600' as const, color: Colors.foreground, fontFamily: 'Inter_600SemiBold' },
-  memberRole: { fontSize: 12, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular' },
-  satBadge: {
-    paddingHorizontal: 8, paddingVertical: 3, borderRadius: 99, borderWidth: 1,
-  },
-  satText: { fontSize: 12, fontWeight: '700' as const, fontFamily: 'Inter_700Bold' },
-  memberGoals: { fontSize: 12, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular', lineHeight: 18 },
-  barTrack: { height: 5, backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 3, overflow: 'hidden' },
-  barFill: { height: '100%', borderRadius: 3 },
-  meetingCard: {
-    backgroundColor: Colors.card, borderRadius: Colors.radiusLg,
-    borderWidth: 1, borderColor: Colors.border,
-    padding: 14, gap: 6,
-  },
-  meetingHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  meetingMeta: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  meetingDate: { fontSize: 12, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular' },
-  meetingMember: { fontSize: 12, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular' },
-  meetingTopic: { fontSize: 14, fontWeight: '600' as const, color: Colors.foreground, fontFamily: 'Inter_600SemiBold' },
-  meetingOutcome: { fontSize: 13, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular', lineHeight: 20 },
 });

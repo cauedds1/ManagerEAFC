@@ -299,4 +299,19 @@ router.get("/auth/demo", demoRateLimit, async (_req, res) => {
   }
 });
 
+const pushTokenStore = new Map<number, string>();
+
+router.post("/users/push-token", requireAuth, (req: AuthRequest, res) => {
+  const userId = req.user?.id;
+  const { token, platform } = req.body as { token?: string; platform?: string };
+  if (!token || !userId) {
+    res.status(400).json({ error: "token and authenticated user required" });
+    return;
+  }
+  pushTokenStore.set(userId, token);
+  console.log(`[push] token registered for user ${userId} (${platform ?? "unknown"})`);
+  res.json({ ok: true });
+});
+
+export { pushTokenStore };
 export default router;

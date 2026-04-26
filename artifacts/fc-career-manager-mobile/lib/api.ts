@@ -453,4 +453,12 @@ export const api = {
     saveMeetings: (careerId: string, meetings: DiretoraaMeeting[]) =>
       api.careerData.set(careerId, 'diretoria_meetings', meetings),
   },
+
+  users: {
+    savePushToken: (token: string) =>
+      request<{ ok: boolean }>('/api/users/push-token', {
+        method: 'POST',
+        body: JSON.stringify({ token, platform: Platform.OS }),
+      }),
+  },
 };

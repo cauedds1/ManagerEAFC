@@ -3,17 +3,18 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { QueryClientProvider } from '@tanstack/react-query';
+import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import * as SplashScreen from 'expo-splash-screen';
 import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
 import { View, StyleSheet } from 'react-native';
 
-import { queryClient } from '@/lib/queryClient';
+import { queryClient, asyncStoragePersister } from '@/lib/queryClient';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { CareerProvider } from '@/contexts/CareerContext';
 import { ClubThemeProvider } from '@/contexts/ClubThemeContext';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { OfflineBanner } from '@/components/OfflineBanner';
 import { Colors } from '@/constants/colors';
 
 SplashScreen.preventAutoHideAsync();
@@ -76,7 +77,17 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={styles.root}>
       <SafeAreaProvider>
-        <QueryClientProvider client={queryClient}>
+        <PersistQueryClientProvider
+          client={queryClient}
+          persistOptions={{
+            persister: asyncStoragePersister,
+            maxAge: 1000 * 60 * 60 * 24,
+            dehydrateOptions: {
+              shouldDehydrateQuery: (query) =>
+                query.state.status === 'success',
+            },
+          }}
+        >
           <AuthProvider>
             <CareerProvider>
               <ClubThemeProvider>
@@ -84,6 +95,7 @@ export default function RootLayout() {
                   <ErrorBoundary>
                     <View style={styles.root}>
                       <StatusBar style="light" />
+                      <OfflineBanner />
                       <RootLayoutInner />
                     </View>
                   </ErrorBoundary>
@@ -91,7 +103,7 @@ export default function RootLayout() {
               </ClubThemeProvider>
             </CareerProvider>
           </AuthProvider>
-        </QueryClientProvider>
+        </PersistQueryClientProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

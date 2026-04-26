@@ -158,6 +158,7 @@ const styles = StyleSheet.create({
     borderColor: `${Colors.destructive}30`, overflow: 'hidden',
   },
   cardRecovered: { borderColor: `${Colors.success}20`, opacity: 0.75 },
+  statusDot: { width: 8, height: 8, borderRadius: 4 },
   cardLeft: { width: 4, backgroundColor: Colors.destructive },
   cardContent: { flex: 1, padding: 14, gap: 6 },
   cardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6 },

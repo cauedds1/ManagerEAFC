@@ -3,6 +3,7 @@ import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import { api, saveToken, deleteToken, TOKEN_KEY, type User } from '@/lib/api';
 import { queryClient } from '@/lib/queryClient';
+import { getExpoPushToken } from '@/services/notifications';
 
 interface AuthContextValue {
   user: User | null;
@@ -22,6 +23,16 @@ async function loadStoredToken(): Promise<string | null> {
   return SecureStore.getItemAsync(TOKEN_KEY);
 }
 
+async function tryRegisterPushToken(): Promise<void> {
+  try {
+    const token = await getExpoPushToken();
+    if (token) {
+      await api.users.savePushToken(token);
+    }
+  } catch {
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
@@ -34,6 +45,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           const { user: freshUser } = await api.auth.me();
           setUser(freshUser);
+          tryRegisterPushToken();
         } catch {
           await deleteToken();
           setToken(null);
@@ -49,6 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await saveToken(newToken);
     setToken(newToken);
     setUser(newUser);
+    tryRegisterPushToken();
   }, []);
 
   const register = useCallback(async (email: string, password: string, name: string) => {
@@ -56,6 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await saveToken(newToken);
     setToken(newToken);
     setUser(newUser);
+    tryRegisterPushToken();
   }, []);
 
   const logout = useCallback(async () => {
