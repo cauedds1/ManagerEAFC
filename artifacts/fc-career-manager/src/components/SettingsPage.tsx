@@ -1620,8 +1620,8 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
 
               {/* ── Android APK ── */}
               {(() => {
-                const APK_URL: string | null = "https://expo.dev/artifacts/eas/mi16JCLtoKH4CFyYfsZXHZ.apk";
-                const EAS_BUILD_URL = "https://expo.dev/accounts/cauedds/projects/fc-career-manager-mobile/builds/a4567a6d-164e-4315-a163-9dc84936f287";
+                const APK_URL: string | null = null;
+                const EAS_BUILD_URL = "https://expo.dev/accounts/cauedds/projects/fc-career-manager-mobile/builds/17793788-e574-4aef-ba6d-217b72013251";
                 return (
                   <SectionCard
                     title={lang === "pt" ? "App Android Nativo" : "Native Android App"}
