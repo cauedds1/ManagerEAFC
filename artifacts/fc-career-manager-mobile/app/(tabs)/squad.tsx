@@ -5,7 +5,7 @@ import {
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput,
   Modal, ScrollView, Image, Platform, RefreshControl, ActivityIndicator,
-  LayoutChangeEvent, KeyboardAvoidingView, Pressable,
+  LayoutChangeEvent, KeyboardAvoidingView, Pressable, Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -305,13 +305,18 @@ function PlayerBottomSheet({
                       disabled={saving}
                       onPress={async () => {
                         setSaving(true);
-                        await onSaveEdit({
-                          name: editName.trim() || player.name,
-                          number: editNumber.trim() ? Number(editNumber.trim()) : null,
-                          overallRating: editOvr,
-                        });
-                        setSaving(false);
-                        setEditMode(false);
+                        try {
+                          await onSaveEdit({
+                            name: editName.trim() || player.name,
+                            number: editNumber.trim() ? Number(editNumber.trim()) : null,
+                            overallRating: editOvr,
+                          });
+                          setEditMode(false);
+                        } catch {
+                          Alert.alert('Erro', 'Não foi possível salvar. Tente novamente.');
+                        } finally {
+                          setSaving(false);
+                        }
                       }}
                     >
                       <Text style={styles.saveBtnText}>{saving ? 'Salvando…' : 'Salvar'}</Text>
@@ -322,7 +327,7 @@ function PlayerBottomSheet({
             </>
           )}
 
-          <TouchableOpacity style={[styles.closeBtn, { marginTop: isCustom && onSaveEdit ? 0 : 0 }]} onPress={onClose}>
+          <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
             <Text style={styles.closeBtnText}>Fechar</Text>
           </TouchableOpacity>
         </TouchableOpacity>
@@ -499,6 +504,8 @@ function AddPlayerSheet({
       });
       onSaved();
       onClose();
+    } catch {
+      Alert.alert('Erro', 'Não foi possível adicionar o jogador. Tente novamente.');
     } finally {
       setSaving(false);
     }
