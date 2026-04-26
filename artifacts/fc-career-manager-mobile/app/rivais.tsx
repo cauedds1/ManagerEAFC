@@ -25,7 +25,8 @@ interface RivalStats {
 }
 
 function computeRivalStats(matches: MatchRecord[], rivalName: string): RivalStats {
-  const ms = matches.filter((m) => m.opponent.toLowerCase().includes(rivalName.toLowerCase()));
+  const normalized = rivalName.trim().toLowerCase();
+  const ms = matches.filter((m) => m.opponent.trim().toLowerCase() === normalized);
   let wins = 0, draws = 0, losses = 0, gf = 0, ga = 0;
   for (const m of ms) {
     const r = getMatchResult(m.myScore, m.opponentScore);
