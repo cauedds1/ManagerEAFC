@@ -59,6 +59,10 @@ function RootLayoutInner() {
         options={{ animation: 'slide_from_right' }}
       />
       <Stack.Screen
+        name="sequencias"
+        options={{ animation: 'slide_from_right' }}
+      />
+      <Stack.Screen
         name="registrar-partida"
         options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
       />

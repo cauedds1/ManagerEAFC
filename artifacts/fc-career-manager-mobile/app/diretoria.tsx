@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
   Platform, ActivityIndicator, TextInput, KeyboardAvoidingView,
@@ -135,7 +135,7 @@ export default function DiretoraScreen() {
       seenIds.add(m.id);
       return true;
     })
-    .sort((a, b) => a.createdAt - b.createdAt);
+    .sort((a, b) => b.createdAt - a.createdAt);
 
   const avgSat = rawMembers.length > 0
     ? Math.round(rawMembers.reduce((s, m) => s + (m.satisfaction ?? 70), 0) / rawMembers.length)
@@ -143,11 +143,6 @@ export default function DiretoraScreen() {
 
   const unreadCount = rawNotifications.filter((n) => !n.read).length;
 
-  useEffect(() => {
-    if (allMessages.length > 0) {
-      setTimeout(() => listRef.current?.scrollToEnd({ animated: false }), 200);
-    }
-  }, [allMessages.length]);
 
   const markReadMutation = useMutation({
     mutationFn: async () => {
@@ -243,13 +238,11 @@ export default function DiretoraScreen() {
       };
       setLocalMessages((prev) => [...prev, userMsg]);
       setInputText('');
-      setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100);
     },
     onSuccess: (boardMsg) => {
       if (boardMsg) {
         setLocalMessages((prev) => [...prev, boardMsg]);
         qc.invalidateQueries({ queryKey: ['/api/data/career/diretoria', activeCareer?.id] });
-        setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100);
       }
     },
     onError: () => {
@@ -341,9 +334,9 @@ export default function DiretoraScreen() {
           ref={listRef}
           data={allMessages}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={[styles.chatList, { paddingBottom: 12 }]}
+          inverted
+          contentContainerStyle={[styles.chatList, { paddingTop: 12 }]}
           showsVerticalScrollIndicator={false}
-          onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: false })}
           ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
           renderItem={({ item }) => <ChatBubble msg={item} members={rawMembers} />}
         />

@@ -1,7 +1,7 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  TextInput, Platform, Alert, ActivityIndicator, KeyboardAvoidingView,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, FlatList,
+  TextInput, Platform, Alert, ActivityIndicator, KeyboardAvoidingView, Modal,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
@@ -10,7 +10,7 @@ import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { useCareer } from '@/contexts/CareerContext';
 import { useClubTheme } from '@/contexts/ClubThemeContext';
-import { api, type MatchLocation, type MatchRecord, type PlayerMatchStats } from '@/lib/api';
+import { api, type MatchLocation, type MatchRecord, type PlayerMatchStats, type SquadPlayer } from '@/lib/api';
 import { Colors } from '@/constants/colors';
 
 type Step = 1 | 2 | 3 | 4 | 5;
@@ -29,8 +29,7 @@ const COMMON_TOURNAMENTS = [
 
 const TOTAL_STEPS = 5;
 
-interface GoalRow { scorer: string; assist: string }
-interface RatingRow { playerName: string; rating: number }
+interface GoalRow { scorerName: string; scorerId: number | null; assistName: string; assistId: number | null }
 
 function StepIndicator({ current, total }: { current: number; total: number }) {
   return (
@@ -57,20 +56,63 @@ function ScoreButton({ onPress, icon }: { onPress: () => void; icon: 'add' | 're
   );
 }
 
-function RatingPicker({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+function PlayerPickerModal({
+  players,
+  onSelect,
+  onClose,
+  title,
+}: {
+  players: SquadPlayer[];
+  onSelect: (player: SquadPlayer) => void;
+  onClose: () => void;
+  title: string;
+}) {
+  const insets = useSafeAreaInsets();
+  const [search, setSearch] = useState('');
+  const filtered = search.trim()
+    ? players.filter((p) => p.name.toLowerCase().includes(search.toLowerCase()))
+    : players;
+
   return (
-    <View style={styles.ratingRow}>
-      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
-        <TouchableOpacity
-          key={n}
-          style={[styles.ratingBtn, value === n && styles.ratingBtnActive]}
-          onPress={() => onChange(n)}
-          activeOpacity={0.7}
-        >
-          <Text style={[styles.ratingBtnText, value === n && styles.ratingBtnTextActive]}>{n}</Text>
+    <Modal visible transparent animationType="slide" onRequestClose={onClose}>
+      <TouchableOpacity style={styles.pickerOverlay} activeOpacity={1} onPress={onClose}>
+        <TouchableOpacity activeOpacity={1} style={[styles.pickerSheet, { paddingBottom: insets.bottom + 24 }]}>
+          <View style={styles.pickerHandle} />
+          <Text style={styles.pickerTitle}>{title}</Text>
+          <TextInput
+            style={styles.pickerSearch}
+            value={search}
+            onChangeText={setSearch}
+            placeholder="Buscar jogador…"
+            placeholderTextColor={Colors.mutedForeground}
+          />
+          <FlatList
+            data={filtered}
+            keyExtractor={(p) => String(p.id)}
+            style={{ maxHeight: 320 }}
+            ItemSeparatorComponent={() => <View style={{ height: 1, backgroundColor: Colors.border }} />}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={styles.pickerRow}
+                onPress={() => {
+                  onSelect(item);
+                  onClose();
+                }}
+                activeOpacity={0.75}
+              >
+                <Text style={styles.pickerPlayerName}>{item.name}</Text>
+                <Text style={styles.pickerPlayerPos}>{item.positionPtBr}</Text>
+              </TouchableOpacity>
+            )}
+            ListEmptyComponent={
+              <View style={styles.pickerEmpty}>
+                <Text style={styles.pickerEmptyText}>Nenhum jogador encontrado</Text>
+              </View>
+            }
+          />
         </TouchableOpacity>
-      ))}
-    </View>
+      </TouchableOpacity>
+    </Modal>
   );
 }
 
@@ -95,9 +137,11 @@ export default function RegistrarPartidaScreen() {
   const [observations, setObservations] = useState('');
 
   const [goalRows, setGoalRows] = useState<GoalRow[]>([]);
+  const [pickerTarget, setPickerTarget] = useState<null | { type: 'scorer' | 'assist'; goalIdx: number }>(null);
 
-  const [ratingRows, setRatingRows] = useState<RatingRow[]>([{ playerName: '', rating: 7 }]);
-  const [motm, setMotm] = useState('');
+  const [playerRatings, setPlayerRatings] = useState<Record<string, number>>({});
+  const [motm, setMotm] = useState<SquadPlayer | null>(null);
+  const [motmPickerOpen, setMotmPickerOpen] = useState(false);
 
   const { data: seasonData } = useQuery({
     queryKey: ['/api/data/season', activeSeason?.id],
@@ -105,10 +149,21 @@ export default function RegistrarPartidaScreen() {
     enabled: !!activeSeason?.id,
   });
 
+  const { data: squadData } = useQuery({
+    queryKey: ['/api/squad', activeCareer?.clubId],
+    queryFn: () => activeCareer?.clubId ? api.squad.get(activeCareer.clubId) : null,
+    enabled: !!activeCareer?.clubId,
+    staleTime: 1000 * 60 * 30,
+  });
+
+  const squadPlayers = useMemo<SquadPlayer[]>(() => squadData?.players ?? [], [squadData]);
+
   const syncGoalRows = useCallback((newScore: number) => {
     setGoalRows((prev) => {
       if (newScore > prev.length) {
-        return [...prev, ...Array.from({ length: newScore - prev.length }, () => ({ scorer: '', assist: '' }))];
+        return [...prev, ...Array.from({ length: newScore - prev.length }, () => ({
+          scorerName: '', scorerId: null, assistName: '', assistId: null,
+        }))];
       }
       return prev.slice(0, newScore);
     });
@@ -129,35 +184,27 @@ export default function RegistrarPartidaScreen() {
 
       const playerStats: Record<string, PlayerMatchStats> = {};
 
-      goalRows.forEach(({ scorer, assist }, idx) => {
-        const name = scorer.trim();
+      goalRows.forEach(({ scorerName, assistName }, idx) => {
+        const name = scorerName.trim();
         if (!name) return;
         if (!playerStats[name]) {
-          playerStats[name] = {
-            startedOnBench: false, rating: 7, goals: [], ownGoal: false, injured: false, substituted: false,
-          };
+          playerStats[name] = { startedOnBench: false, rating: 0, goals: [], ownGoal: false, injured: false, substituted: false };
         }
         playerStats[name].goals.push({ id: `g_${Date.now()}_${idx}`, minute: 0 });
-
-        if (assist.trim()) {
-          const asst = assist.trim();
+        if (assistName.trim()) {
+          const asst = assistName.trim();
           if (!playerStats[asst]) {
-            playerStats[asst] = {
-              startedOnBench: false, rating: 7, goals: [], ownGoal: false, injured: false, substituted: false,
-            };
+            playerStats[asst] = { startedOnBench: false, rating: 0, goals: [], ownGoal: false, injured: false, substituted: false };
           }
         }
       });
 
-      ratingRows.forEach(({ playerName, rating }) => {
-        const name = playerName.trim();
-        if (!name) return;
+      Object.entries(playerRatings).forEach(([name, rating]) => {
+        if (!name.trim() || rating === 0) return;
         if (playerStats[name]) {
           playerStats[name].rating = rating;
         } else {
-          playerStats[name] = {
-            startedOnBench: false, rating, goals: [], ownGoal: false, injured: false, substituted: false,
-          };
+          playerStats[name] = { startedOnBench: false, rating, goals: [], ownGoal: false, injured: false, substituted: false };
         }
       });
 
@@ -175,12 +222,9 @@ export default function RegistrarPartidaScreen() {
         starterIds: [],
         subIds: [],
         playerStats,
-        matchStats: {
-          myShots: 0,
-          opponentShots: 0,
-          possessionPct: possession,
-        },
-        motmPlayerName: motm.trim() || undefined,
+        matchStats: { myShots: 0, opponentShots: 0, possessionPct: possession },
+        motmPlayerId: motm?.id,
+        motmPlayerName: motm?.name,
         observations: observations.trim() || undefined,
         createdAt: Date.now(),
       };
@@ -223,33 +267,28 @@ export default function RegistrarPartidaScreen() {
   const resultLabel = myScore > opponentScore ? 'VITÓRIA' : myScore < opponentScore ? 'DERROTA' : 'EMPATE';
   const resultColor = myScore > opponentScore ? Colors.success : myScore < opponentScore ? Colors.destructive : Colors.warning;
 
-  const updateGoalRow = (idx: number, field: keyof GoalRow, value: string) => {
+  const updateGoalRowPlayer = (idx: number, field: 'scorer' | 'assist', player: SquadPlayer) => {
     setGoalRows((prev) => {
       const next = [...prev];
-      next[idx] = { ...next[idx], [field]: value };
+      if (field === 'scorer') {
+        next[idx] = { ...next[idx], scorerName: player.name, scorerId: player.id };
+      } else {
+        next[idx] = { ...next[idx], assistName: player.name, assistId: player.id };
+      }
       return next;
     });
   };
 
-  const updateRatingRow = (idx: number, field: keyof RatingRow, value: string | number) => {
-    setRatingRows((prev) => {
+  const clearGoalRowPlayer = (idx: number, field: 'scorer' | 'assist') => {
+    setGoalRows((prev) => {
       const next = [...prev];
-      next[idx] = { ...next[idx], [field]: value };
+      if (field === 'scorer') next[idx] = { ...next[idx], scorerName: '', scorerId: null };
+      else next[idx] = { ...next[idx], assistName: '', assistId: null };
       return next;
     });
   };
 
-  const addRatingRow = () => {
-    if (ratingRows.length < 11) setRatingRows((prev) => [...prev, { playerName: '', rating: 7 }]);
-  };
-
-  const removeRatingRow = (idx: number) => {
-    setRatingRows((prev) => prev.filter((_, i) => i !== idx));
-  };
-
-  const stepLabel = [
-    'Informações', 'Resultado', 'Gols & Assistências', 'Avaliações', 'Confirmar',
-  ][step - 1];
+  const stepLabel = ['Informações', 'Resultado', 'Gols & Assistências', 'Avaliações', 'Confirmar'][step - 1];
 
   return (
     <KeyboardAvoidingView
@@ -370,9 +409,7 @@ export default function RegistrarPartidaScreen() {
                   <ScoreButton icon="add" onPress={() => handleMyScoreChange(1)} />
                 </View>
               </View>
-
               <Text style={styles.scoreSep}>×</Text>
-
               <View style={styles.scoreTeam}>
                 <Text style={styles.scoreTeamName} numberOfLines={1}>{opponent || 'Adversário'}</Text>
                 <View style={styles.scoreControls}>
@@ -430,25 +467,49 @@ export default function RegistrarPartidaScreen() {
               goalRows.map((row, idx) => (
                 <View key={idx} style={styles.goalCard}>
                   <Text style={styles.goalCardTitle}>Gol {idx + 1}</Text>
+
                   <View style={styles.field}>
                     <Text style={styles.fieldLabel}>Artilheiro</Text>
-                    <TextInput
-                      style={styles.input}
-                      value={row.scorer}
-                      onChangeText={(v) => updateGoalRow(idx, 'scorer', v)}
-                      placeholder="Nome do jogador"
-                      placeholderTextColor={Colors.mutedForeground}
-                    />
+                    {row.scorerName ? (
+                      <View style={styles.pickedPlayer}>
+                        <Ionicons name="person" size={16} color={Colors.success} />
+                        <Text style={styles.pickedPlayerName}>{row.scorerName}</Text>
+                        <TouchableOpacity onPress={() => clearGoalRowPlayer(idx, 'scorer')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                          <Ionicons name="close-circle" size={18} color={Colors.mutedForeground} />
+                        </TouchableOpacity>
+                      </View>
+                    ) : (
+                      <TouchableOpacity
+                        style={styles.pickerBtn}
+                        onPress={() => setPickerTarget({ type: 'scorer', goalIdx: idx })}
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons name="person-add-outline" size={16} color={theme.primary} />
+                        <Text style={[styles.pickerBtnText, { color: theme.primary }]}>Selecionar jogador</Text>
+                      </TouchableOpacity>
+                    )}
                   </View>
+
                   <View style={styles.field}>
                     <Text style={styles.fieldLabel}>Assistência (opcional)</Text>
-                    <TextInput
-                      style={styles.input}
-                      value={row.assist}
-                      onChangeText={(v) => updateGoalRow(idx, 'assist', v)}
-                      placeholder="Nome do assistente"
-                      placeholderTextColor={Colors.mutedForeground}
-                    />
+                    {row.assistName ? (
+                      <View style={styles.pickedPlayer}>
+                        <Ionicons name="person" size={16} color={Colors.info} />
+                        <Text style={styles.pickedPlayerName}>{row.assistName}</Text>
+                        <TouchableOpacity onPress={() => clearGoalRowPlayer(idx, 'assist')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                          <Ionicons name="close-circle" size={18} color={Colors.mutedForeground} />
+                        </TouchableOpacity>
+                      </View>
+                    ) : (
+                      <TouchableOpacity
+                        style={styles.pickerBtn}
+                        onPress={() => setPickerTarget({ type: 'assist', goalIdx: idx })}
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons name="person-add-outline" size={16} color={Colors.mutedForeground} />
+                        <Text style={[styles.pickerBtnText, { color: Colors.mutedForeground }]}>Selecionar assistente</Text>
+                      </TouchableOpacity>
+                    )}
                   </View>
                 </View>
               ))
@@ -460,44 +521,72 @@ export default function RegistrarPartidaScreen() {
           <View style={styles.stepContent}>
             <View style={styles.field}>
               <Text style={styles.fieldLabel}>Melhor em campo (MOTM)</Text>
-              <TextInput
-                style={styles.input}
-                value={motm}
-                onChangeText={setMotm}
-                placeholder="Nome do destaque"
-                placeholderTextColor={Colors.mutedForeground}
-              />
-            </View>
-
-            <View style={styles.sectionDivider}>
-              <Text style={styles.sectionDividerText}>AVALIAÇÕES DOS JOGADORES</Text>
-            </View>
-
-            {ratingRows.map((row, idx) => (
-              <View key={idx} style={styles.ratingCard}>
-                <View style={styles.ratingCardHeader}>
-                  <TextInput
-                    style={[styles.input, { flex: 1 }]}
-                    value={row.playerName}
-                    onChangeText={(v) => updateRatingRow(idx, 'playerName', v)}
-                    placeholder={`Jogador ${idx + 1}`}
-                    placeholderTextColor={Colors.mutedForeground}
-                  />
-                  {ratingRows.length > 1 && (
-                    <TouchableOpacity onPress={() => removeRatingRow(idx)} style={styles.removeBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                      <Ionicons name="close-circle" size={20} color={Colors.mutedForeground} />
-                    </TouchableOpacity>
-                  )}
+              {motm ? (
+                <View style={styles.pickedPlayer}>
+                  <Ionicons name="star" size={16} color={Colors.warning} />
+                  <Text style={styles.pickedPlayerName}>{motm.name}</Text>
+                  <TouchableOpacity onPress={() => setMotm(null)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                    <Ionicons name="close-circle" size={18} color={Colors.mutedForeground} />
+                  </TouchableOpacity>
                 </View>
-                <RatingPicker value={row.rating} onChange={(v) => updateRatingRow(idx, 'rating', v)} />
-              </View>
-            ))}
+              ) : (
+                <TouchableOpacity
+                  style={styles.pickerBtn}
+                  onPress={() => setMotmPickerOpen(true)}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="star-outline" size={16} color={Colors.warning} />
+                  <Text style={[styles.pickerBtnText, { color: Colors.warning }]}>Selecionar destaque</Text>
+                </TouchableOpacity>
+              )}
+            </View>
 
-            {ratingRows.length < 11 && (
-              <TouchableOpacity style={styles.addRowBtn} onPress={addRatingRow} activeOpacity={0.7}>
-                <Ionicons name="add-circle-outline" size={18} color={theme.primary} />
-                <Text style={[styles.addRowBtnText, { color: theme.primary }]}>Adicionar jogador</Text>
-              </TouchableOpacity>
+            {squadPlayers.length > 0 ? (
+              <>
+                <View style={styles.sectionDivider}>
+                  <Text style={styles.sectionDividerText}>AVALIAÇÕES DO ELENCO (opcional)</Text>
+                </View>
+                {squadPlayers.map((p) => {
+                  const rating = playerRatings[p.name] ?? 0;
+                  return (
+                    <View key={p.id} style={styles.ratingCard}>
+                      <View style={styles.ratingCardLeft}>
+                        <Text style={styles.ratingPlayerName} numberOfLines={1}>{p.name}</Text>
+                        <Text style={styles.ratingPlayerPos}>{p.positionPtBr}</Text>
+                      </View>
+                      <View style={styles.ratingControls}>
+                        <TouchableOpacity
+                          style={styles.ratingAdj}
+                          onPress={() => setPlayerRatings((prev) => ({ ...prev, [p.name]: Math.max(0, (prev[p.name] ?? 0) - 1) }))}
+                          activeOpacity={0.7}
+                        >
+                          <Ionicons name="remove" size={16} color={Colors.foreground} />
+                        </TouchableOpacity>
+                        <Text style={[
+                          styles.ratingValue,
+                          rating === 0 && { color: Colors.mutedForeground },
+                          rating >= 8 && { color: Colors.success },
+                          rating >= 6 && rating < 8 && { color: Colors.warning },
+                          rating > 0 && rating < 6 && { color: Colors.destructive },
+                        ]}>
+                          {rating === 0 ? '—' : rating}
+                        </Text>
+                        <TouchableOpacity
+                          style={styles.ratingAdj}
+                          onPress={() => setPlayerRatings((prev) => ({ ...prev, [p.name]: Math.min(10, (prev[p.name] ?? 0) + 1) }))}
+                          activeOpacity={0.7}
+                        >
+                          <Ionicons name="add" size={16} color={Colors.foreground} />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  );
+                })}
+              </>
+            ) : (
+              <View style={styles.emptyStep}>
+                <Text style={styles.emptyStepText}>Carregando elenco…</Text>
+              </View>
             )}
           </View>
         )}
@@ -515,38 +604,34 @@ export default function RegistrarPartidaScreen() {
               <View style={styles.summaryDivider} />
               <SummaryRow label="Rodada" value={stage} />
               <View style={styles.summaryDivider} />
-              <SummaryRow
-                label="Placar"
-                value={`${myScore} – ${opponentScore}`}
-                valueColor={resultColor}
-              />
+              <SummaryRow label="Placar" value={`${myScore} – ${opponentScore}`} valueColor={resultColor} />
               <View style={styles.summaryDivider} />
               <SummaryRow label="Resultado" value={resultLabel} valueColor={resultColor} />
               <View style={styles.summaryDivider} />
               <SummaryRow label="Posse" value={`${possession}%`} />
-              {goalRows.some((r) => r.scorer.trim()) && (
+              {goalRows.some((r) => r.scorerName) && (
                 <>
                   <View style={styles.summaryDivider} />
                   <SummaryRow
                     label="Artilheiros"
-                    value={goalRows.filter((r) => r.scorer.trim()).map((r) => r.scorer.trim()).join(', ')}
+                    value={goalRows.filter((r) => r.scorerName).map((r) => r.scorerName).join(', ')}
                   />
                 </>
               )}
-              {motm.trim() ? (
+              {motm && (
                 <>
                   <View style={styles.summaryDivider} />
-                  <SummaryRow label="MOTM" value={motm.trim()} />
+                  <SummaryRow label="MOTM" value={motm.name} />
                 </>
-              ) : null}
-              {ratingRows.filter((r) => r.playerName.trim()).length > 0 && (
+              )}
+              {Object.entries(playerRatings).filter(([, v]) => v > 0).length > 0 && (
                 <>
                   <View style={styles.summaryDivider} />
                   <SummaryRow
                     label="Avaliações"
-                    value={ratingRows
-                      .filter((r) => r.playerName.trim())
-                      .map((r) => `${r.playerName.trim()} ${r.rating}/10`)
+                    value={Object.entries(playerRatings)
+                      .filter(([, v]) => v > 0)
+                      .map(([n, r]) => `${n} ${r}/10`)
                       .join(', ')}
                   />
                 </>
@@ -591,6 +676,29 @@ export default function RegistrarPartidaScreen() {
           </TouchableOpacity>
         )}
       </View>
+
+      {pickerTarget && (
+        <PlayerPickerModal
+          players={squadPlayers}
+          title={pickerTarget.type === 'scorer' ? 'Selecionar Artilheiro' : 'Selecionar Assistente'}
+          onSelect={(player) => {
+            updateGoalRowPlayer(pickerTarget.goalIdx, pickerTarget.type, player);
+          }}
+          onClose={() => setPickerTarget(null)}
+        />
+      )}
+
+      {motmPickerOpen && (
+        <PlayerPickerModal
+          players={squadPlayers}
+          title="Melhor em Campo (MOTM)"
+          onSelect={(player) => {
+            setMotm(player);
+            setMotmPickerOpen(false);
+          }}
+          onClose={() => setMotmPickerOpen(false)}
+        />
+      )}
     </KeyboardAvoidingView>
   );
 }
@@ -635,26 +743,20 @@ const styles = StyleSheet.create({
   },
   chip: {
     paddingHorizontal: 10, paddingVertical: 6,
-    backgroundColor: Colors.card, borderRadius: 99,
-    borderWidth: 1, borderColor: Colors.border,
+    backgroundColor: Colors.card, borderRadius: 99, borderWidth: 1, borderColor: Colors.border,
   },
   chipText: { fontSize: 12, color: Colors.foreground, fontFamily: 'Inter_400Regular' },
   locationRow: { flexDirection: 'row', gap: 8 },
   locationChip: {
     flex: 1, alignItems: 'center', gap: 4, padding: 12,
-    backgroundColor: Colors.card, borderRadius: Colors.radius,
-    borderWidth: 1, borderColor: Colors.border,
+    backgroundColor: Colors.card, borderRadius: Colors.radius, borderWidth: 1, borderColor: Colors.border,
   },
   locationLabel: { fontSize: 13, fontWeight: '500' as const, color: Colors.foreground, fontFamily: 'Inter_500Medium' },
   row: { flexDirection: 'row', gap: 12 },
-  matchLabel: {
-    fontSize: 15, color: Colors.mutedForeground,
-    fontFamily: 'Inter_400Regular', textAlign: 'center',
-  },
+  matchLabel: { fontSize: 15, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular', textAlign: 'center' },
   scoreArea: {
     flexDirection: 'row', alignItems: 'center', gap: 16,
-    backgroundColor: Colors.card, borderRadius: Colors.radiusLg,
-    borderWidth: 1, borderColor: Colors.border, padding: 20,
+    backgroundColor: Colors.card, borderRadius: Colors.radiusLg, borderWidth: 1, borderColor: Colors.border, padding: 20,
   },
   scoreTeam: { flex: 1, alignItems: 'center', gap: 16 },
   scoreTeamName: { fontSize: 13, fontWeight: '600' as const, color: Colors.mutedForeground, fontFamily: 'Inter_600SemiBold', textAlign: 'center' },
@@ -667,45 +769,47 @@ const styles = StyleSheet.create({
   scoreDigit: { fontSize: 42, fontWeight: '700' as const, color: Colors.foreground, fontFamily: 'Inter_700Bold', minWidth: 48, textAlign: 'center' },
   scoreSep: { fontSize: 24, color: Colors.mutedForeground, fontFamily: 'Inter_700Bold' },
   resultBadge: {
-    alignSelf: 'center', paddingHorizontal: 20, paddingVertical: 8,
-    borderRadius: 99, borderWidth: 1,
+    alignSelf: 'center', paddingHorizontal: 20, paddingVertical: 8, borderRadius: 99, borderWidth: 1,
   },
   resultBadgeText: { fontSize: 15, fontWeight: '700' as const, fontFamily: 'Inter_700Bold' },
   possessionRow: { flexDirection: 'row', gap: 8 },
   emptyStep: { alignItems: 'center', gap: 12, paddingVertical: 40 },
   emptyStepText: { fontSize: 14, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular', textAlign: 'center' },
   goalCard: {
-    backgroundColor: Colors.card, borderRadius: Colors.radiusLg,
-    borderWidth: 1, borderColor: Colors.border, padding: 16, gap: 12,
+    backgroundColor: Colors.card, borderRadius: Colors.radiusLg, borderWidth: 1, borderColor: Colors.border, padding: 16, gap: 12,
   },
   goalCardTitle: { fontSize: 14, fontWeight: '700' as const, color: Colors.primary, fontFamily: 'Inter_700Bold' },
+  pickerBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: Colors.card, borderRadius: Colors.radius, borderWidth: 1, borderColor: Colors.border,
+    paddingHorizontal: 14, paddingVertical: 12,
+  },
+  pickerBtnText: { fontSize: 14, fontFamily: 'Inter_400Regular' },
+  pickedPlayer: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: Colors.card, borderRadius: Colors.radius, borderWidth: 1, borderColor: Colors.border,
+    paddingHorizontal: 14, paddingVertical: 12,
+  },
+  pickedPlayerName: { flex: 1, fontSize: 14, fontWeight: '600' as const, color: Colors.foreground, fontFamily: 'Inter_600SemiBold' },
   ratingCard: {
-    backgroundColor: Colors.card, borderRadius: Colors.radiusLg,
-    borderWidth: 1, borderColor: Colors.border, padding: 14, gap: 10,
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: Colors.card, borderRadius: Colors.radius, borderWidth: 1, borderColor: Colors.border,
+    paddingHorizontal: 14, paddingVertical: 12, gap: 12,
   },
-  ratingCardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  removeBtn: { padding: 4 },
-  ratingRow: { flexDirection: 'row', gap: 4, flexWrap: 'nowrap' },
-  ratingBtn: {
-    flex: 1, alignItems: 'center', justifyContent: 'center',
-    paddingVertical: 8, borderRadius: 6,
+  ratingCardLeft: { flex: 1, gap: 2 },
+  ratingPlayerName: { fontSize: 13, fontWeight: '600' as const, color: Colors.foreground, fontFamily: 'Inter_600SemiBold' },
+  ratingPlayerPos: { fontSize: 11, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular' },
+  ratingControls: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  ratingAdj: {
+    width: 32, height: 32, borderRadius: 16,
     backgroundColor: Colors.background, borderWidth: 1, borderColor: Colors.border,
+    alignItems: 'center', justifyContent: 'center',
   },
-  ratingBtnActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
-  ratingBtnText: { fontSize: 12, color: Colors.foreground, fontFamily: 'Inter_500Medium' },
-  ratingBtnTextActive: { color: '#fff', fontWeight: '700' as const },
-  addRowBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    justifyContent: 'center', paddingVertical: 14,
-    borderRadius: Colors.radius, borderWidth: 1.5,
-    borderColor: Colors.primary, borderStyle: 'dashed',
-  },
-  addRowBtnText: { fontSize: 14, fontFamily: 'Inter_600SemiBold', fontWeight: '600' as const },
+  ratingValue: { fontSize: 18, fontWeight: '700' as const, fontFamily: 'Inter_700Bold', minWidth: 24, textAlign: 'center' },
   sectionDivider: { paddingVertical: 4 },
   sectionDividerText: { fontSize: 11, color: Colors.mutedForeground, fontFamily: 'Inter_600SemiBold', letterSpacing: 0.8 },
   summaryCard: {
-    backgroundColor: Colors.card, borderRadius: Colors.radius,
-    borderWidth: 1, borderColor: Colors.border, overflow: 'hidden',
+    backgroundColor: Colors.card, borderRadius: Colors.radius, borderWidth: 1, borderColor: Colors.border, overflow: 'hidden',
   },
   summaryRow: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start',
@@ -715,13 +819,29 @@ const styles = StyleSheet.create({
   summaryLabel: { fontSize: 14, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular', flex: 0.45 },
   summaryValue: { fontSize: 14, fontWeight: '500' as const, color: Colors.foreground, fontFamily: 'Inter_500Medium', flex: 0.55, textAlign: 'right' },
   bottomBar: {
-    padding: 16, paddingTop: 12,
-    borderTopWidth: 1, borderTopColor: Colors.border,
-    backgroundColor: Colors.background,
+    padding: 16, paddingTop: 12, borderTopWidth: 1, borderTopColor: Colors.border, backgroundColor: Colors.background,
   },
   nextBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    borderRadius: Colors.radius, paddingVertical: 16,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: Colors.radius, paddingVertical: 16,
   },
   nextBtnText: { color: '#fff', fontSize: 16, fontWeight: '600' as const, fontFamily: 'Inter_600SemiBold' },
+  pickerOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.6)' },
+  pickerSheet: {
+    backgroundColor: Colors.card, borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    paddingHorizontal: 20, paddingTop: 12, gap: 12,
+  },
+  pickerHandle: { width: 40, height: 4, backgroundColor: Colors.border, borderRadius: 2, alignSelf: 'center', marginBottom: 8 },
+  pickerTitle: { fontSize: 17, fontWeight: '600' as const, color: Colors.foreground, fontFamily: 'Inter_600SemiBold', textAlign: 'center' },
+  pickerSearch: {
+    backgroundColor: Colors.background, borderRadius: Colors.radius, borderWidth: 1, borderColor: Colors.border,
+    paddingHorizontal: 14, paddingVertical: 10, color: Colors.foreground, fontFamily: 'Inter_400Regular', fontSize: 14,
+  },
+  pickerRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 4, paddingVertical: 14,
+  },
+  pickerPlayerName: { fontSize: 14, fontWeight: '600' as const, color: Colors.foreground, fontFamily: 'Inter_600SemiBold' },
+  pickerPlayerPos: { fontSize: 12, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular' },
+  pickerEmpty: { padding: 24, alignItems: 'center' },
+  pickerEmptyText: { fontSize: 14, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular' },
 });

@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import { useCareer } from '@/contexts/CareerContext';
 import { useClubTheme } from '@/contexts/ClubThemeContext';
-import { api, getMatchResult, type MatchRecord } from '@/lib/api';
+import { api, getMatchResult, type MatchRecord, type PlayerMatchStats } from '@/lib/api';
 import { Colors } from '@/constants/colors';
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
@@ -28,6 +28,47 @@ function StatRow({ label, value }: { label: string; value: string | number }) {
     <View style={styles.statRow}>
       <Text style={styles.statLabel}>{label}</Text>
       <Text style={styles.statValue}>{value}</Text>
+    </View>
+  );
+}
+
+function ratingColor(r: number): string {
+  if (r >= 8) return Colors.success;
+  if (r >= 6) return Colors.warning;
+  return Colors.destructive;
+}
+
+function PlayerStatsRow({ name, stats }: { name: string; stats: PlayerMatchStats }) {
+  const goalCount = stats.goals?.length ?? 0;
+  return (
+    <View style={styles.playerRow}>
+      <View style={styles.playerRowLeft}>
+        <Text style={styles.playerName} numberOfLines={1}>{name}</Text>
+        <View style={styles.playerBadges}>
+          {goalCount > 0 && (
+            <View style={[styles.badge, { backgroundColor: `${Colors.success}18`, borderColor: `${Colors.success}30` }]}>
+              <Text style={[styles.badgeText, { color: Colors.success }]}>
+                ⚽ {goalCount > 1 ? `x${goalCount}` : 'Gol'}
+              </Text>
+            </View>
+          )}
+          {stats.yellowCard && (
+            <View style={[styles.badge, { backgroundColor: `${Colors.warning}18`, borderColor: `${Colors.warning}30` }]}>
+              <Text style={[styles.badgeText, { color: Colors.warning }]}>🟨</Text>
+            </View>
+          )}
+          {stats.redCard && (
+            <View style={[styles.badge, { backgroundColor: `${Colors.destructive}18`, borderColor: `${Colors.destructive}30` }]}>
+              <Text style={[styles.badgeText, { color: Colors.destructive }]}>🟥</Text>
+            </View>
+          )}
+        </View>
+      </View>
+      {stats.rating > 0 && (
+        <View style={[styles.ratingChip, { backgroundColor: `${ratingColor(stats.rating)}18` }]}>
+          <Text style={[styles.ratingText, { color: ratingColor(stats.rating) }]}>{stats.rating}</Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -184,6 +225,45 @@ export default function MatchDetailScreen() {
             </View>
           </View>
 
+          {/* Player stats — lineup, goals, ratings */}
+          {match.playerStats && Object.keys(match.playerStats).length > 0 && (() => {
+            const entries = Object.entries(match.playerStats as Record<string, PlayerMatchStats>);
+            const scorers = entries.filter(([, s]) => (s.goals?.length ?? 0) > 0);
+            const withRatings = entries.filter(([, s]) => s.rating > 0);
+            return (
+              <>
+                {scorers.length > 0 && (
+                  <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Artilheiros & Assistências</Text>
+                    <View style={styles.card}>
+                      {scorers.map(([name, s], idx) => (
+                        <View key={name}>
+                          {idx > 0 && <View style={styles.divider} />}
+                          <PlayerStatsRow name={name} stats={s} />
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                )}
+                {withRatings.length > 0 && (
+                  <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Avaliações dos Jogadores</Text>
+                    <View style={styles.card}>
+                      {withRatings
+                        .sort(([, a], [, b]) => b.rating - a.rating)
+                        .map(([name, s], idx) => (
+                          <View key={name}>
+                            {idx > 0 && <View style={styles.divider} />}
+                            <PlayerStatsRow name={name} stats={s} />
+                          </View>
+                        ))}
+                    </View>
+                  </View>
+                )}
+              </>
+            );
+          })()}
+
           {/* Observations */}
           {match.observations && (
             <View style={styles.section}>
@@ -318,4 +398,25 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     padding: 16,
   },
+  playerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 8,
+  },
+  playerRowLeft: { flex: 1, gap: 4 },
+  playerName: { fontSize: 14, fontWeight: '600' as const, color: Colors.foreground, fontFamily: 'Inter_600SemiBold' },
+  playerBadges: { flexDirection: 'row', gap: 4, flexWrap: 'wrap' },
+  badge: {
+    paddingHorizontal: 6, paddingVertical: 2,
+    borderRadius: 6, borderWidth: 1,
+  },
+  badgeText: { fontSize: 11, fontWeight: '600' as const, fontFamily: 'Inter_600SemiBold' },
+  ratingChip: {
+    width: 36, height: 36, borderRadius: 18,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  ratingText: { fontSize: 15, fontWeight: '700' as const, fontFamily: 'Inter_700Bold' },
 });

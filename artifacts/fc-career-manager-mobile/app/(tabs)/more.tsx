@@ -140,10 +140,17 @@ export default function MoreScreen() {
         <Section title="Clube">
           <MenuItem
             icon="stats-chart-outline"
-            label="Rivais & Sequências"
-            subtitle="Forma, streak e adversários"
+            label="Rivais"
+            subtitle="Adversários e estatísticas"
             onPress={() => router.push('/rivais')}
             color={Colors.info}
+          />
+          <MenuItem
+            icon="trending-up-outline"
+            label="Sequências"
+            subtitle="Forma, streak e invicto"
+            onPress={() => router.push('/sequencias')}
+            color={Colors.success}
           />
           <MenuItem
             icon="business-outline"
