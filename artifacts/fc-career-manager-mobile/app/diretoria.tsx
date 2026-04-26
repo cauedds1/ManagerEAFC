@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
   Platform, ActivityIndicator, TextInput, KeyboardAvoidingView,
-  ScrollView, Image,
+  ScrollView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -11,16 +11,34 @@ import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { useCareer } from '@/contexts/CareerContext';
 import { useClubTheme } from '@/contexts/ClubThemeContext';
-import { api, type DiretoraaMember, type CareerGameData } from '@/lib/api';
+import { api } from '@/lib/api';
 import { Colors } from '@/constants/colors';
 
-interface ChatMessage {
+interface StoredMemberProfile {
+  id: string;
+  name: string;
+  roleLabel?: string;
+  role?: string;
+  description?: string;
+  mood?: string;
+  patience?: number;
+  satisfaction?: number;
+}
+
+interface BoardNotification {
+  id: string;
+  message: string;
+  read: boolean;
+  createdAt: number;
+  memberName?: string;
+}
+
+interface LocalMessage {
   id: string;
   text: string;
   fromBoard: boolean;
   memberName?: string;
   createdAt: number;
-  read?: boolean;
 }
 
 function satisfactionColor(s: number): string {
@@ -29,7 +47,7 @@ function satisfactionColor(s: number): string {
   return Colors.destructive;
 }
 
-function MemberAvatar({ member, size = 36 }: { member?: DiretoraaMember; size?: number }) {
+function MemberAvatar({ member, size = 36 }: { member?: StoredMemberProfile; size?: number }) {
   const initials = member
     ? member.name.trim().split(' ').slice(0, 2).map((w) => w[0]).join('').toUpperCase()
     : '🏢';
@@ -43,12 +61,11 @@ function MemberAvatar({ member, size = 36 }: { member?: DiretoraaMember; size?: 
   );
 }
 
-function ChatBubble({ msg, members }: { msg: ChatMessage; members: DiretoraaMember[] }) {
+function ChatBubble({ msg, members }: { msg: LocalMessage; members: StoredMemberProfile[] }) {
   const member = members.find((m) => m.name === msg.memberName);
-  const isBoard = msg.fromBoard;
   const timeStr = new Date(msg.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
-  if (isBoard) {
+  if (msg.fromBoard) {
     return (
       <View style={styles.bubbleRowLeft}>
         <MemberAvatar member={member} />
@@ -85,8 +102,9 @@ export default function DiretoraScreen() {
   const qc = useQueryClient();
   const topPad = Platform.OS === 'web' ? 0 : insets.top;
   const listRef = useRef<FlatList>(null);
-  const [message, setMessage] = useState('');
-  const [selectedMember, setSelectedMember] = useState<DiretoraaMember | null>(null);
+  const [inputText, setInputText] = useState('');
+  const [selectedMember, setSelectedMember] = useState<StoredMemberProfile | null>(null);
+  const [localMessages, setLocalMessages] = useState<LocalMessage[]>([]);
 
   const { data, isLoading } = useQuery({
     queryKey: ['/api/data/career/diretoria', activeCareer?.id],
@@ -95,32 +113,38 @@ export default function DiretoraScreen() {
     staleTime: 1000 * 60 * 5,
   });
 
-  const members: DiretoraaMember[] = data?.data?.diretoria_members ?? [];
-  const rawNotifications = data?.data?.diretoria_notifications ?? [];
+  const rawMembers: StoredMemberProfile[] = (data?.data?.diretoria_members ?? []) as StoredMemberProfile[];
+  const rawNotifications: BoardNotification[] = (data?.data?.diretoria_notifications ?? []) as BoardNotification[];
 
-  const chatMessages: ChatMessage[] = rawNotifications
+  const notificationMessages: LocalMessage[] = rawNotifications
     .map((n) => ({
       id: n.id,
       text: n.message,
       fromBoard: true,
+      memberName: n.memberName,
       createdAt: n.createdAt,
-      read: n.read,
-    }))
-    .sort((a, b) => a.createdAt - b.createdAt);
+    }));
 
-  const avgSat = members.length > 0
-    ? Math.round(members.reduce((s, m) => s + m.satisfaction, 0) / members.length)
+  const allMessages: LocalMessage[] = [
+    ...notificationMessages,
+    ...localMessages,
+  ].sort((a, b) => a.createdAt - b.createdAt);
+
+  const avgSat = rawMembers.length > 0
+    ? Math.round(rawMembers.reduce((s, m) => s + (m.satisfaction ?? 70), 0) / rawMembers.length)
     : null;
 
+  const unreadCount = rawNotifications.filter((n) => !n.read).length;
+
   useEffect(() => {
-    if (chatMessages.length > 0) {
+    if (allMessages.length > 0) {
       setTimeout(() => listRef.current?.scrollToEnd({ animated: false }), 200);
     }
-  }, [chatMessages.length]);
+  }, [allMessages.length]);
 
   const markReadMutation = useMutation({
     mutationFn: async () => {
-      if (!activeCareer || !data) return;
+      if (!activeCareer) return;
       const updated = rawNotifications.map((n) => ({ ...n, read: true }));
       await api.careerData.set(activeCareer.id, 'diretoria_notifications', updated);
     },
@@ -131,32 +155,108 @@ export default function DiretoraScreen() {
 
   const sendMutation = useMutation({
     mutationFn: async (text: string) => {
-      if (!activeCareer || !data) return;
-      const newMsg = {
-        id: `msg_${Date.now()}`,
-        message: text,
+      if (!activeCareer) throw new Error('No active career');
+
+      const speaker = selectedMember ?? rawMembers[0] ?? null;
+      if (!speaker) throw new Error('No board member available');
+
+      const coachName = activeCareer.coach?.name ?? 'Técnico';
+
+      const clubContext = {
+        clubName: activeCareer.clubName,
+        clubLeague: activeCareer.clubLeague ?? '',
+        season: activeCareer.season,
+        coachName,
+        squadSize: 0,
+        transfersCount: 0,
+        recentMatches: [],
+        leaguePosition: null,
+        projeto: activeCareer.projeto,
+      };
+
+      const allMemberProfiles = rawMembers.map((m) => ({
+        id: m.id,
+        name: m.name,
+        roleLabel: m.roleLabel ?? m.role ?? 'Membro',
+        description: m.description ?? '',
+        mood: m.mood ?? 'neutro',
+        patience: m.patience ?? 50,
+      }));
+
+      const speakerProfile = {
+        id: speaker.id,
+        name: speaker.name,
+        roleLabel: speaker.roleLabel ?? speaker.role ?? 'Membro',
+        description: speaker.description ?? '',
+        mood: speaker.mood ?? 'neutro',
+        patience: speaker.patience ?? 50,
+      };
+
+      const chatHistory = localMessages.map((m) => ({
+        role: m.fromBoard ? 'character' : 'user',
+        content: m.text,
+        memberName: m.fromBoard ? m.memberName : undefined,
+      }));
+
+      const result = await api.diretoria.sendTurn({
+        speaker: speakerProfile,
+        allMembers: allMemberProfiles,
+        history: chatHistory,
+        context: clubContext,
+        triggerMessage: text,
+      });
+
+      const boardReplyId = `reply_${Date.now()}`;
+      const boardMsg: LocalMessage = {
+        id: boardReplyId,
+        text: result.reply,
+        fromBoard: true,
+        memberName: speaker.name,
+        createdAt: Date.now(),
+      };
+
+      const savedNotification = {
+        id: boardReplyId,
+        message: result.reply,
         read: true,
         createdAt: Date.now(),
-        fromCoach: true,
+        memberName: speaker.name,
       };
-      const updated = [...rawNotifications, newMsg as unknown as typeof rawNotifications[0]];
-      await api.careerData.set(activeCareer.id, 'diretoria_notifications', updated);
+      const updatedNotifications = [...rawNotifications, savedNotification];
+      await api.careerData.set(activeCareer.id, 'diretoria_notifications', updatedNotifications);
+
+      return boardMsg;
     },
-    onSuccess: () => {
-      setMessage('');
-      qc.invalidateQueries({ queryKey: ['/api/data/career/diretoria', activeCareer?.id] });
+    onMutate: (text: string) => {
+      const userMsg: LocalMessage = {
+        id: `user_${Date.now()}`,
+        text,
+        fromBoard: false,
+        createdAt: Date.now(),
+      };
+      setLocalMessages((prev) => [...prev, userMsg]);
+      setInputText('');
       setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100);
+    },
+    onSuccess: (boardMsg) => {
+      if (boardMsg) {
+        setLocalMessages((prev) => [...prev, boardMsg]);
+        qc.invalidateQueries({ queryKey: ['/api/data/career/diretoria', activeCareer?.id] });
+        setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100);
+      }
+    },
+    onError: () => {
     },
   });
 
   const handleSend = useCallback(() => {
-    const trimmed = message.trim();
+    const trimmed = inputText.trim();
     if (!trimmed || sendMutation.isPending) return;
     if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     sendMutation.mutate(trimmed);
-  }, [message, sendMutation]);
+  }, [inputText, sendMutation]);
 
-  const unreadCount = rawNotifications.filter((n) => !n.read).length;
+  const canSend = rawMembers.length > 0;
 
   return (
     <KeyboardAvoidingView
@@ -189,14 +289,14 @@ export default function DiretoraScreen() {
         </View>
       </View>
 
-      {members.length > 0 && (
+      {rawMembers.length > 0 && (
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.memberStrip}
         >
-          {members.map((m) => {
-            const satColor = satisfactionColor(m.satisfaction);
+          {rawMembers.map((m) => {
+            const satColor = satisfactionColor(m.satisfaction ?? 70);
             return (
               <TouchableOpacity
                 key={m.id}
@@ -207,7 +307,7 @@ export default function DiretoraScreen() {
                 <MemberAvatar member={m} size={32} />
                 <View style={{ alignItems: 'center', gap: 1 }}>
                   <Text style={styles.memberChipName} numberOfLines={1}>{m.name.split(' ')[0]}</Text>
-                  <Text style={[styles.memberChipSat, { color: satColor }]}>{m.satisfaction}%</Text>
+                  <Text style={[styles.memberChipSat, { color: satColor }]}>{m.satisfaction ?? 70}%</Text>
                 </View>
               </TouchableOpacity>
             );
@@ -217,52 +317,72 @@ export default function DiretoraScreen() {
 
       {isLoading ? (
         <View style={styles.center}><ActivityIndicator color={theme.primary} size="large" /></View>
-      ) : chatMessages.length === 0 ? (
+      ) : allMessages.length === 0 ? (
         <View style={styles.center}>
           <Text style={{ fontSize: 48 }}>🏢</Text>
-          <Text style={styles.emptyTitle}>Sem mensagens</Text>
+          <Text style={styles.emptyTitle}>
+            {rawMembers.length === 0 ? 'Diretoria não configurada' : 'Sem mensagens'}
+          </Text>
           <Text style={styles.emptyText}>
-            Mensagens da diretoria aparecerão aqui. Envie uma mensagem para iniciar o diálogo.
+            {rawMembers.length === 0
+              ? 'Configure os membros da diretoria no app web para começar.'
+              : 'Inicie uma conversa com a diretoria enviando uma mensagem.'}
           </Text>
         </View>
       ) : (
         <FlatList
           ref={listRef}
-          data={chatMessages}
+          data={allMessages}
           keyExtractor={(item) => item.id}
           contentContainerStyle={[styles.chatList, { paddingBottom: 12 }]}
           showsVerticalScrollIndicator={false}
           onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: false })}
           ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
-          renderItem={({ item }) => <ChatBubble msg={item} members={members} />}
+          renderItem={({ item }) => <ChatBubble msg={item} members={rawMembers} />}
         />
+      )}
+
+      {sendMutation.isPending && (
+        <View style={styles.typingBar}>
+          <ActivityIndicator size="small" color={theme.primary} />
+          <Text style={styles.typingText}>
+            {(selectedMember ?? rawMembers[0])?.name?.split(' ')[0] ?? 'Diretoria'} está respondendo…
+          </Text>
+        </View>
       )}
 
       <View style={[styles.inputBar, { paddingBottom: insets.bottom + 8 }]}>
         <TextInput
           style={styles.input}
-          placeholder={selectedMember ? `Mensagem para ${selectedMember.name}…` : 'Escreva uma mensagem…'}
+          placeholder={
+            !canSend
+              ? 'Configure a diretoria no app web'
+              : selectedMember
+                ? `Mensagem para ${selectedMember.name.split(' ')[0]}…`
+                : 'Escreva uma pauta ou pergunta…'
+          }
           placeholderTextColor={Colors.mutedForeground}
-          value={message}
-          onChangeText={setMessage}
+          value={inputText}
+          onChangeText={setInputText}
           multiline
           maxLength={500}
+          editable={canSend && !sendMutation.isPending}
           returnKeyType="send"
           onSubmitEditing={handleSend}
         />
         <TouchableOpacity
           style={[
             styles.sendBtn,
-            { backgroundColor: message.trim() ? theme.primary : Colors.card }
+            { backgroundColor: inputText.trim() && canSend ? theme.primary : Colors.card }
           ]}
           onPress={handleSend}
-          disabled={!message.trim() || sendMutation.isPending}
+          disabled={!inputText.trim() || sendMutation.isPending || !canSend}
           activeOpacity={0.75}
         >
           {sendMutation.isPending ? (
             <ActivityIndicator size="small" color="#fff" />
           ) : (
-            <Ionicons name="send" size={18} color={message.trim() ? '#fff' : Colors.mutedForeground} />
+            <Ionicons name="send" size={18} color={inputText.trim() && canSend ? '#fff' : Colors.mutedForeground} />
           )}
         </TouchableOpacity>
       </View>
@@ -306,12 +426,8 @@ const styles = StyleSheet.create({
   emptyTitle: { fontSize: 18, fontWeight: '600' as const, color: Colors.foreground, fontFamily: 'Inter_600SemiBold' },
   emptyText: { fontSize: 14, color: Colors.mutedForeground, textAlign: 'center', fontFamily: 'Inter_400Regular', lineHeight: 22 },
   chatList: { padding: 16 },
-  bubbleRowLeft: {
-    flexDirection: 'row', gap: 8, alignItems: 'flex-end',
-  },
-  bubbleRowRight: {
-    flexDirection: 'row', justifyContent: 'flex-end',
-  },
+  bubbleRowLeft: { flexDirection: 'row', gap: 8, alignItems: 'flex-end' },
+  bubbleRowRight: { flexDirection: 'row', justifyContent: 'flex-end' },
   bubbleLeft: {
     backgroundColor: Colors.card,
     borderRadius: 18, borderBottomLeftRadius: 4,
@@ -329,6 +445,11 @@ const styles = StyleSheet.create({
   senderNameRight: { fontSize: 11, fontWeight: '600' as const, color: Colors.mutedForeground, fontFamily: 'Inter_600SemiBold', marginRight: 4, marginBottom: 3 },
   bubbleTime: { fontSize: 10, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular', marginTop: 3, marginLeft: 4 },
   bubbleTimeRight: { fontSize: 10, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular', marginTop: 3, marginRight: 4 },
+  typingBar: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    paddingHorizontal: 20, paddingVertical: 6,
+  },
+  typingText: { fontSize: 13, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular', fontStyle: 'italic' },
   inputBar: {
     flexDirection: 'row', alignItems: 'flex-end', gap: 8,
     paddingHorizontal: 12, paddingTop: 10,

@@ -299,19 +299,24 @@ router.get("/auth/demo", demoRateLimit, async (_req, res) => {
   }
 });
 
-const pushTokenStore = new Map<number, string>();
-
-router.post("/users/push-token", requireAuth, (req: AuthRequest, res) => {
+router.post("/users/push-token", requireAuth, async (req: AuthRequest, res) => {
   const userId = req.user?.id;
   const { token, platform } = req.body as { token?: string; platform?: string };
   if (!token || !userId) {
     res.status(400).json({ error: "token and authenticated user required" });
     return;
   }
-  pushTokenStore.set(userId, token);
-  console.log(`[push] token registered for user ${userId} (${platform ?? "unknown"})`);
-  res.json({ ok: true });
+  try {
+    await db
+      .update(usersTable)
+      .set({ pushToken: token })
+      .where(eq(usersTable.id, userId));
+    console.log(`[push] token registered for user ${userId} (${platform ?? "unknown"})`);
+    res.json({ ok: true });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: "Erro ao salvar push token", details: msg });
+  }
 });
 
-export { pushTokenStore };
 export default router;

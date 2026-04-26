@@ -452,6 +452,21 @@ export const api = {
 
     saveMeetings: (careerId: string, meetings: DiretoraaMeeting[]) =>
       api.careerData.set(careerId, 'diretoria_meetings', meetings),
+
+    sendTurn: (payload: {
+      speaker: { id: string; name: string; roleLabel: string; description: string; mood: string; patience: number };
+      allMembers: Array<{ id: string; name: string; roleLabel: string; description: string; mood: string; patience: number }>;
+      history: Array<{ role: string; content: string; memberName?: string }>;
+      context: {
+        clubName: string; clubLeague: string; season: string; coachName: string;
+        squadSize: number; transfersCount: number; recentMatches: unknown[]; leaguePosition: null;
+        projeto?: string;
+      };
+      triggerMessage: string;
+    }) =>
+      request<{ reply: string; newMood: string; suggestClose: boolean; speakerMemberId: string }>(
+        '/api/diretoria/turn', { method: 'POST', body: JSON.stringify(payload) }
+      ),
   },
 
   users: {

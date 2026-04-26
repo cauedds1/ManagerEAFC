@@ -94,6 +94,7 @@ export const usersTable = pgTable("users", {
   stripeCustomerId: text("stripe_customer_id"),
   lastLoginAt: bigint("last_login_at", { mode: "number" }),
   referralCode: text("referral_code").unique(),
+  pushToken: text("push_token"),
 });
 
 export const referralsTable = pgTable("referrals", {
