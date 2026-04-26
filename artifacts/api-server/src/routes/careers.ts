@@ -436,6 +436,16 @@ router.post("/careers/:id/squad", requireAuth, async (req: AuthRequest, res) => 
     if (!body.name?.trim()) return res.status(400).json({ error: "name is required" });
     if (body.source !== "manual") return res.status(400).json({ error: "source must be 'manual'" });
 
+    const VALID_POSITIONS = ["GOL", "DEF", "MID", "ATA", "Goalkeeper", "Defender", "Midfielder", "Attacker"];
+    const clampedOvr = body.overallRating != null
+      ? Math.min(99, Math.max(1, Math.floor(body.overallRating)))
+      : 70;
+    const clampedAge = body.age != null
+      ? Math.min(50, Math.max(14, Math.floor(body.age)))
+      : 25;
+    const safePosition = body.position && VALID_POSITIONS.includes(body.position) ? body.position : "MID";
+    const safePtBr = body.positionPtBr && VALID_POSITIONS.includes(body.positionPtBr) ? body.positionPtBr : "MID";
+
     const allRows = await db
       .select({ key: careerDataTable.key, valueJson: careerDataTable.valueJson })
       .from(careerDataTable)
@@ -452,13 +462,13 @@ router.post("/careers/:id/squad", requireAuth, async (req: AuthRequest, res) => 
 
     const newPlayer = {
       id: newId,
-      name: body.name.trim(),
-      age: body.age ?? 25,
-      position: body.position ?? "MID",
-      positionPtBr: body.positionPtBr ?? "MID",
-      overallRating: body.overallRating ?? 70,
-      number: body.number,
-      photo: body.photo ?? "",
+      name: body.name.trim().slice(0, 100),
+      age: clampedAge,
+      position: safePosition,
+      positionPtBr: safePtBr,
+      overallRating: clampedOvr,
+      number: body.number != null ? Math.min(99, Math.max(1, Math.floor(body.number))) : undefined,
+      photo: body.photo?.trim() ?? "",
     };
 
     const updated = [...existing, newPlayer];

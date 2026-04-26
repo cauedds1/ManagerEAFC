@@ -99,7 +99,7 @@ function PlayerBottomSheet({
   motmCount?: number;
   salary?: number;
   onClose: () => void;
-  onSaveEdit?: (updates: { name?: string; number?: number | null }) => Promise<void>;
+  onSaveEdit?: (updates: { name?: string; number?: number | null; overallRating?: number }) => Promise<void>;
 }) {
   const insets = useSafeAreaInsets();
   const posCfg = POS_CONFIG[player.positionPtBr] ?? POS_CONFIG.MID;
@@ -107,6 +107,7 @@ function PlayerBottomSheet({
   const [editMode, setEditMode] = useState(false);
   const [editName, setEditName] = useState(player.name);
   const [editNumber, setEditNumber] = useState(player.number != null ? String(player.number) : '');
+  const [editOvr, setEditOvr] = useState(player.overallRating ?? 75);
   const [saving, setSaving] = useState(false);
 
   const statItems = [
@@ -275,10 +276,27 @@ function PlayerBottomSheet({
                       keyboardType="number-pad"
                     />
                   </View>
+                  <View style={[styles.addField]}>
+                    <Text style={styles.addLabel}>OVR (1–99)</Text>
+                    <View style={styles.ovrStepper}>
+                      <TouchableOpacity style={styles.ovrStepBtn} onPress={() => setEditOvr((v) => Math.max(1, v - 1))}>
+                        <Text style={styles.ovrStepTxt}>−</Text>
+                      </TouchableOpacity>
+                      <Text style={styles.ovrValue}>{editOvr}</Text>
+                      <TouchableOpacity style={styles.ovrStepBtn} onPress={() => setEditOvr((v) => Math.min(99, v + 1))}>
+                        <Text style={styles.ovrStepTxt}>+</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
                   <View style={{ flexDirection: 'row', gap: 10 }}>
                     <TouchableOpacity
                       style={[styles.closeBtn, { flex: 1 }]}
-                      onPress={() => { setEditMode(false); setEditName(player.name); setEditNumber(player.number != null ? String(player.number) : ''); }}
+                      onPress={() => {
+                        setEditMode(false);
+                        setEditName(player.name);
+                        setEditNumber(player.number != null ? String(player.number) : '');
+                        setEditOvr(player.overallRating ?? 75);
+                      }}
                     >
                       <Text style={styles.closeBtnText}>Cancelar</Text>
                     </TouchableOpacity>
@@ -290,6 +308,7 @@ function PlayerBottomSheet({
                         await onSaveEdit({
                           name: editName.trim() || player.name,
                           number: editNumber.trim() ? Number(editNumber.trim()) : null,
+                          overallRating: editOvr,
                         });
                         setSaving(false);
                         setEditMode(false);
@@ -873,7 +892,10 @@ export default function SquadScreen() {
     if (pickerSlot === null) return;
     const newLineup = [...lineup];
     const existingSlot = newLineup.indexOf(player.id);
-    if (existingSlot !== -1) newLineup[existingSlot] = 0;
+    const displaced = newLineup[pickerSlot];
+    if (existingSlot !== -1) {
+      newLineup[existingSlot] = displaced || 0;
+    }
     newLineup[pickerSlot] = player.id;
     setLineup(newLineup);
     setPickerSlot(null);
@@ -898,7 +920,7 @@ export default function SquadScreen() {
     return map;
   }, [careerGameData]);
 
-  const handleSavePlayerEdit = useCallback(async (player: SquadPlayer, updates: { name?: string; number?: number | null }) => {
+  const handleSavePlayerEdit = useCallback(async (player: SquadPlayer, updates: { name?: string; number?: number | null; overallRating?: number }) => {
     if (!activeCareer) return;
     const customPlayers = careerGameData?.data?.customPlayers ?? [];
     const updated = customPlayers.map((p) =>
@@ -1232,7 +1254,7 @@ export default function SquadScreen() {
       {pickerSlot !== null && (
         <PlayerPickerModal
           players={allPlayers}
-          excludeIds={lineup.filter((id, i) => id !== 0 && i !== pickerSlot)}
+          excludeIds={pickerSlot !== null ? [lineup[pickerSlot]].filter(Boolean) : []}
           onSelect={handlePickerSelect}
           onClose={() => setPickerSlot(null)}
         />
