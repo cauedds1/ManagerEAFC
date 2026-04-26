@@ -1240,14 +1240,14 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
 
         {/* ── Left sidebar ── */}
         <nav className="w-full lg:w-52 flex-shrink-0 lg:sticky lg:top-20">
-          <div className="flex lg:flex-col gap-1 p-1 rounded-2xl lg:p-0 lg:gap-1.5" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+          <div className="flex lg:flex-col gap-1 p-1 rounded-2xl lg:p-0 lg:gap-1.5 overflow-x-auto lg:overflow-x-visible" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
             {NAV_ITEMS.map((item) => {
               const active = section === item.id;
               return (
                 <button
                   key={item.id}
                   onClick={() => setSection(item.id)}
-                  className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-left w-full transition-all duration-150"
+                  className="flex items-center gap-2 lg:gap-3 px-3 lg:px-4 py-3 rounded-xl text-xs lg:text-sm font-semibold text-left flex-shrink-0 lg:flex-shrink lg:w-full transition-all duration-150 whitespace-nowrap lg:whitespace-normal"
                   style={{
                     background: active ? "rgba(var(--club-primary-rgb),0.12)" : "transparent",
                     color:      active ? "var(--club-primary)"                 : "rgba(255,255,255,0.45)",
