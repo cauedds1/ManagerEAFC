@@ -1617,6 +1617,78 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
 
           {section === "app" && (
             <div className="flex flex-col gap-5">
+
+              {/* ── Android APK ── */}
+              {(() => {
+                const APK_URL: string | null = null;
+                const EAS_BUILD_URL = "https://expo.dev/accounts/cauedds/projects/fc-career-manager-mobile/builds/610f3c8c-6216-4e31-8aa9-84bf508ee5de";
+                return (
+                  <SectionCard
+                    title={lang === "pt" ? "App Android Nativo" : "Native Android App"}
+                    subtitle={lang === "pt"
+                      ? "Versão completa com notificações, acesso offline e experiência nativa — sincronizada com sua conta."
+                      : "Full version with notifications, offline access and native experience — synced with your account."}
+                  >
+                    <div className="flex flex-col gap-3">
+                      {APK_URL ? (
+                        <a
+                          href={APK_URL}
+                          download="FCCareerManager.apk"
+                          className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-bold transition-all duration-150 hover:opacity-90 active:scale-95 no-underline"
+                          style={{
+                            background: "var(--club-gradient)",
+                            color: "#fff",
+                            boxShadow: "0 4px 14px rgba(var(--club-primary-rgb),0.3)",
+                          }}
+                        >
+                          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M17.523 15.341l-.85.493A3.005 3.005 0 0 1 16 16c0 .552.15 1.07.414 1.517L4.41 10.582A3 3 0 0 1 4 9a3 3 0 0 1 3-3h1V4h8v2h1a3 3 0 0 1 3 3 3 3 0 0 1-.477 1.623zM6 20a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm12 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/>
+                          </svg>
+                          {lang === "pt" ? "Baixar APK (Android)" : "Download APK (Android)"}
+                        </a>
+                      ) : (
+                        <>
+                          <div className="flex items-center gap-3 px-4 py-3 rounded-xl" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                            <svg className="w-4 h-4 flex-shrink-0 animate-spin text-white/40" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3"/>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                            </svg>
+                            <div>
+                              <p className="text-sm font-semibold text-white/70">
+                                {lang === "pt" ? "Build em andamento..." : "Build in progress..."}
+                              </p>
+                              <p className="text-xs text-white/35 mt-0.5">
+                                {lang === "pt" ? "O APK está sendo gerado. Volte em alguns minutos." : "The APK is being generated. Check back in a few minutes."}
+                              </p>
+                            </div>
+                          </div>
+                          <a
+                            href={EAS_BUILD_URL}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-xs font-semibold transition-all duration-150 hover:opacity-80 no-underline"
+                            style={{
+                              background: "rgba(255,255,255,0.05)",
+                              border: "1px solid rgba(255,255,255,0.1)",
+                              color: "rgba(255,255,255,0.5)",
+                            }}
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                            </svg>
+                            {lang === "pt" ? "Ver progresso do build" : "View build progress"}
+                          </a>
+                        </>
+                      )}
+                      <p className="text-xs text-white/25 text-center">
+                        {lang === "pt" ? "Versão 1.0.0 • Android 8.0+" : "Version 1.0.0 • Android 8.0+"}
+                      </p>
+                    </div>
+                  </SectionCard>
+                );
+              })()}
+
+              {/* ── PWA / Browser Install ── */}
               <SectionCard
                 title={lang === "pt" ? "Instalar no celular" : "Install on mobile"}
                 subtitle={lang === "pt"
