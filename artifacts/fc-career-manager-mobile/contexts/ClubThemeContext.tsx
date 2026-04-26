@@ -6,6 +6,7 @@ interface ClubTheme {
   primary: string;
   secondary: string;
   primaryRgb: string;
+  secondaryRgb: string;
   isDark: boolean;
 }
 
@@ -13,6 +14,7 @@ const ClubThemeContext = createContext<ClubTheme>({
   primary: '#8B5CF6',
   secondary: '#6366F1',
   primaryRgb: '139, 92, 246',
+  secondaryRgb: '99, 102, 241',
   isDark: true,
 });
 
@@ -43,6 +45,7 @@ export function ClubThemeProvider({ children }: { children: ReactNode }) {
         primary: '#8B5CF6',
         secondary: '#6366F1',
         primaryRgb: '139, 92, 246',
+        secondaryRgb: '99, 102, 241',
         isDark: true,
       };
     }
@@ -57,6 +60,7 @@ export function ClubThemeProvider({ children }: { children: ReactNode }) {
       primary: colors.primary,
       secondary: colors.secondary,
       primaryRgb: hexToRgb(colors.primary),
+      secondaryRgb: hexToRgb(colors.secondary),
       isDark: isColorDark(colors.primary),
     };
   }, [activeCareer]);

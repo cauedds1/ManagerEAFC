@@ -4,6 +4,7 @@ import {
   View, Text, StyleSheet, ScrollView, RefreshControl,
   Image, TouchableOpacity, Platform,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
@@ -58,6 +59,10 @@ function computeSeasonStats(matches: MatchRecord[]) {
   return { played: matches.length, won, drawn, lost, goalsFor, goalsAgainst };
 }
 
+function computeTotalAssists(playerStats: import('@/lib/api').PlayerSeasonStats[]): number {
+  return playerStats.reduce((sum, p) => sum + (p.assists ?? 0), 0);
+}
+
 export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
   const { activeCareer, activeSeason, loadSeasons } = useCareer();
@@ -89,6 +94,9 @@ export default function DashboardScreen() {
   );
 
   const stats = useMemo(() => computeSeasonStats(matches), [matches]);
+
+  const playerStats = seasonGameData?.data?.player_stats ?? [];
+  const totalAssists = useMemo(() => computeTotalAssists(playerStats), [playerStats]);
 
   const sortedMatches = useMemo(
     () => [...matches].sort((a, b) => b.createdAt - a.createdAt),
@@ -140,13 +148,19 @@ export default function DashboardScreen() {
       }
       showsVerticalScrollIndicator={false}
     >
-      {/* Club header */}
-      <View
+      {/* Club header with gradient */}
+      <LinearGradient
+        colors={[
+          `rgba(${theme.primaryRgb}, 0.18)`,
+          `rgba(${theme.secondaryRgb ?? theme.primaryRgb}, 0.06)`,
+          Colors.background,
+        ]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
         style={[
           styles.header,
           {
             paddingTop: topPad + 16,
-            backgroundColor: `rgba(${theme.primaryRgb}, 0.1)`,
             borderBottomColor: `rgba(${theme.primaryRgb}, 0.2)`,
           },
         ]}
@@ -187,7 +201,7 @@ export default function DashboardScreen() {
             Treinador: {activeCareer.coach?.name ?? 'Desconhecido'}
           </Text>
         </View>
-      </View>
+      </LinearGradient>
 
       <View style={styles.body}>
         {/* Season stats */}
@@ -230,7 +244,7 @@ export default function DashboardScreen() {
         {/* Record bar */}
         {!isLoading && stats.played > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Aproveitamento</Text>
+            <Text style={styles.sectionTitle}>G / A / Aproveitamento</Text>
             <View style={styles.recordCard}>
               <View style={styles.recordItem}>
                 <Text style={[styles.recordNum, { color: Colors.success }]}>{stats.won}</Text>
@@ -248,10 +262,13 @@ export default function DashboardScreen() {
               </View>
               <View style={styles.recordDivider} />
               <View style={styles.recordItem}>
-                <Text style={[styles.recordNum, { color: Colors.foreground }]}>
-                  {stats.goalsFor}–{stats.goalsAgainst}
-                </Text>
+                <Text style={[styles.recordNum, { color: Colors.warning }]}>{stats.goalsFor}</Text>
                 <Text style={styles.recordLabel}>Gols</Text>
+              </View>
+              <View style={styles.recordDivider} />
+              <View style={styles.recordItem}>
+                <Text style={[styles.recordNum, { color: Colors.info }]}>{totalAssists}</Text>
+                <Text style={styles.recordLabel}>Assist.</Text>
               </View>
             </View>
           </View>

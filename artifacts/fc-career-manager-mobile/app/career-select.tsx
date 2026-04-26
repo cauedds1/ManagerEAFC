@@ -3,6 +3,7 @@ import {
   View, Text, StyleSheet, FlatList, TouchableOpacity, Image,
   RefreshControl, Alert, Platform, ActivityIndicator,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
@@ -46,8 +47,13 @@ function CareerCard({ career, onPress, onDelete }: {
       onPress={onPress}
       activeOpacity={0.8}
     >
-      {/* Colored accent bar */}
-      <View style={[styles.cardAccent, { backgroundColor: colors.primary }]} />
+      {/* Colored accent bar — primary → secondary gradient */}
+      <LinearGradient
+        colors={[colors.primary, colors.secondary]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={styles.cardAccent}
+      />
 
       <View style={styles.cardBody}>
         <View style={styles.cardLeft}>
