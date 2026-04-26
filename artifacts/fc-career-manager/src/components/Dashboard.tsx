@@ -65,7 +65,7 @@ import { getClubPresident, buildFallbackPresident } from "@/lib/clubPresidents";
 import { FC_MOMENTO_SAVED_EVENT } from "@/lib/momentoStorage";
 import { CUSTOM_PORTALS_EVENT } from "@/lib/customPortalStorage";
 import { getFinanceiroSettings, computeFinancialSnapshot } from "@/lib/financeiroStorage";
-import { getFormerPlayers, addFormerPlayer, saveFormerPlayers } from "@/lib/customPlayersStorage";
+import { getFormerPlayers, addFormerPlayer, saveFormerPlayers, getCustomPlayers } from "@/lib/customPlayersStorage";
 import { buildPlayerPerformanceContext, buildSquadOvrContext } from "@/lib/playerContext";
 import { getAiHeaders } from "@/lib/apiStorage";
 import { getUserPlan, getPlanLimits } from "@/lib/userPlan";
@@ -967,14 +967,28 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
   const newTransferredPlayers = effectiveTransferredPlayers.filter(
     (p) => !existingIds.has(p.id) && !removedIds.has(p.id),
   );
-  const allPlayers = [
-    ...squadPlayers.filter((p) => !removedIds.has(p.id) && !removedNames.has(p.name.toLowerCase().trim())),
-    ...newTransferredPlayers,
-  ];
 
   const [formerPlayers, setFormerPlayers] = useState<SquadPlayer[]>(
     () => getFormerPlayers(career.id)
   );
+
+  const [customPlayers, setCustomPlayers] = useState<SquadPlayer[]>(
+    () => getCustomPlayers(career.id)
+  );
+
+  const handleCustomPlayersChange = useCallback((players: SquadPlayer[]) => {
+    setCustomPlayers(players);
+  }, []);
+
+  const allPlayers = useMemo(() => {
+    const base = [
+      ...squadPlayers.filter((p) => !removedIds.has(p.id) && !removedNames.has(p.name.toLowerCase().trim())),
+      ...newTransferredPlayers,
+    ];
+    const baseIds = new Set(base.map((p) => p.id));
+    const extra = customPlayers.filter((p) => !baseIds.has(p.id) && !removedIds.has(p.id));
+    return [...base, ...extra];
+  }, [squadPlayers, removedIds, removedNames, newTransferredPlayers, customPlayers]);
 
   const handlePlayerRemoved = useCallback(() => {
     setFormerPlayers(getFormerPlayers(career.id));
@@ -1922,6 +1936,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
             onOverridesUpdated={refreshOverrides}
             onPlayerRemoved={handlePlayerRemoved}
             onImportSquad={handleImportSquad}
+            onCustomPlayersChange={handleCustomPlayersChange}
             isReadOnly={isReadOnly}
             isFinalized={isFinalized}
             finalizedPlayers={finalizedSquadData?.finalizedPlayers}

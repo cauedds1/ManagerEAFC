@@ -41,6 +41,7 @@ interface ClubeViewProps {
   onOverridesUpdated?: () => void;
   onPlayerRemoved?: () => void;
   onImportSquad?: (players: SquadPlayer[]) => void;
+  onCustomPlayersChange?: (players: SquadPlayer[]) => void;
   isReadOnly?: boolean;
   isFinalized?: boolean;
   finalizedPlayers?: SquadPlayer[];
@@ -89,6 +90,7 @@ export function ClubeView({
   onOverridesUpdated,
   onPlayerRemoved,
   onImportSquad,
+  onCustomPlayersChange,
   isReadOnly,
   isFinalized,
   finalizedPlayers,
@@ -272,6 +274,7 @@ export function ClubeView({
             onOverridesUpdated={onOverridesUpdated}
             onPlayerRemoved={onPlayerRemoved}
             onImportSquad={onImportSquad}
+            onCustomPlayersChange={onCustomPlayersChange}
             isFinalized={isFinalized}
             finalizedPlayers={finalizedPlayers}
             finalizedLeftIds={finalizedLeftIds}

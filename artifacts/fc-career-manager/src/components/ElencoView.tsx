@@ -221,6 +221,7 @@ interface ElencoViewProps {
   onOverridesUpdated?: () => void;
   onPlayerRemoved?: () => void;
   onImportSquad?: (players: SquadPlayer[]) => void;
+  onCustomPlayersChange?: (players: SquadPlayer[]) => void;
   isFinalized?: boolean;
   finalizedPlayers?: SquadPlayer[];
   finalizedLeftIds?: Set<number>;
@@ -243,6 +244,7 @@ export function ElencoView({
   onOverridesUpdated,
   onPlayerRemoved,
   onImportSquad,
+  onCustomPlayersChange,
   isFinalized,
   finalizedPlayers,
   finalizedLeftIds,
@@ -269,6 +271,10 @@ export function ElencoView({
   const importInputRef = useRef<HTMLInputElement>(null);
 
   const hiddenSet = useMemo(() => new Set(hiddenPlayerIds), [hiddenPlayerIds]);
+
+  useEffect(() => {
+    onCustomPlayersChange?.(customPlayers);
+  }, [customPlayers, onCustomPlayersChange]);
 
   type ExitEntry = { player: SquadPlayer; reason: string; date: number };
   const exitsList = useMemo<ExitEntry[]>(() => {
