@@ -2,6 +2,17 @@ import type { SquadPlayer } from "@/lib/squadCache";
 import { putCareerData } from "@/lib/apiStorage";
 import { sessionGet, sessionSet } from "@/lib/sessionStore";
 
+function lsGet<T>(key: string): T | null {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : null;
+  } catch { return null; }
+}
+
+function lsSet(key: string, value: unknown): void {
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
+}
+
 function hiddenKey(careerId: string): string {
   return `fc-career-manager-hidden-players-${careerId}`;
 }
@@ -11,11 +22,14 @@ function formerKey(careerId: string): string {
 }
 
 export function getFormerPlayers(careerId: string): SquadPlayer[] {
-  return sessionGet<SquadPlayer[]>(formerKey(careerId)) ?? [];
+  return sessionGet<SquadPlayer[]>(formerKey(careerId))
+    ?? lsGet<SquadPlayer[]>(formerKey(careerId))
+    ?? [];
 }
 
 export function saveFormerPlayers(careerId: string, players: SquadPlayer[]): void {
   sessionSet(formerKey(careerId), players);
+  lsSet(formerKey(careerId), players);
   void putCareerData(careerId, "formerPlayers", players);
 }
 
@@ -26,7 +40,9 @@ export function addFormerPlayer(careerId: string, player: SquadPlayer): void {
 }
 
 export function getHiddenPlayerIds(careerId: string): number[] {
-  return sessionGet<number[]>(hiddenKey(careerId)) ?? [];
+  return sessionGet<number[]>(hiddenKey(careerId))
+    ?? lsGet<number[]>(hiddenKey(careerId))
+    ?? [];
 }
 
 export function addHiddenPlayerId(careerId: string, id: number): void {
@@ -34,6 +50,7 @@ export function addHiddenPlayerId(careerId: string, id: number): void {
   if (existing.includes(id)) return;
   const next = [...existing, id];
   sessionSet(hiddenKey(careerId), next);
+  lsSet(hiddenKey(careerId), next);
   void putCareerData(careerId, "hiddenPlayerIds", next);
 }
 
@@ -42,11 +59,14 @@ function key(careerId: string): string {
 }
 
 export function getCustomPlayers(careerId: string): SquadPlayer[] {
-  return sessionGet<SquadPlayer[]>(key(careerId)) ?? [];
+  return sessionGet<SquadPlayer[]>(key(careerId))
+    ?? lsGet<SquadPlayer[]>(key(careerId))
+    ?? [];
 }
 
 export function saveCustomPlayers(careerId: string, players: SquadPlayer[]): void {
   sessionSet(key(careerId), players);
+  lsSet(key(careerId), players);
   void putCareerData(careerId, "customPlayers", players);
 }
 
@@ -67,12 +87,15 @@ function exitSeasonKey(careerId: string): string {
 }
 
 export function getExitSeasonMap(careerId: string): Record<string, string> {
-  return sessionGet<Record<string, string>>(exitSeasonKey(careerId)) ?? {};
+  return sessionGet<Record<string, string>>(exitSeasonKey(careerId))
+    ?? lsGet<Record<string, string>>(exitSeasonKey(careerId))
+    ?? {};
 }
 
 export function saveExitSeasonId(careerId: string, playerId: number, seasonId: string): void {
   const map = getExitSeasonMap(careerId);
   map[String(playerId)] = seasonId;
   sessionSet(exitSeasonKey(careerId), map);
+  lsSet(exitSeasonKey(careerId), map);
   void putCareerData(careerId, "exitSeasonMap", map);
 }

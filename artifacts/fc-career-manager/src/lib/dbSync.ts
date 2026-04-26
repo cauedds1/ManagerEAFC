@@ -115,10 +115,22 @@ export async function syncCareerFromDb(careerId: string): Promise<void> {
   if (data.diretoria_notifications !== undefined) sessionSet(notifKey(careerId), data.diretoria_notifications);
   if (data.trophies !== undefined) sessionSet(trophiesKey(careerId), data.trophies);
   if (data.comp_results !== undefined) sessionSet(compResultsKey(careerId), data.comp_results);
-  if (data.customPlayers !== undefined) sessionSet(customPlayersKey(careerId), data.customPlayers);
-  if (data.formerPlayers !== undefined) sessionSet(formerPlayersKey(careerId), data.formerPlayers);
-  if (data.hiddenPlayerIds !== undefined) sessionSet(hiddenKey(careerId), data.hiddenPlayerIds);
-  if (data.exitSeasonMap !== undefined) sessionSet(exitSeasonKey(careerId), data.exitSeasonMap);
+  if (data.customPlayers !== undefined) {
+    sessionSet(customPlayersKey(careerId), data.customPlayers);
+    try { localStorage.setItem(customPlayersKey(careerId), JSON.stringify(data.customPlayers)); } catch {}
+  }
+  if (data.formerPlayers !== undefined) {
+    sessionSet(formerPlayersKey(careerId), data.formerPlayers);
+    try { localStorage.setItem(formerPlayersKey(careerId), JSON.stringify(data.formerPlayers)); } catch {}
+  }
+  if (data.hiddenPlayerIds !== undefined) {
+    sessionSet(hiddenKey(careerId), data.hiddenPlayerIds);
+    try { localStorage.setItem(hiddenKey(careerId), JSON.stringify(data.hiddenPlayerIds)); } catch {}
+  }
+  if (data.exitSeasonMap !== undefined) {
+    sessionSet(exitSeasonKey(careerId), data.exitSeasonMap);
+    try { localStorage.setItem(exitSeasonKey(careerId), JSON.stringify(data.exitSeasonMap)); } catch {}
+  }
 
   for (const [key, value] of Object.entries(data)) {
     if (key.startsWith("conv_")) {
