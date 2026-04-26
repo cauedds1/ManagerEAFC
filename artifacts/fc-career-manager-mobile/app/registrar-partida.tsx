@@ -243,6 +243,7 @@ export default function RegistrarPartidaScreen() {
 
   const draftLoaded = useRef(false);
   const autoFilledRef = useRef(false);
+  const pendingMotmRef = useRef<{ id: number; name: string } | null>(null);
 
   const [step, setStep] = useState<Step>(1);
 
@@ -324,14 +325,16 @@ export default function RegistrarPartidaScreen() {
   }, [careerDataResp, squadPlayers]);
 
   useEffect(() => {
-    if (step === 3 && !autoFilledRef.current && squadPlayers.length > 0) {
-      const hasExistingRoles = Object.values(lineupRoles).some((r) => r !== 'none');
-      if (!hasExistingRoles) {
-        doAutoFill();
-      }
-      autoFilledRef.current = true;
+    if (step !== 3) return;
+    if (autoFilledRef.current) return;
+    if (squadPlayers.length === 0) return;
+    if (careerDataResp === undefined) return;
+    const hasExistingRoles = Object.values(lineupRoles).some((r) => r !== 'none');
+    if (!hasExistingRoles) {
+      doAutoFill();
     }
-  }, [step, squadPlayers, lineupRoles, doAutoFill]);
+    autoFilledRef.current = true;
+  }, [step, squadPlayers, careerDataResp, lineupRoles, doAutoFill]);
 
   const getDraftState = useCallback(() => ({
     step,
@@ -381,6 +384,9 @@ export default function RegistrarPartidaScreen() {
                 if (savedStep && savedStep > 1 && savedStep <= TOTAL_STEPS) {
                   setStep(savedStep as Step);
                 }
+                if (d.motmId && d.motmName) {
+                  pendingMotmRef.current = { id: d.motmId, name: d.motmName };
+                }
               },
             },
           ],
@@ -389,6 +395,16 @@ export default function RegistrarPartidaScreen() {
     }).catch(() => {});
     draftLoaded.current = true;
   }, [draftKey]);
+
+  useEffect(() => {
+    if (!pendingMotmRef.current || squadPlayers.length === 0 || motm) return;
+    const { id, name } = pendingMotmRef.current;
+    const found = squadPlayers.find((p) => p.id === id) ?? squadPlayers.find((p) => p.name === name);
+    if (found) {
+      setMotm(found);
+      pendingMotmRef.current = null;
+    }
+  }, [squadPlayers, motm]);
 
   useEffect(() => {
     if (!draftKey || step === 6) return;
