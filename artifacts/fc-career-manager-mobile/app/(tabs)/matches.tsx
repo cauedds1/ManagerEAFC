@@ -1,12 +1,14 @@
 import type { ComponentProps } from 'react';
 import { useState, useCallback, useMemo } from 'react';
 import {
-  View, Text, StyleSheet, FlatList, TouchableOpacity, Platform, RefreshControl,
+  View, Text, StyleSheet, SectionList, TouchableOpacity, Platform,
+  RefreshControl,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import * as Haptics from 'expo-haptics';
 import { useCareer } from '@/contexts/CareerContext';
 import { useClubTheme } from '@/contexts/ClubThemeContext';
 import { api, getMatchResult, type MatchRecord } from '@/lib/api';
@@ -27,6 +29,12 @@ const RESULT_CONFIG = {
   derrota: { label: 'D', color: Colors.destructive },
 };
 
+interface MatchSection {
+  title: string;
+  tournament: string;
+  data: MatchRecord[];
+}
+
 function MatchRow({
   match,
   seasonId,
@@ -46,7 +54,7 @@ function MatchRow({
       <View style={styles.matchRowBody}>
         <Text style={styles.opponentText} numberOfLines={1}>vs {match.opponent}</Text>
         <Text style={styles.matchMeta} numberOfLines={1}>
-          {match.tournament} • {LOCATION_LABELS[match.location] ?? match.location} • {match.date}
+          {match.stage} • {LOCATION_LABELS[match.location] ?? match.location} • {match.date}
         </Text>
       </View>
       <Text style={styles.scoreText}>
@@ -57,7 +65,7 @@ function MatchRow({
   );
 }
 
-function EmptyState({ primary }: { primary: string }) {
+function EmptyState({ primary, onRegister }: { primary: string; onRegister: () => void }) {
   return (
     <View style={styles.empty}>
       <View style={[styles.emptyIconWrap, { backgroundColor: `rgba(139, 92, 246, 0.1)` }]}>
@@ -65,8 +73,16 @@ function EmptyState({ primary }: { primary: string }) {
       </View>
       <Text style={styles.emptyTitle}>Nenhuma partida registrada</Text>
       <Text style={styles.emptyText}>
-        As partidas registradas no app principal aparecerão aqui.
+        Registre sua primeira partida para começar a acompanhar o progresso.
       </Text>
+      <TouchableOpacity
+        style={[styles.registerBtn, { backgroundColor: primary }]}
+        onPress={onRegister}
+        activeOpacity={0.8}
+      >
+        <Ionicons name="add" size={18} color="#fff" />
+        <Text style={styles.registerBtnText}>Registrar Partida</Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -94,16 +110,36 @@ export default function MatchesScreen() {
     staleTime: 1000 * 60 * 5,
   });
 
-  const matches: MatchRecord[] = useMemo(() => {
+  const sections: MatchSection[] = useMemo(() => {
     const list = seasonGameData?.data?.matches ?? [];
-    return [...list].sort((a, b) => b.createdAt - a.createdAt);
+    const sorted = [...list].sort((a, b) => b.createdAt - a.createdAt);
+
+    const grouped = new Map<string, MatchRecord[]>();
+    for (const m of sorted) {
+      const key = m.tournament || 'Outros';
+      if (!grouped.has(key)) grouped.set(key, []);
+      grouped.get(key)!.push(m);
+    }
+
+    return [...grouped.entries()].map(([tournament, matches]) => ({
+      title: tournament,
+      tournament,
+      data: matches,
+    }));
   }, [seasonGameData]);
+
+  const totalMatches = sections.reduce((s, sec) => s + sec.data.length, 0);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await queryClient.invalidateQueries({ queryKey: ['/api/data/season', currentSeason?.id] });
     setRefreshing(false);
   }, [currentSeason?.id]);
+
+  const handleRegister = useCallback(() => {
+    if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    router.push('/registrar-partida');
+  }, []);
 
   const topPad = Platform.OS === 'web' ? 67 : insets.top;
 
@@ -117,7 +153,7 @@ export default function MatchesScreen() {
           )}
         </View>
         {!isLoading && (
-          <Text style={styles.countText}>{matches.length} partida{matches.length !== 1 ? 's' : ''}</Text>
+          <Text style={styles.countText}>{totalMatches} partida{totalMatches !== 1 ? 's' : ''}</Text>
         )}
       </View>
 
@@ -131,12 +167,20 @@ export default function MatchesScreen() {
         <View style={styles.centeredMsg}>
           <Text style={styles.emptyText}>Selecione uma carreira para ver as partidas.</Text>
         </View>
-      ) : matches.length === 0 ? (
-        <EmptyState primary={theme.primary} />
+      ) : sections.length === 0 ? (
+        <EmptyState primary={theme.primary} onRegister={handleRegister} />
       ) : (
-        <FlatList
-          data={matches}
+        <SectionList
+          sections={sections}
           keyExtractor={(item) => item.id}
+          renderSectionHeader={({ section }) => (
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionHeaderText}>{section.title}</Text>
+              <Text style={styles.sectionHeaderCount}>
+                {section.data.length} jogo{section.data.length !== 1 ? 's' : ''}
+              </Text>
+            </View>
+          )}
           renderItem={({ item }) => (
             <MatchRow
               match={item}
@@ -149,7 +193,7 @@ export default function MatchesScreen() {
               }
             />
           )}
-          contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 24 }]}
+          contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 100 }]}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -158,9 +202,19 @@ export default function MatchesScreen() {
               colors={[theme.primary]}
             />
           }
-          ItemSeparatorComponent={() => <View style={styles.separator} />}
+          stickySectionHeadersEnabled
           showsVerticalScrollIndicator={false}
         />
+      )}
+
+      {currentSeason && (
+        <TouchableOpacity
+          style={[styles.fab, { backgroundColor: theme.primary, bottom: insets.bottom + 20 }]}
+          onPress={handleRegister}
+          activeOpacity={0.85}
+        >
+          <Ionicons name="add" size={28} color="#fff" />
+        </TouchableOpacity>
       )}
     </View>
   );
@@ -205,13 +259,31 @@ const styles = StyleSheet.create({
   },
   emptyTitle: { fontSize: 18, fontWeight: '700' as const, color: Colors.foreground, fontFamily: 'Inter_700Bold' },
   emptyText: { fontSize: 14, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular', textAlign: 'center', lineHeight: 21 },
-  list: { paddingHorizontal: 16, paddingTop: 12 },
+  registerBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingHorizontal: 20, paddingVertical: 12, borderRadius: Colors.radius, marginTop: 8,
+  },
+  registerBtnText: { color: '#fff', fontSize: 15, fontWeight: '600' as const, fontFamily: 'Inter_600SemiBold' },
+  sectionHeader: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 20, paddingVertical: 10,
+    backgroundColor: Colors.background,
+    borderBottomWidth: 1, borderBottomColor: Colors.border,
+  },
+  sectionHeaderText: {
+    fontSize: 13, fontWeight: '600' as const, color: Colors.mutedForeground,
+    fontFamily: 'Inter_600SemiBold', textTransform: 'uppercase', letterSpacing: 0.8,
+  },
+  sectionHeaderCount: { fontSize: 12, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular' },
+  list: { paddingHorizontal: 16, paddingTop: 4 },
   matchRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
     paddingVertical: 14,
     paddingHorizontal: 4,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Colors.border,
   },
   resultChip: {
     width: 32,
@@ -230,9 +302,18 @@ const styles = StyleSheet.create({
   opponentText: { fontSize: 15, fontWeight: '500' as const, color: Colors.foreground, fontFamily: 'Inter_500Medium' },
   matchMeta: { fontSize: 12, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular', marginTop: 2 },
   scoreText: { fontSize: 15, fontWeight: '700' as const, color: Colors.foreground, fontFamily: 'Inter_700Bold' },
-  separator: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: Colors.border,
-    marginLeft: 52,
+  fab: {
+    position: 'absolute',
+    right: 20,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
   },
 });

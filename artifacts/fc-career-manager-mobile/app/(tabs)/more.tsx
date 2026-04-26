@@ -139,9 +139,16 @@ export default function MoreScreen() {
       {activeCareer && (
         <Section title="Clube">
           <MenuItem
+            icon="stats-chart-outline"
+            label="Rivais & Sequências"
+            subtitle="Forma, streak e adversários"
+            onPress={() => router.push('/rivais')}
+            color={Colors.info}
+          />
+          <MenuItem
             icon="business-outline"
             label="Diretoria"
-            subtitle="Membros e reuniões"
+            subtitle="Chat com membros da diretoria"
             onPress={() => router.push('/diretoria')}
             color={Colors.warning}
           />

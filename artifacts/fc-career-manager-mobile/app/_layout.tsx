@@ -54,6 +54,14 @@ function RootLayoutInner() {
         name="diretoria"
         options={{ animation: 'slide_from_right' }}
       />
+      <Stack.Screen
+        name="rivais"
+        options={{ animation: 'slide_from_right' }}
+      />
+      <Stack.Screen
+        name="registrar-partida"
+        options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+      />
     </Stack>
   );
 }
