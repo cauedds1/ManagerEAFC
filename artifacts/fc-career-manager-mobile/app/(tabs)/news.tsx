@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity, Modal,
-  ScrollView, Platform, RefreshControl, ActivityIndicator,
+  ScrollView, Platform, RefreshControl, ActivityIndicator, Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
@@ -40,14 +40,26 @@ function NewsModal({ item, onClose }: { item: NewsItem; onClose: () => void }) {
       <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={onClose}>
         <TouchableOpacity activeOpacity={1} style={[styles.modalContainer, { paddingBottom: insets.bottom + 24 }]}>
           <View style={styles.sheetHandle} />
+          {item.imageUrl ? (
+            <Image
+              source={{ uri: item.imageUrl }}
+              style={styles.modalImage}
+              resizeMode="cover"
+            />
+          ) : null}
           <View style={[styles.typeChip, { backgroundColor: `${cfg.color}18`, borderColor: `${cfg.color}33` }]}>
             <Text style={styles.typeChipEmoji}>{cfg.icon}</Text>
             <Text style={[styles.typeChipText, { color: cfg.color }]}>{cfg.label}</Text>
           </View>
           <Text style={styles.modalHeadline}>{item.headline}</Text>
-          <Text style={styles.modalDate}>{formatDate(item.createdAt)}</Text>
+          <View style={styles.modalMeta}>
+            <Text style={styles.modalDate}>{formatDate(item.createdAt)}</Text>
+            {item.source ? (
+              <Text style={styles.modalSource}>Fonte: {item.source}</Text>
+            ) : null}
+          </View>
           <View style={styles.modalDivider} />
-          <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 320 }}>
+          <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 280 }}>
             <Text style={styles.modalBody}>{item.body}</Text>
           </ScrollView>
           <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
@@ -135,7 +147,10 @@ export default function NewsScreen() {
                     <Text style={styles.typeChipEmoji}>{cfg.icon}</Text>
                     <Text style={[styles.typeChipText, { color: cfg.color }]}>{cfg.label}</Text>
                   </View>
-                  <Text style={styles.cardDate}>{formatDate(item.createdAt)}</Text>
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={styles.cardDate}>{formatDate(item.createdAt)}</Text>
+                    {item.source ? <Text style={styles.cardSource} numberOfLines={1}>{item.source}</Text> : null}
+                  </View>
                 </View>
                 <Text style={styles.headline} numberOfLines={2}>{item.headline}</Text>
                 {preview && <Text style={styles.preview} numberOfLines={2}>{preview}</Text>}
@@ -211,8 +226,12 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     marginBottom: 8,
   },
+  modalImage: { width: '100%', height: 160, borderRadius: Colors.radius, marginBottom: 4 },
   modalHeadline: { fontSize: 17, fontWeight: '700' as const, color: Colors.foreground, fontFamily: 'Inter_700Bold', lineHeight: 26 },
+  modalMeta: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
   modalDate: { fontSize: 12, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular' },
+  modalSource: { fontSize: 12, color: Colors.info, fontFamily: 'Inter_400Regular' },
+  cardSource: { fontSize: 10, color: Colors.info, fontFamily: 'Inter_400Regular', marginTop: 1 },
   modalDivider: { height: 1, backgroundColor: Colors.border },
   modalBody: { fontSize: 14, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular', lineHeight: 22 },
   closeBtn: { borderWidth: 1, borderColor: Colors.border, borderRadius: Colors.radius, paddingVertical: 14, alignItems: 'center', marginTop: 4 },

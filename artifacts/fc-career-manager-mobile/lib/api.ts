@@ -213,6 +213,8 @@ export interface NewsItem {
   type?: string;
   createdAt: number;
   matchId?: string;
+  imageUrl?: string;
+  source?: string;
 }
 
 export interface InjuryRecord {

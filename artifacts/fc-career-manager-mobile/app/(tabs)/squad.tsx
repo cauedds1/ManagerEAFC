@@ -10,7 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useCareer } from '@/contexts/CareerContext';
 import { useClubTheme } from '@/contexts/ClubThemeContext';
-import { api, type SquadPlayer, type PlayerSeasonStats } from '@/lib/api';
+import { api, type SquadPlayer, type PlayerSeasonStats, type InjuryRecord } from '@/lib/api';
 import { Colors } from '@/constants/colors';
 import { queryClient } from '@/lib/queryClient';
 
@@ -56,12 +56,12 @@ function PlayerPhoto({ src, name, size = 44 }: { src: string; name: string; size
 function PlayerBottomSheet({
   player,
   stats,
-  primary,
+  injury,
   onClose,
 }: {
   player: SquadPlayer;
   stats?: PlayerSeasonStats;
-  primary: string;
+  injury?: InjuryRecord;
   onClose: () => void;
 }) {
   const insets = useSafeAreaInsets();
@@ -117,7 +117,33 @@ function PlayerBottomSheet({
             ))}
           </View>
 
-          <TouchableOpacity style={[styles.closeBtn, { borderColor: `rgba(${primary.replace('#', '')}, 0.3)` }]} onPress={onClose}>
+          {injury && (() => {
+            const remaining = Math.max(0, injury.matchesOut - (injury.matchesServed ?? 0));
+            const isRecovered = remaining === 0;
+            const injColor = isRecovered ? Colors.success : Colors.destructive;
+            return (
+              <>
+                <View style={styles.sheetDivider} />
+                <Text style={styles.sheetSectionLabel}>Status Médico</Text>
+                <View style={[styles.injuryBanner, { backgroundColor: `${injColor}12`, borderColor: `${injColor}30` }]}>
+                  <Ionicons name={isRecovered ? 'checkmark-circle' : 'medkit'} size={18} color={injColor} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.injuryStatusText, { color: injColor }]}>
+                      {isRecovered ? 'Recuperado' : 'Lesionado'}
+                      {injury.injuryType ? ` — ${injury.injuryType}` : ''}
+                    </Text>
+                    {!isRecovered && (
+                      <Text style={styles.injuryReturnText}>
+                        Previsão: {injury.returnDate ?? injury.expectedReturn ?? `~${remaining} jogo${remaining !== 1 ? 's' : ''}`}
+                      </Text>
+                    )}
+                  </View>
+                </View>
+              </>
+            );
+          })()}
+
+          <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
             <Text style={styles.closeBtnText}>Fechar</Text>
           </TouchableOpacity>
         </TouchableOpacity>
@@ -169,6 +195,15 @@ export default function SquadScreen() {
     const map = new Map<number, PlayerSeasonStats>();
     for (const s of seasonData?.data?.player_stats ?? []) {
       map.set(s.playerId, s);
+    }
+    return map;
+  }, [seasonData]);
+
+  const injuryMap = useMemo<Map<number, InjuryRecord>>(() => {
+    const map = new Map<number, InjuryRecord>();
+    for (const inj of (seasonData?.data?.injuries ?? []) as InjuryRecord[]) {
+      const remaining = Math.max(0, inj.matchesOut - (inj.matchesServed ?? 0));
+      if (remaining > 0) map.set(inj.playerId, inj);
     }
     return map;
   }, [seasonData]);
@@ -309,7 +344,7 @@ export default function SquadScreen() {
         <PlayerBottomSheet
           player={selectedPlayer}
           stats={statsMap.get(selectedPlayer.id)}
-          primary={theme.primary}
+          injury={injuryMap.get(selectedPlayer.id)}
           onClose={() => setSelectedPlayer(null)}
         />
       )}
@@ -467,4 +502,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   closeBtnText: { fontSize: 15, fontWeight: '600' as const, color: Colors.mutedForeground, fontFamily: 'Inter_600SemiBold' },
+  injuryBanner: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 10,
+    borderRadius: Colors.radius, borderWidth: 1,
+    padding: 12, marginBottom: 4,
+  },
+  injuryStatusText: { fontSize: 13, fontWeight: '600' as const, fontFamily: 'Inter_600SemiBold' },
+  injuryReturnText: { fontSize: 12, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular', marginTop: 2 },
 });

@@ -125,10 +125,17 @@ export default function DiretoraScreen() {
       createdAt: n.createdAt,
     }));
 
+  const seenIds = new Set<string>();
   const allMessages: LocalMessage[] = [
     ...notificationMessages,
     ...localMessages,
-  ].sort((a, b) => a.createdAt - b.createdAt);
+  ]
+    .filter((m) => {
+      if (seenIds.has(m.id)) return false;
+      seenIds.add(m.id);
+      return true;
+    })
+    .sort((a, b) => a.createdAt - b.createdAt);
 
   const avgSat = rawMembers.length > 0
     ? Math.round(rawMembers.reduce((s, m) => s + (m.satisfaction ?? 70), 0) / rawMembers.length)
