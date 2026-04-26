@@ -110,7 +110,8 @@ export function PlayerDetailPanel({
 }: PlayerDetailPanelProps) {
   const [tab, setTab] = useState<Tab>("stats");
   const [confirmRemove, setConfirmRemove] = useState(false);
-  const [stats, setStatsState] = useState(() => getPlayerStats(careerId, player.id));
+  const effectiveSeasonId = seasonId ?? careerId;
+  const [stats, setStatsState] = useState(() => getPlayerStats(effectiveSeasonId, player.id));
 
   const playerMomentos = useMemo<Momento[]>(() => {
     if (!seasonId) return [];
@@ -180,7 +181,7 @@ export function PlayerDetailPanel({
 
   const updateStat = (field: "goals" | "assists" | "matchesAsStarter" | "totalMinutes", val: number) => {
     const updated = { ...stats, [field]: Math.max(0, val) };
-    setPlayerStats(careerId, player.id, updated);
+    setPlayerStats(effectiveSeasonId, player.id, updated);
     setStatsState(updated);
   };
 
