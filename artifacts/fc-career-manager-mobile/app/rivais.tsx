@@ -1,16 +1,18 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Platform, ActivityIndicator,
+  Platform, ActivityIndicator, Modal, TextInput, Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useCareer } from '@/contexts/CareerContext';
 import { useClubTheme } from '@/contexts/ClubThemeContext';
 import { api, getMatchResult, type MatchRecord } from '@/lib/api';
 import { Colors } from '@/constants/colors';
+
+const MAX_RIVALS = 5;
 
 interface RivalStats {
   name: string;
@@ -20,6 +22,20 @@ interface RivalStats {
   losses: number;
   goalsFor: number;
   goalsAgainst: number;
+}
+
+function computeRivalStats(matches: MatchRecord[], rivalName: string): RivalStats {
+  const ms = matches.filter((m) => m.opponent.toLowerCase().includes(rivalName.toLowerCase()));
+  let wins = 0, draws = 0, losses = 0, gf = 0, ga = 0;
+  for (const m of ms) {
+    const r = getMatchResult(m.myScore, m.opponentScore);
+    if (r === 'vitoria') wins++;
+    else if (r === 'empate') draws++;
+    else losses++;
+    gf += m.myScore;
+    ga += m.opponentScore;
+  }
+  return { name: rivalName, played: ms.length, wins, draws, losses, goalsFor: gf, goalsAgainst: ga };
 }
 
 function FormBall({ result }: { result: 'vitoria' | 'empate' | 'derrota' | 'future' }) {
@@ -36,34 +52,119 @@ function FormBall({ result }: { result: 'vitoria' | 'empate' | 'derrota' | 'futu
   );
 }
 
-function StreakCard({ label, value, color, icon }: { label: string; value: string; color: string; icon: string }) {
+function RivalCard({ stats, onRemove }: { stats: RivalStats; onRemove: () => void }) {
+  const total = stats.played;
+  const winPct = total > 0 ? Math.round((stats.wins / total) * 100) : 0;
+  const dominance = stats.wins > stats.losses ? 'vitoria' : stats.wins < stats.losses ? 'derrota' : 'empate';
+  const barColor = dominance === 'vitoria' ? Colors.success : dominance === 'derrota' ? Colors.destructive : Colors.warning;
+
   return (
-    <View style={[styles.streakCard, { borderColor: `${color}30`, backgroundColor: `${color}0D` }]}>
-      <Text style={{ fontSize: 28 }}>{icon}</Text>
-      <Text style={[styles.streakValue, { color }]}>{value}</Text>
-      <Text style={styles.streakLabel}>{label}</Text>
+    <View style={[styles.rivalCard, { borderColor: `${barColor}25` }]}>
+      <View style={[styles.rivalAccent, { backgroundColor: barColor }]} />
+      <View style={styles.rivalContent}>
+        <View style={styles.rivalTop}>
+          <Text style={styles.rivalName} numberOfLines={1}>⚔️ {stats.name}</Text>
+          <TouchableOpacity onPress={onRemove} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Ionicons name="close-circle-outline" size={18} color={Colors.mutedForeground} />
+          </TouchableOpacity>
+        </View>
+        {total === 0 ? (
+          <Text style={styles.rivalNoMatches}>Sem confrontos registrados</Text>
+        ) : (
+          <>
+            <Text style={styles.rivalRecord}>
+              {total}J · {stats.wins}V {stats.draws}E {stats.losses}D · {stats.goalsFor}:{stats.goalsAgainst}
+            </Text>
+            <View style={styles.winBar}>
+              <View style={[styles.winBarFill, { width: `${winPct}%` as `${number}%`, backgroundColor: barColor }]} />
+            </View>
+            <Text style={[styles.winPctText, { color: barColor }]}>{winPct}% vitórias</Text>
+          </>
+        )}
+      </View>
     </View>
   );
 }
 
-function RivalRow({ rival }: { rival: RivalStats }) {
+function FrequentRow({ rival }: { rival: RivalStats }) {
   const total = rival.played;
   const winPct = total > 0 ? Math.round((rival.wins / total) * 100) : 0;
   const result = rival.wins > rival.losses ? 'vitoria' : rival.wins < rival.losses ? 'derrota' : 'empate';
   const barColor = result === 'vitoria' ? Colors.success : result === 'derrota' ? Colors.destructive : Colors.warning;
   return (
-    <View style={styles.rivalRow}>
+    <View style={styles.freqRow}>
       <View style={{ flex: 1 }}>
-        <Text style={styles.rivalName} numberOfLines={1}>{rival.name}</Text>
-        <Text style={styles.rivalRecord}>
+        <Text style={styles.freqName} numberOfLines={1}>{rival.name}</Text>
+        <Text style={styles.freqRecord}>
           {rival.played}P · {rival.wins}V {rival.draws}E {rival.losses}D · {rival.goalsFor}:{rival.goalsAgainst}
         </Text>
         <View style={styles.winBar}>
           <View style={[styles.winBarFill, { width: `${winPct}%` as `${number}%`, backgroundColor: barColor }]} />
         </View>
       </View>
-      <Text style={[styles.winPct, { color: barColor }]}>{winPct}%</Text>
+      <Text style={[styles.freqWinPct, { color: barColor }]}>{winPct}%</Text>
     </View>
+  );
+}
+
+function AddRivalModal({
+  visible, onClose, onAdd,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  onAdd: (name: string) => void;
+}) {
+  const theme = useClubTheme();
+  const [name, setName] = useState('');
+
+  const handleAdd = () => {
+    if (!name.trim()) return;
+    onAdd(name.trim());
+    setName('');
+    onClose();
+  };
+
+  return (
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalSheet}>
+          <View style={styles.modalHandle} />
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Adicionar Rival</Text>
+            <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Ionicons name="close" size={22} color={Colors.mutedForeground} />
+            </TouchableOpacity>
+          </View>
+          <View style={styles.modalBody}>
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>NOME DO CLUBE RIVAL</Text>
+              <TextInput
+                style={styles.textInput}
+                value={name}
+                onChangeText={setName}
+                placeholder="Ex: Real Madrid, Manchester City…"
+                placeholderTextColor={Colors.mutedForeground}
+                autoFocus
+                onSubmitEditing={handleAdd}
+                returnKeyType="done"
+              />
+            </View>
+            <Text style={styles.hintText}>
+              Retrospecto será calculado a partir de partidas registradas.
+            </Text>
+          </View>
+          <View style={styles.modalFooter}>
+            <TouchableOpacity
+              style={[styles.saveBtn, { backgroundColor: `rgba(${theme.primaryRgb},0.2)`, borderColor: `rgba(${theme.primaryRgb},0.4)` }, !name.trim() && { opacity: 0.5 }]}
+              onPress={handleAdd}
+              disabled={!name.trim()}
+            >
+              <Text style={[styles.saveBtnText, { color: theme.primary }]}>Adicionar Rival</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -71,22 +172,57 @@ export default function RivaisScreen() {
   const insets = useSafeAreaInsets();
   const { activeSeason, activeCareer } = useCareer();
   const theme = useClubTheme();
+  const qc = useQueryClient();
   const topPad = Platform.OS === 'web' ? 0 : insets.top;
+  const [showAdd, setShowAdd] = useState(false);
 
-  const { data: seasonGameData, isLoading } = useQuery({
+  const { data: seasonGameData, isLoading: loadingSeason } = useQuery({
     queryKey: ['/api/data/season', activeSeason?.id],
     queryFn: () => activeSeason ? api.seasonData.get(activeSeason.id) : null,
     enabled: !!activeSeason?.id,
     staleTime: 1000 * 60 * 5,
   });
 
+  const { data: careerData, isLoading: loadingCareer } = useQuery({
+    queryKey: ['/api/data/career', activeCareer?.id],
+    queryFn: () => activeCareer ? api.careerData.get(activeCareer.id) : null,
+    enabled: !!activeCareer?.id,
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const isLoading = loadingSeason || loadingCareer;
+
   const matches: MatchRecord[] = useMemo(
     () => [...(seasonGameData?.data?.matches ?? [])].sort((a, b) => a.createdAt - b.createdAt),
     [seasonGameData]
   );
 
+  const manualRivals: string[] = (careerData?.data?.rivals ?? []) as string[];
+
+  const saveRivalsMutation = useMutation({
+    mutationFn: (rivals: string[]) => {
+      if (!activeCareer) throw new Error('no career');
+      return api.careerData.set(activeCareer.id, 'rivals', rivals);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['/api/data/career', activeCareer?.id] }),
+  });
+
+  const handleAddRival = (name: string) => {
+    if (manualRivals.includes(name) || manualRivals.length >= MAX_RIVALS) return;
+    saveRivalsMutation.mutate([...manualRivals, name]);
+  };
+
+  const handleRemoveRival = (name: string) => {
+    saveRivalsMutation.mutate(manualRivals.filter((r) => r !== name));
+  };
+
+  const rivalStats = useMemo(
+    () => manualRivals.map((name) => computeRivalStats(matches, name)),
+    [manualRivals, matches]
+  );
+
   const form5 = useMemo(() => {
-    const last5 = matches.slice(-5);
+    const last5 = [...matches].sort((a, b) => b.createdAt - a.createdAt).slice(0, 5);
     const padded = Array.from({ length: 5 }, (_, i) => {
       const m = last5[i];
       return m ? getMatchResult(m.myScore, m.opponentScore) : ('future' as const);
@@ -94,35 +230,7 @@ export default function RivaisScreen() {
     return padded;
   }, [matches]);
 
-  const { currentStreak, maxWinStreak, maxLossStreak } = useMemo(() => {
-    let maxWin = 0, maxLoss = 0, curWin = 0, curLoss = 0;
-    for (const m of matches) {
-      const r = getMatchResult(m.myScore, m.opponentScore);
-      if (r === 'vitoria') { curWin++; curLoss = 0; maxWin = Math.max(maxWin, curWin); }
-      else if (r === 'derrota') { curLoss++; curWin = 0; maxLoss = Math.max(maxLoss, curLoss); }
-      else { curWin = 0; curLoss = 0; }
-    }
-
-    // compute current streak by scanning backwards from the latest match
-    let currentStreakStr = '0';
-    if (matches.length > 0) {
-      const lastResult = getMatchResult(
-        matches[matches.length - 1].myScore,
-        matches[matches.length - 1].opponentScore,
-      );
-      let streak = 0;
-      for (let i = matches.length - 1; i >= 0; i--) {
-        if (getMatchResult(matches[i].myScore, matches[i].opponentScore) === lastResult) streak++;
-        else break;
-      }
-      const label = lastResult === 'vitoria' ? 'V' : lastResult === 'derrota' ? 'D' : 'E';
-      currentStreakStr = `${streak}${label}`;
-    }
-
-    return { currentStreak: currentStreakStr, maxWinStreak: maxWin, maxLossStreak: maxLoss };
-  }, [matches]);
-
-  const rivals: RivalStats[] = useMemo(() => {
+  const frequentOpponents: RivalStats[] = useMemo(() => {
     const map = new Map<string, RivalStats>();
     for (const m of matches) {
       if (!map.has(m.opponent)) {
@@ -137,7 +245,7 @@ export default function RivaisScreen() {
       else if (r === 'empate') s.draws++;
       else s.losses++;
     }
-    return [...map.values()].sort((a, b) => b.played - a.played).slice(0, 15);
+    return [...map.values()].sort((a, b) => b.played - a.played).slice(0, 10);
   }, [matches]);
 
   const totalStats = useMemo(() => {
@@ -167,7 +275,44 @@ export default function RivaisScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Forma Recente</Text>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>MEUS RIVAIS</Text>
+              {manualRivals.length < MAX_RIVALS && (
+                <TouchableOpacity
+                  style={[styles.addRivalBtn, { backgroundColor: `rgba(${theme.primaryRgb},0.12)`, borderColor: `rgba(${theme.primaryRgb},0.3)` }]}
+                  onPress={() => setShowAdd(true)}
+                >
+                  <Ionicons name="add" size={16} color={theme.primary} />
+                  <Text style={[styles.addRivalBtnText, { color: theme.primary }]}>Adicionar</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+            {manualRivals.length === 0 ? (
+              <TouchableOpacity
+                style={styles.emptyRivalsCard}
+                onPress={() => setShowAdd(true)}
+              >
+                <Text style={styles.emptyRivalsIcon}>⚔️</Text>
+                <Text style={styles.emptyRivalsTitle}>Nenhum rival definido</Text>
+                <Text style={styles.emptyRivalsText}>
+                  Defina até {MAX_RIVALS} rivais para acompanhar o retrospecto
+                </Text>
+              </TouchableOpacity>
+            ) : (
+              <View style={styles.rivalsList}>
+                {rivalStats.map((s) => (
+                  <RivalCard
+                    key={s.name}
+                    stats={s}
+                    onRemove={() => handleRemoveRival(s.name)}
+                  />
+                ))}
+              </View>
+            )}
+          </View>
+
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>FORMA RECENTE</Text>
             <View style={styles.formRow}>
               {form5.map((result, i) => (
                 <FormBall key={i} result={result} />
@@ -176,38 +321,14 @@ export default function RivaisScreen() {
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Sequências</Text>
-            <View style={styles.streakRow}>
-              <StreakCard
-                label="Sequência Atual"
-                value={currentStreak}
-                color={currentStreak.includes('V') ? Colors.success : currentStreak.includes('D') ? Colors.destructive : Colors.mutedForeground}
-                icon={currentStreak.includes('V') ? '🔥' : currentStreak.includes('D') ? '🥶' : '⚖️'}
-              />
-              <StreakCard
-                label="Maior Vitórias"
-                value={`${maxWinStreak}V`}
-                color={Colors.success}
-                icon="🏆"
-              />
-              <StreakCard
-                label="Maior Derrotas"
-                value={`${maxLossStreak}D`}
-                color={Colors.destructive}
-                icon="⚠️"
-              />
-            </View>
-          </View>
-
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Desempenho Geral</Text>
+            <Text style={styles.sectionTitle}>DESEMPENHO GERAL</Text>
             <View style={styles.statsGrid}>
               {[
                 { label: 'Jogos', value: String(matches.length) },
                 { label: 'Vitórias', value: String(totalStats.wins), color: Colors.success },
                 { label: 'Empates', value: String(totalStats.draws), color: Colors.warning },
                 { label: 'Derrotas', value: String(totalStats.losses), color: Colors.destructive },
-                { label: 'Gols Feitos', value: String(totalStats.gf) },
+                { label: 'Gols Marcados', value: String(totalStats.gf) },
                 { label: 'Gols Sofridos', value: String(totalStats.ga) },
               ].map(({ label, value, color }) => (
                 <View key={label} style={styles.statBox}>
@@ -218,14 +339,14 @@ export default function RivaisScreen() {
             </View>
           </View>
 
-          {rivals.length > 0 && (
+          {frequentOpponents.length > 0 && (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Adversários Frequentes</Text>
+              <Text style={styles.sectionTitle}>ADVERSÁRIOS FREQUENTES</Text>
               <View style={styles.card}>
-                {rivals.map((rival, idx) => (
+                {frequentOpponents.map((rival, idx) => (
                   <View key={rival.name}>
-                    <RivalRow rival={rival} />
-                    {idx < rivals.length - 1 && <View style={styles.divider} />}
+                    <FrequentRow rival={rival} />
+                    {idx < frequentOpponents.length - 1 && <View style={styles.divider} />}
                   </View>
                 ))}
               </View>
@@ -235,12 +356,17 @@ export default function RivaisScreen() {
           {matches.length === 0 && (
             <View style={styles.center}>
               <Text style={{ fontSize: 48 }}>⚽</Text>
-              <Text style={styles.emptyTitle}>Sem partidas ainda</Text>
-              <Text style={styles.emptyText}>Registre partidas para ver rivais e sequências.</Text>
+              <Text style={styles.emptyText}>Registre partidas para ver estatísticas de rivais.</Text>
             </View>
           )}
         </ScrollView>
       )}
+
+      <AddRivalModal
+        visible={showAdd}
+        onClose={() => setShowAdd(false)}
+        onAdd={handleAddRival}
+      />
     </View>
   );
 }
@@ -255,25 +381,49 @@ const styles = StyleSheet.create({
   backBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   title: { flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '600' as const, color: Colors.foreground, fontFamily: 'Inter_600SemiBold' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 40 },
-  scrollContent: { padding: 16, gap: 20 },
+  scrollContent: { padding: 16, gap: 24 },
   section: { gap: 10 },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   sectionTitle: {
     fontSize: 13, fontWeight: '600' as const, color: Colors.mutedForeground,
     fontFamily: 'Inter_600SemiBold', textTransform: 'uppercase', letterSpacing: 0.8,
   },
+  addRivalBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, borderWidth: 1,
+  },
+  addRivalBtnText: { fontSize: 12, fontWeight: '600' as const, fontFamily: 'Inter_600SemiBold' },
+  emptyRivalsCard: {
+    backgroundColor: Colors.card, borderRadius: Colors.radiusLg,
+    borderWidth: 1, borderColor: Colors.border,
+    alignItems: 'center', padding: 24, gap: 8,
+  },
+  emptyRivalsIcon: { fontSize: 36 },
+  emptyRivalsTitle: { fontSize: 16, fontWeight: '600' as const, color: Colors.foreground, fontFamily: 'Inter_600SemiBold' },
+  emptyRivalsText: { fontSize: 13, color: Colors.mutedForeground, textAlign: 'center', fontFamily: 'Inter_400Regular' },
+  rivalsList: { gap: 10 },
+  rivalCard: {
+    flexDirection: 'row', backgroundColor: Colors.card,
+    borderRadius: Colors.radiusLg, borderWidth: 1, overflow: 'hidden',
+  },
+  rivalAccent: { width: 4 },
+  rivalContent: { flex: 1, padding: 14, gap: 4 },
+  rivalTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  rivalName: { fontSize: 15, fontWeight: '600' as const, color: Colors.foreground, fontFamily: 'Inter_600SemiBold', flex: 1 },
+  rivalNoMatches: { fontSize: 12, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular', fontStyle: 'italic' },
+  rivalRecord: { fontSize: 12, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular' },
+  winPctText: { fontSize: 11, fontWeight: '600' as const, fontFamily: 'Inter_600SemiBold' },
+  winBar: {
+    height: 4, backgroundColor: Colors.border, borderRadius: 2,
+    overflow: 'hidden', marginTop: 4,
+  },
+  winBarFill: { height: '100%', borderRadius: 2 },
   formRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
   formBall: {
     width: 44, height: 44, borderRadius: 22,
     borderWidth: 1, alignItems: 'center', justifyContent: 'center',
   },
   formBallText: { fontSize: 14, fontWeight: '700' as const, fontFamily: 'Inter_700Bold' },
-  streakRow: { flexDirection: 'row', gap: 10 },
-  streakCard: {
-    flex: 1, alignItems: 'center', gap: 4, padding: 14,
-    borderRadius: Colors.radius, borderWidth: 1,
-  },
-  streakValue: { fontSize: 22, fontWeight: '700' as const, fontFamily: 'Inter_700Bold' },
-  streakLabel: { fontSize: 11, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular', textAlign: 'center' },
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   statBox: {
     flex: 1, minWidth: '28%', alignItems: 'center', gap: 2,
@@ -286,19 +436,45 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.card, borderRadius: Colors.radius,
     borderWidth: 1, borderColor: Colors.border, overflow: 'hidden',
   },
-  rivalRow: {
+  freqRow: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
     paddingHorizontal: 14, paddingVertical: 12,
   },
-  rivalName: { fontSize: 15, fontWeight: '500' as const, color: Colors.foreground, fontFamily: 'Inter_500Medium' },
-  rivalRecord: { fontSize: 12, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular', marginTop: 2 },
-  winBar: {
-    height: 3, backgroundColor: Colors.border, borderRadius: 2, marginTop: 6,
-    overflow: 'hidden',
-  },
-  winBarFill: { height: '100%', borderRadius: 2 },
-  winPct: { fontSize: 15, fontWeight: '700' as const, fontFamily: 'Inter_700Bold', minWidth: 44, textAlign: 'right' },
+  freqName: { fontSize: 15, fontWeight: '500' as const, color: Colors.foreground, fontFamily: 'Inter_500Medium' },
+  freqRecord: { fontSize: 12, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular', marginTop: 2 },
+  freqWinPct: { fontSize: 15, fontWeight: '700' as const, fontFamily: 'Inter_700Bold', minWidth: 44, textAlign: 'right' },
   divider: { height: StyleSheet.hairlineWidth, backgroundColor: Colors.border, marginLeft: 14 },
-  emptyTitle: { fontSize: 18, fontWeight: '600' as const, color: Colors.foreground, fontFamily: 'Inter_600SemiBold' },
   emptyText: { fontSize: 14, color: Colors.mutedForeground, textAlign: 'center', fontFamily: 'Inter_400Regular' },
+  modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.7)' },
+  modalSheet: {
+    backgroundColor: Colors.backgroundLighter,
+    borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    borderTopWidth: 1, borderTopColor: Colors.border,
+  },
+  modalHandle: {
+    width: 36, height: 4, borderRadius: 2, backgroundColor: Colors.border,
+    alignSelf: 'center', marginTop: 10, marginBottom: 4,
+  },
+  modalHeader: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 20, paddingVertical: 14,
+    borderBottomWidth: 1, borderBottomColor: Colors.border,
+  },
+  modalTitle: { fontSize: 18, fontWeight: '700' as const, color: Colors.foreground, fontFamily: 'Inter_700Bold' },
+  modalBody: { padding: 20, gap: 16 },
+  modalFooter: { paddingHorizontal: 20, paddingVertical: 16, borderTopWidth: 1, borderTopColor: Colors.border },
+  field: { gap: 8 },
+  fieldLabel: {
+    fontSize: 11, fontWeight: '600' as const, color: Colors.mutedForeground,
+    fontFamily: 'Inter_600SemiBold', letterSpacing: 0.8,
+  },
+  textInput: {
+    backgroundColor: Colors.card, borderRadius: Colors.radius,
+    borderWidth: 1, borderColor: Colors.border,
+    paddingHorizontal: 14, paddingVertical: 12,
+    color: Colors.foreground, fontFamily: 'Inter_400Regular', fontSize: 15,
+  },
+  hintText: { fontSize: 12, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular', fontStyle: 'italic' },
+  saveBtn: { borderRadius: Colors.radius, paddingVertical: 14, borderWidth: 1, alignItems: 'center' },
+  saveBtnText: { fontSize: 15, fontWeight: '600' as const, fontFamily: 'Inter_600SemiBold' },
 });

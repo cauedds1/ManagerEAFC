@@ -1,20 +1,34 @@
+import { useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Platform, ActivityIndicator,
+  Platform, ActivityIndicator, Modal, TextInput, Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useCareer } from '@/contexts/CareerContext';
 import { useClubTheme } from '@/contexts/ClubThemeContext';
-import { api } from '@/lib/api';
+import { api, type Finances } from '@/lib/api';
 import { Colors } from '@/constants/colors';
 
 function formatMoney(n: number): string {
   if (n >= 1_000_000) return `€${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `€${(n / 1_000).toFixed(0)}k`;
   return `€${n}`;
+}
+
+function parseMoney(raw: string): number {
+  const trimmed = raw.trim().replace(/\s/g, '');
+  if (!trimmed) return 0;
+  const mMatch = trimmed.match(/^([\d.,]+)\s*[Mm]$/);
+  if (mMatch) {
+    const base = parseFloat(mMatch[1].replace(/\./g, '').replace(',', '.'));
+    return isNaN(base) ? 0 : Math.round(base * 1_000_000);
+  }
+  const cleaned = trimmed.replace(/\./g, '').replace(',', '.');
+  const num = parseFloat(cleaned);
+  return isNaN(num) ? 0 : Math.round(num);
 }
 
 function BarTrack({ pct, color }: { pct: number; color: string }) {
@@ -39,11 +53,119 @@ function StatCard({ label, value, sub, icon, color }: StatCardProps) {
   );
 }
 
+function BudgetEditorModal({
+  visible, finances, onClose, onSave,
+}: {
+  visible: boolean;
+  finances: Finances | null;
+  onClose: () => void;
+  onSave: (f: Finances) => void;
+}) {
+  const theme = useClubTheme();
+  const [transferBudget, setTransferBudget] = useState(
+    finances?.transferBudget ? formatMoney(finances.transferBudget).replace('€', '') : ''
+  );
+  const [wage, setWage] = useState(
+    finances?.wage ? formatMoney(finances.wage).replace('€', '') : ''
+  );
+  const [budget, setBudget] = useState(
+    finances?.budget ? formatMoney(finances.budget).replace('€', '') : ''
+  );
+
+  const handleSave = () => {
+    onSave({
+      transferBudget: parseMoney(transferBudget),
+      wage: parseMoney(wage),
+      budget: parseMoney(budget),
+    });
+    onClose();
+  };
+
+  return (
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalSheet}>
+          <View style={styles.modalHandle} />
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Editar Orçamento</Text>
+            <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Ionicons name="close" size={22} color={Colors.mutedForeground} />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView contentContainerStyle={styles.modalBody} keyboardShouldPersistTaps="handled">
+            <Text style={styles.hint}>Use M para milhões (ex: 50M = €50.000.000)</Text>
+
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>ORÇAMENTO TOTAL</Text>
+              <View style={styles.inputRow}>
+                <Text style={styles.currency}>€</Text>
+                <TextInput
+                  style={styles.textInput}
+                  value={budget}
+                  onChangeText={setBudget}
+                  placeholder="Ex: 100M"
+                  placeholderTextColor={Colors.mutedForeground}
+                  keyboardType="default"
+                  autoCapitalize="characters"
+                />
+              </View>
+            </View>
+
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>ORÇAMENTO DE TRANSFERÊNCIAS</Text>
+              <View style={styles.inputRow}>
+                <Text style={styles.currency}>€</Text>
+                <TextInput
+                  style={styles.textInput}
+                  value={transferBudget}
+                  onChangeText={setTransferBudget}
+                  placeholder="Ex: 50M"
+                  placeholderTextColor={Colors.mutedForeground}
+                  keyboardType="default"
+                  autoCapitalize="characters"
+                />
+              </View>
+            </View>
+
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>FOLHA SALARIAL (por semana)</Text>
+              <View style={styles.inputRow}>
+                <Text style={styles.currency}>€</Text>
+                <TextInput
+                  style={styles.textInput}
+                  value={wage}
+                  onChangeText={setWage}
+                  placeholder="Ex: 2M"
+                  placeholderTextColor={Colors.mutedForeground}
+                  keyboardType="default"
+                  autoCapitalize="characters"
+                />
+              </View>
+            </View>
+          </ScrollView>
+
+          <View style={styles.modalFooter}>
+            <TouchableOpacity
+              style={[styles.saveBtn, { backgroundColor: `rgba(${theme.primaryRgb},0.2)`, borderColor: `rgba(${theme.primaryRgb},0.4)` }]}
+              onPress={handleSave}
+            >
+              <Text style={[styles.saveBtnText, { color: theme.primary }]}>Salvar Orçamento</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 export default function FinanceiroScreen() {
   const insets = useSafeAreaInsets();
   const { activeSeason } = useCareer();
   const theme = useClubTheme();
+  const qc = useQueryClient();
   const topPad = Platform.OS === 'web' ? 0 : insets.top;
+  const [showEditor, setShowEditor] = useState(false);
 
   const { data: seasonData, isLoading } = useQuery({
     queryKey: ['/api/data/season', activeSeason?.id],
@@ -52,8 +174,20 @@ export default function FinanceiroScreen() {
     staleTime: 1000 * 60 * 5,
   });
 
-  const finances = seasonData?.data?.finances;
+  const finances = seasonData?.data?.finances ?? null;
   const transfers = seasonData?.data?.transfers ?? [];
+
+  const saveMutation = useMutation({
+    mutationFn: (f: Finances) => {
+      if (!activeSeason) throw new Error('no season');
+      return api.finances.save(activeSeason.id, f);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['/api/data/season', activeSeason?.id] });
+      setShowEditor(false);
+    },
+    onError: () => Alert.alert('Erro', 'Não foi possível salvar o orçamento.'),
+  });
 
   const totalSpent = transfers.filter((t) => t.type === 'in').reduce((s, t) => s + t.fee, 0);
   const totalEarned = transfers.filter((t) => t.type === 'out').reduce((s, t) => s + t.fee, 0);
@@ -61,6 +195,7 @@ export default function FinanceiroScreen() {
 
   const transferBudget = finances?.transferBudget ?? 0;
   const weeklyWage = finances?.wage ?? 0;
+  const totalBudget = finances?.budget ?? 0;
   const budgetLeft = transferBudget > 0 ? transferBudget - netSpend : 0;
   const budgetPct = transferBudget > 0 ? (netSpend / transferBudget) * 100 : 0;
 
@@ -69,6 +204,8 @@ export default function FinanceiroScreen() {
     .sort((a, b) => b.fee - a.fee)
     .slice(0, 5);
 
+  const wageRoomOk = weeklyWage > 0 && totalSpent < transferBudget * 0.9;
+
   return (
     <View style={[styles.container, { paddingTop: topPad }]}>
       <View style={styles.topBar}>
@@ -76,7 +213,9 @@ export default function FinanceiroScreen() {
           <Ionicons name="chevron-back" size={24} color={Colors.foreground} />
         </TouchableOpacity>
         <Text style={styles.title}>Financeiro</Text>
-        <View style={{ width: 40 }} />
+        <TouchableOpacity style={styles.editBtn} onPress={() => setShowEditor(true)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <Ionicons name="pencil-outline" size={20} color={theme.primary} />
+        </TouchableOpacity>
       </View>
 
       {isLoading ? (
@@ -86,24 +225,44 @@ export default function FinanceiroScreen() {
           contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 32 }]}
           showsVerticalScrollIndicator={false}
         >
+          {transferBudget === 0 && weeklyWage === 0 && (
+            <TouchableOpacity
+              style={styles.setupBanner}
+              onPress={() => setShowEditor(true)}
+            >
+              <Ionicons name="wallet-outline" size={20} color={Colors.warning} />
+              <Text style={styles.setupBannerText}>Toque para configurar o orçamento da temporada</Text>
+              <Ionicons name="chevron-forward" size={16} color={Colors.warning} />
+            </TouchableOpacity>
+          )}
+
           <View style={styles.grid}>
+            {totalBudget > 0 && (
+              <StatCard
+                icon="💰"
+                label="Orçamento Total"
+                value={formatMoney(totalBudget)}
+                sub="disponível"
+                color={Colors.info}
+              />
+            )}
             <StatCard
               icon="🏦"
-              label="Orçamento restante"
+              label="Orçamento Transf."
               value={transferBudget > 0 ? formatMoney(budgetLeft) : '—'}
               sub={transferBudget > 0 ? `de ${formatMoney(transferBudget)}` : 'Não definido'}
               color={budgetLeft < 0 ? Colors.destructive : Colors.success}
             />
             <StatCard
               icon="📥"
-              label="Gasto em contratações"
+              label="Gasto em contrat."
               value={formatMoney(totalSpent)}
               sub={`${transfers.filter((t) => t.type === 'in').length} contrat.`}
               color={Colors.destructive}
             />
             <StatCard
               icon="📤"
-              label="Arrecadado em vendas"
+              label="Arrecadado"
               value={totalEarned > 0 ? formatMoney(totalEarned) : '—'}
               sub={`${transfers.filter((t) => t.type === 'out').length} vendas`}
               color={Colors.success}
@@ -126,7 +285,7 @@ export default function FinanceiroScreen() {
 
           {transferBudget > 0 && (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>USO DO ORÇAMENTO</Text>
+              <Text style={styles.sectionTitle}>USO DO ORÇAMENTO DE TRANSFERÊNCIAS</Text>
               <View style={styles.sectionCard}>
                 <View style={styles.barRow}>
                   <Text style={styles.barLabel}>Transferências</Text>
@@ -134,8 +293,15 @@ export default function FinanceiroScreen() {
                 </View>
                 <BarTrack pct={budgetPct} color={theme.primary} />
                 <Text style={styles.barMeta}>
-                  {budgetPct.toFixed(0)}% utilizado{budgetLeft >= 0 ? ` · ${formatMoney(budgetLeft)} restantes` : ''}
+                  {budgetPct.toFixed(0)}% utilizado
+                  {budgetLeft >= 0 ? ` · ${formatMoney(budgetLeft)} restantes` : ` · ${formatMoney(Math.abs(budgetLeft))} acima do limite`}
                 </Text>
+                {budgetLeft < 0 && (
+                  <View style={styles.warningRow}>
+                    <Ionicons name="warning-outline" size={14} color={Colors.destructive} />
+                    <Text style={styles.warningText}>Orçamento estourado</Text>
+                  </View>
+                )}
               </View>
             </View>
           )}
@@ -158,15 +324,22 @@ export default function FinanceiroScreen() {
             </View>
           )}
 
-          {transfers.length === 0 && (
+          {transfers.length === 0 && !transferBudget && (
             <View style={styles.emptyWrap}>
               <Text style={{ fontSize: 48 }}>💰</Text>
               <Text style={styles.emptyTitle}>Sem movimentações</Text>
-              <Text style={styles.emptyText}>Registre transferências para ver o resumo financeiro.</Text>
+              <Text style={styles.emptyText}>Configure o orçamento e registre transferências para ver o resumo financeiro.</Text>
             </View>
           )}
         </ScrollView>
       )}
+
+      <BudgetEditorModal
+        visible={showEditor}
+        finances={finances}
+        onClose={() => setShowEditor(false)}
+        onSave={(f) => saveMutation.mutate(f)}
+      />
     </View>
   );
 }
@@ -179,8 +352,16 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
   backBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  editBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   title: { flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '600' as const, color: Colors.foreground, fontFamily: 'Inter_600SemiBold' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  setupBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: 'rgba(245,158,11,0.08)', borderRadius: Colors.radius,
+    borderWidth: 1, borderColor: 'rgba(245,158,11,0.25)',
+    padding: 14, marginBottom: 4,
+  },
+  setupBannerText: { flex: 1, fontSize: 13, color: Colors.warning, fontFamily: 'Inter_400Regular' },
   content: { padding: 16, gap: 20 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   statCard: {
@@ -208,6 +389,8 @@ const styles = StyleSheet.create({
   barTrack: { height: 8, backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 4, overflow: 'hidden' },
   barFill: { height: '100%', borderRadius: 4 },
   barMeta: { fontSize: 11, color: 'rgba(255,255,255,0.25)', fontFamily: 'Inter_400Regular' },
+  warningRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  warningText: { fontSize: 12, color: Colors.destructive, fontFamily: 'Inter_600SemiBold', fontWeight: '600' as const },
   earnerRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8 },
   earnerSep: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: Colors.border },
   earnerRank: { fontSize: 12, fontWeight: '700' as const, color: Colors.mutedForeground, width: 20, fontFamily: 'Inter_700Bold' },
@@ -217,4 +400,39 @@ const styles = StyleSheet.create({
   emptyWrap: { alignItems: 'center', paddingVertical: 32, gap: 12 },
   emptyTitle: { fontSize: 18, fontWeight: '600' as const, color: Colors.foreground, fontFamily: 'Inter_600SemiBold' },
   emptyText: { fontSize: 14, color: Colors.mutedForeground, textAlign: 'center', fontFamily: 'Inter_400Regular', lineHeight: 22 },
+  modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.7)' },
+  modalSheet: {
+    backgroundColor: Colors.backgroundLighter,
+    borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    borderTopWidth: 1, borderTopColor: Colors.border,
+    maxHeight: '80%',
+  },
+  modalHandle: {
+    width: 36, height: 4, borderRadius: 2, backgroundColor: Colors.border,
+    alignSelf: 'center', marginTop: 10, marginBottom: 4,
+  },
+  modalHeader: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 20, paddingVertical: 14,
+    borderBottomWidth: 1, borderBottomColor: Colors.border,
+  },
+  modalTitle: { fontSize: 18, fontWeight: '700' as const, color: Colors.foreground, fontFamily: 'Inter_700Bold' },
+  modalBody: { padding: 20, gap: 20 },
+  modalFooter: { paddingHorizontal: 20, paddingVertical: 16, borderTopWidth: 1, borderTopColor: Colors.border },
+  hint: { fontSize: 12, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular', fontStyle: 'italic' },
+  field: { gap: 8 },
+  fieldLabel: {
+    fontSize: 11, fontWeight: '600' as const, color: Colors.mutedForeground,
+    fontFamily: 'Inter_600SemiBold', letterSpacing: 0.8,
+  },
+  inputRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  currency: { fontSize: 18, fontWeight: '600' as const, color: Colors.mutedForeground, fontFamily: 'Inter_600SemiBold' },
+  textInput: {
+    flex: 1, backgroundColor: Colors.card, borderRadius: Colors.radius,
+    borderWidth: 1, borderColor: Colors.border,
+    paddingHorizontal: 14, paddingVertical: 12,
+    color: Colors.foreground, fontFamily: 'Inter_400Regular', fontSize: 15,
+  },
+  saveBtn: { borderRadius: Colors.radius, paddingVertical: 14, borderWidth: 1, alignItems: 'center' },
+  saveBtnText: { fontSize: 15, fontWeight: '600' as const, fontFamily: 'Inter_600SemiBold' },
 });

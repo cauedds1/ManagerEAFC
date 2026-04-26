@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   Platform, ActivityIndicator,
@@ -13,6 +13,7 @@ import { api, getMatchResult, type MatchRecord } from '@/lib/api';
 import { Colors } from '@/constants/colors';
 
 type MatchResult = 'vitoria' | 'empate' | 'derrota';
+type HomeFilter = 'all' | 'home' | 'away';
 
 function FormBall({ result }: { result: MatchResult | 'future' }) {
   const cfg: Record<string, { color: string; label: string }> = {
@@ -29,36 +30,17 @@ function FormBall({ result }: { result: MatchResult | 'future' }) {
   );
 }
 
-interface StreakInfo {
-  type: 'vitoria' | 'invicto' | 'derrota' | 'sem_vitoria';
-  count: number;
-  label: string;
-  color: string;
-}
-
-function computeCurrentStreak(matches: MatchRecord[]): StreakInfo | null {
-  if (matches.length === 0) return null;
+function computeCurrentWinStreak(matches: MatchRecord[]): number {
   const sorted = [...matches].sort((a, b) => b.createdAt - a.createdAt);
-  const latest = getMatchResult(sorted[0].myScore, sorted[0].opponentScore);
-
   let count = 0;
   for (const m of sorted) {
-    const r = getMatchResult(m.myScore, m.opponentScore);
-    if (latest === 'vitoria' && r === 'vitoria') count++;
-    else if (latest === 'empate' && r === 'empate') count++;
-    else if (latest === 'derrota' && r === 'derrota') count++;
+    if (getMatchResult(m.myScore, m.opponentScore) === 'vitoria') count++;
     else break;
   }
-
-  const cfg: Record<string, { label: string; color: string }> = {
-    vitoria: { label: 'Sequência de Vitórias', color: Colors.success },
-    empate: { label: 'Sequência de Empates', color: Colors.warning },
-    derrota: { label: 'Sequência de Derrotas', color: Colors.destructive },
-  };
-  return { type: latest as StreakInfo['type'], count, label: cfg[latest].label, color: cfg[latest].color };
+  return count;
 }
 
-function computeUnbeatenStreak(matches: MatchRecord[]): number {
+function computeCurrentUnbeaten(matches: MatchRecord[]): number {
   const sorted = [...matches].sort((a, b) => b.createdAt - a.createdAt);
   let count = 0;
   for (const m of sorted) {
@@ -68,34 +50,67 @@ function computeUnbeatenStreak(matches: MatchRecord[]): number {
   return count;
 }
 
-function computeLongestWinStreak(matches: MatchRecord[]): number {
+function computeCurrentCleanSheets(matches: MatchRecord[]): number {
+  const sorted = [...matches].sort((a, b) => b.createdAt - a.createdAt);
+  let count = 0;
+  for (const m of sorted) {
+    if (m.opponentScore === 0) count++;
+    else break;
+  }
+  return count;
+}
+
+function computeCurrentScoring(matches: MatchRecord[]): number {
+  const sorted = [...matches].sort((a, b) => b.createdAt - a.createdAt);
+  let count = 0;
+  for (const m of sorted) {
+    if (m.myScore > 0) count++;
+    else break;
+  }
+  return count;
+}
+
+function computeLongest(matches: MatchRecord[], predicate: (m: MatchRecord) => boolean): number {
   const sorted = [...matches].sort((a, b) => a.createdAt - b.createdAt);
   let max = 0;
   let cur = 0;
   for (const m of sorted) {
-    if (getMatchResult(m.myScore, m.opponentScore) === 'vitoria') {
-      cur++;
-      max = Math.max(max, cur);
-    } else {
-      cur = 0;
-    }
+    if (predicate(m)) { cur++; max = Math.max(max, cur); }
+    else cur = 0;
   }
   return max;
 }
 
-function computeLongestUnbeaten(matches: MatchRecord[]): number {
-  const sorted = [...matches].sort((a, b) => a.createdAt - b.createdAt);
-  let max = 0;
-  let cur = 0;
-  for (const m of sorted) {
-    if (getMatchResult(m.myScore, m.opponentScore) !== 'derrota') {
-      cur++;
-      max = Math.max(max, cur);
-    } else {
-      cur = 0;
-    }
-  }
-  return max;
+interface StreakRowProps {
+  label: string;
+  current: number;
+  record: number;
+  color: string;
+  icon: string;
+  unit?: string;
+}
+
+function StreakRow({ label, current, record, color, icon, unit = 'jogos' }: StreakRowProps) {
+  const isActive = current > 0;
+  return (
+    <View style={[styles.streakRow, { borderColor: isActive ? `${color}40` : Colors.border, backgroundColor: isActive ? `${color}07` : Colors.card }]}>
+      <Text style={styles.streakIcon}>{icon}</Text>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.streakLabel}>{label}</Text>
+        <View style={styles.streakMeta}>
+          {isActive && (
+            <View style={[styles.activePill, { backgroundColor: `${color}18`, borderColor: `${color}35` }]}>
+              <Text style={[styles.activePillText, { color }]}>Em andamento</Text>
+            </View>
+          )}
+          <Text style={styles.recordText}>Recorde: {record} {unit}</Text>
+        </View>
+      </View>
+      <Text style={[styles.streakCount, { color: isActive ? color : Colors.mutedForeground }]}>
+        {current}
+      </Text>
+    </View>
+  );
 }
 
 export default function SequenciasScreen() {
@@ -103,6 +118,7 @@ export default function SequenciasScreen() {
   const { activeCareer, activeSeason } = useCareer();
   const theme = useClubTheme();
   const topPad = Platform.OS === 'web' ? 0 : insets.top;
+  const [homeFilter, setHomeFilter] = useState<HomeFilter>('all');
 
   const { data: seasons } = useQuery({
     queryKey: ['/api/careers', activeCareer?.id, 'seasons'],
@@ -121,28 +137,46 @@ export default function SequenciasScreen() {
     staleTime: 1000 * 60 * 5,
   });
 
-  const matches: MatchRecord[] = seasonGameData?.data?.matches ?? [];
+  const allMatches: MatchRecord[] = seasonGameData?.data?.matches ?? [];
+
+  const matches = useMemo(() => {
+    if (homeFilter === 'home') return allMatches.filter((m) => m.location === 'casa');
+    if (homeFilter === 'away') return allMatches.filter((m) => m.location === 'fora' || m.location === 'neutro');
+    return allMatches;
+  }, [allMatches, homeFilter]);
 
   const form = useMemo(() => {
-    const sorted = [...matches].sort((a, b) => b.createdAt - a.createdAt).slice(0, 10);
+    const sorted = [...matches].sort((a, b) => b.createdAt - a.createdAt).slice(0, 5);
     const filled: Array<MatchResult | 'future'> = sorted.map((m) => getMatchResult(m.myScore, m.opponentScore));
     while (filled.length < 5) filled.push('future');
     return filled.slice(0, 5);
   }, [matches]);
 
-  const currentStreak = useMemo(() => computeCurrentStreak(matches), [matches]);
-  const unbeatenStreak = useMemo(() => computeUnbeatenStreak(matches), [matches]);
-  const longestWin = useMemo(() => computeLongestWinStreak(matches), [matches]);
-  const longestUnbeaten = useMemo(() => computeLongestUnbeaten(matches), [matches]);
+  const currentWin = useMemo(() => computeCurrentWinStreak(matches), [matches]);
+  const currentUnbeaten = useMemo(() => computeCurrentUnbeaten(matches), [matches]);
+  const currentCleanSheets = useMemo(() => computeCurrentCleanSheets(matches), [matches]);
+  const currentScoring = useMemo(() => computeCurrentScoring(matches), [matches]);
+
+  const longestWin = useMemo(() => computeLongest(matches, (m) => getMatchResult(m.myScore, m.opponentScore) === 'vitoria'), [matches]);
+  const longestUnbeaten = useMemo(() => computeLongest(matches, (m) => getMatchResult(m.myScore, m.opponentScore) !== 'derrota'), [matches]);
+  const longestCleanSheets = useMemo(() => computeLongest(matches, (m) => m.opponentScore === 0), [matches]);
+  const longestScoring = useMemo(() => computeLongest(matches, (m) => m.myScore > 0), [matches]);
+
+  const wins = matches.filter((m) => getMatchResult(m.myScore, m.opponentScore) === 'vitoria').length;
+  const draws = matches.filter((m) => getMatchResult(m.myScore, m.opponentScore) === 'empate').length;
+  const losses = matches.filter((m) => getMatchResult(m.myScore, m.opponentScore) === 'derrota').length;
+  const cleanSheetsTotal = matches.filter((m) => m.opponentScore === 0).length;
 
   const recentMatches = useMemo(
     () => [...matches].sort((a, b) => b.createdAt - a.createdAt).slice(0, 8),
     [matches],
   );
 
-  const wins = matches.filter((m) => getMatchResult(m.myScore, m.opponentScore) === 'vitoria').length;
-  const draws = matches.filter((m) => getMatchResult(m.myScore, m.opponentScore) === 'empate').length;
-  const losses = matches.filter((m) => getMatchResult(m.myScore, m.opponentScore) === 'derrota').length;
+  const filterBtns: Array<{ key: HomeFilter; label: string }> = [
+    { key: 'all', label: 'Todos' },
+    { key: 'home', label: 'Casa' },
+    { key: 'away', label: 'Fora' },
+  ];
 
   return (
     <View style={[styles.container, { paddingTop: topPad }]}>
@@ -154,11 +188,23 @@ export default function SequenciasScreen() {
         <View style={{ width: 40 }} />
       </View>
 
+      <View style={styles.filterRow}>
+        {filterBtns.map((b) => (
+          <TouchableOpacity
+            key={b.key}
+            style={[styles.filterBtn, homeFilter === b.key && { backgroundColor: `rgba(${theme.primaryRgb},0.15)`, borderColor: `rgba(${theme.primaryRgb},0.4)` }]}
+            onPress={() => setHomeFilter(b.key)}
+          >
+            <Text style={[styles.filterText, homeFilter === b.key && { color: theme.primary }]}>{b.label}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
       {isLoading ? (
         <View style={styles.center}>
           <ActivityIndicator color={theme.primary} size="large" />
         </View>
-      ) : matches.length === 0 ? (
+      ) : allMatches.length === 0 ? (
         <View style={styles.center}>
           <Ionicons name="trending-up-outline" size={48} color={Colors.mutedForeground} />
           <Text style={styles.emptyTitle}>Sem partidas ainda</Text>
@@ -170,7 +216,7 @@ export default function SequenciasScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.section}>
-            <Text style={styles.sectionLabel}>FORMA RECENTE</Text>
+            <Text style={styles.sectionLabel}>FORMA RECENTE ({homeFilter === 'home' ? 'Casa' : homeFilter === 'away' ? 'Fora' : 'Geral'})</Text>
             <View style={styles.formCard}>
               <View style={styles.formRow}>
                 {form.map((r, i) => <FormBall key={i} result={r} />)}
@@ -184,45 +230,42 @@ export default function SequenciasScreen() {
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.sectionLabel}>SEQUÊNCIA ATUAL</Text>
-            {currentStreak ? (
-              <View style={[styles.streakCard, { borderColor: `${currentStreak.color}40`, backgroundColor: `${currentStreak.color}08` }]}>
-                <Text style={[styles.streakCount, { color: currentStreak.color }]}>{currentStreak.count}</Text>
-                <Text style={[styles.streakLabel, { color: currentStreak.color }]}>{currentStreak.label}</Text>
-              </View>
-            ) : (
-              <View style={styles.card}>
-                <Text style={styles.noDataText}>Nenhuma sequência ativa</Text>
-              </View>
-            )}
-          </View>
-
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>INVICTO</Text>
-            <View style={[styles.streakCard, {
-              borderColor: unbeatenStreak > 0 ? `${Colors.info}40` : Colors.border,
-              backgroundColor: unbeatenStreak > 0 ? `${Colors.info}08` : Colors.card,
-            }]}>
-              <Text style={[styles.streakCount, { color: unbeatenStreak > 0 ? Colors.info : Colors.mutedForeground }]}>
-                {unbeatenStreak}
-              </Text>
-              <Text style={[styles.streakLabel, { color: unbeatenStreak > 0 ? Colors.info : Colors.mutedForeground }]}>
-                {unbeatenStreak === 1 ? 'Jogo sem derrota' : 'Jogos sem derrota'}
-              </Text>
+            <Text style={styles.sectionLabel}>SEQUÊNCIAS ATUAIS vs RECORDE</Text>
+            <View style={styles.streakList}>
+              <StreakRow
+                label="Vitórias consecutivas"
+                current={currentWin}
+                record={longestWin}
+                color={Colors.success}
+                icon="🏆"
+              />
+              <StreakRow
+                label="Jogos invicto"
+                current={currentUnbeaten}
+                record={longestUnbeaten}
+                color={Colors.info}
+                icon="🛡️"
+              />
+              <StreakRow
+                label="Clean sheets (sem sofrer gol)"
+                current={currentCleanSheets}
+                record={longestCleanSheets}
+                color="#8B5CF6"
+                icon="🧤"
+              />
+              <StreakRow
+                label="Jogos marcando gol"
+                current={currentScoring}
+                record={longestScoring}
+                color={Colors.warning}
+                icon="⚽"
+              />
             </View>
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.sectionLabel}>RECORDES DA TEMPORADA</Text>
+            <Text style={styles.sectionLabel}>ESTATÍSTICAS</Text>
             <View style={styles.recordsGrid}>
-              <View style={styles.recordCard}>
-                <Text style={[styles.recordValue, { color: Colors.success }]}>{longestWin}</Text>
-                <Text style={styles.recordLabel}>Maior Seq. de Vitórias</Text>
-              </View>
-              <View style={styles.recordCard}>
-                <Text style={[styles.recordValue, { color: Colors.info }]}>{longestUnbeaten}</Text>
-                <Text style={styles.recordLabel}>Maior Seq. Invicto</Text>
-              </View>
               <View style={styles.recordCard}>
                 <Text style={[styles.recordValue, { color: Colors.success }]}>{wins}</Text>
                 <Text style={styles.recordLabel}>Vitórias</Text>
@@ -236,40 +279,55 @@ export default function SequenciasScreen() {
                 <Text style={styles.recordLabel}>Derrotas</Text>
               </View>
               <View style={styles.recordCard}>
+                <Text style={[styles.recordValue, { color: '#8B5CF6' }]}>{cleanSheetsTotal}</Text>
+                <Text style={styles.recordLabel}>Clean Sheets</Text>
+              </View>
+              <View style={styles.recordCard}>
                 <Text style={[styles.recordValue, { color: Colors.foreground }]}>{matches.length}</Text>
-                <Text style={styles.recordLabel}>Total de Jogos</Text>
+                <Text style={styles.recordLabel}>Total Jogos</Text>
+              </View>
+              <View style={styles.recordCard}>
+                <Text style={[styles.recordValue, { color: Colors.foreground }]}>
+                  {matches.length > 0 ? `${Math.round((wins / matches.length) * 100)}%` : '—'}
+                </Text>
+                <Text style={styles.recordLabel}>% Vitórias</Text>
               </View>
             </View>
           </View>
 
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>ÚLTIMAS PARTIDAS</Text>
-            <View style={styles.card}>
-              {recentMatches.map((m, idx) => {
-                const r = getMatchResult(m.myScore, m.opponentScore);
-                const resultCfg = {
-                  vitoria: { label: 'V', color: Colors.success },
-                  empate: { label: 'E', color: Colors.warning },
-                  derrota: { label: 'D', color: Colors.destructive },
-                }[r];
-                return (
-                  <View key={m.id}>
-                    {idx > 0 && <View style={styles.divider} />}
-                    <View style={styles.recentRow}>
-                      <View style={[styles.resultChip, { backgroundColor: `${resultCfg.color}20` }]}>
-                        <Text style={[styles.resultChipText, { color: resultCfg.color }]}>{resultCfg.label}</Text>
+          {recentMatches.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionLabel}>ÚLTIMAS PARTIDAS</Text>
+              <View style={styles.card}>
+                {recentMatches.map((m, idx) => {
+                  const r = getMatchResult(m.myScore, m.opponentScore);
+                  const resultCfg = {
+                    vitoria: { label: 'V', color: Colors.success },
+                    empate: { label: 'E', color: Colors.warning },
+                    derrota: { label: 'D', color: Colors.destructive },
+                  }[r];
+                  return (
+                    <View key={m.id}>
+                      {idx > 0 && <View style={styles.divider} />}
+                      <View style={styles.recentRow}>
+                        <View style={[styles.resultChip, { backgroundColor: `${resultCfg.color}20` }]}>
+                          <Text style={[styles.resultChipText, { color: resultCfg.color }]}>{resultCfg.label}</Text>
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.recentOpponent} numberOfLines={1}>vs {m.opponent}</Text>
+                          <Text style={styles.recentMeta}>
+                            {m.location === 'casa' ? '🏠 ' : m.location === 'fora' ? '✈️ ' : '⚖️ '}{m.stage} · {m.tournament}
+                            {m.opponentScore === 0 ? ' · 🧤' : ''}
+                          </Text>
+                        </View>
+                        <Text style={styles.recentScore}>{m.myScore}–{m.opponentScore}</Text>
                       </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.recentOpponent} numberOfLines={1}>vs {m.opponent}</Text>
-                        <Text style={styles.recentMeta}>{m.stage} · {m.tournament}</Text>
-                      </View>
-                      <Text style={styles.recentScore}>{m.myScore}–{m.opponentScore}</Text>
                     </View>
-                  </View>
-                );
-              })}
+                  );
+                })}
+              </View>
             </View>
-          </View>
+          )}
         </ScrollView>
       )}
     </View>
@@ -285,6 +343,16 @@ const styles = StyleSheet.create({
   },
   backBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   title: { flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '600' as const, color: Colors.foreground, fontFamily: 'Inter_600SemiBold' },
+  filterRow: {
+    flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingVertical: 10,
+    borderBottomWidth: 1, borderBottomColor: Colors.border,
+  },
+  filterBtn: {
+    flex: 1, paddingVertical: 8, borderRadius: Colors.radius,
+    borderWidth: 1, borderColor: Colors.border,
+    backgroundColor: Colors.card, alignItems: 'center',
+  },
+  filterText: { fontSize: 13, fontWeight: '600' as const, color: Colors.mutedForeground, fontFamily: 'Inter_600SemiBold' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16, padding: 40 },
   emptyTitle: { fontSize: 18, fontWeight: '600' as const, color: Colors.foreground, fontFamily: 'Inter_600SemiBold' },
   emptyText: { fontSize: 14, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular', textAlign: 'center' },
@@ -307,13 +375,21 @@ const styles = StyleSheet.create({
   formBallText: { fontSize: 14, fontWeight: '700' as const, fontFamily: 'Inter_700Bold' },
   formLegend: { flexDirection: 'row', gap: 12, flexWrap: 'wrap', justifyContent: 'center' },
   legendDot: { fontSize: 11, fontFamily: 'Inter_400Regular' },
-  card: { backgroundColor: Colors.card, borderRadius: Colors.radiusLg, borderWidth: 1, borderColor: Colors.border, overflow: 'hidden' },
-  streakCard: {
+  streakList: { gap: 8 },
+  streakRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
     borderRadius: Colors.radiusLg, borderWidth: 1,
-    padding: 24, alignItems: 'center', gap: 6,
+    padding: 14,
   },
-  streakCount: { fontSize: 48, fontWeight: '700' as const, fontFamily: 'Inter_700Bold' },
-  streakLabel: { fontSize: 14, fontWeight: '600' as const, fontFamily: 'Inter_600SemiBold', textAlign: 'center' },
+  streakIcon: { fontSize: 24, width: 32, textAlign: 'center' },
+  streakLabel: { fontSize: 14, fontWeight: '600' as const, color: Colors.foreground, fontFamily: 'Inter_600SemiBold' },
+  streakMeta: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 3, flexWrap: 'wrap' },
+  activePill: {
+    paddingHorizontal: 7, paddingVertical: 2, borderRadius: 99, borderWidth: 1,
+  },
+  activePillText: { fontSize: 10, fontWeight: '600' as const, fontFamily: 'Inter_600SemiBold' },
+  recordText: { fontSize: 11, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular' },
+  streakCount: { fontSize: 28, fontWeight: '700' as const, fontFamily: 'Inter_700Bold', minWidth: 36, textAlign: 'right' },
   recordsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   recordCard: {
     flex: 1, minWidth: '30%',
@@ -323,7 +399,7 @@ const styles = StyleSheet.create({
   },
   recordValue: { fontSize: 28, fontWeight: '700' as const, fontFamily: 'Inter_700Bold' },
   recordLabel: { fontSize: 11, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular', textAlign: 'center' },
-  noDataText: { fontSize: 14, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular', padding: 16, textAlign: 'center' },
+  card: { backgroundColor: Colors.card, borderRadius: Colors.radiusLg, borderWidth: 1, borderColor: Colors.border, overflow: 'hidden' },
   divider: { height: StyleSheet.hairlineWidth, backgroundColor: Colors.border },
   recentRow: {
     flexDirection: 'row', alignItems: 'center', gap: 12,

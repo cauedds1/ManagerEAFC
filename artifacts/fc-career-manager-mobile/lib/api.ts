@@ -305,17 +305,34 @@ export interface SeasonGameData {
   fan_mood?: number;
 }
 
+export interface Trophy {
+  id: string;
+  name: string;
+  season?: string;
+  type?: string;
+  tournament?: string;
+}
+
 export interface CareerGameData {
   lineup?: number[];
   benchOrder?: number[];
   formation?: string;
-  trophies?: unknown[];
+  trophies?: Trophy[];
   customPlayers?: SquadPlayer[];
   diretoria_members?: DiretoraaMember[];
   diretoria_meetings?: DiretoraaMeeting[];
   diretoria_notifications?: { id: string; message: string; read: boolean; createdAt: number }[];
   comp_results?: unknown[];
   formerPlayers?: SquadPlayer[];
+  rivals?: string[];
+}
+
+export interface PlayerSearchResult {
+  id: number;
+  name: string;
+  photo: string;
+  age: number;
+  position: string;
 }
 
 export function getMatchResult(myScore: number, opponentScore: number): MatchResult {
@@ -405,6 +422,11 @@ export const api = {
       request<{ players: SquadPlayer[]; cachedAt: number }>(`/api/squad/${clubId}`),
   },
 
+  players: {
+    search: (q: string) =>
+      request<{ players: PlayerSearchResult[] }>(`/api/players/search?q=${encodeURIComponent(q)}`),
+  },
+
   noticias: {
     generate: (seasonId: string, matchId?: string) =>
       request<{ noticia: NewsItem }>('/api/noticias/generate', {
@@ -458,6 +480,19 @@ export const api = {
 
     saveMeetings: (careerId: string, meetings: DiretoraaMeeting[]) =>
       api.careerData.set(careerId, 'diretoria_meetings', meetings),
+
+    generateMember: (payload: {
+      roleLabel: string;
+      personalityStyle: string;
+      clubName: string;
+      clubLeague?: string;
+      clubCountry?: string;
+      extraTraits?: string;
+    }) =>
+      request<{ name: string; description: string; patience: number }>(
+        '/api/diretoria/generate-member',
+        { method: 'POST', body: JSON.stringify({ ...payload, lang: 'pt' }) }
+      ),
 
     sendTurn: (payload: {
       speaker: { id: string; name: string; roleLabel: string; description: string; mood: string; patience: number };
