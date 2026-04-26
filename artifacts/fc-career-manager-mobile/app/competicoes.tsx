@@ -730,6 +730,7 @@ export default function CompeticoesScreen() {
       )}
 
       <EditCompModal
+        key={editing?.id ?? 'none'}
         item={editing}
         clubName={activeCareer?.clubName ?? ''}
         onClose={() => setEditing(null)}

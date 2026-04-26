@@ -316,6 +316,16 @@ export interface SeasonGameData {
   rivals?: string[];
   rivalsLocked?: boolean;
   transferWindow?: { open: boolean; openCount: number };
+  momentos?: MomentoMeta[];
+}
+
+export interface MomentoMeta {
+  id: string;
+  title: string;
+  description: string;
+  gameDate: string;
+  playerIds?: number[];
+  createdAt: string;
 }
 
 export interface Trophy {

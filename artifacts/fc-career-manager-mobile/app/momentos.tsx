@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
   Platform, ActivityIndicator, Modal, TextInput,
@@ -7,10 +7,12 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useQuery } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useCareer } from '@/contexts/CareerContext';
 import { useClubTheme } from '@/contexts/ClubThemeContext';
+import { api, type SquadPlayer } from '@/lib/api';
 import { Colors } from '@/constants/colors';
 
 interface Momento {
@@ -19,6 +21,7 @@ interface Momento {
   description: string;
   gameDate: string;
   localUri: string;
+  playerIds?: number[];
   createdAt: string;
 }
 
@@ -29,13 +32,13 @@ function genId(): string {
   return `mo_${Date.now().toString(36)}_${Math.random().toString(36).slice(2)}`;
 }
 
-function momentosKey(seasonId: string): string {
-  return `fc_momentos_${seasonId}`;
+function momentosLocalKey(seasonId: string): string {
+  return `fc_momentos_v2_${seasonId}`;
 }
 
-async function loadMomentos(seasonId: string): Promise<Momento[]> {
+async function loadLocalMomentos(seasonId: string): Promise<Momento[]> {
   try {
-    const raw = await AsyncStorage.getItem(momentosKey(seasonId));
+    const raw = await AsyncStorage.getItem(momentosLocalKey(seasonId));
     if (!raw) return [];
     return JSON.parse(raw) as Momento[];
   } catch {
@@ -43,28 +46,125 @@ async function loadMomentos(seasonId: string): Promise<Momento[]> {
   }
 }
 
-async function persistMomentos(seasonId: string, list: Momento[]): Promise<void> {
-  await AsyncStorage.setItem(momentosKey(seasonId), JSON.stringify(list));
+async function saveLocalMomentos(seasonId: string, list: Momento[]): Promise<void> {
+  await AsyncStorage.setItem(momentosLocalKey(seasonId), JSON.stringify(list));
 }
 
+async function syncMomentosToApi(seasonId: string, list: Momento[]): Promise<void> {
+  try {
+    const meta = list.map(({ localUri: _, ...rest }) => rest);
+    await api.seasonData.set(seasonId, 'momentos', meta);
+  } catch {
+    // silently fail — local data is the source of truth on mobile
+  }
+}
 
 function formatDate(raw: string): string {
   if (!raw.trim()) return '—';
   return raw.trim();
 }
 
+function PlayerInitials({ name, size = 28 }: { name: string; size?: number }) {
+  const parts = name.trim().split(/\s+/);
+  const initials = parts.length >= 2
+    ? `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
+    : name.slice(0, 2).toUpperCase();
+  return (
+    <View style={[piStyles.wrap, { width: size, height: size, borderRadius: size / 2 }]}>
+      <Text style={[piStyles.text, { fontSize: Math.max(8, size * 0.38) }]}>{initials}</Text>
+    </View>
+  );
+}
+
+const piStyles = StyleSheet.create({
+  wrap: { alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(139,92,246,0.25)' },
+  text: { fontWeight: '700' as const, color: '#fff', fontFamily: 'Inter_700Bold' },
+});
+
+interface PlayerSelectorProps {
+  squad: SquadPlayer[];
+  selectedIds: number[];
+  onToggle: (id: number) => void;
+}
+
+function PlayerSelector({ squad, selectedIds, onToggle }: PlayerSelectorProps) {
+  const [search, setSearch] = useState('');
+  const theme = useClubTheme();
+
+  const filtered = useMemo(() => {
+    if (!search.trim()) return squad;
+    return squad.filter((p) => p.name.toLowerCase().includes(search.toLowerCase()));
+  }, [squad, search]);
+
+  return (
+    <View style={psStyles.container}>
+      <TextInput
+        style={psStyles.search}
+        value={search}
+        onChangeText={setSearch}
+        placeholder="Filtrar jogadores…"
+        placeholderTextColor={Colors.mutedForeground}
+      />
+      <ScrollView style={psStyles.list} nestedScrollEnabled showsVerticalScrollIndicator={false}>
+        {filtered.map((p) => {
+          const selected = selectedIds.includes(p.id);
+          return (
+            <TouchableOpacity
+              key={p.id}
+              style={[
+                psStyles.row,
+                selected && { backgroundColor: `rgba(${theme.primaryRgb},0.1)`, borderColor: `rgba(${theme.primaryRgb},0.3)` },
+              ]}
+              onPress={() => onToggle(p.id)}
+            >
+              <PlayerInitials name={p.name} size={32} />
+              <View style={{ flex: 1 }}>
+                <Text style={[psStyles.name, selected && { color: theme.primary }]}>{p.name}</Text>
+                <Text style={psStyles.pos}>{p.positionPtBr ?? p.position}</Text>
+              </View>
+              {selected && <Ionicons name="checkmark-circle" size={18} color={theme.primary} />}
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+    </View>
+  );
+}
+
+const psStyles = StyleSheet.create({
+  container: { gap: 8 },
+  search: {
+    backgroundColor: Colors.card, borderRadius: 10,
+    borderWidth: 1, borderColor: Colors.border,
+    paddingHorizontal: 12, paddingVertical: 8,
+    fontSize: 14, color: Colors.foreground, fontFamily: 'Inter_400Regular',
+  },
+  list: { maxHeight: 200 },
+  row: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    paddingVertical: 8, paddingHorizontal: 10,
+    borderRadius: 10, borderWidth: 1, borderColor: Colors.border,
+    marginBottom: 4,
+  },
+  name: { fontSize: 13, fontWeight: '600' as const, color: Colors.foreground, fontFamily: 'Inter_600SemiBold' },
+  pos: { fontSize: 11, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular' },
+});
+
 interface AddModalProps {
   visible: boolean;
+  squad: SquadPlayer[];
   onClose: () => void;
   onSave: (m: Omit<Momento, 'id' | 'createdAt'>) => Promise<void>;
 }
 
-function AddMomentoModal({ visible, onClose, onSave }: AddModalProps) {
+function AddMomentoModal({ visible, squad, onClose, onSave }: AddModalProps) {
   const theme = useClubTheme();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [gameDate, setGameDate] = useState('');
   const [pickedUri, setPickedUri] = useState<string | null>(null);
+  const [selectedPlayerIds, setSelectedPlayerIds] = useState<number[]>([]);
+  const [showPlayerPicker, setShowPlayerPicker] = useState(false);
   const [picking, setPicking] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -73,12 +173,11 @@ function AddMomentoModal({ visible, onClose, onSave }: AddModalProps) {
     setDescription('');
     setGameDate('');
     setPickedUri(null);
+    setSelectedPlayerIds([]);
+    setShowPlayerPicker(false);
   };
 
-  const handleClose = () => {
-    reset();
-    onClose();
-  };
+  const handleClose = () => { reset(); onClose(); };
 
   const handlePickPhoto = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -93,9 +192,7 @@ function AddMomentoModal({ visible, onClose, onSave }: AddModalProps) {
         allowsEditing: true,
         quality: 0.75,
       });
-      if (!result.canceled && result.assets.length > 0) {
-        setPickedUri(result.assets[0].uri);
-      }
+      if (!result.canceled && result.assets.length > 0) setPickedUri(result.assets[0].uri);
     } catch {
       Alert.alert('Erro', 'Não foi possível carregar a imagem.');
     } finally {
@@ -111,13 +208,8 @@ function AddMomentoModal({ visible, onClose, onSave }: AddModalProps) {
     }
     setPicking(true);
     try {
-      const result = await ImagePicker.launchCameraAsync({
-        allowsEditing: true,
-        quality: 0.75,
-      });
-      if (!result.canceled && result.assets.length > 0) {
-        setPickedUri(result.assets[0].uri);
-      }
+      const result = await ImagePicker.launchCameraAsync({ allowsEditing: true, quality: 0.75 });
+      if (!result.canceled && result.assets.length > 0) setPickedUri(result.assets[0].uri);
     } catch {
       Alert.alert('Erro', 'Não foi possível abrir a câmera.');
     } finally {
@@ -125,15 +217,15 @@ function AddMomentoModal({ visible, onClose, onSave }: AddModalProps) {
     }
   };
 
+  const togglePlayer = (id: number) => {
+    setSelectedPlayerIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
+
   const handleSave = async () => {
-    if (!title.trim()) {
-      Alert.alert('Atenção', 'Insira um título para o momento.');
-      return;
-    }
-    if (!pickedUri) {
-      Alert.alert('Atenção', 'Selecione uma foto para o momento.');
-      return;
-    }
+    if (!title.trim()) { Alert.alert('Atenção', 'Insira um título para o momento.'); return; }
+    if (!pickedUri) { Alert.alert('Atenção', 'Selecione uma foto para o momento.'); return; }
     setSaving(true);
     try {
       await onSave({
@@ -141,6 +233,7 @@ function AddMomentoModal({ visible, onClose, onSave }: AddModalProps) {
         description: description.trim(),
         gameDate: gameDate.trim(),
         localUri: pickedUri,
+        playerIds: selectedPlayerIds.length > 0 ? selectedPlayerIds : undefined,
       });
       reset();
       onClose();
@@ -150,6 +243,8 @@ function AddMomentoModal({ visible, onClose, onSave }: AddModalProps) {
       setSaving(false);
     }
   };
+
+  const taggedPlayers = squad.filter((p) => selectedPlayerIds.includes(p.id));
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={handleClose}>
@@ -167,10 +262,7 @@ function AddMomentoModal({ visible, onClose, onSave }: AddModalProps) {
             {pickedUri ? (
               <View style={styles.previewWrap}>
                 <Image source={{ uri: pickedUri }} style={styles.previewImage} resizeMode="cover" />
-                <TouchableOpacity
-                  style={styles.previewRemoveBtn}
-                  onPress={() => setPickedUri(null)}
-                >
+                <TouchableOpacity style={styles.previewRemoveBtn} onPress={() => setPickedUri(null)}>
                   <Ionicons name="close-circle" size={28} color={Colors.destructive} />
                 </TouchableOpacity>
               </View>
@@ -181,11 +273,7 @@ function AddMomentoModal({ visible, onClose, onSave }: AddModalProps) {
                   onPress={handlePickPhoto}
                   disabled={picking}
                 >
-                  {picking ? (
-                    <ActivityIndicator size="small" color={theme.primary} />
-                  ) : (
-                    <Ionicons name="images-outline" size={28} color={theme.primary} />
-                  )}
+                  {picking ? <ActivityIndicator size="small" color={theme.primary} /> : <Ionicons name="images-outline" size={28} color={theme.primary} />}
                   <Text style={[styles.photoBtnText, { color: theme.primary }]}>Galeria</Text>
                 </TouchableOpacity>
                 {Platform.OS !== 'web' && (
@@ -237,6 +325,37 @@ function AddMomentoModal({ visible, onClose, onSave }: AddModalProps) {
                 textAlignVertical="top"
               />
             </View>
+
+            {squad.length > 0 && (
+              <View style={styles.field}>
+                <TouchableOpacity
+                  style={styles.playerTagHeader}
+                  onPress={() => setShowPlayerPicker(!showPlayerPicker)}
+                >
+                  <Text style={styles.fieldLabel}>JOGADORES ENVOLVIDOS</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    {taggedPlayers.slice(0, 4).map((p) => (
+                      <PlayerInitials key={p.id} name={p.name} size={24} />
+                    ))}
+                    {taggedPlayers.length > 4 && (
+                      <Text style={styles.morePlayersText}>+{taggedPlayers.length - 4}</Text>
+                    )}
+                    <Ionicons
+                      name={showPlayerPicker ? 'chevron-up' : 'chevron-down'}
+                      size={14}
+                      color={Colors.mutedForeground}
+                    />
+                  </View>
+                </TouchableOpacity>
+                {showPlayerPicker && (
+                  <PlayerSelector
+                    squad={squad}
+                    selectedIds={selectedPlayerIds}
+                    onToggle={togglePlayer}
+                  />
+                )}
+              </View>
+            )}
           </ScrollView>
 
           <View style={styles.modalFooter}>
@@ -249,11 +368,10 @@ function AddMomentoModal({ visible, onClose, onSave }: AddModalProps) {
               onPress={handleSave}
               disabled={saving}
             >
-              {saving ? (
-                <ActivityIndicator size="small" color={theme.primary} />
-              ) : (
-                <Text style={[styles.saveBtnText, { color: theme.primary }]}>Salvar Momento</Text>
-              )}
+              {saving
+                ? <ActivityIndicator size="small" color={theme.primary} />
+                : <Text style={[styles.saveBtnText, { color: theme.primary }]}>Salvar Momento</Text>
+              }
             </TouchableOpacity>
           </View>
         </View>
@@ -264,23 +382,24 @@ function AddMomentoModal({ visible, onClose, onSave }: AddModalProps) {
 
 interface DetailModalProps {
   momento: Momento | null;
+  squad: SquadPlayer[];
   onClose: () => void;
   onDelete: (id: string) => void;
 }
 
-function DetailModal({ momento, onClose, onDelete }: DetailModalProps) {
+function DetailModal({ momento, squad, onClose, onDelete }: DetailModalProps) {
   if (!momento) return null;
+  const taggedPlayers = momento.playerIds
+    ? squad.filter((p) => momento.playerIds!.includes(p.id))
+    : [];
+
   return (
     <Modal visible={!!momento} animationType="fade" transparent onRequestClose={onClose}>
       <View style={styles.detailOverlay}>
         <TouchableOpacity style={StyleSheet.absoluteFill} onPress={onClose} />
         <View style={styles.detailSheet}>
-          <Image
-            source={{ uri: momento.localUri }}
-            style={styles.detailImage}
-            resizeMode="contain"
-          />
-          <View style={styles.detailInfo}>
+          <Image source={{ uri: momento.localUri }} style={styles.detailImage} resizeMode="contain" />
+          <ScrollView contentContainerStyle={styles.detailInfo}>
             <Text style={styles.detailTitle}>{momento.title}</Text>
             {momento.gameDate ? (
               <Text style={styles.detailDate}>🗓 {formatDate(momento.gameDate)}</Text>
@@ -288,18 +407,25 @@ function DetailModal({ momento, onClose, onDelete }: DetailModalProps) {
             {momento.description ? (
               <Text style={styles.detailDesc}>{momento.description}</Text>
             ) : null}
+            {taggedPlayers.length > 0 && (
+              <View style={styles.taggedPlayers}>
+                {taggedPlayers.map((p) => (
+                  <View key={p.id} style={styles.taggedPlayerChip}>
+                    <PlayerInitials name={p.name} size={20} />
+                    <Text style={styles.taggedPlayerName}>{p.name.split(' ')[0]}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
             <View style={styles.detailActions}>
               <TouchableOpacity onPress={onClose} style={styles.detailCloseBtn}>
                 <Text style={styles.detailCloseBtnText}>Fechar</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => {
-                  Alert.alert('Excluir momento', 'Tem certeza que deseja excluir este momento?', [
+                  Alert.alert('Excluir momento', 'Tem certeza?', [
                     { text: 'Cancelar', style: 'cancel' },
-                    {
-                      text: 'Excluir', style: 'destructive',
-                      onPress: () => { onDelete(momento.id); onClose(); },
-                    },
+                    { text: 'Excluir', style: 'destructive', onPress: () => { onDelete(momento.id); onClose(); } },
                   ]);
                 }}
                 style={styles.detailDeleteBtn}
@@ -308,7 +434,7 @@ function DetailModal({ momento, onClose, onDelete }: DetailModalProps) {
                 <Text style={styles.detailDeleteBtnText}>Excluir</Text>
               </TouchableOpacity>
             </View>
-          </View>
+          </ScrollView>
           <TouchableOpacity style={styles.detailCloseIcon} onPress={onClose}>
             <Ionicons name="close" size={22} color={Colors.foreground} />
           </TouchableOpacity>
@@ -320,7 +446,7 @@ function DetailModal({ momento, onClose, onDelete }: DetailModalProps) {
 
 export default function MomentosScreen() {
   const insets = useSafeAreaInsets();
-  const { activeSeason } = useCareer();
+  const { activeCareer, activeSeason } = useCareer();
   const theme = useClubTheme();
   const topPad = Platform.OS === 'web' ? 0 : insets.top;
 
@@ -329,10 +455,18 @@ export default function MomentosScreen() {
   const [showAdd, setShowAdd] = useState(false);
   const [selected, setSelected] = useState<Momento | null>(null);
 
+  const { data: squadData } = useQuery({
+    queryKey: ['/api/squad', activeCareer?.clubId],
+    queryFn: () => activeCareer ? api.squad.get(activeCareer.clubId) : null,
+    enabled: !!activeCareer?.clubId,
+    staleTime: 1000 * 60 * 10,
+  });
+  const squad: SquadPlayer[] = squadData?.players ?? [];
+
   useEffect(() => {
     if (!activeSeason?.id) return;
     setLoading(true);
-    loadMomentos(activeSeason.id).then((list) => {
+    loadLocalMomentos(activeSeason.id).then((list) => {
       setMomentos(list);
       setLoading(false);
     });
@@ -340,22 +474,19 @@ export default function MomentosScreen() {
 
   const handleSave = useCallback(async (data: Omit<Momento, 'id' | 'createdAt'>) => {
     if (!activeSeason?.id) return;
-    const id = genId();
-    const newMomento: Momento = {
-      ...data,
-      id,
-      createdAt: new Date().toISOString(),
-    };
+    const newMomento: Momento = { ...data, id: genId(), createdAt: new Date().toISOString() };
     const updated = [newMomento, ...momentos];
     setMomentos(updated);
-    await persistMomentos(activeSeason.id, updated);
+    await saveLocalMomentos(activeSeason.id, updated);
+    void syncMomentosToApi(activeSeason.id, updated);
   }, [activeSeason?.id, momentos]);
 
   const handleDelete = useCallback(async (id: string) => {
     if (!activeSeason?.id) return;
     const updated = momentos.filter((m) => m.id !== id);
     setMomentos(updated);
-    await persistMomentos(activeSeason.id, updated);
+    await saveLocalMomentos(activeSeason.id, updated);
+    void syncMomentosToApi(activeSeason.id, updated);
   }, [activeSeason?.id, momentos]);
 
   const renderItem = ({ item }: { item: Momento }) => (
@@ -370,6 +501,17 @@ export default function MomentosScreen() {
         {item.gameDate ? (
           <Text style={styles.gridDate} numberOfLines={1}>{formatDate(item.gameDate)}</Text>
         ) : null}
+        {item.playerIds && item.playerIds.length > 0 && (
+          <View style={styles.gridPlayerRow}>
+            {item.playerIds.slice(0, 3).map((id) => {
+              const p = squad.find((s) => s.id === id);
+              return p ? <PlayerInitials key={id} name={p.name} size={16} /> : null;
+            })}
+            {item.playerIds.length > 3 && (
+              <Text style={styles.gridMorePlayers}>+{item.playerIds.length - 3}</Text>
+            )}
+          </View>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -381,11 +523,7 @@ export default function MomentosScreen() {
           <Ionicons name="chevron-back" size={24} color={Colors.foreground} />
         </TouchableOpacity>
         <Text style={styles.title}>Momentos</Text>
-        <TouchableOpacity
-          style={styles.addBtn}
-          onPress={() => setShowAdd(true)}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        >
+        <TouchableOpacity style={styles.addBtn} onPress={() => setShowAdd(true)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
           <Ionicons name="add" size={24} color={theme.primary} />
         </TouchableOpacity>
       </View>
@@ -430,12 +568,14 @@ export default function MomentosScreen() {
 
       <AddMomentoModal
         visible={showAdd}
+        squad={squad}
         onClose={() => setShowAdd(false)}
         onSave={handleSave}
       />
 
       <DetailModal
         momento={selected}
+        squad={squad}
         onClose={() => setSelected(null)}
         onDelete={handleDelete}
       />
@@ -468,28 +608,25 @@ const styles = StyleSheet.create({
   },
   grid: { padding: 16 },
   row: { gap: 8, marginBottom: 8 },
-  gridItem: {
-    borderRadius: 12, overflow: 'hidden',
-    backgroundColor: Colors.card,
-  },
+  gridItem: { borderRadius: 12, overflow: 'hidden', backgroundColor: Colors.card },
   gridImage: { width: '100%', height: '100%', position: 'absolute' },
   gridOverlay: {
     position: 'absolute', bottom: 0, left: 0, right: 0,
-    padding: 10,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    padding: 8, backgroundColor: 'rgba(0,0,0,0.55)',
   },
   gridTitle: { fontSize: 13, fontWeight: '600' as const, color: '#fff', fontFamily: 'Inter_600SemiBold', lineHeight: 18 },
   gridDate: { fontSize: 11, color: 'rgba(255,255,255,0.7)', fontFamily: 'Inter_400Regular', marginTop: 2 },
+  gridPlayerRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 4 },
+  gridMorePlayers: { fontSize: 10, color: 'rgba(255,255,255,0.6)', fontFamily: 'Inter_400Regular' },
   modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.7)' },
   modalSheet: {
     backgroundColor: Colors.backgroundLighter,
     borderTopLeftRadius: 24, borderTopRightRadius: 24,
     borderTopWidth: 1, borderTopColor: Colors.border,
-    maxHeight: '92%',
+    maxHeight: '94%',
   },
   modalHandle: {
-    width: 36, height: 4, borderRadius: 2,
-    backgroundColor: Colors.border,
+    width: 36, height: 4, borderRadius: 2, backgroundColor: Colors.border,
     alignSelf: 'center', marginTop: 10, marginBottom: 4,
   },
   modalHeader: {
@@ -502,8 +639,7 @@ const styles = StyleSheet.create({
   photoBtns: { flexDirection: 'row', gap: 12 },
   photoBtn: {
     flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8,
-    paddingVertical: 24, borderRadius: 16, borderWidth: 1.5,
-    backgroundColor: Colors.card,
+    paddingVertical: 24, borderRadius: 16, borderWidth: 1.5, backgroundColor: Colors.card,
   },
   photoBtnText: { fontSize: 14, fontWeight: '600' as const, fontFamily: 'Inter_600SemiBold' },
   previewWrap: { borderRadius: 16, overflow: 'hidden', height: 200, position: 'relative' },
@@ -514,6 +650,8 @@ const styles = StyleSheet.create({
     fontSize: 11, fontWeight: '600' as const, color: Colors.mutedForeground,
     textTransform: 'uppercase', letterSpacing: 0.8, fontFamily: 'Inter_600SemiBold',
   },
+  playerTagHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  morePlayersText: { fontSize: 11, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular' },
   textInput: {
     backgroundColor: Colors.card, borderRadius: 12,
     borderWidth: 1, borderColor: Colors.border,
@@ -522,28 +660,29 @@ const styles = StyleSheet.create({
   },
   textArea: { minHeight: 80, paddingTop: 12 },
   modalFooter: { padding: 16, borderTopWidth: 1, borderTopColor: Colors.border },
-  saveBtn: {
-    borderRadius: 14, borderWidth: 1,
-    paddingVertical: 14, alignItems: 'center',
-  },
+  saveBtn: { borderRadius: 14, borderWidth: 1, paddingVertical: 14, alignItems: 'center' },
   saveBtnText: { fontSize: 15, fontWeight: '700' as const, fontFamily: 'Inter_700Bold' },
-  detailOverlay: {
-    flex: 1, justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.9)',
-  },
+  detailOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.9)' },
   detailSheet: {
     backgroundColor: Colors.backgroundLighter,
     borderTopLeftRadius: 24, borderTopRightRadius: 24,
     borderTopWidth: 1, borderTopColor: Colors.border,
-    maxHeight: '88%',
-    overflow: 'hidden',
+    maxHeight: '88%', overflow: 'hidden',
   },
   detailImage: { width: '100%', height: 280, backgroundColor: '#000' },
   detailInfo: { padding: 20, gap: 8 },
   detailTitle: { fontSize: 20, fontWeight: '700' as const, color: Colors.foreground, fontFamily: 'Inter_700Bold' },
   detailDate: { fontSize: 13, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular' },
   detailDesc: { fontSize: 14, color: Colors.foreground, fontFamily: 'Inter_400Regular', lineHeight: 22, opacity: 0.8 },
-  detailActions: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 },
+  taggedPlayers: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 },
+  taggedPlayerChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: 'rgba(139,92,246,0.12)', borderRadius: 20,
+    paddingHorizontal: 8, paddingVertical: 4,
+    borderWidth: 1, borderColor: 'rgba(139,92,246,0.25)',
+  },
+  taggedPlayerName: { fontSize: 12, color: Colors.foreground, fontFamily: 'Inter_500Medium' },
+  detailActions: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 },
   detailCloseBtn: {
     paddingHorizontal: 20, paddingVertical: 10,
     borderRadius: 10, backgroundColor: Colors.card,
