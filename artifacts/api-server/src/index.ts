@@ -1,7 +1,7 @@
 import app from "./app";
 import { logger } from "./lib/logger";
 import { db, runMigrations, squadPlayersTable } from "@workspace/db";
-import { ne, inArray, sql, like } from "drizzle-orm";
+import { inArray, sql, like } from "drizzle-orm";
 import { getStripeSync } from "./lib/stripeClient";
 
 const rawPort = process.env["PORT"];
@@ -85,18 +85,6 @@ async function initStripe() {
   }
 }
 
-async function purgeInvalidSquadRows() {
-  try {
-    const deleted = await db
-      .delete(squadPlayersTable)
-      .where(ne(squadPlayersTable.source, "api-football@v2"))
-      .returning({ teamId: squadPlayersTable.teamId });
-    logger.info({ rows: deleted.length }, "Purged legacy squad rows on startup");
-  } catch (err) {
-    logger.warn({ err }, "Failed to purge legacy squad rows on startup (non-fatal)");
-  }
-}
-
 async function migratePositionGroups() {
   try {
     const OLD_DEFENDER = ["CentreBack", "FullBack"];
@@ -168,7 +156,6 @@ app.listen(port, "0.0.0.0", (err) => {
   logger.info({ port }, "Server listening");
 
   applyMigrations()
-    .then(purgeInvalidSquadRows)
     .then(migratePositionGroups)
     .then(clearCardPhotos)
     .then(initStripe)
