@@ -2,6 +2,7 @@ import { loadSeasonData, loadCareerData, putSeasonData, putCareerData } from "@/
 import { hydrateRivalsCache } from "@/lib/rivalsStorage";
 import { hydrateFanMoodCache } from "@/lib/fanMoodStorage";
 import { sessionSet, sessionGet } from "@/lib/sessionStore";
+import { hydrateMissionsFromDb, getMissionsLocalState } from "@/lib/missionStorage";
 
 function matchesKey(sid: string) { return `fc-career-manager-matches-${sid}`; }
 function statsKey(sid: string) { return `fc-career-manager-stats-${sid}`; }
@@ -135,6 +136,13 @@ export async function syncCareerFromDb(careerId: string): Promise<void> {
     try { localStorage.setItem(exitSeasonKey(careerId), JSON.stringify(data.exitSeasonMap)); } catch {}
   }
 
+  hydrateMissionsFromDb(careerId, {
+    missions: data.missions as Record<string, boolean> | undefined,
+    teasers: data.teasers as Record<string, boolean> | undefined,
+    onboarding_seen: data.onboarding_seen as boolean | undefined,
+    seen_plan: data.seen_plan as string | undefined,
+  });
+
   for (const [key, value] of Object.entries(data)) {
     if (key.startsWith("conv_")) {
       const memberId = key.slice(5);
@@ -177,6 +185,12 @@ async function migrateCareerToDb(careerId: string): Promise<void> {
   if (hiddenPlayerIds) { sessionSet(hiddenKey(careerId), hiddenPlayerIds); tasks.push(putCareerData(careerId, "hiddenPlayerIds", hiddenPlayerIds)); }
   const exitSeasonMapRaw = getLocal<Record<string, string>>(exitSeasonKey(careerId));
   if (exitSeasonMapRaw) { sessionSet(exitSeasonKey(careerId), exitSeasonMapRaw); tasks.push(putCareerData(careerId, "exitSeasonMap", exitSeasonMapRaw)); }
+
+  const missionState = getMissionsLocalState(careerId);
+  if (Object.keys(missionState.missions).length > 0) tasks.push(putCareerData(careerId, "missions", missionState.missions));
+  if (Object.keys(missionState.teasers).length > 0) tasks.push(putCareerData(careerId, "teasers", missionState.teasers));
+  if (missionState.onboarding_seen) tasks.push(putCareerData(careerId, "onboarding_seen", true));
+  if (missionState.seen_plan) tasks.push(putCareerData(careerId, "seen_plan", missionState.seen_plan));
 
   const allKeys = Object.keys(localStorage);
   const convPrefix = `fc-diretoria-conv-${careerId}-`;

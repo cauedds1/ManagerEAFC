@@ -1,4 +1,5 @@
 import type { Plan } from "./userPlan";
+import { putCareerData } from "@/lib/apiStorage";
 
 export const FC_MISSION_COMPLETE_EVENT = "fc:mission_complete";
 
@@ -60,6 +61,98 @@ function onboardingSeenKey(careerId: string): string {
   return `fc_onboarding_seen_${careerId}`;
 }
 
+function missionsDbKey(): string {
+  return "missions";
+}
+
+function teasersDbKey(): string {
+  return "teasers";
+}
+
+function persistMissionsToDb(careerId: string): void {
+  const completed: Record<string, boolean> = {};
+  for (const m of MISSIONS) {
+    if (localStorage.getItem(missionKey(careerId, m.id)) === "1") {
+      completed[m.id] = true;
+    }
+  }
+  void putCareerData(careerId, missionsDbKey(), completed);
+}
+
+function persistTeasersToDb(careerId: string): void {
+  const seen: Record<string, boolean> = {};
+  const TEASER_KEYS: TeaserKey[] = [
+    "after_match_diretoria",
+    "after_news_auto",
+    "after_squad_rumor",
+    "after_momento_videonews",
+  ];
+  for (const t of TEASER_KEYS) {
+    if (localStorage.getItem(teaserKey(careerId, t)) === "1") {
+      seen[t] = true;
+    }
+  }
+  void putCareerData(careerId, teasersDbKey(), seen);
+}
+
+export function hydrateMissionsFromDb(
+  careerId: string,
+  data: { missions?: Record<string, boolean>; teasers?: Record<string, boolean>; onboarding_seen?: boolean; seen_plan?: string },
+): void {
+  if (data.missions) {
+    for (const [id, done] of Object.entries(data.missions)) {
+      if (done) {
+        try { localStorage.setItem(missionKey(careerId, id as MissionId), "1"); } catch {}
+      }
+    }
+  }
+  if (data.teasers) {
+    for (const [t, seen] of Object.entries(data.teasers)) {
+      if (seen) {
+        try { localStorage.setItem(teaserKey(careerId, t as TeaserKey), "1"); } catch {}
+      }
+    }
+  }
+  if (data.onboarding_seen) {
+    try { localStorage.setItem(onboardingSeenKey(careerId), "1"); } catch {}
+  }
+  if (data.seen_plan) {
+    try { localStorage.setItem(seenPlanKey(careerId), data.seen_plan); } catch {}
+  }
+}
+
+export function getMissionsLocalState(careerId: string): {
+  missions: Record<string, boolean>;
+  teasers: Record<string, boolean>;
+  onboarding_seen: boolean;
+  seen_plan: string | null;
+} {
+  const missions: Record<string, boolean> = {};
+  const teasers: Record<string, boolean> = {};
+  const TEASER_KEYS: TeaserKey[] = [
+    "after_match_diretoria",
+    "after_news_auto",
+    "after_squad_rumor",
+    "after_momento_videonews",
+  ];
+  for (const m of MISSIONS) {
+    if (localStorage.getItem(missionKey(careerId, m.id)) === "1") {
+      missions[m.id] = true;
+    }
+  }
+  for (const t of TEASER_KEYS) {
+    if (localStorage.getItem(teaserKey(careerId, t)) === "1") {
+      teasers[t] = true;
+    }
+  }
+  return {
+    missions,
+    teasers,
+    onboarding_seen: localStorage.getItem(onboardingSeenKey(careerId)) === "1",
+    seen_plan: localStorage.getItem(seenPlanKey(careerId)),
+  };
+}
+
 export function isMissionComplete(careerId: string, missionId: MissionId): boolean {
   return localStorage.getItem(missionKey(careerId, missionId)) === "1";
 }
@@ -77,6 +170,7 @@ export function completeMission(careerId: string, missionId: MissionId): void {
   if (!canCompleteMission(careerId, missionId)) return;
   if (localStorage.getItem(missionKey(careerId, missionId)) === "1") return;
   localStorage.setItem(missionKey(careerId, missionId), "1");
+  persistMissionsToDb(careerId);
   window.dispatchEvent(new CustomEvent<{ missionId: MissionId }>(FC_MISSION_COMPLETE_EVENT, { detail: { missionId } }));
 }
 
@@ -88,6 +182,7 @@ export function getSeenPlan(careerId: string): Plan | null {
 
 export function setSeenPlan(careerId: string, plan: Plan): void {
   localStorage.setItem(seenPlanKey(careerId), plan);
+  void putCareerData(careerId, "seen_plan", plan);
 }
 
 export function isTeaserSeen(careerId: string, teaser: TeaserKey): boolean {
@@ -96,6 +191,7 @@ export function isTeaserSeen(careerId: string, teaser: TeaserKey): boolean {
 
 export function markTeaserSeen(careerId: string, teaser: TeaserKey): void {
   localStorage.setItem(teaserKey(careerId, teaser), "1");
+  persistTeasersToDb(careerId);
 }
 
 export function isOnboardingSeen(careerId: string): boolean {
@@ -104,6 +200,7 @@ export function isOnboardingSeen(careerId: string): boolean {
 
 export function markOnboardingSeen(careerId: string): void {
   localStorage.setItem(onboardingSeenKey(careerId), "1");
+  void putCareerData(careerId, "onboarding_seen", true);
 }
 
 export function getMissionsForPlan(plan: Plan): MissionDef[] {
