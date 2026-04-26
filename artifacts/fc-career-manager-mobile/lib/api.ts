@@ -326,6 +326,7 @@ export interface MomentoMeta {
   gameDate: string;
   playerIds?: number[];
   createdAt: string;
+  photoUrl?: string;
 }
 
 export interface Trophy {

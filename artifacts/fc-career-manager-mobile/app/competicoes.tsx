@@ -31,6 +31,12 @@ interface StandingsEntry {
   id: string;
   team: string;
   points: number;
+  played?: number;
+  wins?: number;
+  draws?: number;
+  losses?: number;
+  goalsFor?: number;
+  goalsAgainst?: number;
 }
 
 interface CompetitionResult {
@@ -212,6 +218,20 @@ interface StandingsEditorProps {
   clubName: string;
 }
 
+function NumField({ value, onChange }: { value?: number; onChange: (n: number) => void }) {
+  return (
+    <TextInput
+      style={sStyles.numInput}
+      value={value !== undefined ? String(value) : ''}
+      onChangeText={(v) => onChange(parseInt(v, 10) || 0)}
+      keyboardType="number-pad"
+      maxLength={3}
+      placeholder="0"
+      placeholderTextColor={Colors.border}
+    />
+  );
+}
+
 function StandingsEditor({ entries, onChange, clubName }: StandingsEditorProps) {
   const theme = useClubTheme();
   const sorted = [...entries].sort((a, b) => b.points - a.points);
@@ -222,7 +242,7 @@ function StandingsEditor({ entries, onChange, clubName }: StandingsEditorProps) 
   };
 
   const addEntry = () => {
-    onChange([...entries, { id: genId('st'), team: '', points: 0 }]);
+    onChange([...entries, { id: genId('st'), team: '', points: 0, played: 0, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0 }]);
   };
 
   const removeEntry = (id: string) => {
@@ -231,38 +251,56 @@ function StandingsEditor({ entries, onChange, clubName }: StandingsEditorProps) 
 
   return (
     <View style={{ gap: 8 }}>
-      <View style={sStyles.header}>
-        <Text style={[sStyles.colHeader, { flex: 1 }]}>EQUIPE</Text>
-        <Text style={sStyles.colHeader}>PTS</Text>
-        <View style={{ width: 28 }} />
-      </View>
-      {sorted.map((entry, idx) => (
-        <View key={entry.id} style={sStyles.row}>
-          <Text style={[sStyles.pos, idx === 0 ? sStyles.posGold : idx < 3 ? sStyles.posSilver : sStyles.posNormal]}>
-            {idx + 1}
-          </Text>
-          <TextInput
-            style={[sStyles.teamInput, isMyTeam(entry.team) && { color: theme.primary }]}
-            value={entry.team}
-            onChangeText={(v) => updateEntry({ ...entry, team: v })}
-            placeholder="Nome do clube"
-            placeholderTextColor={Colors.mutedForeground}
-          />
-          <TextInput
-            style={sStyles.ptsInput}
-            value={String(entry.points)}
-            onChangeText={(v) => updateEntry({ ...entry, points: parseInt(v, 10) || 0 })}
-            keyboardType="number-pad"
-            maxLength={3}
-          />
-          <TouchableOpacity
-            onPress={() => removeEntry(entry.id)}
-            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-          >
-            <Ionicons name="close-circle-outline" size={18} color={Colors.mutedForeground} />
-          </TouchableOpacity>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+        <View style={{ gap: 4, minWidth: 420 }}>
+          <View style={[sStyles.header, { paddingHorizontal: 4 }]}>
+            <Text style={[sStyles.colHeader, { width: 24 }]}>#</Text>
+            <Text style={[sStyles.colHeader, { flex: 1, minWidth: 80 }]}>EQUIPE</Text>
+            <Text style={[sStyles.colHeader, { width: 34 }]}>J</Text>
+            <Text style={[sStyles.colHeader, { width: 34 }]}>V</Text>
+            <Text style={[sStyles.colHeader, { width: 34 }]}>E</Text>
+            <Text style={[sStyles.colHeader, { width: 34 }]}>D</Text>
+            <Text style={[sStyles.colHeader, { width: 34 }]}>GP</Text>
+            <Text style={[sStyles.colHeader, { width: 34 }]}>GC</Text>
+            <Text style={[sStyles.colHeader, { width: 38 }]}>PTS</Text>
+            <View style={{ width: 24 }} />
+          </View>
+          {sorted.map((entry, idx) => (
+            <View key={entry.id} style={[sStyles.row, { paddingHorizontal: 4 }]}>
+              <Text style={[sStyles.pos, { width: 24 }, idx === 0 ? sStyles.posGold : idx < 3 ? sStyles.posSilver : sStyles.posNormal]}>
+                {idx + 1}
+              </Text>
+              <TextInput
+                style={[sStyles.teamInput, { flex: 1, minWidth: 80 }, isMyTeam(entry.team) && { color: theme.primary }]}
+                value={entry.team}
+                onChangeText={(v) => updateEntry({ ...entry, team: v })}
+                placeholder="Clube"
+                placeholderTextColor={Colors.mutedForeground}
+              />
+              <NumField value={entry.played} onChange={(n) => updateEntry({ ...entry, played: n })} />
+              <NumField value={entry.wins} onChange={(n) => updateEntry({ ...entry, wins: n, points: (n * 3) + (entry.draws ?? 0) })} />
+              <NumField value={entry.draws} onChange={(n) => updateEntry({ ...entry, draws: n, points: ((entry.wins ?? 0) * 3) + n })} />
+              <NumField value={entry.losses} onChange={(n) => updateEntry({ ...entry, losses: n })} />
+              <NumField value={entry.goalsFor} onChange={(n) => updateEntry({ ...entry, goalsFor: n })} />
+              <NumField value={entry.goalsAgainst} onChange={(n) => updateEntry({ ...entry, goalsAgainst: n })} />
+              <TextInput
+                style={[sStyles.numInput, { width: 38, fontWeight: '700' as const }]}
+                value={String(entry.points)}
+                onChangeText={(v) => updateEntry({ ...entry, points: parseInt(v, 10) || 0 })}
+                keyboardType="number-pad"
+                maxLength={3}
+              />
+              <TouchableOpacity
+                onPress={() => removeEntry(entry.id)}
+                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                style={{ width: 24, alignItems: 'center' }}
+              >
+                <Ionicons name="close-circle-outline" size={16} color={Colors.mutedForeground} />
+              </TouchableOpacity>
+            </View>
+          ))}
         </View>
-      ))}
+      </ScrollView>
       <TouchableOpacity style={sStyles.addBtn} onPress={addEntry}>
         <Ionicons name="add" size={14} color={Colors.mutedForeground} />
         <Text style={sStyles.addBtnText}>Adicionar equipe</Text>
@@ -838,6 +876,12 @@ const sStyles = StyleSheet.create({
   ptsInput: {
     width: 40, fontSize: 13, fontWeight: '700' as const, color: Colors.foreground,
     fontFamily: 'Inter_700Bold', textAlign: 'center',
+    borderWidth: 1, borderColor: Colors.border,
+    borderRadius: 6, paddingVertical: 2,
+  },
+  numInput: {
+    width: 34, fontSize: 12, color: Colors.foreground,
+    fontFamily: 'Inter_400Regular', textAlign: 'center',
     borderWidth: 1, borderColor: Colors.border,
     borderRadius: 6, paddingVertical: 2,
   },

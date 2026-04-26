@@ -12,7 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useCareer } from '@/contexts/CareerContext';
 import { useClubTheme } from '@/contexts/ClubThemeContext';
-import { api, type SquadPlayer, type MomentoMeta } from '@/lib/api';
+import { api, getApiUrl, TOKEN_KEY, type SquadPlayer, type MomentoMeta } from '@/lib/api';
 import { Colors } from '@/constants/colors';
 
 interface Momento extends MomentoMeta {
@@ -42,6 +42,47 @@ async function loadUriCache(seasonId: string): Promise<Record<string, string>> {
 
 async function saveUriCache(seasonId: string, cache: Record<string, string>): Promise<void> {
   await AsyncStorage.setItem(uriCacheKey(seasonId), JSON.stringify(cache));
+}
+
+async function getAuthToken(): Promise<string | null> {
+  if (Platform.OS === 'web') {
+    return typeof localStorage !== 'undefined' ? localStorage.getItem(TOKEN_KEY) : null;
+  }
+  const SecureStore = await import('expo-secure-store');
+  return SecureStore.getItemAsync(TOKEN_KEY);
+}
+
+async function uploadPhotoToR2(localUri: string): Promise<string | null> {
+  try {
+    const blob = await (await fetch(localUri)).blob();
+    const mime = blob.type || 'image/jpeg';
+    const ext = mime === 'image/png' ? 'png' : mime === 'image/webp' ? 'webp' : 'jpg';
+    const name = `momento_${Date.now()}.${ext}`;
+    const authToken = await getAuthToken();
+
+    const urlRes = await fetch(
+      `${getApiUrl()}/storage/uploads/request-url?folder=momentos`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+        },
+        body: JSON.stringify({ name, size: blob.size, contentType: mime }),
+      },
+    );
+    if (!urlRes.ok) return null;
+    const { uploadURL, objectPath } = (await urlRes.json()) as { uploadURL: string; objectPath: string };
+    const putRes = await fetch(uploadURL, {
+      method: 'PUT',
+      headers: { 'Content-Type': mime },
+      body: blob,
+    });
+    if (!putRes.ok) return null;
+    return objectPath;
+  } catch {
+    return null;
+  }
 }
 
 function formatDate(raw: string): string {
@@ -391,7 +432,7 @@ function DetailModal({ momento, squad, onClose, onDelete }: DetailModalProps) {
             <View style={[styles.detailImage, styles.detailImagePlaceholder]}>
               <Ionicons name="image-outline" size={48} color={Colors.mutedForeground} />
               <Text style={{ color: Colors.mutedForeground, fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 8 }}>
-                Foto disponível apenas no dispositivo original
+                Foto não disponível neste dispositivo
               </Text>
             </View>
           )}
@@ -478,7 +519,7 @@ export default function MomentosScreen() {
   }, [activeSeason?.id]);
 
   const momentos: Momento[] = useMemo(
-    () => apiMomentos.map((m) => ({ ...m, localUri: uriCache[m.id] })),
+    () => apiMomentos.map((m) => ({ ...m, localUri: uriCache[m.id] ?? m.photoUrl })),
     [apiMomentos, uriCache],
   );
 
@@ -492,7 +533,13 @@ export default function MomentosScreen() {
 
   const handleSave = useCallback(async (data: Omit<MomentoMeta, 'id' | 'createdAt'>, localUri: string) => {
     if (!activeSeason?.id) return;
-    const newMeta: MomentoMeta = { ...data, id: genId(), createdAt: new Date().toISOString() };
+    const photoUrl = await uploadPhotoToR2(localUri);
+    const newMeta: MomentoMeta = {
+      ...data,
+      id: genId(),
+      createdAt: new Date().toISOString(),
+      ...(photoUrl ? { photoUrl } : {}),
+    };
     const updatedMetas = [newMeta, ...apiMomentos];
     await saveMutation.mutateAsync(updatedMetas);
     const newCache = { ...uriCache, [newMeta.id]: localUri };
@@ -594,6 +641,16 @@ export default function MomentosScreen() {
             </Text>
           }
         />
+      )}
+
+      {activeSeason && momentos.length > 0 && (
+        <TouchableOpacity
+          style={[styles.fab, { backgroundColor: theme.primary, bottom: insets.bottom + 24 }]}
+          onPress={() => setShowAdd(true)}
+          activeOpacity={0.85}
+        >
+          <Ionicons name="camera" size={22} color="#fff" />
+        </TouchableOpacity>
       )}
 
       <AddMomentoModal
@@ -733,5 +790,12 @@ const styles = StyleSheet.create({
     width: 36, height: 36, borderRadius: 18,
     backgroundColor: 'rgba(0,0,0,0.5)',
     alignItems: 'center', justifyContent: 'center',
+  },
+  fab: {
+    position: 'absolute', right: 20,
+    width: 56, height: 56, borderRadius: 28,
+    alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3, shadowRadius: 6, elevation: 8,
   },
 });
