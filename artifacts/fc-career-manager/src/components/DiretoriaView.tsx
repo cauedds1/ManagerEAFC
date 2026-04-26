@@ -1134,10 +1134,10 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
       )}
 
       <div
-        className={`rounded-2xl overflow-hidden grid ${panel !== "list" ? "sm:grid-cols-[clamp(200px,28%,260px)_1fr]" : ""}`}
+        className={`w-full rounded-2xl overflow-hidden grid ${panel !== "list" ? "sm:grid-cols-[clamp(200px,28%,260px)_1fr]" : ""}`}
         style={{
           border: "1px solid var(--surface-border)",
-          height: "clamp(380px, calc(100dvh - 280px), 520px)",
+          height: "clamp(420px, calc(100dvh - 200px), 700px)",
         }}
       >
         <div
@@ -1309,7 +1309,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
         </div>
 
         {panel === "chat" && selectedMember && (
-          <div className="flex flex-col min-h-0" style={{ height: "clamp(380px, calc(100dvh - 280px), 520px)" }}>
+          <div className="flex flex-col min-h-0" style={{ height: "100%" }}>
             <div
               className="flex items-center gap-3 px-5 py-3 flex-shrink-0"
               style={{ borderBottom: "1px solid var(--surface-border)", background: "rgba(255,255,255,0.02)" }}
@@ -1449,7 +1449,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
         )}
 
         {panel === "meeting" && activeMeeting && (
-          <div className="flex flex-col min-h-0" style={{ height: "clamp(380px, calc(100dvh - 280px), 520px)" }}>
+          <div className="flex flex-col min-h-0" style={{ height: "100%" }}>
             <div
               className="flex items-center justify-between px-5 py-3 flex-shrink-0"
               style={{ borderBottom: "1px solid var(--surface-border)", background: "rgba(255,255,255,0.02)" }}
@@ -1602,7 +1602,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
         )}
 
         {panel === "history" && (
-          <div className="flex flex-col min-h-0" style={{ height: "clamp(380px, calc(100dvh - 280px), 520px)" }}>
+          <div className="flex flex-col min-h-0" style={{ height: "100%" }}>
             <div
               className="flex items-center gap-3 px-5 py-3 flex-shrink-0"
               style={{ borderBottom: "1px solid var(--surface-border)", background: "rgba(255,255,255,0.02)" }}
@@ -1675,7 +1675,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
         )}
 
         {panel === "history-detail" && historyMeeting && (
-          <div className="flex flex-col min-h-0" style={{ height: "clamp(380px, calc(100dvh - 280px), 520px)" }}>
+          <div className="flex flex-col min-h-0" style={{ height: "100%" }}>
             <div
               className="flex items-center gap-3 px-5 py-3 flex-shrink-0"
               style={{ borderBottom: "1px solid var(--surface-border)", background: "rgba(255,255,255,0.02)" }}

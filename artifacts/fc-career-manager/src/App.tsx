@@ -1028,7 +1028,7 @@ export default function App() {
       <PWAInstallBanner />
 
       {checkoutConfirmed && (
-        <div className="fixed bottom-[84px] sm:bottom-6 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-2xl flex items-center gap-3 shadow-lg"
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-2xl flex items-center gap-3 shadow-lg"
           style={{ background: "rgba(16,185,129,0.15)", border: "1px solid rgba(16,185,129,0.4)", backdropFilter: "blur(8px)" }}>
           <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
             style={{ color: "#34d399" }}>
