@@ -61,7 +61,7 @@ async function uploadPhotoToR2(localUri: string): Promise<string | null> {
     const authToken = await getAuthToken();
 
     const urlRes = await fetch(
-      `${getApiUrl()}/storage/uploads/request-url?folder=momentos`,
+      `${getApiUrl()}/api/storage/uploads/request-url?folder=momentos`,
       {
         method: 'POST',
         headers: {
@@ -531,9 +531,22 @@ export default function MomentosScreen() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['/api/data/season', activeSeason?.id] }),
   });
 
-  const handleSave = useCallback(async (data: Omit<MomentoMeta, 'id' | 'createdAt'>, localUri: string) => {
+  const handleSave = useCallback(async (data: Omit<MomentoMeta, 'id' | 'createdAt'>, localUri: string): Promise<void> => {
     if (!activeSeason?.id) return;
     const photoUrl = await uploadPhotoToR2(localUri);
+    if (!photoUrl) {
+      const confirmed = await new Promise<boolean>((resolve) => {
+        Alert.alert(
+          'Foto não sincronizada',
+          'Não foi possível fazer o upload da foto para a nuvem. O momento ficará visível apenas neste dispositivo. Deseja salvar mesmo assim?',
+          [
+            { text: 'Cancelar', style: 'cancel', onPress: () => resolve(false) },
+            { text: 'Salvar', onPress: () => resolve(true) },
+          ],
+        );
+      });
+      if (!confirmed) return;
+    }
     const newMeta: MomentoMeta = {
       ...data,
       id: genId(),
