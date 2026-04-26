@@ -52,7 +52,7 @@ function FormBall({ result }: { result: 'vitoria' | 'empate' | 'derrota' | 'futu
   );
 }
 
-function RivalCard({ stats, onRemove }: { stats: RivalStats; onRemove: () => void }) {
+function RivalCard({ stats, onRemove, locked }: { stats: RivalStats; onRemove: () => void; locked?: boolean }) {
   const total = stats.played;
   const winPct = total > 0 ? Math.round((stats.wins / total) * 100) : 0;
   const dominance = stats.wins > stats.losses ? 'vitoria' : stats.wins < stats.losses ? 'derrota' : 'empate';
@@ -64,9 +64,12 @@ function RivalCard({ stats, onRemove }: { stats: RivalStats; onRemove: () => voi
       <View style={styles.rivalContent}>
         <View style={styles.rivalTop}>
           <Text style={styles.rivalName} numberOfLines={1}>⚔️ {stats.name}</Text>
-          <TouchableOpacity onPress={onRemove} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Ionicons name="close-circle-outline" size={18} color={Colors.mutedForeground} />
-          </TouchableOpacity>
+          {!locked && (
+            <TouchableOpacity onPress={onRemove} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Ionicons name="close-circle-outline" size={18} color={Colors.mutedForeground} />
+            </TouchableOpacity>
+          )}
+          {locked && <Ionicons name="lock-closed-outline" size={14} color={Colors.mutedForeground} />}
         </View>
         {total === 0 ? (
           <Text style={styles.rivalNoMatches}>Sem confrontos registrados</Text>
@@ -198,6 +201,7 @@ export default function RivaisScreen() {
   );
 
   const manualRivals: string[] = (careerData?.data?.rivals ?? []) as string[];
+  const rivalsLocked: boolean = !!(seasonGameData?.data as Record<string, unknown> | undefined)?.rivalsLocked;
 
   const saveRivalsMutation = useMutation({
     mutationFn: (rivals: string[]) => {
@@ -207,13 +211,37 @@ export default function RivaisScreen() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['/api/data/career', activeCareer?.id] }),
   });
 
+  const lockRivalsMutation = useMutation({
+    mutationFn: (locked: boolean) => {
+      if (!activeSeason) throw new Error('no season');
+      return api.seasonData.set(activeSeason.id, 'rivalsLocked' as never, locked as never);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['/api/data/season', activeSeason?.id] }),
+  });
+
   const handleAddRival = (name: string) => {
-    if (manualRivals.includes(name) || manualRivals.length >= MAX_RIVALS) return;
+    if (rivalsLocked || manualRivals.includes(name) || manualRivals.length >= MAX_RIVALS) return;
     saveRivalsMutation.mutate([...manualRivals, name]);
   };
 
   const handleRemoveRival = (name: string) => {
+    if (rivalsLocked) return;
     saveRivalsMutation.mutate(manualRivals.filter((r) => r !== name));
+  };
+
+  const handleToggleLock = () => {
+    if (rivalsLocked) {
+      Alert.alert('Desbloquear Rivais', 'Deseja permitir alterações na lista de rivais?', [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Desbloquear', onPress: () => lockRivalsMutation.mutate(false) },
+      ]);
+    } else {
+      if (manualRivals.length === 0) return;
+      Alert.alert('Bloquear Rivais', 'Bloquear a lista impede alterações até desbloquear manualmente.', [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Bloquear', style: 'destructive', onPress: () => lockRivalsMutation.mutate(true) },
+      ]);
+    }
   };
 
   const rivalStats = useMemo(
@@ -277,15 +305,37 @@ export default function RivaisScreen() {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>MEUS RIVAIS</Text>
-              {manualRivals.length < MAX_RIVALS && (
-                <TouchableOpacity
-                  style={[styles.addRivalBtn, { backgroundColor: `rgba(${theme.primaryRgb},0.12)`, borderColor: `rgba(${theme.primaryRgb},0.3)` }]}
-                  onPress={() => setShowAdd(true)}
-                >
-                  <Ionicons name="add" size={16} color={theme.primary} />
-                  <Text style={[styles.addRivalBtnText, { color: theme.primary }]}>Adicionar</Text>
-                </TouchableOpacity>
-              )}
+              <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+                {manualRivals.length > 0 && (
+                  <TouchableOpacity
+                    style={[
+                      styles.addRivalBtn,
+                      rivalsLocked
+                        ? { backgroundColor: 'rgba(251,191,36,0.1)', borderColor: 'rgba(251,191,36,0.3)' }
+                        : { backgroundColor: 'rgba(251,191,36,0.08)', borderColor: 'rgba(251,191,36,0.25)' },
+                    ]}
+                    onPress={handleToggleLock}
+                  >
+                    <Ionicons
+                      name={rivalsLocked ? 'lock-closed' : 'lock-open-outline'}
+                      size={14}
+                      color={Colors.warning}
+                    />
+                    <Text style={[styles.addRivalBtnText, { color: Colors.warning }]}>
+                      {rivalsLocked ? 'Bloqueado' : 'Bloquear'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+                {!rivalsLocked && manualRivals.length < MAX_RIVALS && (
+                  <TouchableOpacity
+                    style={[styles.addRivalBtn, { backgroundColor: `rgba(${theme.primaryRgb},0.12)`, borderColor: `rgba(${theme.primaryRgb},0.3)` }]}
+                    onPress={() => setShowAdd(true)}
+                  >
+                    <Ionicons name="add" size={16} color={theme.primary} />
+                    <Text style={[styles.addRivalBtnText, { color: theme.primary }]}>Adicionar</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
             </View>
             {manualRivals.length === 0 ? (
               <TouchableOpacity
@@ -304,6 +354,7 @@ export default function RivaisScreen() {
                   <RivalCard
                     key={s.name}
                     stats={s}
+                    locked={rivalsLocked}
                     onRemove={() => handleRemoveRival(s.name)}
                   />
                 ))}

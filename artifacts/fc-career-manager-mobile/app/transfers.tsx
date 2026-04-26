@@ -172,6 +172,8 @@ function NewTransferModal({ visible, seasonLabel, onClose, onSave }: NewTransfer
   const [club, setClub] = useState('');
   const [type, setType] = useState<TransferType>('in');
   const [fee, setFee] = useState('');
+  const [salary, setSalary] = useState('');
+  const [contractYears, setContractYears] = useState('');
 
   const resetForm = () => {
     setPlayerName('');
@@ -179,12 +181,16 @@ function NewTransferModal({ visible, seasonLabel, onClose, onSave }: NewTransfer
     setClub('');
     setType('in');
     setFee('');
+    setSalary('');
+    setContractYears('');
   };
 
   const handleClose = () => { resetForm(); onClose(); };
 
   const handleSave = () => {
     if (!playerName.trim() || !club.trim()) return;
+    const parsedSalary = parseFee(salary);
+    const parsedYears = parseInt(contractYears, 10) || undefined;
     onSave({
       playerId,
       playerName: playerName.trim(),
@@ -193,6 +199,8 @@ function NewTransferModal({ visible, seasonLabel, onClose, onSave }: NewTransfer
       fee: parseFee(fee),
       season: seasonLabel,
       date: new Date().toISOString().split('T')[0],
+      ...(parsedSalary > 0 ? { salary: parsedSalary } : {}),
+      ...(parsedYears ? { contractYears: parsedYears } : {}),
     });
     resetForm();
     onClose();
@@ -269,6 +277,33 @@ function NewTransferModal({ visible, seasonLabel, onClose, onSave }: NewTransfer
                 autoCapitalize="characters"
               />
               {fee ? <Text style={styles.feePreview}>= {formatFee(parseFee(fee))}</Text> : null}
+            </View>
+
+            <View style={styles.fieldRow}>
+              <View style={[styles.field, { flex: 1 }]}>
+                <Text style={styles.fieldLabel}>SALÁRIO / SEMANA</Text>
+                <TextInput
+                  style={styles.textInput}
+                  value={salary}
+                  onChangeText={setSalary}
+                  placeholder="Ex: 80k"
+                  placeholderTextColor={Colors.mutedForeground}
+                  keyboardType="default"
+                  autoCapitalize="characters"
+                />
+                {salary ? <Text style={styles.feePreview}>= {formatFee(parseFee(salary))}</Text> : null}
+              </View>
+              <View style={[styles.field, { flex: 1 }]}>
+                <Text style={styles.fieldLabel}>ANOS DE CONTRATO</Text>
+                <TextInput
+                  style={styles.textInput}
+                  value={contractYears}
+                  onChangeText={setContractYears}
+                  placeholder="Ex: 3"
+                  placeholderTextColor={Colors.mutedForeground}
+                  keyboardType="number-pad"
+                />
+              </View>
             </View>
           </ScrollView>
 
@@ -503,6 +538,7 @@ const styles = StyleSheet.create({
   },
   modalTitle: { fontSize: 18, fontWeight: '700' as const, color: Colors.foreground, fontFamily: 'Inter_700Bold' },
   modalBody: { padding: 20, gap: 20 },
+  fieldRow: { flexDirection: 'row' as const, gap: 12 },
   modalFooter: { paddingHorizontal: 20, paddingVertical: 16, borderTopWidth: 1, borderTopColor: Colors.border },
   field: { gap: 8 },
   fieldLabel: {

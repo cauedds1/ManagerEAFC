@@ -11,20 +11,8 @@ import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { useCareer } from '@/contexts/CareerContext';
 import { useClubTheme } from '@/contexts/ClubThemeContext';
-import { api } from '@/lib/api';
+import { api, type DiretoraaMember, type DiretoraaMeeting } from '@/lib/api';
 import { Colors } from '@/constants/colors';
-
-interface StoredMemberProfile {
-  id: string;
-  name: string;
-  roleLabel?: string;
-  role?: string;
-  description?: string;
-  mood?: string;
-  patience?: number;
-  satisfaction?: number;
-  avatarColor?: string;
-}
 
 interface BoardNotification {
   id: string;
@@ -64,7 +52,7 @@ function satisfactionColor(s: number): string {
   return Colors.destructive;
 }
 
-function MemberAvatar({ member, size = 36 }: { member?: StoredMemberProfile; size?: number }) {
+function MemberAvatar({ member, size = 36 }: { member?: DiretoraaMember; size?: number }) {
   const initials = member
     ? member.name.trim().split(' ').slice(0, 2).map((w) => w[0]).join('').toUpperCase()
     : '🏢';
@@ -75,7 +63,7 @@ function MemberAvatar({ member, size = 36 }: { member?: StoredMemberProfile; siz
   );
 }
 
-function ChatBubble({ msg, members }: { msg: LocalMessage; members: StoredMemberProfile[] }) {
+function ChatBubble({ msg, members }: { msg: LocalMessage; members: DiretoraaMember[] }) {
   const member = members.find((m) => m.name === msg.memberName);
   const timeStr = new Date(msg.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
@@ -107,45 +95,73 @@ function ChatBubble({ msg, members }: { msg: LocalMessage; members: StoredMember
   );
 }
 
+type ManagePanel = 'list' | 'add' | 'edit' | 'ai' | 'meetings';
+
+interface MemberFormState {
+  name: string;
+  roleLabel: string;
+  personality: string;
+  patience: string;
+  description: string;
+}
+
+function defaultForm(m?: DiretoraaMember): MemberFormState {
+  return {
+    name: m?.name ?? '',
+    roleLabel: m?.roleLabel ?? m?.role ?? 'Presidente',
+    personality: 'equilibrado',
+    patience: String(m?.patience ?? 70),
+    description: m?.description ?? '',
+  };
+}
+
 interface MemberManagementModalProps {
   visible: boolean;
-  members: StoredMemberProfile[];
+  members: DiretoraaMember[];
+  meetings: DiretoraaMeeting[];
   careerClubName: string;
   careerClubLeague?: string;
   onClose: () => void;
-  onSave: (members: StoredMemberProfile[]) => void;
+  onSaveMembers: (members: DiretoraaMember[]) => void;
 }
 
 function MemberManagementModal({
-  visible, members, careerClubName, careerClubLeague, onClose, onSave,
+  visible, members, meetings, careerClubName, careerClubLeague, onClose, onSaveMembers,
 }: MemberManagementModalProps) {
   const theme = useClubTheme();
-  const [panel, setPanel] = useState<'list' | 'add' | 'ai'>('list');
-
-  const [name, setName] = useState('');
-  const [roleLabel, setRoleLabel] = useState('Presidente');
-  const [patience, setPatience] = useState('70');
-  const [personality, setPersonality] = useState('equilibrado');
-
+  const [panel, setPanel] = useState<ManagePanel>('list');
+  const [editingMember, setEditingMember] = useState<DiretoraaMember | null>(null);
+  const [form, setForm] = useState<MemberFormState>(defaultForm());
   const [aiGenerating, setAiGenerating] = useState(false);
   const [aiRole, setAiRole] = useState('Presidente');
   const [aiPersonality, setAiPersonality] = useState('exigente');
 
-  const resetAdd = () => { setName(''); setPatience('70'); };
+  const setField = (key: keyof MemberFormState, value: string) => setForm((f) => ({ ...f, [key]: value }));
 
-  const handleAdd = () => {
-    if (!name.trim()) return;
-    const newMember: StoredMemberProfile = {
-      id: genId(),
-      name: name.trim(),
-      roleLabel,
-      description: '',
-      mood: 'neutro',
-      patience: Math.min(100, Math.max(0, parseInt(patience, 10) || 70)),
-      satisfaction: 70,
-    };
-    onSave([...members, newMember]);
-    resetAdd();
+  const openAdd = () => { setEditingMember(null); setForm(defaultForm()); setPanel('add'); };
+  const openEdit = (m: DiretoraaMember) => { setEditingMember(m); setForm(defaultForm(m)); setPanel('edit'); };
+
+  const handleSave = () => {
+    if (!form.name.trim()) return;
+    const patience = Math.min(100, Math.max(0, parseInt(form.patience, 10) || 70));
+    if (editingMember) {
+      onSaveMembers(members.map((m) =>
+        m.id === editingMember.id
+          ? { ...m, name: form.name.trim(), roleLabel: form.roleLabel, patience, description: form.description.trim() }
+          : m
+      ));
+    } else {
+      const newMember: DiretoraaMember = {
+        id: genId(),
+        name: form.name.trim(),
+        roleLabel: form.roleLabel,
+        description: form.description.trim(),
+        mood: 'neutro',
+        patience,
+        satisfaction: 70,
+      };
+      onSaveMembers([...members, newMember]);
+    }
     setPanel('list');
   };
 
@@ -154,7 +170,7 @@ function MemberManagementModal({
       { text: 'Cancelar', style: 'cancel' },
       {
         text: 'Remover', style: 'destructive',
-        onPress: () => onSave(members.filter((m) => m.id !== id)),
+        onPress: () => onSaveMembers(members.filter((m) => m.id !== id)),
       },
     ]);
   };
@@ -168,7 +184,7 @@ function MemberManagementModal({
         clubName: careerClubName,
         clubLeague: careerClubLeague,
       });
-      const newMember: StoredMemberProfile = {
+      const newMember: DiretoraaMember = {
         id: genId(),
         name: result.name,
         roleLabel: aiRole,
@@ -177,7 +193,7 @@ function MemberManagementModal({
         patience: result.patience ?? 60,
         satisfaction: 70,
       };
-      onSave([...members, newMember]);
+      onSaveMembers([...members, newMember]);
       setPanel('list');
     } catch {
       Alert.alert('Erro', 'Não foi possível gerar o membro. Tente novamente.');
@@ -185,7 +201,17 @@ function MemberManagementModal({
     setAiGenerating(false);
   };
 
-  const handleClose = () => { resetAdd(); setPanel('list'); onClose(); };
+  const handleClose = () => { setPanel('list'); onClose(); };
+
+  const goBack = () => setPanel('list');
+
+  const panelTitle: Record<ManagePanel, string> = {
+    list: 'Gerenciar Diretoria',
+    add: 'Novo Membro',
+    edit: 'Editar Membro',
+    ai: 'Gerar com IA',
+    meetings: 'Reuniões',
+  };
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={handleClose}>
@@ -194,7 +220,7 @@ function MemberManagementModal({
           <View style={styles.modalHandle} />
           <View style={styles.modalHeader}>
             <TouchableOpacity
-              onPress={panel !== 'list' ? () => setPanel('list') : handleClose}
+              onPress={panel !== 'list' ? goBack : handleClose}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
               <Ionicons
@@ -203,15 +229,13 @@ function MemberManagementModal({
                 color={Colors.mutedForeground}
               />
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>
-              {panel === 'list' ? 'Gerenciar Diretoria' : panel === 'add' ? 'Novo Membro' : 'Gerar com IA'}
-            </Text>
+            <Text style={styles.modalTitle}>{panelTitle[panel]}</Text>
             <View style={{ width: 22 }} />
           </View>
 
           {panel === 'list' && (
             <>
-              <ScrollView contentContainerStyle={styles.memberList}>
+              <ScrollView contentContainerStyle={styles.memberList} keyboardShouldPersistTaps="handled">
                 {members.length === 0 && (
                   <View style={styles.emptyMembers}>
                     <Text style={{ fontSize: 36 }}>🏢</Text>
@@ -224,11 +248,15 @@ function MemberManagementModal({
                     <View style={{ flex: 1 }}>
                       <Text style={styles.memberListName}>{m.name}</Text>
                       <Text style={styles.memberListRole}>{m.roleLabel ?? m.role ?? 'Membro'}</Text>
+                      {m.description ? <Text style={styles.memberListDesc} numberOfLines={1}>{m.description}</Text> : null}
                     </View>
                     <View style={styles.memberListMeta}>
                       <Text style={[styles.memberSat, { color: satisfactionColor(m.satisfaction ?? 70) }]}>
                         {m.satisfaction ?? 70}%
                       </Text>
+                      <TouchableOpacity onPress={() => openEdit(m)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                        <Ionicons name="pencil-outline" size={16} color={Colors.mutedForeground} />
+                      </TouchableOpacity>
                       <TouchableOpacity onPress={() => handleDelete(m.id)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                         <Ionicons name="trash-outline" size={16} color={Colors.destructive} />
                       </TouchableOpacity>
@@ -239,7 +267,7 @@ function MemberManagementModal({
               <View style={styles.memberListFooter}>
                 <TouchableOpacity
                   style={[styles.addMemberBtn, { backgroundColor: `rgba(${theme.primaryRgb},0.12)`, borderColor: `rgba(${theme.primaryRgb},0.3)` }]}
-                  onPress={() => setPanel('add')}
+                  onPress={openAdd}
                 >
                   <Ionicons name="person-add-outline" size={18} color={theme.primary} />
                   <Text style={[styles.addMemberBtnText, { color: theme.primary }]}>Adicionar manualmente</Text>
@@ -251,22 +279,31 @@ function MemberManagementModal({
                   <Ionicons name="sparkles-outline" size={18} color="#8B5CF6" />
                   <Text style={[styles.addMemberBtnText, { color: '#8B5CF6' }]}>Gerar com IA</Text>
                 </TouchableOpacity>
+                {meetings.length > 0 && (
+                  <TouchableOpacity
+                    style={[styles.addMemberBtn, { backgroundColor: 'rgba(59,130,246,0.1)', borderColor: 'rgba(59,130,246,0.3)' }]}
+                    onPress={() => setPanel('meetings')}
+                  >
+                    <Ionicons name="calendar-outline" size={18} color={Colors.info} />
+                    <Text style={[styles.addMemberBtnText, { color: Colors.info }]}>Ver reuniões ({meetings.length})</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             </>
           )}
 
-          {panel === 'add' && (
+          {(panel === 'add' || panel === 'edit') && (
             <>
               <ScrollView contentContainerStyle={styles.modalBody} keyboardShouldPersistTaps="handled">
                 <View style={styles.field}>
                   <Text style={styles.fieldLabel}>NOME</Text>
                   <TextInput
                     style={styles.textInput}
-                    value={name}
-                    onChangeText={setName}
+                    value={form.name}
+                    onChangeText={(v) => setField('name', v)}
                     placeholder="Nome do dirigente"
                     placeholderTextColor={Colors.mutedForeground}
-                    autoFocus
+                    autoFocus={panel === 'add'}
                   />
                 </View>
                 <View style={styles.field}>
@@ -276,10 +313,10 @@ function MemberManagementModal({
                       {ROLES.map((r) => (
                         <TouchableOpacity
                           key={r.key}
-                          style={[styles.chip, roleLabel === r.label && { backgroundColor: `rgba(${theme.primaryRgb},0.15)`, borderColor: `rgba(${theme.primaryRgb},0.4)` }]}
-                          onPress={() => setRoleLabel(r.label)}
+                          style={[styles.chip, form.roleLabel === r.label && { backgroundColor: `rgba(${theme.primaryRgb},0.15)`, borderColor: `rgba(${theme.primaryRgb},0.4)` }]}
+                          onPress={() => setField('roleLabel', r.label)}
                         >
-                          <Text style={[styles.chipText, roleLabel === r.label && { color: theme.primary }]}>{r.label}</Text>
+                          <Text style={[styles.chipText, form.roleLabel === r.label && { color: theme.primary }]}>{r.label}</Text>
                         </TouchableOpacity>
                       ))}
                     </View>
@@ -292,34 +329,47 @@ function MemberManagementModal({
                       {PERSONALITIES.map((p) => (
                         <TouchableOpacity
                           key={p}
-                          style={[styles.chip, personality === p && { backgroundColor: `rgba(${theme.primaryRgb},0.15)`, borderColor: `rgba(${theme.primaryRgb},0.4)` }]}
-                          onPress={() => setPersonality(p)}
+                          style={[styles.chip, form.personality === p && { backgroundColor: `rgba(${theme.primaryRgb},0.15)`, borderColor: `rgba(${theme.primaryRgb},0.4)` }]}
+                          onPress={() => setField('personality', p)}
                         >
-                          <Text style={[styles.chipText, personality === p && { color: theme.primary }]}>{p}</Text>
+                          <Text style={[styles.chipText, form.personality === p && { color: theme.primary }]}>{p}</Text>
                         </TouchableOpacity>
                       ))}
                     </View>
                   </ScrollView>
                 </View>
                 <View style={styles.field}>
-                  <Text style={styles.fieldLabel}>PACIÊNCIA (0-100)</Text>
+                  <Text style={styles.fieldLabel}>PACIÊNCIA (0–100)</Text>
                   <TextInput
                     style={styles.textInput}
-                    value={patience}
-                    onChangeText={setPatience}
+                    value={form.patience}
+                    onChangeText={(v) => setField('patience', v)}
                     keyboardType="number-pad"
                     placeholder="70"
                     placeholderTextColor={Colors.mutedForeground}
                   />
                 </View>
+                <View style={styles.field}>
+                  <Text style={styles.fieldLabel}>DESCRIÇÃO (opcional)</Text>
+                  <TextInput
+                    style={[styles.textInput, { minHeight: 60 }]}
+                    value={form.description}
+                    onChangeText={(v) => setField('description', v)}
+                    placeholder="Personalidade, histórico…"
+                    placeholderTextColor={Colors.mutedForeground}
+                    multiline
+                  />
+                </View>
               </ScrollView>
               <View style={styles.modalFooter}>
                 <TouchableOpacity
-                  style={[styles.saveBtn, { backgroundColor: `rgba(${theme.primaryRgb},0.2)`, borderColor: `rgba(${theme.primaryRgb},0.4)` }, !name.trim() && { opacity: 0.5 }]}
-                  onPress={handleAdd}
-                  disabled={!name.trim()}
+                  style={[styles.saveBtn, { backgroundColor: `rgba(${theme.primaryRgb},0.2)`, borderColor: `rgba(${theme.primaryRgb},0.4)` }, !form.name.trim() && { opacity: 0.5 }]}
+                  onPress={handleSave}
+                  disabled={!form.name.trim()}
                 >
-                  <Text style={[styles.saveBtnText, { color: theme.primary }]}>Adicionar Membro</Text>
+                  <Text style={[styles.saveBtnText, { color: theme.primary }]}>
+                    {panel === 'edit' ? 'Salvar Alterações' : 'Adicionar Membro'}
+                  </Text>
                 </TouchableOpacity>
               </View>
             </>
@@ -328,7 +378,9 @@ function MemberManagementModal({
           {panel === 'ai' && (
             <>
               <ScrollView contentContainerStyle={styles.modalBody} keyboardShouldPersistTaps="handled">
-                <Text style={styles.aiHint}>A IA vai gerar um dirigente com nome, personalidade e descrição únicos para o {careerClubName}.</Text>
+                <Text style={styles.aiHint}>
+                  A IA vai gerar um dirigente com nome, personalidade e descrição únicos para o {careerClubName}.
+                </Text>
                 <View style={styles.field}>
                   <Text style={styles.fieldLabel}>CARGO</Text>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -368,14 +420,41 @@ function MemberManagementModal({
                   onPress={handleAIGenerate}
                   disabled={aiGenerating}
                 >
-                  {aiGenerating ? (
-                    <ActivityIndicator size="small" color="#8B5CF6" />
-                  ) : (
-                    <Text style={[styles.saveBtnText, { color: '#8B5CF6' }]}>✨ Gerar Dirigente</Text>
-                  )}
+                  {aiGenerating
+                    ? <ActivityIndicator size="small" color="#8B5CF6" />
+                    : <Text style={[styles.saveBtnText, { color: '#8B5CF6' }]}>✨ Gerar Dirigente</Text>
+                  }
                 </TouchableOpacity>
               </View>
             </>
+          )}
+
+          {panel === 'meetings' && (
+            <ScrollView contentContainerStyle={styles.meetingsList}>
+              {meetings.length === 0 ? (
+                <View style={styles.emptyMembers}>
+                  <Text style={{ fontSize: 36 }}>📅</Text>
+                  <Text style={styles.emptyMembersText}>Sem reuniões registradas</Text>
+                </View>
+              ) : (
+                [...meetings].sort((a, b) => b.createdAt - a.createdAt).map((meeting) => (
+                  <View key={meeting.id} style={styles.meetingCard}>
+                    <View style={styles.meetingCardTop}>
+                      <Text style={styles.meetingTopic}>{meeting.topic}</Text>
+                      <Text style={styles.meetingDate}>{meeting.date}</Text>
+                    </View>
+                    {meeting.outcome ? (
+                      <Text style={styles.meetingOutcome}>{meeting.outcome}</Text>
+                    ) : null}
+                    {meeting.memberId && (
+                      <Text style={styles.meetingMember}>
+                        {members.find((m) => m.id === meeting.memberId)?.name ?? meeting.memberId}
+                      </Text>
+                    )}
+                  </View>
+                ))
+              )}
+            </ScrollView>
           )}
         </View>
       </View>
@@ -391,7 +470,7 @@ export default function DiretoraScreen() {
   const topPad = Platform.OS === 'web' ? 0 : insets.top;
   const listRef = useRef<FlatList>(null);
   const [inputText, setInputText] = useState('');
-  const [selectedMember, setSelectedMember] = useState<StoredMemberProfile | null>(null);
+  const [selectedMember, setSelectedMember] = useState<DiretoraaMember | null>(null);
   const [localMessages, setLocalMessages] = useState<LocalMessage[]>([]);
   const [showManage, setShowManage] = useState(false);
 
@@ -402,7 +481,8 @@ export default function DiretoraScreen() {
     staleTime: 1000 * 60 * 5,
   });
 
-  const rawMembers: StoredMemberProfile[] = (data?.data?.diretoria_members ?? []) as StoredMemberProfile[];
+  const rawMembers: DiretoraaMember[] = (data?.data?.diretoria_members ?? []) as DiretoraaMember[];
+  const rawMeetings: DiretoraaMeeting[] = (data?.data?.diretoria_meetings ?? []) as DiretoraaMeeting[];
   const rawNotifications: BoardNotification[] = (data?.data?.diretoria_notifications ?? []) as BoardNotification[];
 
   const notificationMessages: LocalMessage[] = rawNotifications.map((n) => ({
@@ -437,9 +517,9 @@ export default function DiretoraScreen() {
   });
 
   const saveMembersMutation = useMutation({
-    mutationFn: async (members: StoredMemberProfile[]) => {
+    mutationFn: async (members: DiretoraaMember[]) => {
       if (!activeCareer) return;
-      await api.diretoria.saveMembers(activeCareer.id, members as any);
+      await api.diretoria.saveMembers(activeCareer.id, members);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['/api/data/career/diretoria', activeCareer?.id] }),
   });
@@ -464,7 +544,8 @@ export default function DiretoraScreen() {
       };
 
       const allMemberProfiles = rawMembers.map((m) => ({
-        id: m.id, name: m.name,
+        id: m.id,
+        name: m.name,
         roleLabel: m.roleLabel ?? m.role ?? 'Membro',
         description: m.description ?? '',
         mood: m.mood ?? 'neutro',
@@ -472,7 +553,8 @@ export default function DiretoraScreen() {
       }));
 
       const speakerProfile = {
-        id: speaker.id, name: speaker.name,
+        id: speaker.id,
+        name: speaker.name,
         roleLabel: speaker.roleLabel ?? speaker.role ?? 'Membro',
         description: speaker.description ?? '',
         mood: speaker.mood ?? 'neutro',
@@ -503,15 +585,21 @@ export default function DiretoraScreen() {
       };
 
       const savedNotification = {
-        id: boardReplyId, message: result.reply,
-        read: true, createdAt: Date.now(), memberName: speaker.name,
+        id: boardReplyId,
+        message: result.reply,
+        read: true,
+        createdAt: Date.now(),
+        memberName: speaker.name,
       };
       await api.careerData.set(activeCareer.id, 'diretoria_notifications', [...rawNotifications, savedNotification]);
       return boardMsg;
     },
     onMutate: (text: string) => {
       const userMsg: LocalMessage = {
-        id: `user_${Date.now()}`, text, fromBoard: false, createdAt: Date.now(),
+        id: `user_${Date.now()}`,
+        text,
+        fromBoard: false,
+        createdAt: Date.now(),
       };
       setLocalMessages((prev) => [...prev, userMsg]);
       setInputText('');
@@ -666,21 +754,21 @@ export default function DiretoraScreen() {
           disabled={!inputText.trim() || sendMutation.isPending || !canSend}
           activeOpacity={0.75}
         >
-          {sendMutation.isPending ? (
-            <ActivityIndicator size="small" color="#fff" />
-          ) : (
-            <Ionicons name="send" size={18} color={inputText.trim() && canSend ? '#fff' : Colors.mutedForeground} />
-          )}
+          {sendMutation.isPending
+            ? <ActivityIndicator size="small" color="#fff" />
+            : <Ionicons name="send" size={18} color={inputText.trim() && canSend ? '#fff' : Colors.mutedForeground} />
+          }
         </TouchableOpacity>
       </View>
 
       <MemberManagementModal
         visible={showManage}
         members={rawMembers}
+        meetings={rawMeetings}
         careerClubName={activeCareer?.clubName ?? ''}
         careerClubLeague={activeCareer?.clubLeague}
         onClose={() => setShowManage(false)}
-        onSave={(members) => {
+        onSaveMembers={(members) => {
           saveMembersMutation.mutate(members);
           setShowManage(false);
         }}
@@ -781,16 +869,17 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
   modalTitle: { fontSize: 18, fontWeight: '700' as const, color: Colors.foreground, fontFamily: 'Inter_700Bold' },
-  memberList: { padding: 16, gap: 12, flexGrow: 1 },
+  memberList: { padding: 16, gap: 14, flexGrow: 1 },
   emptyMembers: { alignItems: 'center', paddingVertical: 32, gap: 8 },
   emptyMembersText: { fontSize: 14, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular' },
   memberListRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   memberListName: { fontSize: 15, fontWeight: '600' as const, color: Colors.foreground, fontFamily: 'Inter_600SemiBold' },
   memberListRole: { fontSize: 12, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular' },
-  memberListMeta: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  memberListDesc: { fontSize: 11, color: 'rgba(255,255,255,0.3)', fontFamily: 'Inter_400Regular', marginTop: 1 },
+  memberListMeta: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   memberSat: { fontSize: 13, fontWeight: '600' as const, fontFamily: 'Inter_600SemiBold' },
   memberListFooter: {
-    gap: 10, paddingHorizontal: 16, paddingBottom: 20, paddingTop: 4,
+    gap: 10, paddingHorizontal: 16, paddingBottom: 20, paddingTop: 10,
     borderTopWidth: 1, borderTopColor: Colors.border,
   },
   addMemberBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 13, borderRadius: Colors.radius, borderWidth: 1 },
@@ -814,4 +903,14 @@ const styles = StyleSheet.create({
   aiHint: { fontSize: 13, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular', fontStyle: 'italic', lineHeight: 20 },
   saveBtn: { borderRadius: Colors.radius, paddingVertical: 14, borderWidth: 1, alignItems: 'center' },
   saveBtnText: { fontSize: 15, fontWeight: '600' as const, fontFamily: 'Inter_600SemiBold' },
+  meetingsList: { padding: 16, gap: 12 },
+  meetingCard: {
+    backgroundColor: Colors.card, borderRadius: Colors.radiusLg,
+    borderWidth: 1, borderColor: Colors.border, padding: 14, gap: 6,
+  },
+  meetingCardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  meetingTopic: { fontSize: 14, fontWeight: '600' as const, color: Colors.foreground, fontFamily: 'Inter_600SemiBold', flex: 1 },
+  meetingDate: { fontSize: 11, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular' },
+  meetingOutcome: { fontSize: 13, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular', lineHeight: 18 },
+  meetingMember: { fontSize: 12, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular', fontStyle: 'italic' },
 });

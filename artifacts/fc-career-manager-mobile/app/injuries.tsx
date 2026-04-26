@@ -140,7 +140,6 @@ function InjuryModal({ visible, injury, onClose, onSave }: NewInjuryModalProps) 
                 onChangeText={setPlayerName}
                 placeholder="Nome do jogador"
                 placeholderTextColor={Colors.mutedForeground}
-                editable={!isEdit}
               />
             </View>
             <View style={styles.field}>
@@ -195,6 +194,8 @@ export default function InjuriesScreen() {
   const topPad = Platform.OS === 'web' ? 0 : insets.top;
   const [showModal, setShowModal] = useState(false);
   const [editingInjury, setEditingInjury] = useState<InjuryRecord | null>(null);
+  const [dischargeTarget, setDischargeTarget] = useState<InjuryRecord | null>(null);
+  const [dischargeReturnDate, setDischargeReturnDate] = useState('');
 
   const { data, isLoading } = useQuery({
     queryKey: ['/api/data/season/injuries', activeSeason?.id],
@@ -216,24 +217,20 @@ export default function InjuriesScreen() {
   });
 
   const handleDischarge = (injury: InjuryRecord) => {
-    Alert.alert(
-      'Dar Alta',
-      `Confirmar alta de ${injury.playerName}?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Dar Alta', style: 'default',
-          onPress: () => {
-            const updated = injuries.map((i) =>
-              i.playerName === injury.playerName && i.matchesOut === injury.matchesOut
-                ? { ...i, matchesServed: i.matchesOut }
-                : i
-            );
-            saveMutation.mutate(updated);
-          },
-        },
-      ]
+    setDischargeTarget(injury);
+    setDischargeReturnDate('');
+  };
+
+  const confirmDischarge = () => {
+    if (!dischargeTarget) return;
+    const updated = injuries.map((i) =>
+      i.playerName === dischargeTarget.playerName && i.matchesOut === dischargeTarget.matchesOut
+        ? { ...i, matchesServed: i.matchesOut, returnDate: dischargeReturnDate.trim() || undefined }
+        : i
     );
+    saveMutation.mutate(updated);
+    setDischargeTarget(null);
+    setDischargeReturnDate('');
   };
 
   const handleEdit = (injury: InjuryRecord) => {
@@ -334,6 +331,49 @@ export default function InjuriesScreen() {
         onClose={closeModal}
         onSave={handleSaveInjury}
       />
+
+      <Modal
+        visible={!!dischargeTarget}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setDischargeTarget(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalSheet}>
+            <View style={styles.modalHandle} />
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Dar Alta</Text>
+              <TouchableOpacity onPress={() => setDischargeTarget(null)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Ionicons name="close" size={22} color={Colors.mutedForeground} />
+              </TouchableOpacity>
+            </View>
+            <View style={[styles.modalBody, { flex: 0 }]}>
+              <Text style={styles.dischargeText}>
+                Confirmar alta de <Text style={{ fontWeight: '700' as const }}>{dischargeTarget?.playerName}</Text>?
+              </Text>
+              <View style={styles.field}>
+                <Text style={styles.fieldLabel}>DATA DE RETORNO (opcional)</Text>
+                <TextInput
+                  style={styles.textInput}
+                  value={dischargeReturnDate}
+                  onChangeText={setDischargeReturnDate}
+                  placeholder="Ex: 15/05/2025"
+                  placeholderTextColor={Colors.mutedForeground}
+                  autoFocus
+                />
+              </View>
+            </View>
+            <View style={styles.modalFooter}>
+              <TouchableOpacity
+                style={[styles.saveBtn, { backgroundColor: `${Colors.success}18`, borderColor: `${Colors.success}30` }]}
+                onPress={confirmDischarge}
+              >
+                <Text style={[styles.saveBtnText, { color: Colors.success }]}>✓ Confirmar Alta</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -434,4 +474,5 @@ const styles = StyleSheet.create({
   },
   saveBtn: { borderRadius: Colors.radius, paddingVertical: 14, borderWidth: 1, alignItems: 'center' },
   saveBtnText: { fontSize: 15, fontWeight: '600' as const, fontFamily: 'Inter_600SemiBold' },
+  dischargeText: { fontSize: 15, color: Colors.foreground, fontFamily: 'Inter_400Regular', lineHeight: 22 },
 });

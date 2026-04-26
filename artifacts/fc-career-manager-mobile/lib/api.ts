@@ -255,6 +255,8 @@ export interface Transfer {
   playerName: string;
   club: string;
   fee: number;
+  salary?: number;
+  contractYears?: number;
   type: TransferType;
   season: string;
   date: string;
@@ -263,8 +265,13 @@ export interface Transfer {
 export interface DiretoraaMember {
   id: string;
   name: string;
-  role: string;
-  satisfaction: number;
+  role?: string;
+  roleLabel?: string;
+  description?: string;
+  mood?: string;
+  patience?: number;
+  satisfaction?: number;
+  avatarColor?: string;
   goals?: string;
 }
 
@@ -303,6 +310,7 @@ export interface SeasonGameData {
   finances?: Finances;
   transfers?: Transfer[];
   fan_mood?: number;
+  rivalsLocked?: boolean;
 }
 
 export interface Trophy {
