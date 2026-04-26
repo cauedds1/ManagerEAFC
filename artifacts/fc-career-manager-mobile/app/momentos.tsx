@@ -7,22 +7,16 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useCareer } from '@/contexts/CareerContext';
 import { useClubTheme } from '@/contexts/ClubThemeContext';
-import { api, type SquadPlayer } from '@/lib/api';
+import { api, type SquadPlayer, type MomentoMeta } from '@/lib/api';
 import { Colors } from '@/constants/colors';
 
-interface Momento {
-  id: string;
-  title: string;
-  description: string;
-  gameDate: string;
-  localUri: string;
-  playerIds?: number[];
-  createdAt: string;
+interface Momento extends MomentoMeta {
+  localUri?: string;
 }
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
@@ -32,31 +26,22 @@ function genId(): string {
   return `mo_${Date.now().toString(36)}_${Math.random().toString(36).slice(2)}`;
 }
 
-function momentosLocalKey(seasonId: string): string {
-  return `fc_momentos_v2_${seasonId}`;
+function uriCacheKey(seasonId: string): string {
+  return `fc_momentos_uris_v1_${seasonId}`;
 }
 
-async function loadLocalMomentos(seasonId: string): Promise<Momento[]> {
+async function loadUriCache(seasonId: string): Promise<Record<string, string>> {
   try {
-    const raw = await AsyncStorage.getItem(momentosLocalKey(seasonId));
-    if (!raw) return [];
-    return JSON.parse(raw) as Momento[];
+    const raw = await AsyncStorage.getItem(uriCacheKey(seasonId));
+    if (!raw) return {};
+    return JSON.parse(raw) as Record<string, string>;
   } catch {
-    return [];
+    return {};
   }
 }
 
-async function saveLocalMomentos(seasonId: string, list: Momento[]): Promise<void> {
-  await AsyncStorage.setItem(momentosLocalKey(seasonId), JSON.stringify(list));
-}
-
-async function syncMomentosToApi(seasonId: string, list: Momento[]): Promise<void> {
-  try {
-    const meta = list.map(({ localUri: _, ...rest }) => rest);
-    await api.seasonData.set(seasonId, 'momentos', meta);
-  } catch {
-    // silently fail — local data is the source of truth on mobile
-  }
+async function saveUriCache(seasonId: string, cache: Record<string, string>): Promise<void> {
+  await AsyncStorage.setItem(uriCacheKey(seasonId), JSON.stringify(cache));
 }
 
 function formatDate(raw: string): string {
@@ -154,7 +139,7 @@ interface AddModalProps {
   visible: boolean;
   squad: SquadPlayer[];
   onClose: () => void;
-  onSave: (m: Omit<Momento, 'id' | 'createdAt'>) => Promise<void>;
+  onSave: (m: Omit<MomentoMeta, 'id' | 'createdAt'>, localUri: string) => Promise<void>;
 }
 
 function AddMomentoModal({ visible, squad, onClose, onSave }: AddModalProps) {
@@ -228,13 +213,15 @@ function AddMomentoModal({ visible, squad, onClose, onSave }: AddModalProps) {
     if (!pickedUri) { Alert.alert('Atenção', 'Selecione uma foto para o momento.'); return; }
     setSaving(true);
     try {
-      await onSave({
-        title: title.trim(),
-        description: description.trim(),
-        gameDate: gameDate.trim(),
-        localUri: pickedUri,
-        playerIds: selectedPlayerIds.length > 0 ? selectedPlayerIds : undefined,
-      });
+      await onSave(
+        {
+          title: title.trim(),
+          description: description.trim(),
+          gameDate: gameDate.trim(),
+          playerIds: selectedPlayerIds.length > 0 ? selectedPlayerIds : undefined,
+        },
+        pickedUri,
+      );
       reset();
       onClose();
     } catch {
@@ -398,7 +385,16 @@ function DetailModal({ momento, squad, onClose, onDelete }: DetailModalProps) {
       <View style={styles.detailOverlay}>
         <TouchableOpacity style={StyleSheet.absoluteFill} onPress={onClose} />
         <View style={styles.detailSheet}>
-          <Image source={{ uri: momento.localUri }} style={styles.detailImage} resizeMode="contain" />
+          {momento.localUri ? (
+            <Image source={{ uri: momento.localUri }} style={styles.detailImage} resizeMode="contain" />
+          ) : (
+            <View style={[styles.detailImage, styles.detailImagePlaceholder]}>
+              <Ionicons name="image-outline" size={48} color={Colors.mutedForeground} />
+              <Text style={{ color: Colors.mutedForeground, fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 8 }}>
+                Foto disponível apenas no dispositivo original
+              </Text>
+            </View>
+          )}
           <ScrollView contentContainerStyle={styles.detailInfo}>
             <Text style={styles.detailTitle}>{momento.title}</Text>
             {momento.gameDate ? (
@@ -448,12 +444,13 @@ export default function MomentosScreen() {
   const insets = useSafeAreaInsets();
   const { activeCareer, activeSeason } = useCareer();
   const theme = useClubTheme();
+  const qc = useQueryClient();
   const topPad = Platform.OS === 'web' ? 0 : insets.top;
 
-  const [momentos, setMomentos] = useState<Momento[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
   const [selected, setSelected] = useState<Momento | null>(null);
+  const [uriCache, setUriCache] = useState<Record<string, string>>({});
+  const [uriCacheLoaded, setUriCacheLoaded] = useState(false);
 
   const { data: squadData } = useQuery({
     queryKey: ['/api/squad', activeCareer?.clubId],
@@ -463,31 +460,58 @@ export default function MomentosScreen() {
   });
   const squad: SquadPlayer[] = squadData?.players ?? [];
 
+  const { data: seasonData, isLoading } = useQuery({
+    queryKey: ['/api/data/season', activeSeason?.id],
+    queryFn: () => activeSeason ? api.seasonData.get(activeSeason.id) : null,
+    enabled: !!activeSeason?.id,
+  });
+
+  const apiMomentos: MomentoMeta[] = (seasonData?.data?.momentos ?? []) as MomentoMeta[];
+
   useEffect(() => {
     if (!activeSeason?.id) return;
-    setLoading(true);
-    loadLocalMomentos(activeSeason.id).then((list) => {
-      setMomentos(list);
-      setLoading(false);
+    setUriCacheLoaded(false);
+    loadUriCache(activeSeason.id).then((cache) => {
+      setUriCache(cache);
+      setUriCacheLoaded(true);
     });
   }, [activeSeason?.id]);
 
-  const handleSave = useCallback(async (data: Omit<Momento, 'id' | 'createdAt'>) => {
+  const momentos: Momento[] = useMemo(
+    () => apiMomentos.map((m) => ({ ...m, localUri: uriCache[m.id] })),
+    [apiMomentos, uriCache],
+  );
+
+  const saveMutation = useMutation({
+    mutationFn: (updated: MomentoMeta[]) => {
+      if (!activeSeason) throw new Error('no season');
+      return api.seasonData.set(activeSeason.id, 'momentos', updated);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['/api/data/season', activeSeason?.id] }),
+  });
+
+  const handleSave = useCallback(async (data: Omit<MomentoMeta, 'id' | 'createdAt'>, localUri: string) => {
     if (!activeSeason?.id) return;
-    const newMomento: Momento = { ...data, id: genId(), createdAt: new Date().toISOString() };
-    const updated = [newMomento, ...momentos];
-    setMomentos(updated);
-    await saveLocalMomentos(activeSeason.id, updated);
-    void syncMomentosToApi(activeSeason.id, updated);
-  }, [activeSeason?.id, momentos]);
+    const newMeta: MomentoMeta = { ...data, id: genId(), createdAt: new Date().toISOString() };
+    const updatedMetas = [newMeta, ...apiMomentos];
+    await saveMutation.mutateAsync(updatedMetas);
+    const newCache = { ...uriCache, [newMeta.id]: localUri };
+    setUriCache(newCache);
+    await saveUriCache(activeSeason.id, newCache);
+  }, [activeSeason?.id, apiMomentos, uriCache, saveMutation]);
 
   const handleDelete = useCallback(async (id: string) => {
     if (!activeSeason?.id) return;
-    const updated = momentos.filter((m) => m.id !== id);
-    setMomentos(updated);
-    await saveLocalMomentos(activeSeason.id, updated);
-    void syncMomentosToApi(activeSeason.id, updated);
-  }, [activeSeason?.id, momentos]);
+    const updatedMetas = apiMomentos.filter((m) => m.id !== id);
+    await saveMutation.mutateAsync(updatedMetas);
+    const newCache = { ...uriCache };
+    delete newCache[id];
+    setUriCache(newCache);
+    await saveUriCache(activeSeason.id, newCache);
+    setSelected(null);
+  }, [activeSeason?.id, apiMomentos, uriCache, saveMutation]);
+
+  const isDataLoading = isLoading || !uriCacheLoaded;
 
   const renderItem = ({ item }: { item: Momento }) => (
     <TouchableOpacity
@@ -495,7 +519,13 @@ export default function MomentosScreen() {
       onPress={() => setSelected(item)}
       activeOpacity={0.85}
     >
-      <Image source={{ uri: item.localUri }} style={styles.gridImage} resizeMode="cover" />
+      {item.localUri ? (
+        <Image source={{ uri: item.localUri }} style={styles.gridImage} resizeMode="cover" />
+      ) : (
+        <View style={[styles.gridImage, styles.gridImagePlaceholder]}>
+          <Ionicons name="image-outline" size={32} color={Colors.mutedForeground} />
+        </View>
+      )}
       <View style={styles.gridOverlay}>
         <Text style={styles.gridTitle} numberOfLines={2}>{item.title}</Text>
         {item.gameDate ? (
@@ -532,7 +562,7 @@ export default function MomentosScreen() {
         <View style={styles.center}>
           <Text style={styles.emptyTitle}>Nenhuma temporada ativa</Text>
         </View>
-      ) : loading ? (
+      ) : isDataLoading ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color={theme.primary} />
         </View>
@@ -610,6 +640,7 @@ const styles = StyleSheet.create({
   row: { gap: 8, marginBottom: 8 },
   gridItem: { borderRadius: 12, overflow: 'hidden', backgroundColor: Colors.card },
   gridImage: { width: '100%', height: '100%', position: 'absolute' },
+  gridImagePlaceholder: { alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.card },
   gridOverlay: {
     position: 'absolute', bottom: 0, left: 0, right: 0,
     padding: 8, backgroundColor: 'rgba(0,0,0,0.55)',
@@ -670,6 +701,7 @@ const styles = StyleSheet.create({
     maxHeight: '88%', overflow: 'hidden',
   },
   detailImage: { width: '100%', height: 280, backgroundColor: '#000' },
+  detailImagePlaceholder: { alignItems: 'center', justifyContent: 'center' },
   detailInfo: { padding: 20, gap: 8 },
   detailTitle: { fontSize: 20, fontWeight: '700' as const, color: Colors.foreground, fontFamily: 'Inter_700Bold' },
   detailDate: { fontSize: 13, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular' },
