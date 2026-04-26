@@ -4,10 +4,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCareer } from '@/contexts/CareerContext';
 import { useClubTheme } from '@/contexts/ClubThemeContext';
+import { api } from '@/lib/api';
 import { Colors } from '@/constants/colors';
+import MissionsCard from '@/app/components/MissionsCard';
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -82,6 +85,22 @@ export default function MoreScreen() {
   const handleChangeCareer = () => {
     router.push('/career-select');
   };
+
+  const { activeSeason } = useCareer();
+
+  const { data: seasonGameData } = useQuery({
+    queryKey: ['/api/data/season', activeSeason?.id],
+    queryFn: () => activeSeason ? api.seasonData.get(activeSeason.id) : null,
+    enabled: !!activeSeason?.id,
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const { data: careerGameData } = useQuery({
+    queryKey: ['/api/data/career', activeCareer?.id],
+    queryFn: () => activeCareer ? api.careerData.get(activeCareer.id) : null,
+    enabled: !!activeCareer?.id,
+    staleTime: 1000 * 60 * 5,
+  });
 
   const planBadge = user?.plan === 'ultra' ? '✦ Ultra' : user?.plan === 'pro' ? '★ Pro' : 'Free';
   const planColor = user?.plan === 'ultra' ? Colors.warning : user?.plan === 'pro' ? theme.primary : Colors.mutedForeground;
@@ -230,6 +249,22 @@ export default function MoreScreen() {
         />
       </Section>
 
+      {activeCareer && user && (
+        <View style={styles.missionsSection}>
+          <MissionsCard
+            careerId={activeCareer.id}
+            plan={user.plan}
+            data={{
+              matches: seasonGameData?.data?.matches ?? [],
+              news: seasonGameData?.data?.news ?? [],
+              momentos: seasonGameData?.data?.momentos ?? [],
+              rivals: (careerGameData?.data?.rivals ?? []) as string[],
+              diretoria_members: careerGameData?.data?.diretoria_members ?? [],
+            }}
+          />
+        </View>
+      )}
+
       <Section title="Sessão">
         <MenuItem
           icon="log-out-outline"
@@ -278,6 +313,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   planText: { fontSize: 11, fontWeight: '600' as const, fontFamily: 'Inter_600SemiBold' },
+  missionsSection: { marginTop: 20, paddingHorizontal: 16 },
   section: { marginTop: 20, paddingHorizontal: 16 },
   sectionTitle: {
     fontSize: 11,

@@ -15,6 +15,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { api, getMatchResult, type Season, type MatchRecord } from '@/lib/api';
 import { Colors } from '@/constants/colors';
 import { queryClient } from '@/lib/queryClient';
+import MissionsCard from '@/app/components/MissionsCard';
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -85,6 +86,13 @@ export default function DashboardScreen() {
     queryKey: ['/api/data/season', currentSeason?.id],
     queryFn: () => currentSeason ? api.seasonData.get(currentSeason.id) : null,
     enabled: !!currentSeason?.id,
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const { data: careerGameData } = useQuery({
+    queryKey: ['/api/data/career', activeCareer?.id],
+    queryFn: () => activeCareer ? api.careerData.get(activeCareer.id) : null,
+    enabled: !!activeCareer?.id,
     staleTime: 1000 * 60 * 5,
   });
 
@@ -387,6 +395,24 @@ export default function DashboardScreen() {
             </TouchableOpacity>
           </View>
         </View>
+
+        {/* Missions */}
+        {activeCareer && user && (
+          <View style={styles.section}>
+            <MissionsCard
+              careerId={activeCareer.id}
+              plan={user.plan}
+              data={{
+                matches: seasonGameData?.data?.matches ?? [],
+                news: seasonGameData?.data?.news ?? [],
+                momentos: seasonGameData?.data?.momentos ?? [],
+                rivals: (careerGameData?.data?.rivals ?? []) as string[],
+                diretoria_members: careerGameData?.data?.diretoria_members ?? [],
+              }}
+              compact
+            />
+          </View>
+        )}
       </View>
     </ScrollView>
   );

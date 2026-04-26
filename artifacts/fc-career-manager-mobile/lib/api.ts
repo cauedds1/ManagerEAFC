@@ -466,6 +466,50 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ seasonId, matchId }),
       }),
+
+    generateManual: (payload: {
+      description: string;
+      clubName: string;
+      season?: string;
+      source?: string;
+      category?: string;
+      clubLeague?: string;
+      clubDescription?: string;
+      projeto?: string;
+      lang?: string;
+    }) =>
+      request<Record<string, unknown>>('/api/noticias/generate', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }),
+
+    generateRumor: (payload: {
+      clubName: string;
+      season?: string;
+      clubLeague?: string;
+      clubDescription?: string;
+      projeto?: string;
+      lang?: string;
+    }) =>
+      request<Record<string, unknown>>('/api/noticias/generate-rumor', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }),
+
+    generateWelcome: (payload: {
+      coachName: string;
+      coachAge?: number;
+      coachNationality?: string;
+      clubName: string;
+      clubLeague?: string;
+      clubDescription?: string;
+      projeto?: string;
+      lang?: string;
+    }) =>
+      request<Record<string, unknown>>('/api/noticias/generate-welcome', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }),
   },
 
   matches: {
@@ -539,7 +583,24 @@ export const api = {
       triggerMessage: string;
     }) =>
       request<{ reply: string; newMood: string; suggestClose: boolean; speakerMemberId: string }>(
-        '/api/diretoria/turn', { method: 'POST', body: JSON.stringify(payload) }
+        '/api/diretoria/chat', { method: 'POST', body: JSON.stringify({ member: payload.speaker, message: payload.triggerMessage, history: payload.history, context: payload.context }) }
+      ),
+
+    meeting: (payload: {
+      speaker: { id: string; name: string; roleLabel: string; description: string; mood: string; patience: number };
+      allMembers: Array<{ id: string; name: string; roleLabel: string; description: string; mood: string; patience: number }>;
+      history: Array<{ role: string; content: string; memberName?: string; memberId?: string }>;
+      context: {
+        clubName: string; clubLeague: string; season: string; coachName: string;
+        squadSize: number; transfersCount: number; recentMatches: unknown[]; leaguePosition: unknown | null;
+        projeto?: string;
+        currentCompetitions?: string[];
+      };
+      triggerMessage: string;
+      lang?: string;
+    }) =>
+      request<{ reply: string; newMood: string; suggestClose: boolean; speakerMemberId: string }>(
+        '/api/diretoria/meeting', { method: 'POST', body: JSON.stringify(payload) }
       ),
   },
 

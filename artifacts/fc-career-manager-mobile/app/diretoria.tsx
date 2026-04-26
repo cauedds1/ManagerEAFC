@@ -11,8 +11,294 @@ import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { useCareer } from '@/contexts/CareerContext';
 import { useClubTheme } from '@/contexts/ClubThemeContext';
-import { api, type DiretoraaMember, type DiretoraaMeeting } from '@/lib/api';
+import { api, type DiretoraaMember, type DiretoraaMeeting, type MatchRecord, getMatchResult } from '@/lib/api';
 import { Colors } from '@/constants/colors';
+
+const MEETING_TOPICS = [
+  'Avaliação do desempenho na temporada',
+  'Situação no mercado de transferências',
+  'Gestão financeira e orçamento',
+  'Objetivos e metas da temporada',
+  'Pressão por resultados recentes',
+  'Renovações de contrato',
+  'Planejamento tático',
+  'Outro assunto',
+];
+
+interface MeetingModalProps {
+  visible: boolean;
+  members: DiretoraaMember[];
+  onClose: () => void;
+  onMeetingDone: (meeting: DiretoraaMeeting) => void;
+  clubName: string;
+  clubLeague?: string;
+  coachName: string;
+  seasonLabel: string;
+  projeto?: string;
+  recentMatches: MatchRecord[];
+}
+
+function MeetingModal({
+  visible, members, onClose, onMeetingDone,
+  clubName, clubLeague, coachName, seasonLabel, projeto, recentMatches,
+}: MeetingModalProps) {
+  const theme = useClubTheme();
+  const insets = useSafeAreaInsets();
+  const [step, setStep] = useState<'select_member' | 'select_topic' | 'result'>('select_member');
+  const [selectedMember, setSelectedMember] = useState<DiretoraaMember | null>(null);
+  const [selectedTopic, setSelectedTopic] = useState('');
+  const [customTopic, setCustomTopic] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<{ reply: string; newMood: string } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleClose = () => {
+    setStep('select_member');
+    setSelectedMember(null);
+    setSelectedTopic('');
+    setCustomTopic('');
+    setResult(null);
+    setError(null);
+    onClose();
+  };
+
+  const handleSelectMember = (m: DiretoraaMember) => {
+    setSelectedMember(m);
+    setStep('select_topic');
+  };
+
+  const handleStartMeeting = async () => {
+    if (!selectedMember) return;
+    const topic = selectedTopic === 'Outro assunto' ? customTopic.trim() : selectedTopic;
+    if (!topic.trim()) return;
+
+    setError(null);
+    setLoading(true);
+    try {
+      const allMemberProfiles = members.map((m) => ({
+        id: m.id,
+        name: m.name,
+        roleLabel: m.roleLabel ?? m.role ?? 'Membro',
+        description: m.description ?? '',
+        mood: m.mood ?? 'neutro',
+        patience: m.patience ?? 50,
+      }));
+      const speakerProfile = {
+        id: selectedMember.id,
+        name: selectedMember.name,
+        roleLabel: selectedMember.roleLabel ?? selectedMember.role ?? 'Membro',
+        description: selectedMember.description ?? '',
+        mood: selectedMember.mood ?? 'neutro',
+        patience: selectedMember.patience ?? 50,
+      };
+
+      const matchCtxList = recentMatches.slice(0, 6).map((m) => {
+        const r = getMatchResult(m.myScore, m.opponentScore);
+        return {
+          opponent: m.opponent,
+          myScore: m.myScore,
+          opponentScore: m.opponentScore,
+          result: r,
+          tournament: m.tournament,
+          date: m.date,
+          createdAt: m.createdAt,
+        };
+      });
+
+      const res = await api.diretoria.meeting({
+        speaker: speakerProfile,
+        allMembers: allMemberProfiles,
+        history: [],
+        context: {
+          clubName,
+          clubLeague: clubLeague ?? '',
+          season: seasonLabel,
+          coachName,
+          squadSize: 0,
+          transfersCount: 0,
+          recentMatches: matchCtxList,
+          leaguePosition: null,
+          projeto,
+        },
+        triggerMessage: topic,
+        lang: 'pt',
+      });
+
+      setResult({ reply: res.reply, newMood: res.newMood });
+
+      const newMeeting: DiretoraaMeeting = {
+        id: `mtg_${Date.now().toString(36)}_${Math.random().toString(36).slice(2)}`,
+        memberId: selectedMember.id,
+        date: new Date().toLocaleDateString('pt-BR'),
+        topic,
+        outcome: res.reply,
+        createdAt: Date.now(),
+      };
+      onMeetingDone(newMeeting);
+      setStep('result');
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg.includes('plano Free') || msg.includes('PLAN')) {
+        setError('Reuniões formais requerem o plano Pro ou Ultra.');
+      } else {
+        setError('Não foi possível realizar a reunião. Tente novamente.');
+      }
+    }
+    setLoading(false);
+  };
+
+  return (
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={handleClose}>
+      <View style={styles.modalOverlay}>
+        <View style={[styles.modalSheet, { paddingBottom: insets.bottom }]}>
+          <View style={styles.modalHandle} />
+          <View style={styles.modalHeader}>
+            <TouchableOpacity
+              onPress={step === 'select_member' ? handleClose : () => {
+                if (step === 'result') { handleClose(); }
+                else setStep('select_member');
+              }}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons name={step === 'result' ? 'checkmark-circle-outline' : (step === 'select_member' ? 'close' : 'chevron-back')} size={22} color={Colors.mutedForeground} />
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>
+              {step === 'select_member' ? 'Convocar Reunião' : step === 'select_topic' ? 'Escolher Pauta' : 'Ata da Reunião'}
+            </Text>
+            <View style={{ width: 22 }} />
+          </View>
+
+          {step === 'select_member' && (
+            <ScrollView contentContainerStyle={styles.meetingBody}>
+              <Text style={styles.meetingHint}>Selecione o membro da diretoria para a reunião:</Text>
+              {members.length === 0 ? (
+                <View style={styles.meetingEmpty}>
+                  <Text style={{ fontSize: 32 }}>🏢</Text>
+                  <Text style={styles.meetingEmptyText}>Adicione membros à diretoria primeiro.</Text>
+                </View>
+              ) : (
+                members.map((m) => (
+                  <TouchableOpacity
+                    key={m.id}
+                    style={styles.memberSelectRow}
+                    onPress={() => handleSelectMember(m)}
+                    activeOpacity={0.75}
+                  >
+                    <View style={styles.memberAvatarSmall}>
+                      <Text style={[styles.memberAvatarText, { fontSize: 14 }]}>
+                        {m.name.trim().split(' ').slice(0, 2).map((w) => w[0]).join('').toUpperCase()}
+                      </Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.memberListName}>{m.name}</Text>
+                      <Text style={styles.memberListRole}>{m.roleLabel ?? m.role ?? 'Membro'}</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={18} color={Colors.mutedForeground} />
+                  </TouchableOpacity>
+                ))
+              )}
+            </ScrollView>
+          )}
+
+          {step === 'select_topic' && (
+            <>
+              <ScrollView contentContainerStyle={styles.meetingBody} keyboardShouldPersistTaps="handled">
+                <Text style={styles.meetingHint}>Pauta da reunião com {selectedMember?.name?.split(' ')[0]}:</Text>
+                {MEETING_TOPICS.map((t) => (
+                  <TouchableOpacity
+                    key={t}
+                    style={[
+                      styles.topicRow,
+                      selectedTopic === t && { backgroundColor: `rgba(${theme.primaryRgb},0.12)`, borderColor: `rgba(${theme.primaryRgb},0.35)` },
+                    ]}
+                    onPress={() => setSelectedTopic(t)}
+                    activeOpacity={0.75}
+                  >
+                    <Text style={[styles.topicText, selectedTopic === t && { color: theme.primary }]}>{t}</Text>
+                    {selectedTopic === t && <Ionicons name="checkmark" size={18} color={theme.primary} />}
+                  </TouchableOpacity>
+                ))}
+                {selectedTopic === 'Outro assunto' && (
+                  <TextInput
+                    style={styles.topicInput}
+                    value={customTopic}
+                    onChangeText={setCustomTopic}
+                    placeholder="Descreva a pauta…"
+                    placeholderTextColor={Colors.mutedForeground}
+                    multiline
+                    maxLength={300}
+                    autoFocus
+                  />
+                )}
+                {error ? (
+                  <View style={styles.errorBox}>
+                    <Ionicons name="warning-outline" size={16} color={Colors.destructive} />
+                    <Text style={styles.errorText}>{error}</Text>
+                  </View>
+                ) : null}
+              </ScrollView>
+              <View style={styles.meetingFooter}>
+                <TouchableOpacity
+                  style={[
+                    styles.meetingBtn,
+                    { backgroundColor: `rgba(${theme.primaryRgb},0.18)`, borderColor: `rgba(${theme.primaryRgb},0.4)` },
+                    (!selectedTopic || loading) && { opacity: 0.5 },
+                  ]}
+                  onPress={handleStartMeeting}
+                  disabled={!selectedTopic || loading}
+                >
+                  {loading
+                    ? <ActivityIndicator size="small" color={theme.primary} />
+                    : <>
+                        <Ionicons name="people-outline" size={18} color={theme.primary} />
+                        <Text style={[styles.meetingBtnText, { color: theme.primary }]}>Realizar Reunião</Text>
+                      </>
+                  }
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
+
+          {step === 'result' && result && (
+            <>
+              <ScrollView contentContainerStyle={styles.meetingBody}>
+                <View style={styles.ataCard}>
+                  <View style={styles.ataHeader}>
+                    <Text style={styles.ataTitle}>📋 Ata da Reunião</Text>
+                    <Text style={styles.ataDate}>{new Date().toLocaleDateString('pt-BR')}</Text>
+                  </View>
+                  <View style={styles.ataMeta}>
+                    <Text style={styles.ataMetaText}>Membro: {selectedMember?.name}</Text>
+                    <Text style={styles.ataMetaText}>
+                      Cargo: {selectedMember?.roleLabel ?? selectedMember?.role ?? 'Membro'}
+                    </Text>
+                    <Text style={styles.ataMetaText}>
+                      Pauta: {selectedTopic === 'Outro assunto' ? customTopic : selectedTopic}
+                    </Text>
+                    <Text style={styles.ataMetaText}>
+                      Estado: {result.newMood.charAt(0).toUpperCase() + result.newMood.slice(1)}
+                    </Text>
+                  </View>
+                  <View style={styles.ataDivider} />
+                  <Text style={styles.ataBody}>{result.reply}</Text>
+                </View>
+              </ScrollView>
+              <View style={styles.meetingFooter}>
+                <TouchableOpacity
+                  style={[styles.meetingBtn, { backgroundColor: `${Colors.success}18`, borderColor: `${Colors.success}35` }]}
+                  onPress={handleClose}
+                >
+                  <Ionicons name="checkmark-circle-outline" size={18} color={Colors.success} />
+                  <Text style={[styles.meetingBtnText, { color: Colors.success }]}>Concluir</Text>
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
+        </View>
+      </View>
+    </Modal>
+  );
+}
 
 interface BoardNotification {
   id: string;
@@ -465,7 +751,7 @@ function MemberManagementModal({
 
 export default function DiretoraScreen() {
   const insets = useSafeAreaInsets();
-  const { activeCareer } = useCareer();
+  const { activeCareer, activeSeason } = useCareer();
   const theme = useClubTheme();
   const qc = useQueryClient();
   const topPad = Platform.OS === 'web' ? 0 : insets.top;
@@ -474,6 +760,7 @@ export default function DiretoraScreen() {
   const [selectedMember, setSelectedMember] = useState<DiretoraaMember | null>(null);
   const [localMessages, setLocalMessages] = useState<LocalMessage[]>([]);
   const [showManage, setShowManage] = useState(false);
+  const [showMeeting, setShowMeeting] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ['/api/data/career/diretoria', activeCareer?.id],
@@ -481,6 +768,15 @@ export default function DiretoraScreen() {
     enabled: !!activeCareer?.id,
     staleTime: 1000 * 60 * 5,
   });
+
+  const { data: seasonData } = useQuery({
+    queryKey: ['/api/data/season', activeSeason?.id],
+    queryFn: () => activeSeason ? api.seasonData.get(activeSeason.id) : null,
+    enabled: !!activeSeason?.id,
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const recentMatches: MatchRecord[] = [...(seasonData?.data?.matches ?? [])].sort((a, b) => b.createdAt - a.createdAt).slice(0, 8);
 
   const rawMembers: DiretoraaMember[] = (data?.data?.diretoria_members ?? []) as DiretoraaMember[];
   const rawMeetings: DiretoraaMeeting[] = (data?.data?.diretoria_meetings ?? []) as DiretoraaMeeting[];
@@ -524,6 +820,19 @@ export default function DiretoraScreen() {
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['/api/data/career/diretoria', activeCareer?.id] }),
   });
+
+  const saveMeetingsMutation = useMutation({
+    mutationFn: async (meetings: DiretoraaMeeting[]) => {
+      if (!activeCareer) return;
+      await api.diretoria.saveMeetings(activeCareer.id, meetings);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['/api/data/career/diretoria', activeCareer?.id] }),
+  });
+
+  const handleMeetingDone = useCallback((meeting: DiretoraaMeeting) => {
+    const updated = [meeting, ...rawMeetings];
+    saveMeetingsMutation.mutate(updated);
+  }, [rawMeetings, saveMeetingsMutation]);
 
   const sendMutation = useMutation({
     mutationFn: async (text: string) => {
@@ -647,6 +956,15 @@ export default function DiretoraScreen() {
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
               <Text style={styles.unreadBadge}>{unreadCount}</Text>
+            </TouchableOpacity>
+          )}
+          {rawMembers.length > 0 && (
+            <TouchableOpacity
+              style={styles.manageBtn}
+              onPress={() => setShowMeeting(true)}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons name="calendar-outline" size={20} color={Colors.info} />
             </TouchableOpacity>
           )}
           <TouchableOpacity
@@ -773,6 +1091,19 @@ export default function DiretoraScreen() {
           saveMembersMutation.mutate(members);
           setShowManage(false);
         }}
+      />
+
+      <MeetingModal
+        visible={showMeeting}
+        members={rawMembers}
+        onClose={() => setShowMeeting(false)}
+        onMeetingDone={handleMeetingDone}
+        clubName={activeCareer?.clubName ?? ''}
+        clubLeague={activeCareer?.clubLeague}
+        coachName={activeCareer?.coach?.name ?? 'Técnico'}
+        seasonLabel={activeSeason?.label ?? activeCareer?.season ?? ''}
+        projeto={activeCareer?.projeto}
+        recentMatches={recentMatches}
       />
     </KeyboardAvoidingView>
   );
@@ -914,4 +1245,51 @@ const styles = StyleSheet.create({
   meetingDate: { fontSize: 11, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular' },
   meetingOutcome: { fontSize: 13, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular', lineHeight: 18 },
   meetingMember: { fontSize: 12, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular', fontStyle: 'italic' },
+  meetingBody: { padding: 16, gap: 10 },
+  meetingHint: { fontSize: 13, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular', fontStyle: 'italic', marginBottom: 4 },
+  meetingEmpty: { alignItems: 'center', paddingVertical: 28, gap: 8 },
+  meetingEmptyText: { fontSize: 14, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular', textAlign: 'center' },
+  memberSelectRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: Colors.card, borderRadius: Colors.radiusLg,
+    borderWidth: 1, borderColor: Colors.border,
+    paddingHorizontal: 14, paddingVertical: 12,
+  },
+  topicRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: Colors.card, borderRadius: Colors.radius,
+    borderWidth: 1, borderColor: Colors.border,
+    paddingHorizontal: 14, paddingVertical: 12,
+  },
+  topicText: { fontSize: 14, color: Colors.foreground, fontFamily: 'Inter_400Regular', flex: 1 },
+  topicInput: {
+    backgroundColor: Colors.card, borderRadius: Colors.radius,
+    borderWidth: 1, borderColor: Colors.border,
+    paddingHorizontal: 14, paddingVertical: 10,
+    color: Colors.foreground, fontFamily: 'Inter_400Regular', fontSize: 14,
+    minHeight: 60, textAlignVertical: 'top',
+  },
+  errorBox: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: `${Colors.destructive}15`, borderRadius: Colors.radius,
+    padding: 10, borderWidth: 1, borderColor: `${Colors.destructive}30`,
+  },
+  errorText: { fontSize: 13, color: Colors.destructive, fontFamily: 'Inter_400Regular', flex: 1 },
+  meetingFooter: { paddingHorizontal: 16, paddingVertical: 14, borderTopWidth: 1, borderTopColor: Colors.border },
+  meetingBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    borderRadius: Colors.radius, paddingVertical: 14, borderWidth: 1,
+  },
+  meetingBtnText: { fontSize: 15, fontWeight: '600' as const, fontFamily: 'Inter_600SemiBold' },
+  ataCard: {
+    backgroundColor: Colors.card, borderRadius: Colors.radiusLg,
+    borderWidth: 1, borderColor: Colors.border, padding: 16, gap: 10,
+  },
+  ataHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  ataTitle: { fontSize: 16, fontWeight: '700' as const, color: Colors.foreground, fontFamily: 'Inter_700Bold' },
+  ataDate: { fontSize: 12, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular' },
+  ataMeta: { gap: 3 },
+  ataMetaText: { fontSize: 12, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular' },
+  ataDivider: { height: 1, backgroundColor: Colors.border },
+  ataBody: { fontSize: 14, color: Colors.foreground, fontFamily: 'Inter_400Regular', lineHeight: 22 },
 });
