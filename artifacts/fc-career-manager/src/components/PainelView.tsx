@@ -280,13 +280,13 @@ function TopPerformers({
 
   const ranked = useMemo(() => {
     const allStats = getAllPlayerStats(seasonId);
-    return Object.values(allStats)
-      .filter((s) => s[type] > 0)
-      .sort((a, b) => b[type] - a[type])
+    return Object.entries(allStats)
+      .filter(([, s]) => s[type] > 0)
+      .sort(([, a], [, b]) => b[type] - a[type])
       .slice(0, 3)
-      .map((s) => ({
+      .map(([key, s]) => ({
         stats: s,
-        player: playerMap.get(s.playerId) ?? null,
+        player: playerMap.get(s.playerId ?? Number(key)) ?? null,
       }))
       .filter((r) => r.player !== null);
   }, [seasonId, playerMap, type, matchCount]);

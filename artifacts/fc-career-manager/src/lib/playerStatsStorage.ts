@@ -29,7 +29,13 @@ export function defaultStats(playerId: number): PlayerSeasonStats {
 }
 
 export function getAllPlayerStats(seasonId: string): Record<number, PlayerSeasonStats> {
-  return sessionGet<Record<number, PlayerSeasonStats>>(statsKey(seasonId)) ?? {};
+  const raw = sessionGet<Record<number, PlayerSeasonStats>>(statsKey(seasonId)) ?? {};
+  for (const [key, stats] of Object.entries(raw)) {
+    if (stats.playerId === undefined || stats.playerId === null) {
+      stats.playerId = Number(key);
+    }
+  }
+  return raw;
 }
 
 export function getPlayerStats(seasonId: string, playerId: number): PlayerSeasonStats {
