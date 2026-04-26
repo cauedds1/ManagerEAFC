@@ -261,6 +261,7 @@ export interface Transfer {
   season: string;
   date: string;
   pending?: boolean;
+  loanStatus?: 'active' | 'recalled' | 'ended';
 }
 
 export interface DiretoraaMember {

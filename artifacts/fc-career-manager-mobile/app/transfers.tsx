@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
   Platform, ActivityIndicator, Modal, TextInput,
-  ScrollView, Alert,
+  ScrollView, Alert, Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -66,6 +66,8 @@ function TransferCard({
   const feeColor = isIn ? Colors.destructive : Colors.success;
   const isLoan = item.type === 'loan_in' || item.type === 'loan_out';
   const isPending = !!(item as Transfer & { pending?: boolean }).pending;
+  const loanStatus = (item as Transfer & { loanStatus?: string }).loanStatus;
+  const loanActive = isLoan && !loanStatus;
 
   return (
     <View style={[styles.card, isPending && styles.cardPending]}>
@@ -101,7 +103,14 @@ function TransferCard({
             </TouchableOpacity>
           </View>
         </View>
-        {isLoan && onLoanAction && (
+        {loanStatus && (
+          <View style={styles.loanStatusBadge}>
+            <Text style={[styles.loanStatusText, { color: loanStatus === 'recalled' ? Colors.info : Colors.success }]}>
+              {loanStatus === 'recalled' ? '↩ Empréstimo encerrado (retornou)' : '✓ Empréstimo encerrado (saída)'}
+            </Text>
+          </View>
+        )}
+        {loanActive && onLoanAction && (
           <View style={styles.loanActions}>
             {item.type === 'loan_in' && (
               <TouchableOpacity
@@ -195,20 +204,37 @@ function PlayerSearchInput({
   );
 }
 
+interface ClubOption { name: string; logo?: string; }
+
 function ClubInput({
-  value, onChange, suggestions,
+  value, onChange, fallbackSuggestions,
 }: {
   value: string;
   onChange: (v: string) => void;
-  suggestions: string[];
+  fallbackSuggestions: string[];
 }) {
   const [showList, setShowList] = useState(false);
 
+  const { data: clubsData } = useQuery({
+    queryKey: ['/api/clubs'],
+    queryFn: () => api.clubs.list(),
+    staleTime: 1000 * 60 * 30,
+    retry: 1,
+  });
+
+  const allOptions: ClubOption[] = useMemo(() => {
+    const clubs = clubsData?.clubs ?? [];
+    if (clubs.length > 0) {
+      return clubs.map((c) => ({ name: c.name, logo: c.logo }));
+    }
+    return fallbackSuggestions.map((n) => ({ name: n }));
+  }, [clubsData?.clubs, fallbackSuggestions]);
+
   const filtered = useMemo(() => {
     const q = value.trim().toLowerCase();
-    if (!q) return suggestions.slice(0, 8);
-    return suggestions.filter((s) => s.toLowerCase().includes(q)).slice(0, 8);
-  }, [value, suggestions]);
+    if (!q) return allOptions.slice(0, 8);
+    return allOptions.filter((c) => c.name.toLowerCase().includes(q)).slice(0, 8);
+  }, [value, allOptions]);
 
   return (
     <View>
@@ -222,13 +248,20 @@ function ClubInput({
       />
       {showList && filtered.length > 0 && (
         <View style={styles.dropdown}>
-          {filtered.map((s) => (
+          {filtered.map((c) => (
             <TouchableOpacity
-              key={s}
+              key={c.name}
               style={styles.dropdownItem}
-              onPress={() => { onChange(s); setShowList(false); }}
+              onPress={() => { onChange(c.name); setShowList(false); }}
             >
-              <Text style={styles.dropdownName}>{s}</Text>
+              {c.logo ? (
+                <Image source={{ uri: c.logo }} style={styles.clubLogo} resizeMode="contain" />
+              ) : (
+                <View style={styles.clubLogoPlaceholder}>
+                  <Text style={styles.clubLogoInitial}>{c.name.charAt(0).toUpperCase()}</Text>
+                </View>
+              )}
+              <Text style={styles.dropdownName}>{c.name}</Text>
             </TouchableOpacity>
           ))}
           <TouchableOpacity
@@ -345,7 +378,7 @@ function NewTransferModal({ visible, seasonLabel, clubSuggestions, onClose, onSa
               <ClubInput
                 value={club}
                 onChange={setClub}
-                suggestions={clubSuggestions}
+                fallbackSuggestions={clubSuggestions}
               />
             </View>
 
@@ -515,13 +548,16 @@ export default function TransfersScreen() {
   const handleLoanAction = (id: string, action: 'recall' | 'end') => {
     const label = action === 'recall' ? 'Chamar de volta' : 'Encerrar empréstimo';
     const msg = action === 'recall'
-      ? 'O jogador será removido das contratações por empréstimo.'
-      : 'O empréstimo será encerrado e o jogador removido da lista de vendas.';
+      ? 'O empréstimo será marcado como encerrado (jogador retorna). O histórico é mantido.'
+      : 'O empréstimo de saída será marcado como encerrado. O histórico é mantido.';
+    const newStatus: Transfer['loanStatus'] = action === 'recall' ? 'recalled' : 'ended';
     Alert.alert(label, msg, [
       { text: 'Cancelar', style: 'cancel' },
       {
         text: label,
-        onPress: () => saveTransfersMutation.mutate(transfers.filter((t) => t.id !== id)),
+        onPress: () => saveTransfersMutation.mutate(
+          transfers.map((t) => t.id === id ? { ...t, loanStatus: newStatus } : t)
+        ),
       },
     ]);
   };
@@ -797,4 +833,19 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.card,
   },
   seasonChipText: { fontSize: 12, color: Colors.mutedForeground, fontFamily: 'Inter_600SemiBold' },
+  clubLogo: { width: 24, height: 24 },
+  clubLogoPlaceholder: {
+    width: 24, height: 24, borderRadius: 12,
+    backgroundColor: 'rgba(139,92,246,0.2)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  clubLogoInitial: { fontSize: 11, fontWeight: '700' as const, color: Colors.mutedForeground },
+  loanStatusBadge: {
+    marginTop: 4,
+    paddingVertical: 3, paddingHorizontal: 8,
+    backgroundColor: 'rgba(100,116,139,0.12)',
+    borderRadius: Colors.radius,
+    alignSelf: 'flex-start' as const,
+  },
+  loanStatusText: { fontSize: 11, fontFamily: 'Inter_400Regular' },
 });

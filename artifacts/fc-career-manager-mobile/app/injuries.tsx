@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
   Platform, ActivityIndicator, Modal, TextInput, ScrollView, Alert,
@@ -98,6 +98,12 @@ function InjuryModal({ visible, injury, onClose, onSave }: NewInjuryModalProps) 
   const [injuryType, setInjuryType] = useState(injury?.injuryType ?? '');
   const [matchesOut, setMatchesOut] = useState(String(injury?.matchesOut ?? ''));
 
+  useEffect(() => {
+    setPlayerName(injury?.playerName ?? '');
+    setInjuryType(injury?.injuryType ?? '');
+    setMatchesOut(String(injury?.matchesOut ?? ''));
+  }, [injury]);
+
   const handleSave = () => {
     const mo = parseInt(matchesOut, 10);
     if (!playerName.trim() || isNaN(mo) || mo < 1) return;
@@ -111,13 +117,7 @@ function InjuryModal({ visible, injury, onClose, onSave }: NewInjuryModalProps) 
     onClose();
   };
 
-  const reset = () => {
-    setPlayerName(injury?.playerName ?? '');
-    setInjuryType(injury?.injuryType ?? '');
-    setMatchesOut(String(injury?.matchesOut ?? ''));
-  };
-
-  const handleClose = () => { reset(); onClose(); };
+  const handleClose = () => { onClose(); };
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={handleClose}>

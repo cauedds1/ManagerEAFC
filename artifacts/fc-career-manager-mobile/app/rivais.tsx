@@ -12,7 +12,7 @@ import { useClubTheme } from '@/contexts/ClubThemeContext';
 import { api, getMatchResult, type MatchRecord } from '@/lib/api';
 import { Colors } from '@/constants/colors';
 
-const MAX_RIVALS = 3;
+const MAX_RIVALS = 5;
 
 interface RivalStats {
   name: string;

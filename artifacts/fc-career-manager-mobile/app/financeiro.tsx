@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   Platform, ActivityIndicator, Modal, TextInput, Alert,
@@ -71,6 +71,12 @@ function BudgetEditorModal({
   const [budget, setBudget] = useState(
     finances?.budget ? formatMoney(finances.budget).replace('€', '') : ''
   );
+
+  useEffect(() => {
+    setTransferBudget(finances?.transferBudget ? formatMoney(finances.transferBudget).replace('€', '') : '');
+    setWage(finances?.wage ? formatMoney(finances.wage).replace('€', '') : '');
+    setBudget(finances?.budget ? formatMoney(finances.budget).replace('€', '') : '');
+  }, [finances]);
 
   const handleSave = () => {
     onSave({
