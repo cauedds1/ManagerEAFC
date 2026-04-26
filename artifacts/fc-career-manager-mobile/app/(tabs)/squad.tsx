@@ -11,6 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import * as ImagePicker from 'expo-image-picker';
 import { useCareer } from '@/contexts/CareerContext';
 import { useClubTheme } from '@/contexts/ClubThemeContext';
 import { api, type SquadPlayer, type PlayerSeasonStats, type InjuryRecord, type Season, type Transfer } from '@/lib/api';
@@ -65,11 +66,29 @@ function PlayerPhoto({ src, name, size = 44 }: { src: string; name: string; size
   );
 }
 
+const MOOD_CONFIG: Record<string, { label: string; color: string }> = {
+  excelente:    { label: 'Excelente',    color: '#34d399' },
+  bom:          { label: 'Bom',          color: '#a3e635' },
+  neutro:       { label: 'Neutro',       color: '#94a3b8' },
+  insatisfeito: { label: 'Insatisfeito', color: '#fb923c' },
+  irritado:     { label: 'Irritado',     color: '#f87171' },
+};
+
+const FAN_CONFIG: Record<string, { label: string; color: string }> = {
+  idolo:      { label: 'Ídolo',      color: '#fbbf24' },
+  querido:    { label: 'Querido',    color: '#34d399' },
+  neutro:     { label: 'Neutro',     color: '#94a3b8' },
+  contestado: { label: 'Contestado', color: '#fb923c' },
+  vaiado:     { label: 'Vaiado',     color: '#f87171' },
+};
+
 function PlayerBottomSheet({
   player,
   stats,
   injury,
   inLineup,
+  motmCount,
+  salary,
   onClose,
   onSaveEdit,
 }: {
@@ -77,6 +96,8 @@ function PlayerBottomSheet({
   stats?: PlayerSeasonStats;
   injury?: InjuryRecord;
   inLineup: boolean;
+  motmCount?: number;
+  salary?: number;
   onClose: () => void;
   onSaveEdit?: (updates: { name?: string; number?: number | null }) => Promise<void>;
 }) {
@@ -95,6 +116,8 @@ function PlayerBottomSheet({
     { label: 'Média', value: stats?.avgRating ? stats.avgRating.toFixed(1) : '—', icon: 'star-outline' as IoniconName, color: stats?.avgRating ? ratingColor(stats.avgRating) : Colors.mutedForeground },
     { label: 'Amarelos', value: stats?.yellowCards ?? 0, icon: 'card-outline' as IoniconName, color: Colors.warning },
     { label: 'Vermelhos', value: stats?.redCards ?? 0, icon: 'card-outline' as IoniconName, color: Colors.destructive },
+    { label: 'Minutos', value: stats?.totalMinutes ?? 0, icon: 'time-outline' as IoniconName },
+    { label: 'MOTM', value: motmCount ?? 0, icon: 'trophy-outline' as IoniconName, color: Colors.warning },
   ];
 
   return (
@@ -139,6 +162,50 @@ function PlayerBottomSheet({
               </View>
             ))}
           </View>
+
+          {(stats?.mood || stats?.fanMoral || salary != null) && (
+            <>
+              <View style={styles.sheetDivider} />
+              <Text style={styles.sheetSectionLabel}>Status do Jogador</Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+                {stats?.mood && (() => {
+                  const cfg = MOOD_CONFIG[stats.mood] ?? MOOD_CONFIG.neutro;
+                  return (
+                    <View style={[styles.statCell, { flexDirection: 'row', gap: 6, alignItems: 'center', backgroundColor: `${cfg.color}12` }]}>
+                      <Ionicons name="happy-outline" size={16} color={cfg.color} />
+                      <View>
+                        <Text style={[styles.statLabel, { marginBottom: 0 }]}>Humor</Text>
+                        <Text style={[styles.statValue, { fontSize: 14, color: cfg.color }]}>{cfg.label}</Text>
+                      </View>
+                    </View>
+                  );
+                })()}
+                {stats?.fanMoral && (() => {
+                  const cfg = FAN_CONFIG[stats.fanMoral] ?? FAN_CONFIG.neutro;
+                  return (
+                    <View style={[styles.statCell, { flexDirection: 'row', gap: 6, alignItems: 'center', backgroundColor: `${cfg.color}12` }]}>
+                      <Ionicons name="people-outline" size={16} color={cfg.color} />
+                      <View>
+                        <Text style={[styles.statLabel, { marginBottom: 0 }]}>Torcida</Text>
+                        <Text style={[styles.statValue, { fontSize: 14, color: cfg.color }]}>{cfg.label}</Text>
+                      </View>
+                    </View>
+                  );
+                })()}
+                {salary != null && salary > 0 && (
+                  <View style={[styles.statCell, { flexDirection: 'row', gap: 6, alignItems: 'center' }]}>
+                    <Ionicons name="cash-outline" size={16} color={Colors.success} />
+                    <View>
+                      <Text style={[styles.statLabel, { marginBottom: 0 }]}>Salário</Text>
+                      <Text style={[styles.statValue, { fontSize: 14, color: Colors.success }]}>
+                        {salary >= 1000000 ? `€${(salary / 1000000).toFixed(1)}M` : `€${(salary / 1000).toFixed(0)}K`}/sem
+                      </Text>
+                    </View>
+                  </View>
+                )}
+              </View>
+            </>
+          )}
 
           {injury && (() => {
             const remaining = Math.max(0, injury.matchesOut - (injury.matchesServed ?? 0));
@@ -347,12 +414,10 @@ function PlayerPickerModal({
 
 function AddPlayerSheet({
   careerId,
-  existingCustom,
   onSaved,
   onClose,
 }: {
   careerId: string;
-  existingCustom: SquadPlayer[];
   onSaved: () => void;
   onClose: () => void;
 }) {
@@ -363,25 +428,48 @@ function AddPlayerSheet({
   const [ovr, setOvr] = useState('');
   const [number, setNumber] = useState('');
   const [photo, setPhoto] = useState('');
+  const [photoBase64, setPhotoBase64] = useState('');
   const [saving, setSaving] = useState(false);
 
   const valid = name.trim().length > 1;
+
+  const pickPhoto = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') return;
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: 'images',
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.7,
+      base64: true,
+    });
+    if (!result.canceled && result.assets[0]) {
+      const asset = result.assets[0];
+      if (asset.base64) {
+        setPhotoBase64(`data:image/jpeg;base64,${asset.base64}`);
+        setPhoto('');
+      } else if (asset.uri) {
+        setPhoto(asset.uri);
+        setPhotoBase64('');
+      }
+    }
+  };
+
+  const displayPhoto = photoBase64 || photo.trim();
 
   const save = async () => {
     if (!valid) return;
     setSaving(true);
     try {
-      const newPlayer: SquadPlayer = {
-        id: -(Date.now() % 10000000),
+      await api.careers.addManualPlayer(careerId, {
         name: name.trim(),
         age: parseInt(age, 10) || 20,
         position: pos,
         positionPtBr: pos,
-        photo: photo.trim(),
+        overallRating: parseInt(ovr, 10) || 70,
         number: number ? parseInt(number, 10) : undefined,
-      };
-      const updated = [...existingCustom, newPlayer];
-      await api.careerData.set(careerId, 'customPlayers', updated);
+        photo: displayPhoto || '',
+      });
       onSaved();
       onClose();
     } finally {
@@ -462,15 +550,35 @@ function AddPlayerSheet({
             </View>
 
             <View style={styles.addField}>
-              <Text style={styles.addLabel}>Foto (URL)</Text>
-              <TextInput
-                style={styles.addInput}
-                value={photo}
-                onChangeText={setPhoto}
-                placeholder="https://..."
-                placeholderTextColor={Colors.mutedForeground}
-                autoCapitalize="none"
-              />
+              <Text style={styles.addLabel}>Foto</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                {displayPhoto ? (
+                  <Image source={{ uri: displayPhoto }} style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: Colors.muted }} />
+                ) : (
+                  <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: Colors.muted, alignItems: 'center', justifyContent: 'center' }}>
+                    <Ionicons name="person" size={24} color={Colors.mutedForeground} />
+                  </View>
+                )}
+                <TouchableOpacity
+                  style={[styles.closeBtn, { flex: 1, flexDirection: 'row', justifyContent: 'center', gap: 6 }]}
+                  onPress={pickPhoto}
+                >
+                  <Ionicons name="image-outline" size={18} color={Colors.mutedForeground} />
+                  <Text style={styles.closeBtnText}>
+                    {displayPhoto ? 'Trocar foto' : 'Escolher da galeria'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+              {!photoBase64 && (
+                <TextInput
+                  style={[styles.addInput, { marginTop: 6 }]}
+                  value={photo}
+                  onChangeText={(t) => { setPhoto(t); setPhotoBase64(''); }}
+                  placeholder="ou cole uma URL de foto..."
+                  placeholderTextColor={Colors.mutedForeground}
+                  autoCapitalize="none"
+                />
+              )}
             </View>
 
             <TouchableOpacity
@@ -757,6 +865,24 @@ export default function SquadScreen() {
     setPickerSlot(null);
     saveLineupAndFormation(newLineup, formation);
   }, [pickerSlot, lineup, formation, saveLineupAndFormation]);
+
+  const motmCountMap = useMemo(() => {
+    const map = new Map<number, number>();
+    for (const m of seasonData?.data?.matches ?? []) {
+      if (m.motmPlayerId != null) {
+        map.set(m.motmPlayerId, (map.get(m.motmPlayerId) ?? 0) + 1);
+      }
+    }
+    return map;
+  }, [seasonData]);
+
+  const salaryMap = useMemo(() => {
+    const map = new Map<number, number>();
+    for (const po of careerGameData?.data?.playerOverrides ?? []) {
+      if (po.salary != null) map.set(po.playerId, po.salary);
+    }
+    return map;
+  }, [careerGameData]);
 
   const handleSavePlayerEdit = useCallback(async (player: SquadPlayer, updates: { name?: string; number?: number | null }) => {
     if (!activeCareer) return;
@@ -1074,6 +1200,8 @@ export default function SquadScreen() {
           stats={statsMap.get(selectedPlayer.id)}
           injury={injuryMap.get(selectedPlayer.id)}
           inLineup={lineupSet.has(selectedPlayer.id)}
+          motmCount={motmCountMap.get(selectedPlayer.id)}
+          salary={salaryMap.get(selectedPlayer.id)}
           onClose={() => setSelectedPlayer(null)}
           onSaveEdit={selectedPlayer.id < 0 ? (updates) => handleSavePlayerEdit(selectedPlayer, updates) : undefined}
         />
@@ -1099,7 +1227,6 @@ export default function SquadScreen() {
       {showAddPlayer && activeCareer && (
         <AddPlayerSheet
           careerId={activeCareer.id}
-          existingCustom={careerGameData?.data?.customPlayers ?? []}
           onSaved={() => qc.invalidateQueries({ queryKey: ['/api/data/career', activeCareer.id] })}
           onClose={() => setShowAddPlayer(false)}
         />

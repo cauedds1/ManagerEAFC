@@ -412,6 +412,109 @@ router.put("/seasons/:id/activate", requireAuth, async (req: AuthRequest, res) =
   }
 });
 
+router.post("/careers/:id/squad", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const { id: careerId } = req.params;
+    const userId = req.user!.id;
+
+    const [career] = await db.select({ userId: careersTable.userId }).from(careersTable).where(eq(careersTable.id, careerId)).limit(1);
+    if (!career || career.userId !== userId) {
+      return res.status(404).json({ error: "Carreira não encontrada" });
+    }
+
+    const body = req.body as {
+      name?: string;
+      age?: number;
+      position?: string;
+      positionPtBr?: string;
+      overallRating?: number;
+      number?: number;
+      photo?: string;
+      source?: string;
+    };
+
+    if (!body.name?.trim()) return res.status(400).json({ error: "name is required" });
+    if (body.source !== "manual") return res.status(400).json({ error: "source must be 'manual'" });
+
+    const allRows = await db
+      .select({ key: careerDataTable.key, valueJson: careerDataTable.valueJson })
+      .from(careerDataTable)
+      .where(eq(careerDataTable.careerId, careerId));
+
+    const customPlayersRow = allRows.find((r) => r.key === "customPlayers");
+    const existing: { id?: number }[] = customPlayersRow
+      ? (JSON.parse(customPlayersRow.valueJson) as { id?: number }[])
+      : [];
+
+    const existingIds = existing.map((p) => p.id ?? 0).filter((id) => id < 0);
+    const minId = existingIds.length > 0 ? Math.min(...existingIds) : 0;
+    const newId = minId - 1;
+
+    const newPlayer = {
+      id: newId,
+      name: body.name.trim(),
+      age: body.age ?? 25,
+      position: body.position ?? "MID",
+      positionPtBr: body.positionPtBr ?? "MID",
+      overallRating: body.overallRating ?? 70,
+      number: body.number,
+      photo: body.photo ?? "",
+    };
+
+    const updated = [...existing, newPlayer];
+
+    await db
+      .insert(careerDataTable)
+      .values({ careerId, key: "customPlayers", valueJson: JSON.stringify(updated) })
+      .onConflictDoUpdate({
+        target: [careerDataTable.careerId, careerDataTable.key],
+        set: { valueJson: JSON.stringify(updated) },
+      });
+
+    return res.status(201).json({ player: newPlayer });
+  } catch (err) {
+    console.error("POST /careers/:id/squad error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.delete("/careers/:id/squad/:playerId", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const { id: careerId, playerId: playerIdStr } = req.params;
+    const userId = req.user!.id;
+    const playerId = Number(playerIdStr);
+
+    if (isNaN(playerId) || playerId >= 0) return res.status(400).json({ error: "Only custom players (negative id) can be removed" });
+
+    const [career] = await db.select({ userId: careersTable.userId }).from(careersTable).where(eq(careersTable.id, careerId)).limit(1);
+    if (!career || career.userId !== userId) return res.status(404).json({ error: "Carreira não encontrada" });
+
+    const allRows = await db
+      .select({ key: careerDataTable.key, valueJson: careerDataTable.valueJson })
+      .from(careerDataTable)
+      .where(eq(careerDataTable.careerId, careerId));
+
+    const customPlayersRow = allRows.find((r) => r.key === "customPlayers");
+    const existing: unknown[] = customPlayersRow
+      ? (JSON.parse(customPlayersRow.valueJson) as unknown[])
+      : [];
+
+    const updated = (existing as { id?: number }[]).filter((p) => p.id !== playerId);
+    await db
+      .insert(careerDataTable)
+      .values({ careerId, key: "customPlayers", valueJson: JSON.stringify(updated) })
+      .onConflictDoUpdate({
+        target: [careerDataTable.careerId, careerDataTable.key],
+        set: { valueJson: JSON.stringify(updated) },
+      });
+
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error("DELETE /careers/:id/squad/:playerId error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 router.get("/careers/:id/export", requireAuth, async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;

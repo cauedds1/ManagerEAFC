@@ -194,7 +194,11 @@ export interface SquadPlayer {
   positionPtBr: string;
   photo: string;
   number?: number;
+  overallRating?: number;
 }
+
+export type Mood = 'excelente' | 'bom' | 'neutro' | 'insatisfeito' | 'irritado';
+export type FanMoral = 'idolo' | 'querido' | 'neutro' | 'contestado' | 'vaiado';
 
 export interface PlayerSeasonStats {
   playerId: number;
@@ -204,6 +208,13 @@ export interface PlayerSeasonStats {
   appearances: number;
   yellowCards: number;
   redCards: number;
+  totalMinutes?: number;
+  matchesAsStarter?: number;
+  matchesAsSubstitute?: number;
+  mood?: Mood;
+  fanMoral?: FanMoral;
+  salary?: number;
+  recentRatings?: number[];
 }
 
 export interface NewsItem {
@@ -338,12 +349,23 @@ export interface Trophy {
   photoUrl?: string;
 }
 
+export interface PlayerOverride {
+  playerId: number;
+  nameOverride?: string;
+  photoOverride?: string;
+  shirtNumber?: number;
+  overall?: number;
+  salary?: number;
+  positionOverride?: string;
+}
+
 export interface CareerGameData {
   lineup?: number[];
   benchOrder?: number[];
   formation?: string;
   trophies?: Trophy[];
   customPlayers?: SquadPlayer[];
+  playerOverrides?: PlayerOverride[];
   diretoria_members?: DiretoraaMember[];
   diretoria_meetings?: DiretoraaMeeting[];
   diretoria_notifications?: { id: string; message: string; read: boolean; createdAt: number }[];
@@ -420,6 +442,20 @@ export const api = {
     finalizeSeason: (seasonId: string) =>
       request<{ ok: boolean }>(`/api/seasons/${seasonId}/finalize`, {
         method: 'PATCH',
+      }),
+
+    addManualPlayer: (careerId: string, player: {
+      name: string; age?: number; position?: string; positionPtBr?: string;
+      overallRating?: number; number?: number; photo?: string;
+    }) =>
+      request<{ player: SquadPlayer }>(`/api/careers/${careerId}/squad`, {
+        method: 'POST',
+        body: JSON.stringify({ ...player, source: 'manual' }),
+      }),
+
+    removeManualPlayer: (careerId: string, playerId: number) =>
+      request<{ ok: boolean }>(`/api/careers/${careerId}/squad/${playerId}`, {
+        method: 'DELETE',
       }),
   },
 

@@ -117,8 +117,14 @@ export const DEFAULT_FORMATION: FormationKey = '4-3-3';
 
 export type PosGroup = 'GOL' | 'DEF' | 'MID' | 'ATA';
 
+type PlayerInput = { id: number; positionPtBr: string; overallRating?: number };
+
+function sortByOvr(pool: PlayerInput[]): PlayerInput[] {
+  return [...pool].sort((a, b) => (b.overallRating ?? 0) - (a.overallRating ?? 0));
+}
+
 export function pickBestEleven(
-  players: { id: number; positionPtBr: string }[],
+  players: PlayerInput[],
   formationKey: FormationKey,
 ): number[] {
   const positions = FORMATION_POSITIONS[formationKey];
@@ -127,7 +133,7 @@ export function pickBestEleven(
   const used = new Set<number>();
 
   const validGroups: PosGroup[] = ['GOL', 'DEF', 'MID', 'ATA'];
-  const byGroup: Record<PosGroup, { id: number }[]> = { GOL: [], DEF: [], MID: [], ATA: [] };
+  const byGroup: Record<PosGroup, PlayerInput[]> = { GOL: [], DEF: [], MID: [], ATA: [] };
   for (const p of players) {
     const g: PosGroup = validGroups.includes(p.positionPtBr as PosGroup)
       ? (p.positionPtBr as PosGroup)
@@ -135,10 +141,16 @@ export function pickBestEleven(
     byGroup[g].push(p);
   }
 
-  const pick = (pool: { id: number }[]): { id: number } | undefined =>
+  // Sort each group by OVR descending so best players are picked first
+  byGroup.GOL = sortByOvr(byGroup.GOL);
+  byGroup.DEF = sortByOvr(byGroup.DEF);
+  byGroup.MID = sortByOvr(byGroup.MID);
+  byGroup.ATA = sortByOvr(byGroup.ATA);
+
+  const pick = (pool: PlayerInput[]): PlayerInput | undefined =>
     pool.find((p) => !used.has(p.id));
 
-  const assign = (si: number, p: { id: number } | undefined) => {
+  const assign = (si: number, p: PlayerInput | undefined) => {
     if (!p || si >= numSlots) return;
     slots[si] = p.id;
     used.add(p.id);
@@ -162,10 +174,11 @@ export function pickBestEleven(
   for (const si of atkSlots) assign(si, pick(byGroup.ATA));
   for (const si of midSlots) assign(si, pick(byGroup.MID));
 
-  // Fill any remaining empty slots with any unused player
+  // Fill any remaining empty slots with highest-OVR unused player
+  const sortedAll = sortByOvr(players);
   for (let i = 0; i < numSlots; i++) {
     if (slots[i] === 0) {
-      const p = players.find((pl) => !used.has(pl.id));
+      const p = sortedAll.find((pl) => !used.has(pl.id));
       if (p) { slots[i] = p.id; used.add(p.id); }
     }
   }
