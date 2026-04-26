@@ -153,6 +153,10 @@ export interface PlayerMatchStats {
   substituted: boolean;
   yellowCard?: boolean;
   redCard?: boolean;
+  shots?: number;
+  passes?: number;
+  dribbles?: number;
+  recoveries?: number;
 }
 
 export interface MatchStats {

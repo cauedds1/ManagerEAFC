@@ -10,6 +10,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import { useCareer } from '@/contexts/CareerContext';
@@ -958,6 +959,13 @@ export default function SquadScreen() {
           )}
         </View>
         <View style={styles.headerActions}>
+          <TouchableOpacity
+            style={styles.statsNavBtn}
+            onPress={() => router.push('/estatisticas')}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons name="stats-chart-outline" size={18} color={Colors.mutedForeground} />
+          </TouchableOpacity>
           {seasons && seasons.length > 1 && (
             <TouchableOpacity
               style={styles.seasonBtn}
@@ -1334,6 +1342,11 @@ const styles = StyleSheet.create({
   title: { fontSize: 22, fontWeight: '700' as const, color: Colors.foreground, fontFamily: 'Inter_700Bold' },
   subtitle: { fontSize: 12, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular', marginTop: 2 },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  statsNavBtn: {
+    width: 34, height: 34, borderRadius: 17,
+    backgroundColor: Colors.card, borderWidth: 1, borderColor: Colors.border,
+    alignItems: 'center', justifyContent: 'center',
+  },
   seasonBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
     backgroundColor: Colors.card, borderWidth: 1, borderColor: Colors.border,

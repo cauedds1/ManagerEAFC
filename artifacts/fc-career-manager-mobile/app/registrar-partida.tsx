@@ -1,8 +1,9 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, FlatList,
-  TextInput, Platform, Alert, ActivityIndicator, KeyboardAvoidingView, Modal,
+  TextInput, Platform, Alert, ActivityIndicator, KeyboardAvoidingView, Modal, Image,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,6 +13,8 @@ import { useCareer } from '@/contexts/CareerContext';
 import { useClubTheme } from '@/contexts/ClubThemeContext';
 import { api, type MatchLocation, type MatchRecord, type PlayerMatchStats, type SquadPlayer } from '@/lib/api';
 import { Colors } from '@/constants/colors';
+import { searchStaticClubs, type StaticClub } from '@/lib/staticClubList';
+import { pickBestEleven, type FormationKey, DEFAULT_FORMATION } from '@/lib/formations';
 
 type Step = 1 | 2 | 3 | 4 | 5 | 6;
 const TOTAL_STEPS = 6;
@@ -37,6 +40,13 @@ interface GoalRow {
 
 type LineupRole = 'starter' | 'bench' | 'none';
 
+interface PlayerDetailedStats {
+  shots: number;
+  passes: number;
+  dribbles: number;
+  recoveries: number;
+}
+
 function StepIndicator({ current, total }: { current: number; total: number }) {
   return (
     <View style={styles.stepIndicator}>
@@ -59,6 +69,72 @@ function ScoreButton({ onPress, icon }: { onPress: () => void; icon: 'add' | 're
     <TouchableOpacity style={styles.scoreBtn} onPress={onPress} activeOpacity={0.7}>
       <Ionicons name={icon === 'add' ? 'add' : 'remove'} size={22} color={Colors.foreground} />
     </TouchableOpacity>
+  );
+}
+
+function ClubLogo({ uri, size = 32 }: { uri: string; size?: number }) {
+  const [err, setErr] = useState(false);
+  if (!uri || err) {
+    return (
+      <View style={{ width: size, height: size, borderRadius: 4, backgroundColor: Colors.muted, alignItems: 'center', justifyContent: 'center' }}>
+        <Ionicons name="shield-outline" size={size * 0.55} color={Colors.mutedForeground} />
+      </View>
+    );
+  }
+  return (
+    <Image
+      source={{ uri }}
+      style={{ width: size, height: size, borderRadius: 4 }}
+      resizeMode="contain"
+      onError={() => setErr(true)}
+    />
+  );
+}
+
+function RatingBar({ rating }: { rating: number }) {
+  const color = rating === 0
+    ? Colors.border
+    : rating >= 8 ? Colors.success
+    : rating >= 6 ? Colors.warning
+    : Colors.destructive;
+  const pct = rating === 0 ? 0 : (rating / 10) * 100;
+  return (
+    <View style={styles.ratingBarTrack}>
+      <View style={[styles.ratingBarFill, { width: `${pct}%` as `${number}%`, backgroundColor: color }]} />
+    </View>
+  );
+}
+
+function StatStepper({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  onChange: (v: number) => void;
+}) {
+  return (
+    <View style={styles.statStepperRow}>
+      <Text style={styles.statStepperLabel}>{label}</Text>
+      <View style={styles.statStepperControls}>
+        <TouchableOpacity
+          style={styles.statStepBtn}
+          onPress={() => onChange(Math.max(0, value - 1))}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="remove" size={14} color={Colors.foreground} />
+        </TouchableOpacity>
+        <Text style={styles.statStepValue}>{value}</Text>
+        <TouchableOpacity
+          style={styles.statStepBtn}
+          onPress={() => onChange(value + 1)}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="add" size={14} color={Colors.foreground} />
+        </TouchableOpacity>
+      </View>
+    </View>
   );
 }
 
@@ -86,7 +162,7 @@ function PlayerPickerModal({
           <View style={styles.pickerHandle} />
           <Text style={styles.pickerTitle}>{title}</Text>
           <TextInput
-            style={styles.pickerSearch}
+            style={styles.pickerSearchInput}
             value={search}
             onChangeText={setSearch}
             placeholder="Buscar jogador…"
@@ -96,6 +172,7 @@ function PlayerPickerModal({
             data={filtered}
             keyExtractor={(p) => String(p.id)}
             style={{ maxHeight: 320 }}
+            keyboardShouldPersistTaps="handled"
             ItemSeparatorComponent={() => <View style={{ height: 1, backgroundColor: Colors.border }} />}
             renderItem={({ item }) => (
               <TouchableOpacity
@@ -137,30 +214,36 @@ export default function RegistrarPartidaScreen() {
   const qc = useQueryClient();
   const topPad = Platform.OS === 'web' ? 0 : insets.top;
 
+  const draftKey = activeCareer && activeSeason
+    ? `rp_draft_${activeCareer.id}_${activeSeason.id}`
+    : null;
+
+  const draftLoaded = useRef(false);
+
   const [step, setStep] = useState<Step>(1);
 
-  // Step 1
   const [tournament, setTournament] = useState('');
   const [opponent, setOpponent] = useState('');
+  const [opponentLogoUrl, setOpponentLogoUrl] = useState('');
+  const [opponentQuery, setOpponentQuery] = useState('');
+  const [clubSuggestions, setClubSuggestions] = useState<StaticClub[]>([]);
   const [location, setLocation] = useState<MatchLocation>('casa');
   const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [stage, setStage] = useState('Rodada 1');
 
-  // Step 2
   const [myScore, setMyScore] = useState(0);
   const [opponentScore, setOpponentScore] = useState(0);
   const [possession, setPossession] = useState(50);
   const [observations, setObservations] = useState('');
 
-  // Step 3: lineup
   const [lineupRoles, setLineupRoles] = useState<Record<number, LineupRole>>({});
 
-  // Step 4: goals with squad-driven pickers
   const [goalRows, setGoalRows] = useState<GoalRow[]>([]);
   const [pickerTarget, setPickerTarget] = useState<null | { type: 'scorer' | 'assist'; goalIdx: number }>(null);
 
-  // Step 5: ratings + MOTM
   const [playerRatings, setPlayerRatings] = useState<Record<string, number>>({});
+  const [detailedStats, setDetailedStats] = useState<Record<string, PlayerDetailedStats>>({});
+  const [expandedStatPlayer, setExpandedStatPlayer] = useState<string | null>(null);
   const [motm, setMotm] = useState<SquadPlayer | null>(null);
   const [motmPickerOpen, setMotmPickerOpen] = useState(false);
 
@@ -177,6 +260,13 @@ export default function RegistrarPartidaScreen() {
     staleTime: 1000 * 60 * 30,
   });
 
+  const { data: careerDataResp } = useQuery({
+    queryKey: ['/api/data/career', activeCareer?.id],
+    queryFn: () => activeCareer ? api.careerData.get(activeCareer.id) : null,
+    enabled: !!activeCareer?.id,
+    staleTime: 1000 * 60 * 5,
+  });
+
   const squadPlayers = useMemo<SquadPlayer[]>(() => squadData?.players ?? [], [squadData]);
 
   const starterPlayers = useMemo(
@@ -187,6 +277,75 @@ export default function RegistrarPartidaScreen() {
     () => squadPlayers.filter((p) => lineupRoles[p.id] === 'bench'),
     [squadPlayers, lineupRoles],
   );
+
+  const getDraftState = useCallback(() => ({
+    tournament, opponent, opponentLogoUrl, location, date, stage,
+    myScore, opponentScore, possession, observations,
+    lineupRoles, goalRows, playerRatings, detailedStats,
+    motmId: motm?.id ?? null, motmName: motm?.name ?? null,
+  }), [
+    tournament, opponent, opponentLogoUrl, location, date, stage,
+    myScore, opponentScore, possession, observations,
+    lineupRoles, goalRows, playerRatings, detailedStats, motm,
+  ]);
+
+  useEffect(() => {
+    if (!draftKey || draftLoaded.current) return;
+    AsyncStorage.getItem(draftKey).then((raw) => {
+      if (!raw) return;
+      try {
+        const d = JSON.parse(raw);
+        if (!d || !d.opponent) return;
+        Alert.alert(
+          'Rascunho encontrado',
+          `Deseja retomar o registro da partida contra ${d.opponent}?`,
+          [
+            { text: 'Descartar', style: 'destructive', onPress: () => AsyncStorage.removeItem(draftKey) },
+            {
+              text: 'Retomar', onPress: () => {
+                setTournament(d.tournament ?? '');
+                setOpponent(d.opponent ?? '');
+                setOpponentLogoUrl(d.opponentLogoUrl ?? '');
+                setOpponentQuery(d.opponent ?? '');
+                setLocation(d.location ?? 'casa');
+                setDate(d.date ?? new Date().toISOString().split('T')[0]);
+                setStage(d.stage ?? 'Rodada 1');
+                setMyScore(d.myScore ?? 0);
+                setOpponentScore(d.opponentScore ?? 0);
+                setPossession(d.possession ?? 50);
+                setObservations(d.observations ?? '');
+                setLineupRoles(d.lineupRoles ?? {});
+                setGoalRows(d.goalRows ?? []);
+                setPlayerRatings(d.playerRatings ?? {});
+                setDetailedStats(d.detailedStats ?? {});
+              },
+            },
+          ],
+        );
+      } catch {}
+    }).catch(() => {});
+    draftLoaded.current = true;
+  }, [draftKey]);
+
+  useEffect(() => {
+    if (!draftKey || step === 6) return;
+    const draft = getDraftState();
+    AsyncStorage.setItem(draftKey, JSON.stringify(draft)).catch(() => {});
+  }, [step, getDraftState, draftKey]);
+
+  const handleOpponentQueryChange = useCallback((text: string) => {
+    setOpponentQuery(text);
+    setOpponent(text);
+    setOpponentLogoUrl('');
+    setClubSuggestions(searchStaticClubs(text));
+  }, []);
+
+  const handleSelectClub = useCallback((club: StaticClub) => {
+    setOpponent(club.name);
+    setOpponentQuery(club.name);
+    setOpponentLogoUrl(club.logo);
+    setClubSuggestions([]);
+  }, []);
 
   const syncGoalRows = useCallback((newScore: number) => {
     setGoalRows((prev) => {
@@ -215,21 +374,52 @@ export default function RegistrarPartidaScreen() {
     });
   }, []);
 
+  const handleAutoFillLineup = useCallback(() => {
+    const savedLineup = careerDataResp?.data?.lineup;
+    const savedFormation = (careerDataResp?.data?.formation as FormationKey | undefined) ?? DEFAULT_FORMATION;
+    if (savedLineup && savedLineup.length > 0) {
+      const newRoles: Record<number, LineupRole> = {};
+      savedLineup.forEach((id) => {
+        if (id !== 0 && squadPlayers.some((p) => p.id === id)) {
+          newRoles[id] = 'starter';
+        }
+      });
+      setLineupRoles(newRoles);
+      if (Platform.OS !== 'web') void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    } else if (squadPlayers.length > 0) {
+      const best = pickBestEleven(squadPlayers, savedFormation);
+      const newRoles: Record<number, LineupRole> = {};
+      best.forEach((id) => {
+        if (id !== 0) newRoles[id] = 'starter';
+      });
+      setLineupRoles(newRoles);
+      if (Platform.OS !== 'web') void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    }
+  }, [careerDataResp, squadPlayers]);
+
+  const updateDetailedStat = useCallback((
+    playerName: string,
+    field: keyof PlayerDetailedStats,
+    value: number,
+  ) => {
+    setDetailedStats((prev) => {
+      const existing: PlayerDetailedStats = prev[playerName] ?? { shots: 0, passes: 0, dribbles: 0, recoveries: 0 };
+      return { ...prev, [playerName]: { ...existing, [field]: value } };
+    });
+  }, []);
+
   const saveMutation = useMutation({
     mutationFn: async () => {
       if (!activeCareer || !activeSeason) throw new Error('Nenhuma carreira/temporada ativa');
       const existingMatches: MatchRecord[] = seasonData?.data?.matches ?? [];
 
-      const playerIdByName: Record<string, number> = {};
-      squadPlayers.forEach((p) => { playerIdByName[p.name] = p.id; });
-
       const playerStats: Record<string, PlayerMatchStats> = {};
 
-      // seed lineup members into playerStats
       squadPlayers.forEach((p) => {
         const role = lineupRoles[p.id] ?? 'none';
         if (role === 'none') return;
-        playerStats[p.name] = {
+        const ds = detailedStats[p.name];
+        const entry: PlayerMatchStats = {
           startedOnBench: role === 'bench',
           rating: 0,
           goals: [],
@@ -237,9 +427,13 @@ export default function RegistrarPartidaScreen() {
           injured: false,
           substituted: false,
         };
+        if (ds?.shots) entry.shots = ds.shots;
+        if (ds?.passes) entry.passes = ds.passes;
+        if (ds?.dribbles) entry.dribbles = ds.dribbles;
+        if (ds?.recoveries) entry.recoveries = ds.recoveries;
+        playerStats[p.name] = entry;
       });
 
-      // goals with assist linkage
       goalRows.forEach(({ scorerName, assistId }, idx) => {
         const name = scorerName.trim();
         if (!name) return;
@@ -253,7 +447,6 @@ export default function RegistrarPartidaScreen() {
         });
       });
 
-      // ensure assist players exist in playerStats
       goalRows.forEach(({ assistName }) => {
         const name = assistName.trim();
         if (!name) return;
@@ -262,7 +455,6 @@ export default function RegistrarPartidaScreen() {
         }
       });
 
-      // merge ratings
       Object.entries(playerRatings).forEach(([name, rating]) => {
         if (!name.trim() || rating === 0) return;
         if (playerStats[name]) {
@@ -281,6 +473,7 @@ export default function RegistrarPartidaScreen() {
         stage: stage.trim() || 'Rodada',
         location,
         opponent: opponent.trim() || 'Adversário',
+        opponentLogoUrl: opponentLogoUrl || undefined,
         myScore,
         opponentScore,
         starterIds: starterPlayers.map((p) => p.id),
@@ -294,6 +487,7 @@ export default function RegistrarPartidaScreen() {
       };
 
       await api.seasonData.set(activeSeason.id, 'matches', [...existingMatches, newMatch]);
+      if (draftKey) await AsyncStorage.removeItem(draftKey).catch(() => {});
       return newMatch;
     },
     onSuccess: () => {
@@ -398,13 +592,48 @@ export default function RegistrarPartidaScreen() {
 
             <View style={styles.field}>
               <Text style={styles.fieldLabel}>Adversário *</Text>
-              <TextInput
-                style={styles.input}
-                value={opponent}
-                onChangeText={setOpponent}
-                placeholder="Nome do adversário"
-                placeholderTextColor={Colors.mutedForeground}
-              />
+              {opponentLogoUrl ? (
+                <View style={styles.selectedClubRow}>
+                  <ClubLogo uri={opponentLogoUrl} size={36} />
+                  <Text style={styles.selectedClubName} numberOfLines={1}>{opponent}</Text>
+                  <TouchableOpacity
+                    onPress={() => { setOpponent(''); setOpponentQuery(''); setOpponentLogoUrl(''); setClubSuggestions([]); }}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Ionicons name="close-circle" size={20} color={Colors.mutedForeground} />
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <>
+                  <TextInput
+                    style={styles.input}
+                    value={opponentQuery}
+                    onChangeText={handleOpponentQueryChange}
+                    placeholder="Nome do adversário ou clube"
+                    placeholderTextColor={Colors.mutedForeground}
+                    autoCorrect={false}
+                  />
+                  {clubSuggestions.length > 0 && (
+                    <View style={styles.suggestionsBox}>
+                      {clubSuggestions.map((club) => (
+                        <TouchableOpacity
+                          key={club.id}
+                          style={styles.suggestionRow}
+                          onPress={() => handleSelectClub(club)}
+                          activeOpacity={0.75}
+                        >
+                          <ClubLogo uri={club.logo} size={28} />
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.suggestionName}>{club.name}</Text>
+                            <Text style={styles.suggestionLeague}>{club.league}</Text>
+                          </View>
+                          <Ionicons name="chevron-forward" size={14} color={Colors.mutedForeground} />
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
+                </>
+              )}
             </View>
 
             <View style={styles.field}>
@@ -455,7 +684,12 @@ export default function RegistrarPartidaScreen() {
         {/* ── Step 2: Resultado ───────────────────────────────────── */}
         {step === 2 && (
           <View style={styles.stepContent}>
-            <Text style={styles.matchLabel}>{activeCareer?.clubName ?? 'Seu time'} vs {opponent}</Text>
+            <View style={styles.matchHeaderRow}>
+              {opponentLogoUrl ? (
+                <ClubLogo uri={opponentLogoUrl} size={24} />
+              ) : null}
+              <Text style={styles.matchLabel}>{activeCareer?.clubName ?? 'Seu time'} vs {opponent}</Text>
+            </View>
 
             <View style={styles.scoreArea}>
               <View style={styles.scoreTeam}>
@@ -515,11 +749,21 @@ export default function RegistrarPartidaScreen() {
         {/* ── Step 3: Escalação ───────────────────────────────────── */}
         {step === 3 && (
           <View style={styles.stepContent}>
-            <Text style={styles.lineupHint}>
-              Toque para alternar: <Text style={{ color: Colors.success }}>Titular</Text>{' → '}
-              <Text style={{ color: Colors.warning }}>Reserva</Text>{' → '}
-              <Text style={{ color: Colors.mutedForeground }}>Sem escalar</Text>
-            </Text>
+            <View style={styles.lineupActions}>
+              <Text style={styles.lineupHint}>
+                Toque: <Text style={{ color: Colors.success }}>Titular</Text>{' → '}
+                <Text style={{ color: Colors.warning }}>Reserva</Text>{' → '}
+                <Text style={{ color: Colors.mutedForeground }}>Fora</Text>
+              </Text>
+              <TouchableOpacity
+                style={styles.autoFillBtn}
+                onPress={handleAutoFillLineup}
+                activeOpacity={0.75}
+              >
+                <Ionicons name="flash-outline" size={14} color={theme.primary} />
+                <Text style={[styles.autoFillBtnText, { color: theme.primary }]}>Auto-completar</Text>
+              </TouchableOpacity>
+            </View>
             <View style={styles.lineupCounter}>
               <Text style={styles.lineupCounterText}>
                 {starterPlayers.length} titulares · {benchPlayers.length} reservas
@@ -652,41 +896,77 @@ export default function RegistrarPartidaScreen() {
             {squadPlayers.length > 0 ? (
               <>
                 <View style={styles.sectionDivider}>
-                  <Text style={styles.sectionDividerText}>AVALIAÇÕES DO ELENCO (opcional · 0 = sem nota)</Text>
+                  <Text style={styles.sectionDividerText}>AVALIAÇÕES & STATS DO ELENCO</Text>
                 </View>
                 {squadPlayers.map((p) => {
                   const rating = playerRatings[p.name] ?? 0;
+                  const isExpanded = expandedStatPlayer === p.name;
+                  const ds: PlayerDetailedStats = detailedStats[p.name] ?? { shots: 0, passes: 0, dribbles: 0, recoveries: 0 };
                   return (
                     <View key={p.id} style={styles.ratingCard}>
-                      <View style={styles.ratingCardLeft}>
-                        <Text style={styles.ratingPlayerName} numberOfLines={1}>{p.name}</Text>
-                        <Text style={styles.ratingPlayerPos}>{p.positionPtBr}</Text>
+                      <View style={styles.ratingCardHeader}>
+                        <View style={styles.ratingCardLeft}>
+                          <Text style={styles.ratingPlayerName} numberOfLines={1}>{p.name}</Text>
+                          <Text style={styles.ratingPlayerPos}>{p.positionPtBr}</Text>
+                        </View>
+                        <View style={styles.ratingControls}>
+                          <TouchableOpacity
+                            style={styles.ratingAdj}
+                            onPress={() => setPlayerRatings((prev) => ({ ...prev, [p.name]: Math.max(0, (prev[p.name] ?? 0) - 1) }))}
+                            activeOpacity={0.7}
+                          >
+                            <Ionicons name="remove" size={16} color={Colors.foreground} />
+                          </TouchableOpacity>
+                          <Text style={[
+                            styles.ratingValue,
+                            rating === 0 && { color: Colors.mutedForeground },
+                            rating >= 8 && { color: Colors.success },
+                            rating >= 6 && rating < 8 && { color: Colors.warning },
+                            rating > 0 && rating < 6 && { color: Colors.destructive },
+                          ]}>
+                            {rating === 0 ? '—' : rating}
+                          </Text>
+                          <TouchableOpacity
+                            style={styles.ratingAdj}
+                            onPress={() => setPlayerRatings((prev) => ({ ...prev, [p.name]: Math.min(10, (prev[p.name] ?? 0) + 1) }))}
+                            activeOpacity={0.7}
+                          >
+                            <Ionicons name="add" size={16} color={Colors.foreground} />
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={[styles.expandBtn, isExpanded && { backgroundColor: `${theme.primary}20` }]}
+                            onPress={() => setExpandedStatPlayer(isExpanded ? null : p.name)}
+                            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                          >
+                            <Ionicons name={isExpanded ? 'chevron-up' : 'stats-chart-outline'} size={14} color={isExpanded ? theme.primary : Colors.mutedForeground} />
+                          </TouchableOpacity>
+                        </View>
                       </View>
-                      <View style={styles.ratingControls}>
-                        <TouchableOpacity
-                          style={styles.ratingAdj}
-                          onPress={() => setPlayerRatings((prev) => ({ ...prev, [p.name]: Math.max(0, (prev[p.name] ?? 0) - 1) }))}
-                          activeOpacity={0.7}
-                        >
-                          <Ionicons name="remove" size={16} color={Colors.foreground} />
-                        </TouchableOpacity>
-                        <Text style={[
-                          styles.ratingValue,
-                          rating === 0 && { color: Colors.mutedForeground },
-                          rating >= 8 && { color: Colors.success },
-                          rating >= 6 && rating < 8 && { color: Colors.warning },
-                          rating > 0 && rating < 6 && { color: Colors.destructive },
-                        ]}>
-                          {rating === 0 ? '—' : rating}
-                        </Text>
-                        <TouchableOpacity
-                          style={styles.ratingAdj}
-                          onPress={() => setPlayerRatings((prev) => ({ ...prev, [p.name]: Math.min(10, (prev[p.name] ?? 0) + 1) }))}
-                          activeOpacity={0.7}
-                        >
-                          <Ionicons name="add" size={16} color={Colors.foreground} />
-                        </TouchableOpacity>
-                      </View>
+                      <RatingBar rating={rating} />
+                      {isExpanded && (
+                        <View style={styles.detailedStatsBox}>
+                          <StatStepper
+                            label="Finalizações"
+                            value={ds.shots}
+                            onChange={(v) => updateDetailedStat(p.name, 'shots', v)}
+                          />
+                          <StatStepper
+                            label="Passes certos"
+                            value={ds.passes}
+                            onChange={(v) => updateDetailedStat(p.name, 'passes', v)}
+                          />
+                          <StatStepper
+                            label="Dribles"
+                            value={ds.dribbles}
+                            onChange={(v) => updateDetailedStat(p.name, 'dribbles', v)}
+                          />
+                          <StatStepper
+                            label="Recuperações"
+                            value={ds.recoveries}
+                            onChange={(v) => updateDetailedStat(p.name, 'recoveries', v)}
+                          />
+                        </View>
+                      )}
                     </View>
                   );
                 })}
@@ -706,7 +986,13 @@ export default function RegistrarPartidaScreen() {
             <View style={styles.summaryCard}>
               <SummaryRow label="Torneio" value={tournament} />
               <View style={styles.summaryDivider} />
-              <SummaryRow label="Adversário" value={opponent} />
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Adversário</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 0.55, justifyContent: 'flex-end' }}>
+                  {opponentLogoUrl ? <ClubLogo uri={opponentLogoUrl} size={20} /> : null}
+                  <Text style={[styles.summaryValue, { flex: 0 }]} numberOfLines={2}>{opponent}</Text>
+                </View>
+              </View>
               <View style={styles.summaryDivider} />
               <SummaryRow label="Data" value={date} />
               <View style={styles.summaryDivider} />
@@ -856,6 +1142,24 @@ const styles = StyleSheet.create({
   },
   locationLabel: { fontSize: 13, fontWeight: '500' as const, color: Colors.foreground, fontFamily: 'Inter_500Medium' },
   row: { flexDirection: 'row', gap: 12 },
+  selectedClubRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: Colors.card, borderRadius: Colors.radius, borderWidth: 1, borderColor: Colors.border,
+    paddingHorizontal: 14, paddingVertical: 10,
+  },
+  selectedClubName: { flex: 1, fontSize: 15, fontWeight: '600' as const, color: Colors.foreground, fontFamily: 'Inter_600SemiBold' },
+  suggestionsBox: {
+    backgroundColor: Colors.card, borderRadius: Colors.radius, borderWidth: 1, borderColor: Colors.border,
+    overflow: 'hidden',
+  },
+  suggestionRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    paddingHorizontal: 12, paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: Colors.border,
+  },
+  suggestionName: { fontSize: 14, fontWeight: '600' as const, color: Colors.foreground, fontFamily: 'Inter_600SemiBold' },
+  suggestionLeague: { fontSize: 11, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular', marginTop: 1 },
+  matchHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 8, justifyContent: 'center' },
   matchLabel: { fontSize: 15, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular', textAlign: 'center' },
   scoreArea: {
     flexDirection: 'row', alignItems: 'center', gap: 16,
@@ -874,7 +1178,14 @@ const styles = StyleSheet.create({
   resultBadge: { alignSelf: 'center', paddingHorizontal: 20, paddingVertical: 8, borderRadius: 99, borderWidth: 1 },
   resultBadgeText: { fontSize: 15, fontWeight: '700' as const, fontFamily: 'Inter_700Bold' },
   possessionRow: { flexDirection: 'row', gap: 8 },
-  lineupHint: { fontSize: 13, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular', textAlign: 'center' },
+  lineupActions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  lineupHint: { fontSize: 13, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular', flex: 1 },
+  autoFillBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: Colors.card, borderRadius: 99, borderWidth: 1, borderColor: Colors.border,
+    paddingHorizontal: 10, paddingVertical: 6,
+  },
+  autoFillBtnText: { fontSize: 12, fontWeight: '600' as const, fontFamily: 'Inter_600SemiBold' },
   lineupCounter: { alignSelf: 'center', marginBottom: 4 },
   lineupCounterText: { fontSize: 13, fontWeight: '600' as const, color: Colors.foreground, fontFamily: 'Inter_600SemiBold' },
   lineupRow: {
@@ -905,24 +1216,44 @@ const styles = StyleSheet.create({
   },
   pickedPlayerName: { flex: 1, fontSize: 14, fontWeight: '600' as const, color: Colors.foreground, fontFamily: 'Inter_600SemiBold' },
   ratingCard: {
-    flexDirection: 'row', alignItems: 'center',
     backgroundColor: Colors.card, borderRadius: Colors.radius, borderWidth: 1, borderColor: Colors.border,
-    paddingHorizontal: 14, paddingVertical: 12, gap: 12,
+    paddingHorizontal: 14, paddingTop: 12, paddingBottom: 10, gap: 8,
   },
+  ratingCardHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   ratingCardLeft: { flex: 1, gap: 2 },
   ratingPlayerName: { fontSize: 13, fontWeight: '600' as const, color: Colors.foreground, fontFamily: 'Inter_600SemiBold' },
   ratingPlayerPos: { fontSize: 11, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular' },
   ratingControls: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   ratingAdj: {
-    width: 32, height: 32, borderRadius: 16,
+    width: 28, height: 28, borderRadius: 14,
     backgroundColor: Colors.background, borderWidth: 1, borderColor: Colors.border,
     alignItems: 'center', justifyContent: 'center',
   },
   ratingValue: { fontSize: 18, fontWeight: '700' as const, fontFamily: 'Inter_700Bold', minWidth: 24, textAlign: 'center' },
+  expandBtn: {
+    width: 28, height: 28, borderRadius: 14,
+    backgroundColor: Colors.background, borderWidth: 1, borderColor: Colors.border,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  ratingBarTrack: { height: 4, borderRadius: 2, backgroundColor: Colors.border, overflow: 'hidden' },
+  ratingBarFill: { height: 4, borderRadius: 2 },
+  detailedStatsBox: {
+    backgroundColor: Colors.background, borderRadius: Colors.radius, padding: 12, gap: 10,
+    borderWidth: 1, borderColor: Colors.border, marginTop: 4,
+  },
+  statStepperRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  statStepperLabel: { fontSize: 12, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular', flex: 1 },
+  statStepperControls: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  statStepBtn: {
+    width: 24, height: 24, borderRadius: 12,
+    backgroundColor: Colors.card, borderWidth: 1, borderColor: Colors.border,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  statStepValue: { fontSize: 14, fontWeight: '700' as const, color: Colors.foreground, fontFamily: 'Inter_700Bold', minWidth: 24, textAlign: 'center' },
   sectionDivider: { paddingTop: 8 },
   sectionDividerText: { fontSize: 11, color: Colors.mutedForeground, fontFamily: 'Inter_600SemiBold', letterSpacing: 0.8 },
   summaryCard: { backgroundColor: Colors.card, borderRadius: Colors.radius, borderWidth: 1, borderColor: Colors.border, overflow: 'hidden' },
-  summaryRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingHorizontal: 16, paddingVertical: 13, gap: 12 },
+  summaryRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 13, gap: 12 },
   summaryDivider: { height: StyleSheet.hairlineWidth, backgroundColor: Colors.border },
   summaryLabel: { fontSize: 14, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular', flex: 0.45 },
   summaryValue: { fontSize: 14, fontWeight: '500' as const, color: Colors.foreground, fontFamily: 'Inter_500Medium', flex: 0.55, textAlign: 'right' },
@@ -933,7 +1264,7 @@ const styles = StyleSheet.create({
   pickerSheet: { backgroundColor: Colors.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 20, paddingTop: 12, gap: 12 },
   pickerHandle: { width: 40, height: 4, backgroundColor: Colors.border, borderRadius: 2, alignSelf: 'center', marginBottom: 8 },
   pickerTitle: { fontSize: 17, fontWeight: '600' as const, color: Colors.foreground, fontFamily: 'Inter_600SemiBold', textAlign: 'center' },
-  pickerSearch: {
+  pickerSearchInput: {
     backgroundColor: Colors.background, borderRadius: Colors.radius, borderWidth: 1, borderColor: Colors.border,
     paddingHorizontal: 14, paddingVertical: 10, color: Colors.foreground, fontFamily: 'Inter_400Regular', fontSize: 14,
   },
