@@ -350,6 +350,9 @@ export interface CareerGameData {
   comp_results?: unknown[];
   formerPlayers?: SquadPlayer[];
   rivals?: string[];
+  portal_photo_tnt?: string | null;
+  portal_photo_espn?: string | null;
+  portal_photo_fanpage?: string | null;
 }
 
 export interface PlayerSearchResult {
@@ -560,7 +563,7 @@ export const api = {
 
     update: (careerId: string, portalId: string, data: Partial<{ name: string; description: string; tone: PortalTone; photo: string | null }>) =>
       request<{ ok: boolean }>(`/api/careers/${encodeURIComponent(careerId)}/portals/${encodeURIComponent(portalId)}`, {
-        method: 'PATCH',
+        method: 'PUT',
         body: JSON.stringify(data),
       }),
 

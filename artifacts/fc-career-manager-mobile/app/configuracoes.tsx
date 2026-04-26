@@ -83,6 +83,14 @@ function ToggleRow({
   );
 }
 
+type PortalSource = 'tnt' | 'espn' | 'fanpage';
+
+const FIXED_PORTALS: { source: PortalSource; name: string; handle: string; defaultPhoto: string | null }[] = [
+  { source: 'tnt',     name: 'TNT Sports',  handle: '@tntsports',  defaultPhoto: null },
+  { source: 'espn',    name: 'ESPN Brasil',  handle: '@espnbrasil', defaultPhoto: null },
+  { source: 'fanpage', name: 'FanPage',      handle: '@oficial',    defaultPhoto: null },
+];
+
 async function uploadPortalPhoto(uri: string, careerId: string): Promise<string | null> {
   try {
     const token = Platform.OS === 'web'
@@ -137,6 +145,7 @@ export default function ConfiguracoesScreen() {
   const [newPortal, setNewPortal] = useState<NewPortalForm>({ name: '', description: '', tone: 'jornalistico' });
   const [savingPortal, setSavingPortal] = useState(false);
   const [uploadingPortalId, setUploadingPortalId] = useState<string | null>(null);
+  const [uploadingFixedSource, setUploadingFixedSource] = useState<PortalSource | null>(null);
 
   const planKey = user?.plan ?? 'free';
   const planLabel = PLAN_LABELS[planKey] ?? planKey;
@@ -149,6 +158,17 @@ export default function ConfiguracoesScreen() {
     queryFn: () => activeCareer ? api.portals.list(activeCareer.id) : Promise.resolve([]),
     enabled: !!activeCareer,
   });
+
+  const { data: careerGameData } = useQuery({
+    queryKey: ['/api/data/career', activeCareer?.id],
+    queryFn: () => activeCareer ? api.careerData.get(activeCareer.id) : null,
+    enabled: !!activeCareer,
+  });
+
+  const fixedPortalPhoto = (source: PortalSource): string | null => {
+    if (!careerGameData?.data) return null;
+    return (careerGameData.data[`portal_photo_${source}` as `portal_photo_${PortalSource}`] as string | null | undefined) ?? null;
+  };
 
   const handleLanguage = () => {
     Alert.alert('Idioma', 'Selecione o idioma', [
@@ -221,6 +241,38 @@ export default function ConfiguracoesScreen() {
         },
       ]
     );
+  };
+
+  const handleFixedPortalPhotoChange = async (source: PortalSource) => {
+    if (!activeCareer) return;
+    setUploadingFixedSource(source);
+    try {
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert('Permissão necessária', 'Permita o acesso à galeria para escolher uma foto.');
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.7,
+      });
+      if (!result.canceled && result.assets.length > 0) {
+        const uri = result.assets[0].uri;
+        const uploaded = await uploadPortalPhoto(uri, activeCareer.id);
+        if (uploaded) {
+          const key = `portal_photo_${source}` as `portal_photo_${PortalSource}`;
+          await api.careerData.set(activeCareer.id, key, uploaded);
+          await qc.invalidateQueries({ queryKey: ['/api/data/career', activeCareer.id] });
+          if (Platform.OS !== 'web') void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+        }
+      }
+    } catch {
+      Alert.alert('Erro', 'Não foi possível atualizar a foto do portal.');
+    } finally {
+      setUploadingFixedSource(null);
+    }
   };
 
   const handlePortalPhotoChange = async (portal: CustomPortal) => {
@@ -317,77 +369,129 @@ export default function ConfiguracoesScreen() {
         {/* PORTAIS */}
         {activeCareer && (
           <Section title="Portais de Notícias">
-            {portalsLoading ? (
-              <View style={styles.loadingRow}>
-                <ActivityIndicator color={Colors.primary} size="small" />
-                <Text style={styles.loadingText}>Carregando portais…</Text>
-              </View>
-            ) : (
-              <>
-                {(!portals || portals.length === 0) && (
-                  <View style={styles.emptyPortals}>
-                    <Ionicons name="newspaper-outline" size={32} color={Colors.mutedForeground} />
-                    <Text style={styles.emptyPortalsText}>Nenhum portal configurado</Text>
-                    <Text style={styles.emptyPortalsHint}>
-                      Portais são personagens fictícios que geram notícias com tom e estilo únicos.
-                    </Text>
-                  </View>
-                )}
-                {portals?.map((portal) => {
-                  const tone = toneInfo(portal.tone);
-                  const isUploading = uploadingPortalId === portal.id;
-                  return (
-                    <View key={portal.id} style={styles.portalRow}>
+            <>
+              <Text style={styles.portalGroupLabel}>Portais padrão</Text>
+              {FIXED_PORTALS.map((fp, idx) => {
+                const photo = fixedPortalPhoto(fp.source);
+                const isUploading = uploadingFixedSource === fp.source;
+                return (
+                  <View key={fp.source}>
+                    <View style={styles.portalRow}>
                       <TouchableOpacity
                         style={styles.portalAvatar}
-                        onPress={() => handlePortalPhotoChange(portal)}
+                        onPress={() => handleFixedPortalPhotoChange(fp.source)}
                         disabled={isUploading}
                         activeOpacity={0.8}
                       >
                         {isUploading ? (
                           <ActivityIndicator color={Colors.primary} />
-                        ) : portal.photo ? (
-                          <Image source={{ uri: portal.photo }} style={styles.portalAvatarImg} />
+                        ) : photo ? (
+                          <Image source={{ uri: photo }} style={styles.portalAvatarImg} />
                         ) : (
-                          <Text style={styles.portalAvatarLetter}>
-                            {portal.name.charAt(0).toUpperCase()}
-                          </Text>
+                          <View style={[styles.portalAvatarDefault, { backgroundColor: fp.source === 'tnt' ? '#e03c31' : fp.source === 'espn' ? '#d00' : Colors.primary }]}>
+                            <Text style={styles.portalAvatarLetter}>
+                              {fp.name.charAt(0).toUpperCase()}
+                            </Text>
+                          </View>
                         )}
                         <View style={styles.portalCameraIcon}>
                           <Ionicons name="camera" size={10} color="#fff" />
                         </View>
                       </TouchableOpacity>
                       <View style={{ flex: 1 }}>
-                        <Text style={styles.portalName} numberOfLines={1}>{portal.name}</Text>
-                        <Text style={styles.portalTone}>{tone?.emoji} {tone?.label}</Text>
+                        <Text style={styles.portalName} numberOfLines={1}>{fp.name}</Text>
+                        <Text style={styles.portalTone}>{fp.handle}</Text>
                       </View>
-                      <TouchableOpacity
-                        onPress={() => handleDeletePortal(portal)}
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                      >
-                        <Ionicons name="trash-outline" size={18} color={Colors.destructive} />
-                      </TouchableOpacity>
+                      {photo && (
+                        <TouchableOpacity
+                          onPress={async () => {
+                            if (!activeCareer) return;
+                            const key = `portal_photo_${fp.source}` as `portal_photo_${PortalSource}`;
+                            await api.careerData.set(activeCareer.id, key, null);
+                            await qc.invalidateQueries({ queryKey: ['/api/data/career', activeCareer.id] });
+                          }}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
+                          <Ionicons name="close-circle" size={18} color={Colors.mutedForeground} />
+                        </TouchableOpacity>
+                      )}
                     </View>
-                  );
-                })}
-                {(portals?.length ?? 0) < 3 && (
-                  <>
-                    <View style={styles.rowDivider} />
+                    {idx < FIXED_PORTALS.length - 1 && <View style={styles.rowDivider} />}
+                  </View>
+                );
+              })}
+
+              <View style={[styles.rowDivider, { marginLeft: 0, marginTop: 8 }]} />
+              <Text style={[styles.portalGroupLabel, { marginTop: 8 }]}>Portais personalizados</Text>
+
+              {portalsLoading ? (
+                <View style={styles.loadingRow}>
+                  <ActivityIndicator color={Colors.primary} size="small" />
+                  <Text style={styles.loadingText}>Carregando…</Text>
+                </View>
+              ) : (!portals || portals.length === 0) ? (
+                <View style={styles.emptyPortals}>
+                  <Text style={styles.emptyPortalsHint}>
+                    Crie portais personalizados com nome, tom e estilo únicos para gerar notícias diferentes.
+                  </Text>
+                </View>
+              ) : portals.map((portal) => {
+                const tone = toneInfo(portal.tone);
+                const isUploading = uploadingPortalId === portal.id;
+                return (
+                  <View key={portal.id} style={styles.portalRow}>
                     <TouchableOpacity
-                      style={styles.addPortalBtn}
-                      onPress={() => setShowNewPortal(true)}
-                      activeOpacity={0.7}
+                      style={styles.portalAvatar}
+                      onPress={() => handlePortalPhotoChange(portal)}
+                      disabled={isUploading}
+                      activeOpacity={0.8}
                     >
-                      <View style={[styles.rowIcon, { backgroundColor: `${Colors.success}18` }]}>
-                        <Ionicons name="add" size={20} color={Colors.success} />
+                      {isUploading ? (
+                        <ActivityIndicator color={Colors.primary} />
+                      ) : portal.photo ? (
+                        <Image source={{ uri: portal.photo }} style={styles.portalAvatarImg} />
+                      ) : (
+                        <View style={styles.portalAvatarDefault}>
+                          <Text style={styles.portalAvatarLetter}>
+                            {portal.name.charAt(0).toUpperCase()}
+                          </Text>
+                        </View>
+                      )}
+                      <View style={styles.portalCameraIcon}>
+                        <Ionicons name="camera" size={10} color="#fff" />
                       </View>
-                      <Text style={[styles.rowLabel, { color: Colors.success }]}>Adicionar portal</Text>
-                      <Ionicons name="chevron-forward" size={16} color={Colors.mutedForeground} />
                     </TouchableOpacity>
-                  </>
-                )}
-              </>
-            )}
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.portalName} numberOfLines={1}>{portal.name}</Text>
+                      <Text style={styles.portalTone}>{tone?.emoji} {tone?.label}</Text>
+                    </View>
+                    <TouchableOpacity
+                      onPress={() => handleDeletePortal(portal)}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <Ionicons name="trash-outline" size={18} color={Colors.destructive} />
+                    </TouchableOpacity>
+                  </View>
+                );
+              })}
+
+              {(portals?.length ?? 0) < 3 && (
+                <>
+                  <View style={styles.rowDivider} />
+                  <TouchableOpacity
+                    style={styles.addPortalBtn}
+                    onPress={() => setShowNewPortal(true)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[styles.rowIcon, { backgroundColor: `${Colors.success}18` }]}>
+                      <Ionicons name="add" size={20} color={Colors.success} />
+                    </View>
+                    <Text style={[styles.rowLabel, { color: Colors.success }]}>Adicionar portal</Text>
+                    <Ionicons name="chevron-forward" size={16} color={Colors.mutedForeground} />
+                  </TouchableOpacity>
+                </>
+              )}
+            </>
           </Section>
         )}
 
@@ -670,6 +774,16 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: Colors.border,
   },
+  portalGroupLabel: {
+    fontSize: 11,
+    fontWeight: '600' as const,
+    color: Colors.mutedForeground,
+    fontFamily: 'Inter_600SemiBold',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+  },
   portalAvatar: {
     width: 44,
     height: 44,
@@ -679,8 +793,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     position: 'relative',
   },
+  portalAvatarDefault: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   portalAvatarImg: { width: 44, height: 44, borderRadius: 22 },
-  portalAvatarLetter: { fontSize: 18, fontWeight: '700' as const, color: Colors.foreground, fontFamily: 'Inter_700Bold' },
+  portalAvatarLetter: { fontSize: 18, fontWeight: '700' as const, color: '#fff', fontFamily: 'Inter_700Bold' },
   portalCameraIcon: {
     position: 'absolute',
     bottom: -1,
