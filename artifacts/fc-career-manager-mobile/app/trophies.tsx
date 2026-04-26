@@ -136,9 +136,9 @@ const styles = StyleSheet.create({
   emptyText: { fontSize: 14, color: Colors.mutedForeground, textAlign: 'center', fontFamily: 'Inter_400Regular', lineHeight: 22 },
   list: { padding: 16 },
   headerBanner: {
-    alignItems: 'center', paddingVertical: 24, gap: 4, marginBottom: 8,
+    alignItems: 'center', paddingVertical: 24, gap: 4, marginBottom: 16,
     borderRadius: Colors.radiusLg, backgroundColor: 'rgba(245,158,11,0.06)',
-    borderWidth: 1, borderColor: 'rgba(245,158,11,0.15)', marginBottom: 16,
+    borderWidth: 1, borderColor: 'rgba(245,158,11,0.15)',
   },
   trophyCount: { fontSize: 48, fontWeight: '700' as const, color: '#f59e0b', fontFamily: 'Inter_700Bold' },
   trophyCountLabel: { fontSize: 14, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular' },
