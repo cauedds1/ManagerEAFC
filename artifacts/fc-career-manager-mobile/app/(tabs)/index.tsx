@@ -186,13 +186,21 @@ export default function DashboardScreen() {
             </View>
           </View>
 
-          <TouchableOpacity
-            style={styles.changeCareerBtn}
-            onPress={() => router.push('/career-select')}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Ionicons name="swap-horizontal" size={20} color={Colors.mutedForeground} />
-          </TouchableOpacity>
+          <View style={styles.headerActions}>
+            <TouchableOpacity
+              onPress={() => router.push('/nova-temporada')}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons name="calendar-outline" size={20} color={Colors.mutedForeground} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.changeCareerBtn}
+              onPress={() => router.push('/career-select')}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons name="swap-horizontal" size={20} color={Colors.mutedForeground} />
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View style={styles.coachRow}>
@@ -402,6 +410,7 @@ const styles = StyleSheet.create({
   clubText: { flex: 1 },
   clubName: { fontSize: 18, fontWeight: '700' as const, color: Colors.foreground, fontFamily: 'Inter_700Bold' },
   clubLeague: { fontSize: 13, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular', marginTop: 2 },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   changeCareerBtn: { padding: 4 },
   coachRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   coachName: { fontSize: 13, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular' },

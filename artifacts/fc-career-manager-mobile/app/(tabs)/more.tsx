@@ -193,6 +193,15 @@ export default function MoreScreen() {
             color={theme.primary}
           />
         )}
+        {activeCareer && (
+          <MenuItem
+            icon="calendar-outline"
+            label="Nova temporada"
+            subtitle="Criar próxima temporada"
+            onPress={() => router.push('/nova-temporada')}
+            color={Colors.info}
+          />
+        )}
         <MenuItem
           icon="add-circle-outline"
           label="Nova carreira"
@@ -212,6 +221,12 @@ export default function MoreScreen() {
           label="Perfil"
           subtitle={user?.email}
           onPress={() => router.push('/(tabs)/perfil')}
+        />
+        <MenuItem
+          icon="settings-outline"
+          label="Configurações"
+          subtitle="IA, som, idioma e conta"
+          onPress={() => router.push('/configuracoes')}
         />
       </Section>
 

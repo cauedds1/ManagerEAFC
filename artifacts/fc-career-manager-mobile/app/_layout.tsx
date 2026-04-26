@@ -66,6 +66,18 @@ function RootLayoutInner() {
         name="registrar-partida"
         options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
       />
+      <Stack.Screen
+        name="nova-temporada"
+        options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+      />
+      <Stack.Screen
+        name="welcome"
+        options={{ animation: 'fade' }}
+      />
+      <Stack.Screen
+        name="configuracoes"
+        options={{ animation: 'slide_from_right' }}
+      />
     </Stack>
   );
 }

@@ -2,17 +2,19 @@ import type { ComponentProps } from 'react';
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity,
-  ScrollView, FlatList, ActivityIndicator, Alert, Platform,
+  ScrollView, FlatList, ActivityIndicator, Alert, Platform, Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import * as ImagePicker from 'expo-image-picker';
 import { useCareer } from '@/contexts/CareerContext';
-import { api, type Club } from '@/lib/api';
+import { api, type Club, getApiUrl, TOKEN_KEY } from '@/lib/api';
 import { getClubColors } from '@/lib/clubColors';
 import { Colors } from '@/constants/colors';
+import * as SecureStore from 'expo-secure-store';
 
 type Step = 'club' | 'coach' | 'season';
 
@@ -23,6 +25,36 @@ const STEP_LABELS: Record<Step, string> = {
   season: 'Temporada',
 };
 
+async function uploadCoachPhoto(uri: string): Promise<string | null> {
+  try {
+    const token = Platform.OS === 'web'
+      ? localStorage.getItem(TOKEN_KEY)
+      : await SecureStore.getItemAsync(TOKEN_KEY);
+    const blob = await (await fetch(uri)).blob();
+    const ext = uri.toLowerCase().endsWith('.png') ? 'png' : 'jpeg';
+    const mime = `image/${ext}`;
+    const name = `coach_${Date.now()}.${ext}`;
+    const urlRes = await fetch(
+      `${getApiUrl()}/api/storage/uploads/request-url?folder=coaches`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ name, size: blob.size, contentType: mime }),
+      },
+    );
+    if (!urlRes.ok) return null;
+    const { uploadURL, objectPath } = (await urlRes.json()) as { uploadURL: string; objectPath: string };
+    const putRes = await fetch(uploadURL, { method: 'PUT', headers: { 'Content-Type': mime }, body: blob });
+    if (!putRes.ok) return null;
+    return `${getApiUrl()}/api/storage/uploads/file/${objectPath}`;
+  } catch {
+    return null;
+  }
+}
+
 export default function CareerCreateScreen() {
   const insets = useSafeAreaInsets();
   const { setActiveCareer, loadSeasons } = useCareer();
@@ -30,6 +62,8 @@ export default function CareerCreateScreen() {
   const [search, setSearch] = useState('');
   const [selectedClub, setSelectedClub] = useState<Club | null>(null);
   const [coachName, setCoachName] = useState('');
+  const [coachPhotoUri, setCoachPhotoUri] = useState<string | null>(null);
+  const [pickingPhoto, setPickingPhoto] = useState(false);
   const [seasonLabel, setSeasonLabel] = useState('Temporada 1');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -66,6 +100,31 @@ export default function CareerCreateScreen() {
     }
   };
 
+  const handlePickCoachPhoto = async () => {
+    if (pickingPhoto) return;
+    setPickingPhoto(true);
+    try {
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert('Permissão necessária', 'Permita o acesso à galeria para escolher uma foto.');
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.7,
+      });
+      if (!result.canceled && result.assets.length > 0) {
+        setCoachPhotoUri(result.assets[0].uri);
+      }
+    } catch {
+      Alert.alert('Erro', 'Não foi possível carregar a imagem.');
+    } finally {
+      setPickingPhoto(false);
+    }
+  };
+
   const handleClubSelect = (club: Club) => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     setSelectedClub(club);
@@ -89,9 +148,14 @@ export default function CareerCreateScreen() {
     setError('');
     setSaving(true);
     try {
+      let coachPhotoUrl: string | undefined;
+      if (coachPhotoUri) {
+        const uploaded = await uploadCoachPhoto(coachPhotoUri);
+        coachPhotoUrl = uploaded ?? undefined;
+      }
       const clubColors = getClubColors(selectedClub.name);
       const { id } = await api.careers.create({
-        coach: { name: coachName.trim() },
+        coach: { name: coachName.trim(), photo: coachPhotoUrl },
         clubId: selectedClub.id,
         clubName: selectedClub.name,
         clubLogo: selectedClub.logo,
@@ -257,6 +321,34 @@ export default function CareerCreateScreen() {
               <Text style={styles.selectedClubName}>{selectedClub.name}</Text>
             </View>
           )}
+
+          <View style={styles.coachPhotoRow}>
+            <TouchableOpacity
+              style={styles.coachAvatar}
+              onPress={handlePickCoachPhoto}
+              activeOpacity={0.8}
+              disabled={pickingPhoto}
+            >
+              {coachPhotoUri ? (
+                <Image source={{ uri: coachPhotoUri }} style={styles.coachAvatarImg} />
+              ) : (
+                <View style={styles.coachAvatarPlaceholder}>
+                  {pickingPhoto ? (
+                    <ActivityIndicator color={Colors.primary} />
+                  ) : (
+                    <Ionicons name="person" size={36} color={Colors.mutedForeground} />
+                  )}
+                </View>
+              )}
+              <View style={styles.coachAvatarEdit}>
+                <Ionicons name="camera" size={14} color="#fff" />
+              </View>
+            </TouchableOpacity>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.coachPhotoLabel}>Foto do treinador</Text>
+              <Text style={styles.coachPhotoHint}>Opcional — toque para escolher da galeria</Text>
+            </View>
+          </View>
 
           <View style={styles.field}>
             <Text style={styles.label}>Nome do treinador</Text>
@@ -450,4 +542,50 @@ const styles = StyleSheet.create({
   },
   disabled: { opacity: 0.6 },
   nextBtnText: { color: '#fff', fontSize: 16, fontWeight: '600' as const, fontFamily: 'Inter_600SemiBold' },
+  coachPhotoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    marginBottom: 24,
+    marginTop: 8,
+  },
+  coachAvatar: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    position: 'relative',
+  },
+  coachAvatarImg: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    borderWidth: 2,
+    borderColor: Colors.primary,
+  },
+  coachAvatarPlaceholder: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    backgroundColor: Colors.card,
+    borderWidth: 2,
+    borderColor: Colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderStyle: 'dashed',
+  },
+  coachAvatarEdit: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: Colors.background,
+  },
+  coachPhotoLabel: { fontSize: 14, fontWeight: '500' as const, color: Colors.foreground, fontFamily: 'Inter_500Medium', marginBottom: 4 },
+  coachPhotoHint: { fontSize: 12, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular', lineHeight: 17 },
 });
