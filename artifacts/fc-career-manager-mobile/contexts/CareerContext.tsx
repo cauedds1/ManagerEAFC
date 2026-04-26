@@ -27,10 +27,15 @@ export function CareerProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const loadSeasons = useCallback(async (careerId: string): Promise<Season[]> => {
-    const seasons = await api.careers.seasons(careerId);
-    const active = seasons.find((s) => s.isActive) ?? seasons[seasons.length - 1] ?? null;
-    setActiveSeasonState(active);
-    return seasons;
+    try {
+      const seasons = await api.careers.seasons(careerId);
+      if (!Array.isArray(seasons)) return [];
+      const active = seasons.find((s) => s.isActive) ?? seasons[seasons.length - 1] ?? null;
+      setActiveSeasonState(active);
+      return seasons;
+    } catch {
+      return [];
+    }
   }, []);
 
   const refreshCareers = useCallback(() => {

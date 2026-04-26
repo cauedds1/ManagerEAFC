@@ -119,10 +119,17 @@ export default function CareerSelectScreen() {
   }, []);
 
   const handleSelect = useCallback(async (career: Career) => {
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setActiveCareer(career);
-    await loadSeasons(career.id);
-    router.replace('/(tabs)');
+    try {
+      if (Platform.OS !== 'web') {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      }
+      setActiveCareer(career);
+      router.replace('/(tabs)');
+      await loadSeasons(career.id);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erro ao carregar carreira';
+      Alert.alert('Erro', msg);
+    }
   }, [setActiveCareer, loadSeasons]);
 
   const handleDelete = useCallback(async (career: Career) => {
