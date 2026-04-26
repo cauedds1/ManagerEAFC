@@ -12,7 +12,7 @@ import { useClubTheme } from '@/contexts/ClubThemeContext';
 import { api, getMatchResult, type MatchRecord } from '@/lib/api';
 import { Colors } from '@/constants/colors';
 
-const MAX_RIVALS = 5;
+const MAX_RIVALS = 3;
 
 interface RivalStats {
   name: string;
@@ -203,48 +203,39 @@ function AddRivalModal({
 
 export default function RivaisScreen() {
   const insets = useSafeAreaInsets();
-  const { activeSeason, activeCareer } = useCareer();
+  const { activeSeason } = useCareer();
   const theme = useClubTheme();
   const qc = useQueryClient();
   const topPad = Platform.OS === 'web' ? 0 : insets.top;
   const [showAdd, setShowAdd] = useState(false);
 
-  const { data: seasonGameData, isLoading: loadingSeason } = useQuery({
+  const { data: seasonGameData, isLoading } = useQuery({
     queryKey: ['/api/data/season', activeSeason?.id],
     queryFn: () => activeSeason ? api.seasonData.get(activeSeason.id) : null,
     enabled: !!activeSeason?.id,
     staleTime: 1000 * 60 * 5,
   });
 
-  const { data: careerData, isLoading: loadingCareer } = useQuery({
-    queryKey: ['/api/data/career', activeCareer?.id],
-    queryFn: () => activeCareer ? api.careerData.get(activeCareer.id) : null,
-    enabled: !!activeCareer?.id,
-    staleTime: 1000 * 60 * 5,
-  });
-
-  const isLoading = loadingSeason || loadingCareer;
-
   const matches: MatchRecord[] = useMemo(
     () => [...(seasonGameData?.data?.matches ?? [])].sort((a, b) => a.createdAt - b.createdAt),
     [seasonGameData]
   );
 
-  const manualRivals: string[] = (careerData?.data?.rivals ?? []) as string[];
-  const rivalsLocked: boolean = !!(seasonGameData?.data as Record<string, unknown> | undefined)?.rivalsLocked;
+  const manualRivals: string[] = (seasonGameData?.data?.rivals ?? []) as string[];
+  const rivalsLocked: boolean = !!(seasonGameData?.data?.rivalsLocked);
 
   const saveRivalsMutation = useMutation({
     mutationFn: (rivals: string[]) => {
-      if (!activeCareer) throw new Error('no career');
-      return api.careerData.set(activeCareer.id, 'rivals', rivals);
+      if (!activeSeason) throw new Error('no season');
+      return api.seasonData.set(activeSeason.id, 'rivals', rivals.slice(0, MAX_RIVALS));
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['/api/data/career', activeCareer?.id] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['/api/data/season', activeSeason?.id] }),
   });
 
   const lockRivalsMutation = useMutation({
     mutationFn: (locked: boolean) => {
       if (!activeSeason) throw new Error('no season');
-      return api.seasonData.set(activeSeason.id, 'rivalsLocked' as never, locked as never);
+      return api.seasonData.set(activeSeason.id, 'rivalsLocked', locked);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['/api/data/season', activeSeason?.id] }),
   });

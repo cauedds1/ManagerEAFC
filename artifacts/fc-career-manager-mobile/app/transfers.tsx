@@ -195,14 +195,63 @@ function PlayerSearchInput({
   );
 }
 
+function ClubInput({
+  value, onChange, suggestions,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  suggestions: string[];
+}) {
+  const [showList, setShowList] = useState(false);
+
+  const filtered = useMemo(() => {
+    const q = value.trim().toLowerCase();
+    if (!q) return suggestions.slice(0, 8);
+    return suggestions.filter((s) => s.toLowerCase().includes(q)).slice(0, 8);
+  }, [value, suggestions]);
+
+  return (
+    <View>
+      <TextInput
+        style={styles.textInput}
+        value={value}
+        onChangeText={(v) => { onChange(v); setShowList(true); }}
+        onFocus={() => setShowList(true)}
+        placeholder="Nome do clube"
+        placeholderTextColor={Colors.mutedForeground}
+      />
+      {showList && filtered.length > 0 && (
+        <View style={styles.dropdown}>
+          {filtered.map((s) => (
+            <TouchableOpacity
+              key={s}
+              style={styles.dropdownItem}
+              onPress={() => { onChange(s); setShowList(false); }}
+            >
+              <Text style={styles.dropdownName}>{s}</Text>
+            </TouchableOpacity>
+          ))}
+          <TouchableOpacity
+            style={[styles.dropdownItem, { justifyContent: 'center' }]}
+            onPress={() => setShowList(false)}
+          >
+            <Text style={[styles.dropdownMeta, { textAlign: 'center' }]}>Fechar</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+    </View>
+  );
+}
+
 interface NewTransferModalProps {
   visible: boolean;
   seasonLabel: string;
+  clubSuggestions: string[];
   onClose: () => void;
   onSave: (t: Omit<Transfer, 'id'>) => void;
 }
 
-function NewTransferModal({ visible, seasonLabel, onClose, onSave }: NewTransferModalProps) {
+function NewTransferModal({ visible, seasonLabel, clubSuggestions, onClose, onSave }: NewTransferModalProps) {
   const theme = useClubTheme();
   const [playerName, setPlayerName] = useState('');
   const [playerId, setPlayerId] = useState(0);
@@ -293,12 +342,10 @@ function NewTransferModal({ visible, seasonLabel, onClose, onSave }: NewTransfer
 
             <View style={styles.field}>
               <Text style={styles.fieldLabel}>{type === 'in' || type === 'loan_in' ? 'CLUBE DE ORIGEM' : 'CLUBE DESTINO'}</Text>
-              <TextInput
-                style={styles.textInput}
+              <ClubInput
                 value={club}
-                onChangeText={setClub}
-                placeholder="Nome do clube"
-                placeholderTextColor={Colors.mutedForeground}
+                onChange={setClub}
+                suggestions={clubSuggestions}
               />
             </View>
 
@@ -407,6 +454,15 @@ export default function TransfersScreen() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['/api/data/season/transfers', activeSeason?.id] }),
   });
 
+  const pendingTransfers = useMemo(() => transfers.filter((t) => t.pending), [transfers]);
+
+  const confirmPendingTransfers = () => {
+    if (pendingTransfers.length === 0) return;
+    saveTransfersMutation.mutate(
+      transfers.map((t) => t.pending ? { ...t, pending: false } : t)
+    );
+  };
+
   const toggleWindow = () => {
     if (windowOpen) {
       Alert.alert('Fechar janela', 'As próximas transferências ficam pendentes até a janela abrir.', [
@@ -417,13 +473,25 @@ export default function TransfersScreen() {
         },
       ]);
     } else if (canOpenWindow) {
-      Alert.alert('Abrir janela', `Abre a janela de transferências (${windowState.openCount + 1}/${MAX_WINDOW_OPENS}).`, [
-        { text: 'Cancelar', style: 'cancel' },
+      const hasPending = pendingTransfers.length > 0;
+      const msg = hasPending
+        ? `Abre a janela de transferências (${windowState.openCount + 1}/${MAX_WINDOW_OPENS}). Há ${pendingTransfers.length} transferência(s) pendente(s) — confirmar agora?`
+        : `Abre a janela de transferências (${windowState.openCount + 1}/${MAX_WINDOW_OPENS}).`;
+      const buttons = [
+        { text: 'Cancelar', style: 'cancel' as const },
+        ...(hasPending ? [{
+          text: 'Abrir e confirmar pendentes',
+          onPress: () => {
+            saveWindowMutation.mutate({ open: true, openCount: windowState.openCount + 1 });
+            confirmPendingTransfers();
+          },
+        }] : []),
         {
           text: 'Abrir janela',
           onPress: () => saveWindowMutation.mutate({ open: true, openCount: windowState.openCount + 1 }),
         },
-      ]);
+      ];
+      Alert.alert('Abrir janela', msg, buttons);
     } else {
       Alert.alert('Limite atingido', `Já foram abertas ${MAX_WINDOW_OPENS} janelas esta temporada.`);
     }
@@ -460,6 +528,11 @@ export default function TransfersScreen() {
 
   const allSeasons = useMemo(() =>
     [...new Set(transfers.map((t) => t.season).filter(Boolean))].sort().reverse(),
+    [transfers]
+  );
+
+  const clubSuggestions = useMemo(() =>
+    [...new Set(transfers.map((t) => t.club).filter(Boolean))].sort(),
     [transfers]
   );
 
@@ -587,6 +660,7 @@ export default function TransfersScreen() {
       <NewTransferModal
         visible={showNew}
         seasonLabel={activeSeason?.label ?? ''}
+        clubSuggestions={clubSuggestions}
         onClose={() => setShowNew(false)}
         onSave={handleAdd}
       />

@@ -274,6 +274,7 @@ export interface DiretoraaMember {
   satisfaction?: number;
   avatarColor?: string;
   goals?: string;
+  personality?: string;
 }
 
 export interface DiretoraaMeeting {
@@ -311,6 +312,7 @@ export interface SeasonGameData {
   finances?: Finances;
   transfers?: Transfer[];
   fan_mood?: number;
+  rivals?: string[];
   rivalsLocked?: boolean;
   transferWindow?: { open: boolean; openCount: number };
 }

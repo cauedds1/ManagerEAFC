@@ -109,7 +109,7 @@ function defaultForm(m?: DiretoraaMember): MemberFormState {
   return {
     name: m?.name ?? '',
     roleLabel: m?.roleLabel ?? m?.role ?? 'Presidente',
-    personality: 'equilibrado',
+    personality: m?.personality ?? 'equilibrado',
     patience: String(m?.patience ?? 70),
     description: m?.description ?? '',
   };
@@ -147,7 +147,7 @@ function MemberManagementModal({
     if (editingMember) {
       onSaveMembers(members.map((m) =>
         m.id === editingMember.id
-          ? { ...m, name: form.name.trim(), roleLabel: form.roleLabel, patience, description: form.description.trim() }
+          ? { ...m, name: form.name.trim(), roleLabel: form.roleLabel, patience, description: form.description.trim(), personality: form.personality }
           : m
       ));
     } else {
@@ -159,6 +159,7 @@ function MemberManagementModal({
         mood: 'neutro',
         patience,
         satisfaction: 70,
+        personality: form.personality,
       };
       onSaveMembers([...members, newMember]);
     }
