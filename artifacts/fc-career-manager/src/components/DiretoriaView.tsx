@@ -1141,7 +1141,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
         }}
       >
         <div
-          className={`flex-col ${panel !== "list" ? "hidden sm:flex" : "flex"}`}
+          className={`flex flex-col ${panel !== "list" ? "max-sm:hidden" : ""}`}
           style={{ borderRight: panel !== "list" ? "1px solid var(--surface-border)" : undefined }}
         >
           <div
