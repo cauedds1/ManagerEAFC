@@ -102,6 +102,13 @@ export default function MoreScreen() {
     staleTime: 1000 * 60 * 5,
   });
 
+  const { data: portals } = useQuery({
+    queryKey: ['/api/portals', activeCareer?.id],
+    queryFn: () => activeCareer ? api.portals.list(activeCareer.id) : null,
+    enabled: !!activeCareer?.id,
+    staleTime: 1000 * 60 * 10,
+  });
+
   const planBadge = user?.plan === 'ultra' ? '✦ Ultra' : user?.plan === 'pro' ? '★ Pro' : 'Free';
   const planColor = user?.plan === 'ultra' ? Colors.warning : user?.plan === 'pro' ? theme.primary : Colors.mutedForeground;
 
@@ -260,6 +267,7 @@ export default function MoreScreen() {
               momentos: seasonGameData?.data?.momentos ?? [],
               rivals: (careerGameData?.data?.rivals ?? []) as string[],
               diretoria_members: careerGameData?.data?.diretoria_members ?? [],
+              portals: portals ?? [],
             }}
           />
         </View>

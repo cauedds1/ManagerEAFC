@@ -96,6 +96,13 @@ export default function DashboardScreen() {
     staleTime: 1000 * 60 * 5,
   });
 
+  const { data: portals } = useQuery({
+    queryKey: ['/api/portals', activeCareer?.id],
+    queryFn: () => activeCareer ? api.portals.list(activeCareer.id) : null,
+    enabled: !!activeCareer?.id,
+    staleTime: 1000 * 60 * 10,
+  });
+
   const matches: MatchRecord[] = useMemo(
     () => seasonGameData?.data?.matches ?? [],
     [seasonGameData]
@@ -408,6 +415,7 @@ export default function DashboardScreen() {
                 momentos: seasonGameData?.data?.momentos ?? [],
                 rivals: (careerGameData?.data?.rivals ?? []) as string[],
                 diretoria_members: careerGameData?.data?.diretoria_members ?? [],
+                portals: portals ?? [],
               }}
               compact
             />
