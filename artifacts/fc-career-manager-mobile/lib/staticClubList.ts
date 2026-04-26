@@ -220,10 +220,14 @@ export const STATIC_CLUBS: StaticClub[] = [
   { id: 386,  name: 'Dynamo Kyiv',              logo: `${CDN}/386.png`,   league: 'Ukrainian Premier League' },
 ];
 
+function normalize(s: string): string {
+  return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+}
+
 export function searchStaticClubs(query: string): StaticClub[] {
   if (!query.trim()) return [];
-  const q = query.toLowerCase().trim();
+  const q = normalize(query);
   return STATIC_CLUBS.filter(
-    (c) => c.name.toLowerCase().includes(q) || c.league.toLowerCase().includes(q),
+    (c) => normalize(c.name).includes(q) || normalize(c.league).includes(q),
   ).slice(0, 8);
 }
