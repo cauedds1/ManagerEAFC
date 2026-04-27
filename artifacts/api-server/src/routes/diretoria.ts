@@ -534,7 +534,7 @@ router.post("/diretoria/check-triggers", requireAuth, async (req: AuthRequest, r
     res.status(403).json({ error: "Diretoria não está disponível no plano Free", code: "PLAN_LIMIT_REACHED", plan });
     return;
   }
-  const { context, members, lastCheckedAt, playerPerformance, squadOvrContext, isClassico, rivalName, fanMoodScore, fanMoodLabel, boardMoodScore, boardMoodLabel, lang } = req.body as {
+  const { context, members, lastCheckedAt, playerPerformance, squadOvrContext, isClassico, rivalName, fanMoodScore, fanMoodLabel, boardMoodScore, boardMoodLabel, boardCrisisStreak, lang } = req.body as {
     context: ClubContext;
     members: MemberProfile[];
     lastCheckedAt: number;
@@ -546,6 +546,7 @@ router.post("/diretoria/check-triggers", requireAuth, async (req: AuthRequest, r
     fanMoodLabel?: string;
     boardMoodScore?: number;
     boardMoodLabel?: string;
+    boardCrisisStreak?: number;
     lang?: string;
   };
 
@@ -638,21 +639,32 @@ router.post("/diretoria/check-triggers", requireAuth, async (req: AuthRequest, r
       }
     }
 
-    if (typeof boardMoodScore === "number" && boardMoodScore < 20) {
+    const crisisStreak = typeof boardCrisisStreak === "number" ? boardCrisisStreak : 0;
+    if (typeof boardMoodScore === "number" && boardMoodScore < 20 && crisisStreak >= 4) {
       const bLabel = boardMoodLabel ?? (isEn ? "In Crisis" : "Em Crise");
       if (!meetingTrigger) {
         meetingTrigger = {
           reason: isEn
-            ? `DISMISSAL RISK — Board mood: ${bLabel} (${boardMoodScore}/100). The directors have lost confidence in the coaching staff and demand immediate results.`
-            : `RISCO DE DEMISSÃO — Humor da diretoria: ${bLabel} (${boardMoodScore}/100). Os diretores perderam a confiança na comissão técnica e exigem resultados imediatos.`,
+            ? `DISMISSAL RISK — Board mood: ${bLabel} (${boardMoodScore}/100) for ${crisisStreak} consecutive matches. The directors have lost confidence in the coaching staff and demand immediate results.`
+            : `RISCO DE DEMISSÃO — Humor da diretoria: ${bLabel} (${boardMoodScore}/100) por ${crisisStreak} partidas consecutivas. Os diretores perderam a confiança na comissão técnica e exigem resultados imediatos.`,
           severity: "high",
         };
       } else if (presidente && !notifications.find((n) => n.memberId === presidente.id)) {
         notifications.push({
           memberId: presidente.id,
           preview: isEn
-            ? `The board's patience is exhausted. ${bLabel} — your position is under serious threat.`
-            : `A paciência da diretoria se esgotou. ${bLabel} — seu cargo está sob sério risco.`,
+            ? `The board's patience is exhausted. ${bLabel} for ${crisisStreak} matches — your position is under serious threat.`
+            : `A paciência da diretoria se esgotou. ${bLabel} por ${crisisStreak} partidas — seu cargo está sob sério risco.`,
+        });
+      }
+    } else if (typeof boardMoodScore === "number" && boardMoodScore < 20 && crisisStreak > 0) {
+      if (presidente && !notifications.find((n) => n.memberId === presidente.id)) {
+        const bLabel = boardMoodLabel ?? (isEn ? "In Crisis" : "Em Crise");
+        notifications.push({
+          memberId: presidente.id,
+          preview: isEn
+            ? `Board mood is ${bLabel} (${boardMoodScore}/100). ${4 - crisisStreak} more matches like this and we will be forced to act.`
+            : `Humor da diretoria em ${bLabel} (${boardMoodScore}/100). Mais ${4 - crisisStreak} partida(s) assim e seremos forçados a agir.`,
         });
       }
     }

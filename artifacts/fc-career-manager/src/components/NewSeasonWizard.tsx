@@ -66,11 +66,9 @@ export function NewSeasonWizard({
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const suggestedLabel = suggestNextSeasonLabel(existingSeasons.map((s) => s.label));
   const [label, setLabel] = useState(suggestedLabel);
-  const [selected, setSelected] = useState<string[]>([]);
+  const [selected, setSelected] = useState<string[]>(currentCompetitions ?? []);
   const [custom, setCustom] = useState("");
   const [drafts, setDrafts] = useState<DraftObjective[]>([emptyDraft()]);
-
-  void currentCompetitions;
 
   const toggleCompetition = (name: string) => {
     setSelected((prev) =>

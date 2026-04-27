@@ -68,11 +68,6 @@ export function hydrateSeasonObjectivesCache(seasonId: string, data: Record<stri
   }
 }
 
-const CUP_ROUND_ORDER = [
-  "primeira fase", "fase de grupos", "oitavas", "quartas", "semifinal", "final",
-  "round of 16", "quarter", "semi", "group stage", "first round",
-];
-
 function normalizeRound(r: string): number {
   r = r.toLowerCase().trim();
   if (r.includes("group") || r.includes("fase de grupo") || r.includes("primeira fase") || r.includes("first round")) return 0;
@@ -115,5 +110,3 @@ export function severityBoardPenalty(severity: ObjectiveSeverity): number {
   if (severity === "moderate") return 10;
   return 5;
 }
-
-void CUP_ROUND_ORDER;

@@ -24,7 +24,7 @@ import { fetchPortalPhotos, type PortalPhotos } from "@/lib/portalPhotosStorage"
 import { addPost as addNewsPost, getPosts as getNoticiaPosts, getPostsEn as getNoticiaPostsEn, generatePostId, generateCommentId } from "@/lib/noticiaStorage";
 import { getFanMood, setFanMood, computeFanMoodDelta, getFanMoodLabel } from "@/lib/fanMoodStorage";
 import { getBoardMood, setBoardMood, computeBoardMoodDelta, getBoardMoodLabel, getBoardCrisisStreak, setBoardCrisisStreak } from "@/lib/boardMoodStorage";
-import { getSeasonObjectives, saveSeasonObjectives } from "@/lib/seasonObjectivesStorage";
+import { getSeasonObjectives, saveSeasonObjectives, markObjectiveFailed, computeCupFailureSeverity, severityBoardPenalty } from "@/lib/seasonObjectivesStorage";
 import type { SeasonObjective } from "@/lib/seasonObjectivesStorage";
 import { calcSquadAvgOvr } from "@/lib/playerContext";
 import type { TransferRecord } from "@/types/transfer";
@@ -1332,6 +1332,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
           fanMoodLabel: fanMoodLabelStr ?? undefined,
           boardMoodScore: boardMood ?? undefined,
           boardMoodLabel: boardMoodLabelStr ?? undefined,
+          boardCrisisStreak: getBoardCrisisStreak(activeSeasonId),
           lang: localStorage.getItem("fc_lang") ?? "pt",
         }),
       });
@@ -1491,6 +1492,34 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     const prevCrisisStreak = getBoardCrisisStreak(activeSeasonId);
     const newCrisisStreak = newBoardMoodScore < 20 ? prevCrisisStreak + 1 : 0;
     setBoardCrisisStreak(activeSeasonId, newCrisisStreak);
+
+    // Cup objective failure detection
+    const isCupLoss = match.myScore < match.opponentScore || (match.penaltyShootout && match.penaltyShootout.myScore < match.penaltyShootout.opponentScore);
+    if (isCupLoss) {
+      const currentObjectives = getSeasonObjectives(activeSeasonId);
+      const pendingCupObjectives = currentObjectives.filter(
+        (o) => o.status === "pending" && o.type === "cup_round" && o.competition && match.tournament.toLowerCase().includes(o.competition.toLowerCase()),
+      );
+      if (pendingCupObjectives.length > 0) {
+        let updatedBoardScore = newBoardMoodScore;
+        for (const obj of pendingCupObjectives) {
+          const severity = computeCupFailureSeverity(
+            obj.target,
+            match.stage,
+            squadAvgOvr,
+            null,
+          );
+          const penalty = severityBoardPenalty(severity);
+          const updatedObjs = markObjectiveFailed(activeSeasonId, obj.id, severity, updatedMatches.length);
+          setSeasonObjectives(updatedObjs);
+          updatedBoardScore = Math.max(0, Math.min(100, updatedBoardScore - penalty));
+        }
+        if (updatedBoardScore !== newBoardMoodScore) {
+          void setBoardMood(activeSeasonId, updatedBoardScore);
+          setBoardMoodScore(updatedBoardScore);
+        }
+      }
+    }
 
     const planLimits = getPlanLimits(userPlan);
 

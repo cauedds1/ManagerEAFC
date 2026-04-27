@@ -74,45 +74,47 @@ export interface BoardMoodDeltaParams {
 export function computeBoardMoodDelta(params: BoardMoodDeltaParams): number {
   const { myScore, opponentScore, isClassico, matchCount, squadAvgOvr, league, projeto, leaguePosition, objectivePenalty } = params;
   const isWin = myScore > opponentScore;
-  const isDraw = myScore === opponentScore;
   const isLoss = myScore < opponentScore;
 
+  // Step 1: base delta
   let delta = 0;
   if (isWin) delta = isClassico ? 6 : 4;
-  else if (isDraw) delta = 1;
+  else if (!isLoss) delta = 1; // draw
   else delta = isClassico ? -8 : -6;
 
-  const inGrace = matchCount <= 8;
-  if (isLoss && inGrace) delta = Math.ceil(delta / 2);
-
+  // Step 2: expectation factor (losses only)
   if (isLoss && squadAvgOvr != null && league) {
     const expectedOvr = getLeagueExpectedOvr(league);
     const diff = squadAvgOvr - expectedOvr;
-    if (diff <= -10) delta = Math.ceil(delta * 0.5);
-    else if (diff <= -5) delta = Math.ceil(delta * 0.7);
-    else if (diff >= 10) delta = Math.floor(delta * 1.5);
-    else if (diff >= 5) delta = Math.floor(delta * 1.25);
+    if (diff <= -10) {
+      delta = Math.ceil(delta * 0.5); // losses cost 50% less
+    } else if (diff >= 10) {
+      delta = Math.floor(delta * 1.5); // losses cost 50% more
+    }
   }
 
-  if (projeto) {
+  // Step 3: project modifier (losses only)
+  if (isLoss && projeto) {
     const p = projeto.toLowerCase();
     const isSurvival = p.includes("sobrev") || p.includes("survival") || p.includes("relega");
     const isTitle = p.includes("título") || p.includes("titulo") || p.includes("title") || p.includes("campe") || p.includes("champion");
     const isPromotion = p.includes("promoção") || p.includes("promotion") || p.includes("subir") || p.includes("promot");
 
-    if (isLoss && isSurvival) {
+    if (isSurvival) {
       const inZone = leaguePosition ? leaguePosition.position > leaguePosition.totalTeams - 3 : false;
-      if (!inZone) delta = Math.ceil(delta * 0.7);
+      if (!inZone) delta = Math.ceil(delta * 0.7); // out of zone → 30% less impact
     }
-    if (isTitle) {
-      if (isLoss) delta = Math.floor(delta * 1.2);
-      if (isWin) delta = Math.ceil(delta * 1.1);
-    }
-    if (isLoss && isPromotion && leaguePosition && leaguePosition.position <= 3) {
-      delta = Math.ceil(delta * 0.8);
+    if (isTitle) delta = Math.floor(delta * 1.2); // 20% more demanding
+    if (isPromotion && leaguePosition && leaguePosition.position <= 3) {
+      delta = Math.ceil(delta * 0.8); // in promo spot → somewhat lenient
     }
   }
 
+  // Step 4: grace period — first 8 matches, halve any negative delta
+  const inGrace = matchCount <= 8;
+  if (inGrace && delta < 0) delta = Math.ceil(delta / 2);
+
+  // Step 5: objective penalty (applied after all other modifiers)
   if (objectivePenalty && objectivePenalty > 0) {
     delta -= objectivePenalty;
   }

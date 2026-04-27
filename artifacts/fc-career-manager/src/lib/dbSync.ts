@@ -96,6 +96,15 @@ async function migrateSeasonToDb(seasonId: string): Promise<void> {
     if (!isNaN(v)) { hydrateFanMoodCache(seasonId, { fan_mood: v }); tasks.push(putSeasonData(seasonId, "fan_mood", v)); }
   }
 
+  const boardMoodRaw = localStorage.getItem(`fc-board-mood-${seasonId}`);
+  if (boardMoodRaw !== null) {
+    const v = Number(boardMoodRaw);
+    if (!isNaN(v)) { hydrateBoardMoodCache(seasonId, { board_mood: v }); tasks.push(putSeasonData(seasonId, "board_mood", v)); }
+  } else {
+    hydrateBoardMoodCache(seasonId, { board_mood: 50 });
+    tasks.push(putSeasonData(seasonId, "board_mood", 50));
+  }
+
   await Promise.all(tasks);
 }
 
