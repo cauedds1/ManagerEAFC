@@ -1502,7 +1502,10 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     let cupObjectivePenalty = 0;
     const isCupLoss = match.myScore < match.opponentScore ||
       (match.penaltyShootout != null && match.penaltyShootout.myScore < match.penaltyShootout.opponentScore);
-    if (isCupLoss || match.myScore > match.opponentScore) {
+    const isPkWin = match.penaltyShootout != null &&
+      match.penaltyShootout.myScore > match.penaltyShootout.opponentScore;
+    const isCupAdvance = match.myScore > match.opponentScore || isPkWin;
+    if (isCupLoss || isCupAdvance) {
       const currentObjectives = getSeasonObjectives(activeSeasonId);
       const pendingCupObjectives = currentObjectives.filter(
         (o) => o.status === "pending" && o.type === "cup_round" &&
@@ -1531,8 +1534,8 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
               // Eliminated at or beyond target round — objective achieved
               latestObjs = markObjectiveAchieved(activeSeasonId, obj.id, updatedMatches.length);
             }
-          } else {
-            // Win: if current stage equals or exceeds target, mark achieved
+          } else if (isCupAdvance) {
+            // Win or PK win: if current stage equals or exceeds target, mark achieved
             if (!isEliminatedBeforeTarget(match.stage, obj.target)) {
               latestObjs = markObjectiveAchieved(activeSeasonId, obj.id, updatedMatches.length);
             }
@@ -1654,12 +1657,11 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
         setShowSeasonModal(false);
 
         const prevLeaguePos = getLeaguePosition(activeSeasonId);
-        const prevTop4 = prevLeaguePos && prevLeaguePos.position <= 4;
-        const prevObjectives = getSeasonObjectives(activeSeasonId);
-        const prevCupChampion = prevObjectives.some(
-          (o) => o.status === "achieved" && o.type === "cup_round",
-        );
-        const initialBoardMood = (prevTop4 || prevCupChampion) ? 60 : 50;
+        // Top-4 covers league champions (position 1 is already ≤ 4).
+        // Cup titles are not reliably stored separately from objective achievement,
+        // so the bonus is restricted to verifiable league finish.
+        const prevTop4OrChampion = prevLeaguePos && prevLeaguePos.position <= 4;
+        const initialBoardMood = prevTop4OrChampion ? 60 : 50;
         void setBoardMood(newSeason.id, initialBoardMood);
         setBoardMoodScore(initialBoardMood);
 
