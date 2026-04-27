@@ -1731,18 +1731,35 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
               <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
                 {(() => {
                   const moodInfo = getFanMoodLabel(fanMoodScore, lang);
+                  const pct = Math.max(0, Math.min(100, fanMoodScore));
                   return (
                     <div
-                      className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold"
+                      className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg"
                       style={{
-                        background: `${moodInfo.color}18`,
-                        border: `1px solid ${moodInfo.color}35`,
-                        color: moodInfo.color,
+                        background: `${moodInfo.color}14`,
+                        border: `1px solid ${moodInfo.color}30`,
                       }}
                       title={t.moodTooltip.replace("{label}", moodInfo.label).replace("{score}", String(fanMoodScore))}
                     >
-                      <span>{moodInfo.emoji}</span>
-                      <span>{moodInfo.label}</span>
+                      <span className="text-sm flex-shrink-0">{moodInfo.emoji}</span>
+                      <span className="text-xs font-semibold flex-shrink-0" style={{ color: moodInfo.color }}>{moodInfo.label}</span>
+                      <div
+                        className="relative flex-shrink-0 rounded-full overflow-hidden"
+                        style={{
+                          width: 64,
+                          height: 5,
+                          background: "linear-gradient(to right, #ef4444 0%, #f97316 25%, #eab308 50%, #22c55e 75%, #16a34a 100%)",
+                        }}
+                      >
+                        <div
+                          className="absolute inset-y-0 right-0"
+                          style={{
+                            width: `${100 - pct}%`,
+                            background: "rgba(0,0,0,0.72)",
+                            transition: "width 0.6s cubic-bezier(0.4,0,0.2,1)",
+                          }}
+                        />
+                      </div>
                     </div>
                   );
                 })()}
