@@ -53,6 +53,7 @@ interface GenerateNoticiaBody {
   matchPlayerContext?: string;
   attachedMatchContext?: string;
   currentCompetitions?: string[];
+  backstory?: string;
   lang?: string;
 }
 
@@ -80,8 +81,9 @@ function buildClubPrestigeSection(
   clubDescription?: string,
   projeto?: string,
   currentCompetitions?: string[],
+  backstory?: string,
 ): string {
-  if (!clubLeague && !clubTitles?.length && !projeto && !clubDescription && !currentCompetitions?.length) return "";
+  if (!clubLeague && !clubTitles?.length && !projeto && !clubDescription && !currentCompetitions?.length && !backstory) return "";
 
   const league = clubLeague ?? "";
   const tier = league ? leagueTierLabel(league) : "";
@@ -119,6 +121,9 @@ function buildClubPrestigeSection(
   }
   if (projeto?.trim()) {
     section += `\nProjeto desta temporada: "${projeto.trim()}"`;
+  }
+  if (backstory?.trim()) {
+    section += `\nHistórico da carreira (contexto narrativo — use para enriquecer o tom das notícias): "${backstory.trim().slice(0, 400)}"`;
   }
   section += `\nExpectativa: ${expectation}`;
   section += `\nREGRA: Ao escrever legenda e comentários, ajuste o tom conforme o porte do clube. Watford no top 5 = conquista histórica. Barcelona no top 5 = vergonha. Calibre celebrações, cobranças e reações da torcida de acordo.`;
@@ -301,7 +306,7 @@ router.post("/noticias/generate", requireAuth, async (req: AuthRequest, res) => 
     description, clubName, season, source, category,
     playersContext, squadOvrContext, teamFormContext, startingXIContext, historicalContext, recentPostsContext, customPortal,
     clubLeague, clubTitles, clubDescription, projeto, isClassico, rivalName, fanMoodScore, fanMoodLabel,
-    matchPlayerContext, attachedMatchContext, currentCompetitions, lang,
+    matchPlayerContext, attachedMatchContext, currentCompetitions, backstory, lang,
   } = req.body as GenerateNoticiaBody;
 
   if (!description || !description.trim()) {
@@ -402,7 +407,7 @@ LEGENDA — TOM JORNALÍSTICO OBRIGATÓRIO:
 - O texto deve soar como ESPN ou TNT Sports reais: informativo, envolvente, mas sem parcialidade`
     : "";
 
-  const prestigeSection = buildClubPrestigeSection(clubName, clubLeague, clubTitles, clubDescription, projeto, currentCompetitions);
+  const prestigeSection = buildClubPrestigeSection(clubName, clubLeague, clubTitles, clubDescription, projeto, currentCompetitions, backstory);
 
   const isDescLoss = /derrota|perdeu|perde|goleada sofrida|eliminado/i.test(description);
   const isDescWin = /vitória|vitoria|venceu|vence|goleada aplicada|goleada!|classificou|classifica/i.test(description);
@@ -573,11 +578,12 @@ interface GenerateWelcomeBody {
   clubLeague?: string;
   clubDescription?: string;
   projeto?: string;
+  backstory?: string;
   lang?: string;
 }
 
 router.post("/noticias/generate-welcome", async (req, res) => {
-  const { coachName, coachAge, coachNationality, clubName, clubLeague, clubDescription, projeto, lang } =
+  const { coachName, coachAge, coachNationality, clubName, clubLeague, clubDescription, projeto, backstory, lang } =
     req.body as GenerateWelcomeBody;
 
   if (!coachName?.trim() || !clubName?.trim()) {
@@ -601,13 +607,14 @@ router.post("/noticias/generate-welcome", async (req, res) => {
   const leagueInfo = clubLeague ? `\nLiga do clube: ${clubLeague}` : "";
   const clubInfo = clubDescription?.trim() ? `\nSobre o clube: ${clubDescription.trim().slice(0, 200)}` : "";
   const projectInfo = projeto?.trim() ? `\nProjeto da temporada: "${projeto.trim()}"` : "";
+  const backstoryInfo = backstory?.trim() ? `\nHistórico da carreira: "${backstory.trim().slice(0, 400)}"` : "";
 
   const espnName   = isEnglish(lang) ? "ESPN"        : "ESPN Brasil";
   const espnHandle = isEnglish(lang) ? "@espn"       : "@espnbrasil";
 
   const systemPrompt = `Você é um jornalista esportivo especializado em cobertura de futebol para portais esportivos como ${espnName} e TNT Sports.
 Você escreve posts no estilo de redes sociais (Instagram/Twitter) — legendas com impacto, emocionais, com emojis e hashtags.
-O clube é ${clubName} (${shortClub}).${leagueInfo}${clubInfo}${projectInfo}
+O clube é ${clubName} (${shortClub}).${leagueInfo}${clubInfo}${projectInfo}${backstoryInfo}
 Semente de unicidade: ${uniqueSeed}${langInstruction(lang)}`;
 
   const displayNameExample = isEnglish(lang)
@@ -711,6 +718,7 @@ interface GenerateRumorBody {
   fanMoodScore?: number;
   fanMoodLabel?: string;
   currentCompetitions?: string[];
+  backstory?: string;
   lang?: string;
 }
 
@@ -728,7 +736,7 @@ router.post("/noticias/generate-rumor", requireAuth, async (req: AuthRequest, re
   const userPlan = dbUser.plan;
 
   const {
-    clubName, season, clubLeague, clubDescription, projeto,
+    clubName, season, clubLeague, clubDescription, projeto, backstory,
     playersContext, squadPositionNeeds, customPortal, fanMoodScore, fanMoodLabel, currentCompetitions, lang,
   } = req.body as GenerateRumorBody;
 
@@ -759,6 +767,7 @@ router.post("/noticias/generate-rumor", requireAuth, async (req: AuthRequest, re
   const competitionsSection = currentCompetitions && currentCompetitions.length > 0 ? `\nCompetições da temporada: ${currentCompetitions.join(", ")}` : "";
   const descSection = clubDescription?.trim() ? `\nSobre o clube: ${clubDescription.trim().slice(0, 200)}` : "";
   const projectSection = projeto?.trim() ? `\nProjeto da temporada: "${projeto.trim()}"` : "";
+  const backstorySection = backstory?.trim() ? `\nHistórico da carreira: "${backstory.trim().slice(0, 400)}"` : "";
   const playersSection = playersContext?.trim()
     ? `\n\nELENCO ATUAL (contexto de desempenho dos jogadores — use para escolher quem vazar no rumor):\n${playersContext.trim()}`
     : "";
@@ -772,7 +781,7 @@ router.post("/noticias/generate-rumor", requireAuth, async (req: AuthRequest, re
 
   const systemPrompt = `Você é um jornalista especialista em mercado de transferências do futebol.
 Você escreve posts de RUMORES de transferência no estilo das redes sociais — boato, especulação, bastidores.
-Clube: ${clubName}${season ? ` (temporada ${season})` : ""}${leagueSection}${competitionsSection}${descSection}${projectSection}
+Clube: ${clubName}${season ? ` (temporada ${season})` : ""}${leagueSection}${competitionsSection}${descSection}${projectSection}${backstorySection}
 Portal: ${portalName} (${portalHandle})
 Semente de unicidade: ${uniqueSeed}${playersSection}${needsSection}${rumorFanMoodSection}${customPortalSection}${langInstruction(lang)}`;
 

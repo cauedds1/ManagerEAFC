@@ -61,6 +61,7 @@ export interface RumorContext {
   currentCompetitions?: string[];
   clubDescription?: string;
   projeto?: string;
+  backstory?: string;
   allMatches: MatchRecord[];
   allPlayers: SquadPlayer[];
   customPortals: CustomPortal[];
@@ -79,6 +80,7 @@ export interface AutoNewsContext {
   clubTitles?: { name: string; count: number }[];
   clubDescription?: string;
   projeto?: string;
+  backstory?: string;
   allMatches: MatchRecord[];
   allPlayers: SquadPlayer[];
   leaguePosition: LeaguePosition | null;
@@ -128,7 +130,7 @@ export async function runAutoNews(
   ctx: AutoNewsContext,
 ): Promise<void> {
   try {
-    const { careerId, seasonId, season, clubName, clubLeague, currentCompetitions, clubTitles, clubDescription, projeto, allMatches, allPlayers, leaguePosition, rivals, fanMoodScore, fanMoodLabel, onNewPost } = ctx;
+    const { careerId, seasonId, season, clubName, clubLeague, currentCompetitions, clubTitles, clubDescription, projeto, backstory, allMatches, allPlayers, leaguePosition, rivals, fanMoodScore, fanMoodLabel, onNewPost } = ctx;
 
     const seasonPlayerStats = getAllPlayerStats(seasonId);
     const customPortals = await fetchPortals(careerId);
@@ -144,6 +146,7 @@ export async function runAutoNews(
       clubName,
       season,
       rivals,
+      backstory,
     });
 
     const unhandled = allEvents.filter((e) => !wasEventHandled(seasonId, e.key));
@@ -192,6 +195,7 @@ export async function runAutoNews(
           clubTitles: clubTitles?.length ? clubTitles : undefined,
           clubDescription: clubDescription || undefined,
           projeto: projeto || undefined,
+          backstory: backstory || undefined,
           playersContext: playerContextStr || undefined,
           squadOvrContext: squadOvrContext || undefined,
           teamFormContext: teamFormContext || undefined,
@@ -387,7 +391,7 @@ export async function runPromotionRelegationNews(ctx: PromotionRelegationContext
 }
 
 export async function runRumorNews(ctx: RumorContext): Promise<void> {
-  const { careerId, seasonId, season, clubName, clubLeague, currentCompetitions, clubDescription, projeto, allMatches, allPlayers, customPortals, fanMoodScore, fanMoodLabel, onNewPost } = ctx;
+  const { careerId, seasonId, season, clubName, clubLeague, currentCompetitions, clubDescription, projeto, backstory, allMatches, allPlayers, customPortals, fanMoodScore, fanMoodLabel, onNewPost } = ctx;
 
   const matchCount = allMatches.length;
   if (matchCount < 2) return;
@@ -428,6 +432,7 @@ export async function runRumorNews(ctx: RumorContext): Promise<void> {
       currentCompetitions: currentCompetitions?.length ? currentCompetitions : undefined,
       clubDescription: clubDescription || undefined,
       projeto: projeto || undefined,
+      backstory: backstory || undefined,
       playersContext: playerContextStr || undefined,
       squadPositionNeeds: squadPositionNeeds || undefined,
       fanMoodScore: fanMoodScore ?? undefined,

@@ -30,6 +30,9 @@ export interface Career {
   competitions?: string[];
   currentSeasonId?: string;
   isCustomClub?: boolean;
+  backstory?: string;
+  initialBoardMood?: number;
+  initialFanMood?: number;
   createdAt: number;
   updatedAt: number;
 }

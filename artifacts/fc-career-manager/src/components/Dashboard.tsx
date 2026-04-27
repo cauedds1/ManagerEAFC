@@ -326,6 +326,19 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     backfillDoneRef.current = false;
     (async () => {
       const initialSeasonId = await ensureCareerAndSeason1(career);
+
+      // Seed initial board/fan moods from AI-parsed ongoing career context (once per career)
+      const moodSeedKey = `fc-mood-seeded-${career.id}`;
+      if (!sessionStorage.getItem(moodSeedKey)) {
+        if (career.initialBoardMood !== undefined && career.initialBoardMood !== null) {
+          void setBoardMood(initialSeasonId, career.initialBoardMood);
+        }
+        if (career.initialFanMood !== undefined && career.initialFanMood !== null) {
+          void setFanMood(initialSeasonId, career.initialFanMood);
+        }
+        sessionStorage.setItem(moodSeedKey, "1");
+      }
+
       await syncCareerFromDb(career.id);
 
       // Load all seasons first so we know which is truly active
@@ -542,6 +555,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
           clubTitles: career.clubTitles?.length ? career.clubTitles : undefined,
           clubDescription: career.clubDescription || undefined,
           projeto: career.projeto || undefined,
+          backstory: career.backstory || undefined,
           playersContext: params.playerContextStr || undefined,
           squadOvrContext: params.squadOvrContext || undefined,
           teamFormContext: params.teamFormContext || undefined,
@@ -1231,6 +1245,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
         currentCompetitions: currentCompetitions.length ? currentCompetitions : undefined,
         clubDescription: career.clubDescription || undefined,
         projeto: career.projeto || undefined,
+        backstory: career.backstory || undefined,
         lang: localStorage.getItem("fc_lang") ?? "pt",
       }),
     }).then(async (res) => {
@@ -1591,6 +1606,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
         clubTitles: career.clubTitles,
         clubDescription: career.clubDescription,
         projeto: career.projeto,
+        backstory: career.backstory,
         allMatches: updatedMatches,
         allPlayers,
         leaguePosition: leaguePos,
@@ -1617,6 +1633,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
             currentCompetitions: currentCompetitions.length ? currentCompetitions : undefined,
             clubDescription: career.clubDescription,
             projeto: career.projeto,
+            backstory: career.backstory,
             allMatches: updatedMatches,
             allPlayers,
             customPortals,

@@ -101,6 +101,18 @@ Stripe initialization is non-fatal — the app runs fully without it; only subsc
 - `PRIVATE_OBJECT_DIR` — Directory path for Replit Object Storage (private)
 - `JWT_SECRET` — Secret for signing JWTs (set in Railway for production; defaults to dev secret locally)
 
+## Ongoing Career Import (AI)
+
+Users can import an existing EA FC career instead of starting fresh. In the career creation wizard, the pre-step "Career Type" lets users choose:
+- **New Career**: start from scratch with neutral moods.
+- **Ongoing Career**: describe their current situation in free text; the AI (`POST /api/careers/parse-ongoing-context`) extracts `boardMood`, `fanMood`, `currentSeason`, `projeto`, `narrativeSummary`, and `confidence`. A preview card shows the extracted values before the user continues.
+
+The parsed context seeds the career with:
+- `backstory` (narrativeSummary) — stored in DB (`careers.backstory` column, migration `0012_career_backstory.sql`).
+- `initialBoardMood` / `initialFanMood` — stored in the `Career` object and seeded into board/fan mood on first Dashboard load (sessionStorage key `fc-mood-seeded-{careerId}`).
+- `projeto` — pre-populates the project field in the setup step.
+- `backstory` is forwarded to all AI news generation calls (noticias/generate, generate-rumor, generate-welcome) to enrich the narrative context.
+
 ## Admin Push Notification System
 
 Admin can send pop-up notifications to all users or specific users from the admin panel (Notifications tab). On the user side, after login + DB sync, the app checks for unread notifications and shows a modal popup.

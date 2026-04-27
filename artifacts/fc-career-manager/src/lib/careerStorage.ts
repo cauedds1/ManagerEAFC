@@ -11,7 +11,7 @@ const CAREERS_KEY = "fc-career-manager-careers";
 const LEGACY_CLUB_KEY = "fc-career-manager-club";
 const SYNCED_KEY = "fc-career-manager-synced-ids";
 
-function getAuthHeaders(): HeadersInit {
+export function getAuthHeaders(): HeadersInit {
   const token = getEffectiveToken();
   return token ? { "Content-Type": "application/json", Authorization: `Bearer ${token}` } : { "Content-Type": "application/json" };
 }
@@ -93,6 +93,9 @@ export interface CareerExtras {
   competitions?: string[];
   clubDescription?: string;
   clubTitles?: import("@/types/career").ClubTitle[];
+  backstory?: string;
+  initialBoardMood?: number;
+  initialFanMood?: number;
 }
 
 export function createCareer(coach: CoachProfile, club: ClubEntry, extras?: CareerExtras): Career {
@@ -111,6 +114,9 @@ export function createCareer(coach: CoachProfile, club: ClubEntry, extras?: Care
     ...(extras?.competitions?.length ? { competitions: extras.competitions } : {}),
     ...(extras?.clubDescription ? { clubDescription: extras.clubDescription } : {}),
     ...(extras?.clubTitles?.length ? { clubTitles: extras.clubTitles } : {}),
+    ...(extras?.backstory ? { backstory: extras.backstory } : {}),
+    ...(extras?.initialBoardMood != null ? { initialBoardMood: extras.initialBoardMood } : {}),
+    ...(extras?.initialFanMood != null ? { initialFanMood: extras.initialFanMood } : {}),
     createdAt: Date.now(),
     updatedAt: Date.now(),
   };
@@ -195,6 +201,7 @@ async function syncCareerToDb(career: Career): Promise<void> {
         projeto: career.projeto,
         competitions: career.competitions,
         currentSeasonId: career.currentSeasonId,
+        backstory: career.backstory,
         createdAt: career.createdAt,
         updatedAt: career.updatedAt,
       }),

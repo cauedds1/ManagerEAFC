@@ -1427,6 +1427,7 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
           clubLeague: career.clubLeague || undefined,
           clubDescription: career.clubDescription || undefined,
           projeto: career.projeto || undefined,
+          backstory: career.backstory || undefined,
           lang: localStorage.getItem("fc_lang") || "pt",
         }),
       })
@@ -1726,6 +1727,7 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
           clubLeague: career.clubLeague || undefined,
           clubDescription: career.clubDescription || undefined,
           projeto: career.projeto || undefined,
+          backstory: career.backstory || undefined,
           playersContext: playerContextStr || undefined,
           squadOvrContext: squadOvrContext || undefined,
           teamFormContext: buildTeamFormContext(_matches, match) || undefined,

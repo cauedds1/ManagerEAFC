@@ -16,6 +16,7 @@ interface CareerSetupStepProps {
   onConfirm: (projeto: string, competitions: string[]) => void;
   onBack: () => void;
   confirming?: boolean;
+  initialProject?: string;
 }
 
 function getLeagueSuggestions(league: string, leagueId?: number): string[] {
@@ -97,13 +98,14 @@ export function CareerSetupStep({
   onConfirm,
   onBack,
   confirming,
+  initialProject,
 }: CareerSetupStepProps) {
   const [lang] = useLang();
   const t = WIZARD[lang];
 
   const projetoExamples = [t.proj1, t.proj2, t.proj3, t.proj4, t.proj5];
 
-  const [projeto, setProjeto] = useState("");
+  const [projeto, setProjeto] = useState(initialProject ?? "");
   const [competitions, setCompetitions] = useState<string[]>([]);
   const [newComp, setNewComp] = useState("");
   const [generatingProjeto, setGeneratingProjeto] = useState(false);

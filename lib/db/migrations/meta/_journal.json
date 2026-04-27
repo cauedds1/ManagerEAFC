@@ -85,6 +85,13 @@
       "when": 1777260000000,
       "tag": "0011_push_tokens",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1777320000000,
+      "tag": "0012_career_backstory",
+      "breakpoints": true
     }
   ]
 }

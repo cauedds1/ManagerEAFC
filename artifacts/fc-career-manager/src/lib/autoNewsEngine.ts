@@ -37,6 +37,7 @@ interface EngineInput {
   clubName: string;
   season: string;
   rivals?: string[];
+  backstory?: string;
 }
 
 function playerName(allPlayers: SquadPlayer[], id: number): string {

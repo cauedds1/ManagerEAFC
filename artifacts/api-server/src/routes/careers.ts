@@ -4,6 +4,7 @@ import { eq, isNull, or, inArray } from "drizzle-orm";
 import { requireAuth, type AuthRequest } from "../middleware/auth";
 import { getPlanLimits } from "../lib/planLimits";
 import { isR2Configured, cacheExternalImage } from "../lib/r2Storage";
+import { callDiretoriaWithPlan } from "../lib/aiProvider";
 
 const router = Router();
 
@@ -52,6 +53,76 @@ async function cacheClubLogoInBackground(careerId: string, clubId: number, hintL
   }
 }
 
+router.post("/careers/parse-ongoing-context", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const { description } = req.body as { description?: string };
+    if (!description?.trim()) {
+      return res.status(400).json({ error: "description is required" });
+    }
+
+    const systemPrompt = `You are a football career mode analyst. The user will describe their ongoing career in EA FC (FIFA) in any language. Extract the following information and return ONLY valid JSON — no markdown, no code blocks, just the raw JSON object.
+
+Return this exact JSON structure:
+{
+  "boardMood": <integer 0-100, board satisfaction level>,
+  "fanMood": <integer 0-100, fan satisfaction level>,
+  "currentSeason": "<string, e.g. '2024/25' or '2025'>",
+  "projeto": "<string, suggested career objective in 1-2 sentences, in the same language as the user's description>",
+  "narrativeSummary": "<string, 2-3 sentences summarizing the career context for use as AI news generation background, in the same language as the user's description>",
+  "confidence": "<'low'|'medium'|'high'>"
+}
+
+Rules:
+- boardMood: 80+ if board is happy/satisfied, 60-79 stable, 40-59 watching, 20-39 concerned, 0-19 crisis
+- fanMood: 80+ if fans are ecstatic/euphoric, 60-79 excited, 40-59 neutral, 20-39 unhappy, 0-19 revolted
+- If the user does not mention mood explicitly, infer from context (win streak = higher, relegation battle = lower)
+- If information is missing or unclear, use 50 for mood and mark confidence as 'low'
+- narrativeSummary should capture: club, competition context, recent form, key events, and career trajectory
+- Return ONLY the JSON object, nothing else`;
+
+    const userPrompt = description.trim().slice(0, 4000);
+
+    const [dbUser] = await db.select({ plan: usersTable.plan }).from(usersTable).where(eq(usersTable.id, req.user!.id)).limit(1);
+    const plan = dbUser?.plan ?? "free";
+
+    const raw = await callDiretoriaWithPlan(plan, systemPrompt, userPrompt, 1024);
+
+    let parsed: {
+      boardMood: number;
+      fanMood: number;
+      currentSeason: string;
+      projeto: string;
+      narrativeSummary: string;
+      confidence: string;
+    };
+
+    try {
+      const jsonMatch = raw.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error("No JSON found");
+      parsed = JSON.parse(jsonMatch[0]);
+    } catch {
+      return res.status(500).json({ error: "AI returned invalid JSON" });
+    }
+
+    const clamp = (v: unknown, def: number) => {
+      const n = Number(v);
+      return isNaN(n) ? def : Math.max(0, Math.min(100, Math.round(n)));
+    };
+
+    return res.json({
+      boardMood: clamp(parsed.boardMood, 50),
+      fanMood: clamp(parsed.fanMood, 50),
+      currentSeason: typeof parsed.currentSeason === "string" ? parsed.currentSeason.trim() : "",
+      projeto: typeof parsed.projeto === "string" ? parsed.projeto.trim() : "",
+      narrativeSummary: typeof parsed.narrativeSummary === "string" ? parsed.narrativeSummary.trim() : "",
+      confidence: ["low", "medium", "high"].includes(parsed.confidence) ? parsed.confidence : "medium",
+    });
+  } catch (err) {
+    console.error("POST /careers/parse-ongoing-context error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 router.get("/careers", requireAuth, async (req: AuthRequest, res) => {
   try {
     const userId = req.user!.id;
@@ -79,6 +150,7 @@ router.get("/careers", requireAuth, async (req: AuthRequest, res) => {
         projeto: r.projeto ?? undefined,
         competitions: r.competitionsJson ? JSON.parse(r.competitionsJson) : undefined,
         currentSeasonId: r.currentSeasonId ?? undefined,
+        backstory: r.backstory ?? undefined,
         createdAt: Number(r.createdAt),
         updatedAt: Number(r.updatedAt),
       })),
@@ -110,6 +182,7 @@ router.post("/careers", requireAuth, async (req: AuthRequest, res) => {
       projeto?: string;
       competitions?: string[];
       currentSeasonId?: string;
+      backstory?: string;
       createdAt?: number;
       updatedAt?: number;
     };
@@ -156,6 +229,7 @@ router.post("/careers", requireAuth, async (req: AuthRequest, res) => {
         projeto: body.projeto ?? null,
         competitionsJson: body.competitions ? JSON.stringify(body.competitions) : null,
         currentSeasonId: body.currentSeasonId ?? null,
+        backstory: body.backstory ?? null,
         userId,
         createdAt: body.createdAt ?? now,
         updatedAt: body.updatedAt ?? now,
@@ -200,6 +274,7 @@ router.put("/careers/:id", requireAuth, async (req: AuthRequest, res) => {
       projeto: string;
       competitions: string[];
       currentSeasonId: string;
+      backstory: string;
     }>;
 
     const patch: Record<string, unknown> = { updatedAt: Date.now() };
@@ -219,6 +294,7 @@ router.put("/careers/:id", requireAuth, async (req: AuthRequest, res) => {
     if (body.projeto !== undefined) patch.projeto = body.projeto;
     if (body.competitions !== undefined) patch.competitionsJson = JSON.stringify(body.competitions);
     if (body.currentSeasonId !== undefined) patch.currentSeasonId = body.currentSeasonId;
+    if (body.backstory !== undefined) patch.backstory = body.backstory;
 
     await db.update(careersTable).set(patch).where(eq(careersTable.id, id));
 

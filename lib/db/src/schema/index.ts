@@ -45,6 +45,7 @@ export const careersTable = pgTable("careers", {
   projeto: text("projeto"),
   competitionsJson: text("competitions_json"),
   currentSeasonId: text("current_season_id"),
+  backstory: text("backstory"),
   userId: integer("user_id"),
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
   updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
