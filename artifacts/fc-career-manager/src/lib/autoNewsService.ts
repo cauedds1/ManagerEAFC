@@ -88,7 +88,7 @@ export interface AutoNewsContext {
   onNewPost?: (post: NewsPost) => void;
 }
 
-const MAX_POSTS_PER_MATCH = 3;
+const MAX_POSTS_PER_MATCH = 1;
 
 function pickPortalForEvent(
   portals: CustomPortal[],
@@ -219,6 +219,8 @@ export async function runAutoNews(
         });
 
         if (!res.ok) {
+          const errBody = await res.text().catch(() => "(sem body)");
+          console.error(`[autoNews] Falha HTTP ${res.status} ao gerar notícia para evento "${event.key}":`, errBody);
           continue;
         }
 
@@ -256,10 +258,12 @@ export async function runAutoNews(
         if (onNewPost) onNewPost(post);
 
         await new Promise((r) => setTimeout(r, 500));
-      } catch {
+      } catch (err) {
+        console.error(`[autoNews] Exceção ao gerar notícia para evento "${event.key}":`, err instanceof Error ? err.message : err);
       }
     }
-  } catch {
+  } catch (err) {
+    console.error("[autoNews] Erro inesperado em runAutoNews:", err instanceof Error ? err.message : err);
   }
 }
 
