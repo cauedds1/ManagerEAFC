@@ -2011,7 +2011,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
           className="flex sticky top-0 z-30 flex-col"
           style={{ background: "rgba(var(--club-primary-rgb), 0.06)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", borderBottom: "1px solid var(--surface-border)" }}
         >
-          <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
+          <div className="w-full px-2 sm:px-4">
             <div className="flex overflow-x-auto scrollbar-none snap-x w-full justify-evenly" style={{ WebkitOverflowScrolling: "touch" }}>
               {isFinalized && (() => {
                 const active = activeTab === "resumo";
