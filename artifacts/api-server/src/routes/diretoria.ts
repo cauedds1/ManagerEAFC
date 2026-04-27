@@ -534,7 +534,7 @@ router.post("/diretoria/check-triggers", requireAuth, async (req: AuthRequest, r
     res.status(403).json({ error: "Diretoria não está disponível no plano Free", code: "PLAN_LIMIT_REACHED", plan });
     return;
   }
-  const { context, members, lastCheckedAt, playerPerformance, squadOvrContext, isClassico, rivalName, fanMoodScore, fanMoodLabel, lang } = req.body as {
+  const { context, members, lastCheckedAt, playerPerformance, squadOvrContext, isClassico, rivalName, fanMoodScore, fanMoodLabel, boardMoodScore, boardMoodLabel, lang } = req.body as {
     context: ClubContext;
     members: MemberProfile[];
     lastCheckedAt: number;
@@ -544,6 +544,8 @@ router.post("/diretoria/check-triggers", requireAuth, async (req: AuthRequest, r
     rivalName?: string;
     fanMoodScore?: number;
     fanMoodLabel?: string;
+    boardMoodScore?: number;
+    boardMoodLabel?: string;
     lang?: string;
   };
 
@@ -632,6 +634,25 @@ router.post("/diretoria/check-triggers", requireAuth, async (req: AuthRequest, r
           preview: isEn
             ? `The fans are ${fanMoodLabel.toLowerCase()}. We need to act before things spiral out of control.`
             : `A torcida está ${fanMoodLabel.toLowerCase()}. Precisamos agir antes que a situação saia de controle.`,
+        });
+      }
+    }
+
+    if (typeof boardMoodScore === "number" && boardMoodScore < 20) {
+      const bLabel = boardMoodLabel ?? (isEn ? "In Crisis" : "Em Crise");
+      if (!meetingTrigger) {
+        meetingTrigger = {
+          reason: isEn
+            ? `DISMISSAL RISK — Board mood: ${bLabel} (${boardMoodScore}/100). The directors have lost confidence in the coaching staff and demand immediate results.`
+            : `RISCO DE DEMISSÃO — Humor da diretoria: ${bLabel} (${boardMoodScore}/100). Os diretores perderam a confiança na comissão técnica e exigem resultados imediatos.`,
+          severity: "high",
+        };
+      } else if (presidente && !notifications.find((n) => n.memberId === presidente.id)) {
+        notifications.push({
+          memberId: presidente.id,
+          preview: isEn
+            ? `The board's patience is exhausted. ${bLabel} — your position is under serious threat.`
+            : `A paciência da diretoria se esgotou. ${bLabel} — seu cargo está sob sério risco.`,
         });
       }
     }

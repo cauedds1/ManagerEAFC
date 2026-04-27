@@ -39,7 +39,7 @@ function fanMoralPtBr(fm: FanMoral): string {
   return map[fm] ?? "Neutro";
 }
 
-function calcSquadAvgOvr(
+export function calcSquadAvgOvr(
   allPlayers: SquadPlayer[],
   allOverrides: Record<number, PlayerOverride>,
 ): number | null {

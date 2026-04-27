@@ -1,6 +1,8 @@
 import { loadSeasonData, loadCareerData, putSeasonData, putCareerData } from "@/lib/apiStorage";
 import { hydrateRivalsCache } from "@/lib/rivalsStorage";
 import { hydrateFanMoodCache } from "@/lib/fanMoodStorage";
+import { hydrateBoardMoodCache, hydrateBoardCrisisCache } from "@/lib/boardMoodStorage";
+import { hydrateSeasonObjectivesCache } from "@/lib/seasonObjectivesStorage";
 import { sessionSet, sessionGet } from "@/lib/sessionStore";
 import { hydrateMissionsFromDb, getMissionsLocalState } from "@/lib/missionStorage";
 
@@ -58,6 +60,9 @@ export async function syncSeasonFromDb(seasonId: string): Promise<void> {
   if (data.injuries !== undefined) sessionSet(injuryKey(seasonId), data.injuries);
   if (data.rivals !== undefined || data.rivalsLocked !== undefined) hydrateRivalsCache(seasonId, data);
   if (data.fan_mood !== undefined) hydrateFanMoodCache(seasonId, data);
+  if (data.board_mood !== undefined) hydrateBoardMoodCache(seasonId, data);
+  if (data.board_crisis_streak !== undefined) hydrateBoardCrisisCache(seasonId, data);
+  if (data.season_objectives !== undefined) hydrateSeasonObjectivesCache(seasonId, data);
   if (data.season_summary !== undefined) sessionSet(summaryKey(seasonId), data.season_summary);
   if (data.transferWindow !== undefined) sessionSet(windowKey(seasonId), data.transferWindow);
 }

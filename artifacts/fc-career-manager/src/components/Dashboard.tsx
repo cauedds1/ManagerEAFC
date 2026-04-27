@@ -23,6 +23,10 @@ import { fetchPortals } from "@/lib/customPortalStorage";
 import { fetchPortalPhotos, type PortalPhotos } from "@/lib/portalPhotosStorage";
 import { addPost as addNewsPost, getPosts as getNoticiaPosts, getPostsEn as getNoticiaPostsEn, generatePostId, generateCommentId } from "@/lib/noticiaStorage";
 import { getFanMood, setFanMood, computeFanMoodDelta, getFanMoodLabel } from "@/lib/fanMoodStorage";
+import { getBoardMood, setBoardMood, computeBoardMoodDelta, getBoardMoodLabel, getBoardCrisisStreak, setBoardCrisisStreak } from "@/lib/boardMoodStorage";
+import { getSeasonObjectives, saveSeasonObjectives } from "@/lib/seasonObjectivesStorage";
+import type { SeasonObjective } from "@/lib/seasonObjectivesStorage";
+import { calcSquadAvgOvr } from "@/lib/playerContext";
 import type { TransferRecord } from "@/types/transfer";
 import { getMatches, updateMatch } from "@/lib/matchStorage";
 import type { MatchRecord } from "@/types/match";
@@ -43,6 +47,7 @@ import { DiretoriaView } from "./DiretoriaView";
 import { MomentosView } from "./MomentosView";
 import { SeasonSelectModal } from "./SeasonSelectModal";
 import { NewSeasonWizard } from "./NewSeasonWizard";
+import { SeasonObjectivesCard } from "./SeasonObjectivesCard";
 import { FinalizeSeasonModal } from "./FinalizeSeasonModal";
 import { SeasonSummaryView } from "./SeasonSummaryView";
 import { getSeasons, createSeason, activateSeason, generateSeasonId, updateSeasonLabel } from "@/lib/seasonStorage";
@@ -393,6 +398,8 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
   const [diretoriaUnread, setDiretoriaUnread] = useState(0);
   const [noticiasUnread, setNoticiasUnread] = useState(0);
   const [fanMoodScore, setFanMoodScore] = useState<number>(() => getFanMood(career.currentSeasonId ?? career.id));
+  const [boardMoodScore, setBoardMoodScore] = useState<number>(() => getBoardMood(career.currentSeasonId ?? career.id));
+  const [seasonObjectives, setSeasonObjectives] = useState<SeasonObjective[]>(() => getSeasonObjectives(career.currentSeasonId ?? career.id));
 
   const [bgGenStatus, setBgGenStatus] = useState<BgGenStatus>("idle");
   const [bgGenLabel, setBgGenLabel] = useState("");
@@ -453,6 +460,8 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
 
   useEffect(() => {
     setFanMoodScore(getFanMood(activeSeasonId));
+    setBoardMoodScore(getBoardMood(activeSeasonId));
+    setSeasonObjectives(getSeasonObjectives(activeSeasonId));
   }, [activeSeasonId, dbSynced]);
 
   useEffect(() => {
@@ -1247,7 +1256,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     }).catch(() => {});
   }, [activeSeasonId, career.id, career.clubName, career.clubLeague, career.clubDescription, career.projeto, career.season, career.competitions, seasons, handleNewPost]);
 
-  const runDiretoriaTriggers = useCallback(async (updatedMatches: MatchRecord[], currentAllPlayers: SquadPlayer[], isClassico?: boolean, rivalName?: string, fanMood?: number, fanMoodLabelStr?: string) => {
+  const runDiretoriaTriggers = useCallback(async (updatedMatches: MatchRecord[], currentAllPlayers: SquadPlayer[], isClassico?: boolean, rivalName?: string, fanMood?: number, fanMoodLabelStr?: string, boardMood?: number, boardMoodLabelStr?: string) => {
     const members = getMembers(career.id);
     if (members.length === 0) return;
 
@@ -1321,6 +1330,8 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
           rivalName: rivalName || undefined,
           fanMoodScore: fanMood ?? undefined,
           fanMoodLabel: fanMoodLabelStr ?? undefined,
+          boardMoodScore: boardMood ?? undefined,
+          boardMoodLabel: boardMoodLabelStr ?? undefined,
           lang: localStorage.getItem("fc_lang") ?? "pt",
         }),
       });
@@ -1460,6 +1471,27 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     setFanMoodScore(newMoodScore);
     const moodInfo = getFanMoodLabel(newMoodScore, lang);
 
+    const squadAvgOvr = calcSquadAvgOvr(allPlayers, getAllPlayerOverrides(career.id));
+    const currentBoardMood = getBoardMood(activeSeasonId);
+    const boardDelta = computeBoardMoodDelta({
+      myScore: match.myScore,
+      opponentScore: match.opponentScore,
+      isClassico,
+      matchCount: updatedMatches.length,
+      squadAvgOvr,
+      league: effectiveLeague,
+      projeto: career.projeto,
+      leaguePosition: leaguePos ? { position: leaguePos.position ?? 0, totalTeams: leaguePos.totalTeams ?? 20 } : null,
+    });
+    const newBoardMoodScore = Math.max(0, Math.min(100, currentBoardMood + boardDelta));
+    void setBoardMood(activeSeasonId, newBoardMoodScore);
+    setBoardMoodScore(newBoardMoodScore);
+    const boardMoodInfo = getBoardMoodLabel(newBoardMoodScore, lang);
+
+    const prevCrisisStreak = getBoardCrisisStreak(activeSeasonId);
+    const newCrisisStreak = newBoardMoodScore < 20 ? prevCrisisStreak + 1 : 0;
+    setBoardCrisisStreak(activeSeasonId, newCrisisStreak);
+
     const planLimits = getPlanLimits(userPlan);
 
     if (planLimits.autoNewsEnabled && getAutoNewsEnabled(career.id)) {
@@ -1484,7 +1516,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     }
 
     setTimeout(() => {
-      void runDiretoriaTriggers(updatedMatches, allPlayers, isClassico, rivalName, newMoodScore, `${moodInfo.emoji} ${moodInfo.label}`);
+      void runDiretoriaTriggers(updatedMatches, allPlayers, isClassico, rivalName, newMoodScore, `${moodInfo.emoji} ${moodInfo.label}`, newBoardMoodScore, `${boardMoodInfo.emoji} ${boardMoodInfo.label}`);
     }, 1500);
 
     if (planLimits.autoNewsEnabled && getAutoNewsEnabled(career.id)) {
@@ -1511,7 +1543,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     }
   }, [activeSeasonId, matches, allPlayers, seasons, activeSeasonLabel, career.id, career.clubName, career.clubLeague, career.clubTitles, career.clubDescription, career.projeto, career.competitions, runDiretoriaTriggers, handleNewPost]);
 
-  const handleNewSeasonConfirm = useCallback(async (label: string, competitions: string[]) => {
+  const handleNewSeasonConfirm = useCallback(async (label: string, competitions: string[], objectives: SeasonObjective[]) => {
     setCreatingNewSeason(true);
     try {
       const newId = generateSeasonId();
@@ -1554,6 +1586,19 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
         setMatches([]);
         setShowNewSeasonWizard(false);
         setShowSeasonModal(false);
+
+        const prevLeaguePos = getLeaguePosition(activeSeasonId);
+        const prevTop4 = prevLeaguePos && prevLeaguePos.position <= 4;
+        const initialBoardMood = prevTop4 ? 60 : 50;
+        void setBoardMood(newSeason.id, initialBoardMood);
+        setBoardMoodScore(initialBoardMood);
+
+        if (objectives.length > 0) {
+          saveSeasonObjectives(newSeason.id, objectives);
+          setSeasonObjectives(objectives);
+        } else {
+          setSeasonObjectives([]);
+        }
 
         if (oldLeague && newLeague && oldLeague !== newLeague && leagueTierLevel(oldLeague) !== leagueTierLevel(newLeague) && getPlanLimits(userPlan).autoNewsEnabled && getAutoNewsEnabled(career.id)) {
           setTimeout(() => {
@@ -1732,33 +1777,71 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
                 {(() => {
                   const moodInfo = getFanMoodLabel(fanMoodScore, lang);
                   const pct = Math.max(0, Math.min(100, fanMoodScore));
+                  const boardInfo = getBoardMoodLabel(boardMoodScore, lang);
+                  const bPct = Math.max(0, Math.min(100, boardMoodScore));
                   return (
-                    <div
-                      className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg"
-                      style={{
-                        background: `${moodInfo.color}14`,
-                        border: `1px solid ${moodInfo.color}30`,
-                      }}
-                      title={t.moodTooltip.replace("{label}", moodInfo.label).replace("{score}", String(fanMoodScore))}
-                    >
-                      <span className="text-sm flex-shrink-0">{moodInfo.emoji}</span>
-                      <span className="text-xs font-semibold flex-shrink-0" style={{ color: moodInfo.color }}>{moodInfo.label}</span>
+                    <div className="flex items-center gap-1.5">
                       <div
-                        className="relative flex-shrink-0 rounded-full overflow-hidden"
+                        className="flex flex-col gap-0.5 px-2.5 py-1.5 rounded-lg"
                         style={{
-                          width: 64,
-                          height: 5,
-                          background: "linear-gradient(to right, #ef4444 0%, #f97316 25%, #eab308 50%, #22c55e 75%, #16a34a 100%)",
+                          background: `${moodInfo.color}14`,
+                          border: `1px solid ${moodInfo.color}30`,
                         }}
+                        title={t.moodTooltip.replace("{label}", moodInfo.label).replace("{score}", String(fanMoodScore))}
                       >
-                        <div
-                          className="absolute inset-y-0 right-0"
-                          style={{
-                            width: `${100 - pct}%`,
-                            background: "rgba(0,0,0,0.72)",
-                            transition: "width 0.6s cubic-bezier(0.4,0,0.2,1)",
-                          }}
-                        />
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs flex-shrink-0" style={{ lineHeight: 1 }}>{moodInfo.emoji}</span>
+                          <span className="text-xs text-white/30 font-medium flex-shrink-0">{t.fanMoodLabel}</span>
+                          <span className="text-xs font-semibold flex-shrink-0" style={{ color: moodInfo.color }}>{moodInfo.label}</span>
+                          <div
+                            className="relative flex-shrink-0 rounded-full overflow-hidden"
+                            style={{
+                              width: 48,
+                              height: 4,
+                              background: "linear-gradient(to right, #ef4444 0%, #f97316 25%, #eab308 50%, #22c55e 75%, #16a34a 100%)",
+                            }}
+                          >
+                            <div
+                              className="absolute inset-y-0 right-0"
+                              style={{
+                                width: `${100 - pct}%`,
+                                background: "rgba(0,0,0,0.72)",
+                                transition: "width 0.6s cubic-bezier(0.4,0,0.2,1)",
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                      <div
+                        className="flex flex-col gap-0.5 px-2.5 py-1.5 rounded-lg"
+                        style={{
+                          background: `${boardInfo.color}14`,
+                          border: `1px solid ${boardInfo.color}30`,
+                        }}
+                        title={t.boardMoodTooltip.replace("{label}", boardInfo.label).replace("{score}", String(boardMoodScore))}
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs flex-shrink-0" style={{ lineHeight: 1 }}>{boardInfo.emoji}</span>
+                          <span className="text-xs text-white/30 font-medium flex-shrink-0">{t.boardMoodLabel}</span>
+                          <span className="text-xs font-semibold flex-shrink-0" style={{ color: boardInfo.color }}>{boardInfo.label}</span>
+                          <div
+                            className="relative flex-shrink-0 rounded-full overflow-hidden"
+                            style={{
+                              width: 48,
+                              height: 4,
+                              background: "linear-gradient(to right, #ef4444 0%, #f97316 25%, #eab308 50%, #22c55e 75%, #16a34a 100%)",
+                            }}
+                          >
+                            <div
+                              className="absolute inset-y-0 right-0"
+                              style={{
+                                width: `${100 - bPct}%`,
+                                background: "rgba(0,0,0,0.72)",
+                                transition: "width 0.6s cubic-bezier(0.4,0,0.2,1)",
+                              }}
+                            />
+                          </div>
+                        </div>
                       </div>
                     </div>
                   );
@@ -1983,20 +2066,27 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
               />
             )}
             {activeTab === "painel" && (
-              <PainelView
-                careerId={career.id}
-                seasonId={activeSeasonId}
-                clubName={career.clubName}
-                clubLogoUrl={logoUrl}
-                allPlayers={allTimeCareerPlayers}
-                squadSize={allPlayers.length}
-                season={displayLabel}
-                matches={matches}
-                transferCount={transfers.length}
-                competitions={activeSeason?.competitions ?? career.competitions}
-                isReadOnly={isReadOnly}
-                onNavigateToSettings={!isDemo ? () => setActiveTab("configuracoes") : undefined}
-              />
+              <>
+                {seasonObjectives.length > 0 && (
+                  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
+                    <SeasonObjectivesCard objectives={seasonObjectives} seasonLabel={displayLabel} />
+                  </div>
+                )}
+                <PainelView
+                  careerId={career.id}
+                  seasonId={activeSeasonId}
+                  clubName={career.clubName}
+                  clubLogoUrl={logoUrl}
+                  allPlayers={allTimeCareerPlayers}
+                  squadSize={allPlayers.length}
+                  season={displayLabel}
+                  matches={matches}
+                  transferCount={transfers.length}
+                  competitions={activeSeason?.competitions ?? career.competitions}
+                  isReadOnly={isReadOnly}
+                  onNavigateToSettings={!isDemo ? () => setActiveTab("configuracoes") : undefined}
+                />
+              </>
             )}
             {activeTab === "partidas" && (
               <PartidasView
