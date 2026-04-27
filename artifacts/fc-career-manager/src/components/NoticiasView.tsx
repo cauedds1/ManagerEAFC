@@ -2242,15 +2242,15 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
 
         {/* Sidebar — only on lg+ when there are posts */}
         {posts.length > 0 && (
-          <div className="flex flex-col gap-4 w-64 flex-shrink-0 sticky top-4">
+          <div className="flex flex-col gap-3 w-64 flex-shrink-0 sticky top-4 max-h-[calc(100vh-6rem)] overflow-y-auto pr-0.5" style={{ scrollbarWidth: "none" }}>
 
             {/* Por fonte */}
             <div
-              className="rounded-2xl p-4 flex flex-col gap-3"
+              className="rounded-2xl p-3 flex flex-col gap-2"
               style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
             >
               <p className="text-white/35 text-xs font-bold uppercase tracking-wider">{t.sidebarBySource}</p>
-              <div className="flex flex-col gap-2.5">
+              <div className="flex flex-col gap-1.5">
                 {sourceCounts.map(({ id, label, count }) => {
                   const cfg = SOURCE_SIDEBAR_COLOR[id] ?? CUSTOM_SIDEBAR_COLOR;
                   const active = filterSource === id;
@@ -2258,7 +2258,7 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
                     <button
                       key={id}
                       onClick={() => setFilterSource(active ? "all" : id)}
-                      className="flex flex-col gap-1.5 text-left transition-all duration-150 rounded-xl p-2.5 -mx-1"
+                      className="flex flex-col gap-1 text-left transition-all duration-150 rounded-lg px-2 py-1.5 -mx-0.5"
                       style={{
                         background: active ? cfg.bg : "transparent",
                         outline: "none",
@@ -2266,19 +2266,19 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
                     >
                       <div className="flex items-center justify-between">
                         <span
-                          className="text-xs font-semibold"
+                          className="text-xs font-semibold truncate max-w-[160px]"
                           style={{ color: active ? cfg.color : "rgba(255,255,255,0.5)" }}
                         >
                           {label}
                         </span>
                         <span
-                          className="text-xs font-bold tabular-nums"
+                          className="text-xs font-bold tabular-nums ml-1 flex-shrink-0"
                           style={{ color: active ? cfg.color : "rgba(255,255,255,0.3)" }}
                         >
                           {count}
                         </span>
                       </div>
-                      <div className="w-full h-1 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+                      <div className="w-full h-0.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
                         <div
                           className="h-full rounded-full transition-all duration-300"
                           style={{
@@ -2296,18 +2296,18 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
             {/* Por categoria */}
             {categoryCounts.length > 0 && (
               <div
-                className="rounded-2xl p-4 flex flex-col gap-3"
+                className="rounded-2xl p-3 flex flex-col gap-2"
                 style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
               >
                 <p className="text-white/35 text-xs font-bold uppercase tracking-wider">{t.sidebarByCategory}</p>
-                <div className="flex flex-col gap-1">
+                <div className="flex flex-col gap-0.5">
                   {categoryCounts.map(({ id, count }) => {
                     const active = filterCategory === id;
                     return (
                       <button
                         key={id}
                         onClick={() => setFilterCategory(active ? "all" : id)}
-                        className="flex items-center justify-between px-2.5 py-2 rounded-xl transition-all duration-150 text-left"
+                        className="flex items-center justify-between px-2 py-1.5 rounded-lg transition-all duration-150 text-left"
                         style={{
                           background: active
                             ? "rgba(var(--club-primary-rgb),0.14)"
@@ -2343,13 +2343,13 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
             {/* Com imagens */}
             {withImagesCount > 0 && (
               <div
-                className="rounded-2xl p-4 flex flex-col gap-3"
+                className="rounded-2xl p-3 flex flex-col gap-2"
                 style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
               >
                 <p className="text-white/35 text-xs font-bold uppercase tracking-wider">{t.filterSectionContent}</p>
                 <button
                   onClick={() => setFilterOnlyWithImages((v) => !v)}
-                  className="flex items-center justify-between px-2.5 py-2 rounded-xl transition-all duration-150 text-left w-full"
+                  className="flex items-center justify-between px-2 py-1.5 rounded-lg transition-all duration-150 text-left w-full"
                   style={{
                     background: filterOnlyWithImages
                       ? "rgba(var(--club-primary-rgb),0.14)"
