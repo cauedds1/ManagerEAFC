@@ -327,16 +327,16 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     (async () => {
       const initialSeasonId = await ensureCareerAndSeason1(career);
 
-      // Seed initial board/fan moods from AI-parsed ongoing career context (once per career)
+      // Seed initial board/fan moods from AI-parsed ongoing career context (once per career, persisted in localStorage)
       const moodSeedKey = `fc-mood-seeded-${career.id}`;
-      if (!sessionStorage.getItem(moodSeedKey)) {
+      if (!localStorage.getItem(moodSeedKey)) {
         if (career.initialBoardMood !== undefined && career.initialBoardMood !== null) {
           void setBoardMood(initialSeasonId, career.initialBoardMood);
         }
         if (career.initialFanMood !== undefined && career.initialFanMood !== null) {
           void setFanMood(initialSeasonId, career.initialFanMood);
         }
-        sessionStorage.setItem(moodSeedKey, "1");
+        localStorage.setItem(moodSeedKey, "1");
       }
 
       await syncCareerFromDb(career.id);
