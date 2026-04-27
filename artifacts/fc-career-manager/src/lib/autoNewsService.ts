@@ -344,7 +344,11 @@ export async function runPromotionRelegationNews(ctx: PromotionRelegationContext
       body: JSON.stringify(body),
     });
 
-    if (!res.ok) return;
+    if (!res.ok) {
+      const errBody = await res.text().catch(() => "(sem body)");
+      console.error(`[autoNews] Falha HTTP ${res.status} em runPromotionRelegationNews:`, errBody);
+      return;
+    }
 
     const data = (await res.json()) as AiResult;
 
@@ -377,7 +381,8 @@ export async function runPromotionRelegationNews(ctx: PromotionRelegationContext
 
     addPost(newSeasonId, post);
     if (onNewPost) onNewPost(post);
-  } catch {
+  } catch (err) {
+    console.error("[autoNews] Erro em runPromotionRelegationNews:", err instanceof Error ? err.message : err);
   }
 }
 
@@ -439,7 +444,11 @@ export async function runRumorNews(ctx: RumorContext): Promise<void> {
       body: JSON.stringify(body),
     });
 
-    if (!res.ok) return;
+    if (!res.ok) {
+      const errBody = await res.text().catch(() => "(sem body)");
+      console.error(`[autoNews] Falha HTTP ${res.status} em runRumorNews:`, errBody);
+      return;
+    }
 
     const data = (await res.json()) as AiResult & { customPortalId?: string };
 
@@ -473,6 +482,7 @@ export async function runRumorNews(ctx: RumorContext): Promise<void> {
     addPost(seasonId, post);
     setLastRumorMatchCount(seasonId, matchCount);
     if (onNewPost) onNewPost(post);
-  } catch {
+  } catch (err) {
+    console.error("[autoNews] Erro em runRumorNews:", err instanceof Error ? err.message : err);
   }
 }

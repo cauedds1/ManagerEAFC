@@ -844,11 +844,13 @@ REGRAS DE REPLIES — OBRIGATÓRIO:
 - NUNCA gere replies genéricos como "concordo" sozinhos — sempre adicione personalidade`;
 
   try {
-    const raw = await callNewsWithPlan(userPlan, systemPrompt, userPrompt, 3072);
+    const raw = await callNewsWithPlan(userPlan, systemPrompt, userPrompt, 6144);
 
     let parsed: Record<string, unknown>;
     try {
-      const jsonStr = raw.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```\s*$/i, "").trim();
+      const stripped = raw.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```\s*$/i, "").trim();
+      const jsonMatch = stripped.match(/\{[\s\S]*\}/);
+      const jsonStr = jsonMatch ? jsonMatch[0] : stripped;
       parsed = JSON.parse(jsonStr);
     } catch {
       res.status(500).json({ error: "Resposta inválida da IA", raw });
@@ -977,11 +979,13 @@ REGRAS DE REPLIES:
 - NUNCA gere replies genéricos — sempre adicione personalidade e contexto`;
 
   try {
-    const raw = await callNewsWithPlan(userPlan, systemPrompt, userPrompt, 3072);
+    const raw = await callNewsWithPlan(userPlan, systemPrompt, userPrompt, 6144);
 
     let parsed: Record<string, unknown>;
     try {
-      const jsonStr = raw.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```\s*$/i, "").trim();
+      const stripped = raw.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```\s*$/i, "").trim();
+      const jsonMatch = stripped.match(/\{[\s\S]*\}/);
+      const jsonStr = jsonMatch ? jsonMatch[0] : stripped;
       parsed = JSON.parse(jsonStr);
     } catch {
       res.status(500).json({ error: "Resposta inválida da IA", raw });
