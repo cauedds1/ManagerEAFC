@@ -14,6 +14,8 @@ import {
   setPlayerOverride,
 } from "@/lib/playerStatsStorage";
 import { getMomentos, type Momento } from "@/lib/momentoStorage";
+import { useLang } from "@/hooks/useLang";
+import { PLAYER_DETAIL, POSITION_DISPLAY } from "@/lib/i18n";
 
 const POS_STYLE: Record<PositionPtBr, { bg: string; color: string }> = {
   GOL: { bg: "rgba(245,158,11,0.18)",  color: "#f59e0b" },
@@ -108,6 +110,8 @@ export function PlayerDetailPanel({
   onRemove,
   isDemo,
 }: PlayerDetailPanelProps) {
+  const [lang] = useLang();
+  const t = PLAYER_DETAIL[lang];
   const [tab, setTab] = useState<Tab>("stats");
   const [confirmRemove, setConfirmRemove] = useState(false);
   const effectiveSeasonId = seasonId ?? careerId;
@@ -216,7 +220,7 @@ export function PlayerDetailPanel({
             <div className="flex-1 min-w-0">
               <h2 className="text-white text-lg font-black leading-tight truncate">{displayName}</h2>
               <p className="text-white/40 text-sm mt-0.5">
-                {player.age > 0 ? `${player.age} anos` : ""}
+                {player.age > 0 ? `${player.age} ${t.ageUnit}` : ""}
                 {displayNumber != null ? ` · #${displayNumber}` : ""}
               </p>
               <div className="flex items-center gap-2 mt-2 flex-wrap">
@@ -224,7 +228,7 @@ export function PlayerDetailPanel({
                   className="text-xs font-bold px-2.5 py-0.5 rounded-lg"
                   style={{ background: pos.bg, color: pos.color }}
                 >
-                  {displayPosition}
+                  {POSITION_DISPLAY[lang][displayPosition] ?? displayPosition}
                 </span>
                 {displayOverall != null && (
                   <span
@@ -239,7 +243,7 @@ export function PlayerDetailPanel({
                     className="text-xs font-semibold px-2.5 py-0.5 rounded-lg"
                     style={{ background: "rgba(96,165,250,0.12)", color: "#60a5fa" }}
                   >
-                    €{override.salary.toLocaleString("pt-BR")}k/sem
+                    €{override.salary.toLocaleString(t.dateLocale)}{t.editSalaryUnit}
                   </span>
                 )}
               </div>
@@ -259,9 +263,9 @@ export function PlayerDetailPanel({
         {/* ── Tabs ── */}
         <div className="flex gap-1 px-6 pt-4 pb-0 flex-shrink-0 overflow-x-auto">
           {([
-            { key: "stats",    label: "Estatísticas" },
-            ...(playerMomentos.length > 0 ? [{ key: "momentos", label: `Momentos (${playerMomentos.length})` }] : []),
-            ...(!isDemo ? [{ key: "edit", label: "Editar Jogador" }] : []),
+            { key: "stats",    label: t.tabStats },
+            ...(playerMomentos.length > 0 ? [{ key: "momentos", label: `${t.tabMomentos} (${playerMomentos.length})` }] : []),
+            ...(!isDemo ? [{ key: "edit", label: t.tabEdit }] : []),
           ] as { key: Tab; label: string }[]).map(({ key, label }) => (
             <button
               key={key}
@@ -297,8 +301,8 @@ export function PlayerDetailPanel({
                 {/* Humor / Torcida */}
                 <div className="grid grid-cols-2 gap-3">
                   {[
-                    { label: "Humor",   badge: MOOD_LABELS[stats.mood],      style: moodStyle },
-                    { label: "Torcida", badge: FAN_MORAL_LABELS[stats.fanMoral], style: fanStyle },
+                    { label: t.statMood, badge: MOOD_LABELS[stats.mood],          style: moodStyle },
+                    { label: t.statFans, badge: FAN_MORAL_LABELS[stats.fanMoral], style: fanStyle },
                   ].map(({ label, badge, style }) => (
                     <div
                       key={label}
@@ -323,26 +327,26 @@ export function PlayerDetailPanel({
                 >
                   {[
                     {
-                      label: "Nota Média",
+                      label: t.statAvgRating,
                       value: avgRating ?? "—",
                       color: ratingColor,
-                      note:  avgRating ? `${stats.recentRatings?.length ?? 0} jogos` : "sem dados",
+                      note:  avgRating ? `${stats.recentRatings?.length ?? 0} ${t.statGames}` : t.statNoData,
                     },
                     {
-                      label: "Partidas",
+                      label: t.statMatches,
                       value: totalMatches,
                       color: "rgba(255,255,255,0.85)",
-                      note:  `${stats.matchesAsStarter ?? 0}T · ${stats.matchesAsSubstitute ?? 0}B`,
+                      note:  `${stats.matchesAsStarter ?? 0}${t.statStarterAbbr} · ${stats.matchesAsSubstitute ?? 0}${t.statBenchAbbr}`,
                     },
                     {
-                      label: "Cartões",
+                      label: t.statCards,
                       value: (stats.yellowCards ?? 0) + (stats.redCards ?? 0) > 0
                         ? `${stats.yellowCards ?? 0}🟡 ${stats.redCards ?? 0}🔴`
                         : "—",
                       color: (stats.yellowCards ?? 0) >= 3 || (stats.redCards ?? 0) > 0
                         ? "#fb923c"
                         : "rgba(255,255,255,0.35)",
-                      note:  (stats.totalOwnGoals ?? 0) > 0 ? `${stats.totalOwnGoals} gol c.` : "limpo",
+                      note:  (stats.totalOwnGoals ?? 0) > 0 ? `${stats.totalOwnGoals} ${t.statOwnGoalAbbr}` : t.statClean,
                     },
                   ].map((item, i) => (
                     <div
@@ -361,13 +365,13 @@ export function PlayerDetailPanel({
 
                 {/* Editable stats */}
                 <div>
-                  <p className="text-white/25 text-xs font-semibold uppercase tracking-wider mb-3">Registrar</p>
+                  <p className="text-white/25 text-xs font-semibold uppercase tracking-wider mb-3">{t.logSection}</p>
                   <div className="grid grid-cols-4 gap-2.5">
                     {([
-                      { label: "Gols",    field: "goals"            as const },
-                      { label: "Assist.", field: "assists"          as const },
-                      { label: "Titular", field: "matchesAsStarter" as const },
-                      { label: "Minutos", field: "totalMinutes"     as const },
+                      { label: t.logGoals,   field: "goals"            as const },
+                      { label: t.logAssists, field: "assists"          as const },
+                      { label: t.logStarter, field: "matchesAsStarter" as const },
+                      { label: t.logMinutes, field: "totalMinutes"     as const },
                     ]).map(({ label, field }) => (
                       <div
                         key={field}
@@ -404,9 +408,9 @@ export function PlayerDetailPanel({
                     style={{ background: "rgba(239,68,68,0.04)", border: "1px solid rgba(239,68,68,0.12)" }}
                   >
                     <div className="min-w-0">
-                      <p className="text-xs font-semibold text-red-400/80">Remover do Elenco</p>
+                      <p className="text-xs font-semibold text-red-400/80">{t.removeTitle}</p>
                       <p className="text-[10px] text-white/25 leading-snug mt-0.5">
-                        {confirmRemove ? "Confirma a remoção? Essa ação não pode ser desfeita." : "Remove o jogador da visualização do elenco."}
+                        {confirmRemove ? t.removeConfirmDesc : t.removeDesc}
                       </p>
                     </div>
                     {confirmRemove ? (
@@ -416,14 +420,14 @@ export function PlayerDetailPanel({
                           className="px-2.5 py-1.5 rounded-lg text-[11px] font-semibold text-white/50 transition-all hover:text-white/80"
                           style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.09)" }}
                         >
-                          Cancelar
+                          {t.btnCancel}
                         </button>
                         <button
                           onClick={() => { onRemove(); onClose(); }}
                           className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-red-400 transition-all hover:opacity-80"
                           style={{ background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.3)" }}
                         >
-                          Confirmar
+                          {t.btnConfirm}
                         </button>
                       </div>
                     ) : (
@@ -432,7 +436,7 @@ export function PlayerDetailPanel({
                         className="flex-shrink-0 px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-red-400/70 transition-all hover:text-red-400"
                         style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.18)" }}
                       >
-                        Remover
+                        {t.btnRemove}
                       </button>
                     )}
                   </div>
@@ -449,7 +453,7 @@ export function PlayerDetailPanel({
                         <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                       </svg>
                     </div>
-                    <p className="text-white/40 text-sm">Nenhum momento com {displayName}</p>
+                    <p className="text-white/40 text-sm">{t.noMomentsWith} {displayName}</p>
                   </div>
                 ) : (
                   playerMomentos.map((m) => (
@@ -475,7 +479,7 @@ export function PlayerDetailPanel({
                       </div>
                       <button
                         type="button"
-                        title="Ver na aba Momentos"
+                        title={t.momentoViewTooltip}
                         onClick={() => {
                           document.dispatchEvent(
                             new CustomEvent("fc:open-momentos", { detail: { momentoId: m.id } })
@@ -498,14 +502,14 @@ export function PlayerDetailPanel({
             {tab === "edit" && (
               <div className="flex flex-col gap-4">
                 <LabeledInput
-                  label="Nome exibido"
+                  label={t.editName}
                   value={editName}
                   onChange={setEditName}
                   placeholder={player.name}
                 />
 
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-white/40 text-xs font-semibold tracking-wide uppercase">Foto do jogador</label>
+                  <label className="text-white/40 text-xs font-semibold tracking-wide uppercase">{t.editPhoto}</label>
                   <div className="flex gap-3 items-start">
                     <div
                       className="flex-shrink-0 rounded-xl overflow-hidden flex items-center justify-center"
@@ -530,7 +534,7 @@ export function PlayerDetailPanel({
                         type="url"
                         value={editPhoto}
                         onChange={(e) => { setEditPhoto(e.target.value); setPhotoPreviewErr(false); }}
-                        placeholder="https://... (URL da foto)"
+                        placeholder={t.editPhotoPlaceholder}
                         className="w-full px-3 py-2.5 rounded-xl text-white text-sm font-semibold focus:outline-none transition-colors"
                         style={{
                           background: "rgba(255,255,255,0.05)",
@@ -540,7 +544,7 @@ export function PlayerDetailPanel({
                         onBlur={(e) => { e.currentTarget.style.border = "1px solid rgba(255,255,255,0.09)"; }}
                       />
                       {photoPreviewErr && editPhoto.trim() && (
-                        <p className="text-[11px] text-red-400/70">URL inválida ou imagem não carregou</p>
+                        <p className="text-[11px] text-red-400/70">{t.editPhotoInvalid}</p>
                       )}
                       {editPhoto.trim() && !photoPreviewErr && (
                         <button
@@ -548,7 +552,7 @@ export function PlayerDetailPanel({
                           onClick={() => { setEditPhoto(""); setPhotoPreviewErr(false); }}
                           className="self-start text-[11px] text-white/30 hover:text-white/60 transition-colors"
                         >
-                          Remover foto
+                          {t.editPhotoRemove}
                         </button>
                       )}
                     </div>
@@ -557,7 +561,7 @@ export function PlayerDetailPanel({
 
                 <div className="grid grid-cols-3 gap-3">
                   <LabeledInput
-                    label="Número"
+                    label={t.editNumber}
                     value={editNumber}
                     onChange={setEditNumber}
                     type="number"
@@ -565,7 +569,7 @@ export function PlayerDetailPanel({
                     max={99}
                   />
                   <LabeledInput
-                    label="Overall"
+                    label={t.editOverall}
                     value={editOverall}
                     onChange={setEditOverall}
                     type="number"
@@ -573,7 +577,7 @@ export function PlayerDetailPanel({
                     max={99}
                   />
                   <LabeledInput
-                    label="Sal. (k/sem)"
+                    label={t.editSalary}
                     value={editSalary}
                     onChange={setEditSalary}
                     type="number"
@@ -591,14 +595,14 @@ export function PlayerDetailPanel({
                   if (allEntries.length < 2) return null;
                   const fmtDate = (ts: number) => {
                     const d = new Date(ts);
-                    return d.toLocaleDateString("pt-BR", { month: "short", year: "2-digit" }).replace(". de ", "/").replace(".", "");
+                    return d.toLocaleDateString(t.dateLocale, { month: "short", year: "2-digit" }).replace(". de ", "/").replace(".", "");
                   };
                   return (
                     <div
                       className="p-3 rounded-xl flex flex-col gap-2"
                       style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
                     >
-                      <p className="text-white/30 text-[10px] font-bold uppercase tracking-wider">Evolução de OVR</p>
+                      <p className="text-white/30 text-[10px] font-bold uppercase tracking-wider">{t.editOvrHistory}</p>
                       <div className="flex items-center gap-1 flex-wrap">
                         {allEntries.map((entry, i) => {
                           const isLast = i === allEntries.length - 1;
@@ -632,7 +636,7 @@ export function PlayerDetailPanel({
                 })()}
 
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-white/40 text-xs font-semibold tracking-wide uppercase">Posição</label>
+                  <label className="text-white/40 text-xs font-semibold tracking-wide uppercase">{t.editPosition}</label>
                   <div className="grid grid-cols-4 gap-2">
                     {(["GOL","DEF","MID","ATA"] as PositionPtBr[]).map((p) => (
                       <button
@@ -644,7 +648,7 @@ export function PlayerDetailPanel({
                           : { background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.35)", border: "1px solid rgba(255,255,255,0.07)" }
                         }
                       >
-                        {p}
+                        {POSITION_DISPLAY[lang][p] ?? p}
                       </button>
                     ))}
                   </div>
@@ -670,7 +674,7 @@ export function PlayerDetailPanel({
                   className="flex-1 py-3 rounded-xl text-sm font-semibold text-white/55 transition-all hover:text-white/80"
                   style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
                 >
-                  Cancelar
+                  {t.btnCancelEdit}
                 </button>
                 {isOvrChange ? (
                   <>
@@ -679,14 +683,14 @@ export function PlayerDetailPanel({
                       className="flex-1 py-3 rounded-xl text-sm font-bold transition-all hover:opacity-90"
                       style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.14)", color: "rgba(255,255,255,0.7)" }}
                     >
-                      Editar
+                      {t.btnEdit}
                     </button>
                     <button
                       onClick={() => saveEdit(true)}
                       className="flex-1 py-3 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90"
                       style={{ background: "var(--club-gradient)", boxShadow: "0 4px 16px rgba(var(--club-primary-rgb),0.25)" }}
                     >
-                      Atualizar OVR ↑
+                      {t.btnUpdateOvr}
                     </button>
                   </>
                 ) : (
@@ -695,7 +699,7 @@ export function PlayerDetailPanel({
                     className="flex-1 py-3 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90"
                     style={{ background: "var(--club-gradient)", boxShadow: "0 4px 16px rgba(var(--club-primary-rgb),0.25)" }}
                   >
-                    Salvar Alterações
+                    {t.btnSave}
                   </button>
                 )}
               </>
@@ -706,7 +710,7 @@ export function PlayerDetailPanel({
               className="flex-1 py-3 rounded-xl text-sm font-semibold text-white/50 transition-all hover:text-white/80"
               style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.07)" }}
             >
-              Fechar
+              {t.btnClose}
             </button>
           )}
         </div>

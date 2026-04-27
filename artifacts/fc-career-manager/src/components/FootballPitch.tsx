@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { SquadPlayer, PositionPtBr, FormationGroup, FORMATION_GROUP } from "@/lib/squadCache";
 import { FormationKey, getFormationPositions, DEFAULT_FORMATION } from "@/lib/formations";
+import { useLang } from "@/hooks/useLang";
+import { POSITION_DISPLAY } from "@/lib/i18n";
 
 interface PitchPlayerData {
   id: number;
@@ -97,6 +99,7 @@ function PlayerCircle({
   highlighted?: boolean;
   dimmed?: boolean;
 }) {
+  const [lang] = useLang();
   const rating = player.rating ?? 0;
   const [photoLoaded, setPhotoLoaded] = useState(false);
   const colors = POS_COLOR[player.positionPtBr] ?? POS_COLOR.MID;
@@ -164,7 +167,7 @@ function PlayerCircle({
           <text x={x} y={y + radius - 2} textAnchor="middle" dominantBaseline="middle"
             fill={rating > 0 ? ratingText(rating) : colors.text}
             fontSize={7} fontWeight="900" fontFamily="Inter, sans-serif">
-            {rating > 0 ? rating.toFixed(1) : player.positionPtBr}
+            {rating > 0 ? rating.toFixed(1) : (POSITION_DISPLAY[lang][player.positionPtBr] ?? player.positionPtBr)}
           </text>
         </>
       ) : (
