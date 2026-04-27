@@ -4553,6 +4553,46 @@ export const PLAYER_DETAIL: Record<Lang, Record<string, string>> = {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Mood label translations
+// ─────────────────────────────────────────────────────────────────────────────
+export const MOOD_LABELS_I18N: Record<Lang, Record<string, string>> = {
+  pt: {
+    excelente:    "Excelente",
+    bom:          "Bom",
+    neutro:       "Neutro",
+    insatisfeito: "Insatisfeito",
+    irritado:     "Irritado",
+  },
+  en: {
+    excelente:    "Excellent",
+    bom:          "Good",
+    neutro:       "Neutral",
+    insatisfeito: "Unhappy",
+    irritado:     "Angry",
+  },
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fan moral label translations
+// ─────────────────────────────────────────────────────────────────────────────
+export const FAN_MORAL_LABELS_I18N: Record<Lang, Record<string, string>> = {
+  pt: {
+    idolo:      "Ídolo",
+    querido:    "Querido",
+    neutro:     "Neutro",
+    contestado: "Contestado",
+    vaiado:     "Vaiado",
+  },
+  en: {
+    idolo:      "Idol",
+    querido:    "Beloved",
+    neutro:     "Neutral",
+    contestado: "Disputed",
+    vaiado:     "Booed",
+  },
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Position label translations (GOL/DEF/MID/ATA → language-specific display)
 // ─────────────────────────────────────────────────────────────────────────────
 export const POSITION_DISPLAY: Record<Lang, Record<string, string>> = {

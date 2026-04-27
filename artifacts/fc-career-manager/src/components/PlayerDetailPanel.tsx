@@ -3,9 +3,7 @@ import type { SquadPlayer, PositionPtBr } from "@/lib/squadCache";
 import { migratePositionOverride } from "@/lib/squadCache";
 import type { PlayerOverride, OvrHistoryEntry } from "@/types/playerStats";
 import {
-  MOOD_LABELS,
   MOOD_COLORS,
-  FAN_MORAL_LABELS,
   FAN_MORAL_COLORS,
 } from "@/types/playerStats";
 import {
@@ -15,7 +13,7 @@ import {
 } from "@/lib/playerStatsStorage";
 import { getMomentos, type Momento } from "@/lib/momentoStorage";
 import { useLang } from "@/hooks/useLang";
-import { PLAYER_DETAIL, POSITION_DISPLAY } from "@/lib/i18n";
+import { PLAYER_DETAIL, POSITION_DISPLAY, MOOD_LABELS_I18N, FAN_MORAL_LABELS_I18N } from "@/lib/i18n";
 
 const POS_STYLE: Record<PositionPtBr, { bg: string; color: string }> = {
   GOL: { bg: "rgba(245,158,11,0.18)",  color: "#f59e0b" },
@@ -301,8 +299,8 @@ export function PlayerDetailPanel({
                 {/* Humor / Torcida */}
                 <div className="grid grid-cols-2 gap-3">
                   {[
-                    { label: t.statMood, badge: MOOD_LABELS[stats.mood],          style: moodStyle },
-                    { label: t.statFans, badge: FAN_MORAL_LABELS[stats.fanMoral], style: fanStyle },
+                    { label: t.statMood, badge: MOOD_LABELS_I18N[lang][stats.mood] ?? stats.mood,         style: moodStyle },
+                    { label: t.statFans, badge: FAN_MORAL_LABELS_I18N[lang][stats.fanMoral] ?? stats.fanMoral, style: fanStyle },
                   ].map(({ label, badge, style }) => (
                     <div
                       key={label}
