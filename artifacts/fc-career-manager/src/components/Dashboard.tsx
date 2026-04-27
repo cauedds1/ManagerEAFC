@@ -24,7 +24,7 @@ import { fetchPortalPhotos, type PortalPhotos } from "@/lib/portalPhotosStorage"
 import { addPost as addNewsPost, getPosts as getNoticiaPosts, getPostsEn as getNoticiaPostsEn, generatePostId, generateCommentId } from "@/lib/noticiaStorage";
 import { getFanMood, setFanMood, computeFanMoodDelta, getFanMoodLabel } from "@/lib/fanMoodStorage";
 import { getBoardMood, setBoardMood, computeBoardMoodDelta, getBoardMoodLabel, getBoardCrisisStreak, setBoardCrisisStreak } from "@/lib/boardMoodStorage";
-import { getSeasonObjectives, saveSeasonObjectives, markObjectiveFailed, computeCupFailureSeverity, severityBoardPenalty } from "@/lib/seasonObjectivesStorage";
+import { getSeasonObjectives, saveSeasonObjectives, markObjectiveFailed, markObjectiveAchieved, computeCupFailureSeverity, isEliminatedBeforeTarget, severityBoardPenalty } from "@/lib/seasonObjectivesStorage";
 import type { SeasonObjective } from "@/lib/seasonObjectivesStorage";
 import { calcSquadAvgOvr } from "@/lib/playerContext";
 import type { TransferRecord } from "@/types/transfer";
@@ -48,6 +48,7 @@ import { MomentosView } from "./MomentosView";
 import { SeasonSelectModal } from "./SeasonSelectModal";
 import { NewSeasonWizard } from "./NewSeasonWizard";
 import { SeasonObjectivesCard } from "./SeasonObjectivesCard";
+import { DefineObjectivesModal } from "./DefineObjectivesModal";
 import { FinalizeSeasonModal } from "./FinalizeSeasonModal";
 import { SeasonSummaryView } from "./SeasonSummaryView";
 import { getSeasons, createSeason, activateSeason, generateSeasonId, updateSeasonLabel } from "@/lib/seasonStorage";
@@ -268,6 +269,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
   const [activeSeasonLabel, setActiveSeasonLabel] = useState<string>(career.season);
   const [showSeasonModal, setShowSeasonModal] = useState(false);
   const [showNewSeasonWizard, setShowNewSeasonWizard] = useState(false);
+  const [showDefineObjectivesPrompt, setShowDefineObjectivesPrompt] = useState(false);
   const [creatingNewSeason, setCreatingNewSeason] = useState(false);
   const [showFinalizeModal, setShowFinalizeModal] = useState(false);
   const [finalizeTargetSeasonId, setFinalizeTargetSeasonId] = useState<string | null>(null);
@@ -463,6 +465,18 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     setBoardMoodScore(getBoardMood(activeSeasonId));
     setSeasonObjectives(getSeasonObjectives(activeSeasonId));
   }, [activeSeasonId, dbSynced]);
+
+  // First-visit objectives prompt: show when active season has no objectives and user hasn't been prompted
+  useEffect(() => {
+    if (!dbSynced || isDemo) return;
+    const promptKey = `fc-objectives-prompted-${activeSeasonId}`;
+    const alreadyPrompted = localStorage.getItem(promptKey) === "1";
+    if (alreadyPrompted) return;
+    const objs = getSeasonObjectives(activeSeasonId);
+    if (objs.length === 0) {
+      setShowDefineObjectivesPrompt(true);
+    }
+  }, [activeSeasonId, dbSynced, isDemo]);
 
   useEffect(() => {
     fetchPortalPhotos(career.id).then(setPortalPhotos).catch(() => {});
@@ -1256,7 +1270,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     }).catch(() => {});
   }, [activeSeasonId, career.id, career.clubName, career.clubLeague, career.clubDescription, career.projeto, career.season, career.competitions, seasons, handleNewPost]);
 
-  const runDiretoriaTriggers = useCallback(async (updatedMatches: MatchRecord[], currentAllPlayers: SquadPlayer[], isClassico?: boolean, rivalName?: string, fanMood?: number, fanMoodLabelStr?: string, boardMood?: number, boardMoodLabelStr?: string) => {
+  const runDiretoriaTriggers = useCallback(async (updatedMatches: MatchRecord[], currentAllPlayers: SquadPlayer[], isClassico?: boolean, rivalName?: string, fanMood?: number, fanMoodLabelStr?: string, boardMood?: number, boardMoodLabelStr?: string, boardCrisisStreakVal?: number) => {
     const members = getMembers(career.id);
     if (members.length === 0) return;
 
@@ -1332,7 +1346,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
           fanMoodLabel: fanMoodLabelStr ?? undefined,
           boardMoodScore: boardMood ?? undefined,
           boardMoodLabel: boardMoodLabelStr ?? undefined,
-          boardCrisisStreak: getBoardCrisisStreak(activeSeasonId),
+          boardCrisisStreak: boardCrisisStreakVal ?? undefined,
           lang: localStorage.getItem("fc_lang") ?? "pt",
         }),
       });
@@ -1477,49 +1491,61 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     const boardDelta = computeBoardMoodDelta({
       myScore: match.myScore,
       opponentScore: match.opponentScore,
-      isClassico,
       matchCount: updatedMatches.length,
       squadAvgOvr,
       league: effectiveLeague,
       projeto: career.projeto,
       leaguePosition: leaguePos ? { position: leaguePos.position ?? 0, totalTeams: leaguePos.totalTeams ?? 20 } : null,
     });
-    const newBoardMoodScore = Math.max(0, Math.min(100, currentBoardMood + boardDelta));
-    void setBoardMood(activeSeasonId, newBoardMoodScore);
-    setBoardMoodScore(newBoardMoodScore);
-    const boardMoodInfo = getBoardMoodLabel(newBoardMoodScore, lang);
 
-    const prevCrisisStreak = getBoardCrisisStreak(activeSeasonId);
-    const newCrisisStreak = newBoardMoodScore < 20 ? prevCrisisStreak + 1 : 0;
-    setBoardCrisisStreak(activeSeasonId, newCrisisStreak);
-
-    // Cup objective failure detection
-    const isCupLoss = match.myScore < match.opponentScore || (match.penaltyShootout && match.penaltyShootout.myScore < match.penaltyShootout.opponentScore);
-    if (isCupLoss) {
+    // Cup objective evaluation — must run before setting final board score
+    let cupObjectivePenalty = 0;
+    const isCupLoss = match.myScore < match.opponentScore ||
+      (match.penaltyShootout != null && match.penaltyShootout.myScore < match.penaltyShootout.opponentScore);
+    if (isCupLoss || match.myScore > match.opponentScore) {
       const currentObjectives = getSeasonObjectives(activeSeasonId);
       const pendingCupObjectives = currentObjectives.filter(
-        (o) => o.status === "pending" && o.type === "cup_round" && o.competition && match.tournament.toLowerCase().includes(o.competition.toLowerCase()),
+        (o) => o.status === "pending" && o.type === "cup_round" &&
+          o.competition && match.tournament.toLowerCase().includes(o.competition.toLowerCase()),
       );
       if (pendingCupObjectives.length > 0) {
-        let updatedBoardScore = newBoardMoodScore;
+        let latestObjs = currentObjectives;
         for (const obj of pendingCupObjectives) {
-          const severity = computeCupFailureSeverity(
-            obj.target,
-            match.stage,
-            squadAvgOvr,
-            null,
-          );
-          const penalty = severityBoardPenalty(severity);
-          const updatedObjs = markObjectiveFailed(activeSeasonId, obj.id, severity, updatedMatches.length);
-          setSeasonObjectives(updatedObjs);
-          updatedBoardScore = Math.max(0, Math.min(100, updatedBoardScore - penalty));
+          if (isCupLoss) {
+            if (isEliminatedBeforeTarget(match.stage, obj.target)) {
+              // Eliminated before target round — failed
+              // Use goal difference as opponent-strength proxy for severity mitigation
+              const goalDiff = match.opponentScore - match.myScore;
+              const opponentStronger = goalDiff >= 2 || (squadAvgOvr != null && goalDiff >= 1);
+              const opponentOvrProxy = opponentStronger ? (squadAvgOvr != null ? squadAvgOvr + 8 : null) : null;
+              const severity = computeCupFailureSeverity(obj.target, match.stage, squadAvgOvr, opponentOvrProxy);
+              const penalty = severityBoardPenalty(severity);
+              latestObjs = markObjectiveFailed(activeSeasonId, obj.id, severity, updatedMatches.length);
+              cupObjectivePenalty += penalty;
+            } else {
+              // Eliminated at or beyond target round — objective achieved
+              latestObjs = markObjectiveAchieved(activeSeasonId, obj.id, updatedMatches.length);
+            }
+          } else {
+            // Win: if current stage equals or exceeds target, mark achieved
+            if (!isEliminatedBeforeTarget(match.stage, obj.target)) {
+              latestObjs = markObjectiveAchieved(activeSeasonId, obj.id, updatedMatches.length);
+            }
+          }
         }
-        if (updatedBoardScore !== newBoardMoodScore) {
-          void setBoardMood(activeSeasonId, updatedBoardScore);
-          setBoardMoodScore(updatedBoardScore);
-        }
+        setSeasonObjectives(latestObjs);
       }
     }
+
+    // Compute final board score in a single path: base delta minus any cup objective penalties
+    const finalBoardMoodScore = Math.max(0, Math.min(100, currentBoardMood + boardDelta - cupObjectivePenalty));
+    void setBoardMood(activeSeasonId, finalBoardMoodScore);
+    setBoardMoodScore(finalBoardMoodScore);
+    const boardMoodInfo = getBoardMoodLabel(finalBoardMoodScore, lang);
+
+    const prevCrisisStreak = getBoardCrisisStreak(activeSeasonId);
+    const newCrisisStreak = finalBoardMoodScore < 20 ? prevCrisisStreak + 1 : 0;
+    setBoardCrisisStreak(activeSeasonId, newCrisisStreak);
 
     const planLimits = getPlanLimits(userPlan);
 
@@ -1545,7 +1571,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     }
 
     setTimeout(() => {
-      void runDiretoriaTriggers(updatedMatches, allPlayers, isClassico, rivalName, newMoodScore, `${moodInfo.emoji} ${moodInfo.label}`, newBoardMoodScore, `${boardMoodInfo.emoji} ${boardMoodInfo.label}`);
+      void runDiretoriaTriggers(updatedMatches, allPlayers, isClassico, rivalName, newMoodScore, `${moodInfo.emoji} ${moodInfo.label}`, finalBoardMoodScore, `${boardMoodInfo.emoji} ${boardMoodInfo.label}`, newCrisisStreak);
     }, 1500);
 
     if (planLimits.autoNewsEnabled && getAutoNewsEnabled(career.id)) {
@@ -1716,6 +1742,22 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
           onConfirm={handleNewSeasonConfirm}
           onCancel={() => setShowNewSeasonWizard(false)}
           isLoading={creatingNewSeason}
+        />
+      )}
+      {showDefineObjectivesPrompt && (
+        <DefineObjectivesModal
+          seasonLabel={activeSeasonLabel}
+          currentCompetitions={activeSeason?.competitions ?? career.competitions}
+          onConfirm={(objectives) => {
+            saveSeasonObjectives(activeSeasonId, objectives);
+            setSeasonObjectives(objectives);
+            localStorage.setItem(`fc-objectives-prompted-${activeSeasonId}`, "1");
+            setShowDefineObjectivesPrompt(false);
+          }}
+          onSkip={() => {
+            localStorage.setItem(`fc-objectives-prompted-${activeSeasonId}`, "1");
+            setShowDefineObjectivesPrompt(false);
+          }}
         />
       )}
       <div className="flex-1 min-h-0 overflow-y-auto">

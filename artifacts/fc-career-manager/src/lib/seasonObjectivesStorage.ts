@@ -105,6 +105,13 @@ export function computeCupFailureSeverity(
   return severity;
 }
 
+export function isEliminatedBeforeTarget(stage: string, target: string): boolean {
+  const stageIdx = normalizeRound(stage);
+  const targetIdx = normalizeRound(target);
+  if (stageIdx < 0 || targetIdx < 0) return false;
+  return stageIdx < targetIdx;
+}
+
 export function severityBoardPenalty(severity: ObjectiveSeverity): number {
   if (severity === "major") return 15;
   if (severity === "moderate") return 10;

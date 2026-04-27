@@ -72,15 +72,15 @@ export interface BoardMoodDeltaParams {
 }
 
 export function computeBoardMoodDelta(params: BoardMoodDeltaParams): number {
-  const { myScore, opponentScore, isClassico, matchCount, squadAvgOvr, league, projeto, leaguePosition, objectivePenalty } = params;
+  const { myScore, opponentScore, matchCount, squadAvgOvr, league, projeto, leaguePosition, objectivePenalty } = params;
   const isWin = myScore > opponentScore;
   const isLoss = myScore < opponentScore;
 
-  // Step 1: base delta
+  // Step 1: base delta (spec: win +4, draw +1, loss -6; no classico modifier for board)
   let delta = 0;
-  if (isWin) delta = isClassico ? 6 : 4;
+  if (isWin) delta = 4;
   else if (!isLoss) delta = 1; // draw
-  else delta = isClassico ? -8 : -6;
+  else delta = -6;
 
   // Step 2: expectation factor (losses only)
   if (isLoss && squadAvgOvr != null && league) {
