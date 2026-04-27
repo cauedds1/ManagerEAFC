@@ -43,9 +43,13 @@ import { getAllPlayerOverrides } from "@/lib/playerStatsStorage";
 import { getFinanceiroSettings, computeFinancialSnapshot } from "@/lib/financeiroStorage";
 import { getUserPlan, getPlanLimits } from "@/lib/userPlan";
 import { UpgradePrompt } from "@/components/UpgradePrompt";
+import { fetchPortals } from "@/lib/customPortalStorage";
+import { addPost as addNewsPost, generatePostId, generateCommentId } from "@/lib/noticiaStorage";
+import type { NewsPost } from "@/types/noticias";
 
 interface DiretoriaViewProps {
   career: Career;
+  seasonId: string;
   matches: MatchRecord[];
   transfers: TransferRecord[];
   squadSize: number;
@@ -55,6 +59,7 @@ interface DiretoriaViewProps {
   userPlan?: "free" | "pro" | "ultra";
   freeMissionsDone?: boolean;
   isDemo?: boolean;
+  onNewPost?: (post: NewsPost) => void;
 }
 
 const DEMO_MEMBER_ID = "member-mnvr58hs-udxh";
@@ -485,7 +490,7 @@ function CreateMemberModal({ career, membersCount, onClose, onCreated, effective
   );
 }
 
-export function DiretoriaView({ career, matches, transfers, squadSize, allPlayers = [], effectiveLeague, currentCompetitions = [], userPlan, freeMissionsDone, isDemo }: DiretoriaViewProps) {
+export function DiretoriaView({ career, seasonId, matches, transfers, squadSize, allPlayers = [], effectiveLeague, currentCompetitions = [], userPlan, freeMissionsDone, isDemo, onNewPost }: DiretoriaViewProps) {
   const resolvedPlan = userPlan ?? getUserPlan();
   const isFreePlan = resolvedPlan === "free";
   const effectivePlan = resolvedPlan === "free" && freeMissionsDone ? "pro" : resolvedPlan;
@@ -704,6 +709,75 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
     };
   }, [career, matches, transfers, squadSize, effectiveLeague, currentCompetitions]);
 
+  const triggerLeak = useCallback(async (
+    contentPreview: string,
+    memberName: string,
+    meetingReason?: string,
+    chance = 0.12,
+  ) => {
+    if (!onNewPost) return;
+    if (Math.random() >= chance) return;
+    const customPortals = await fetchPortals(career.id);
+    const jornalistico = customPortals.find((p) => p.tone === "jornalistico");
+    if (!jornalistico) return;
+    const headers = getAiHeaders();
+    const res = await fetch("/api/noticias/generate-leak", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        clubName: career.clubName,
+        season: career.season,
+        clubLeague: effectiveLeague || undefined,
+        currentCompetitions: currentCompetitions.length ? currentCompetitions : undefined,
+        notificationPreview: contentPreview,
+        memberName,
+        meetingReason,
+        customPortal: {
+          id: jornalistico.id,
+          name: jornalistico.name,
+          description: jornalistico.description,
+          tone: jornalistico.tone,
+        },
+        lang: localStorage.getItem("fc_lang") ?? "pt",
+      }),
+    }).catch(() => null);
+    if (!res || !res.ok) return;
+    const leakData = await res.json() as {
+      source: string; sourceHandle: string; sourceName: string;
+      title?: string; content: string;
+      likes: number; commentsCount: number; sharesCount: number;
+      comments: Array<{ username: string; displayName: string; content: string; likes: number; personality?: string }>;
+    };
+    const leakPost: NewsPost = {
+      id: generatePostId(),
+      careerId: career.id,
+      source: (leakData.source as NewsPost["source"]) ?? "custom",
+      sourceHandle: leakData.sourceHandle,
+      sourceName: leakData.sourceName,
+      title: leakData.title,
+      content: leakData.content,
+      likes: leakData.likes ?? 0,
+      commentsCount: leakData.commentsCount ?? 0,
+      sharesCount: leakData.sharesCount ?? 0,
+      comments: (leakData.comments ?? []).map((c) => ({
+        id: generateCommentId(),
+        username: c.username,
+        displayName: c.displayName,
+        content: c.content,
+        likes: c.likes ?? 0,
+        personality: c.personality as NewsPost["comments"][number]["personality"],
+        replies: [],
+        createdAt: Date.now(),
+      })),
+      category: "geral",
+      createdAt: Date.now(),
+      postTag: "leak",
+      customPortalId: jornalistico.id,
+    };
+    addNewsPost(seasonId, leakPost);
+    onNewPost(leakPost);
+  }, [career.id, career.clubName, career.season, effectiveLeague, currentCompetitions, seasonId, onNewPost]);
+
   const handleOpenChat = (memberId: string) => {
     const pendingNotif = notifications.find((n) => n.memberId === memberId);
     if (pendingNotif?.preview.trim()) {
@@ -820,6 +894,8 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
       const newMood = validateMood(data.newMood);
       updateMember(career.id, selectedMemberId, { mood: newMood });
       setMembers((prev) => prev.map((m) => m.id === selectedMemberId ? { ...m, mood: newMood } : m));
+      const speakerName = members.find((m) => m.id === selectedMemberId)?.name ?? "Diretor";
+      void triggerLeak(data.reply, speakerName);
     } catch (e) {
       const isAuthErr = (e as { isAuthErr?: boolean })?.isAuthErr;
       const errText = isAuthErr ? t.errChatAuth : t.errChatConnection;
@@ -964,6 +1040,11 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
     setMeetingResponding(false);
     setSuggestClose(didSuggestClose);
     saveMeeting(career.id, currentMeeting);
+    const lastCharMsg = [...currentMeeting.messages].reverse().find((m) => m.role === "character");
+    if (lastCharMsg && failCount === 0) {
+      const speakerName = lastCharMsg.memberName ?? members[0]?.name ?? "Diretor";
+      void triggerLeak(lastCharMsg.content, speakerName, currentMeeting.reason, 0.15);
+    }
   };
 
   const handleCloseMeeting = () => {

@@ -2270,6 +2270,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
             {activeTab === "diretoria" && (
               <DiretoriaView
                 career={career}
+                seasonId={activeSeasonId}
                 matches={matches}
                 transfers={transfers}
                 squadSize={allPlayers.length}
@@ -2279,6 +2280,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
                 userPlan={userPlan}
                 freeMissionsDone={allMissionsForPlanDone(career.id, "free")}
                 isDemo={isDemo}
+                onNewPost={handleNewPost}
               />
             )}
             {activeTab === "momentos" && (
