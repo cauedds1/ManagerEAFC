@@ -1355,7 +1355,7 @@ export function DiretoriaView({ career, seasonId, matches, transfers, squadSize,
                       className="flex-1 flex items-center gap-3 px-4 py-3 text-left min-w-0"
                     >
                       <div className="relative flex-shrink-0">
-                        <AvatarCircle member={member} size={38} />
+                        <AvatarCircle member={member} size={52} />
                         {notif && (
                           <span
                             className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full"
