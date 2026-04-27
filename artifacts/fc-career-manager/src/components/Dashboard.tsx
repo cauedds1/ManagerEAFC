@@ -2012,14 +2012,14 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
           style={{ background: "rgba(var(--club-primary-rgb), 0.06)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", borderBottom: "1px solid var(--surface-border)" }}
         >
           <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
-            <div className="flex overflow-x-auto scrollbar-none snap-x w-full" style={{ WebkitOverflowScrolling: "touch" }}>
+            <div className="flex overflow-x-auto scrollbar-none snap-x w-full justify-evenly" style={{ WebkitOverflowScrolling: "touch" }}>
               {isFinalized && (() => {
                 const active = activeTab === "resumo";
                 return (
                   <button
                     key="resumo"
                     onClick={() => handleTabChange("resumo")}
-                    className="relative flex items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-3.5 text-xs sm:text-sm font-semibold transition-all duration-200 whitespace-nowrap flex-1 snap-start"
+                    className="relative flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-3.5 text-xs sm:text-sm font-semibold transition-all duration-200 whitespace-nowrap flex-shrink-0 snap-start"
                     style={{ color: active ? "var(--club-primary)" : "rgba(255,255,255,0.35)" }}
                   >
                     <span style={{ color: active ? "var(--club-primary)" : "rgba(255,255,255,0.3)" }}>
@@ -2047,7 +2047,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
                   <button
                     key={tab.id}
                     onClick={() => handleTabChange(tab.id)}
-                    className="relative flex items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-3.5 text-xs sm:text-sm font-semibold transition-all duration-200 whitespace-nowrap flex-1 snap-start"
+                    className="relative flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-3.5 text-xs sm:text-sm font-semibold transition-all duration-200 whitespace-nowrap flex-shrink-0 snap-start"
                     style={{
                       color: active ? "var(--club-primary)" : "rgba(255,255,255,0.35)",
                     }}
