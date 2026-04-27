@@ -647,14 +647,20 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
     }
     setConversations(convs);
     setNotifications(getNotifications(career.id));
-    refreshClosedMeetings();
+
+    const allMeetings = getMeetings(career.id);
+    setClosedMeetings(allMeetings.filter((m) => !!m.closedAt).sort((a, b) => (b.closedAt ?? 0) - (a.closedAt ?? 0)));
+    const activeMeetingRecord = allMeetings.find((m) => !m.closedAt);
+    if (activeMeetingRecord) {
+      setActiveMeeting(activeMeetingRecord);
+      setPanel("meeting");
+    }
 
     const pendingMeeting = getPendingMeetingTrigger(career.id);
     if (pendingMeeting) {
       setMeetingTrigger(pendingMeeting);
-      setPendingMeetingTrigger(career.id, null);
     }
-  }, [career.id, refreshClosedMeetings, isDemo, lang]);
+  }, [career.id, isDemo, lang]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -729,6 +735,8 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
     setPendingSystemMeetingReason(systemReason ?? null);
     setMeetingTitleDraft(systemReason ?? "");
     setShowMeetingTitleModal(true);
+    setMeetingTrigger(null);
+    setPendingMeetingTrigger(career.id, null);
   };
 
   const handleConfirmMeetingTitle = () => {
@@ -1117,7 +1125,7 @@ export function DiretoriaView({ career, matches, transfers, squadSize, allPlayer
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
             <button
-              onClick={() => setMeetingTrigger(null)}
+              onClick={() => { setMeetingTrigger(null); setPendingMeetingTrigger(career.id, null); }}
               className="text-white/30 hover:text-white/60 transition-colors p-1"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
