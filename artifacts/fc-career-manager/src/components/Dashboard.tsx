@@ -453,7 +453,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
 
   useEffect(() => {
     setFanMoodScore(getFanMood(activeSeasonId));
-  }, [activeSeasonId]);
+  }, [activeSeasonId, dbSynced]);
 
   useEffect(() => {
     fetchPortalPhotos(career.id).then(setPortalPhotos).catch(() => {});
