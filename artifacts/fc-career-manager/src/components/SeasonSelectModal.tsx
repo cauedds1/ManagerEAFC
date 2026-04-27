@@ -1,6 +1,9 @@
 import { useState, useRef, useEffect } from "react";
 import type { Season } from "@/types/career";
+import type { MatchRecord } from "@/types/match";
 import { getMatches } from "@/lib/matchStorage";
+import { sessionGet } from "@/lib/sessionStore";
+import { syncSeasonFromDb } from "@/lib/dbSync";
 import { useLang } from "@/hooks/useLang";
 import { SEASON_SELECT_MODAL } from "@/lib/i18n";
 
@@ -14,8 +17,30 @@ interface SeasonSelectModalProps {
   onClose: () => void;
 }
 
+const matchesCacheKey = (seasonId: string) => `fc-career-manager-matches-${seasonId}`;
+
 function SeasonStats({ seasonId, t }: { seasonId: string; t: Record<string, string> }) {
-  const matches = getMatches(seasonId);
+  const alreadyInCache = sessionGet(matchesCacheKey(seasonId)) !== null;
+  const [matches, setMatches] = useState<MatchRecord[]>(() => getMatches(seasonId));
+  const [loading, setLoading] = useState(!alreadyInCache);
+
+  useEffect(() => {
+    if (alreadyInCache) return;
+    let cancelled = false;
+    syncSeasonFromDb(seasonId)
+      .then(() => {
+        if (!cancelled) {
+          setMatches(getMatches(seasonId));
+          setLoading(false);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [seasonId, alreadyInCache]);
+
+  if (loading) return <span className="text-xs text-white/25">···</span>;
   const wins = matches.filter((m) => m.myScore > m.opponentScore).length;
   const draws = matches.filter((m) => m.myScore === m.opponentScore).length;
   const losses = matches.filter((m) => m.myScore < m.opponentScore).length;
