@@ -45,6 +45,7 @@ interface ClubContext {
   netSpend?: number;
   projeto?: string;
   currentCompetitions?: string[];
+  backstory?: string;
 }
 
 interface MemberProfile {
@@ -164,11 +165,15 @@ function buildClubContext(ctx: ClubContext): string {
     ? `\nPROJETO DO TÉCNICO: "${ctx.projeto}" — use esse contexto para avaliar o desempenho e cobranças internas.`
     : "";
 
+  const backstoryLine = ctx.backstory?.trim()
+    ? `\nHISTÓRICO DA CARREIRA (contexto narrativo — use para enriquecer o tom e a personalidade das respostas, referências a conquistas passadas, momentos difíceis ou promessas feitas): "${ctx.backstory.trim().slice(0, 400)}"`
+    : "";
+
   const competitionsLine = `\nCOMPETIÇÕES DA TEMPORADA: ${ctx.currentCompetitions && ctx.currentCompetitions.length > 0 ? ctx.currentCompetitions.join(", ") : ctx.clubLeague}`;
 
   return `CLUBE: ${ctx.clubName} | LIGA: ${ctx.clubLeague} (${tier}) | TEMP: ${ctx.season}${competitionsLine}
 TÉCNICO: ${ctx.coachName} | ELENCO: ${ctx.squadSize} jogadores | CONTRATAÇÕES: ${ctx.transfersCount}
-TABELA: ${leagueStr}${streakAlert}${finStr}${projetoLine}
+TABELA: ${leagueStr}${streakAlert}${finStr}${projetoLine}${backstoryLine}
 ÚLTIMAS PARTIDAS:
 ${matchStr}`;
 }

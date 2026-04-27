@@ -706,6 +706,7 @@ export function DiretoriaView({ career, seasonId, matches, transfers, squadSize,
       wageRoom: finSettings.salaryBudget > 0 ? finSnapshot.wageRoom : undefined,
       netSpend: finSettings.transferBudget > 0 ? finSnapshot.netSpend : undefined,
       projeto: career.projeto,
+      backstory: career.backstory || undefined,
     };
   }, [career, matches, transfers, squadSize, effectiveLeague, currentCompetitions]);
 
