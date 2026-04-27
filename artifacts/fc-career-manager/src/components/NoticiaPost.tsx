@@ -527,19 +527,15 @@ export function NoticiaPost({ post, portalPhotos, customPortals, onUpdateImage, 
       {/* Post image */}
       {displayImageUrl && (
         <div
-          className="overflow-hidden relative"
-          style={{ maxHeight: post.imageFit === "contain" ? undefined : 400 }}
+          className="overflow-hidden relative w-full"
+          style={{ aspectRatio: "1/1", background: "rgba(0,0,0,0.3)" }}
         >
           <img
             src={displayImageUrl.startsWith("http") || displayImageUrl.startsWith("blob:") ? displayImageUrl : `/api/storage${displayImageUrl}`}
             alt="Post"
             onClick={() => setLightboxOpen(true)}
-            className={`w-full cursor-zoom-in ${post.imageFit === "contain" ? "object-contain" : "object-cover"}`}
-            style={{
-              maxHeight: post.imageFit === "contain" ? undefined : 400,
-              display: "block",
-              background: post.imageFit === "contain" ? "rgba(0,0,0,0.4)" : undefined,
-            }}
+            className={`w-full h-full cursor-zoom-in ${post.imageFit === "contain" ? "object-contain" : "object-cover"}`}
+            style={{ display: "block" }}
             loading="lazy"
           />
         </div>
