@@ -2135,7 +2135,7 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
       )}
 
       {/* Source filter tabs */}
-      <div className="flex gap-2 mb-6 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
+      <div className="flex gap-2 mb-3 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
         {sourceFilters.map((f) => (
           <button
             key={f.id}
@@ -2177,6 +2177,30 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
           </button>
         )}
       </div>
+
+      {/* Mobile-only: category filter pills (lg+ uses sidebar) */}
+      {categoryCounts.length > 0 && (
+        <div className="flex gap-2 mb-4 overflow-x-auto pb-1 lg:hidden" style={{ scrollbarWidth: "none" }}>
+          {categoryCounts.map(({ id, count }) => {
+            const active = filterCategory === id;
+            return (
+              <button
+                key={id}
+                onClick={() => setFilterCategory(active ? "all" : id)}
+                className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all duration-150"
+                style={{
+                  background: active ? "rgba(var(--club-primary-rgb),0.2)" : "rgba(255,255,255,0.05)",
+                  color: active ? "var(--club-primary)" : "rgba(255,255,255,0.35)",
+                  border: `1px solid ${active ? "rgba(var(--club-primary-rgb),0.35)" : "rgba(255,255,255,0.07)"}`,
+                }}
+              >
+                {catLabels[id as NewsCategory] ?? CATEGORY_LABELS[id as NewsCategory]}
+                <span className="opacity-50 tabular-nums">{count}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* Feed + Sidebar layout */}
       <div className="flex flex-col lg:flex-row items-start gap-6">
@@ -2242,7 +2266,7 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
 
         {/* Sidebar — only on lg+ when there are posts */}
         {posts.length > 0 && (
-          <div className="flex flex-col gap-3 w-64 flex-shrink-0 sticky top-4 max-h-[calc(100vh-6rem)] overflow-y-auto pr-0.5" style={{ scrollbarWidth: "none" }}>
+          <div className="hidden lg:flex flex-col gap-3 w-64 flex-shrink-0 sticky top-4 max-h-[calc(100vh-6rem)] overflow-y-auto pr-0.5" style={{ scrollbarWidth: "thin", scrollbarColor: "rgba(255,255,255,0.1) transparent" }}>
 
             {/* Por fonte */}
             <div
