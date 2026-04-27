@@ -24,7 +24,7 @@ import { fetchPortalPhotos, type PortalPhotos } from "@/lib/portalPhotosStorage"
 import { addPost as addNewsPost, getPosts as getNoticiaPosts, getPostsEn as getNoticiaPostsEn, generatePostId, generateCommentId } from "@/lib/noticiaStorage";
 import { getFanMood, setFanMood, computeFanMoodDelta, getFanMoodLabel } from "@/lib/fanMoodStorage";
 import { getBoardMood, setBoardMood, computeBoardMoodDelta, getBoardMoodLabel, getBoardCrisisStreak, setBoardCrisisStreak, getLeagueExpectedOvr, isInGracePeriod } from "@/lib/boardMoodStorage";
-import { getSeasonObjectives, saveSeasonObjectives, markObjectiveFailed, markObjectiveAchieved, computeCupFailureSeverity, isEliminatedBeforeTarget, severityBoardPenalty } from "@/lib/seasonObjectivesStorage";
+import { getSeasonObjectives, saveSeasonObjectives, markObjectiveFailed, markObjectiveAchieved, computeCupFailureSeverity, isEliminatedBeforeTarget, severityBoardPenalty, isLeaguePositionAchieved } from "@/lib/seasonObjectivesStorage";
 import type { SeasonObjective } from "@/lib/seasonObjectivesStorage";
 import { calcSquadAvgOvr } from "@/lib/playerContext";
 import type { TransferRecord } from "@/types/transfer";
@@ -1545,6 +1545,23 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
       }
     }
 
+    // League position objective evaluation — check if current standing already meets the target
+    if (leaguePos) {
+      const currentObjsForLeague = getSeasonObjectives(activeSeasonId);
+      const pendingLeagueObjs = currentObjsForLeague.filter(
+        (o) => o.status === "pending" && o.type === "league_position",
+      );
+      if (pendingLeagueObjs.length > 0) {
+        let latestLeagueObjs = currentObjsForLeague;
+        for (const obj of pendingLeagueObjs) {
+          if (isLeaguePositionAchieved(obj.target, leaguePos.position ?? 0, leaguePos.totalTeams)) {
+            latestLeagueObjs = markObjectiveAchieved(activeSeasonId, obj.id, updatedMatches.length);
+          }
+        }
+        setSeasonObjectives(latestLeagueObjs);
+      }
+    }
+
     // Apply grace period: all penalties (match delta + objective failures) halved in first 8 matches
     const gracePeriod = isInGracePeriod(updatedMatches.length);
     const effectivePenalty = gracePeriod && cupObjectivePenalty > 0
@@ -1661,7 +1678,29 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
         // Cup titles are not reliably stored separately from objective achievement,
         // so the bonus is restricted to verifiable league finish.
         const prevTop4OrChampion = prevLeaguePos && prevLeaguePos.position <= 4;
-        const initialBoardMood = prevTop4OrChampion ? 60 : 50;
+
+        // Evaluate any pending league_position objectives from the ending season
+        let endOfSeasonLeaguePenalty = 0;
+        const endingSeasonObjs = getSeasonObjectives(activeSeasonId);
+        const pendingLeagueEndObjs = endingSeasonObjs.filter(
+          (o) => o.status === "pending" && o.type === "league_position",
+        );
+        if (pendingLeagueEndObjs.length > 0) {
+          for (const obj of pendingLeagueEndObjs) {
+            const achieved = prevLeaguePos
+              ? isLeaguePositionAchieved(obj.target, prevLeaguePos.position ?? 0, prevLeaguePos.totalTeams)
+              : false;
+            if (achieved) {
+              markObjectiveAchieved(activeSeasonId, obj.id, matches.length);
+            } else {
+              const severity = obj.failSeverity ?? "moderate";
+              markObjectiveFailed(activeSeasonId, obj.id, severity, matches.length);
+              endOfSeasonLeaguePenalty += severityBoardPenalty(severity);
+            }
+          }
+        }
+
+        const initialBoardMood = Math.max(0, Math.min(100, (prevTop4OrChampion ? 60 : 50) - endOfSeasonLeaguePenalty));
         void setBoardMood(newSeason.id, initialBoardMood);
         setBoardMoodScore(initialBoardMood);
 

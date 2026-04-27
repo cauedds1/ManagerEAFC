@@ -112,6 +112,41 @@ export function isEliminatedBeforeTarget(stage: string, target: string): boolean
   return stageIdx < targetIdx;
 }
 
+export function parseLeaguePositionThreshold(target: string, totalTeams?: number): number | null {
+  const t = target.toLowerCase().trim();
+
+  if (
+    t.includes("campeão") || t.includes("campeon") || t.includes("champion") ||
+    t.includes("título") || t.includes("titulo") || t.includes("title") ||
+    t === "1" || t === "1st" || t === "1°" || t === "1º" || t === "primeiro" || t === "first"
+  ) {
+    return 1;
+  }
+
+  if (t.includes("rebaixar") || t.includes("relega") || t.includes("survival") || t.includes("sobrev")) {
+    return totalTeams != null ? totalTeams - 3 : null;
+  }
+
+  if (t.includes("pódio") || t.includes("podio") || t.includes("podium")) return 3;
+
+  const topMatch = t.match(/top[\s\-]*(\d+)/i);
+  if (topMatch) return parseInt(topMatch[1], 10);
+
+  const placeMatch = t.match(/^(\d+)(?:st|nd|rd|th|°|º)/);
+  if (placeMatch) return parseInt(placeMatch[1], 10);
+
+  const numMatch = t.match(/^(\d+)$/);
+  if (numMatch) return parseInt(numMatch[1], 10);
+
+  return null;
+}
+
+export function isLeaguePositionAchieved(target: string, currentPosition: number, totalTeams?: number): boolean {
+  const threshold = parseLeaguePositionThreshold(target, totalTeams);
+  if (threshold == null) return false;
+  return currentPosition <= threshold;
+}
+
 export function severityBoardPenalty(severity: ObjectiveSeverity): number {
   if (severity === "major") return 15;
   if (severity === "moderate") return 10;
