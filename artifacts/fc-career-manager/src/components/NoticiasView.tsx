@@ -2266,7 +2266,7 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
 
         {/* Sidebar — only on lg+ when there are posts */}
         {posts.length > 0 && (
-          <div className="hidden lg:flex flex-col gap-3 w-64 flex-shrink-0 sticky top-4 max-h-[calc(100vh-6rem)] overflow-y-auto pr-0.5" style={{ scrollbarWidth: "thin", scrollbarColor: "rgba(255,255,255,0.1) transparent" }}>
+          <div className="flex flex-col gap-3 w-64 flex-shrink-0 lg:sticky lg:top-4 max-h-[70vh] lg:max-h-[calc(100vh-6rem)] overflow-y-auto" style={{ scrollbarWidth: "thin", scrollbarColor: "rgba(255,255,255,0.1) transparent" }}>
 
             {/* Por fonte */}
             <div
