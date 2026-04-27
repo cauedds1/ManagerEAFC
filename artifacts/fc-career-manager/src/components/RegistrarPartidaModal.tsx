@@ -1358,19 +1358,34 @@ export function RegistrarPartidaModal({
     });
   }, []);
 
+  const POS_ORDER: Record<string, number> = { GOL: 0, DEF: 1, MID: 2, ATA: 3 };
+
+  const insertSortedByPosition = useCallback((ids: number[], newId: number, players: SquadPlayer[]): number[] => {
+    const newPos = POS_ORDER[players.find((p) => p.id === newId)?.positionPtBr ?? "MID"] ?? 2;
+    let insertAt = ids.length;
+    for (let i = ids.length - 1; i >= 0; i--) {
+      const pos = POS_ORDER[players.find((p) => p.id === ids[i])?.positionPtBr ?? "MID"] ?? 2;
+      if (pos <= newPos) { insertAt = i + 1; break; }
+      if (i === 0) insertAt = 0;
+    }
+    const result = [...ids];
+    result.splice(insertAt, 0, newId);
+    return result;
+  }, []);
+
   const addPlayer = useCallback((player: SquadPlayer, asSub: boolean) => {
     const isSub = asSub;
     setDraft((prev) => {
       if (prev.starterIds.includes(player.id) || prev.subIds.includes(player.id)) return prev;
       const nextStats = { ...prev.playerStats, [player.id]: mkDefault(isSub) };
       if (isSub) {
-        return { ...prev, subIds: [...prev.subIds, player.id], playerStats: nextStats };
+        return { ...prev, subIds: insertSortedByPosition(prev.subIds, player.id, allPlayers), playerStats: nextStats };
       } else {
-        return { ...prev, starterIds: [...prev.starterIds, player.id], playerStats: nextStats };
+        return { ...prev, starterIds: insertSortedByPosition(prev.starterIds, player.id, allPlayers), playerStats: nextStats };
       }
     });
     setPickerMode(null);
-  }, []);
+  }, [allPlayers, insertSortedByPosition]);
 
   const removePlayer = useCallback((playerId: number) => {
     setDraft((prev) => {
@@ -1391,11 +1406,11 @@ export function RegistrarPartidaModal({
       if (!player) return prev;
       return {
         ...prev,
-        subIds: [...prev.subIds, playerId],
+        subIds: insertSortedByPosition(prev.subIds, playerId, allPlayers),
         playerStats: { ...prev.playerStats, [playerId]: mkDefault(true) },
       };
     });
-  }, [allPlayers]);
+  }, [allPlayers, insertSortedByPosition]);
 
   const handleAutoFill = useCallback(() => {
     const saved = getCustomLineup(careerId);
