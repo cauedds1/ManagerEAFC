@@ -77,6 +77,7 @@ export const DOMESTIC_LEAGUES: LeagueInfo[] = [
   { id: 113, name: "Allsvenskan",         country: "Suecia",         flag: "🇸🇪", type: "domestic", logo: leaguelogo(113) },
   { id: 103, name: "Eliteserien",         country: "Noruega",        flag: "🇳🇴", type: "domestic", logo: leaguelogo(103) },
   { id: 119, name: "Superliga",           displayName: "Superliga Dinamarca", country: "Dinamarca", flag: "🇩🇰", type: "domestic", logo: leaguelogo(119) },
+  { id: 203, name: "Süper Lig",           country: "Turquia",        flag: "🇹🇷", type: "domestic", logo: leaguelogo(203) },
 ];
 
 // International league IDs from API-Football (confirmed in pre-testing, season=2025):
@@ -307,8 +308,27 @@ export const APIFOOTBALL_TO_FC26_NAME: Record<string, string> = {
 
   // Turkish Süper Lig
   "Besiktas":                    "Beşiktaş",
+  "Beşiktaş":                    "Beşiktaş",
   "Istanbul Basaksehir":         "İstanbul Başakşehir",
+  "Başakşehir":                  "İstanbul Başakşehir",
   "Adana Demirspor":             "Adana Demirspor",
+  "Galatasaray":                 "Galatasaray",
+  "Fenerbahçe":                  "Fenerbahçe",
+  "Trabzonspor":                 "Trabzonspor",
+  "Alanyaspor":                  "Alanyaspor",
+  "Antalyaspor":                 "Antalyaspor",
+  "Kasımpaşa":                   "Kasımpaşa",
+  "Kayserispor":                 "Kayserispor",
+  "Konyaspor":                   "Konyaspor",
+  "Gaziantep FK":                "Gaziantep FK",
+  "Rizespor":                    "Rizespor",
+  "Göztepe":                     "Göztepe",
+  "Eyüpspor":                    "Eyüpspor",
+  "Fatih Karagümrük":            "Fatih Karagümrük",
+  "Samsunspor":                  "Samsunspor",
+  "Gençlerbirliği S.K.":         "Gençlerbirliği",
+  "Gençlerbirliği":              "Gençlerbirliği",
+  "Kocaelispor":                 "Kocaelispor",
 
   // Saudi Pro League
   "Al-Shabab":                   "Al Shabab",

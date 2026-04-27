@@ -34,6 +34,7 @@ const LEAGUE_MAP: Record<number, string> = {
   113: "Allsvenskan",
   103: "Eliteserien",
   119: "Superliga",
+  203: "Süper Lig",
   2: "UEFA Champions League", 3: "UEFA Europa League",
   848: "UEFA Conference League", 13: "CONMEBOL Libertadores",
 };

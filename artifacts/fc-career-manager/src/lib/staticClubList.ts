@@ -125,11 +125,25 @@ export const STATIC_CLUBS: StaticClub[] = [
   { id: 246, name: "Celtic",              logo: `${CDN}/246.png`,  league: "Scottish Premiership" },
   { id: 247, name: "Rangers",             logo: `${CDN}/247.png`,  league: "Scottish Premiership" },
 
-  // --- Turkey ---
-  { id: 645, name: "Galatasaray",         logo: `${CDN}/645.png`,  league: "Süper Lig" },
-  { id: 641, name: "Fenerbahçe",          logo: `${CDN}/641.png`,  league: "Süper Lig" },
-  { id: 642, name: "Beşiktaş",            logo: `${CDN}/642.png`,  league: "Süper Lig" },
-  { id: 643, name: "Trabzonspor",         logo: `${CDN}/643.png`,  league: "Süper Lig" },
+  // --- Turkey / Süper Lig ---
+  { id: 645,  name: "Galatasaray",        logo: `${CDN}/645.png`,  league: "Süper Lig" },
+  { id: 611,  name: "Fenerbahçe",         logo: `${CDN}/611.png`,  league: "Süper Lig" },
+  { id: 549,  name: "Beşiktaş",           logo: `${CDN}/549.png`,  league: "Süper Lig" },
+  { id: 998,  name: "Trabzonspor",        logo: `${CDN}/998.png`,  league: "Süper Lig" },
+  { id: 564,  name: "Başakşehir",         logo: `${CDN}/564.png`,  league: "Süper Lig" },
+  { id: 996,  name: "Alanyaspor",         logo: `${CDN}/996.png`,  league: "Süper Lig" },
+  { id: 1005, name: "Antalyaspor",        logo: `${CDN}/1005.png`, league: "Süper Lig" },
+  { id: 1004, name: "Kasımpaşa",          logo: `${CDN}/1004.png`, league: "Süper Lig" },
+  { id: 1001, name: "Kayserispor",        logo: `${CDN}/1001.png`, league: "Süper Lig" },
+  { id: 607,  name: "Konyaspor",          logo: `${CDN}/607.png`,  league: "Süper Lig" },
+  { id: 3573, name: "Gaziantep FK",       logo: `${CDN}/3573.png`, league: "Süper Lig" },
+  { id: 1007, name: "Rizespor",           logo: `${CDN}/1007.png`, league: "Süper Lig" },
+  { id: 994,  name: "Göztepe",            logo: `${CDN}/994.png`,  league: "Süper Lig" },
+  { id: 3588, name: "Eyüpspor",           logo: `${CDN}/3588.png`, league: "Süper Lig" },
+  { id: 3589, name: "Fatih Karagümrük",   logo: `${CDN}/3589.png`, league: "Süper Lig" },
+  { id: 3603, name: "Samsunspor",         logo: `${CDN}/3603.png`, league: "Süper Lig" },
+  { id: 997,  name: "Gençlerbirliği",     logo: `${CDN}/997.png`,  league: "Süper Lig" },
+  { id: 7411, name: "Kocaelispor",        logo: `${CDN}/7411.png`, league: "Süper Lig" },
 
   // --- Russia ---
   { id: 370, name: "Spartak Moscow",      logo: `${CDN}/370.png`,  league: "Russian Premier League" },
