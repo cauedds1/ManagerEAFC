@@ -4541,7 +4541,7 @@ export const PLAYER_DETAIL: Record<Lang, Record<string, string>> = {
     editPosition: "Position",
     editOvrHistory: "OVR History",
     btnCancelEdit: "Cancel",
-    btnEdit: "Save",
+    btnEdit: "Edit",
     btnUpdateOvr: "Update OVR ↑",
     btnSave: "Save Changes",
     btnClose: "Close",
