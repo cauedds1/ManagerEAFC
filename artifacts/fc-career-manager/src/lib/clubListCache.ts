@@ -8,7 +8,7 @@ import { DOMESTIC_LEAGUES, INTERNATIONAL_LEAGUES } from "./footballApiMap";
 //   13 = CONMEBOL Libertadores (47 teams)
 // ID 14 (CONMEBOL Sudamericana) is SKIPPED — returns European U19 teams (bad data).
 
-export const CACHE_KEY = "fc-career-manager-clubs-v2";
+export const CACHE_KEY = "fc-career-manager-clubs-v3";
 const CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
 interface CacheData {
