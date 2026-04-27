@@ -1341,41 +1341,56 @@ export function DiretoriaView({ career, seasonId, matches, transfers, squadSize,
                 const isActive = panel === "chat" && selectedMemberId === member.id;
                 const mood = MOOD_CONFIG[member.mood];
                 return (
-                  <button
+                  <div
                     key={member.id}
-                    onClick={() => handleOpenChat(member.id)}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-left transition-all"
+                    className="flex items-center group transition-all"
                     style={{
                       background: isActive ? "rgba(var(--club-primary-rgb),0.1)" : "transparent",
                       borderBottom: "1px solid rgba(255,255,255,0.04)",
                       borderLeft: isActive ? "2px solid var(--club-primary)" : "2px solid transparent",
                     }}
                   >
-                    <div className="relative flex-shrink-0">
-                      <AvatarCircle member={member} size={38} />
-                      {notif && (
-                        <span
-                          className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full"
-                          style={{ background: "#f87171", border: "2px solid var(--surface-bg, #0f172a)" }}
-                        />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-1">
-                        <span className="text-white text-xs font-bold truncate">{member.name}</span>
-                        <span
-                          className="flex-shrink-0 flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
-                          style={{ background: `${mood.color}18`, color: mood.color, border: `1px solid ${mood.color}22` }}
-                        >
-                          {mood.emoji} {t[MOOD_LABEL_KEYS[member.mood]] ?? mood.label}
-                        </span>
+                    <button
+                      onClick={() => handleOpenChat(member.id)}
+                      className="flex-1 flex items-center gap-3 px-4 py-3 text-left min-w-0"
+                    >
+                      <div className="relative flex-shrink-0">
+                        <AvatarCircle member={member} size={38} />
+                        {notif && (
+                          <span
+                            className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full"
+                            style={{ background: "#f87171", border: "2px solid var(--surface-bg, #0f172a)" }}
+                          />
+                        )}
                       </div>
-                      <span className="text-white/35 text-[10px] truncate block">{member.roleLabel}</span>
-                      {notif && (
-                        <span className="text-white/40 text-[10px] truncate block italic">{notif.preview}</span>
-                      )}
-                    </div>
-                  </button>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-1">
+                          <span className="text-white text-xs font-bold truncate">{member.name}</span>
+                          <span
+                            className="flex-shrink-0 flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
+                            style={{ background: `${mood.color}18`, color: mood.color, border: `1px solid ${mood.color}22` }}
+                          >
+                            {mood.emoji} {t[MOOD_LABEL_KEYS[member.mood]] ?? mood.label}
+                          </span>
+                        </div>
+                        <span className="text-white/35 text-[10px] truncate block">{member.roleLabel}</span>
+                        {notif && (
+                          <span className="text-white/40 text-[10px] truncate block italic">{notif.preview}</span>
+                        )}
+                      </div>
+                    </button>
+                    {!isDemo && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleOpenEdit(member.id); }}
+                        className="flex-shrink-0 pr-3 opacity-0 group-hover:opacity-100 transition-opacity p-1"
+                        title={t.btnEditMember}
+                      >
+                        <svg className="w-3.5 h-3.5 text-white/50 hover:text-white/90" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
                 );
               })}
             </div>
@@ -1431,7 +1446,7 @@ export function DiretoriaView({ career, seasonId, matches, transfers, squadSize,
               {!isDemo && (
               <button
                 onClick={() => handleOpenEdit(selectedMember.id)}
-                className="text-white/20 hover:text-white/60 transition-colors p-1"
+                className="text-white/40 hover:text-white/80 transition-colors p-1"
                 title={t.btnEditMember}
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
