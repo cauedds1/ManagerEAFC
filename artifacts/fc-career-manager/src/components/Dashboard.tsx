@@ -23,7 +23,7 @@ import { fetchPortals } from "@/lib/customPortalStorage";
 import { fetchPortalPhotos, type PortalPhotos } from "@/lib/portalPhotosStorage";
 import { addPost as addNewsPost, getPosts as getNoticiaPosts, getPostsEn as getNoticiaPostsEn, generatePostId, generateCommentId } from "@/lib/noticiaStorage";
 import { getFanMood, setFanMood, computeFanMoodDelta, getFanMoodLabel } from "@/lib/fanMoodStorage";
-import { getBoardMood, setBoardMood, computeBoardMoodDelta, getBoardMoodLabel, getBoardCrisisStreak, setBoardCrisisStreak } from "@/lib/boardMoodStorage";
+import { getBoardMood, setBoardMood, computeBoardMoodDelta, getBoardMoodLabel, getBoardCrisisStreak, setBoardCrisisStreak, getLeagueExpectedOvr, isInGracePeriod } from "@/lib/boardMoodStorage";
 import { getSeasonObjectives, saveSeasonObjectives, markObjectiveFailed, markObjectiveAchieved, computeCupFailureSeverity, isEliminatedBeforeTarget, severityBoardPenalty } from "@/lib/seasonObjectivesStorage";
 import type { SeasonObjective } from "@/lib/seasonObjectivesStorage";
 import { calcSquadAvgOvr } from "@/lib/playerContext";
@@ -1514,11 +1514,16 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
           if (isCupLoss) {
             if (isEliminatedBeforeTarget(match.stage, obj.target)) {
               // Eliminated before target round — failed
-              // Use goal difference as opponent-strength proxy for severity mitigation
-              const goalDiff = match.opponentScore - match.myScore;
-              const opponentStronger = goalDiff >= 2 || (squadAvgOvr != null && goalDiff >= 1);
-              const opponentOvrProxy = opponentStronger ? (squadAvgOvr != null ? squadAvgOvr + 8 : null) : null;
-              const severity = computeCupFailureSeverity(obj.target, match.stage, squadAvgOvr, opponentOvrProxy);
+              // Estimate opponent OVR vs our squad OVR using league average as baseline.
+              // If our OVR is at or below league average, opponents in this tournament
+              // are likely at least as strong → pass league avg as opponentAvgOvr to enable
+              // severity reduction. If our OVR is well above league average, opponent is
+              // likely weaker → null (no reduction).
+              const leagueAvgOvr = getLeagueExpectedOvr(effectiveLeague);
+              const opponentOvrEstimate = (squadAvgOvr == null || squadAvgOvr <= leagueAvgOvr + 4)
+                ? leagueAvgOvr
+                : null;
+              const severity = computeCupFailureSeverity(obj.target, match.stage, squadAvgOvr, opponentOvrEstimate);
               const penalty = severityBoardPenalty(severity);
               latestObjs = markObjectiveFailed(activeSeasonId, obj.id, severity, updatedMatches.length);
               cupObjectivePenalty += penalty;
@@ -1537,8 +1542,14 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
       }
     }
 
+    // Apply grace period: all penalties (match delta + objective failures) halved in first 8 matches
+    const gracePeriod = isInGracePeriod(updatedMatches.length);
+    const effectivePenalty = gracePeriod && cupObjectivePenalty > 0
+      ? Math.ceil(cupObjectivePenalty / 2)
+      : cupObjectivePenalty;
+
     // Compute final board score in a single path: base delta minus any cup objective penalties
-    const finalBoardMoodScore = Math.max(0, Math.min(100, currentBoardMood + boardDelta - cupObjectivePenalty));
+    const finalBoardMoodScore = Math.max(0, Math.min(100, currentBoardMood + boardDelta - effectivePenalty));
     void setBoardMood(activeSeasonId, finalBoardMoodScore);
     setBoardMoodScore(finalBoardMoodScore);
     const boardMoodInfo = getBoardMoodLabel(finalBoardMoodScore, lang);
@@ -1644,7 +1655,11 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
 
         const prevLeaguePos = getLeaguePosition(activeSeasonId);
         const prevTop4 = prevLeaguePos && prevLeaguePos.position <= 4;
-        const initialBoardMood = prevTop4 ? 60 : 50;
+        const prevObjectives = getSeasonObjectives(activeSeasonId);
+        const prevCupChampion = prevObjectives.some(
+          (o) => o.status === "achieved" && o.type === "cup_round",
+        );
+        const initialBoardMood = (prevTop4 || prevCupChampion) ? 60 : 50;
         void setBoardMood(newSeason.id, initialBoardMood);
         setBoardMoodScore(initialBoardMood);
 

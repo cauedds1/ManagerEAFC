@@ -22,13 +22,17 @@ const LEAGUE_EXPECTED_OVR: Record<string, number> = {
   "League Two": 60,
 };
 
-function getLeagueExpectedOvr(league: string): number {
+export function getLeagueExpectedOvr(league: string): number {
   if (LEAGUE_EXPECTED_OVR[league] != null) return LEAGUE_EXPECTED_OVR[league];
   const lower = league.toLowerCase();
   for (const [key, val] of Object.entries(LEAGUE_EXPECTED_OVR)) {
     if (lower.includes(key.toLowerCase())) return val;
   }
   return 68;
+}
+
+export function isInGracePeriod(matchCount: number): boolean {
+  return matchCount <= 8;
 }
 
 export interface BoardMoodLabelInfo {
