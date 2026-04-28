@@ -117,7 +117,14 @@ export function computeFanMoodDelta(
     : "medium";
 
   if (isLoss) {
-    const base = isClassico ? -16 : opponentScore >= 4 ? -14 : -9;
+    let base: number;
+    if (isClassico) {
+      base = -16;
+    } else if (opponentScore >= 4) {
+      base = isEliteOpponent ? -10 : -14;
+    } else {
+      base = isEliteOpponent ? -6 : -9;
+    }
     if (prestige === "large") return Math.round(base * 1.1);
     return base;
   }
