@@ -52,8 +52,8 @@ const ELITE_CLUBS_KEYWORDS: readonly string[] = [
   "borussia dortmund",
   // Serie A
   "juventus",
-  "milan",
-  "inter",
+  "ac milan",
+  "inter milan", "internazionale", "fc internazionale",
   "napoli",
   // Ligue 1
   "paris saint-germain", "paris sg", "psg",
