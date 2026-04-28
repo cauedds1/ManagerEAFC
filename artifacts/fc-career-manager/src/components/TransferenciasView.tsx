@@ -678,6 +678,8 @@ function EditTransferModal({
   const isVenda = transfer.type === "venda";
   const isEmprestimo = transfer.type === "emprestimo";
 
+  const [playerName, setPlayerName] = useState(transfer.playerName ?? "");
+  const [playerPhoto, setPlayerPhoto] = useState(transfer.playerPhoto ?? "");
   const [fee, setFee] = useState(() => transfer.fee > 0 ? transfer.fee.toLocaleString("pt-BR") : "");
   const [salary, setSalary] = useState(() => transfer.salary > 0 ? String(transfer.salary) : "");
   const [playerOverall, setPlayerOverall] = useState(() => transfer.playerOverall > 0 ? String(transfer.playerOverall) : "");
@@ -696,6 +698,8 @@ function EditTransferModal({
 
   function handleSave() {
     const changes: Partial<TransferRecord> = {
+      playerName: playerName.trim() || transfer.playerName,
+      playerPhoto: playerPhoto.trim() || transfer.playerPhoto,
       fee: parseFeeInput(fee),
       salary: parseInt(salary) || 0,
       playerOverall: parseInt(playerOverall) || 0,
@@ -755,6 +759,28 @@ function EditTransferModal({
           {/* Player info */}
           <div>
             <p className="text-white/30 text-xs font-bold tracking-widest uppercase mb-3">{t.editModalPlayerInfo}</p>
+            <div className="space-y-3 mb-3">
+              <div>
+                <label className="block text-white/40 text-xs font-semibold mb-1.5">{t.playerNameLabel ?? "Nome do jogador"}</label>
+                <input
+                  type="text"
+                  value={playerName}
+                  onChange={(e) => setPlayerName(e.target.value)}
+                  placeholder={transfer.playerName}
+                  className="w-full px-3 py-2.5 rounded-xl text-white text-sm bg-white/[0.06] border border-white/10 focus:border-white/25 outline-none transition-colors"
+                />
+              </div>
+              <div>
+                <label className="block text-white/40 text-xs font-semibold mb-1.5">{t.playerPhotoLabel ?? "URL da foto"}</label>
+                <input
+                  type="text"
+                  value={playerPhoto}
+                  onChange={(e) => setPlayerPhoto(e.target.value)}
+                  placeholder={t.playerPhotoPlaceholder ?? "https://..."}
+                  className="w-full px-3 py-2.5 rounded-xl text-white text-sm bg-white/[0.06] border border-white/10 focus:border-white/25 outline-none transition-colors"
+                />
+              </div>
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-white/40 text-xs font-semibold mb-1.5">{t.overallAbbr}</label>
