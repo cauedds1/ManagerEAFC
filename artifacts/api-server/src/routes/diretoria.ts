@@ -444,6 +444,136 @@ Agora é sua vez de falar, ${speaker.name}.`;
   }
 });
 
+router.post("/diretoria/meeting-round", requireAuth, async (req: AuthRequest, res) => {
+  const plan = req.user!.plan;
+  const limits = getPlanLimits(plan);
+  if (!limits.diretoriaEnabled) {
+    res.status(403).json({ error: "Diretoria não está disponível no plano Free", code: "PLAN_LIMIT_REACHED", plan });
+    return;
+  }
+  if (req.demo && checkDemoRateLimit(`demo-ai:${req.user!.id}`)) {
+    res.status(403).json({ error: "Limite da demo atingido (3 chamadas IA/hora)", code: "DEMO_LIMIT_REACHED" });
+    return;
+  }
+
+  const { allMembers, history, context, triggerMessage, squadOvrContext, squadRosterContext, playerPerformanceContext, lang } = req.body as {
+    allMembers: MemberProfile[];
+    history: { memberId?: string; memberName?: string; role: string; content: string }[];
+    context: ClubContext;
+    triggerMessage: string;
+    squadOvrContext?: string;
+    squadRosterContext?: string;
+    playerPerformanceContext?: string;
+    lang?: string;
+  };
+
+  const clubCtx = buildClubContext(context);
+
+  const membersDesc = allMembers
+    .map((m) => `ID: ${m.id} | ${m.name} (${m.roleLabel}) | Humor: ${moodLabel(m.mood)} | Paciência: ${m.patience}/100\nPersonalidade: ${m.description.slice(0, 180)}`)
+    .join("\n\n");
+
+  const roundOvrSection = squadOvrContext?.trim() ? `\nELENCO — OVR RESUMO:\n${squadOvrContext}` : "";
+  const roundRosterSection = squadRosterContext?.trim() ? `\nELENCO COMPLETO:\n${squadRosterContext}` : "";
+  const roundPerfSection = playerPerformanceContext?.trim() ? `\nDESEMPENHO DOS JOGADORES:\n${playerPerformanceContext}` : "";
+
+  const histStr = history
+    .slice(-24)
+    .map((m) => {
+      const who = m.role === "user" ? `Técnico ${context.coachName}` : (m.memberName ?? "Membro");
+      return `${who}: ${m.content}`;
+    })
+    .join("\n\n");
+
+  const langInstruction = lang === "en"
+    ? "\n\n⚠️ LANGUAGE: Write ALL RESPOSTA fields entirely in English. Keep all tag names and values (MEMBRO_ID, MEMBRO_NOME, NOVO_HUMOR, SUGERIR_ENCERRAMENTO, sim, nao) exactly as shown — do NOT translate them."
+    : "";
+
+  const systemPrompt = `Você é o NARRADOR de uma Reunião de Diretoria do ${context.clubName}. Você controla todos os personagens da diretoria e decide quem fala, quando fala e o que fala.
+
+MEMBROS DA REUNIÃO:
+${membersDesc}
+- Técnico ${context.coachName} (presente, é o usuário que conversa com a diretoria)
+
+CONTEXTO DO CLUBE:
+${clubCtx}${roundOvrSection}${roundRosterSection}${roundPerfSection}
+
+━━━ REGRAS DO NARRADOR ━━━
+
+1. QUEM FALA: Decida quais membros têm algo relevante a dizer. NEM TODOS precisam falar — somente quem tem input genuíno. Pode ser 0, 1 ou vários. Evite que todos falem sempre.
+
+2. REAÇÕES ENTRE MEMBROS: Um membro pode reagir à fala de outro membro da mesma rodada — isso cria diálogo natural. Inclua essas reações na sequência correta.
+
+3. PERSONALIDADE DEFINE TUDO: Cada membro fala conforme sua personalidade e humor. Humor ruim = respostas mais curtas, tensas. Humor bom = mais aberto.
+
+4. TAMANHO: Cada fala máx. 2 parágrafos curtos. Sem introduções desnecessárias.
+
+5. GROSSERIA DO TÉCNICO: Se a mensagem do técnico for rude ou insultuosa, membros com ego reagem com firmeza — NUNCA com servilidade.
+
+6. SEM OVR NUMÉRICO: Nunca mencione números de OVR/overall. Use termos qualitativos.
+
+7. NOMES COMPLETOS: Ao citar jogadores, use o identificador completo do contexto. NUNCA apenas iniciais isoladas.
+
+8. Linguagem brasileira natural. Nunca quebre o personagem.
+
+━━━ FORMATO DE SAÍDA ━━━
+
+Se ninguém tiver algo relevante a dizer, retorne exatamente: NENHUM_FALA
+
+Caso contrário, para cada membro que fala, use este bloco exato:
+%%TURNO%%
+MEMBRO_ID: <id exato do membro>
+MEMBRO_NOME: <nome do membro>
+RESPOSTA: <fala do membro>
+NOVO_HUMOR: <excelente|bom|neutro|tenso|irritado|furioso>
+SUGERIR_ENCERRAMENTO: <sim|nao>
+%%FIM%%
+
+Gere os blocos em sequência, na ordem natural de fala.${langInstruction}`;
+
+  const userPrompt = `PAUTA DA REUNIÃO: ${triggerMessage}
+
+HISTÓRICO:
+${histStr || "(início da reunião)"}
+
+Agora decida quem fala nesta rodada e gere as falas.`;
+
+  try {
+    const raw = await callDiretoriaWithPlan(plan, systemPrompt, userPrompt, 1600);
+
+    if (/NENHUM_FALA/i.test(raw)) {
+      res.json({ turns: [] });
+      return;
+    }
+
+    const turnRegex = /%%TURNO%%([\s\S]*?)%%FIM%%/g;
+    const turns: { memberId: string; memberName: string; reply: string; newMood: string; suggestClose: boolean }[] = [];
+    let match;
+    while ((match = turnRegex.exec(raw)) !== null) {
+      const block = match[1];
+      const idMatch = block.match(/MEMBRO_ID:\s*(.+)/);
+      const nameMatch = block.match(/MEMBRO_NOME:\s*(.+)/);
+      const replyMatch = block.match(/RESPOSTA:\s*([\s\S]*?)(?=NOVO_HUMOR:|%%FIM%%)/);
+      const moodMatch = block.match(/NOVO_HUMOR:\s*(excelente|bom|neutro|tenso|irritado|furioso)/i);
+      const closeMatch = /SUGERIR_ENCERRAMENTO:\s*sim/i.test(block);
+
+      const memberId = idMatch?.[1]?.trim() ?? "";
+      const memberName = nameMatch?.[1]?.trim() ?? "";
+      const reply = replyMatch?.[1]?.trim() ?? "";
+      const newMood = moodMatch?.[1]?.toLowerCase() ?? "neutro";
+
+      if (memberId && reply) {
+        turns.push({ memberId, memberName, reply, newMood, suggestClose: closeMatch });
+      }
+    }
+
+    res.json({ turns });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: "Erro ao processar rodada da reunião", details: msg });
+  }
+});
+
 router.post("/diretoria/generate-member", requireAuth, async (req: AuthRequest, res) => {
   const plan = req.user!.plan;
   const planLimits = getPlanLimits(plan);

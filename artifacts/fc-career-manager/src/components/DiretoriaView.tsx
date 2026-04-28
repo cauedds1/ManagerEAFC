@@ -971,87 +971,90 @@ export function DiretoriaView({ career, seasonId, matches, transfers, squadSize,
     setSuggestClose(false);
 
     let didSuggestClose = false;
-    let failCount = 0;
-    let lastErrorMsg = "";
 
-    for (const member of members) {
-      setMeetingTypingName(member.name);
-      await new Promise((r) => setTimeout(r, 400));
-      try {
-        const res = await fetch("/api/diretoria/meeting", {
-          method: "POST",
-          headers: getAiHeaders(),
-          body: JSON.stringify({
-            speaker: {
-              id: member.id,
-              name: member.name,
-              roleLabel: member.roleLabel,
-              description: member.description,
-              mood: member.mood,
-              patience: member.patience,
-            },
-            allMembers: members.map((m) => ({
-              id: m.id,
-              name: m.name,
-              roleLabel: m.roleLabel,
-              description: m.description,
-              mood: m.mood,
-              patience: m.patience,
-            })),
-            history: currentMeeting.messages,
-            context: buildClubContext(),
-            triggerMessage: currentMeeting.reason,
-            squadOvrContext: squadOvrContext || undefined,
-            squadRosterContext: squadRosterContext || undefined,
-            playerPerformanceContext: playerContextStr || undefined,
-            lang: localStorage.getItem("fc_lang") ?? "pt",
-          }),
-        });
-        if (!res.ok) {
-          const errBody = await res.json().catch(() => ({})) as { details?: string };
-          const details = errBody.details ?? "";
-          if (/api key|apikey|authentication|401|unauthorized/i.test(details)) {
-            lastErrorMsg = "chave_openai";
-          } else {
-            lastErrorMsg = `HTTP ${res.status}`;
-          }
-          throw new Error(lastErrorMsg);
-        }
-        const data = await res.json() as { reply: string; newMood: string; suggestClose: boolean; speakerMemberId: string };
+    try {
+      const res = await fetch("/api/diretoria/meeting-round", {
+        method: "POST",
+        headers: getAiHeaders(),
+        body: JSON.stringify({
+          allMembers: members.map((m) => ({
+            id: m.id,
+            name: m.name,
+            roleLabel: m.roleLabel,
+            description: m.description,
+            mood: m.mood,
+            patience: m.patience,
+          })),
+          history: currentMeeting.messages,
+          context: buildClubContext(),
+          triggerMessage: currentMeeting.reason,
+          squadOvrContext: squadOvrContext || undefined,
+          squadRosterContext: squadRosterContext || undefined,
+          playerPerformanceContext: playerContextStr || undefined,
+          lang: localStorage.getItem("fc_lang") ?? "pt",
+        }),
+      });
 
-        const charMsg: MeetingMessage = {
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({})) as { details?: string };
+        const details = errBody.details ?? "";
+        const isKeyError = /api key|apikey|authentication|401|unauthorized/i.test(details);
+        const errContent = isKeyError
+          ? t.errMeetingAuth
+          : t.errMeetingConnection.replace("{details}", `HTTP ${res.status}`);
+        const errMsg: MeetingMessage = {
           id: generateMessageId(),
-          role: "character",
-          memberId: member.id,
-          memberName: member.name,
-          memberColor: member.avatarColor,
-          content: data.reply,
+          role: "error",
+          content: errContent,
           timestamp: Date.now(),
         };
-        const newMood = validateMood(data.newMood);
-        currentMeeting = {
-          ...currentMeeting,
-          messages: [...currentMeeting.messages, charMsg],
-          memberMoods: { ...currentMeeting.memberMoods, [member.id]: newMood },
-        };
+        currentMeeting = { ...currentMeeting, messages: [...currentMeeting.messages, errMsg] };
         setActiveMeeting({ ...currentMeeting });
-        updateMember(career.id, member.id, { mood: newMood });
-        setMembers((prev) => prev.map((m) => m.id === member.id ? { ...m, mood: newMood } : m));
-        if (data.suggestClose) didSuggestClose = true;
-      } catch {
-        failCount++;
-      }
-    }
+      } else {
+        const data = await res.json() as {
+          turns: { memberId: string; memberName: string; reply: string; newMood: string; suggestClose: boolean }[];
+        };
 
-    if (failCount > 0 && failCount === members.length) {
-      const isKeyError = lastErrorMsg === "chave_openai";
-      const errContent = isKeyError
-        ? t.errMeetingAuth
-        : t.errMeetingConnection.replace("{details}", lastErrorMsg ?? "");
+        for (const turn of data.turns) {
+          const member = members.find((m) => m.id === turn.memberId);
+          const memberName = member?.name ?? turn.memberName;
+          const memberColor = member?.avatarColor ?? "#94a3b8";
+
+          setMeetingTypingName(memberName);
+          await new Promise((r) => setTimeout(r, 600 + Math.random() * 400));
+
+          const charMsg: MeetingMessage = {
+            id: generateMessageId(),
+            role: "character",
+            memberId: turn.memberId,
+            memberName,
+            memberColor,
+            content: turn.reply,
+            timestamp: Date.now(),
+          };
+          const newMood = validateMood(turn.newMood);
+          currentMeeting = {
+            ...currentMeeting,
+            messages: [...currentMeeting.messages, charMsg],
+            memberMoods: { ...currentMeeting.memberMoods, [turn.memberId]: newMood },
+          };
+          setActiveMeeting({ ...currentMeeting });
+          if (member) {
+            updateMember(career.id, member.id, { mood: newMood });
+            setMembers((prev) => prev.map((m) => m.id === member.id ? { ...m, mood: newMood } : m));
+          }
+          if (turn.suggestClose) didSuggestClose = true;
+
+          await new Promise((r) => setTimeout(r, 300));
+          setMeetingTypingName(null);
+          await new Promise((r) => setTimeout(r, 150));
+        }
+      }
+    } catch {
       const errMsg: MeetingMessage = {
         id: generateMessageId(),
         role: "error",
-        content: errContent,
+        content: t.errMeetingConnection.replace("{details}", "network"),
         timestamp: Date.now(),
       };
       currentMeeting = { ...currentMeeting, messages: [...currentMeeting.messages, errMsg] };
@@ -1063,7 +1066,7 @@ export function DiretoriaView({ career, seasonId, matches, transfers, squadSize,
     setSuggestClose(didSuggestClose);
     saveMeeting(career.id, currentMeeting);
     const lastCharMsg = [...currentMeeting.messages].reverse().find((m) => m.role === "character");
-    if (lastCharMsg && failCount === 0) {
+    if (lastCharMsg) {
       const speakerName = lastCharMsg.memberName ?? members[0]?.name ?? "Diretor";
       void triggerLeak(lastCharMsg.content, speakerName, currentMeeting.reason, 0.15);
     }
