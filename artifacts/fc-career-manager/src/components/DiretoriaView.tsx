@@ -160,6 +160,27 @@ function MoodBadge({ mood, small, lang = "pt" }: { mood: MoodLevel; small?: bool
   );
 }
 
+function MeetingAvatar({ color, name, photoUrl }: { color: string; name: string; photoUrl?: string }) {
+  if (photoUrl) {
+    return (
+      <div
+        className="w-7 h-7 flex-shrink-0 rounded-full overflow-hidden mt-1"
+        style={{ border: `1.5px solid ${color}44` }}
+      >
+        <img src={photoUrl} alt={name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+      </div>
+    );
+  }
+  return (
+    <div
+      className="w-7 h-7 flex-shrink-0 rounded-full flex items-center justify-center text-[10px] font-black mt-1"
+      style={{ background: `${color}22`, border: `1.5px solid ${color}44`, color }}
+    >
+      {getInitials(name)}
+    </div>
+  );
+}
+
 function AvatarCircle({ member, size = 44 }: { member: BoardMember; size?: number }) {
   if (member.photoUrl) {
     return (
@@ -1638,12 +1659,7 @@ export function DiretoriaView({ career, seasonId, matches, transfers, squadSize,
                 const color = msg.memberColor ?? "#94a3b8";
                 return (
                   <div key={msg.id} className="flex justify-start gap-2">
-                    <div
-                      className="w-7 h-7 flex-shrink-0 rounded-full flex items-center justify-center text-[10px] font-black mt-1"
-                      style={{ background: `${color}22`, border: `1.5px solid ${color}44`, color }}
-                    >
-                      {getInitials(msg.memberName ?? "?")}
-                    </div>
+                    <MeetingAvatar color={color} name={msg.memberName ?? "?"} photoUrl={member?.photoUrl} />
                     <div
                       className="max-w-[75%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed"
                       style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.85)", borderBottomLeftRadius: 4 }}
@@ -1843,22 +1859,18 @@ export function DiretoriaView({ career, seasonId, matches, transfers, squadSize,
                   );
                 }
                 const color = msg.memberColor ?? "#94a3b8";
+                const historyMember = members.find((m) => m.id === msg.memberId);
                 return (
                   <div key={msg.id} className="flex justify-start gap-2">
-                    <div
-                      className="w-7 h-7 flex-shrink-0 rounded-full flex items-center justify-center text-[10px] font-black mt-1"
-                      style={{ background: `${color}22`, border: `1.5px solid ${color}44`, color }}
-                    >
-                      {getInitials(msg.memberName ?? "?")}
-                    </div>
+                    <MeetingAvatar color={color} name={msg.memberName ?? "?"} photoUrl={historyMember?.photoUrl} />
                     <div
                       className="max-w-[75%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed"
                       style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.85)", borderBottomLeftRadius: 4 }}
                     >
                       <span className="block text-[10px] mb-1 font-bold" style={{ color }}>
                         {msg.memberName}
-                        {members.find(m => m.id === msg.memberId) && (
-                          <span className="font-normal opacity-50"> · {members.find(m => m.id === msg.memberId)?.roleLabel}</span>
+                        {historyMember && (
+                          <span className="font-normal opacity-50"> · {historyMember.roleLabel}</span>
                         )}
                       </span>
                       {renderMarkdown(msg.content)}
