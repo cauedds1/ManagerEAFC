@@ -32,7 +32,7 @@ import { getMatches, updateMatch } from "@/lib/matchStorage";
 import type { MatchRecord } from "@/types/match";
 import { runPerformanceEngine } from "@/lib/playerPerformanceEngine";
 import { copyPlayerMoodsToNewSeason, getAllPlayerStats } from "@/lib/playerStatsStorage";
-import { getLeaguePosition } from "@/lib/leagueStorage";
+import { getLeaguePosition, setLeaguePosition, type LeaguePosition } from "@/lib/leagueStorage";
 import { runAutoNews, runRumorNews, runPromotionRelegationNews, leagueTierLevel } from "@/lib/autoNewsService";
 import { getAutoNewsEnabled } from "@/lib/autoNewsPreference";
 import type { NewsPost, NewsSource, NewsCategory } from "@/types/noticias";
@@ -293,6 +293,10 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     () => getMatches(activeSeasonId)
   );
 
+  const [leaguePositionState, setLeaguePositionState] = useState<LeaguePosition | null>(
+    () => getLeaguePosition(activeSeasonId)
+  );
+
   const [noticiasPosts, setNoticiasPosts] = useState(
     () => getNoticiaPosts(activeSeasonId)
   );
@@ -361,6 +365,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
       setTransfers(getTransfers(effectiveSeasonId));
       setTransferWindow(getTransferWindow(effectiveSeasonId));
       setMatches(getMatches(effectiveSeasonId));
+      setLeaguePositionState(getLeaguePosition(effectiveSeasonId));
       setOverrides(getAllPlayerOverrides(career.id));
       setFormerPlayers(getFormerPlayers(career.id));
 
@@ -392,6 +397,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     setTransfers(getTransfers(season.id));
     setTransferWindow(getTransferWindow(season.id));
     setMatches(getMatches(season.id));
+    setLeaguePositionState(getLeaguePosition(season.id));
     setNoticiasPosts(getNoticiaPosts(season.id));
     if (season.finalized) setActiveTab("resumo");
     else setActiveTab("painel");
@@ -1468,9 +1474,69 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     }
   }, [career.id, career.clubName, career.clubLeague, career.season, career.coach.name, career.projeto, career.competitions, activeSeasonId, seasons, transfers, addToast, handleNewPost]);
 
+  const computeAndSaveLeaguePosition = useCallback((
+    tablePosition: number,
+    allMatches: MatchRecord[],
+  ): LeaguePosition => {
+    let wins = 0, draws = 0, losses = 0;
+    for (const m of allMatches) {
+      if (m.penaltyShootout != null) {
+        if (m.penaltyShootout.myScore > m.penaltyShootout.opponentScore) wins++;
+        else losses++;
+      } else if (m.myScore > m.opponentScore) {
+        wins++;
+      } else if (m.myScore === m.opponentScore) {
+        draws++;
+      } else {
+        losses++;
+      }
+    }
+    const existing = getLeaguePosition(activeSeasonId);
+    const updated: LeaguePosition = {
+      position: tablePosition,
+      totalTeams: existing?.totalTeams ?? 20,
+      wins,
+      draws,
+      losses,
+      points: wins * 3 + draws,
+    };
+    setLeaguePosition(activeSeasonId, updated);
+    setLeaguePositionState(updated);
+    return updated;
+  }, [activeSeasonId]);
+
   const handleMatchUpdated = useCallback((match: MatchRecord) => {
-    setMatches((prev) => prev.map((m) => m.id === match.id ? match : m));
-  }, []);
+    setMatches((prev) => {
+      const updated = prev.map((m) => m.id === match.id ? match : m);
+      if (match.tablePositionBefore != null) {
+        let wins = 0, draws = 0, losses = 0;
+        for (const m of updated) {
+          if (m.penaltyShootout != null) {
+            if (m.penaltyShootout.myScore > m.penaltyShootout.opponentScore) wins++;
+            else losses++;
+          } else if (m.myScore > m.opponentScore) {
+            wins++;
+          } else if (m.myScore === m.opponentScore) {
+            draws++;
+          } else {
+            losses++;
+          }
+        }
+        const existing = getLeaguePosition(activeSeasonId);
+        const newPos: LeaguePosition = {
+          position: match.tablePositionBefore,
+          totalTeams: existing?.totalTeams ?? 20,
+          wins,
+          draws,
+          losses,
+          points: wins * 3 + draws,
+        };
+        setLeaguePosition(activeSeasonId, newPos);
+        setLeaguePositionState(newPos);
+      }
+      return updated;
+    });
+  }, [activeSeasonId]);
 
   const handleMatchAdded = useCallback((match: MatchRecord) => {
     // Mission: free_log_match
@@ -1486,6 +1552,10 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     const updatedMatches = [...matches, match];
     setMatches(updatedMatches);
     setTimeout(() => runPerformanceEngine(activeSeasonId), 50);
+
+    if (match.tablePositionBefore != null) {
+      computeAndSaveLeaguePosition(match.tablePositionBefore, updatedMatches);
+    }
 
     const seasonLabel = seasons.find((s) => s.id === activeSeasonId)?.label ?? activeSeasonLabel;
     const leaguePos = getLeaguePosition(activeSeasonId);
@@ -1658,7 +1728,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
         });
       }, 3000);
     }
-  }, [activeSeasonId, matches, allPlayers, seasons, activeSeasonLabel, career.id, career.clubName, career.clubLeague, career.clubTitles, career.clubDescription, career.projeto, career.competitions, runDiretoriaTriggers, handleNewPost]);
+  }, [activeSeasonId, matches, allPlayers, seasons, activeSeasonLabel, career.id, career.clubName, career.clubLeague, career.clubTitles, career.clubDescription, career.projeto, career.competitions, runDiretoriaTriggers, handleNewPost, computeAndSaveLeaguePosition]);
 
   const handleNewSeasonConfirm = useCallback(async (label: string, competitions: string[], objectives: SeasonObjective[]) => {
     setCreatingNewSeason(true);
@@ -2243,6 +2313,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
                   competitions={activeSeason?.competitions ?? career.competitions}
                   isReadOnly={isReadOnly}
                   onNavigateToSettings={!isDemo ? () => setActiveTab("configuracoes") : undefined}
+                  leaguePosition={leaguePositionState}
                 />
               </>
             )}

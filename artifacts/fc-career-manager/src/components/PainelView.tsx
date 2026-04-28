@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import type { SquadPlayer, PositionPtBr } from "@/lib/squadCache";
 import { getAllPlayerStats } from "@/lib/playerStatsStorage";
 import {
@@ -68,6 +68,7 @@ interface PainelViewProps {
   competitions?: string[];
   isReadOnly?: boolean;
   onNavigateToSettings?: () => void;
+  leaguePosition?: LeaguePosition | null;
 }
 
 function FeedbackCard({ onNavigateToSettings }: { onNavigateToSettings?: () => void }) {
@@ -139,18 +140,33 @@ function PlayerPhoto({ src, name, size = 8 }: { src: string; name: string; size?
   );
 }
 
-function LeagueCard({ careerId, isReadOnly }: { careerId: string; isReadOnly?: boolean }) {
+function LeagueCard({
+  seasonId,
+  isReadOnly,
+  externalValue,
+}: {
+  seasonId: string;
+  isReadOnly?: boolean;
+  externalValue?: LeaguePosition | null;
+}) {
   const [lang] = useLang();
   const t = PAINEL[lang];
-  const [data, setData] = useState<LeaguePosition | null>(() => getLeaguePosition(careerId));
+  const [data, setData] = useState<LeaguePosition | null>(() => getLeaguePosition(seasonId));
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<LeaguePosition>(
     data ?? { position: 1, totalTeams: 20, wins: 0, draws: 0, losses: 0, points: 0 }
   );
 
+  useEffect(() => {
+    if (externalValue !== undefined && externalValue !== null) {
+      setData(externalValue);
+      setDraft((d) => editing ? d : externalValue);
+    }
+  }, [externalValue, editing]);
+
   const save = () => {
     const updated = { ...draft, points: draft.wins * 3 + draft.draws };
-    setLeaguePosition(careerId, updated);
+    setLeaguePosition(seasonId, updated);
     setData(updated);
     setEditing(false);
   };
@@ -607,6 +623,7 @@ export function PainelView({
   competitions,
   isReadOnly,
   onNavigateToSettings,
+  leaguePosition: externalLeaguePosition,
 }: PainelViewProps) {
   const careerId = careerIdProp ?? seasonId;
   const [lang] = useLang();
@@ -713,7 +730,7 @@ export function PainelView({
       />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <LeagueCard careerId={careerId} isReadOnly={isReadOnly} />
+        <LeagueCard seasonId={seasonId} isReadOnly={isReadOnly} externalValue={externalLeaguePosition} />
         <TopPerformers seasonId={seasonId} allPlayers={allPlayers} type="goals" matchCount={matches.length} />
         <TopPerformers seasonId={seasonId} allPlayers={allPlayers} type="assists" matchCount={matches.length} />
       </div>
