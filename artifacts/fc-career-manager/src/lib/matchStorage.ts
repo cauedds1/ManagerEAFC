@@ -56,8 +56,6 @@ export function getAllMatchesForCareer(careerId: string): MatchRecord[] {
   return all;
 }
 
-const MAX_RECENT_RATINGS = 10;
-
 export function applyMatchToPlayerStats(
   seasonId: string,
   starterIds: number[],
@@ -109,8 +107,8 @@ export function applyMatchToPlayerStats(
 
     const newRatings = [
       ...(current.recentRatings ?? []),
-      pStats.rating,
-    ].slice(-MAX_RECENT_RATINGS);
+      ...(pStats.rating > 0 ? [pStats.rating] : []),
+    ];
 
     const updated: PlayerSeasonStats = {
       ...current,

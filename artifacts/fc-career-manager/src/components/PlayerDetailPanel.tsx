@@ -12,6 +12,7 @@ import {
   setPlayerOverride,
 } from "@/lib/playerStatsStorage";
 import { getMomentos, type Momento } from "@/lib/momentoStorage";
+import { getMatches } from "@/lib/matchStorage";
 import { useLang } from "@/hooks/useLang";
 import { PLAYER_DETAIL, POSITION_DISPLAY, MOOD_LABELS_I18N, FAN_MORAL_LABELS_I18N } from "@/lib/i18n";
 
@@ -125,8 +126,19 @@ export function PlayerDetailPanel({
   }, [seasonId, player.id]);
 
   const totalMatches = (stats.matchesAsStarter ?? 0) + (stats.matchesAsSubstitute ?? 0);
+
+  const allMatchRatings = useMemo(() => {
+    const matches = getMatches(effectiveSeasonId);
+    return matches
+      .filter((m) => {
+        const ps = m.playerStats?.[player.id];
+        return ps && ps.rating > 0;
+      })
+      .map((m) => m.playerStats![player.id].rating);
+  }, [effectiveSeasonId, player.id]);
+
   const avgRating = (() => {
-    const r = stats.recentRatings ?? [];
+    const r = allMatchRatings.length > 0 ? allMatchRatings : (stats.recentRatings ?? []);
     if (r.length === 0) return null;
     return (r.reduce((a, b) => a + b, 0) / r.length).toFixed(1);
   })();
@@ -328,7 +340,7 @@ export function PlayerDetailPanel({
                       label: t.statAvgRating,
                       value: avgRating ?? "—",
                       color: ratingColor,
-                      note:  avgRating ? `${stats.recentRatings?.length ?? 0} ${t.statGames}` : t.statNoData,
+                      note:  avgRating ? `${allMatchRatings.length || (stats.recentRatings?.length ?? 0)} ${t.statGames}` : t.statNoData,
                     },
                     {
                       label: t.statMatches,
