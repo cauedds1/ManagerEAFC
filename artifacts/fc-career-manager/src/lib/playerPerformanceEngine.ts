@@ -36,7 +36,7 @@ function computeNewMood(stats: PlayerSeasonStats): Mood {
   const contribution = (stats.goals ?? 0) + (stats.assists ?? 0);
   if (contribution >= 10 && delta >= 0) delta += 1;
   else if (contribution >= 5 && delta >= 0) delta += 1;
-  else if (contribution < 2 && totalApps >= 10) delta -= 1;
+  else if (contribution < 2 && totalApps >= 10 && recentAvg < 6.0) delta -= 1;
 
   const ownGoals = stats.totalOwnGoals ?? 0;
   const missedPens = stats.totalMissedPenalties ?? 0;
@@ -61,13 +61,13 @@ function computeNewFanMoral(stats: PlayerSeasonStats): FanMoral {
   const recentAvg = avg(recent);
   let delta = 0;
 
-  if (recentAvg >= 7.5) delta += 1;
+  if (recentAvg >= 7.0) delta += 1;
   else if (recentAvg < 5.5) delta -= 1;
 
   const contribution = (stats.goals ?? 0) + (stats.assists ?? 0);
   if (contribution >= 15 && delta >= 0) delta += 1;
   else if (contribution >= 8 && delta >= 0) delta += 1;
-  else if (contribution < 3 && totalApps >= 12) delta -= 1;
+  else if (contribution < 3 && totalApps >= 12 && recentAvg < 6.5) delta -= 1;
 
   const ownGoals = stats.totalOwnGoals ?? 0;
   const missedPens = stats.totalMissedPenalties ?? 0;
