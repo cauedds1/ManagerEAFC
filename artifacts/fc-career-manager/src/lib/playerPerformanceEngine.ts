@@ -1,5 +1,5 @@
 import type { Mood, FanMoral, PlayerSeasonStats } from "@/types/playerStats";
-import { getAllPlayerStats, setPlayerStats } from "@/lib/playerStatsStorage";
+import { getAllPlayerStats, setPlayerStats, defaultStats } from "@/lib/playerStatsStorage";
 
 const MOOD_LEVELS: Mood[] = ["irritado", "insatisfeito", "neutro", "bom", "excelente"];
 const FAN_MORAL_LEVELS: FanMoral[] = ["vaiado", "contestado", "neutro", "querido", "idolo"];
@@ -100,8 +100,7 @@ export function runPerformanceEngine(seasonId: string): void {
 
 export function stepPlayerMood(seasonId: string, playerId: number, delta: number): void {
   const all = getAllPlayerStats(seasonId);
-  const stats = all[playerId];
-  if (!stats) return;
+  const stats = all[playerId] ?? defaultStats(playerId);
   setPlayerStats(seasonId, playerId, {
     ...stats,
     mood: stepMood(stats.mood ?? "neutro", delta),
@@ -110,8 +109,7 @@ export function stepPlayerMood(seasonId: string, playerId: number, delta: number
 
 export function stepPlayerFanMoral(seasonId: string, playerId: number, delta: number): void {
   const all = getAllPlayerStats(seasonId);
-  const stats = all[playerId];
-  if (!stats) return;
+  const stats = all[playerId] ?? defaultStats(playerId);
   setPlayerStats(seasonId, playerId, {
     ...stats,
     fanMoral: stepFanMoral(stats.fanMoral ?? "neutro", delta),

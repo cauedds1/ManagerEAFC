@@ -11,6 +11,7 @@ import {
   setPlayerStats,
   setPlayerOverride,
 } from "@/lib/playerStatsStorage";
+import { stepPlayerMood, stepPlayerFanMoral } from "@/lib/playerPerformanceEngine";
 import { getMomentos, type Momento } from "@/lib/momentoStorage";
 import { getMatches } from "@/lib/matchStorage";
 import { useLang } from "@/hooks/useLang";
@@ -311,21 +312,55 @@ export function PlayerDetailPanel({
                 {/* Humor / Torcida */}
                 <div className="grid grid-cols-2 gap-3">
                   {[
-                    { label: t.statMood, badge: MOOD_LABELS_I18N[lang][stats.mood] ?? stats.mood,         style: moodStyle },
-                    { label: t.statFans, badge: FAN_MORAL_LABELS_I18N[lang][stats.fanMoral] ?? stats.fanMoral, style: fanStyle },
-                  ].map(({ label, badge, style }) => (
+                    {
+                      label: t.statMood,
+                      badge: MOOD_LABELS_I18N[lang][stats.mood] ?? stats.mood,
+                      style: moodStyle,
+                      onStep: (delta: number) => {
+                        stepPlayerMood(effectiveSeasonId, player.id, delta);
+                        setStatsState(getPlayerStats(effectiveSeasonId, player.id));
+                      },
+                    },
+                    {
+                      label: t.statFans,
+                      badge: FAN_MORAL_LABELS_I18N[lang][stats.fanMoral] ?? stats.fanMoral,
+                      style: fanStyle,
+                      onStep: (delta: number) => {
+                        stepPlayerFanMoral(effectiveSeasonId, player.id, delta);
+                        setStatsState(getPlayerStats(effectiveSeasonId, player.id));
+                      },
+                    },
+                  ].map(({ label, badge, style, onStep }) => (
                     <div
                       key={label}
-                      className="flex items-center justify-between px-4 py-3 rounded-xl"
+                      className="flex items-center justify-between px-3 py-3 rounded-xl"
                       style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
                     >
                       <span className="text-white/35 text-xs font-semibold uppercase tracking-wider">{label}</span>
-                      <span
-                        className="text-xs font-bold px-2.5 py-0.5 rounded-lg"
-                        style={{ background: style.bg, color: style.color }}
-                      >
-                        {badge}
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => onStep(-1)}
+                          className="w-5 h-5 flex items-center justify-center rounded-md text-white/40 hover:text-white/80 transition-colors text-xs font-black leading-none"
+                          style={{ background: "rgba(255,255,255,0.07)" }}
+                          aria-label={`Decrease ${label}`}
+                        >
+                          −
+                        </button>
+                        <span
+                          className="text-xs font-bold px-2.5 py-0.5 rounded-lg"
+                          style={{ background: style.bg, color: style.color }}
+                        >
+                          {badge}
+                        </span>
+                        <button
+                          onClick={() => onStep(1)}
+                          className="w-5 h-5 flex items-center justify-center rounded-md text-white/40 hover:text-white/80 transition-colors text-xs font-black leading-none"
+                          style={{ background: "rgba(255,255,255,0.07)" }}
+                          aria-label={`Increase ${label}`}
+                        >
+                          +
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
