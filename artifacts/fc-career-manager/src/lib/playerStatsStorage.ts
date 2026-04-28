@@ -122,6 +122,22 @@ export function copyPlayerMoodsToNewSeason(fromSeasonId: string, toSeasonId: str
   void putSeasonData(toSeasonId, "player_stats", toStats);
 }
 
+export function deletePlayerStats(seasonId: string, playerId: number): void {
+  const all = getAllPlayerStats(seasonId);
+  delete all[playerId];
+  sessionSet(statsKey(seasonId), all);
+  lsSet(statsKey(seasonId), all);
+  void putSeasonData(seasonId, "player_stats", all);
+}
+
+export function deletePlayerOverride(careerId: string, playerId: number): void {
+  const all = getAllPlayerOverrides(careerId);
+  delete all[playerId];
+  sessionSet(overridesKey(careerId), all);
+  try { localStorage.setItem(overridesKey(careerId), JSON.stringify(all)); } catch {}
+  void putCareerData(careerId, "overrides", all);
+}
+
 export function getAllPlayerOverrides(careerId: string): Record<number, PlayerOverride> {
   return sessionGet<Record<number, PlayerOverride>>(overridesKey(careerId))
     ?? lsGet<Record<number, PlayerOverride>>(overridesKey(careerId))

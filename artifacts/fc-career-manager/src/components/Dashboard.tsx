@@ -15,8 +15,8 @@ import {
   PT_BR_TO_POSITION,
   migratePositionOverride,
 } from "@/lib/squadCache";
-import { getAllPlayerOverrides } from "@/lib/playerStatsStorage";
-import { getTransfers, addTransfer, updateTransfer, saveTransfers } from "@/lib/transferStorage";
+import { getAllPlayerOverrides, deletePlayerStats, deletePlayerOverride } from "@/lib/playerStatsStorage";
+import { getTransfers, addTransfer, updateTransfer, removeTransfer, saveTransfers } from "@/lib/transferStorage";
 import { getTransferWindow, saveTransferWindow, type TransferWindowState } from "@/lib/transferWindowStorage";
 import { getRivals } from "@/lib/rivalsStorage";
 import { fetchPortals } from "@/lib/customPortalStorage";
@@ -1214,6 +1214,18 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     setTransfers((prev) => prev.map((t) => t.id === id ? { ...t, ...changes } : t));
   }, [activeSeasonId]);
 
+  const handleTransferCancelled = useCallback((transfer: TransferRecord) => {
+    removeTransfer(activeSeasonId, transfer.id);
+    setTransfers((prev) => prev.filter((t) => t.id !== transfer.id));
+    const isIncoming = transfer.type === "compra" ||
+      (transfer.type === "emprestimo" && transfer.loanDirection === "entrada") ||
+      !transfer.type;
+    if (isIncoming) {
+      deletePlayerStats(activeSeasonId, transfer.playerId);
+      deletePlayerOverride(career.id, transfer.playerId);
+    }
+  }, [activeSeasonId, career.id]);
+
   const handleNewPost = useCallback((post: NewsPost) => {
     const title = post.title ?? "Nova notícia";
     const preview = post.sourceName ?? post.source ?? "Notícias";
@@ -2260,6 +2272,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
                 allPlayers={allPlayers}
                 onTransferAdded={handleTransferAdded}
                 onTransferUpdated={handleTransferUpdated}
+                onTransferCancelled={handleTransferCancelled}
                 onHighValueSigning={handleHighValueSigning}
                 onPlayerLeftInTrade={handlePlayerLeftInTrade}
                 transferWindowOpen={transferWindow.open}

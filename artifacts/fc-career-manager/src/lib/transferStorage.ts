@@ -25,6 +25,11 @@ export function updateTransfer(seasonId: string, id: string, changes: Partial<Tr
   saveTransfers(seasonId, list);
 }
 
+export function removeTransfer(seasonId: string, id: string): void {
+  const list = getTransfers(seasonId).filter((t) => t.id !== id);
+  saveTransfers(seasonId, list);
+}
+
 export function generatePlayerId(): number {
   return Date.now() + Math.floor(Math.random() * 10_000);
 }

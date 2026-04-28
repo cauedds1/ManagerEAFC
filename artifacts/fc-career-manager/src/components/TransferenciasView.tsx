@@ -387,11 +387,13 @@ function TransferCard({
   clubName,
   clubLogoUrl,
   onLoanAction,
+  onEdit,
 }: {
   transfer: TransferRecord;
   clubName: string;
   clubLogoUrl?: string | null;
   onLoanAction?: (id: string, changes: Partial<TransferRecord>) => void;
+  onEdit?: (transfer: TransferRecord) => void;
 }) {
   const [lang] = useLang();
   const t = TRANSFERENCIAS[lang];
@@ -571,7 +573,19 @@ function TransferCard({
         </div>
       </div>
 
-      <div className="text-right flex-shrink-0">
+      <div className="text-right flex-shrink-0 flex flex-col items-end gap-1">
+        {onEdit && (
+          <button
+            onClick={() => onEdit(transfer)}
+            className="w-7 h-7 flex items-center justify-center rounded-lg text-white/25 hover:text-white/70 transition-colors mb-0.5"
+            style={{ background: "rgba(255,255,255,0.05)" }}
+            title={t.editModalTitle}
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 11l6.586-6.586a2 2 0 012.828 0l.172.172a2 2 0 010 2.828L12 14H9v-3z" />
+            </svg>
+          </button>
+        )}
         <p className="text-white font-black text-base tabular-nums">{formatFee(transfer.fee, t.freeLabel)}</p>
         {transfer.salary > 0 && !isVenda && !isEmprestimo && (
           <p className="text-white/35 text-xs tabular-nums">€{transfer.salary}{t.wagePerWeek}</p>
@@ -646,6 +660,326 @@ const DEFAULT_FORM: FormData = {
   tradePlayerMode: "search",
 };
 
+function EditTransferModal({
+  transfer,
+  onClose,
+  onSave,
+  onCancelTransfer,
+}: {
+  transfer: TransferRecord;
+  onClose: () => void;
+  onSave: (changes: Partial<TransferRecord>) => void;
+  onCancelTransfer: (transfer: TransferRecord) => void;
+}) {
+  const [lang] = useLang();
+  const t = TRANSFERENCIAS[lang];
+  const loanDurationLabels = LOAN_DURATION_LABELS[lang];
+
+  const isVenda = transfer.type === "venda";
+  const isEmprestimo = transfer.type === "emprestimo";
+
+  const [fee, setFee] = useState(() => transfer.fee > 0 ? transfer.fee.toLocaleString("pt-BR") : "");
+  const [salary, setSalary] = useState(() => transfer.salary > 0 ? String(transfer.salary) : "");
+  const [playerOverall, setPlayerOverall] = useState(() => transfer.playerOverall > 0 ? String(transfer.playerOverall) : "");
+  const [role, setRole] = useState<TeamRole>(transfer.role ?? "importante");
+  const [playerPositionPtBr, setPlayerPositionPtBr] = useState<PositionPtBr>(
+    migratePositionOverride(transfer.playerPositionPtBr) ?? "MID"
+  );
+  const [playerAge, setPlayerAge] = useState(() => transfer.playerAge > 0 ? String(transfer.playerAge) : "");
+  const [contractYears, setContractYears] = useState(() => transfer.contractYears > 0 ? String(transfer.contractYears) : "");
+  const [loanDuration, setLoanDuration] = useState(transfer.loanDuration ?? "1 temporada");
+  const [fromClub, setFromClub] = useState(transfer.fromClub ?? "");
+  const [fromClubLogo, setFromClubLogo] = useState(transfer.fromClubLogo ?? "");
+  const [toClub, setToClub] = useState(transfer.toClub ?? "");
+  const [toClubLogo, setToClubLogo] = useState(transfer.toClubLogo ?? "");
+  const [confirmCancel, setConfirmCancel] = useState(false);
+
+  function handleSave() {
+    const changes: Partial<TransferRecord> = {
+      fee: parseFeeInput(fee),
+      salary: parseInt(salary) || 0,
+      playerOverall: parseInt(playerOverall) || 0,
+      role,
+      playerPositionPtBr,
+      playerAge: parseInt(playerAge) || transfer.playerAge,
+      contractYears: parseInt(contractYears) || 0,
+      loanDuration: isEmprestimo ? loanDuration : transfer.loanDuration,
+      fromClub: fromClub.trim() || undefined,
+      fromClubLogo: fromClubLogo.trim() || undefined,
+      toClub: toClub.trim() || undefined,
+      toClubLogo: toClubLogo.trim() || undefined,
+    };
+    onSave(changes);
+    onClose();
+  }
+
+  const cancelHint = isVenda ? t.editCancelVendaHint
+    : isEmprestimo ? t.editCancelEmprestimoHint
+    : t.editCancelCompraHint;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+      <div
+        className="absolute inset-0"
+        style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(6px)" }}
+        onClick={onClose}
+      />
+      <div
+        className="relative w-full max-w-lg rounded-3xl overflow-hidden flex flex-col"
+        style={{
+          background: "var(--app-bg-lighter)",
+          border: "1px solid var(--surface-border)",
+          boxShadow: "0 40px 80px rgba(0,0,0,0.5)",
+          maxHeight: "90vh",
+        }}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 flex-shrink-0" style={{ borderBottom: "1px solid var(--surface-border)" }}>
+          <div>
+            <p className="text-white/40 text-xs font-bold tracking-widest uppercase">{t.editModalTitle}</p>
+            <p className="text-white font-bold text-base mt-0.5">{transfer.playerName}</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-9 h-9 flex items-center justify-center rounded-full text-white/40 hover:text-white/80 transition-colors"
+            style={{ background: "rgba(255,255,255,0.06)" }}
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+          {/* Player info */}
+          <div>
+            <p className="text-white/30 text-xs font-bold tracking-widest uppercase mb-3">{t.editModalPlayerInfo}</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-white/40 text-xs font-semibold mb-1.5">{t.overallAbbr}</label>
+                <input
+                  type="number"
+                  min={1} max={99}
+                  value={playerOverall}
+                  onChange={(e) => setPlayerOverall(e.target.value)}
+                  placeholder="Ex: 82"
+                  className="w-full px-3 py-2.5 rounded-xl text-white text-sm bg-white/[0.06] border border-white/10 focus:border-white/25 outline-none transition-colors"
+                />
+              </div>
+              <div>
+                <label className="block text-white/40 text-xs font-semibold mb-1.5">{t.phAge.split(":")[0].trim()}</label>
+                <input
+                  type="number"
+                  min={14} max={50}
+                  value={playerAge}
+                  onChange={(e) => setPlayerAge(e.target.value)}
+                  placeholder={t.phAge}
+                  className="w-full px-3 py-2.5 rounded-xl text-white text-sm bg-white/[0.06] border border-white/10 focus:border-white/25 outline-none transition-colors"
+                />
+              </div>
+            </div>
+
+            {/* Position */}
+            <div className="mt-3">
+              <label className="block text-white/40 text-xs font-semibold mb-1.5">{"Posição"}</label>
+              <div className="flex gap-2">
+                {ALL_POSITIONS.map((pos) => {
+                  const style = POS_STYLE[pos];
+                  const active = playerPositionPtBr === pos;
+                  return (
+                    <button
+                      key={pos}
+                      onClick={() => setPlayerPositionPtBr(pos)}
+                      className="flex-1 py-2 rounded-xl text-xs font-black transition-all"
+                      style={{
+                        background: active ? style.bg : "rgba(255,255,255,0.05)",
+                        color: active ? style.color : "rgba(255,255,255,0.3)",
+                        border: active ? `1px solid ${style.color}40` : "1px solid transparent",
+                      }}
+                    >
+                      {pos}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Role */}
+            <div className="mt-3">
+              <label className="block text-white/40 text-xs font-semibold mb-1.5">{t.squadRoleLabel}</label>
+              <div className="flex gap-2 flex-wrap">
+                {ALL_ROLES.map((r) => {
+                  const style = ROLE_COLORS[r];
+                  const active = role === r;
+                  return (
+                    <button
+                      key={r}
+                      onClick={() => setRole(r)}
+                      className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all"
+                      style={{
+                        background: active ? style.bg : "rgba(255,255,255,0.05)",
+                        color: active ? style.color : "rgba(255,255,255,0.3)",
+                        border: active ? `1px solid ${style.color}40` : "1px solid transparent",
+                      }}
+                    >
+                      {getRoleLabel(r, t)}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* Financial */}
+          <div>
+            <p className="text-white/30 text-xs font-bold tracking-widest uppercase mb-3">{t.editModalFinancial}</p>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-white/40 text-xs font-semibold mb-1.5">{t.feeLabel}</label>
+                <input
+                  type="text"
+                  value={fee}
+                  onChange={(e) => setFee(formatFeeInput(e.target.value))}
+                  placeholder={isEmprestimo ? t.feeLoanPlaceholder : t.feeSigningPlaceholder}
+                  className="w-full px-3 py-2.5 rounded-xl text-white text-sm bg-white/[0.06] border border-white/10 focus:border-white/25 outline-none transition-colors"
+                />
+              </div>
+              {!isVenda && !isEmprestimo && (
+                <div>
+                  <label className="block text-white/40 text-xs font-semibold mb-1.5">{t.salaryLabel}</label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={salary}
+                    onChange={(e) => setSalary(e.target.value)}
+                    placeholder={t.phSalary}
+                    className="w-full px-3 py-2.5 rounded-xl text-white text-sm bg-white/[0.06] border border-white/10 focus:border-white/25 outline-none transition-colors"
+                  />
+                </div>
+              )}
+              {!isVenda && !isEmprestimo && (
+                <div>
+                  <label className="block text-white/40 text-xs font-semibold mb-1.5">{t.contractLabel}</label>
+                  <input
+                    type="number"
+                    min={1} max={10}
+                    value={contractYears}
+                    onChange={(e) => setContractYears(e.target.value)}
+                    placeholder="Ex: 4"
+                    className="w-full px-3 py-2.5 rounded-xl text-white text-sm bg-white/[0.06] border border-white/10 focus:border-white/25 outline-none transition-colors"
+                  />
+                </div>
+              )}
+              {isEmprestimo && (
+                <div>
+                  <label className="block text-white/40 text-xs font-semibold mb-1.5">{"Duração"}</label>
+                  <div className="flex gap-2 flex-wrap">
+                    {LOAN_DURATIONS.map((dur, i) => (
+                      <button
+                        key={dur}
+                        onClick={() => setLoanDuration(dur)}
+                        className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all"
+                        style={{
+                          background: loanDuration === dur ? "rgba(251,146,60,0.15)" : "rgba(255,255,255,0.05)",
+                          color: loanDuration === dur ? "#fb923c" : "rgba(255,255,255,0.3)",
+                          border: loanDuration === dur ? "1px solid rgba(251,146,60,0.3)" : "1px solid transparent",
+                        }}
+                      >
+                        {loanDurationLabels[i]}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Clubs */}
+          <div>
+            <p className="text-white/30 text-xs font-bold tracking-widest uppercase mb-3">{t.editModalClubs}</p>
+            <div className="space-y-3">
+              {!isVenda && (
+                <div>
+                  <label className="block text-white/40 text-xs font-semibold mb-1.5">{t.fromClubLabel}</label>
+                  <input
+                    type="text"
+                    value={fromClub}
+                    onChange={(e) => setFromClub(e.target.value)}
+                    placeholder={isEmprestimo ? t.fromClubLoanPlaceholder : t.fromClubPlaceholder}
+                    className="w-full px-3 py-2.5 rounded-xl text-white text-sm bg-white/[0.06] border border-white/10 focus:border-white/25 outline-none transition-colors"
+                  />
+                </div>
+              )}
+              {(isVenda || isEmprestimo) && (
+                <div>
+                  <label className="block text-white/40 text-xs font-semibold mb-1.5">{t.toClubLabel}</label>
+                  <input
+                    type="text"
+                    value={toClub}
+                    onChange={(e) => setToClub(e.target.value)}
+                    placeholder={t.toClubPlaceholder}
+                    className="w-full px-3 py-2.5 rounded-xl text-white text-sm bg-white/[0.06] border border-white/10 focus:border-white/25 outline-none transition-colors"
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex-shrink-0 px-6 py-4 space-y-3" style={{ borderTop: "1px solid var(--surface-border)" }}>
+          {confirmCancel ? (
+            <div className="rounded-2xl p-4" style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)" }}>
+              <p className="text-red-400 text-sm font-semibold mb-1">{t.editModalCancelConfirm}</p>
+              <p className="text-white/40 text-xs mb-3">{cancelHint}</p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => { onCancelTransfer(transfer); onClose(); }}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white transition-all"
+                  style={{ background: "rgba(239,68,68,0.7)" }}
+                >
+                  {t.editModalCancelYes}
+                </button>
+                <button
+                  onClick={() => setConfirmCancel(false)}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white/60 transition-all glass glass-hover"
+                >
+                  {t.editModalCancelBack}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={() => setConfirmCancel(true)}
+              className="w-full py-2.5 rounded-xl text-sm font-bold text-red-400/70 hover:text-red-400 transition-colors"
+              style={{ background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.12)" }}
+            >
+              {t.editModalCancelTransfer}
+            </button>
+          )}
+          <div className="flex gap-2">
+            <button
+              onClick={onClose}
+              className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white/50 transition-all glass glass-hover"
+            >
+              {t.editModalClose}
+            </button>
+            <button
+              onClick={handleSave}
+              className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white transition-all"
+              style={{ background: "var(--club-gradient)" }}
+            >
+              {t.editModalSave}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
 interface TransferenciasViewProps {
   careerId: string;
   seasonId: string;
@@ -656,6 +990,7 @@ interface TransferenciasViewProps {
   allPlayers: SquadPlayer[];
   onTransferAdded: (transfer: TransferRecord) => void;
   onTransferUpdated?: (id: string, changes: Partial<TransferRecord>) => void;
+  onTransferCancelled?: (transfer: TransferRecord) => void;
   onHighValueSigning?: (playerName: string, ovr: number, position: string, fromClub?: string, deltaVsAvg?: number, isPending?: boolean) => void;
   onPlayerLeftInTrade?: (player: SquadPlayer) => void;
   transferWindowOpen?: boolean;
@@ -674,6 +1009,7 @@ export function TransferenciasView({
   allPlayers,
   onTransferAdded,
   onTransferUpdated,
+  onTransferCancelled,
   onHighValueSigning,
   onPlayerLeftInTrade,
   transferWindowOpen = false,
@@ -688,6 +1024,7 @@ export function TransferenciasView({
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<FormData>(DEFAULT_FORM);
   const [submitting, setSubmitting] = useState(false);
+  const [editingTransfer, setEditingTransfer] = useState<TransferRecord | null>(null);
 
   const sortedTransfers = [...transfers].sort((a, b) => {
     if (a.windowPending && !b.windowPending) return -1;
@@ -1071,6 +1408,7 @@ export function TransferenciasView({
               clubName={clubName}
               clubLogoUrl={clubLogoUrl}
               onLoanAction={!isReadOnly && onTransferUpdated ? onTransferUpdated : undefined}
+              onEdit={!isReadOnly ? (t) => setEditingTransfer(t) : undefined}
             />
           ))}
         </div>
@@ -1709,6 +2047,19 @@ export function TransferenciasView({
           </div>
         </div>,
         document.body
+      )}
+
+      {editingTransfer && (
+        <EditTransferModal
+          transfer={editingTransfer}
+          onClose={() => setEditingTransfer(null)}
+          onSave={(changes) => {
+            onTransferUpdated?.(editingTransfer.id, changes);
+          }}
+          onCancelTransfer={(transfer) => {
+            onTransferCancelled?.(transfer);
+          }}
+        />
       )}
     </div>
   );
