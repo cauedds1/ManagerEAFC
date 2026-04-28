@@ -40,15 +40,22 @@ export function computeFanMoodDelta(
   opponentScore: number,
   isClassico: boolean,
   unbeatenStreak: number = 0,
+  clubTotalTitles?: number,
 ): number {
   const isWin = myScore > opponentScore;
   const isDraw = myScore === opponentScore;
   const isLoss = myScore < opponentScore;
 
+  const prestige =
+    clubTotalTitles === undefined ? "medium"
+    : clubTotalTitles <= 2       ? "small"
+    : clubTotalTitles >= 10      ? "large"
+    : "medium";
+
   if (isLoss) {
-    if (isClassico) return -16;
-    if (opponentScore >= 4) return -14;
-    return -9;
+    const base = isClassico ? -16 : opponentScore >= 4 ? -14 : -9;
+    if (prestige === "large") return Math.round(base * 1.1);
+    return base;
   }
 
   if (isDraw) {
@@ -60,10 +67,13 @@ export function computeFanMoodDelta(
   else if (myScore >= 4) base = +11;
   else base = +8;
 
+  if (prestige === "small") base = Math.round(base * 1.25);
+  else if (prestige === "large") base = Math.round(base * 0.85);
+
   let streakBonus = 0;
   if (unbeatenStreak >= 8) streakBonus = +7;
   else if (unbeatenStreak >= 5) streakBonus = +5;
-  else if (unbeatenStreak >= 3) streakBonus = +3;
+  else if (unbeatenStreak >= 2) streakBonus = +3;
 
   return base + streakBonus;
 }

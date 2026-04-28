@@ -1495,7 +1495,8 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
         break;
       }
     }
-    const moodDelta = computeFanMoodDelta(match.myScore, match.opponentScore, isClassico, unbeatenStreak);
+    const clubTotalTitles = career.clubTitles?.reduce((sum, t) => sum + t.count, 0);
+    const moodDelta = computeFanMoodDelta(match.myScore, match.opponentScore, isClassico, unbeatenStreak, clubTotalTitles);
     const newMoodScore = Math.max(0, Math.min(100, currentMood + moodDelta));
     void setFanMood(activeSeasonId, newMoodScore);
     setFanMoodScore(newMoodScore);
