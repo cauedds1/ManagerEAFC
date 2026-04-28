@@ -370,6 +370,7 @@ INSTRUÇÕES CRÍTICAS PARA A PARTIDA ANEXADA:
 - O MOTM (destaque) deve ser explicitamente celebrado no post e nos comentários.
 - Cartões e expulsões geram drama — use-os para criar tensão narrativa.
 - Lesões mencionadas aumentam a gravidade emocional da notícia.
+- OBSERVAÇÕES DO TREINADOR — REGRA OBRIGATÓRIA: Se o bloco acima contiver o campo "Observações do treinador:", esse texto é a VOZ DO TÉCNICO sobre a partida — os momentos mais marcantes, a tática usada, os destaques pessoais. VOCÊ DEVE incorporar essas observações diretamente no corpo da notícia (legenda) e nos comentários da torcida. Não resuma nem parafrase de forma genérica — use as ideias específicas mencionadas (ex: jogada tática, nome do adversário, estádio, sequência de resultados). As observações do treinador têm peso narrativo MÁXIMO.
 - A descrição do usuário complementa — mas NÃO substitui — os dados factuais da partida.`
     : "";
 

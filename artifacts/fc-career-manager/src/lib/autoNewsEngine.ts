@@ -913,9 +913,16 @@ export function detectMatchEvents(input: EngineInput): DetectedEvent[] {
     });
   }
 
-  const finalEvents = isClassico
-    ? events.map(withClassico)
-    : events;
+  const observationsInstruction = newMatch.observations?.trim()
+    ? ` ⚠️ OBSERVAÇÕES DO TREINADOR — OBRIGATÓRIO USAR NA NOTÍCIA: "${newMatch.observations.trim()}" — Este é o relato pessoal do técnico sobre a partida. Incorpore essas ideias específicas no corpo da notícia e nos comentários da torcida. Não ignore nem parafraseie de forma genérica — use os detalhes concretos mencionados (táticas, nomes, estádio, contexto emocional).`
+    : "";
+
+  const withObservations = (ev: DetectedEvent): DetectedEvent =>
+    observationsInstruction
+      ? { ...ev, aiDescription: ev.aiDescription + observationsInstruction }
+      : ev;
+
+  const finalEvents = (isClassico ? events.map(withClassico) : events).map(withObservations);
 
   return finalEvents.sort((a, b) => a.priority - b.priority);
 }
