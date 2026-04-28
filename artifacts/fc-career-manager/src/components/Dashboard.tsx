@@ -22,7 +22,7 @@ import { getRivals } from "@/lib/rivalsStorage";
 import { fetchPortals } from "@/lib/customPortalStorage";
 import { fetchPortalPhotos, type PortalPhotos } from "@/lib/portalPhotosStorage";
 import { addPost as addNewsPost, getPosts as getNoticiaPosts, getPostsEn as getNoticiaPostsEn, generatePostId, generateCommentId } from "@/lib/noticiaStorage";
-import { getFanMood, setFanMood, computeFanMoodDelta, getFanMoodLabel } from "@/lib/fanMoodStorage";
+import { getFanMood, setFanMood, computeFanMoodDelta, getFanMoodLabel, isEliteClub } from "@/lib/fanMoodStorage";
 import { getBoardMood, setBoardMood, computeBoardMoodDelta, getBoardMoodLabel, getBoardCrisisStreak, setBoardCrisisStreak, getLeagueExpectedOvr, isInGracePeriod } from "@/lib/boardMoodStorage";
 import { getSeasonObjectives, saveSeasonObjectives, markObjectiveFailed, markObjectiveAchieved, computeCupFailureSeverity, isEliminatedBeforeTarget, severityBoardPenalty, isLeaguePositionAchieved } from "@/lib/seasonObjectivesStorage";
 import type { SeasonObjective } from "@/lib/seasonObjectivesStorage";
@@ -1495,14 +1495,15 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
         break;
       }
     }
+    const squadAvgOvr = calcSquadAvgOvr(allPlayers, getAllPlayerOverrides(career.id));
     const clubTotalTitles = career.clubTitles?.reduce((sum, t) => sum + t.count, 0);
-    const moodDelta = computeFanMoodDelta(match.myScore, match.opponentScore, isClassico, unbeatenStreak, clubTotalTitles);
+    const leagueAvgOvr = getLeagueExpectedOvr(effectiveLeague);
+    const isEliteOpponent = isEliteClub(match.opponent);
+    const moodDelta = computeFanMoodDelta(match.myScore, match.opponentScore, isClassico, unbeatenStreak, clubTotalTitles, squadAvgOvr ?? undefined, leagueAvgOvr, isEliteOpponent);
     const newMoodScore = Math.max(0, Math.min(100, currentMood + moodDelta));
     void setFanMood(activeSeasonId, newMoodScore);
     setFanMoodScore(newMoodScore);
     const moodInfo = getFanMoodLabel(newMoodScore, lang);
-
-    const squadAvgOvr = calcSquadAvgOvr(allPlayers, getAllPlayerOverrides(career.id));
     const currentBoardMood = getBoardMood(activeSeasonId);
     const boardDelta = computeBoardMoodDelta({
       myScore: match.myScore,

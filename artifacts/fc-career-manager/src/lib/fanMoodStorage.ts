@@ -35,21 +35,85 @@ export async function setFanMood(seasonId: string, score: number): Promise<void>
   await putSeasonData(seasonId, "fan_mood", clamped);
 }
 
+const ELITE_CLUBS_KEYWORDS: readonly string[] = [
+  // Premier League
+  "manchester city", "man city",
+  "manchester united", "man united", "man utd",
+  "liverpool",
+  "arsenal",
+  "chelsea",
+  "tottenham",
+  // La Liga
+  "real madrid",
+  "barcelona",
+  "atletico madrid", "atlético madrid",
+  // Bundesliga
+  "bayern",
+  "borussia dortmund",
+  // Serie A
+  "juventus",
+  "milan",
+  "inter",
+  "napoli",
+  // Ligue 1
+  "paris saint-germain", "paris sg", "psg",
+  "olympique de marseille",
+  // Netherlands
+  "ajax",
+  // Portugal
+  "porto",
+  "benfica",
+  "sporting cp", "sporting lisboa",
+  // Scotland
+  "celtic",
+  "rangers",
+  // Turkey
+  "galatasaray",
+  "fenerbahce", "fenerbahçe",
+  "besiktas", "beşiktaş",
+  // Brazil
+  "flamengo",
+  "palmeiras",
+  "corinthians",
+  "santos",
+  "grêmio", "gremio",
+  "internacional",
+  "atlético mineiro", "atletico mineiro",
+  "cruzeiro",
+  // Argentina
+  "river plate",
+  "boca juniors",
+];
+
+export function isEliteClub(opponentName: string): boolean {
+  const lower = opponentName.toLowerCase().trim();
+  for (const keyword of ELITE_CLUBS_KEYWORDS) {
+    if (lower.includes(keyword)) return true;
+  }
+  return false;
+}
+
 export function computeFanMoodDelta(
   myScore: number,
   opponentScore: number,
   isClassico: boolean,
   unbeatenStreak: number = 0,
   clubTotalTitles?: number,
+  mySquadOvr?: number,
+  leagueAvgOvr?: number,
+  isEliteOpponent: boolean = false,
 ): number {
-  const isWin = myScore > opponentScore;
   const isDraw = myScore === opponentScore;
   const isLoss = myScore < opponentScore;
 
-  const prestige =
-    clubTotalTitles === undefined ? "medium"
-    : clubTotalTitles <= 2       ? "small"
-    : clubTotalTitles >= 10      ? "large"
+  const prestige: "small" | "medium" | "large" =
+    mySquadOvr != null && leagueAvgOvr != null
+      ? mySquadOvr < leagueAvgOvr - 5  ? "small"
+      : mySquadOvr > leagueAvgOvr + 5  ? "large"
+      : "medium"
+    : clubTotalTitles === undefined ? "medium"
+    : clubTotalTitles <= 2          ? "small"
+    : clubTotalTitles >= 10         ? "large"
     : "medium";
 
   if (isLoss) {
@@ -70,12 +134,18 @@ export function computeFanMoodDelta(
   if (prestige === "small") base = Math.round(base * 1.25);
   else if (prestige === "large") base = Math.round(base * 0.85);
 
+  const eliteBonus = isEliteOpponent
+    ? prestige === "small" ? +5
+    : prestige === "large" ? +1
+    : +3
+    : 0;
+
   let streakBonus = 0;
   if (unbeatenStreak >= 8) streakBonus = +7;
   else if (unbeatenStreak >= 5) streakBonus = +5;
   else if (unbeatenStreak >= 2) streakBonus = +3;
 
-  return base + streakBonus;
+  return base + eliteBonus + streakBonus;
 }
 
 export function hydrateFanMoodCache(seasonId: string, data: Record<string, unknown>): void {
