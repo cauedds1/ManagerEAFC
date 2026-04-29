@@ -416,6 +416,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
   }, [career.id]);
 
   const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const [windowActivatedCount, setWindowActivatedCount] = useState(0);
   const [diretoriaUnread, setDiretoriaUnread] = useState(0);
   const [noticiasUnread, setNoticiasUnread] = useState(0);
   const [fanMoodScore, setFanMoodScore] = useState<number>(() => getFanMood(career.currentSeasonId ?? career.id));
@@ -1185,6 +1186,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
       const next = { open: false, openCount: transferWindow.openCount };
       saveTransferWindow(activeSeasonId, next);
       setTransferWindow(next);
+      setWindowActivatedCount(0);
     } else {
       // Opening window — activate all pending transfers
       if (transferWindow.openCount >= 2) return;
@@ -1203,6 +1205,10 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
         if (pendingOuts.length > 0) {
           setFormerPlayers(getFormerPlayers(career.id));
         }
+        const incomingCount = prev.filter(
+          (t) => t.windowPending && (t.type === "compra" || !t.type || (t.type === "emprestimo" && t.loanDirection === "entrada"))
+        ).length;
+        setWindowActivatedCount(incomingCount);
         const activated = prev.map((t) => t.windowPending ? { ...t, windowPending: false } : t);
         saveTransfers(activeSeasonId, activated);
         return activated;
@@ -2349,6 +2355,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
                 transferWindowOpen={transferWindow.open}
                 transferWindowOpenCount={transferWindow.openCount}
                 onToggleWindow={!isReadOnly ? handleWindowToggle : undefined}
+                windowActivatedCount={windowActivatedCount}
                 isReadOnly={isReadOnly}
               />
             )}

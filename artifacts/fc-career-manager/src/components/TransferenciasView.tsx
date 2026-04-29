@@ -47,6 +47,11 @@ function formatDate(ts: number): string {
   return `${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}/${d.getFullYear()}`;
 }
 
+function formatDateFromIso(iso: string): string {
+  const [year, month, day] = iso.split("-");
+  return `${day}/${month}/${year}`;
+}
+
 function formatFee(fee: number, freeLabel: string): string {
   if (fee === 0) return freeLabel;
   return `€${fee.toLocaleString("pt-BR")}`;
@@ -468,10 +473,11 @@ function TransferCard({
           )}
           {transfer.windowPending && (
             <span
-              className="text-[10px] font-black px-2 py-0.5 rounded-md flex-shrink-0 tracking-wider"
-              style={{ background: "rgba(168,85,247,0.15)", color: "#a855f7", border: "1px solid rgba(168,85,247,0.3)" }}
+              className="inline-flex flex-col px-2 py-1 rounded-md flex-shrink-0 leading-tight"
+              style={{ background: "rgba(168,85,247,0.15)", border: "1px solid rgba(168,85,247,0.3)" }}
             >
-              {t.badgePendente}
+              <span className="text-[10px] font-black tracking-wider" style={{ color: "#a855f7" }}>{t.badgePendente}</span>
+              <span className="text-[9px] font-semibold" style={{ color: "rgba(168,85,247,0.7)" }}>{t.badgeEntraJanela}</span>
             </span>
           )}
         </div>
@@ -590,7 +596,7 @@ function TransferCard({
         {transfer.salary > 0 && !isVenda && !isEmprestimo && (
           <p className="text-white/35 text-xs tabular-nums">€{transfer.salary}{t.wagePerWeek}</p>
         )}
-        <p className="text-white/20 text-xs mt-0.5">{formatDate(transfer.transferredAt)}</p>
+        <p className="text-white/20 text-xs mt-0.5">{transfer.transferDate ? formatDateFromIso(transfer.transferDate) : formatDate(transfer.transferredAt)}</p>
       </div>
     </div>
   );
@@ -616,6 +622,7 @@ interface FormData {
   fromClubLogo: string;
   toClub: string;
   toClubLogo: string;
+  transferDate: string;
   resolvedPlayerId: number | null;
   tradeEnabled: boolean;
   tradePlayerName: string;
@@ -626,6 +633,11 @@ interface FormData {
   tradePlayerPosition: PositionPtBr;
   tradePlayerOverall: string;
   tradePlayerMode: "search" | "create";
+}
+
+function todayIso(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 const DEFAULT_FORM: FormData = {
@@ -648,6 +660,7 @@ const DEFAULT_FORM: FormData = {
   fromClubLogo: "",
   toClub: "",
   toClubLogo: "",
+  transferDate: todayIso(),
   resolvedPlayerId: null,
   tradeEnabled: false,
   tradePlayerName: "",
@@ -1022,6 +1035,7 @@ interface TransferenciasViewProps {
   transferWindowOpen?: boolean;
   transferWindowOpenCount?: number;
   onToggleWindow?: () => void;
+  windowActivatedCount?: number;
   isReadOnly?: boolean;
 }
 
@@ -1041,6 +1055,7 @@ export function TransferenciasView({
   transferWindowOpen = false,
   transferWindowOpenCount = 0,
   onToggleWindow,
+  windowActivatedCount = 0,
   isReadOnly,
 }: TransferenciasViewProps) {
   const [lang] = useLang();
@@ -1144,6 +1159,7 @@ export function TransferenciasView({
       loanDirection: isEmprestimo ? form.loanDirection : undefined,
       loanEnded: false,
       playerOverall: signingOvr,
+      transferDate: form.transferDate || undefined,
       transferredAt: Date.now(),
       windowPending: isPending || undefined,
     };
@@ -1361,7 +1377,9 @@ export function TransferenciasView({
                 {t.windowLabel} {transferWindowOpen ? t.windowOpen : t.windowClosed}
               </p>
               <p className="text-white/40 text-xs mt-0.5">
-                {transferWindowOpen
+                {transferWindowOpen && windowActivatedCount > 0
+                  ? `${windowActivatedCount} ${windowActivatedCount === 1 ? t.windowActivatedSingular : t.windowActivatedPlural}`
+                  : transferWindowOpen
                   ? t.windowImmediateEffect
                   : transferWindowOpenCount >= 2
                   ? t.windowClosedSeason
@@ -1754,6 +1772,17 @@ export function TransferenciasView({
                     <p className="text-white/20 text-xs mt-1">{t.toClubHint}</p>
                   </div>
                 )}
+
+                <div className="sm:col-span-2">
+                  <label className={labelClass}>{t.transferDateLabel}</label>
+                  <input
+                    type="date"
+                    className={inputClass}
+                    value={form.transferDate}
+                    onChange={(e) => set("transferDate", e.target.value)}
+                    style={{ colorScheme: "dark" }}
+                  />
+                </div>
               </div>
 
               {!isVendaForm && !isEmprestimoForm && (
