@@ -415,6 +415,8 @@ function TransferCard({
     ? (LOAN_DURATION_DISPLAY[transfer.loanDuration]?.[lang] ?? transfer.loanDuration)
     : null;
 
+  const isOutgoingTransfer = isVenda || (isEmprestimo && transfer.loanDirection === "saida");
+
   return (
     <div
       className="flex items-center gap-4 p-4 rounded-2xl transition-all duration-200 glass glass-hover"
@@ -477,7 +479,9 @@ function TransferCard({
               style={{ background: "rgba(168,85,247,0.15)", border: "1px solid rgba(168,85,247,0.3)" }}
             >
               <span className="text-[10px] font-black tracking-wider" style={{ color: "#a855f7" }}>{t.badgePendente}</span>
-              <span className="text-[9px] font-semibold" style={{ color: "rgba(168,85,247,0.7)" }}>{t.badgeEntraJanela}</span>
+              <span className="text-[9px] font-semibold" style={{ color: "rgba(168,85,247,0.7)" }}>
+                {isOutgoingTransfer ? t.badgeSaiJanela : t.badgeEntraJanela}
+              </span>
             </span>
           )}
         </div>
