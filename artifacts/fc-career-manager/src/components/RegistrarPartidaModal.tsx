@@ -1262,11 +1262,29 @@ export function RegistrarPartidaModal({
   const isEditMode = editMatch != null;
   const [saving, setSaving] = useState(false);
   const [pickerMode, setPickerMode] = useState<"starter" | "sub" | null>(null);
-  const [lineupMode, setLineupMode] = useState<"lista" | "campinho">("lista");
+  const [lineupMode, setLineupMode] = useState<"lista" | "campinho">(
+    editMatch?.formation ? "campinho" : "lista",
+  );
   const [pitchFormation, setPitchFormation] = useState<FormationKey>(
     (editMatch?.formation as FormationKey | undefined) ?? DEFAULT_FORMATION,
   );
-  const [pitchSlots, setPitchSlots] = useState<(number | null)[]>(Array(11).fill(null));
+  const [pitchSlots, setPitchSlots] = useState<(number | null)[]>(() => {
+    if (editMatch?.formation && editMatch.starterIds.length > 0) {
+      const ids = editMatch.starterIds;
+      if (ids.some((id) => id === 0) || ids.length === 11) {
+        return ids.map((id) => (id === 0 ? null : id));
+      }
+      const formation = editMatch.formation as FormationKey;
+      const starters = ids
+        .map((id) => allPlayers.find((p) => p.id === id))
+        .filter(Boolean) as SquadPlayer[];
+      const ordered = pickBestEleven(starters, formation);
+      const slots: (number | null)[] = Array(11).fill(null);
+      ordered.forEach((id, i) => { slots[i] = id; });
+      return slots;
+    }
+    return Array(11).fill(null);
+  });
   const [pitchSelectedId, setPitchSelectedId] = useState<number | null>(null);
   const [pitchPendingSlot, setPitchPendingSlot] = useState<number | null>(null);
 
@@ -1572,11 +1590,14 @@ export function RegistrarPartidaModal({
     if (!canSave || saving) return;
     setSaving(true);
     const finalStarterIds = lineupMode === "campinho"
-      ? pitchSlots.filter((id): id is number => id !== null)
+      ? pitchSlots.map((id) => id ?? 0)
       : draft.starterIds;
-    const finalFormation = lineupMode === "campinho" ? pitchFormation : undefined;
+    const denseStarterIds = finalStarterIds.filter((id) => id !== 0);
+    const finalFormation = lineupMode === "campinho"
+      ? pitchFormation
+      : isEditMode ? (editMatch?.formation as FormationKey | undefined) : undefined;
     if (isEditMode && editMatch) {
-      const playerSnapshot = buildPlayerSnapshot(finalStarterIds, draft.subIds, draft.motmPlayerId);
+      const playerSnapshot = buildPlayerSnapshot(denseStarterIds, draft.subIds, draft.motmPlayerId);
       const updated: MatchRecord = {
         ...editMatch,
         date: draft.date,
@@ -1609,7 +1630,7 @@ export function RegistrarPartidaModal({
       onMatchUpdated?.(updated);
       onClose();
     } else {
-      const playerSnapshot = buildPlayerSnapshot(finalStarterIds, draft.subIds, draft.motmPlayerId);
+      const playerSnapshot = buildPlayerSnapshot(denseStarterIds, draft.subIds, draft.motmPlayerId);
       const match: MatchRecord = {
         id: generateMatchId(),
         careerId,
@@ -1643,7 +1664,7 @@ export function RegistrarPartidaModal({
         playerSnapshot: Object.keys(playerSnapshot).length > 0 ? playerSnapshot : undefined,
       };
       addMatch(seasonId, match);
-      applyMatchToPlayerStats(seasonId, finalStarterIds, draft.subIds, draft.playerStats);
+      applyMatchToPlayerStats(seasonId, denseStarterIds, draft.subIds, draft.playerStats);
       clearSavedDraft(careerId, seasonId);
       onMatchAdded(match);
       onClose();
