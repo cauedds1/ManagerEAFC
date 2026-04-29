@@ -27,7 +27,7 @@ import { getCustomLineup } from "@/lib/lineupStorage";
 import { getCachedClubList } from "@/lib/clubListCache";
 import { FootballPitch, pickBestEleven } from "@/components/FootballPitch";
 import { searchStaticClubs } from "@/lib/staticClubList";
-import { type FormationKey, DEFAULT_FORMATION, FORMATION_GROUPS } from "@/lib/formations";
+import { type FormationKey, DEFAULT_FORMATION, FORMATION_GROUPS, isFormationKey } from "@/lib/formations";
 
 interface Props {
   careerId: string;
@@ -1262,19 +1262,22 @@ export function RegistrarPartidaModal({
   const isEditMode = editMatch != null;
   const [saving, setSaving] = useState(false);
   const [pickerMode, setPickerMode] = useState<"starter" | "sub" | null>(null);
+  const editFormation = editMatch?.formation && isFormationKey(editMatch.formation)
+    ? editMatch.formation
+    : undefined;
   const [lineupMode, setLineupMode] = useState<"lista" | "campinho">(
-    editMatch?.formation ? "campinho" : "lista",
+    editFormation ? "campinho" : "lista",
   );
   const [pitchFormation, setPitchFormation] = useState<FormationKey>(
-    editMatch?.formation ?? DEFAULT_FORMATION,
+    editFormation ?? DEFAULT_FORMATION,
   );
   const [pitchSlots, setPitchSlots] = useState<(number | null)[]>(() => {
-    if (editMatch?.formation && editMatch.starterIds.length > 0) {
+    if (editFormation && editMatch && editMatch.starterIds.length > 0) {
       const ids = editMatch.starterIds;
       if (ids.some((id) => id === 0) || ids.length === 11) {
         return ids.map((id) => (id === 0 ? null : id));
       }
-      const formation = editMatch.formation as FormationKey;
+      const formation = editFormation;
       const starters = ids
         .map((id) => allPlayers.find((p) => p.id === id))
         .filter(Boolean) as SquadPlayer[];
