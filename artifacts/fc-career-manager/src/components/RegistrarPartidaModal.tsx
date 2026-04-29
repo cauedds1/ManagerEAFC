@@ -1471,19 +1471,20 @@ export function RegistrarPartidaModal({
 
   const handleAutoFill = useCallback(() => {
     const saved = getCustomLineup(careerId);
-    const rawIds = saved ?? (allPlayers.length > 0 ? pickBestEleven(allPlayers, pitchFormation) : []);
-    const validIds = rawIds.filter((id) => allPlayers.find((p) => p.id === id));
+    const candidateIds = saved ?? (allPlayers.length > 0 ? pickBestEleven(allPlayers, pitchFormation) : []);
+    const validPlayers = candidateIds
+      .map((id) => allPlayers.find((p) => p.id === id))
+      .filter(Boolean) as SquadPlayer[];
+    const orderedIds = pickBestEleven(validPlayers, pitchFormation);
     const newSectorMap: Record<number, "GOL" | "DEF" | "MID" | "ATA"> = {};
-    validIds.forEach((id, slotIndex) => {
+    orderedIds.forEach((id, slotIndex) => {
       newSectorMap[id] = sectorForSlotIndex(slotIndex, pitchFormation);
     });
     setSectorMap(newSectorMap);
     setDraft((prev) => {
       const nextStats = { ...prev.playerStats };
       const newStarters: number[] = [];
-      for (const id of rawIds) {
-        const exists = allPlayers.find((p) => p.id === id);
-        if (!exists) continue;
+      for (const id of orderedIds) {
         if (!prev.subIds.includes(id)) {
           newStarters.push(id);
           if (!nextStats[id]) nextStats[id] = mkDefault(false);
@@ -1492,12 +1493,8 @@ export function RegistrarPartidaModal({
       return { ...prev, starterIds: newStarters, playerStats: nextStats };
     });
     if (lineupMode === "campinho") {
-      const ordered = pickBestEleven(
-        rawIds.map((id) => allPlayers.find((p) => p.id === id)).filter(Boolean) as SquadPlayer[],
-        pitchFormation,
-      );
       const newSlots: (number | null)[] = Array(11).fill(null);
-      ordered.forEach((id, i) => { newSlots[i] = id; });
+      orderedIds.forEach((id, i) => { newSlots[i] = id; });
       setPitchSlots(newSlots);
     }
   }, [careerId, allPlayers, lineupMode, pitchFormation]);
