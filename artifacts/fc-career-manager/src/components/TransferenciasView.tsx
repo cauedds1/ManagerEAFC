@@ -711,6 +711,7 @@ function EditTransferModal({
   const [fromClubLogo, setFromClubLogo] = useState(transfer.fromClubLogo ?? "");
   const [toClub, setToClub] = useState(transfer.toClub ?? "");
   const [toClubLogo, setToClubLogo] = useState(transfer.toClubLogo ?? "");
+  const [transferDate, setTransferDate] = useState(transfer.transferDate ?? "");
   const [confirmCancel, setConfirmCancel] = useState(false);
 
   function handleSave() {
@@ -729,6 +730,7 @@ function EditTransferModal({
       fromClubLogo: fromClubLogo.trim() || undefined,
       toClub: toClub.trim() || undefined,
       toClubLogo: toClubLogo.trim() || undefined,
+      transferDate: transferDate || undefined,
     };
     onSave(changes);
     onClose();
@@ -967,6 +969,18 @@ function EditTransferModal({
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Transfer Date */}
+          <div>
+            <p className="text-white/30 text-xs font-bold tracking-widest uppercase mb-3">{t.transferDateLabel}</p>
+            <input
+              type="date"
+              value={transferDate}
+              onChange={(e) => setTransferDate(e.target.value)}
+              className="w-full px-3 py-2.5 rounded-xl text-white text-sm bg-white/[0.06] border border-white/10 focus:border-white/25 outline-none transition-colors"
+              style={{ colorScheme: "dark" }}
+            />
           </div>
         </div>
 
