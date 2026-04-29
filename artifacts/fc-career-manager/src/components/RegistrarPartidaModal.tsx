@@ -27,7 +27,15 @@ import { getCustomLineup } from "@/lib/lineupStorage";
 import { getCachedClubList } from "@/lib/clubListCache";
 import { FootballPitch, pickBestEleven } from "@/components/FootballPitch";
 import { searchStaticClubs } from "@/lib/staticClubList";
-import { type FormationKey, DEFAULT_FORMATION, FORMATION_GROUPS, isFormationKey } from "@/lib/formations";
+import { type FormationKey, DEFAULT_FORMATION, FORMATION_GROUPS, isFormationKey, getFormationGroups } from "@/lib/formations";
+
+function sectorForSlotIndex(slotIndex: number, formationKey: FormationKey): "GOL" | "DEF" | "MID" | "ATA" {
+  if (slotIndex === 0) return "GOL";
+  const { def, mid } = getFormationGroups(formationKey);
+  if (slotIndex <= def) return "DEF";
+  if (slotIndex <= def + mid) return "MID";
+  return "ATA";
+}
 
 interface Props {
   careerId: string;
@@ -1290,6 +1298,15 @@ export function RegistrarPartidaModal({
   });
   const [pitchSelectedId, setPitchSelectedId] = useState<number | null>(null);
   const [pitchPendingSlot, setPitchPendingSlot] = useState<number | null>(null);
+  const [sectorMap, setSectorMap] = useState<Record<number, "GOL" | "DEF" | "MID" | "ATA">>({});
+
+  const getPlayerSector = useCallback((playerId: number): "GOL" | "DEF" | "MID" | "ATA" => {
+    if (sectorMap[playerId]) return sectorMap[playerId];
+    const player = allPlayers.find((p) => p.id === playerId);
+    const pos = player?.positionPtBr;
+    if (pos === "GOL" || pos === "DEF" || pos === "MID" || pos === "ATA") return pos;
+    return "MID";
+  }, [sectorMap, allPlayers]);
 
   const allSystemPlayers = useMemo(() => {
     const cached = getAllCachedPlayers();
@@ -1413,6 +1430,12 @@ export function RegistrarPartidaModal({
         return { ...prev, starterIds: insertSortedByPosition(prev.starterIds, player.id, allPlayers), playerStats: nextStats };
       }
     });
+    if (!asSub) {
+      const pos = player.positionPtBr;
+      const naturalSector: "GOL" | "DEF" | "MID" | "ATA" =
+        (pos === "GOL" || pos === "DEF" || pos === "MID" || pos === "ATA") ? pos : "MID";
+      setSectorMap((prev) => ({ ...prev, [player.id]: naturalSector }));
+    }
     setPickerMode(null);
   }, [allPlayers, insertSortedByPosition]);
 
@@ -1425,6 +1448,11 @@ export function RegistrarPartidaModal({
       const motmPlayerId = prev.motmPlayerId === playerId ? null : prev.motmPlayerId;
       const motmPlayerName = prev.motmPlayerId === playerId ? "" : prev.motmPlayerName;
       return { ...prev, starterIds, subIds, playerStats, motmPlayerId, motmPlayerName };
+    });
+    setSectorMap((prev) => {
+      const next = { ...prev };
+      delete next[playerId];
+      return next;
     });
   }, []);
 
@@ -1444,6 +1472,12 @@ export function RegistrarPartidaModal({
   const handleAutoFill = useCallback(() => {
     const saved = getCustomLineup(careerId);
     const rawIds = saved ?? (allPlayers.length > 0 ? pickBestEleven(allPlayers, pitchFormation) : []);
+    const validIds = rawIds.filter((id) => allPlayers.find((p) => p.id === id));
+    const newSectorMap: Record<number, "GOL" | "DEF" | "MID" | "ATA"> = {};
+    validIds.forEach((id, slotIndex) => {
+      newSectorMap[id] = sectorForSlotIndex(slotIndex, pitchFormation);
+    });
+    setSectorMap(newSectorMap);
     setDraft((prev) => {
       const nextStats = { ...prev.playerStats };
       const newStarters: number[] = [];
@@ -1493,6 +1527,11 @@ export function RegistrarPartidaModal({
 
   const handleEnterLista = useCallback(() => {
     const newStarters = pitchSlots.filter((id): id is number => id !== null);
+    const newSectorMap: Record<number, "GOL" | "DEF" | "MID" | "ATA"> = {};
+    pitchSlots.forEach((id, slotIndex) => {
+      if (id !== null) newSectorMap[id] = sectorForSlotIndex(slotIndex, pitchFormation);
+    });
+    setSectorMap(newSectorMap);
     setDraft((prev) => {
       const nextStats = { ...prev.playerStats };
       for (const id of Object.keys(nextStats).map(Number)) {
@@ -1506,7 +1545,7 @@ export function RegistrarPartidaModal({
     setLineupMode("lista");
     setPitchSelectedId(null);
     setPitchPendingSlot(null);
-  }, [pitchSlots]);
+  }, [pitchSlots, pitchFormation]);
 
   const handlePitchFormationChange = useCallback((newFormation: FormationKey) => {
     setPitchFormation(newFormation);
@@ -2147,25 +2186,39 @@ export function RegistrarPartidaModal({
                 )}
 
                 <div className="space-y-2">
-                  {draft.starterIds.map((id) => {
-                    const player = allPlayers.find((p) => p.id === id);
-                    const stats = draft.playerStats[id];
-                    if (!player || !stats) return null;
-                    const assistCount = Object.values(draft.playerStats).reduce((n, ps) =>
-                      n + ps.goals.filter((g) => g.assistPlayerId === id).length, 0);
+                  {(["GOL", "DEF", "MID", "ATA"] as const).map((sector) => {
+                    const sectorIds = draft.starterIds.filter((id) => getPlayerSector(id) === sector);
+                    if (sectorIds.length === 0) return null;
                     return (
-                      <PlayerLineupRow
-                        key={id}
-                        player={player}
-                        stats={stats}
-                        isSub={false}
-                        allParticipants={allParticipants}
-                        allUnused={allUnusedForSub(id)}
-                        assistCount={assistCount}
-                        onUpdate={(patch) => updatePlayerStats(id, patch)}
-                        onRemove={() => removePlayer(id)}
-                        onSubPlayerAdded={handleSubPlayerAdded}
-                      />
+                      <div key={sector}>
+                        <div className="flex items-center gap-2 mb-1.5 mt-1">
+                          <span className="text-white/25 text-[10px] font-bold tracking-widest">{sector}</span>
+                          <div className="flex-1 h-px" style={{ background: "rgba(255,255,255,0.05)" }} />
+                        </div>
+                        <div className="space-y-2">
+                          {sectorIds.map((id) => {
+                            const player = allPlayers.find((p) => p.id === id);
+                            const stats = draft.playerStats[id];
+                            if (!player || !stats) return null;
+                            const assistCount = Object.values(draft.playerStats).reduce((n, ps) =>
+                              n + ps.goals.filter((g) => g.assistPlayerId === id).length, 0);
+                            return (
+                              <PlayerLineupRow
+                                key={id}
+                                player={player}
+                                stats={stats}
+                                isSub={false}
+                                allParticipants={allParticipants}
+                                allUnused={allUnusedForSub(id)}
+                                assistCount={assistCount}
+                                onUpdate={(patch) => updatePlayerStats(id, patch)}
+                                onRemove={() => removePlayer(id)}
+                                onSubPlayerAdded={handleSubPlayerAdded}
+                              />
+                            );
+                          })}
+                        </div>
+                      </div>
                     );
                   })}
                 </div>
