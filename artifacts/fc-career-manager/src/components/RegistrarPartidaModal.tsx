@@ -25,8 +25,9 @@ import {
 } from "@/lib/matchStorage";
 import { getCustomLineup } from "@/lib/lineupStorage";
 import { getCachedClubList } from "@/lib/clubListCache";
-import { pickBestEleven } from "@/components/FootballPitch";
+import { FootballPitch, pickBestEleven } from "@/components/FootballPitch";
 import { searchStaticClubs } from "@/lib/staticClubList";
+import { type FormationKey, DEFAULT_FORMATION, FORMATION_GROUPS } from "@/lib/formations";
 
 interface Props {
   careerId: string;
@@ -1261,6 +1262,13 @@ export function RegistrarPartidaModal({
   const isEditMode = editMatch != null;
   const [saving, setSaving] = useState(false);
   const [pickerMode, setPickerMode] = useState<"starter" | "sub" | null>(null);
+  const [lineupMode, setLineupMode] = useState<"lista" | "campinho">("lista");
+  const [pitchFormation, setPitchFormation] = useState<FormationKey>(
+    (editMatch?.formation as FormationKey | undefined) ?? DEFAULT_FORMATION,
+  );
+  const [pitchSlots, setPitchSlots] = useState<(number | null)[]>(Array(11).fill(null));
+  const [pitchSelectedId, setPitchSelectedId] = useState<number | null>(null);
+  const [pitchPendingSlot, setPitchPendingSlot] = useState<number | null>(null);
 
   const allSystemPlayers = useMemo(() => {
     const cached = getAllCachedPlayers();
@@ -1414,11 +1422,11 @@ export function RegistrarPartidaModal({
 
   const handleAutoFill = useCallback(() => {
     const saved = getCustomLineup(careerId);
-    const ids = saved ?? (allPlayers.length > 0 ? pickBestEleven(allPlayers) : []);
+    const rawIds = saved ?? (allPlayers.length > 0 ? pickBestEleven(allPlayers, pitchFormation) : []);
     setDraft((prev) => {
       const nextStats = { ...prev.playerStats };
       const newStarters: number[] = [];
-      for (const id of ids) {
+      for (const id of rawIds) {
         const exists = allPlayers.find((p) => p.id === id);
         if (!exists) continue;
         if (!prev.subIds.includes(id)) {
@@ -1428,7 +1436,103 @@ export function RegistrarPartidaModal({
       }
       return { ...prev, starterIds: newStarters, playerStats: nextStats };
     });
-  }, [careerId, allPlayers]);
+    if (lineupMode === "campinho") {
+      const ordered = pickBestEleven(
+        rawIds.map((id) => allPlayers.find((p) => p.id === id)).filter(Boolean) as SquadPlayer[],
+        pitchFormation,
+      );
+      const newSlots: (number | null)[] = Array(11).fill(null);
+      ordered.forEach((id, i) => { newSlots[i] = id; });
+      setPitchSlots(newSlots);
+    }
+  }, [careerId, allPlayers, lineupMode, pitchFormation]);
+
+  const handleEnterCampinho = useCallback(() => {
+    const currentStarters = draft.starterIds
+      .map((id) => allPlayers.find((p) => p.id === id))
+      .filter(Boolean) as SquadPlayer[];
+    const ordered = pickBestEleven(currentStarters, pitchFormation);
+    const newSlots: (number | null)[] = Array(11).fill(null);
+    ordered.forEach((id, i) => { newSlots[i] = id; });
+    setPitchSlots(newSlots);
+    setDraft((prev) => {
+      const nextStats = { ...prev.playerStats };
+      for (const id of prev.starterIds) {
+        if (!ordered.includes(id) && !prev.subIds.includes(id)) delete nextStats[id];
+      }
+      for (const id of ordered) {
+        if (!nextStats[id]) nextStats[id] = mkDefault(false);
+      }
+      return { ...prev, starterIds: ordered, playerStats: nextStats };
+    });
+    setLineupMode("campinho");
+    setPitchSelectedId(null);
+    setPitchPendingSlot(null);
+  }, [draft.starterIds, allPlayers, pitchFormation]);
+
+  const handleEnterLista = useCallback(() => {
+    const newStarters = pitchSlots.filter((id): id is number => id !== null);
+    setDraft((prev) => {
+      const nextStats = { ...prev.playerStats };
+      for (const id of Object.keys(nextStats).map(Number)) {
+        if (!newStarters.includes(id) && !prev.subIds.includes(id)) delete nextStats[id];
+      }
+      for (const id of newStarters) {
+        if (!nextStats[id]) nextStats[id] = mkDefault(false);
+      }
+      return { ...prev, starterIds: newStarters, playerStats: nextStats };
+    });
+    setLineupMode("lista");
+    setPitchSelectedId(null);
+    setPitchPendingSlot(null);
+  }, [pitchSlots]);
+
+  const handlePitchFormationChange = useCallback((newFormation: FormationKey) => {
+    setPitchFormation(newFormation);
+    const currentPlayers = pitchSlots
+      .filter((id): id is number => id !== null)
+      .map((id) => allPlayers.find((p) => p.id === id))
+      .filter(Boolean) as SquadPlayer[];
+    const ordered = pickBestEleven(currentPlayers, newFormation);
+    const newSlots: (number | null)[] = Array(11).fill(null);
+    ordered.forEach((id, i) => { newSlots[i] = id; });
+    setPitchSlots(newSlots);
+    setDraft((prev) => ({ ...prev, starterIds: ordered }));
+  }, [pitchSlots, allPlayers]);
+
+  const handlePitchAssign = useCallback((slotIndex: number, player: SquadPlayer) => {
+    const evictedId = pitchSlots[slotIndex];
+    const existingSlot = pitchSlots.indexOf(player.id);
+    const newSlots = [...pitchSlots];
+    if (existingSlot !== -1) newSlots[existingSlot] = null;
+    newSlots[slotIndex] = player.id;
+    setPitchSlots(newSlots);
+    setDraft((prev) => {
+      const newStats = { ...prev.playerStats };
+      if (evictedId !== null && !newSlots.includes(evictedId) && !prev.subIds.includes(evictedId)) {
+        delete newStats[evictedId];
+      }
+      if (!newStats[player.id]) newStats[player.id] = mkDefault(false);
+      const newStarterIds = newSlots.filter((id): id is number => id !== null);
+      return { ...prev, starterIds: newStarterIds, playerStats: newStats };
+    });
+    setPitchPendingSlot(null);
+    setPitchSelectedId(player.id);
+  }, [pitchSlots]);
+
+  const handlePitchRemove = useCallback((playerId: number) => {
+    const newSlots = pitchSlots.map((id) => id === playerId ? null : id);
+    setPitchSlots(newSlots);
+    setDraft((prev) => {
+      const starterIds = prev.starterIds.filter((id) => id !== playerId);
+      const playerStats = { ...prev.playerStats };
+      delete playerStats[playerId];
+      const motmPlayerId = prev.motmPlayerId === playerId ? null : prev.motmPlayerId;
+      const motmPlayerName = prev.motmPlayerId === playerId ? "" : prev.motmPlayerName;
+      return { ...prev, starterIds, playerStats, motmPlayerId, motmPlayerName };
+    });
+    if (pitchSelectedId === playerId) setPitchSelectedId(null);
+  }, [pitchSlots, pitchSelectedId]);
 
   const allParticipants = useMemo(
     () => [...draft.starterIds, ...draft.subIds].map((id) => allPlayers.find((p) => p.id === id)).filter((p): p is SquadPlayer => p != null),
@@ -1467,8 +1571,12 @@ export function RegistrarPartidaModal({
   const handleConfirm = useCallback(() => {
     if (!canSave || saving) return;
     setSaving(true);
+    const finalStarterIds = lineupMode === "campinho"
+      ? pitchSlots.filter((id): id is number => id !== null)
+      : draft.starterIds;
+    const finalFormation = lineupMode === "campinho" ? pitchFormation : undefined;
     if (isEditMode && editMatch) {
-      const playerSnapshot = buildPlayerSnapshot(draft.starterIds, draft.subIds, draft.motmPlayerId);
+      const playerSnapshot = buildPlayerSnapshot(finalStarterIds, draft.subIds, draft.motmPlayerId);
       const updated: MatchRecord = {
         ...editMatch,
         date: draft.date,
@@ -1478,7 +1586,7 @@ export function RegistrarPartidaModal({
         opponent: draft.opponent.trim(),
         myScore: draft.myScore,
         opponentScore: draft.opponentScore,
-        starterIds: draft.starterIds,
+        starterIds: finalStarterIds,
         subIds: draft.subIds,
         playerStats: draft.playerStats,
         matchStats: {
@@ -1494,13 +1602,14 @@ export function RegistrarPartidaModal({
         opponentLogoUrl: draft.opponentLogoUrl ?? undefined,
         hasExtraTime: draft.hasExtraTime || undefined,
         penaltyShootout: draft.penaltyShootout ?? undefined,
+        formation: finalFormation,
         playerSnapshot: Object.keys(playerSnapshot).length > 0 ? playerSnapshot : editMatch.playerSnapshot,
       };
       updateMatch(seasonId, updated);
       onMatchUpdated?.(updated);
       onClose();
     } else {
-      const playerSnapshot = buildPlayerSnapshot(draft.starterIds, draft.subIds, draft.motmPlayerId);
+      const playerSnapshot = buildPlayerSnapshot(finalStarterIds, draft.subIds, draft.motmPlayerId);
       const match: MatchRecord = {
         id: generateMatchId(),
         careerId,
@@ -1512,7 +1621,7 @@ export function RegistrarPartidaModal({
         opponent: draft.opponent.trim(),
         myScore: draft.myScore,
         opponentScore: draft.opponentScore,
-        starterIds: draft.starterIds,
+        starterIds: finalStarterIds,
         subIds: draft.subIds,
         playerStats: draft.playerStats,
         matchStats: {
@@ -1529,16 +1638,17 @@ export function RegistrarPartidaModal({
         observations: draft.observations.trim() || undefined,
         hasExtraTime: draft.hasExtraTime || undefined,
         penaltyShootout: draft.penaltyShootout ?? undefined,
+        formation: finalFormation,
         createdAt: Date.now(),
         playerSnapshot: Object.keys(playerSnapshot).length > 0 ? playerSnapshot : undefined,
       };
       addMatch(seasonId, match);
-      applyMatchToPlayerStats(seasonId, draft.starterIds, draft.subIds, draft.playerStats);
+      applyMatchToPlayerStats(seasonId, finalStarterIds, draft.subIds, draft.playerStats);
       clearSavedDraft(careerId, seasonId);
       onMatchAdded(match);
       onClose();
     }
-  }, [canSave, saving, isEditMode, editMatch, seasonId, careerId, season, draft, buildPlayerSnapshot, onMatchAdded, onMatchUpdated, onClose]);
+  }, [canSave, saving, isEditMode, editMatch, seasonId, careerId, season, draft, buildPlayerSnapshot, onMatchAdded, onMatchUpdated, onClose, lineupMode, pitchSlots, pitchFormation]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -1923,9 +2033,45 @@ export function RegistrarPartidaModal({
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <p className="text-white/40 text-xs font-medium uppercase tracking-wider">
-                {t.startersLabel} ({draft.starterIds.length})
+                {t.startersLabel} ({lineupMode === "campinho" ? pitchSlots.filter(Boolean).length : draft.starterIds.length})
               </p>
               <div className="flex items-center gap-2">
+                {/* View toggle: lista / campinho */}
+                <div className="flex rounded-xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
+                  <button
+                    type="button"
+                    onClick={() => lineupMode === "campinho" && handleEnterLista()}
+                    className="flex items-center justify-center w-8 h-8 transition-all duration-200"
+                    style={{
+                      background: lineupMode === "lista" ? "rgba(var(--club-primary-rgb),0.2)" : "rgba(255,255,255,0.03)",
+                      color: lineupMode === "lista" ? "var(--club-primary)" : "rgba(255,255,255,0.35)",
+                    }}
+                    title="Modo lista"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => lineupMode === "lista" && handleEnterCampinho()}
+                    className="flex items-center justify-center w-8 h-8 transition-all duration-200"
+                    style={{
+                      background: lineupMode === "campinho" ? "rgba(var(--club-primary-rgb),0.2)" : "rgba(255,255,255,0.03)",
+                      color: lineupMode === "campinho" ? "var(--club-primary)" : "rgba(255,255,255,0.35)",
+                      borderLeft: "1px solid rgba(255,255,255,0.08)",
+                    }}
+                    title="Modo campinho"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                      <rect x="3" y="3" width="18" height="18" rx="2" strokeLinejoin="round" />
+                      <circle cx="12" cy="12" r="4" />
+                      <line x1="12" y1="3" x2="12" y2="21" />
+                    </svg>
+                  </button>
+                </div>
+
+                {/* Auto-fill */}
                 <button
                   type="button"
                   onClick={handleAutoFill}
@@ -1937,63 +2083,157 @@ export function RegistrarPartidaModal({
                   </svg>
                   {t.autoFill}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setPickerMode((m) => m === "starter" ? null : "starter")}
-                  className="w-8 h-8 rounded-xl flex items-center justify-center font-black text-lg transition-all duration-200"
-                  style={{
-                    background: pickerMode === "starter" ? "rgba(var(--club-primary-rgb),0.2)" : "rgba(255,255,255,0.06)",
-                    color: pickerMode === "starter" ? "var(--club-primary)" : "rgba(255,255,255,0.5)",
-                    border: pickerMode === "starter" ? "1px solid rgba(var(--club-primary-rgb),0.4)" : "1px solid rgba(255,255,255,0.08)",
-                  }}
-                  title={t.addStarterTitle}
-                >
-                  +
-                </button>
+
+                {/* Add button (lista mode only) */}
+                {lineupMode === "lista" && (
+                  <button
+                    type="button"
+                    onClick={() => setPickerMode((m) => m === "starter" ? null : "starter")}
+                    className="w-8 h-8 rounded-xl flex items-center justify-center font-black text-lg transition-all duration-200"
+                    style={{
+                      background: pickerMode === "starter" ? "rgba(var(--club-primary-rgb),0.2)" : "rgba(255,255,255,0.06)",
+                      color: pickerMode === "starter" ? "var(--club-primary)" : "rgba(255,255,255,0.5)",
+                      border: pickerMode === "starter" ? "1px solid rgba(var(--club-primary-rgb),0.4)" : "1px solid rgba(255,255,255,0.08)",
+                    }}
+                    title={t.addStarterTitle}
+                  >
+                    +
+                  </button>
+                )}
               </div>
             </div>
 
-            {pickerMode === "starter" && (
-              <PlayerPicker
-                allPlayers={allPlayers}
-                usedIds={usedIds}
-                onSelect={(p) => addPlayer(p, false)}
-                onClose={() => setPickerMode(null)}
-              />
-            )}
-
-            {draft.starterIds.length === 0 && pickerMode !== "starter" && (
-              <div
-                className="flex items-center justify-center py-6 rounded-2xl"
-                style={{ border: "1px dashed rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.01)" }}
-              >
-                <p className="text-white/20 text-sm">{t.noStarters}</p>
-              </div>
-            )}
-
-            <div className="space-y-2">
-              {draft.starterIds.map((id) => {
-                const player = allPlayers.find((p) => p.id === id);
-                const stats = draft.playerStats[id];
-                if (!player || !stats) return null;
-                const assistCount = Object.values(draft.playerStats).reduce((n, ps) =>
-                  n + ps.goals.filter((g) => g.assistPlayerId === id).length, 0);
-                return (
-                  <PlayerLineupRow
-                    key={id}
-                    player={player}
-                    stats={stats}
-                    isSub={false}
-                    allParticipants={allParticipants}
-                    allUnused={allUnusedForSub(id)}
-                    assistCount={assistCount}
-                    onUpdate={(patch) => updatePlayerStats(id, patch)}
-                    onRemove={() => removePlayer(id)}
-                    onSubPlayerAdded={handleSubPlayerAdded}
+            {/* ============ LISTA MODE ============ */}
+            {lineupMode === "lista" && (
+              <>
+                {pickerMode === "starter" && (
+                  <PlayerPicker
+                    allPlayers={allPlayers}
+                    usedIds={usedIds}
+                    onSelect={(p) => addPlayer(p, false)}
+                    onClose={() => setPickerMode(null)}
                   />
-                );
-              })}
-            </div>
+                )}
+
+                {draft.starterIds.length === 0 && pickerMode !== "starter" && (
+                  <div
+                    className="flex items-center justify-center py-6 rounded-2xl"
+                    style={{ border: "1px dashed rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.01)" }}
+                  >
+                    <p className="text-white/20 text-sm">{t.noStarters}</p>
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  {draft.starterIds.map((id) => {
+                    const player = allPlayers.find((p) => p.id === id);
+                    const stats = draft.playerStats[id];
+                    if (!player || !stats) return null;
+                    const assistCount = Object.values(draft.playerStats).reduce((n, ps) =>
+                      n + ps.goals.filter((g) => g.assistPlayerId === id).length, 0);
+                    return (
+                      <PlayerLineupRow
+                        key={id}
+                        player={player}
+                        stats={stats}
+                        isSub={false}
+                        allParticipants={allParticipants}
+                        allUnused={allUnusedForSub(id)}
+                        assistCount={assistCount}
+                        onUpdate={(patch) => updatePlayerStats(id, patch)}
+                        onRemove={() => removePlayer(id)}
+                        onSubPlayerAdded={handleSubPlayerAdded}
+                      />
+                    );
+                  })}
+                </div>
+              </>
+            )}
+
+            {/* ============ CAMPINHO MODE ============ */}
+            {lineupMode === "campinho" && (
+              <div className="space-y-3">
+                {/* Formation selector */}
+                <div className="flex items-center gap-2">
+                  <span className="text-white/35 text-xs flex-shrink-0">Formação</span>
+                  <select
+                    value={pitchFormation}
+                    onChange={(e) => handlePitchFormationChange(e.target.value as FormationKey)}
+                    className="flex-1 px-2.5 py-1.5 rounded-xl text-white text-sm focus:outline-none"
+                    style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", colorScheme: "dark" }}
+                  >
+                    {FORMATION_GROUPS.map((group) => (
+                      <optgroup key={group.label} label={group.label} style={{ background: "#0c0c14" }}>
+                        {group.formations.map((f) => (
+                          <option key={f.key} value={f.key} style={{ background: "#0c0c14" }}>{f.label}</option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Pitch */}
+                <FootballPitch
+                  players={allPlayers}
+                  starterIds={pitchSlots.map((id) => id ?? 0)}
+                  formation={pitchFormation}
+                  ratings={Object.fromEntries(
+                    Object.entries(draft.playerStats)
+                      .filter(([, s]) => s.rating > 0)
+                      .map(([id, s]) => [Number(id), s.rating])
+                  )}
+                  onEmptySlotClick={(slotIdx) => {
+                    setPitchSelectedId(null);
+                    setPitchPendingSlot((prev) => prev === slotIdx ? null : slotIdx);
+                  }}
+                  onPlayerClick={(player) => {
+                    setPitchPendingSlot(null);
+                    setPitchSelectedId((prev) => prev === player.id ? null : player.id);
+                  }}
+                  highlightedPlayerId={pitchSelectedId ?? undefined}
+                  pendingSlotIndex={pitchPendingSlot}
+                  className="w-full"
+                />
+
+                {/* Player picker for pending slot */}
+                {pitchPendingSlot !== null && (
+                  <PlayerPicker
+                    allPlayers={allPlayers}
+                    usedIds={usedIds}
+                    onSelect={(player) => handlePitchAssign(pitchPendingSlot, player)}
+                    onClose={() => setPitchPendingSlot(null)}
+                  />
+                )}
+
+                {/* Selected player stats */}
+                {pitchSelectedId !== null && (() => {
+                  const player = allPlayers.find((p) => p.id === pitchSelectedId);
+                  const stats = draft.playerStats[pitchSelectedId];
+                  if (!player || !stats) return null;
+                  const assistCount = Object.values(draft.playerStats).reduce((n, ps) =>
+                    n + ps.goals.filter((g) => g.assistPlayerId === pitchSelectedId).length, 0);
+                  return (
+                    <div
+                      className="rounded-2xl overflow-hidden"
+                      style={{ border: "1px solid rgba(var(--club-primary-rgb),0.25)", background: "rgba(var(--club-primary-rgb),0.04)" }}
+                    >
+                      <PlayerLineupRow
+                        key={`pitch-${pitchSelectedId}`}
+                        player={player}
+                        stats={stats}
+                        isSub={false}
+                        allParticipants={allParticipants}
+                        allUnused={allUnusedForSub(pitchSelectedId)}
+                        assistCount={assistCount}
+                        onUpdate={(patch) => updatePlayerStats(pitchSelectedId, patch)}
+                        onRemove={() => handlePitchRemove(pitchSelectedId)}
+                        onSubPlayerAdded={handleSubPlayerAdded}
+                      />
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
 
             {/* Substitutos */}
             <div className="flex items-center justify-between pt-1">

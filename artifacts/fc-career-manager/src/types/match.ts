@@ -140,6 +140,7 @@ export interface MatchRecord {
   observations?: string;
   hasExtraTime?: boolean;
   penaltyShootout?: PenaltyShootout;
+  formation?: string;
   createdAt: number;
   playerSnapshot?: Record<number, PlayerSnapshotEntry>;
 }

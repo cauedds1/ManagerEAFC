@@ -10,6 +10,7 @@ import { PT_BR_TO_POSITION } from "@/lib/squadCache";
 import { getCachedClubList } from "@/lib/clubListCache";
 import { searchStaticClubs } from "@/lib/staticClubList";
 import { FootballPitch, pickBestEleven } from "./FootballPitch";
+import { DEFAULT_FORMATION } from "@/lib/formations";
 import { RegistrarPartidaModal } from "./RegistrarPartidaModal";
 import { isRival } from "@/lib/rivalsStorage";
 
@@ -613,7 +614,10 @@ export function MatchDetailPage({
     .map((id) => resolvedPlayers.find((p) => p.id === id))
     .filter((p): p is SquadPlayer => !!p);
 
-  const sortedStarterIds = pickBestEleven(starters);
+  const matchFormation = (match.formation ?? undefined) as import("@/lib/formations").FormationKey | undefined;
+  const sortedStarterIds = matchFormation
+    ? match.starterIds
+    : pickBestEleven(starters);
 
   const playerRatings: Record<number, number> = {};
   for (const [pidStr, stats] of Object.entries(match.playerStats)) {
@@ -859,6 +863,7 @@ export function MatchDetailPage({
               players={resolvedPlayers}
               starterIds={sortedStarterIds}
               ratings={playerRatings}
+              formation={matchFormation ?? DEFAULT_FORMATION}
               onPlayerClick={setSelectedPlayer}
               className="w-full"
             />

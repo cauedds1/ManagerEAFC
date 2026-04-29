@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { SquadPlayer, PositionPtBr, FormationGroup, FORMATION_GROUP } from "@/lib/squadCache";
-import { FormationKey, getFormationPositions, DEFAULT_FORMATION } from "@/lib/formations";
+import { FormationKey, getFormationPositions, DEFAULT_FORMATION, getFormationGroups } from "@/lib/formations";
 import { useLang } from "@/hooks/useLang";
 import { POSITION_DISPLAY } from "@/lib/i18n";
 
@@ -43,7 +43,11 @@ function getInitials(name: string): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-export function pickBestEleven(players: { id: number; positionPtBr: PositionPtBr }[]): number[] {
+export function pickBestEleven(
+  players: { id: number; positionPtBr: PositionPtBr }[],
+  formation: FormationKey = DEFAULT_FORMATION,
+): number[] {
+  const { def, mid, ata } = getFormationGroups(formation);
   const slots: (PitchPlayerData | null)[] = Array(11).fill(null);
   const used = new Set<number>();
 
@@ -59,19 +63,21 @@ export function pickBestEleven(players: { id: number; positionPtBr: PositionPtBr
   if (gks[0]) { slots[0] = gks[0]; used.add(gks[0].id); }
 
   const defs = byGroup["DEF"].filter((p) => !used.has(p.id));
-  for (const si of [1, 2, 3, 4]) {
-    const def = defs.find((p) => !used.has(p.id));
-    if (def) { slots[si] = def; used.add(def.id); }
+  for (let i = 0; i < def; i++) {
+    const d = defs.find((p) => !used.has(p.id));
+    if (d) { slots[1 + i] = d; used.add(d.id); }
   }
 
   const mids = byGroup["MID"].filter((p) => !used.has(p.id));
-  for (let i = 0; i < 3 && i < mids.length; i++) {
-    slots[5 + i] = mids[i]; used.add(mids[i].id);
+  for (let i = 0; i < mid; i++) {
+    const m = mids.find((p) => !used.has(p.id));
+    if (m) { slots[1 + def + i] = m; used.add(m.id); }
   }
 
   const atks = byGroup["ATA"].filter((p) => !used.has(p.id));
-  for (let i = 0; i < 3 && i < atks.length; i++) {
-    slots[8 + i] = atks[i]; used.add(atks[i].id);
+  for (let i = 0; i < ata; i++) {
+    const a = atks.find((p) => !used.has(p.id));
+    if (a) { slots[1 + def + mid + i] = a; used.add(a.id); }
   }
 
   const overflow = players.filter((p) => !used.has(p.id));
