@@ -130,6 +130,7 @@ export interface MatchRecord {
   opponent: string;
   myScore: number;
   opponentScore: number;
+  /** Dense when `formation` is absent; slot-ordered 11-element array with `0` = empty slot when `formation` is set. Always filter `id !== 0` before stat/count operations. */
   starterIds: number[];
   subIds: number[];
   playerStats: Record<number, PlayerMatchStats>;
