@@ -157,6 +157,10 @@ export function getFormationLabel(key: FormationKey): string {
 
 export const DEFAULT_FORMATION: FormationKey = "4-3-3";
 
+export function isFormationKey(value: string): value is FormationKey {
+  return value in FORMATION_POSITIONS;
+}
+
 export function getFormationGroups(key: FormationKey): { def: number; mid: number; ata: number } {
   const nums = key.match(/\d+/g)?.map(Number) ?? [];
   if (nums.length < 2) return { def: 4, mid: 3, ata: 3 };

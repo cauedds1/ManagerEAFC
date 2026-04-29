@@ -1266,7 +1266,7 @@ export function RegistrarPartidaModal({
     editMatch?.formation ? "campinho" : "lista",
   );
   const [pitchFormation, setPitchFormation] = useState<FormationKey>(
-    (editMatch?.formation as FormationKey | undefined) ?? DEFAULT_FORMATION,
+    editMatch?.formation ?? DEFAULT_FORMATION,
   );
   const [pitchSlots, setPitchSlots] = useState<(number | null)[]>(() => {
     if (editMatch?.formation && editMatch.starterIds.length > 0) {

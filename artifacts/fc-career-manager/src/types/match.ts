@@ -1,3 +1,5 @@
+import type { FormationKey } from "@/lib/formations";
+export type { FormationKey };
 export type MatchLocation = "casa" | "fora" | "neutro";
 export type MatchResult = "vitoria" | "empate" | "derrota";
 
@@ -140,7 +142,7 @@ export interface MatchRecord {
   observations?: string;
   hasExtraTime?: boolean;
   penaltyShootout?: PenaltyShootout;
-  formation?: string;
+  formation?: FormationKey;
   createdAt: number;
   playerSnapshot?: Record<number, PlayerSnapshotEntry>;
 }
