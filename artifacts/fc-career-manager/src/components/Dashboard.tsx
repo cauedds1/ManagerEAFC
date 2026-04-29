@@ -1004,7 +1004,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
 
   // Pending incoming transfers don't join the squad yet
   const effectiveTransferredPlayers = transferredPlayers.filter(
-    (p) => !effectiveTransfers.find((t) => t.windowPending && t.playerId === p.id)
+    (p) => !transfers.find((t) => t.windowPending && t.playerId === p.id)
   );
 
   const existingIds = new Set(squadPlayers.map((p) => p.id));
