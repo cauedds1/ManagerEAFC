@@ -1593,9 +1593,7 @@ export function RegistrarPartidaModal({
       ? pitchSlots.map((id) => id ?? 0)
       : draft.starterIds;
     const denseStarterIds = finalStarterIds.filter((id) => id !== 0);
-    const finalFormation = lineupMode === "campinho"
-      ? pitchFormation
-      : isEditMode ? (editMatch?.formation as FormationKey | undefined) : undefined;
+    const finalFormation = lineupMode === "campinho" ? pitchFormation : undefined;
     if (isEditMode && editMatch) {
       const playerSnapshot = buildPlayerSnapshot(denseStarterIds, draft.subIds, draft.motmPlayerId);
       const updated: MatchRecord = {
