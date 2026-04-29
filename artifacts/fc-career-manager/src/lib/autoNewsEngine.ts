@@ -101,7 +101,7 @@ function buildGoalTimeline(match: MatchRecord, clubName: string, allPlayers: Squ
 }
 
 function buildLineupContext(match: MatchRecord, allPlayers: SquadPlayer[]): string {
-  const starters = match.starterIds.map((id) => playerName(allPlayers, id));
+  const starters = match.starterIds.filter((id) => id !== 0).map((id) => playerName(allPlayers, id));
   const subs = match.subIds.map((id) => playerName(allPlayers, id));
 
   const substitutions: string[] = [];
