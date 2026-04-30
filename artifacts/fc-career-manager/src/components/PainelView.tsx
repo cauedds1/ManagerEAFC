@@ -154,7 +154,7 @@ function LeagueCard({
   const [data, setData] = useState<LeaguePosition | null>(() => getLeaguePosition(seasonId));
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<LeaguePosition>(
-    data ?? { position: 1, totalTeams: 20, wins: 0, draws: 0, losses: 0, points: 0 }
+    data ?? { position: 1, totalTeams: 20, wins: 0, draws: 0, losses: 0, points: 0, goalsFor: 0, goalsAgainst: 0 }
   );
 
   useEffect(() => {
@@ -209,6 +209,8 @@ function LeagueCard({
           {numInput(t.wins, "wins", 0, 99)}
           {numInput(t.draws, "draws", 0, 99)}
           {numInput(t.losses, "losses", 0, 99)}
+          {numInput(t.goalsFor, "goalsFor", 0, 999)}
+          {numInput(t.goalsAgainst, "goalsAgainst", 0, 999)}
         </div>
         <div className="flex items-center gap-2 text-white/40 text-xs">
           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -274,6 +276,28 @@ function LeagueCard({
         <span className="text-white/20 text-xs">·</span>
         <span className="text-xs font-black text-white tabular-nums">{data.points} {t.pts}</span>
       </div>
+      {(data.goalsFor != null || data.goalsAgainst != null) && (
+        <div className="flex items-center gap-3 mt-0.5">
+          <span className="text-xs tabular-nums text-white/50">
+            <span className="text-white/70 font-semibold">{data.goalsFor ?? 0}</span>
+            <span className="text-white/30"> GM</span>
+          </span>
+          <span className="text-xs tabular-nums text-white/50">
+            <span className="text-white/70 font-semibold">{data.goalsAgainst ?? 0}</span>
+            <span className="text-white/30"> GS</span>
+          </span>
+          <span className="text-white/20 text-xs">·</span>
+          {(() => {
+            const diff = (data.goalsFor ?? 0) - (data.goalsAgainst ?? 0);
+            const color = diff > 0 ? "#34d399" : diff < 0 ? "#f87171" : undefined;
+            return (
+              <span className="text-xs font-semibold tabular-nums" style={color ? { color } : { color: "rgba(255,255,255,0.4)" }}>
+                {diff > 0 ? "+" : ""}{diff} {t.goalDiffLabel}
+              </span>
+            );
+          })()}
+        </div>
+      )}
     </div>
   );
 }

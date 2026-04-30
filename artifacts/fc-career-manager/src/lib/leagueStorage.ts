@@ -8,6 +8,8 @@ export interface LeaguePosition {
   draws: number;
   losses: number;
   points: number;
+  goalsFor?: number;
+  goalsAgainst?: number;
 }
 
 function leagueKey(seasonId: string): string {
