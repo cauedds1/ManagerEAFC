@@ -1794,16 +1794,6 @@ export function TransferenciasView({
                   </div>
                 )}
 
-                <div className="sm:col-span-2">
-                  <label className={labelClass}>{t.transferDateLabel}</label>
-                  <input
-                    type="date"
-                    className={inputClass}
-                    value={form.transferDate}
-                    onChange={(e) => set("transferDate", e.target.value)}
-                    style={{ colorScheme: "dark" }}
-                  />
-                </div>
               </div>
 
               {!isVendaForm && !isEmprestimoForm && (
@@ -2051,6 +2041,17 @@ export function TransferenciasView({
                   )}
                 </div>
               )}
+
+              <div>
+                <label className={labelClass}>{t.transferDateLabel}</label>
+                <input
+                  type="date"
+                  className={inputClass}
+                  value={form.transferDate}
+                  onChange={(e) => set("transferDate", e.target.value)}
+                  style={{ colorScheme: "dark" }}
+                />
+              </div>
 
               <div
                 className="p-4 rounded-2xl flex flex-col gap-4"
