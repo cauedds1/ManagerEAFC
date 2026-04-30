@@ -650,29 +650,64 @@ function MotmAutocomplete({
   );
 }
 
+const POS_COLOR_BADGE: Record<string, string> = {
+  GOL: "#f59e0b",
+  DEF: "#3b82f6",
+  MID: "#22c55e",
+  ATA: "#ef4444",
+};
+
 function PlayerPicker({
   allPlayers,
   usedIds,
   onSelect,
   onClose,
+  priorityPosition,
 }: {
   allPlayers: SquadPlayer[];
   usedIds: Set<number>;
   onSelect: (player: SquadPlayer) => void;
   onClose: () => void;
+  priorityPosition?: "GOL" | "DEF" | "MID" | "ATA";
 }) {
   const [lang] = useLang();
   const t = PARTIDAS[lang];
   const [filter, setFilter] = useState("");
-  const available = allPlayers.filter(
+  const base = allPlayers.filter(
     (p) => !usedIds.has(p.id) && (filter === "" || p.name.toLowerCase().includes(filter.toLowerCase()) || p.positionPtBr.toLowerCase().includes(filter.toLowerCase()))
   );
+
+  const prioritized = priorityPosition && filter === "" ? base.filter((p) => p.positionPtBr === priorityPosition) : [];
+  const rest = priorityPosition && filter === "" ? base.filter((p) => p.positionPtBr !== priorityPosition) : base;
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
   }, [onClose]);
+
+  const renderRow = (p: SquadPlayer) => (
+    <button
+      key={p.id}
+      onClick={() => onSelect(p)}
+      className="w-full flex items-center gap-3 px-4 py-2 hover:bg-white/05 transition-colors text-left"
+    >
+      <div className="w-7 h-7 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center" style={{ background: "rgba(var(--club-primary-rgb),0.06)" }}>
+        {p.photo ? <img src={p.photo} alt={p.name} className="w-full h-full object-cover" /> : (
+          <svg viewBox="0 0 40 40" className="w-4 h-4 text-white/20" fill="currentColor">
+            <circle cx="20" cy="14" r="7" />
+            <path d="M6 36c0-7.732 6.268-14 14-14s14 6.268 14 14H6z" />
+          </svg>
+        )}
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-white text-sm font-semibold truncate">{p.name}</p>
+      </div>
+      <span className="text-xs font-bold px-2 py-0.5 rounded-md flex-shrink-0" style={{ background: POS_COLOR_BADGE[p.positionPtBr] ? `${POS_COLOR_BADGE[p.positionPtBr]}22` : "rgba(255,255,255,0.07)", color: POS_COLOR_BADGE[p.positionPtBr] ?? "rgba(255,255,255,0.5)" }}>
+        {p.positionPtBr}
+      </span>
+    </button>
+  );
 
   return (
     <div
@@ -699,31 +734,26 @@ function PlayerPicker({
         />
       </div>
       <div className="overflow-y-auto" style={{ maxHeight: 240 }}>
-        {available.length === 0 ? (
+        {base.length === 0 ? (
           <p className="text-white/25 text-xs text-center py-6">{t.noPlayersAvailable}</p>
         ) : (
-          available.map((p) => (
-            <button
-              key={p.id}
-              onClick={() => onSelect(p)}
-              className="w-full flex items-center gap-3 px-4 py-2 hover:bg-white/05 transition-colors text-left"
-            >
-              <div className="w-7 h-7 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center" style={{ background: "rgba(var(--club-primary-rgb),0.06)" }}>
-                {p.photo ? <img src={p.photo} alt={p.name} className="w-full h-full object-cover" /> : (
-                  <svg viewBox="0 0 40 40" className="w-4 h-4 text-white/20" fill="currentColor">
-                    <circle cx="20" cy="14" r="7" />
-                    <path d="M6 36c0-7.732 6.268-14 14-14s14 6.268 14 14H6z" />
-                  </svg>
+          <>
+            {prioritized.length > 0 && (
+              <>
+                <div className="px-4 py-1.5 flex items-center gap-2" style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                  <span className="text-[9px] font-bold tracking-widest uppercase" style={{ color: POS_COLOR_BADGE[priorityPosition!] ?? "rgba(255,255,255,0.3)" }}>{priorityPosition}</span>
+                  <div className="flex-1 h-px" style={{ background: `${POS_COLOR_BADGE[priorityPosition!] ?? "rgba(255,255,255,0.08)"}33` }} />
+                </div>
+                {prioritized.map(renderRow)}
+                {rest.length > 0 && (
+                  <div className="px-4 py-1.5 flex items-center gap-2" style={{ borderTop: "1px solid rgba(255,255,255,0.04)", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                    <span className="text-[9px] font-bold tracking-widest uppercase text-white/20">—</span>
+                  </div>
                 )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-white text-sm font-semibold truncate">{p.name}</p>
-              </div>
-              <span className="text-xs font-bold px-2 py-0.5 rounded-md flex-shrink-0" style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.5)" }}>
-                {p.positionPtBr}
-              </span>
-            </button>
-          ))
+              </>
+            )}
+            {rest.map(renderRow)}
+          </>
         )}
       </div>
     </div>
@@ -1304,23 +1334,7 @@ export function RegistrarPartidaModal({
       ordered.forEach((id, i) => { slots[i] = id; });
       return slots;
     }
-    // New match: pre-fill pitch with the user's saved XI from the club screen
-    // so they land on a populated tactic board ready to confirm or tweak.
-    if (!editMatch) {
-      const overridden = applyOverridesToPlayers(allPlayers, overrides);
-      const savedLineup = getCustomLineup(careerId);
-      const formation = getFormation(careerId) ?? DEFAULT_FORMATION;
-      const candidateIds = savedLineup ?? (overridden.length > 0 ? pickBestEleven(overridden, formation) : []);
-      if (candidateIds.length > 0) {
-        const validPlayers = candidateIds
-          .map((id) => overridden.find((p) => p.id === id))
-          .filter(Boolean) as SquadPlayer[];
-        const ordered = pickBestEleven(validPlayers, formation);
-        const slots: (number | null)[] = Array(11).fill(null);
-        ordered.forEach((id, i) => { slots[i] = id; });
-        return slots;
-      }
-    }
+    // New match: start empty so the user fills manually or uses Auto Fill
     return Array(11).fill(null);
   });
   const [pitchSelectedId, setPitchSelectedId] = useState<number | null>(null);
@@ -2483,68 +2497,93 @@ export function RegistrarPartidaModal({
 
                   {/* Bench (relacionados) — right */}
                   <div className="flex flex-col min-w-0 flex-1 overflow-hidden">
-                    <p className="text-white/25 text-[9px] font-bold tracking-widest uppercase mb-1.5 flex-shrink-0">
-                      {t.benchLabel} ({benchPlayers.filter((p) => !usedIds.has(p.id)).length})
-                    </p>
-                    <div className="overflow-y-auto flex-1 space-y-1 pr-0.5">
-                      {benchPlayers.length === 0 ? (
-                        <p className="text-white/15 text-[10px] text-center py-4">{t.noRelated}</p>
-                      ) : (
-                        benchPlayers.map((p) => {
-                          const isUsed = usedIds.has(p.id);
-                          const isSelected = pitchSelectedId === p.id;
-                          const isSwapTarget = pitchSwapMode && !isUsed && !isSelected;
-                          const isPending = pitchPendingSlot !== null && !isUsed;
-                          return (
-                            <button
-                              key={p.id}
-                              type="button"
-                              disabled={isUsed}
-                              onClick={() => {
-                                if (isUsed) return;
-                                if (pitchSwapMode) { handlePitchSwap(p.id); return; }
-                                if (pitchPendingSlot !== null) {
-                                  handlePitchAssign(pitchPendingSlot, p);
-                                  return;
-                                }
-                                setPitchSelectedId((prev) => prev === p.id ? null : p.id);
-                              }}
-                              className="w-full flex items-center gap-1.5 px-2 py-1.5 rounded-lg transition-all text-left"
-                              style={{
-                                background: isUsed ? "rgba(255,255,255,0.02)" : isSelected ? "rgba(var(--club-primary-rgb),0.18)" : isSwapTarget ? "rgba(var(--club-primary-rgb),0.10)" : isPending ? "rgba(var(--club-primary-rgb),0.12)" : "rgba(255,255,255,0.04)",
-                                border: isSelected ? "1px solid rgba(var(--club-primary-rgb),0.5)" : isSwapTarget ? "1px solid rgba(var(--club-primary-rgb),0.35)" : isPending ? "1px solid rgba(var(--club-primary-rgb),0.3)" : "1px solid rgba(255,255,255,0.06)",
-                                opacity: isUsed ? 0.3 : 1,
-                              }}
-                            >
-                              {p.photo ? (
-                                <img src={p.photo} alt="" width={20} height={20} style={{ width: 20, height: 20, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
-                              ) : (
-                                <div style={{ width: 20, height: 20, borderRadius: "50%", background: "rgba(255,255,255,0.1)", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 7, fontWeight: 900, color: "rgba(255,255,255,0.4)" }}>
-                                  {p.name.split(" ").slice(0, 2).map((w) => w[0]).join("")}
-                                </div>
-                              )}
-                              <span className="flex-1 text-[10px] font-semibold text-white/70 truncate leading-tight">
-                                {p.name.split(" ").pop()}
-                              </span>
-                              <span className="text-[8px] font-bold flex-shrink-0 px-1 py-0.5 rounded"
-                                style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.3)" }}>
-                                {p.positionPtBr}
-                              </span>
-                            </button>
-                          );
-                        })
-                      )}
-                    </div>
+                    {(() => {
+                      const slotPos = pitchPendingSlot !== null ? sectorForSlotIndex(pitchPendingSlot, pitchFormation) : null;
+                      const posColor = slotPos ? POS_COLOR_BADGE[slotPos] : null;
+                      const available = benchPlayers.filter((p) => !usedIds.has(p.id));
+                      const priPlayers = slotPos ? available.filter((p) => p.positionPtBr === slotPos) : [];
+                      const otherPlayers = slotPos ? available.filter((p) => p.positionPtBr !== slotPos) : available;
+                      const usedPlayers = benchPlayers.filter((p) => usedIds.has(p.id));
+
+                      const renderBenchBtn = (p: SquadPlayer) => {
+                        const isUsed = usedIds.has(p.id);
+                        const isSelected = pitchSelectedId === p.id;
+                        const isSwapTarget = pitchSwapMode && !isUsed && !isSelected;
+                        const isPriority = slotPos !== null && p.positionPtBr === slotPos && !isUsed;
+                        const badgeColor = POS_COLOR_BADGE[p.positionPtBr];
+                        return (
+                          <button
+                            key={p.id}
+                            type="button"
+                            disabled={isUsed}
+                            onClick={() => {
+                              if (isUsed) return;
+                              if (pitchSwapMode) { handlePitchSwap(p.id); return; }
+                              if (pitchPendingSlot !== null) { handlePitchAssign(pitchPendingSlot, p); return; }
+                              setPitchSelectedId((prev) => prev === p.id ? null : p.id);
+                            }}
+                            className="w-full flex items-center gap-1.5 px-2 py-1.5 rounded-lg transition-all text-left"
+                            style={{
+                              background: isUsed ? "rgba(255,255,255,0.02)" : isSelected ? "rgba(var(--club-primary-rgb),0.18)" : isSwapTarget ? "rgba(var(--club-primary-rgb),0.10)" : isPriority ? `${posColor}18` : slotPos ? "rgba(255,255,255,0.03)" : "rgba(255,255,255,0.04)",
+                              border: isSelected ? "1px solid rgba(var(--club-primary-rgb),0.5)" : isSwapTarget ? "1px solid rgba(var(--club-primary-rgb),0.35)" : isPriority ? `1px solid ${posColor}44` : "1px solid rgba(255,255,255,0.06)",
+                              opacity: isUsed ? 0.3 : slotPos && !isPriority && !isUsed ? 0.55 : 1,
+                            }}
+                          >
+                            {p.photo ? (
+                              <img src={p.photo} alt="" width={20} height={20} style={{ width: 20, height: 20, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+                            ) : (
+                              <div style={{ width: 20, height: 20, borderRadius: "50%", background: "rgba(255,255,255,0.1)", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 7, fontWeight: 900, color: "rgba(255,255,255,0.4)" }}>
+                                {p.name.split(" ").slice(0, 2).map((w) => w[0]).join("")}
+                              </div>
+                            )}
+                            <span className="flex-1 text-[10px] font-semibold text-white/70 truncate leading-tight">
+                              {p.name.split(" ").pop()}
+                            </span>
+                            <span className="text-[8px] font-bold flex-shrink-0 px-1 py-0.5 rounded"
+                              style={{ background: badgeColor ? `${badgeColor}22` : "rgba(255,255,255,0.07)", color: badgeColor ?? "rgba(255,255,255,0.3)" }}>
+                              {p.positionPtBr}
+                            </span>
+                          </button>
+                        );
+                      };
+
+                      return (
+                        <>
+                          <p className="text-white/25 text-[9px] font-bold tracking-widest uppercase mb-1.5 flex-shrink-0">
+                            {slotPos ? (
+                              <><span style={{ color: posColor ?? undefined }}>{slotPos}</span>{" · "}{t.benchLabel}</>
+                            ) : t.benchLabel} ({available.length})
+                          </p>
+                          <div className="overflow-y-auto flex-1 space-y-1 pr-0.5">
+                            {benchPlayers.length === 0 ? (
+                              <p className="text-white/15 text-[10px] text-center py-4">{t.noRelated}</p>
+                            ) : (
+                              <>
+                                {priPlayers.map(renderBenchBtn)}
+                                {priPlayers.length > 0 && otherPlayers.length > 0 && (
+                                  <div className="py-0.5 flex items-center gap-1.5">
+                                    <div className="flex-1 h-px bg-white/10" />
+                                  </div>
+                                )}
+                                {otherPlayers.map(renderBenchBtn)}
+                                {usedPlayers.map(renderBenchBtn)}
+                              </>
+                            )}
+                          </div>
+                        </>
+                      );
+                    })()}
                   </div>
                 </div>
 
-                {/* Player picker for pending slot (fallback if clicking pitch slot directly) */}
+                {/* Player picker for pending slot (fallback when no bench players) */}
                 {pitchPendingSlot !== null && benchPlayers.filter((p) => !usedIds.has(p.id)).length === 0 && (
                   <PlayerPicker
                     allPlayers={allPlayers}
                     usedIds={usedIds}
                     onSelect={(player) => handlePitchAssign(pitchPendingSlot, player)}
                     onClose={() => setPitchPendingSlot(null)}
+                    priorityPosition={sectorForSlotIndex(pitchPendingSlot, pitchFormation)}
                   />
                 )}
 
