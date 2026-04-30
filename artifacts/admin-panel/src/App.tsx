@@ -589,17 +589,31 @@ function UsersTab() {
     else { setSortCol(col); setSortDir("desc"); }
   };
 
+  // When any search or activity filter is active, fetch ALL users so sorting
+  // and filtering apply across all pages, not just the current page.
+  const isFiltering = search.trim() !== "" || activityFilter !== "all";
+
   const limit = 50;
-  const { data, isLoading, error } = useQuery<{ users: User[]; total: number; page: number; limit: number }>({
+  const pagedQuery = useQuery<{ users: User[]; total: number; page: number; limit: number }>({
     queryKey: ["users", page],
     queryFn: () => apiFetch(`/admin-panel/users?page=${page}&limit=${limit}`),
+    enabled: !isFiltering,
   });
+
+  const allQuery = useQuery<{ users: User[]; total: number; page: number; limit: number }>({
+    queryKey: ["users-all"],
+    queryFn: () => apiFetch(`/admin-panel/users?page=1&limit=5000`),
+    enabled: isFiltering,
+  });
+
+  const activeQuery = isFiltering ? allQuery : pagedQuery;
+  const { data, isLoading, error } = activeQuery;
 
   if (isLoading) return <div className="text-white/40 text-sm py-8 text-center">Carregando...</div>;
   if (error) return <div className="text-red-400 text-sm py-8 text-center">{String((error as Error).message)}</div>;
   if (!data) return null;
 
-  const sorted = [...data.users].sort((a, b) => {
+  const sortUsers = (users: User[]) => [...users].sort((a, b) => {
     let va: number | string = 0, vb: number | string = 0;
     if (sortCol === "name" || sortCol === "plan") {
       va = (a[sortCol] ?? "").toLowerCase();
@@ -615,6 +629,8 @@ function UsersTab() {
     return sortDir === "desc" ? (vb as number) - (va as number) : (va as number) - (vb as number);
   });
 
+  const sorted = sortUsers(data.users);
+
   const filtered = sorted.filter((u) => {
     const matchesSearch = search.trim()
       ? u.name.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase())
@@ -629,7 +645,7 @@ function UsersTab() {
   });
 
   const activityCounts: Record<ActivityFilter, number> = {
-    all: data.users.length,
+    all: data.total,
     active: data.users.filter((u) => getActivityLevel(u.lastLoginAt) === "active").length,
     recent: data.users.filter((u) => getActivityLevel(u.lastLoginAt) === "recent").length,
     inactive: data.users.filter((u) => getActivityLevel(u.lastLoginAt) === "inactive" || getActivityLevel(u.lastLoginAt) === "never").length,
@@ -646,7 +662,12 @@ function UsersTab() {
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
             <h2 className="text-white font-bold text-base">Usuários</h2>
-            <p className="text-white/40 text-xs mt-0.5">{data.total} usuários cadastrados · ordenados por {sortCol === "lastLoginAt" ? "atividade" : sortCol === "createdAt" ? "cadastro" : sortCol === "matchCount" ? "partidas" : sortCol === "aiUsageCount" ? "uso de IA" : sortCol === "seasonCount" ? "temporadas" : sortCol === "careerCount" ? "clubes" : sortCol === "name" ? "nome" : sortCol === "plan" ? "plano" : sortCol} {sortDir === "desc" ? "↓" : "↑"}</p>
+            <p className="text-white/40 text-xs mt-0.5">
+              {isFiltering
+                ? `${filtered.length} de ${data.total} usuários · todos os resultados`
+                : `${data.total} usuários cadastrados`
+              } · ordenados por {sortCol === "lastLoginAt" ? "atividade" : sortCol === "createdAt" ? "cadastro" : sortCol === "matchCount" ? "partidas" : sortCol === "aiUsageCount" ? "uso de IA" : sortCol === "seasonCount" ? "temporadas" : sortCol === "careerCount" ? "clubes" : sortCol === "name" ? "nome" : sortCol === "plan" ? "plano" : sortCol} {sortDir === "desc" ? "↓" : "↑"}
+            </p>
           </div>
           <input
             type="text"
@@ -774,7 +795,7 @@ function UsersTab() {
             </table>
           </div>
         </div>
-        {totalPages > 1 && (
+        {!isFiltering && totalPages > 1 && (
           <div className="flex items-center justify-center gap-2">
             <button
               onClick={() => setPage((p) => Math.max(1, p - 1))}

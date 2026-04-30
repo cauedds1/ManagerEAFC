@@ -180,7 +180,7 @@ router.get("/admin-panel/users", async (req: Request, res: Response) => {
   if (!validateAdminToken(req, res)) return;
   try {
     const page = Math.max(1, Number(req.query["page"] ?? 1));
-    const limit = Math.min(100, Math.max(1, Number(req.query["limit"] ?? 20)));
+    const limit = Math.min(5000, Math.max(1, Number(req.query["limit"] ?? 20)));
     const offset = (page - 1) * limit;
 
     const rows = await db.execute(sql`
