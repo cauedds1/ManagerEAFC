@@ -23,7 +23,7 @@ import {
   applyMatchToPlayerStats,
   getMatches,
 } from "@/lib/matchStorage";
-import { getCustomLineup, getFormation } from "@/lib/lineupStorage";
+import { getCustomLineup, getFormation, getBenchOrder } from "@/lib/lineupStorage";
 import { getAllPlayerOverrides, applyOverridesToPlayers } from "@/lib/playerStatsStorage";
 import { getCachedClubList } from "@/lib/clubListCache";
 import { FootballPitch, pickBestEleven } from "@/components/FootballPitch";
@@ -1656,6 +1656,15 @@ export function RegistrarPartidaModal({
 
   const usedIds = useMemo(() => new Set([...draft.starterIds, ...draft.subIds]), [draft.starterIds, draft.subIds]);
 
+  const benchPlayers = useMemo(() => {
+    const order = getBenchOrder(careerId);
+    if (!order || order.length === 0) return [];
+    const relacionados = order.slice(0, 9);
+    return relacionados
+      .map((id) => allPlayers.find((p) => p.id === id))
+      .filter((p): p is SquadPlayer => p != null);
+  }, [careerId, allPlayers]);
+
   const allUnusedForSub = useCallback((excludeId: number) => {
     return allPlayers.filter((p) => !usedIds.has(p.id) && p.id !== excludeId);
   }, [allPlayers, usedIds]);
@@ -2176,6 +2185,31 @@ export function RegistrarPartidaModal({
                   {t.autoFill}
                 </button>
 
+                {/* Mode toggle: campinho ↔ lista */}
+                <button
+                  type="button"
+                  onClick={() => setLineupMode((m) => m === "campinho" ? "lista" : "campinho")}
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all duration-200"
+                  style={{
+                    background: "rgba(255,255,255,0.06)",
+                    color: "rgba(255,255,255,0.5)",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                  }}
+                  title={lineupMode === "campinho" ? "Ver lista" : "Ver campinho"}
+                >
+                  {lineupMode === "campinho" ? (
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                    </svg>
+                  ) : (
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <rect x="3" y="3" width="18" height="18" rx="2" strokeLinecap="round" strokeLinejoin="round" />
+                      <line x1="12" y1="3" x2="12" y2="21" strokeLinecap="round" />
+                      <line x1="3" y1="12" x2="21" y2="12" strokeLinecap="round" />
+                    </svg>
+                  )}
+                </button>
+
                 {/* Add button (lista mode only) */}
                 {lineupMode === "lista" && (
                   <button
@@ -2278,8 +2312,9 @@ export function RegistrarPartidaModal({
                   </select>
                 </div>
 
-                {/* Pitch */}
-                <div className="flex justify-center" style={{ height: "min(43vh, 290px)" }}>
+                {/* Pitch + bench side by side */}
+                <div className="flex gap-2" style={{ height: "min(43vh, 290px)" }}>
+                  {/* Pitch — left */}
                   <FootballPitch
                     players={allPlayers}
                     starterIds={pitchSlots.map((id) => id ?? 0)}
@@ -2299,12 +2334,65 @@ export function RegistrarPartidaModal({
                     }}
                     highlightedPlayerId={pitchSelectedId ?? undefined}
                     pendingSlotIndex={pitchPendingSlot}
-                    className="h-full w-auto"
+                    className="h-full w-auto flex-shrink-0"
                   />
+
+                  {/* Bench (relacionados) — right */}
+                  <div className="flex flex-col min-w-0 flex-1 overflow-hidden">
+                    <p className="text-white/25 text-[9px] font-bold tracking-widest uppercase mb-1.5 flex-shrink-0">
+                      Banco ({benchPlayers.filter((p) => !usedIds.has(p.id)).length})
+                    </p>
+                    <div className="overflow-y-auto flex-1 space-y-1 pr-0.5">
+                      {benchPlayers.length === 0 ? (
+                        <p className="text-white/15 text-[10px] text-center py-4">Sem relacionados no elenco</p>
+                      ) : (
+                        benchPlayers.map((p) => {
+                          const isUsed = usedIds.has(p.id);
+                          const isPending = pitchPendingSlot !== null && !isUsed;
+                          return (
+                            <button
+                              key={p.id}
+                              type="button"
+                              disabled={isUsed}
+                              onClick={() => {
+                                if (isUsed) return;
+                                if (pitchPendingSlot !== null) {
+                                  handlePitchAssign(pitchPendingSlot, p);
+                                } else {
+                                  addPlayer(p, true);
+                                }
+                              }}
+                              className="w-full flex items-center gap-1.5 px-2 py-1.5 rounded-lg transition-all text-left"
+                              style={{
+                                background: isUsed ? "rgba(255,255,255,0.02)" : isPending ? "rgba(var(--club-primary-rgb),0.12)" : "rgba(255,255,255,0.04)",
+                                border: isPending ? "1px solid rgba(var(--club-primary-rgb),0.3)" : "1px solid rgba(255,255,255,0.06)",
+                                opacity: isUsed ? 0.3 : 1,
+                              }}
+                            >
+                              {p.photo ? (
+                                <img src={p.photo} alt="" width={20} height={20} style={{ width: 20, height: 20, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+                              ) : (
+                                <div style={{ width: 20, height: 20, borderRadius: "50%", background: "rgba(255,255,255,0.1)", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 7, fontWeight: 900, color: "rgba(255,255,255,0.4)" }}>
+                                  {p.name.split(" ").slice(0, 2).map((w) => w[0]).join("")}
+                                </div>
+                              )}
+                              <span className="flex-1 text-[10px] font-semibold text-white/70 truncate leading-tight">
+                                {p.name.split(" ").pop()}
+                              </span>
+                              <span className="text-[8px] font-bold flex-shrink-0 px-1 py-0.5 rounded"
+                                style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.3)" }}>
+                                {p.positionPtBr}
+                              </span>
+                            </button>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
                 </div>
 
-                {/* Player picker for pending slot */}
-                {pitchPendingSlot !== null && (
+                {/* Player picker for pending slot (fallback if clicking pitch slot directly) */}
+                {pitchPendingSlot !== null && benchPlayers.filter((p) => !usedIds.has(p.id)).length === 0 && (
                   <PlayerPicker
                     allPlayers={allPlayers}
                     usedIds={usedIds}
