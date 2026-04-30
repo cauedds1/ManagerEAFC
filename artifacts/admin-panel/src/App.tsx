@@ -580,6 +580,15 @@ function UsersTab() {
   const [search, setSearch] = useState("");
   const [activityFilter, setActivityFilter] = useState<ActivityFilter>("all");
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+  type SortCol = "name" | "lastLoginAt" | "createdAt" | "matchCount" | "aiUsageCount" | "seasonCount" | "careerCount" | "plan";
+  const [sortCol, setSortCol] = useState<SortCol>("lastLoginAt");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+
+  const handleSort = (col: SortCol) => {
+    if (sortCol === col) setSortDir((d) => d === "desc" ? "asc" : "desc");
+    else { setSortCol(col); setSortDir("desc"); }
+  };
+
   const limit = 50;
   const { data, isLoading, error } = useQuery<{ users: User[]; total: number; page: number; limit: number }>({
     queryKey: ["users", page],
@@ -590,7 +599,21 @@ function UsersTab() {
   if (error) return <div className="text-red-400 text-sm py-8 text-center">{String((error as Error).message)}</div>;
   if (!data) return null;
 
-  const sorted = [...data.users].sort((a, b) => (b.lastLoginAt ?? 0) - (a.lastLoginAt ?? 0));
+  const sorted = [...data.users].sort((a, b) => {
+    let va: number | string = 0, vb: number | string = 0;
+    if (sortCol === "name" || sortCol === "plan") {
+      va = (a[sortCol] ?? "").toLowerCase();
+      vb = (b[sortCol] ?? "").toLowerCase();
+      return sortDir === "asc" ? (va < vb ? -1 : va > vb ? 1 : 0) : (va > vb ? -1 : va < vb ? 1 : 0);
+    }
+    if (sortCol === "lastLoginAt") { va = a.lastLoginAt ?? 0; vb = b.lastLoginAt ?? 0; }
+    else if (sortCol === "createdAt") { va = a.createdAt; vb = b.createdAt; }
+    else if (sortCol === "matchCount") { va = a.matchCount; vb = b.matchCount; }
+    else if (sortCol === "aiUsageCount") { va = a.aiUsageCount; vb = b.aiUsageCount; }
+    else if (sortCol === "seasonCount") { va = a.seasonCount; vb = b.seasonCount; }
+    else if (sortCol === "careerCount") { va = a.careerCount; vb = b.careerCount; }
+    return sortDir === "desc" ? (vb as number) - (va as number) : (va as number) - (vb as number);
+  });
 
   const filtered = sorted.filter((u) => {
     const matchesSearch = search.trim()
@@ -623,7 +646,7 @@ function UsersTab() {
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
             <h2 className="text-white font-bold text-base">Usuários</h2>
-            <p className="text-white/40 text-xs mt-0.5">{data.total} usuários cadastrados · ordenados por atividade</p>
+            <p className="text-white/40 text-xs mt-0.5">{data.total} usuários cadastrados · ordenados por {sortCol === "lastLoginAt" ? "atividade" : sortCol === "createdAt" ? "cadastro" : sortCol === "matchCount" ? "partidas" : sortCol === "aiUsageCount" ? "uso de IA" : sortCol === "seasonCount" ? "temporadas" : sortCol === "careerCount" ? "clubes" : sortCol === "name" ? "nome" : sortCol === "plan" ? "plano" : sortCol} {sortDir === "desc" ? "↓" : "↑"}</p>
           </div>
           <input
             type="text"
@@ -666,16 +689,42 @@ function UsersTab() {
             <table className="w-full text-sm">
               <thead>
                 <tr style={{ background: "rgba(255,255,255,0.04)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                  <th className="text-left px-4 py-3 text-white/50 text-xs font-semibold uppercase tracking-wide whitespace-nowrap">Nome</th>
-                  <th className="text-left px-4 py-3 text-white/50 text-xs font-semibold uppercase tracking-wide whitespace-nowrap">Atividade</th>
-                  <th className="text-left px-4 py-3 text-white/50 text-xs font-semibold uppercase tracking-wide whitespace-nowrap">Plano</th>
-                  <th className="text-left px-4 py-3 text-white/50 text-xs font-semibold uppercase tracking-wide whitespace-nowrap">Clube(s)</th>
-                  <th className="text-left px-4 py-3 text-white/50 text-xs font-semibold uppercase tracking-wide whitespace-nowrap">Partidas</th>
-                  <th className="text-left px-4 py-3 text-white/50 text-xs font-semibold uppercase tracking-wide whitespace-nowrap">IA</th>
-                  <th className="text-left px-4 py-3 text-white/50 text-xs font-semibold uppercase tracking-wide whitespace-nowrap">Temp.</th>
-                  <th className="text-left px-4 py-3 text-white/50 text-xs font-semibold uppercase tracking-wide whitespace-nowrap">Último Login</th>
-                  <th className="text-left px-4 py-3 text-white/50 text-xs font-semibold uppercase tracking-wide whitespace-nowrap">Cadastro</th>
-                  <th className="text-left px-4 py-3 text-white/50 text-xs font-semibold uppercase tracking-wide whitespace-nowrap">Ação</th>
+                  {(
+                    [
+                      { label: "Nome", col: "name" as SortCol, sortable: true },
+                      { label: "Atividade", col: null, sortable: false },
+                      { label: "Plano", col: "plan" as SortCol, sortable: true },
+                      { label: "Clube(s)", col: "careerCount" as SortCol, sortable: true },
+                      { label: "Partidas", col: "matchCount" as SortCol, sortable: true },
+                      { label: "IA", col: "aiUsageCount" as SortCol, sortable: true },
+                      { label: "Temp.", col: "seasonCount" as SortCol, sortable: true },
+                      { label: "Último Login", col: "lastLoginAt" as SortCol, sortable: true },
+                      { label: "Cadastro", col: "createdAt" as SortCol, sortable: true },
+                    ]
+                  ).map(({ label, col, sortable }) => {
+                    const isActive = sortable && col !== null && sortCol === col;
+                    return (
+                      <th
+                        key={label}
+                        onClick={() => sortable && col !== null && handleSort(col)}
+                        className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide whitespace-nowrap select-none transition-colors"
+                        style={{
+                          color: isActive ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.4)",
+                          cursor: sortable ? "pointer" : "default",
+                        }}
+                      >
+                        <span className="flex items-center gap-1">
+                          {label}
+                          {sortable && (
+                            <span className="text-[10px] opacity-60">
+                              {isActive ? (sortDir === "desc" ? "↓" : "↑") : "↕"}
+                            </span>
+                          )}
+                        </span>
+                      </th>
+                    );
+                  })}
+                  <th className="text-left px-4 py-3 text-white/40 text-xs font-semibold uppercase tracking-wide whitespace-nowrap">Ação</th>
                 </tr>
               </thead>
               <tbody>
