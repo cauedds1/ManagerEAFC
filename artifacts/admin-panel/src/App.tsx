@@ -591,7 +591,7 @@ function UsersTab() {
 
   // When any search or activity filter is active, fetch ALL users so sorting
   // and filtering apply across all pages, not just the current page.
-  const isFiltering = search.trim() !== "" || activityFilter !== "all";
+  const isFiltering = search.trim() !== "" || activityFilter !== "all" || sortCol !== "lastLoginAt" || sortDir !== "desc";
 
   const limit = 50;
   const pagedQuery = useQuery<{ users: User[]; total: number; page: number; limit: number }>({
@@ -663,8 +663,8 @@ function UsersTab() {
           <div>
             <h2 className="text-white font-bold text-base">Usuários</h2>
             <p className="text-white/40 text-xs mt-0.5">
-              {isFiltering
-                ? `${filtered.length} de ${data.total} usuários · todos os resultados`
+              {isFiltering && filtered.length < data.total
+                ? `${filtered.length} de ${data.total} usuários`
                 : `${data.total} usuários cadastrados`
               } · ordenados por {sortCol === "lastLoginAt" ? "atividade" : sortCol === "createdAt" ? "cadastro" : sortCol === "matchCount" ? "partidas" : sortCol === "aiUsageCount" ? "uso de IA" : sortCol === "seasonCount" ? "temporadas" : sortCol === "careerCount" ? "clubes" : sortCol === "name" ? "nome" : sortCol === "plan" ? "plano" : sortCol} {sortDir === "desc" ? "↓" : "↑"}
             </p>
