@@ -1657,13 +1657,20 @@ export function RegistrarPartidaModal({
   const usedIds = useMemo(() => new Set([...draft.starterIds, ...draft.subIds]), [draft.starterIds, draft.subIds]);
 
   const benchPlayers = useMemo(() => {
+    const starterSet = new Set(pitchSlots.filter((id): id is number => id != null && id > 0));
+    const rawBench = allPlayers.filter((p) => !starterSet.has(p.id));
     const order = getBenchOrder(careerId);
-    if (!order || order.length === 0) return [];
-    const relacionados = order.slice(0, 9);
-    return relacionados
-      .map((id) => allPlayers.find((p) => p.id === id))
-      .filter((p): p is SquadPlayer => p != null);
-  }, [careerId, allPlayers]);
+    if (!order || order.length === 0) {
+      return rawBench.slice(0, 9);
+    }
+    const benchMap = new Map(rawBench.map((p) => [p.id, p]));
+    const ordered = order
+      .filter((id) => benchMap.has(id))
+      .map((id) => benchMap.get(id)!);
+    const known = new Set(order);
+    const extras = rawBench.filter((p) => !known.has(p.id));
+    return [...ordered, ...extras].slice(0, 9);
+  }, [careerId, allPlayers, pitchSlots]);
 
   const allUnusedForSub = useCallback((excludeId: number) => {
     return allPlayers.filter((p) => !usedIds.has(p.id) && p.id !== excludeId);
