@@ -23,7 +23,7 @@ import {
   applyMatchToPlayerStats,
   getMatches,
 } from "@/lib/matchStorage";
-import { getCustomLineup } from "@/lib/lineupStorage";
+import { getCustomLineup, getFormation } from "@/lib/lineupStorage";
 import { getCachedClubList } from "@/lib/clubListCache";
 import { FootballPitch, pickBestEleven } from "@/components/FootballPitch";
 import { searchStaticClubs } from "@/lib/staticClubList";
@@ -1275,7 +1275,7 @@ export function RegistrarPartidaModal({
     : undefined;
   const [lineupMode, setLineupMode] = useState<"lista" | "campinho">("lista");
   const [pitchFormation, setPitchFormation] = useState<FormationKey>(
-    editFormation ?? DEFAULT_FORMATION,
+    editFormation ?? getFormation(careerId) ?? DEFAULT_FORMATION,
   );
   const [pitchSlots, setPitchSlots] = useState<(number | null)[]>(() => {
     if (editFormation && editMatch && editMatch.starterIds.length > 0) {
