@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { SquadPlayer, PositionPtBr, FormationGroup, FORMATION_GROUP } from "@/lib/squadCache";
 import { FormationKey, getFormationPositions, DEFAULT_FORMATION, getFormationGroups } from "@/lib/formations";
 import { useLang } from "@/hooks/useLang";
@@ -107,21 +107,18 @@ function PlayerCircle({
 }) {
   const [lang] = useLang();
   const rating = player.rating ?? 0;
-  const [photoLoaded, setPhotoLoaded] = useState(false);
+  const [photoErr, setPhotoErr] = useState(false);
+  const [prevPhoto, setPrevPhoto] = useState(player.photo ?? "");
+  if (prevPhoto !== (player.photo ?? "")) {
+    setPrevPhoto(player.photo ?? "");
+    setPhotoErr(false);
+  }
   const colors = POS_COLOR[player.positionPtBr] ?? POS_COLOR.MID;
   const radius = 20;
   const clipId = `clip-p-${player.id}`;
   const label = player.number != null ? String(player.number) : getInitials(player.name);
-  const showPhoto = Boolean(player.photo) && photoLoaded;
-
-  useEffect(() => {
-    if (!player.photo) return;
-    setPhotoLoaded(false);
-    const img = new window.Image();
-    img.onload = () => setPhotoLoaded(true);
-    img.onerror = () => setPhotoLoaded(false);
-    img.src = player.photo;
-  }, [player.photo]);
+  const showPhoto = Boolean(player.photo) && !photoErr;
+  const photoKey = player.photo ?? "";
 
   const displayName = (() => {
     const parts = player.name.trim().split(" ");
@@ -154,15 +151,21 @@ function PlayerCircle({
 
       {showPhoto ? (
         <>
-          <image
-            href={player.photo}
+          <foreignObject
+            key={photoKey}
             x={x - radius}
             y={y - radius}
             width={radius * 2}
             height={radius * 2}
             clipPath={`url(#${clipId})`}
-            preserveAspectRatio="xMidYMid slice"
-          />
+          >
+            <img
+              src={player.photo}
+              alt=""
+              style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+              onError={() => setPhotoErr(true)}
+            />
+          </foreignObject>
           <circle cx={x} cy={y} r={radius} fill="none" stroke={highlighted ? "white" : colors.stroke} strokeWidth={highlighted ? 2.5 : 1.5} />
           <rect
             x={x - 11} y={y + radius - 9} width={22} height={11} rx={4}
