@@ -1741,26 +1741,33 @@ export function RegistrarPartidaModal({
   const benchPlayers = useMemo(() => {
     const starterSet = new Set(pitchSlots.filter((id): id is number => id != null && id > 0));
     const rawBench = allPlayers.filter((p) => !starterSet.has(p.id));
-    const order = getBenchOrder(careerId);
+    const rawBenchMap = new Map(rawBench.map((p) => [p.id, p]));
 
-    // Players ejected from the pitch that must always appear in the bench
+    // Players ejected from the pitch that must always appear
     const ejectedInBench = [...pitchEjected]
       .filter((id) => !starterSet.has(id))
-      .map((id) => allPlayers.find((p) => p.id === id))
+      .map((id) => rawBenchMap.get(id))
       .filter((p): p is SquadPlayer => p != null);
     const ejectedIds = new Set(ejectedInBench.map((p) => p.id));
 
-    if (!order || order.length === 0) {
-      const regular = rawBench.filter((p) => !ejectedIds.has(p.id)).slice(0, 9);
-      return [...ejectedInBench, ...regular];
-    }
-    const benchMap = new Map(rawBench.map((p) => [p.id, p]));
-    const ordered = order
-      .filter((id) => benchMap.has(id) && !ejectedIds.has(id))
-      .map((id) => benchMap.get(id)!);
-    const known = new Set(order);
-    const extras = rawBench.filter((p) => !known.has(p.id) && !ejectedIds.has(p.id));
-    return [...ejectedInBench, ...ordered, ...extras].slice(0, 9 + ejectedInBench.length);
+    // Saved starters from Elenco tab (getCustomLineup) not yet on the pitch
+    const savedLineup = getCustomLineup(careerId) ?? [];
+    const savedStartersInBench = savedLineup
+      .filter((id) => rawBenchMap.has(id) && !ejectedIds.has(id))
+      .map((id) => rawBenchMap.get(id)!);
+    const savedStarterIds = new Set(savedStartersInBench.map((p) => p.id));
+
+    // Bench order players (saved banco from Elenco tab)
+    const order = getBenchOrder(careerId) ?? [];
+    const benchOrdered = order
+      .filter((id) => rawBenchMap.has(id) && !ejectedIds.has(id) && !savedStarterIds.has(id))
+      .map((id) => rawBenchMap.get(id)!);
+    const knownIds = new Set([...order, ...savedLineup, ...ejectedIds]);
+    const extras = rawBench.filter((p) => !knownIds.has(p.id));
+
+    // Combine: ejected (priority) + saved bench + saved starters (all shown) + extras capped at 9
+    const cappedExtras = extras.slice(0, 9);
+    return [...ejectedInBench, ...benchOrdered, ...savedStartersInBench, ...cappedExtras];
   }, [careerId, allPlayers, pitchSlots, pitchEjected]);
 
   const allUnusedForSub = useCallback((excludeId: number) => {
