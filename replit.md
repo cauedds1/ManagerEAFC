@@ -138,6 +138,32 @@ The API client is auto-generated from the OpenAPI spec:
 pnpm --filter @workspace/api-spec run codegen
 ```
 
+## Match snapshot semantics (IMPORTANT — do not break)
+
+Registered matches are **immutable historical records**. Future edits on the
+Elenco/club screen (retraining, renaming, transfers) MUST NOT alter how a past
+match is displayed. The contract is:
+
+- `MatchRecord.formation` — the formation key (e.g. `"4-3-3"`) used at
+  registration. Always set, even when the user used the "lista" lineup mode
+  (falls back to the saved club formation at registration time).
+- `MatchRecord.playerSnapshot[id]` — frozen `{ name, photo, positionPtBr,
+  number }` for every starter, sub, and MOTM at registration time. Captured
+  with **trained-position overrides applied** so Smith (MID→DEF) is recorded
+  as DEF in matches registered after the training.
+
+Rendering rules (web `MatchDetailPage`, mobile `match-detail`):
+- When `playerSnapshot` exists, the snapshot's fields **win** over the current
+  squad's fields for known players. Future edits to the player are invisible
+  to past matches.
+- When `formation` exists, it is the source of truth for the pitch layout and
+  for `sortedStarterIds` (no dynamic `pickBestEleven` fallback).
+
+Auto-fill / pickBestEleven rules (`ElencoView`, `RegistrarPartidaModal`):
+- Always call `applyOverridesToPlayers(players, overrides)` from
+  `playerStatsStorage.ts` BEFORE invoking `pickBestEleven`. Otherwise trained
+  positions are ignored and the field appears to "reset".
+
 ## Post-merge setup
 
 Script at `scripts/post-merge.sh`:

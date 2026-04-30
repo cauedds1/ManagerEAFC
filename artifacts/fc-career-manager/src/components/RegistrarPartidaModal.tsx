@@ -24,6 +24,7 @@ import {
   getMatches,
 } from "@/lib/matchStorage";
 import { getCustomLineup, getFormation } from "@/lib/lineupStorage";
+import { getAllPlayerOverrides, applyOverridesToPlayers } from "@/lib/playerStatsStorage";
 import { getCachedClubList } from "@/lib/clubListCache";
 import { FootballPitch, pickBestEleven } from "@/components/FootballPitch";
 import { searchStaticClubs } from "@/lib/staticClubList";
@@ -1273,7 +1274,17 @@ export function RegistrarPartidaModal({
   const editFormation = editMatch?.formation && isFormationKey(editMatch.formation)
     ? editMatch.formation
     : undefined;
-  const [lineupMode, setLineupMode] = useState<"lista" | "campinho">("lista");
+  // Trained-position overrides for the current career (Smith MID→DEF etc.).
+  // Captured once when the modal mounts so the snapshot saved in the match
+  // reflects the player's *trained* position at the moment of registration.
+  const [overrides] = useState(() => getAllPlayerOverrides(careerId));
+  const playersWithOverrides = useMemo(
+    () => applyOverridesToPlayers(allPlayers, overrides),
+    [allPlayers, overrides],
+  );
+  // Default to "campinho" (tactic board) so users land directly on the visual
+  // lineup screen with the saved XI auto-filled (issue #2).
+  const [lineupMode, setLineupMode] = useState<"lista" | "campinho">("campinho");
   const [pitchFormation, setPitchFormation] = useState<FormationKey>(
     editFormation ?? getFormation(careerId) ?? DEFAULT_FORMATION,
   );
@@ -1284,13 +1295,31 @@ export function RegistrarPartidaModal({
         return ids.map((id) => (id === 0 ? null : id));
       }
       const formation = editFormation;
+      const overridden = applyOverridesToPlayers(allPlayers, overrides);
       const starters = ids
-        .map((id) => allPlayers.find((p) => p.id === id))
+        .map((id) => overridden.find((p) => p.id === id))
         .filter(Boolean) as SquadPlayer[];
       const ordered = pickBestEleven(starters, formation);
       const slots: (number | null)[] = Array(11).fill(null);
       ordered.forEach((id, i) => { slots[i] = id; });
       return slots;
+    }
+    // New match: pre-fill pitch with the user's saved XI from the club screen
+    // so they land on a populated tactic board ready to confirm or tweak.
+    if (!editMatch) {
+      const overridden = applyOverridesToPlayers(allPlayers, overrides);
+      const savedLineup = getCustomLineup(careerId);
+      const formation = getFormation(careerId) ?? DEFAULT_FORMATION;
+      const candidateIds = savedLineup ?? (overridden.length > 0 ? pickBestEleven(overridden, formation) : []);
+      if (candidateIds.length > 0) {
+        const validPlayers = candidateIds
+          .map((id) => overridden.find((p) => p.id === id))
+          .filter(Boolean) as SquadPlayer[];
+        const ordered = pickBestEleven(validPlayers, formation);
+        const slots: (number | null)[] = Array(11).fill(null);
+        ordered.forEach((id, i) => { slots[i] = id; });
+        return slots;
+      }
     }
     return Array(11).fill(null);
   });
@@ -1300,11 +1329,13 @@ export function RegistrarPartidaModal({
 
   const getPlayerSector = useCallback((playerId: number): "GOL" | "DEF" | "MID" | "ATA" => {
     if (sectorMap[playerId]) return sectorMap[playerId];
-    const player = allPlayers.find((p) => p.id === playerId);
+    // Use overridden positions so trained players (e.g. Smith MID→DEF) land
+    // in the trained sector instead of their original one.
+    const player = playersWithOverrides.find((p) => p.id === playerId);
     const pos = player?.positionPtBr;
     if (pos === "GOL" || pos === "DEF" || pos === "MID" || pos === "ATA") return pos;
     return "MID";
-  }, [sectorMap, allPlayers]);
+  }, [sectorMap, playersWithOverrides]);
 
   const allSystemPlayers = useMemo(() => {
     const cached = getAllCachedPlayers();
@@ -1374,6 +1405,35 @@ export function RegistrarPartidaModal({
     if (isEditMode) return;
     try { localStorage.setItem(draftKey(careerId, seasonId), JSON.stringify(draft)); } catch { /* noop */ }
   }, [draft, isEditMode, careerId, seasonId]);
+
+  // One-shot sync on mount: when a NEW match was opened with a pre-filled
+  // pitch (from the user's saved Elenco lineup), make sure draft.starterIds
+  // and draft.playerStats reflect those pre-filled players too — otherwise
+  // applyMatchToPlayerStats would skip them and the season stats wouldn't
+  // increment for the auto-filled XI.
+  // Refs intentionally omitted from deps: this must run exactly once on mount.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (isEditMode) return;
+    const slotIds = pitchSlots.filter((id): id is number => id != null && id > 0);
+    if (slotIds.length === 0) return;
+    const draftHasStarters = draft.starterIds.length > 0;
+    if (draftHasStarters) return; // user resumed a saved draft — don't clobber it
+    setDraft((prev) => {
+      const nextStats = { ...prev.playerStats };
+      for (const id of slotIds) {
+        if (!nextStats[id]) nextStats[id] = mkDefault(false);
+      }
+      return { ...prev, starterIds: slotIds, playerStats: nextStats };
+    });
+    const newSectorMap: Record<number, "GOL" | "DEF" | "MID" | "ATA"> = {};
+    pitchSlots.forEach((id, slotIndex) => {
+      if (id != null && id > 0) {
+        newSectorMap[id] = sectorForSlotIndex(slotIndex, pitchFormation);
+      }
+    });
+    setSectorMap(newSectorMap);
+  }, []);
 
   const onChange = useCallback((patch: Partial<MatchDraft>) => {
     setDraft((prev) => ({ ...prev, ...patch }));
@@ -1469,9 +1529,9 @@ export function RegistrarPartidaModal({
 
   const handleAutoFill = useCallback(() => {
     const saved = getCustomLineup(careerId);
-    const candidateIds = saved ?? (allPlayers.length > 0 ? pickBestEleven(allPlayers, pitchFormation) : []);
+    const candidateIds = saved ?? (playersWithOverrides.length > 0 ? pickBestEleven(playersWithOverrides, pitchFormation) : []);
     const validPlayers = candidateIds
-      .map((id) => allPlayers.find((p) => p.id === id))
+      .map((id) => playersWithOverrides.find((p) => p.id === id))
       .filter(Boolean) as SquadPlayer[];
     const orderedIds = pickBestEleven(validPlayers, pitchFormation);
     const newSectorMap: Record<number, "GOL" | "DEF" | "MID" | "ATA"> = {};
@@ -1495,11 +1555,11 @@ export function RegistrarPartidaModal({
       orderedIds.forEach((id, i) => { newSlots[i] = id; });
       setPitchSlots(newSlots);
     }
-  }, [careerId, allPlayers, lineupMode, pitchFormation]);
+  }, [careerId, playersWithOverrides, lineupMode, pitchFormation]);
 
   const handleEnterCampinho = useCallback(() => {
     const currentStarters = draft.starterIds
-      .map((id) => allPlayers.find((p) => p.id === id))
+      .map((id) => playersWithOverrides.find((p) => p.id === id))
       .filter(Boolean) as SquadPlayer[];
     const ordered = pickBestEleven(currentStarters, pitchFormation);
     const newSlots: (number | null)[] = Array(11).fill(null);
@@ -1609,8 +1669,14 @@ export function RegistrarPartidaModal({
     const snapshot: Record<number, PlayerSnapshotEntry> = {};
     const ids = new Set([...starterIds, ...subIds]);
     if (motmPlayerId != null) ids.add(motmPlayerId);
+    // Build a quick lookup of *current* squad members with overrides applied
+    // so the snapshot captures the player's effective name/photo/position at
+    // registration time (immutable record of the match).
+    const overriddenMap = new Map<number, SquadPlayer>(playersWithOverrides.map((p) => [p.id, p]));
     for (const id of ids) {
-      const p = allSystemPlayers.find((pl) => pl.id === id);
+      const overridden = overriddenMap.get(id);
+      const fallback = allSystemPlayers.find((pl) => pl.id === id);
+      const p = overridden ?? fallback;
       if (p) {
         snapshot[id] = {
           name: p.name,
@@ -1621,7 +1687,7 @@ export function RegistrarPartidaModal({
       }
     }
     return snapshot;
-  }, [allSystemPlayers]);
+  }, [allSystemPlayers, playersWithOverrides]);
 
   const handleConfirm = useCallback(() => {
     if (!canSave || saving) return;
@@ -1630,7 +1696,12 @@ export function RegistrarPartidaModal({
       ? pitchSlots.map((id) => id ?? 0)
       : draft.starterIds;
     const denseStarterIds = finalStarterIds.filter((id) => id !== 0);
-    const finalFormation = lineupMode === "campinho" ? pitchFormation : undefined;
+    // Always persist a formation snapshot (issue #1) so the match report
+    // shows the exact formation used at registration time and is immutable.
+    // In list mode, fall back to the user's saved club formation.
+    const finalFormation: FormationKey = lineupMode === "campinho"
+      ? pitchFormation
+      : (getFormation(careerId) ?? DEFAULT_FORMATION);
     if (isEditMode && editMatch) {
       const playerSnapshot = buildPlayerSnapshot(denseStarterIds, draft.subIds, draft.motmPlayerId);
       const updated: MatchRecord = {

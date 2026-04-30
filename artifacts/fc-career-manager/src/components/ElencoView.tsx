@@ -7,7 +7,7 @@ import type { SquadResult, SquadPlayer, PositionPtBr, PositionGroup } from "@/li
 import { migratePositionOverride, PT_BR_TO_POSITION } from "@/lib/squadCache";
 import type { PlayerOverride } from "@/types/playerStats";
 import type { TransferRecord } from "@/types/transfer";
-import { getAllPlayerOverrides } from "@/lib/playerStatsStorage";
+import { getAllPlayerOverrides, applyOverridesToPlayers } from "@/lib/playerStatsStorage";
 import {
   getCustomPlayers,
   addCustomPlayer,
@@ -428,15 +428,24 @@ export function ElencoView({
     onOverridesUpdated?.();
   }, [careerId, onOverridesUpdated]);
 
-  const defaultStarterIds = mergedPlayers.length > 0 ? pickBestEleven(mergedPlayers) : [];
+  // Apply trained-position overrides BEFORE picking the best eleven so a player
+  // that was retrained (e.g. CDM → CB) is placed in the trained sector, not the
+  // original one. Without this, auto-fill ignores the user's training.
+  const playersWithOverrides = useMemo(
+    () => applyOverridesToPlayers(mergedPlayers, overrides),
+    [mergedPlayers, overrides],
+  );
+  const defaultStarterIds = playersWithOverrides.length > 0
+    ? pickBestEleven(playersWithOverrides, formation)
+    : [];
   const starterIds: number[] = customLineup ?? defaultStarterIds;
   // 0 is used as a "reserved empty slot" placeholder — filter it out for the player lists
   const starterSet = new Set(starterIds.filter((id) => id > 0));
   const starters = starterIds
-    .map((id) => (id > 0 ? mergedPlayers.find((p) => p.id === id) : null))
+    .map((id) => (id > 0 ? playersWithOverrides.find((p) => p.id === id) : null))
     .filter((p): p is SquadPlayer => p != null);
 
-  const rawBench = mergedPlayers.filter((p) => !starterSet.has(p.id));
+  const rawBench = playersWithOverrides.filter((p) => !starterSet.has(p.id));
   const bench: SquadPlayer[] = useMemo(() => {
     if (!benchOrderState) return rawBench;
     const benchMap = new Map(rawBench.map((p) => [p.id, p]));
@@ -861,9 +870,10 @@ export function ElencoView({
           </div>
         ) : (() => {
           const stats = finalizedSeasonStats ?? {};
-          const finalStarters = finalizedPlayers.filter(p => (stats[p.id]?.matchesAsStarter ?? 0) > 0);
-          const finalNonStarters = finalizedPlayers.filter(p => (stats[p.id]?.matchesAsStarter ?? 0) === 0);
-          const finalStarterIds = pickBestEleven(finalStarters);
+          const finalizedWithOverrides = applyOverridesToPlayers(finalizedPlayers, overrides);
+          const finalStarters = finalizedWithOverrides.filter(p => (stats[p.id]?.matchesAsStarter ?? 0) > 0);
+          const finalNonStarters = finalizedWithOverrides.filter(p => (stats[p.id]?.matchesAsStarter ?? 0) === 0);
+          const finalStarterIds = pickBestEleven(finalStarters, formation);
           const finalStarterIdsSet = new Set(finalStarterIds);
           const finalStartersNotInBestEleven = finalStarters.filter(p => !finalStarterIdsSet.has(p.id));
           const allOthers = [...finalStartersNotInBestEleven, ...finalNonStarters];

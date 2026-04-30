@@ -1,6 +1,7 @@
 import type { PlayerSeasonStats, PlayerOverride } from "@/types/playerStats";
 import { putSeasonData, putCareerData } from "@/lib/apiStorage";
 import { sessionGet, sessionSet } from "@/lib/sessionStore";
+import { migratePositionOverride, PT_BR_TO_POSITION, type PositionPtBr, type PositionGroup } from "@/lib/squadCache";
 
 function statsKey(seasonId: string): string {
   return `fc-career-manager-stats-${seasonId}`;
@@ -142,6 +143,38 @@ export function getAllPlayerOverrides(careerId: string): Record<number, PlayerOv
   return sessionGet<Record<number, PlayerOverride>>(overridesKey(careerId))
     ?? lsGet<Record<number, PlayerOverride>>(overridesKey(careerId))
     ?? {};
+}
+
+/**
+ * Apply position/name/photo/number overrides to a list of squad players.
+ * Returns a new array — original players are not mutated.
+ * Used to ensure auto-fill / pickBestEleven respect user-trained positions.
+ */
+export function applyOverridesToPlayers<T extends {
+  id: number;
+  name: string;
+  positionPtBr: PositionPtBr;
+  position: PositionGroup;
+  number?: number;
+  photo: string;
+}>(
+  players: T[],
+  overrides: Record<number, PlayerOverride>,
+): T[] {
+  return players.map((p) => {
+    const ov = overrides[p.id];
+    if (!ov) return p;
+    const posOvr = migratePositionOverride(ov.positionOverride);
+    const next = { ...p };
+    if (ov.nameOverride) next.name = ov.nameOverride;
+    if (ov.photoOverride) next.photo = ov.photoOverride;
+    if (ov.shirtNumber != null) next.number = ov.shirtNumber;
+    if (posOvr) {
+      next.positionPtBr = posOvr;
+      next.position = PT_BR_TO_POSITION[posOvr] ?? p.position;
+    }
+    return next;
+  });
 }
 
 export function setPlayerOverride(

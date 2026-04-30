@@ -496,28 +496,51 @@ export function MatchDetailPage({
   const [rivalCrestFlipped, setRivalCrestFlipped] = useState(false);
   const [showH2H, setShowH2H] = useState(false);
 
+  // IMMUTABILITY: when the match has a playerSnapshot, the snapshot wins for
+  // every field (name, photo, position, number) — even for players that still
+  // exist in the current squad. This guarantees that retraining a player or
+  // editing their info on the Elenco screen does NOT alter how they appear in
+  // matches that were already registered. Past matches are frozen records.
   const resolvedPlayers = useMemo<SquadPlayer[]>(() => {
     if (!match.playerSnapshot) return allPlayers;
+    const snapshotMap = match.playerSnapshot;
     const knownIds = new Set(allPlayers.map((p) => p.id));
+    const validPosOf = (pos: string): PositionPtBr =>
+      (["GOL", "DEF", "MID", "ATA"] as const).includes(pos as PositionPtBr)
+        ? (pos as PositionPtBr)
+        : "MID";
+    // Override known players with snapshot fields when present.
+    const merged: SquadPlayer[] = allPlayers.map((p) => {
+      const snap = snapshotMap[p.id];
+      if (!snap) return p;
+      const pos = validPosOf(snap.positionPtBr);
+      return {
+        ...p,
+        name: snap.name || p.name,
+        photo: snap.photo || p.photo,
+        positionPtBr: pos,
+        position: PT_BR_TO_POSITION[pos] ?? p.position,
+        number: snap.number ?? p.number,
+      };
+    });
+    // Add players that no longer exist in the current squad as "extras".
     const extras: SquadPlayer[] = [];
-    for (const [idStr, snap] of Object.entries(match.playerSnapshot)) {
+    for (const [idStr, snap] of Object.entries(snapshotMap)) {
       const id = Number(idStr);
       if (!knownIds.has(id)) {
-        const validPos: PositionPtBr = (["GOL", "DEF", "MID", "ATA"] as const).includes(snap.positionPtBr as PositionPtBr)
-          ? (snap.positionPtBr as PositionPtBr)
-          : "MID";
+        const pos = validPosOf(snap.positionPtBr);
         extras.push({
           id,
           name: snap.name,
           photo: snap.photo,
-          positionPtBr: validPos,
-          position: PT_BR_TO_POSITION[validPos] ?? "Midfielder",
+          positionPtBr: pos,
+          position: PT_BR_TO_POSITION[pos] ?? "Midfielder",
           number: snap.number,
           age: 0,
         });
       }
     }
-    return extras.length > 0 ? [...allPlayers, ...extras] : allPlayers;
+    return extras.length > 0 ? [...merged, ...extras] : merged;
   }, [allPlayers, match.playerSnapshot]);
 
   const h2hMatches = useMemo(() => {

@@ -174,6 +174,13 @@ export interface MatchStats {
   penaltyGoals?: number;
 }
 
+export interface PlayerSnapshotEntry {
+  name: string;
+  photo: string;
+  positionPtBr: string;
+  number?: number;
+}
+
 export interface MatchRecord {
   id: string;
   careerId: string;
@@ -196,6 +203,14 @@ export interface MatchRecord {
   opponentLogoUrl?: string;
   observations?: string;
   createdAt: number;
+  /** Formation key used at registration (e.g. "4-3-3", "3-4-2-1"). Persisted
+   * so the match report shows the exact tactic used at the time, not whatever
+   * the user happens to have set on the club screen later. */
+  formation?: string;
+  /** Frozen snapshot of every player involved in the match (starter, sub, MOTM).
+   * Captures name/photo/position/number AT REGISTRATION TIME so future Elenco
+   * edits (retraining, renaming, transfers) never alter past matches. */
+  playerSnapshot?: Record<number, PlayerSnapshotEntry>;
 }
 
 export interface SquadPlayer {

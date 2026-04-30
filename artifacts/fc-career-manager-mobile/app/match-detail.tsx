@@ -24,6 +24,20 @@ const RESULT_CONFIG = {
   derrota: { label: 'Derrota', color: Colors.destructive, icon: 'close-circle' as IoniconName },
 };
 
+const SECTOR_LABELS: Record<'GOL' | 'DEF' | 'MID' | 'ATA', string> = {
+  GOL: 'Goleiro',
+  DEF: 'Defensores',
+  MID: 'Meio-campistas',
+  ATA: 'Atacantes',
+};
+
+const SECTOR_COLORS: Record<'GOL' | 'DEF' | 'MID' | 'ATA', string> = {
+  GOL: Colors.warning,
+  DEF: Colors.info,
+  MID: Colors.success,
+  ATA: Colors.destructive,
+};
+
 function StatRow({ label, value }: { label: string; value: string | number }) {
   return (
     <View style={styles.statRow}>
@@ -96,15 +110,47 @@ export default function MatchDetailScreen() {
     staleTime: 1000 * 60 * 30,
   });
 
-  const playerIdToName = useMemo<Map<number, string>>(() => {
-    const map = new Map<number, string>();
-    (squadData?.players ?? []).forEach((p) => map.set(p.id, p.name));
-    return map;
-  }, [squadData]);
-
   const match: MatchRecord | undefined = seasonGameData?.data?.matches?.find(
     (m) => m.id === matchId
   );
+
+  // Resolve player names + positions: snapshot wins (immutable past matches),
+  // then fall back to current squad. This mirrors the web behaviour and means
+  // future Elenco changes don't alter how the match is displayed.
+  const playerInfo = useMemo<Map<number, { name: string; positionPtBr?: string; number?: number }>>(() => {
+    const map = new Map<number, { name: string; positionPtBr?: string; number?: number }>();
+    (squadData?.players ?? []).forEach((p) =>
+      map.set(p.id, { name: p.name, positionPtBr: (p as { positionPtBr?: string }).positionPtBr, number: (p as { number?: number }).number }),
+    );
+    if (match?.playerSnapshot) {
+      for (const [idStr, snap] of Object.entries(match.playerSnapshot)) {
+        map.set(Number(idStr), { name: snap.name, positionPtBr: snap.positionPtBr, number: snap.number });
+      }
+    }
+    return map;
+  }, [squadData, match?.playerSnapshot]);
+
+  const playerIdToName = useMemo<Map<number, string>>(() => {
+    const map = new Map<number, string>();
+    playerInfo.forEach((info, id) => map.set(id, info.name));
+    return map;
+  }, [playerInfo]);
+
+  // Group starters by sector for a cleaner, formation-aware lineup view.
+  const startersBySector = useMemo(() => {
+    const buckets: Record<'GOL' | 'DEF' | 'MID' | 'ATA', { id: number; name: string; number?: number }[]> = {
+      GOL: [], DEF: [], MID: [], ATA: [],
+    };
+    for (const id of match?.starterIds ?? []) {
+      if (id === 0) continue;
+      const info = playerInfo.get(id);
+      const pos = info?.positionPtBr;
+      const sector: 'GOL' | 'DEF' | 'MID' | 'ATA' =
+        pos === 'GOL' || pos === 'DEF' || pos === 'MID' || pos === 'ATA' ? pos : 'MID';
+      buckets[sector].push({ id, name: info?.name ?? `Jogador #${id}`, number: info?.number });
+    }
+    return buckets;
+  }, [match?.starterIds, playerInfo]);
 
   if (!seasonId || !matchId) {
     return (
@@ -239,41 +285,55 @@ export default function MatchDetailScreen() {
             </View>
           </View>
 
-          {/* Lineup */}
+          {/* Lineup — grouped by sector so the formation reads at a glance */}
           {((match.starterIds?.length ?? 0) > 0 || (match.subIds?.length ?? 0) > 0) && (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Escalação</Text>
+              <View style={styles.sectionHeaderRow}>
+                <Text style={styles.sectionTitle}>Escalação</Text>
+                {match.formation && (
+                  <View style={styles.formationChip}>
+                    <Ionicons name="grid-outline" size={11} color={Colors.mutedForeground} />
+                    <Text style={styles.formationChipText}>{match.formation}</Text>
+                  </View>
+                )}
+              </View>
               <View style={styles.card}>
-                {(match.starterIds ?? []).map((id, idx) => {
-                  const name = playerIdToName.get(id) ?? `Jogador #${id}`;
+                {(['GOL', 'DEF', 'MID', 'ATA'] as const).map((sector) => {
+                  const players = startersBySector[sector];
+                  if (players.length === 0) return null;
                   return (
-                    <View key={id}>
-                      {idx > 0 && <View style={styles.divider} />}
-                      <View style={styles.lineupRow}>
-                        <View style={[styles.lineupBadge, { backgroundColor: `${Colors.success}15` }]}>
-                          <Text style={[styles.lineupBadgeText, { color: Colors.success }]}>T</Text>
+                    <View key={sector} style={styles.sectorBlock}>
+                      <Text style={styles.sectorLabel}>{SECTOR_LABELS[sector]}</Text>
+                      {players.map((p) => (
+                        <View key={p.id} style={styles.lineupRow}>
+                          <View style={[styles.lineupBadge, { backgroundColor: `${SECTOR_COLORS[sector]}20` }]}>
+                            <Text style={[styles.lineupBadgeText, { color: SECTOR_COLORS[sector] }]}>
+                              {p.number != null ? p.number : sector[0]}
+                            </Text>
+                          </View>
+                          <Text style={styles.lineupName}>{p.name}</Text>
                         </View>
-                        <Text style={styles.lineupName}>{name}</Text>
-                      </View>
+                      ))}
                     </View>
                   );
                 })}
-                {(match.subIds ?? []).map((id, idx) => {
-                  const name = playerIdToName.get(id) ?? `Jogador #${id}`;
-                  const startIdx = (match.starterIds?.length ?? 0) + idx;
-                  return (
-                    <View key={id}>
-                      {startIdx > 0 && <View style={styles.divider} />}
-                      <View style={styles.lineupRow}>
-                        <View style={[styles.lineupBadge, { backgroundColor: `${Colors.warning}15` }]}>
-                          <Text style={[styles.lineupBadgeText, { color: Colors.warning }]}>R</Text>
+                {(match.subIds ?? []).length > 0 && (
+                  <View style={styles.sectorBlock}>
+                    <Text style={styles.sectorLabel}>Reservas</Text>
+                    {(match.subIds ?? []).map((id) => {
+                      const info = playerInfo.get(id);
+                      const name = info?.name ?? `Jogador #${id}`;
+                      return (
+                        <View key={id} style={styles.lineupRow}>
+                          <View style={[styles.lineupBadge, { backgroundColor: `${Colors.warning}15` }]}>
+                            <Text style={[styles.lineupBadgeText, { color: Colors.warning }]}>R</Text>
+                          </View>
+                          <Text style={styles.lineupName}>{name}</Text>
                         </View>
-                        <Text style={styles.lineupName}>{name}</Text>
-                        <Text style={styles.lineupSubLabel}>Reserva</Text>
-                      </View>
-                    </View>
-                  );
-                })}
+                      );
+                    })}
+                  </View>
+                )}
               </View>
             </View>
           )}
@@ -289,17 +349,18 @@ export default function MatchDetailScreen() {
                   <View style={styles.section}>
                     <Text style={styles.sectionTitle}>Artilheiros & Assistências</Text>
                     <View style={styles.card}>
-                      {scorers.map(([name, s], idx) => {
+                      {scorers.map(([pidStr, s], idx) => {
+                        const playerName = playerIdToName.get(Number(pidStr)) ?? `Jogador #${pidStr}`;
                         const assists = s.goals
                           .filter((g) => g.assistPlayerId != null)
                           .map((g) => playerIdToName.get(g.assistPlayerId!) ?? `#${g.assistPlayerId}`)
                           .filter((v, i, arr) => arr.indexOf(v) === i);
                         return (
-                          <View key={name}>
+                          <View key={pidStr}>
                             {idx > 0 && <View style={styles.divider} />}
                             <View style={styles.playerRow}>
                               <View style={styles.playerRowLeft}>
-                                <Text style={styles.playerName}>{name}</Text>
+                                <Text style={styles.playerName}>{playerName}</Text>
                                 <View style={styles.playerBadges}>
                                   <View style={[styles.badge, { backgroundColor: `${Colors.success}18`, borderColor: `${Colors.success}30` }]}>
                                     <Text style={[styles.badgeText, { color: Colors.success }]}>
@@ -333,12 +394,15 @@ export default function MatchDetailScreen() {
                     <View style={styles.card}>
                       {withRatings
                         .sort(([, a], [, b]) => b.rating - a.rating)
-                        .map(([name, s], idx) => (
-                          <View key={name}>
-                            {idx > 0 && <View style={styles.divider} />}
-                            <PlayerStatsRow name={name} stats={s} />
-                          </View>
-                        ))}
+                        .map(([pidStr, s], idx) => {
+                          const playerName = playerIdToName.get(Number(pidStr)) ?? `Jogador #${pidStr}`;
+                          return (
+                            <View key={pidStr}>
+                              {idx > 0 && <View style={styles.divider} />}
+                              <PlayerStatsRow name={playerName} stats={s} />
+                            </View>
+                          );
+                        })}
                     </View>
                   </View>
                 )}
@@ -509,4 +573,25 @@ const styles = StyleSheet.create({
   lineupBadgeText: { fontSize: 11, fontWeight: '700' as const, fontFamily: 'Inter_700Bold' },
   lineupName: { flex: 1, fontSize: 14, color: Colors.foreground, fontFamily: 'Inter_400Regular' },
   lineupSubLabel: { fontSize: 11, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular' },
+  sectionHeaderRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 20, marginBottom: 8,
+  },
+  formationChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    paddingHorizontal: 8, paddingVertical: 3,
+    borderRadius: 6,
+    backgroundColor: `${Colors.mutedForeground}15`,
+  },
+  formationChipText: {
+    fontSize: 11, color: Colors.mutedForeground,
+    fontFamily: 'Inter_600SemiBold', letterSpacing: 0.5,
+  },
+  sectorBlock: { paddingTop: 6, paddingBottom: 4 },
+  sectorLabel: {
+    fontSize: 10, color: Colors.mutedForeground,
+    fontFamily: 'Inter_600SemiBold', letterSpacing: 1,
+    textTransform: 'uppercase' as const,
+    paddingHorizontal: 16, paddingTop: 6, paddingBottom: 2,
+  },
 });
