@@ -417,6 +417,9 @@ function TransferCard({
 
   const isOutgoingTransfer = isVenda || (isEmprestimo && transfer.loanDirection === "saida");
 
+  const resolvedToClubLogo = transfer.toClubLogo || findClubLogo(transfer.toClub ?? "") || null;
+  const resolvedFromClubLogo = transfer.fromClubLogo || findClubLogo(transfer.fromClub ?? "") || null;
+
   return (
     <div
       className="flex items-center gap-4 p-4 rounded-2xl transition-all duration-200 glass glass-hover"
@@ -513,7 +516,7 @@ function TransferCard({
                 <svg className="w-3.5 h-3.5 text-yellow-400/40 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5-5 5M6 12h12" />
                 </svg>
-                <ClubBadge src={null} name={transfer.toClub} size={20} />
+                <ClubBadge src={resolvedToClubLogo} name={transfer.toClub} size={20} />
                 <span className="text-white/30 text-xs truncate max-w-24">{transfer.toClub}</span>
               </>
             ) : (
@@ -529,7 +532,7 @@ function TransferCard({
                 </svg>
                 {transfer.toClub ? (
                   <>
-                    <ClubBadge src={transfer.toClubLogo ?? null} name={transfer.toClub} size={20} />
+                    <ClubBadge src={resolvedToClubLogo} name={transfer.toClub} size={20} />
                     <span className="text-white/30 text-xs truncate max-w-24">{transfer.toClub}</span>
                   </>
                 ) : (
@@ -540,7 +543,7 @@ function TransferCard({
               <>
                 {transfer.fromClub ? (
                   <>
-                    <ClubBadge src={transfer.fromClubLogo} name={transfer.fromClub} size={20} />
+                    <ClubBadge src={resolvedFromClubLogo} name={transfer.fromClub} size={20} />
                     <span className="text-white/30 text-xs truncate max-w-24">{transfer.fromClub}</span>
                     <svg className="w-3.5 h-3.5 text-orange-400/40 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5-5 5M6 12h12" />
@@ -555,7 +558,7 @@ function TransferCard({
             <span className="text-white/25 text-xs italic">{t.cardFreeAgent}</span>
           ) : (
             <>
-              <ClubBadge src={transfer.fromClubLogo} name={transfer.fromClub!} size={20} />
+              <ClubBadge src={resolvedFromClubLogo} name={transfer.fromClub!} size={20} />
               <span className="text-white/30 text-xs truncate max-w-24">{transfer.fromClub}</span>
               <svg className="w-3.5 h-3.5 text-white/20 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5-5 5M6 12h12" />
