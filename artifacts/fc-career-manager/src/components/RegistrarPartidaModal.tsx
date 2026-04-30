@@ -2245,27 +2245,29 @@ export function RegistrarPartidaModal({
                 </div>
 
                 {/* Pitch */}
-                <FootballPitch
-                  players={allPlayers}
-                  starterIds={pitchSlots.map((id) => id ?? 0)}
-                  formation={pitchFormation}
-                  ratings={Object.fromEntries(
-                    Object.entries(draft.playerStats)
-                      .filter(([, s]) => s.rating > 0)
-                      .map(([id, s]) => [Number(id), s.rating])
-                  )}
-                  onEmptySlotClick={(slotIdx) => {
-                    setPitchSelectedId(null);
-                    setPitchPendingSlot((prev) => prev === slotIdx ? null : slotIdx);
-                  }}
-                  onPlayerClick={(player) => {
-                    setPitchPendingSlot(null);
-                    setPitchSelectedId((prev) => prev === player.id ? null : player.id);
-                  }}
-                  highlightedPlayerId={pitchSelectedId ?? undefined}
-                  pendingSlotIndex={pitchPendingSlot}
-                  className="w-full"
-                />
+                <div className="flex justify-center" style={{ height: "min(43vh, 290px)" }}>
+                  <FootballPitch
+                    players={allPlayers}
+                    starterIds={pitchSlots.map((id) => id ?? 0)}
+                    formation={pitchFormation}
+                    ratings={Object.fromEntries(
+                      Object.entries(draft.playerStats)
+                        .filter(([, s]) => s.rating > 0)
+                        .map(([id, s]) => [Number(id), s.rating])
+                    )}
+                    onEmptySlotClick={(slotIdx) => {
+                      setPitchSelectedId(null);
+                      setPitchPendingSlot((prev) => prev === slotIdx ? null : slotIdx);
+                    }}
+                    onPlayerClick={(player) => {
+                      setPitchPendingSlot(null);
+                      setPitchSelectedId((prev) => prev === player.id ? null : player.id);
+                    }}
+                    highlightedPlayerId={pitchSelectedId ?? undefined}
+                    pendingSlotIndex={pitchPendingSlot}
+                    className="h-full w-auto"
+                  />
+                </div>
 
                 {/* Player picker for pending slot */}
                 {pitchPendingSlot !== null && (

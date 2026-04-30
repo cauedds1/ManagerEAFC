@@ -252,6 +252,7 @@ interface FootballPitchProps {
   starterIds?: number[];
   loading?: boolean;
   className?: string;
+  style?: React.CSSProperties;
   onPlayerClick?: (player: SquadPlayer) => void;
   highlightedPlayerId?: number;
   formation?: FormationKey;
@@ -266,6 +267,7 @@ export function FootballPitch({
   starterIds: externalStarters,
   loading,
   className,
+  style,
   onPlayerClick,
   highlightedPlayerId,
   formation = DEFAULT_FORMATION,
@@ -303,7 +305,7 @@ export function FootballPitch({
     : undefined;
 
   return (
-    <div className={`relative rounded-2xl overflow-hidden ${className ?? ""}`} style={{ background: "#0d2218", aspectRatio: `${W} / ${H}` }}>
+    <div className={`relative rounded-2xl overflow-hidden ${className ?? ""}`} style={{ ...style, background: "#0d2218", aspectRatio: `${W} / ${H}` }}>
       {loading ? (
         <div className="flex items-center justify-center h-full">
           <PitchSkeleton />
