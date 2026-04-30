@@ -640,6 +640,7 @@ function ResultModal({
 function resolveOpponentLogo(name: string, stored?: string | null): string | undefined {
   if (stored) return stored;
   const q = name.toLowerCase().trim();
+  if (!q) return undefined;
   const cached = getCachedClubList();
   if (cached && cached.length > 0) {
     const exact = cached.find((c) => c.name.toLowerCase() === q);
@@ -728,6 +729,20 @@ function BracketTeamRow({ name, logoUrl, score, isMe, won, lost }: {
 function BracketSlot({ match, clubName, clubLogoUrl, isChampFinal }: {
   match: BracketMatch; clubName: string; clubLogoUrl?: string | null; isChampFinal?: boolean;
 }) {
+  const isEmpty = !match.homeTeam.trim() && !match.awayTeam.trim() && match.homeScore === null && match.awayScore === null;
+
+  if (isEmpty) {
+    return (
+      <div style={{
+        width: "100%", height: BR_SLOT_H, borderRadius: 9,
+        border: "1px dashed rgba(255,255,255,0.07)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+      }}>
+        <div style={{ width: "40%", height: 1, background: "rgba(255,255,255,0.08)", borderRadius: 1 }} />
+      </div>
+    );
+  }
+
   const homeWon = match.homeScore !== null && match.awayScore !== null && match.homeScore > match.awayScore;
   const awayWon = match.homeScore !== null && match.awayScore !== null && match.awayScore > match.homeScore;
   const hasScores = match.homeScore !== null && match.awayScore !== null;
