@@ -652,6 +652,32 @@ function resolveOpponentLogo(name: string, stored?: string | null): string | und
   return statics[0]?.logo ?? undefined;
 }
 
+function resolveChampionInfo(
+  result: CompetitionResult,
+  clubName: string,
+  clubLogoUrl?: string | null,
+): { name: string; logo?: string } | null {
+  if (result.type === "mata-mata") {
+    const lastRound = result.bracket?.[result.bracket.length - 1];
+    const final = lastRound?.matches[0];
+    if (!final) return null;
+    const { homeScore, awayScore, homeTeam, awayTeam } = final;
+    if (homeScore === null || awayScore === null) return null;
+    const winnerName = homeScore > awayScore ? homeTeam : awayScore > homeScore ? awayTeam : null;
+    if (!winnerName?.trim()) return null;
+    const isMe = winnerName.trim().toLowerCase() === clubName.trim().toLowerCase();
+    return { name: winnerName, logo: isMe ? (clubLogoUrl ?? undefined) : resolveOpponentLogo(winnerName) };
+  }
+  if (result.type === "pontos-corridos") {
+    const sorted = [...(result.standings ?? [])].sort((a, b) => b.points - a.points);
+    const top = sorted[0];
+    if (!top?.team?.trim()) return null;
+    const isMe = top.team.trim().toLowerCase() === clubName.trim().toLowerCase();
+    return { name: top.team, logo: isMe ? (clubLogoUrl ?? undefined) : resolveOpponentLogo(top.team) };
+  }
+  return null;
+}
+
 const BR_SLOT_H = 56;
 const BR_GAP_0 = 6;
 const BR_COL_W = 152;
@@ -1125,7 +1151,9 @@ export function CompetitionResultsView({
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {filteredResults.map((result) => (
+              {filteredResults.map((result) => {
+                const champion = resolveChampionInfo(result, clubName, clubLogoUrl);
+                return (
                 <button
                   key={result.id}
                   type="button"
@@ -1137,17 +1165,19 @@ export function CompetitionResultsView({
                   }}
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-2 flex-wrap">
+                    <div className="flex items-center gap-2 flex-wrap min-w-0">
                       {result.isChampion && <span className="text-lg">🏆</span>}
-                      <span className="font-bold text-white/90 text-sm">{result.competitionName}</span>
+                      <span className="font-bold text-white/90 text-sm truncate">{result.competitionName}</span>
                     </div>
-                    {result.isChampion && (
-                      <span
-                        className="text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0"
-                        style={{ background: "rgba(251,191,36,0.15)", color: "#fbbf24" }}
-                      >
-                        {t.champion}
-                      </span>
+                    {champion && (
+                      <div className="flex flex-col items-center gap-0.5 flex-shrink-0">
+                        <TinyLogo logoUrl={champion.logo} name={champion.name} size={30} />
+                        <span style={{
+                          fontSize: 8.5, color: "rgba(255,255,255,0.25)", maxWidth: 48,
+                          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                          lineHeight: 1.2, textAlign: "center",
+                        }}>{champion.name}</span>
+                      </div>
                     )}
                   </div>
                   <div className="flex items-center gap-2 mt-1.5">
@@ -1172,7 +1202,8 @@ export function CompetitionResultsView({
                     )}
                   </div>
                 </button>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
