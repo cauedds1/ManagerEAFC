@@ -1741,7 +1741,7 @@ export function RegistrarPartidaModal({
     const rawBench = allPlayers.filter((p) => !starterSet.has(p.id));
     const order = getBenchOrder(careerId);
     if (!order || order.length === 0) {
-      return rawBench.slice(0, 9);
+      return rawBench;
     }
     const benchMap = new Map(rawBench.map((p) => [p.id, p]));
     const ordered = order
@@ -1749,7 +1749,7 @@ export function RegistrarPartidaModal({
       .map((id) => benchMap.get(id)!);
     const known = new Set(order);
     const extras = rawBench.filter((p) => !known.has(p.id));
-    return [...ordered, ...extras].slice(0, 9);
+    return [...ordered, ...extras];
   }, [careerId, allPlayers, pitchSlots]);
 
   const allUnusedForSub = useCallback((excludeId: number) => {
