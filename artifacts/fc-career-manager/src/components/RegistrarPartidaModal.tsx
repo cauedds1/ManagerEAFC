@@ -1325,6 +1325,8 @@ export function RegistrarPartidaModal({
   });
   const [pitchSelectedId, setPitchSelectedId] = useState<number | null>(null);
   const [pitchPendingSlot, setPitchPendingSlot] = useState<number | null>(null);
+  const [pitchSwapMode, setPitchSwapMode] = useState(false);
+  const [swapChoicePending, setSwapChoicePending] = useState<{ pitchPlayerId: number; benchPlayerId: number } | null>(null);
   const [sectorMap, setSectorMap] = useState<Record<number, "GOL" | "DEF" | "MID" | "ATA">>({});
 
   const getPlayerSector = useCallback((playerId: number): "GOL" | "DEF" | "MID" | "ATA" => {
@@ -1578,6 +1580,8 @@ export function RegistrarPartidaModal({
     setLineupMode("campinho");
     setPitchSelectedId(null);
     setPitchPendingSlot(null);
+    setPitchSwapMode(false);
+    setSwapChoicePending(null);
   }, [draft.starterIds, allPlayers, pitchFormation]);
 
   const handleEnterLista = useCallback(() => {
@@ -1600,6 +1604,8 @@ export function RegistrarPartidaModal({
     setLineupMode("lista");
     setPitchSelectedId(null);
     setPitchPendingSlot(null);
+    setPitchSwapMode(false);
+    setSwapChoicePending(null);
   }, [pitchSlots, pitchFormation]);
 
   const handlePitchFormationChange = useCallback((newFormation: FormationKey) => {
@@ -1648,6 +1654,63 @@ export function RegistrarPartidaModal({
     });
     if (pitchSelectedId === playerId) setPitchSelectedId(null);
   }, [pitchSlots, pitchSelectedId]);
+
+  const handlePitchSwap = useCallback((targetId: number) => {
+    const sourceId = pitchSelectedId;
+    if (sourceId === null || sourceId === targetId) {
+      setPitchSwapMode(false);
+      setPitchSelectedId(null);
+      return;
+    }
+    const sourceSlot = pitchSlots.indexOf(sourceId);
+    const targetSlot = pitchSlots.indexOf(targetId);
+    const sourceOnPitch = sourceSlot !== -1;
+    const targetOnPitch = targetSlot !== -1;
+
+    if (sourceOnPitch && targetOnPitch) {
+      const newSlots = [...pitchSlots];
+      newSlots[sourceSlot] = targetId;
+      newSlots[targetSlot] = sourceId;
+      setPitchSlots(newSlots);
+      setDraft((prev) => ({ ...prev, starterIds: newSlots.filter((id): id is number => id !== null) }));
+      setPitchSwapMode(false);
+      setPitchSelectedId(null);
+    } else {
+      const pitchPlayerId = sourceOnPitch ? sourceId : targetId;
+      const benchPlayerId = sourceOnPitch ? targetId : sourceId;
+      setSwapChoicePending({ pitchPlayerId, benchPlayerId });
+      setPitchSwapMode(false);
+      setPitchSelectedId(null);
+    }
+  }, [pitchSelectedId, pitchSlots]);
+
+  const handleSwapRotation = useCallback(() => {
+    if (!swapChoicePending) return;
+    const { pitchPlayerId, benchPlayerId } = swapChoicePending;
+    const benchPlayer = allPlayers.find((p) => p.id === benchPlayerId);
+    if (!benchPlayer) { setSwapChoicePending(null); return; }
+    const slotIdx = pitchSlots.indexOf(pitchPlayerId);
+    if (slotIdx === -1) { setSwapChoicePending(null); return; }
+    const newSlots = [...pitchSlots];
+    newSlots[slotIdx] = benchPlayerId;
+    setPitchSlots(newSlots);
+    setDraft((prev) => {
+      const newStats = { ...prev.playerStats };
+      if (!prev.subIds.includes(pitchPlayerId)) delete newStats[pitchPlayerId];
+      if (!newStats[benchPlayerId]) newStats[benchPlayerId] = mkDefault(false);
+      const newStarterIds = newSlots.filter((id): id is number => id !== null);
+      return { ...prev, starterIds: newStarterIds, playerStats: newStats };
+    });
+    setSwapChoicePending(null);
+  }, [swapChoicePending, pitchSlots, allPlayers]);
+
+  const handleSwapSub = useCallback(() => {
+    if (!swapChoicePending) return;
+    const benchPlayer = allPlayers.find((p) => p.id === swapChoicePending.benchPlayerId);
+    if (!benchPlayer) { setSwapChoicePending(null); return; }
+    addPlayer(benchPlayer, true);
+    setSwapChoicePending(null);
+  }, [swapChoicePending, allPlayers, addPlayer]);
 
   const allParticipants = useMemo(
     () => [...draft.starterIds, ...draft.subIds].map((id) => allPlayers.find((p) => p.id === id)).filter((p): p is SquadPlayer => p != null),
@@ -1794,10 +1857,16 @@ export function RegistrarPartidaModal({
   }, [canSave, saving, isEditMode, editMatch, seasonId, careerId, season, draft, buildPlayerSnapshot, onMatchAdded, onMatchUpdated, onClose, lineupMode, pitchSlots, pitchFormation]);
 
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (swapChoicePending) { setSwapChoicePending(null); return; }
+        if (pitchSwapMode) { setPitchSwapMode(false); return; }
+        onClose();
+      }
+    };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
-  }, [onClose]);
+  }, [onClose, pitchSwapMode, swapChoicePending]);
 
   return createPortal(
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
@@ -2320,7 +2389,7 @@ export function RegistrarPartidaModal({
                 </div>
 
                 {/* Pitch + bench side by side */}
-                <div className="flex gap-2" style={{ height: "min(43vh, 290px)" }}>
+                <div className="relative flex gap-2" style={{ height: "min(43vh, 290px)" }}>
                   {/* Pitch — left */}
                   <FootballPitch
                     players={allPlayers}
@@ -2332,10 +2401,12 @@ export function RegistrarPartidaModal({
                         .map(([id, s]) => [Number(id), s.rating])
                     )}
                     onEmptySlotClick={(slotIdx) => {
+                      if (pitchSwapMode) { setPitchSwapMode(false); setPitchSelectedId(null); return; }
                       setPitchSelectedId(null);
                       setPitchPendingSlot((prev) => prev === slotIdx ? null : slotIdx);
                     }}
                     onPlayerClick={(player) => {
+                      if (pitchSwapMode) { handlePitchSwap(player.id); return; }
                       setPitchPendingSlot(null);
                       setPitchSelectedId((prev) => prev === player.id ? null : player.id);
                     }}
@@ -2343,6 +2414,67 @@ export function RegistrarPartidaModal({
                     pendingSlotIndex={pitchPendingSlot}
                     className="h-full w-auto flex-shrink-0"
                   />
+
+                  {/* Floating swap button */}
+                  {pitchSelectedId !== null && !swapChoicePending && (
+                    <button
+                      type="button"
+                      onClick={() => setPitchSwapMode((m) => !m)}
+                      className="absolute top-2 right-2 flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold transition-all z-10"
+                      style={{
+                        background: pitchSwapMode ? "rgba(var(--club-primary-rgb),0.25)" : "rgba(0,0,0,0.55)",
+                        border: pitchSwapMode ? "1px solid rgba(var(--club-primary-rgb),0.6)" : "1px solid rgba(255,255,255,0.15)",
+                        color: pitchSwapMode ? "var(--club-primary)" : "rgba(255,255,255,0.6)",
+                        backdropFilter: "blur(6px)",
+                      }}
+                      title="Trocar / Substituir"
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M7 16V4m0 0L3 8m4-4l4 4" />
+                        <path d="M17 8v12m0 0l4-4m-4 4l-4-4" />
+                      </svg>
+                      {pitchSwapMode ? "Aguardando..." : "Trocar"}
+                    </button>
+                  )}
+
+                  {/* Swap choice popup (Titular ↔ Banco) */}
+                  {swapChoicePending && (() => {
+                    const pitchPlayer = allPlayers.find((p) => p.id === swapChoicePending.pitchPlayerId);
+                    const benchPlayer = allPlayers.find((p) => p.id === swapChoicePending.benchPlayerId);
+                    return (
+                      <div className="absolute inset-0 flex items-center justify-center z-20" style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)", borderRadius: 12 }}>
+                        <div className="rounded-2xl p-4 flex flex-col gap-3 w-52" style={{ background: "rgba(15,15,25,0.97)", border: "1px solid rgba(255,255,255,0.12)" }}>
+                          <p className="text-white/70 text-xs font-semibold text-center leading-tight">
+                            {pitchPlayer?.name.split(" ").pop()} ↔ {benchPlayer?.name.split(" ").pop()}
+                          </p>
+                          <p className="text-white/30 text-[10px] text-center -mt-1">Como foi essa movimentação?</p>
+                          <button
+                            type="button"
+                            onClick={handleSwapRotation}
+                            className="w-full py-2 rounded-xl text-xs font-bold transition-all"
+                            style={{ background: "rgba(var(--club-primary-rgb),0.15)", color: "var(--club-primary)", border: "1px solid rgba(var(--club-primary-rgb),0.3)" }}
+                          >
+                            🔄 Rotação (pré-jogo)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleSwapSub}
+                            className="w-full py-2 rounded-xl text-xs font-bold transition-all"
+                            style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.7)", border: "1px solid rgba(255,255,255,0.1)" }}
+                          >
+                            ↩ Substituição
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setSwapChoicePending(null)}
+                            className="text-white/25 text-[10px] text-center hover:text-white/50 transition-colors"
+                          >
+                            Cancelar
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   {/* Bench (relacionados) — right */}
                   <div className="flex flex-col min-w-0 flex-1 overflow-hidden">
@@ -2355,6 +2487,7 @@ export function RegistrarPartidaModal({
                       ) : (
                         benchPlayers.map((p) => {
                           const isUsed = usedIds.has(p.id);
+                          const isSwapTarget = pitchSwapMode && !isUsed;
                           const isPending = pitchPendingSlot !== null && !isUsed;
                           return (
                             <button
@@ -2363,6 +2496,7 @@ export function RegistrarPartidaModal({
                               disabled={isUsed}
                               onClick={() => {
                                 if (isUsed) return;
+                                if (pitchSwapMode) { handlePitchSwap(p.id); return; }
                                 if (pitchPendingSlot !== null) {
                                   handlePitchAssign(pitchPendingSlot, p);
                                 } else {
@@ -2371,8 +2505,8 @@ export function RegistrarPartidaModal({
                               }}
                               className="w-full flex items-center gap-1.5 px-2 py-1.5 rounded-lg transition-all text-left"
                               style={{
-                                background: isUsed ? "rgba(255,255,255,0.02)" : isPending ? "rgba(var(--club-primary-rgb),0.12)" : "rgba(255,255,255,0.04)",
-                                border: isPending ? "1px solid rgba(var(--club-primary-rgb),0.3)" : "1px solid rgba(255,255,255,0.06)",
+                                background: isUsed ? "rgba(255,255,255,0.02)" : isSwapTarget ? "rgba(var(--club-primary-rgb),0.12)" : isPending ? "rgba(var(--club-primary-rgb),0.12)" : "rgba(255,255,255,0.04)",
+                                border: isSwapTarget ? "1px solid rgba(var(--club-primary-rgb),0.35)" : isPending ? "1px solid rgba(var(--club-primary-rgb),0.3)" : "1px solid rgba(255,255,255,0.06)",
                                 opacity: isUsed ? 0.3 : 1,
                               }}
                             >
