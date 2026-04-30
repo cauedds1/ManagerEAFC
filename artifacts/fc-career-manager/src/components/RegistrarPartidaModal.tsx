@@ -2274,7 +2274,7 @@ export function RegistrarPartidaModal({
                     color: "rgba(255,255,255,0.5)",
                     border: "1px solid rgba(255,255,255,0.1)",
                   }}
-                  title={lineupMode === "campinho" ? "Ver lista" : "Ver campinho"}
+                  title={lineupMode === "campinho" ? t.viewLista : t.viewCampinho}
                 >
                   {lineupMode === "campinho" ? (
                     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -2431,13 +2431,13 @@ export function RegistrarPartidaModal({
                           color: pitchSwapMode ? "var(--club-primary)" : "rgba(255,255,255,0.6)",
                           backdropFilter: "blur(6px)",
                         }}
-                        title="Trocar / Substituir"
+                        title={t.swapTooltip}
                       >
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
                           <path d="M7 16V4m0 0L3 8m4-4l4 4" />
                           <path d="M17 8v12m0 0l4-4m-4 4l-4-4" />
                         </svg>
-                        {pitchSwapMode ? "Aguardando..." : "Trocar"}
+                        {pitchSwapMode ? t.swapWaiting : t.swapTitle}
                       </button>
                     )}
 
@@ -2451,14 +2451,14 @@ export function RegistrarPartidaModal({
                             <p className="text-white/70 text-xs font-semibold text-center leading-tight">
                               {pitchPlayer?.name.split(" ").pop()} ↔ {benchPlayer?.name.split(" ").pop()}
                             </p>
-                            <p className="text-white/30 text-[10px] text-center -mt-1">Como foi essa movimentação?</p>
+                            <p className="text-white/30 text-[10px] text-center -mt-1">{t.swapHowQuestion}</p>
                             <button
                               type="button"
                               onClick={handleSwapRotation}
                               className="w-full py-2 rounded-xl text-xs font-bold transition-all"
                               style={{ background: "rgba(var(--club-primary-rgb),0.15)", color: "var(--club-primary)", border: "1px solid rgba(var(--club-primary-rgb),0.3)" }}
                             >
-                              🔄 Rotação (pré-jogo)
+                              {t.swapRotation}
                             </button>
                             <button
                               type="button"
@@ -2466,14 +2466,14 @@ export function RegistrarPartidaModal({
                               className="w-full py-2 rounded-xl text-xs font-bold transition-all"
                               style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.7)", border: "1px solid rgba(255,255,255,0.1)" }}
                             >
-                              ↩ Substituição
+                              {t.swapSubstitution}
                             </button>
                             <button
                               type="button"
                               onClick={() => setSwapChoicePending(null)}
                               className="text-white/25 text-[10px] text-center hover:text-white/50 transition-colors"
                             >
-                              Cancelar
+                              {t.cancelLabel}
                             </button>
                           </div>
                         </div>
@@ -2484,11 +2484,11 @@ export function RegistrarPartidaModal({
                   {/* Bench (relacionados) — right */}
                   <div className="flex flex-col min-w-0 flex-1 overflow-hidden">
                     <p className="text-white/25 text-[9px] font-bold tracking-widest uppercase mb-1.5 flex-shrink-0">
-                      Banco ({benchPlayers.filter((p) => !usedIds.has(p.id)).length})
+                      {t.benchLabel} ({benchPlayers.filter((p) => !usedIds.has(p.id)).length})
                     </p>
                     <div className="overflow-y-auto flex-1 space-y-1 pr-0.5">
                       {benchPlayers.length === 0 ? (
-                        <p className="text-white/15 text-[10px] text-center py-4">Sem relacionados no elenco</p>
+                        <p className="text-white/15 text-[10px] text-center py-4">{t.noRelated}</p>
                       ) : (
                         benchPlayers.map((p) => {
                           const isUsed = usedIds.has(p.id);
