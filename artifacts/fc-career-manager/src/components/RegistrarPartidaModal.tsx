@@ -1675,6 +1675,9 @@ export function RegistrarPartidaModal({
       setDraft((prev) => ({ ...prev, starterIds: newSlots.filter((id): id is number => id !== null) }));
       setPitchSwapMode(false);
       setPitchSelectedId(null);
+    } else if (!sourceOnPitch && !targetOnPitch) {
+      setPitchSwapMode(false);
+      setPitchSelectedId(null);
     } else {
       const pitchPlayerId = sourceOnPitch ? sourceId : targetId;
       const benchPlayerId = sourceOnPitch ? targetId : sourceId;
@@ -2487,7 +2490,8 @@ export function RegistrarPartidaModal({
                       ) : (
                         benchPlayers.map((p) => {
                           const isUsed = usedIds.has(p.id);
-                          const isSwapTarget = pitchSwapMode && !isUsed;
+                          const isSelected = pitchSelectedId === p.id;
+                          const isSwapTarget = pitchSwapMode && !isUsed && !isSelected;
                           const isPending = pitchPendingSlot !== null && !isUsed;
                           return (
                             <button
@@ -2499,14 +2503,14 @@ export function RegistrarPartidaModal({
                                 if (pitchSwapMode) { handlePitchSwap(p.id); return; }
                                 if (pitchPendingSlot !== null) {
                                   handlePitchAssign(pitchPendingSlot, p);
-                                } else {
-                                  addPlayer(p, true);
+                                  return;
                                 }
+                                setPitchSelectedId((prev) => prev === p.id ? null : p.id);
                               }}
                               className="w-full flex items-center gap-1.5 px-2 py-1.5 rounded-lg transition-all text-left"
                               style={{
-                                background: isUsed ? "rgba(255,255,255,0.02)" : isSwapTarget ? "rgba(var(--club-primary-rgb),0.12)" : isPending ? "rgba(var(--club-primary-rgb),0.12)" : "rgba(255,255,255,0.04)",
-                                border: isSwapTarget ? "1px solid rgba(var(--club-primary-rgb),0.35)" : isPending ? "1px solid rgba(var(--club-primary-rgb),0.3)" : "1px solid rgba(255,255,255,0.06)",
+                                background: isUsed ? "rgba(255,255,255,0.02)" : isSelected ? "rgba(var(--club-primary-rgb),0.18)" : isSwapTarget ? "rgba(var(--club-primary-rgb),0.10)" : isPending ? "rgba(var(--club-primary-rgb),0.12)" : "rgba(255,255,255,0.04)",
+                                border: isSelected ? "1px solid rgba(var(--club-primary-rgb),0.5)" : isSwapTarget ? "1px solid rgba(var(--club-primary-rgb),0.35)" : isPending ? "1px solid rgba(var(--club-primary-rgb),0.3)" : "1px solid rgba(255,255,255,0.06)",
                                 opacity: isUsed ? 0.3 : 1,
                               }}
                             >
