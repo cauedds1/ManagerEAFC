@@ -1334,7 +1334,22 @@ export function RegistrarPartidaModal({
       ordered.forEach((id, i) => { slots[i] = id; });
       return slots;
     }
-    // New match: start empty so the user fills manually or uses Auto Fill
+    // New match: pre-fill with saved custom lineup from Elenco if available
+    const formation = editFormation ?? getFormation(careerId) ?? DEFAULT_FORMATION;
+    const overridden = applyOverridesToPlayers(allPlayers, overrides);
+    const savedIds = getCustomLineup(careerId);
+    if (savedIds && savedIds.length > 0) {
+      const validPlayers = savedIds
+        .map((id) => overridden.find((p) => p.id === id))
+        .filter(Boolean) as SquadPlayer[];
+      if (validPlayers.length > 0) {
+        const orderedIds = pickBestEleven(validPlayers, formation);
+        const slots: (number | null)[] = Array(11).fill(null);
+        orderedIds.forEach((id, i) => { slots[i] = id; });
+        return slots;
+      }
+    }
+    // No saved lineup: start empty so the user fills manually or uses Auto Fill
     return Array(11).fill(null);
   });
   const [pitchSelectedId, setPitchSelectedId] = useState<number | null>(null);
