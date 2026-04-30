@@ -2392,92 +2392,94 @@ export function RegistrarPartidaModal({
                 </div>
 
                 {/* Pitch + bench side by side */}
-                <div className="relative flex gap-2" style={{ height: "min(43vh, 290px)" }}>
-                  {/* Pitch — left */}
-                  <FootballPitch
-                    players={allPlayers}
-                    starterIds={pitchSlots.map((id) => id ?? 0)}
-                    formation={pitchFormation}
-                    ratings={Object.fromEntries(
-                      Object.entries(draft.playerStats)
-                        .filter(([, s]) => s.rating > 0)
-                        .map(([id, s]) => [Number(id), s.rating])
-                    )}
-                    onEmptySlotClick={(slotIdx) => {
-                      if (pitchSwapMode) { setPitchSwapMode(false); setPitchSelectedId(null); return; }
-                      setPitchSelectedId(null);
-                      setPitchPendingSlot((prev) => prev === slotIdx ? null : slotIdx);
-                    }}
-                    onPlayerClick={(player) => {
-                      if (pitchSwapMode) { handlePitchSwap(player.id); return; }
-                      setPitchPendingSlot(null);
-                      setPitchSelectedId((prev) => prev === player.id ? null : player.id);
-                    }}
-                    highlightedPlayerId={pitchSelectedId ?? undefined}
-                    pendingSlotIndex={pitchPendingSlot}
-                    className="h-full w-auto flex-shrink-0"
-                  />
-
-                  {/* Floating swap button */}
-                  {pitchSelectedId !== null && !swapChoicePending && (
-                    <button
-                      type="button"
-                      onClick={() => setPitchSwapMode((m) => !m)}
-                      className="absolute top-2 right-2 flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold transition-all z-10"
-                      style={{
-                        background: pitchSwapMode ? "rgba(var(--club-primary-rgb),0.25)" : "rgba(0,0,0,0.55)",
-                        border: pitchSwapMode ? "1px solid rgba(var(--club-primary-rgb),0.6)" : "1px solid rgba(255,255,255,0.15)",
-                        color: pitchSwapMode ? "var(--club-primary)" : "rgba(255,255,255,0.6)",
-                        backdropFilter: "blur(6px)",
+                <div className="flex gap-2" style={{ height: "min(43vh, 290px)" }}>
+                  {/* Pitch — left (wrapper for floating controls) */}
+                  <div className="relative h-full flex-shrink-0">
+                    <FootballPitch
+                      players={allPlayers}
+                      starterIds={pitchSlots.map((id) => id ?? 0)}
+                      formation={pitchFormation}
+                      ratings={Object.fromEntries(
+                        Object.entries(draft.playerStats)
+                          .filter(([, s]) => s.rating > 0)
+                          .map(([id, s]) => [Number(id), s.rating])
+                      )}
+                      onEmptySlotClick={(slotIdx) => {
+                        if (pitchSwapMode) { setPitchSwapMode(false); setPitchSelectedId(null); return; }
+                        setPitchSelectedId(null);
+                        setPitchPendingSlot((prev) => prev === slotIdx ? null : slotIdx);
                       }}
-                      title="Trocar / Substituir"
-                    >
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M7 16V4m0 0L3 8m4-4l4 4" />
-                        <path d="M17 8v12m0 0l4-4m-4 4l-4-4" />
-                      </svg>
-                      {pitchSwapMode ? "Aguardando..." : "Trocar"}
-                    </button>
-                  )}
+                      onPlayerClick={(player) => {
+                        if (pitchSwapMode) { handlePitchSwap(player.id); return; }
+                        setPitchPendingSlot(null);
+                        setPitchSelectedId((prev) => prev === player.id ? null : player.id);
+                      }}
+                      highlightedPlayerId={pitchSelectedId ?? undefined}
+                      pendingSlotIndex={pitchPendingSlot}
+                      className="h-full w-auto"
+                    />
 
-                  {/* Swap choice popup (Titular ↔ Banco) */}
-                  {swapChoicePending && (() => {
-                    const pitchPlayer = allPlayers.find((p) => p.id === swapChoicePending.pitchPlayerId);
-                    const benchPlayer = allPlayers.find((p) => p.id === swapChoicePending.benchPlayerId);
-                    return (
-                      <div className="absolute inset-0 flex items-center justify-center z-20" style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)", borderRadius: 12 }}>
-                        <div className="rounded-2xl p-4 flex flex-col gap-3 w-52" style={{ background: "rgba(15,15,25,0.97)", border: "1px solid rgba(255,255,255,0.12)" }}>
-                          <p className="text-white/70 text-xs font-semibold text-center leading-tight">
-                            {pitchPlayer?.name.split(" ").pop()} ↔ {benchPlayer?.name.split(" ").pop()}
-                          </p>
-                          <p className="text-white/30 text-[10px] text-center -mt-1">Como foi essa movimentação?</p>
-                          <button
-                            type="button"
-                            onClick={handleSwapRotation}
-                            className="w-full py-2 rounded-xl text-xs font-bold transition-all"
-                            style={{ background: "rgba(var(--club-primary-rgb),0.15)", color: "var(--club-primary)", border: "1px solid rgba(var(--club-primary-rgb),0.3)" }}
-                          >
-                            🔄 Rotação (pré-jogo)
-                          </button>
-                          <button
-                            type="button"
-                            onClick={handleSwapSub}
-                            className="w-full py-2 rounded-xl text-xs font-bold transition-all"
-                            style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.7)", border: "1px solid rgba(255,255,255,0.1)" }}
-                          >
-                            ↩ Substituição
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setSwapChoicePending(null)}
-                            className="text-white/25 text-[10px] text-center hover:text-white/50 transition-colors"
-                          >
-                            Cancelar
-                          </button>
+                    {/* Floating swap button — anchored to pitch top-right */}
+                    {pitchSelectedId !== null && !swapChoicePending && (
+                      <button
+                        type="button"
+                        onClick={() => setPitchSwapMode((m) => !m)}
+                        className="absolute top-2 right-2 flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold transition-all z-10"
+                        style={{
+                          background: pitchSwapMode ? "rgba(var(--club-primary-rgb),0.25)" : "rgba(0,0,0,0.55)",
+                          border: pitchSwapMode ? "1px solid rgba(var(--club-primary-rgb),0.6)" : "1px solid rgba(255,255,255,0.15)",
+                          color: pitchSwapMode ? "var(--club-primary)" : "rgba(255,255,255,0.6)",
+                          backdropFilter: "blur(6px)",
+                        }}
+                        title="Trocar / Substituir"
+                      >
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M7 16V4m0 0L3 8m4-4l4 4" />
+                          <path d="M17 8v12m0 0l4-4m-4 4l-4-4" />
+                        </svg>
+                        {pitchSwapMode ? "Aguardando..." : "Trocar"}
+                      </button>
+                    )}
+
+                    {/* Swap choice popup — covers pitch area only */}
+                    {swapChoicePending && (() => {
+                      const pitchPlayer = allPlayers.find((p) => p.id === swapChoicePending.pitchPlayerId);
+                      const benchPlayer = allPlayers.find((p) => p.id === swapChoicePending.benchPlayerId);
+                      return (
+                        <div className="absolute inset-0 flex items-center justify-center z-20" style={{ background: "rgba(0,0,0,0.65)", backdropFilter: "blur(4px)", borderRadius: 12 }}>
+                          <div className="rounded-2xl p-4 flex flex-col gap-3 w-48" style={{ background: "rgba(15,15,25,0.97)", border: "1px solid rgba(255,255,255,0.12)" }}>
+                            <p className="text-white/70 text-xs font-semibold text-center leading-tight">
+                              {pitchPlayer?.name.split(" ").pop()} ↔ {benchPlayer?.name.split(" ").pop()}
+                            </p>
+                            <p className="text-white/30 text-[10px] text-center -mt-1">Como foi essa movimentação?</p>
+                            <button
+                              type="button"
+                              onClick={handleSwapRotation}
+                              className="w-full py-2 rounded-xl text-xs font-bold transition-all"
+                              style={{ background: "rgba(var(--club-primary-rgb),0.15)", color: "var(--club-primary)", border: "1px solid rgba(var(--club-primary-rgb),0.3)" }}
+                            >
+                              🔄 Rotação (pré-jogo)
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleSwapSub}
+                              className="w-full py-2 rounded-xl text-xs font-bold transition-all"
+                              style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.7)", border: "1px solid rgba(255,255,255,0.1)" }}
+                            >
+                              ↩ Substituição
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setSwapChoicePending(null)}
+                              className="text-white/25 text-[10px] text-center hover:text-white/50 transition-colors"
+                            >
+                              Cancelar
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })()}
+                      );
+                    })()}
+                  </div>
 
                   {/* Bench (relacionados) — right */}
                   <div className="flex flex-col min-w-0 flex-1 overflow-hidden">
