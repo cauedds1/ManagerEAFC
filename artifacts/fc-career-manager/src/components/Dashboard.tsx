@@ -15,7 +15,7 @@ import {
   PT_BR_TO_POSITION,
   migratePositionOverride,
 } from "@/lib/squadCache";
-import { getAllPlayerOverrides, deletePlayerStats, deletePlayerOverride } from "@/lib/playerStatsStorage";
+import { getAllPlayerOverrides, setPlayerOverride, deletePlayerStats, deletePlayerOverride } from "@/lib/playerStatsStorage";
 import { getTransfers, addTransfer, updateTransfer, removeTransfer, saveTransfers } from "@/lib/transferStorage";
 import { getTransferWindow, saveTransferWindow, type TransferWindowState } from "@/lib/transferWindowStorage";
 import { getRivals } from "@/lib/rivalsStorage";
@@ -362,7 +362,18 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
 
       // Sync and load data for the ACTIVE season (not the initial/first one)
       await syncSeasonFromDb(effectiveSeasonId);
-      setTransfers(getTransfers(effectiveSeasonId));
+      const loadedTransfers = getTransfers(effectiveSeasonId);
+      const existingOverrides = getAllPlayerOverrides(career.id);
+      for (const t of loadedTransfers) {
+        const isIncoming = t.type === "compra" ||
+          (t.type === "emprestimo" && t.loanDirection === "entrada") ||
+          !t.type;
+        if (isIncoming && t.playerOverall && t.playerOverall > 0 &&
+            !existingOverrides[t.playerId]?.overall) {
+          setPlayerOverride(career.id, t.playerId, { overall: t.playerOverall });
+        }
+      }
+      setTransfers(loadedTransfers);
       setTransferWindow(getTransferWindow(effectiveSeasonId));
       setMatches(getMatches(effectiveSeasonId));
       setLeaguePositionState(getLeaguePosition(effectiveSeasonId));
@@ -1223,8 +1234,22 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
 
   const handleTransferUpdated = useCallback((id: string, changes: Partial<TransferRecord>) => {
     updateTransfer(activeSeasonId, id, changes);
-    setTransfers((prev) => prev.map((t) => t.id === id ? { ...t, ...changes } : t));
-  }, [activeSeasonId]);
+    setTransfers((prev) => {
+      const updated = prev.map((t) => t.id === id ? { ...t, ...changes } : t);
+      if (changes.playerOverall != null && changes.playerOverall > 0) {
+        const t = prev.find((t) => t.id === id);
+        if (t) {
+          const isIncoming = t.type === "compra" ||
+            (t.type === "emprestimo" && t.loanDirection === "entrada") ||
+            !t.type;
+          if (isIncoming) {
+            setPlayerOverride(career.id, t.playerId, { overall: changes.playerOverall });
+          }
+        }
+      }
+      return updated;
+    });
+  }, [activeSeasonId, career.id]);
 
   const handleTransferCancelled = useCallback((transfer: TransferRecord) => {
     removeTransfer(activeSeasonId, transfer.id);
