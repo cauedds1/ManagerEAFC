@@ -1273,9 +1273,7 @@ export function RegistrarPartidaModal({
   const editFormation = editMatch?.formation && isFormationKey(editMatch.formation)
     ? editMatch.formation
     : undefined;
-  const [lineupMode, setLineupMode] = useState<"lista" | "campinho">(
-    editFormation ? "campinho" : "lista",
-  );
+  const [lineupMode, setLineupMode] = useState<"lista" | "campinho">("lista");
   const [pitchFormation, setPitchFormation] = useState<FormationKey>(
     editFormation ?? DEFAULT_FORMATION,
   );
@@ -2091,44 +2089,9 @@ export function RegistrarPartidaModal({
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <p className="text-white/40 text-xs font-medium uppercase tracking-wider">
-                {t.startersLabel} ({lineupMode === "campinho" ? pitchSlots.filter(Boolean).length : draft.starterIds.length})
+                {t.startersLabel} ({draft.starterIds.length})
               </p>
               <div className="flex items-center gap-2">
-                {/* View toggle: lista / campinho */}
-                <div className="flex rounded-xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
-                  <button
-                    type="button"
-                    onClick={() => lineupMode === "campinho" && handleEnterLista()}
-                    className="flex items-center justify-center w-8 h-8 transition-all duration-200"
-                    style={{
-                      background: lineupMode === "lista" ? "rgba(var(--club-primary-rgb),0.2)" : "rgba(255,255,255,0.03)",
-                      color: lineupMode === "lista" ? "var(--club-primary)" : "rgba(255,255,255,0.35)",
-                    }}
-                    title="Modo lista"
-                  >
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-                    </svg>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => lineupMode === "lista" && handleEnterCampinho()}
-                    className="flex items-center justify-center w-8 h-8 transition-all duration-200"
-                    style={{
-                      background: lineupMode === "campinho" ? "rgba(var(--club-primary-rgb),0.2)" : "rgba(255,255,255,0.03)",
-                      color: lineupMode === "campinho" ? "var(--club-primary)" : "rgba(255,255,255,0.35)",
-                      borderLeft: "1px solid rgba(255,255,255,0.08)",
-                    }}
-                    title="Modo campinho"
-                  >
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-                      <rect x="3" y="3" width="18" height="18" rx="2" strokeLinejoin="round" />
-                      <circle cx="12" cy="12" r="4" />
-                      <line x1="12" y1="3" x2="12" y2="21" />
-                    </svg>
-                  </button>
-                </div>
-
                 {/* Auto-fill */}
                 <button
                   type="button"
