@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { SquadPlayer, PositionPtBr, FormationGroup, FORMATION_GROUP } from "@/lib/squadCache";
 import { FormationKey, getFormationPositions, DEFAULT_FORMATION, getFormationGroups } from "@/lib/formations";
 import { useLang } from "@/hooks/useLang";
@@ -108,17 +108,14 @@ function PlayerCircle({
   const [lang] = useLang();
   const rating = player.rating ?? 0;
   const [photoErr, setPhotoErr] = useState(false);
-  const [prevPhoto, setPrevPhoto] = useState(player.photo ?? "");
-  if (prevPhoto !== (player.photo ?? "")) {
-    setPrevPhoto(player.photo ?? "");
+  useEffect(() => {
     setPhotoErr(false);
-  }
+  }, [player.photo]);
   const colors = POS_COLOR[player.positionPtBr] ?? POS_COLOR.MID;
   const radius = 20;
   const clipId = `clip-p-${player.id}`;
   const label = player.number != null ? String(player.number) : getInitials(player.name);
   const showPhoto = Boolean(player.photo) && !photoErr;
-  const photoKey = player.photo ?? "";
 
   const displayName = (() => {
     const parts = player.name.trim().split(" ");
@@ -152,7 +149,6 @@ function PlayerCircle({
       {showPhoto ? (
         <>
           <foreignObject
-            key={photoKey}
             x={x - radius}
             y={y - radius}
             width={radius * 2}
