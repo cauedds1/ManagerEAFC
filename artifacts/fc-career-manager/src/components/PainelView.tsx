@@ -10,6 +10,7 @@ import type { MatchRecord } from "@/types/match";
 import { getMatchResultFull, RESULT_STYLE } from "@/types/match";
 import { getCachedClubList } from "@/lib/clubListCache";
 import { searchStaticClubs } from "@/lib/staticClubList";
+import { DOMESTIC_LEAGUES } from "@/lib/footballApiMap";
 import { isRival } from "@/lib/rivalsStorage";
 import { MatchDetailPage } from "./MatchDetailPage";
 import { useLang } from "@/hooks/useLang";
@@ -140,14 +141,18 @@ function PlayerPhoto({ src, name, size = 8 }: { src: string; name: string; size?
   );
 }
 
+const DOMESTIC_LEAGUE_NAMES = new Set(DOMESTIC_LEAGUES.map((l) => l.name));
+
 function LeagueCard({
   seasonId,
   isReadOnly,
   externalValue,
+  matches,
 }: {
   seasonId: string;
   isReadOnly?: boolean;
   externalValue?: LeaguePosition | null;
+  matches?: MatchRecord[];
 }) {
   const [lang] = useLang();
   const t = PAINEL[lang];
@@ -156,6 +161,17 @@ function LeagueCard({
   const [draft, setDraft] = useState<LeaguePosition>(
     data ?? { position: 1, totalTeams: 20, wins: 0, draws: 0, losses: 0, points: 0, goalsFor: 0, goalsAgainst: 0 }
   );
+
+  const autoGoals = useMemo(() => {
+    if (!matches || matches.length === 0) return null;
+    const leagueMatches = matches.filter((m) => DOMESTIC_LEAGUE_NAMES.has(m.tournament));
+    if (leagueMatches.length === 0) return null;
+    return {
+      goalsFor: leagueMatches.reduce((sum, m) => sum + m.myScore, 0),
+      goalsAgainst: leagueMatches.reduce((sum, m) => sum + m.opponentScore, 0),
+      matchCount: leagueMatches.length,
+    };
+  }, [matches]);
 
   useEffect(() => {
     if (externalValue !== undefined && externalValue !== null) {
@@ -209,9 +225,17 @@ function LeagueCard({
           {numInput(t.wins, "wins", 0, 99)}
           {numInput(t.draws, "draws", 0, 99)}
           {numInput(t.losses, "losses", 0, 99)}
-          {numInput(t.goalsFor, "goalsFor", 0, 999)}
-          {numInput(t.goalsAgainst, "goalsAgainst", 0, 999)}
         </div>
+        {autoGoals && (
+          <div className="flex items-center gap-2 rounded-lg px-3 py-2" style={{ background: "rgba(52,211,153,0.08)", border: "1px solid rgba(52,211,153,0.15)" }}>
+            <svg className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "#34d399" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01" />
+            </svg>
+            <span className="text-xs" style={{ color: "#34d399" }}>
+              {t.autoGoalsNote} — {autoGoals.goalsFor} GM / {autoGoals.goalsAgainst} GS ({autoGoals.matchCount} {t.leagueMatchesLabel})
+            </span>
+          </div>
+        )}
         <div className="flex items-center gap-2 text-white/40 text-xs">
           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01" />
@@ -276,19 +300,21 @@ function LeagueCard({
         <span className="text-white/20 text-xs">·</span>
         <span className="text-xs font-black text-white tabular-nums">{data.points} {t.pts}</span>
       </div>
-      {(data.goalsFor != null || data.goalsAgainst != null) && (
+      {(autoGoals || data.goalsFor != null || data.goalsAgainst != null) && (
         <div className="flex items-center gap-3 mt-0.5">
           <span className="text-xs tabular-nums text-white/50">
-            <span className="text-white/70 font-semibold">{data.goalsFor ?? 0}</span>
+            <span className="text-white/70 font-semibold">{autoGoals ? autoGoals.goalsFor : (data.goalsFor ?? 0)}</span>
             <span className="text-white/30"> GM</span>
           </span>
           <span className="text-xs tabular-nums text-white/50">
-            <span className="text-white/70 font-semibold">{data.goalsAgainst ?? 0}</span>
+            <span className="text-white/70 font-semibold">{autoGoals ? autoGoals.goalsAgainst : (data.goalsAgainst ?? 0)}</span>
             <span className="text-white/30"> GS</span>
           </span>
           <span className="text-white/20 text-xs">·</span>
           {(() => {
-            const diff = (data.goalsFor ?? 0) - (data.goalsAgainst ?? 0);
+            const gf = autoGoals ? autoGoals.goalsFor : (data.goalsFor ?? 0);
+            const ga = autoGoals ? autoGoals.goalsAgainst : (data.goalsAgainst ?? 0);
+            const diff = gf - ga;
             const color = diff > 0 ? "#34d399" : diff < 0 ? "#f87171" : undefined;
             return (
               <span className="text-xs font-semibold tabular-nums" style={color ? { color } : { color: "rgba(255,255,255,0.4)" }}>
@@ -296,6 +322,9 @@ function LeagueCard({
               </span>
             );
           })()}
+          {autoGoals && (
+            <span className="text-white/20 text-xs ml-auto" title={t.autoGoalsNote}>⚡</span>
+          )}
         </div>
       )}
     </div>
@@ -754,7 +783,7 @@ export function PainelView({
       />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <LeagueCard seasonId={seasonId} isReadOnly={isReadOnly} externalValue={externalLeaguePosition} />
+        <LeagueCard seasonId={seasonId} isReadOnly={isReadOnly} externalValue={externalLeaguePosition} matches={matches} />
         <TopPerformers seasonId={seasonId} allPlayers={allPlayers} type="goals" matchCount={matches.length} />
         <TopPerformers seasonId={seasonId} allPlayers={allPlayers} type="assists" matchCount={matches.length} />
       </div>
