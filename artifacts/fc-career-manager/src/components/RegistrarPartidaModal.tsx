@@ -1340,6 +1340,7 @@ export function RegistrarPartidaModal({
   const [pitchSelectedId, setPitchSelectedId] = useState<number | null>(null);
   const [pitchPendingSlot, setPitchPendingSlot] = useState<number | null>(null);
   const [pitchSwapMode, setPitchSwapMode] = useState(false);
+  const [pitchEjected, setPitchEjected] = useState<Set<number>>(new Set());
   const [swapChoicePending, setSwapChoicePending] = useState<{ pitchPlayerId: number; benchPlayerId: number } | null>(null);
   const [sectorMap, setSectorMap] = useState<Record<number, "GOL" | "DEF" | "MID" | "ATA">>({});
 
@@ -1658,6 +1659,7 @@ export function RegistrarPartidaModal({
   const handlePitchRemove = useCallback((playerId: number) => {
     const newSlots = pitchSlots.map((id) => id === playerId ? null : id);
     setPitchSlots(newSlots);
+    setPitchEjected((prev) => new Set([...prev, playerId]));
     setDraft((prev) => {
       const starterIds = prev.starterIds.filter((id) => id !== playerId);
       const playerStats = { ...prev.playerStats };
@@ -1740,17 +1742,26 @@ export function RegistrarPartidaModal({
     const starterSet = new Set(pitchSlots.filter((id): id is number => id != null && id > 0));
     const rawBench = allPlayers.filter((p) => !starterSet.has(p.id));
     const order = getBenchOrder(careerId);
+
+    // Players ejected from the pitch that must always appear in the bench
+    const ejectedInBench = [...pitchEjected]
+      .filter((id) => !starterSet.has(id))
+      .map((id) => allPlayers.find((p) => p.id === id))
+      .filter((p): p is SquadPlayer => p != null);
+    const ejectedIds = new Set(ejectedInBench.map((p) => p.id));
+
     if (!order || order.length === 0) {
-      return rawBench;
+      const regular = rawBench.filter((p) => !ejectedIds.has(p.id)).slice(0, 9);
+      return [...ejectedInBench, ...regular];
     }
     const benchMap = new Map(rawBench.map((p) => [p.id, p]));
     const ordered = order
-      .filter((id) => benchMap.has(id))
+      .filter((id) => benchMap.has(id) && !ejectedIds.has(id))
       .map((id) => benchMap.get(id)!);
     const known = new Set(order);
-    const extras = rawBench.filter((p) => !known.has(p.id));
-    return [...ordered, ...extras];
-  }, [careerId, allPlayers, pitchSlots]);
+    const extras = rawBench.filter((p) => !known.has(p.id) && !ejectedIds.has(p.id));
+    return [...ejectedInBench, ...ordered, ...extras].slice(0, 9 + ejectedInBench.length);
+  }, [careerId, allPlayers, pitchSlots, pitchEjected]);
 
   const allUnusedForSub = useCallback((excludeId: number) => {
     return allPlayers.filter((p) => !usedIds.has(p.id) && p.id !== excludeId);
