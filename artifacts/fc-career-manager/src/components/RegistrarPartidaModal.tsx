@@ -1334,22 +1334,7 @@ export function RegistrarPartidaModal({
       ordered.forEach((id, i) => { slots[i] = id; });
       return slots;
     }
-    // New match: pre-fill with saved custom lineup from Elenco if available
-    const formation = editFormation ?? getFormation(careerId) ?? DEFAULT_FORMATION;
-    const overridden = applyOverridesToPlayers(allPlayers, overrides);
-    const savedIds = getCustomLineup(careerId);
-    if (savedIds && savedIds.length > 0) {
-      const validPlayers = savedIds
-        .map((id) => overridden.find((p) => p.id === id))
-        .filter(Boolean) as SquadPlayer[];
-      if (validPlayers.length > 0) {
-        const orderedIds = pickBestEleven(validPlayers, formation);
-        const slots: (number | null)[] = Array(11).fill(null);
-        orderedIds.forEach((id, i) => { slots[i] = id; });
-        return slots;
-      }
-    }
-    // No saved lineup: start empty so the user fills manually or uses Auto Fill
+    // New match: start empty so the user fills manually or uses Auto Fill
     return Array(11).fill(null);
   });
   const [pitchSelectedId, setPitchSelectedId] = useState<number | null>(null);
@@ -1765,9 +1750,14 @@ export function RegistrarPartidaModal({
       .filter((p): p is SquadPlayer => p != null);
     const ejectedIds = new Set(ejectedInBench.map((p) => p.id));
 
-    // Saved starters from Elenco tab (getCustomLineup) not yet on the pitch
-    const savedLineup = getCustomLineup(careerId) ?? [];
-    const savedStartersInBench = savedLineup
+    // Saved starters from Elenco tab (getCustomLineup).
+    // If no explicit lineup was saved, fall back to pickBestEleven so the
+    // "default" Elenco starters still appear in the bench (same as Auto Fill).
+    const customLineupIds = getCustomLineup(careerId);
+    const savedLineupIds: number[] = customLineupIds && customLineupIds.filter((id) => id > 0).length > 0
+      ? customLineupIds
+      : pickBestEleven(playersWithOverrides, pitchFormation);
+    const savedStartersInBench = savedLineupIds
       .filter((id) => rawBenchMap.has(id) && !ejectedIds.has(id))
       .map((id) => rawBenchMap.get(id)!);
     const savedStarterIds = new Set(savedStartersInBench.map((p) => p.id));
@@ -1777,17 +1767,28 @@ export function RegistrarPartidaModal({
     const benchOrdered = order
       .filter((id) => rawBenchMap.has(id) && !ejectedIds.has(id) && !savedStarterIds.has(id))
       .map((id) => rawBenchMap.get(id)!);
-    const knownIds = new Set([...order, ...savedLineup, ...ejectedIds]);
+    const knownIds = new Set([...order, ...savedLineupIds, ...ejectedIds]);
     const extras = rawBench.filter((p) => !knownIds.has(p.id));
 
     // Combine: ejected (priority) + saved bench + saved starters (all shown) + extras capped at 9
     const cappedExtras = extras.slice(0, 9);
     return [...ejectedInBench, ...benchOrdered, ...savedStartersInBench, ...cappedExtras];
-  }, [careerId, allPlayers, pitchSlots, pitchEjected]);
+  }, [careerId, allPlayers, pitchSlots, pitchEjected, playersWithOverrides, pitchFormation]);
 
   const allUnusedForSub = useCallback((excludeId: number) => {
     return allPlayers.filter((p) => !usedIds.has(p.id) && p.id !== excludeId);
   }, [allPlayers, usedIds]);
+
+  // Set of player IDs that are Elenco starters (or best-11 fallback) — used
+  // to show a "T" badge in the bench panel so users know which players are
+  // their saved starters.
+  const elencoStarterIds = useMemo(() => {
+    const customIds = getCustomLineup(careerId);
+    const ids = customIds && customIds.filter((id) => id > 0).length > 0
+      ? customIds
+      : pickBestEleven(playersWithOverrides, pitchFormation);
+    return new Set(ids.filter((id) => id > 0));
+  }, [careerId, playersWithOverrides, pitchFormation]);
 
   const resultLabel = draft.myScore > draft.opponentScore ? "V" : draft.myScore < draft.opponentScore ? "D" : "E";
   const resultColor = draft.myScore > draft.opponentScore ? "#34d399" : draft.myScore < draft.opponentScore ? "#f87171" : "#94a3b8";
@@ -2543,6 +2544,7 @@ export function RegistrarPartidaModal({
                         const isSelected = pitchSelectedId === p.id;
                         const isSwapTarget = pitchSwapMode && !isUsed && !isSelected;
                         const isPriority = slotPos !== null && p.positionPtBr === slotPos && !isUsed;
+                        const isElencoStarter = elencoStarterIds.has(p.id);
                         const badgeColor = POS_COLOR_BADGE[p.positionPtBr];
                         return (
                           <button
@@ -2557,9 +2559,9 @@ export function RegistrarPartidaModal({
                             }}
                             className="w-full flex items-center gap-1.5 px-2 py-1.5 rounded-lg transition-all text-left"
                             style={{
-                              background: isUsed ? "rgba(255,255,255,0.02)" : isSelected ? "rgba(var(--club-primary-rgb),0.18)" : isSwapTarget ? "rgba(var(--club-primary-rgb),0.10)" : isPriority ? `${posColor}18` : slotPos ? "rgba(255,255,255,0.03)" : "rgba(255,255,255,0.04)",
-                              border: isSelected ? "1px solid rgba(var(--club-primary-rgb),0.5)" : isSwapTarget ? "1px solid rgba(var(--club-primary-rgb),0.35)" : isPriority ? `1px solid ${posColor}44` : "1px solid rgba(255,255,255,0.06)",
-                              opacity: isUsed ? 0.3 : slotPos && !isPriority && !isUsed ? 0.55 : 1,
+                              background: isUsed ? "rgba(255,255,255,0.02)" : isSelected ? "rgba(var(--club-primary-rgb),0.18)" : isSwapTarget ? "rgba(var(--club-primary-rgb),0.10)" : isPriority ? `${posColor}18` : isElencoStarter && !isUsed ? "rgba(255,255,255,0.05)" : slotPos ? "rgba(255,255,255,0.03)" : "rgba(255,255,255,0.04)",
+                              border: isSelected ? "1px solid rgba(var(--club-primary-rgb),0.5)" : isSwapTarget ? "1px solid rgba(var(--club-primary-rgb),0.35)" : isPriority ? `1px solid ${posColor}44` : isElencoStarter && !isUsed ? "1px solid rgba(255,255,255,0.12)" : "1px solid rgba(255,255,255,0.06)",
+                              opacity: isUsed ? 0.3 : slotPos && !isPriority && !isElencoStarter && !isUsed ? 0.45 : 1,
                             }}
                           >
                             {p.photo ? (
@@ -2572,6 +2574,11 @@ export function RegistrarPartidaModal({
                             <span className="flex-1 text-[10px] font-semibold text-white/70 truncate leading-tight">
                               {p.name.split(" ").pop()}
                             </span>
+                            {isElencoStarter && !isUsed && (
+                              <span className="text-[7px] font-bold flex-shrink-0 px-1 py-0.5 rounded" style={{ background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.4)", letterSpacing: "0.05em" }}>
+                                T
+                              </span>
+                            )}
                             <span className="text-[8px] font-bold flex-shrink-0 px-1 py-0.5 rounded"
                               style={{ background: badgeColor ? `${badgeColor}22` : "rgba(255,255,255,0.07)", color: badgeColor ?? "rgba(255,255,255,0.3)" }}>
                               {p.positionPtBr}
