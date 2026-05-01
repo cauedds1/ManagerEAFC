@@ -584,6 +584,19 @@ function TransferCard({
             ) : null
           )}
         </div>
+
+        {transfer.tradePlayerName && (
+          <div className="flex items-center gap-1.5 mt-1.5">
+            <span className="text-orange-400/50 text-xs font-bold flex-shrink-0">↔</span>
+            {transfer.tradePlayerPhoto && (
+              <PlayerFace src={transfer.tradePlayerPhoto} name={transfer.tradePlayerName} size={18} />
+            )}
+            <span className="text-white/30 text-xs truncate">
+              <span className="font-semibold text-white/40">{transfer.tradePlayerName}</span>
+              {" "}{t.tradePlayerInDeal}
+            </span>
+          </div>
+        )}
       </div>
 
       <div className="text-right flex-shrink-0 flex flex-col items-end gap-1">
@@ -715,6 +728,8 @@ function EditTransferModal({
   const [toClub, setToClub] = useState(transfer.toClub ?? "");
   const [toClubLogo, setToClubLogo] = useState(transfer.toClubLogo ?? "");
   const [transferDate, setTransferDate] = useState(transfer.transferDate ?? "");
+  const [tradePlayerName, setTradePlayerName] = useState(transfer.tradePlayerName ?? "");
+  const [tradePlayerPhoto, setTradePlayerPhoto] = useState(transfer.tradePlayerPhoto ?? "");
   const [confirmCancel, setConfirmCancel] = useState(false);
 
   function handleSave() {
@@ -734,6 +749,8 @@ function EditTransferModal({
       toClub: toClub.trim() || undefined,
       toClubLogo: toClubLogo.trim() || undefined,
       transferDate: transferDate || undefined,
+      tradePlayerName: tradePlayerName.trim() || undefined,
+      tradePlayerPhoto: tradePlayerPhoto.trim() || undefined,
     };
     onSave(changes);
     onClose();
@@ -985,6 +1002,45 @@ function EditTransferModal({
               style={{ colorScheme: "dark" }}
             />
           </div>
+
+          {/* Trade Player */}
+          {(transfer.tradePlayerName || tradePlayerName) && (
+            <div>
+              <p className="text-white/30 text-xs font-bold tracking-widest uppercase mb-3">{t.tradePlayerInDealEdit}</p>
+              <div className="rounded-2xl p-4 space-y-3" style={{ background: "rgba(251,146,60,0.07)", border: "1px solid rgba(251,146,60,0.2)" }}>
+                <div className="flex items-center gap-3 mb-1">
+                  <span className="text-orange-400/70 text-base font-bold">↔</span>
+                  <PlayerFace src={tradePlayerPhoto || transfer.tradePlayerPhoto || ""} name={tradePlayerName || transfer.tradePlayerName || "?"} size={32} />
+                  <div className="min-w-0">
+                    <p className="text-white/70 text-sm font-semibold truncate">{tradePlayerName || transfer.tradePlayerName}</p>
+                    {transfer.tradePlayerPosition && (
+                      <p className="text-white/30 text-xs">{transfer.tradePlayerPosition}</p>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-white/40 text-xs font-semibold mb-1.5">{t.playerNameLabel ?? "Nome do jogador"}</label>
+                  <input
+                    type="text"
+                    value={tradePlayerName}
+                    onChange={(e) => setTradePlayerName(e.target.value)}
+                    placeholder={transfer.tradePlayerName}
+                    className="w-full px-3 py-2.5 rounded-xl text-white text-sm bg-white/[0.06] border border-white/10 focus:border-white/25 outline-none transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="block text-white/40 text-xs font-semibold mb-1.5">{t.playerPhotoLabel ?? "URL da foto"}</label>
+                  <input
+                    type="text"
+                    value={tradePlayerPhoto}
+                    onChange={(e) => setTradePlayerPhoto(e.target.value)}
+                    placeholder={t.playerPhotoPlaceholder ?? "https://..."}
+                    className="w-full px-3 py-2.5 rounded-xl text-white text-sm bg-white/[0.06] border border-white/10 focus:border-white/25 outline-none transition-colors"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Footer */}
@@ -1183,6 +1239,9 @@ export function TransferenciasView({
       transferDate: form.transferDate || undefined,
       transferredAt: Date.now(),
       windowPending: isPending || undefined,
+      tradePlayerName: (form.tradeEnabled && form.tradePlayerName.trim()) ? form.tradePlayerName.trim() : undefined,
+      tradePlayerPhoto: (form.tradeEnabled && form.tradePlayerPhoto.trim()) ? form.tradePlayerPhoto.trim() : undefined,
+      tradePlayerPosition: (form.tradeEnabled && form.tradePlayerName.trim()) ? form.tradePlayerPosition : undefined,
     };
 
     onTransferAdded(transfer);

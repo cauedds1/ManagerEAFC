@@ -27,4 +27,7 @@ export interface TransferRecord {
   transferDate?: string;
   transferredAt: number;
   windowPending?: boolean;
+  tradePlayerName?: string;
+  tradePlayerPhoto?: string;
+  tradePlayerPosition?: string;
 }

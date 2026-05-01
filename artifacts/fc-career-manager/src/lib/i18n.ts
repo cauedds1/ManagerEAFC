@@ -1975,6 +1975,8 @@ export const TRANSFERENCIAS: Record<Lang, Record<string, string>> = {
     tradeNationalityPlaceholder: "Ex: Espanhol",
     tradePosLabel: "Posição",
     tradeAgeLabel: "Idade",
+    tradePlayerInDeal: "incluído na negociação",
+    tradePlayerInDealEdit: "Jogador de troca",
     // Financial section
     financeSaleLabel: "Valor da venda",
     financeLoanLabel: "Taxa de empréstimo",
@@ -2139,6 +2141,8 @@ export const TRANSFERENCIAS: Record<Lang, Record<string, string>> = {
     tradeNationalityPlaceholder: "E.g.: Spanish",
     tradePosLabel: "Position",
     tradeAgeLabel: "Age",
+    tradePlayerInDeal: "included in deal",
+    tradePlayerInDealEdit: "Trade player",
     // Financial section
     financeSaleLabel: "Sale fee",
     financeLoanLabel: "Loan fee",
