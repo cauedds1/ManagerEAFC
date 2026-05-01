@@ -1826,22 +1826,19 @@ export function TransferenciasView({
 
               {!isEmprestimoForm && (
                 <div
-                  className="rounded-2xl overflow-hidden"
+                  className="rounded-2xl overflow-hidden transition-all duration-200"
                   style={{
                     border: form.tradeEnabled
-                      ? "1px solid rgba(251,146,60,0.35)"
-                      : "1px solid rgba(251,146,60,0.2)",
+                      ? "1.5px solid rgba(251,146,60,0.55)"
+                      : "1.5px solid rgba(251,146,60,0.38)",
                     background: form.tradeEnabled
-                      ? "rgba(251,146,60,0.06)"
-                      : "rgba(251,146,60,0.04)",
+                      ? "rgba(251,146,60,0.12)"
+                      : "rgba(251,146,60,0.08)",
                   }}
                 >
                   <button
                     type="button"
-                    className="w-full flex items-center justify-between px-4 py-3.5 text-sm font-bold transition-all"
-                    style={{
-                      color: form.tradeEnabled ? "#fb923c" : "rgba(251,146,60,0.75)",
-                    }}
+                    className="w-full flex items-center justify-between px-4 py-4 transition-all"
                     onClick={() => setForm((f) => ({
                       ...f,
                       tradeEnabled: !f.tradeEnabled,
@@ -1855,24 +1852,36 @@ export function TransferenciasView({
                       tradePlayerMode: "search",
                     }))}
                   >
-                    <span className="flex items-center gap-2.5">
-                      <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                      </svg>
+                    <span className="flex items-center gap-3">
+                      <span
+                        className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
+                        style={{ background: form.tradeEnabled ? "rgba(251,146,60,0.25)" : "rgba(251,146,60,0.15)" }}
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="#fb923c" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                        </svg>
+                      </span>
                       <span>
-                        {isVendaForm ? t.tradeReceive : t.tradeInclude}
-                        <span className="block text-[11px] font-normal mt-0.5" style={{ color: "rgba(251,146,60,0.5)" }}>
+                        <span className="block text-sm font-bold" style={{ color: "#fb923c" }}>
+                          {isVendaForm ? t.tradeReceive : t.tradeInclude}
+                        </span>
+                        <span className="block text-xs font-normal mt-0.5" style={{ color: "rgba(251,146,60,0.7)" }}>
                           {isVendaForm ? t.tradeSubReceive : t.tradeSubInclude}
                         </span>
                       </span>
                     </span>
-                    <svg
-                      className="w-4 h-4 flex-shrink-0 transition-transform"
-                      style={{ transform: form.tradeEnabled ? "rotate(180deg)" : "rotate(0deg)" }}
-                      fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
+                    <span
+                      className="flex-shrink-0 w-10 h-6 rounded-full relative transition-all duration-200"
+                      style={{
+                        background: form.tradeEnabled ? "#fb923c" : "rgba(255,255,255,0.12)",
+                        border: form.tradeEnabled ? "none" : "1px solid rgba(255,255,255,0.2)",
+                      }}
                     >
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                    </svg>
+                      <span
+                        className="absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all duration-200"
+                        style={{ left: form.tradeEnabled ? "calc(100% - 22px)" : "2px" }}
+                      />
+                    </span>
                   </button>
 
                   {form.tradeEnabled && (
