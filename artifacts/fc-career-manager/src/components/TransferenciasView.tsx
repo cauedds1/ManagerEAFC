@@ -1551,7 +1551,7 @@ export function TransferenciasView({
               background: "var(--app-bg-lighter)",
               border: "1px solid var(--surface-border)",
               boxShadow: "0 40px 80px rgba(0,0,0,0.5)",
-              maxHeight: "90vh",
+              maxHeight: "96vh",
             }}
           >
             <div
@@ -1840,19 +1840,6 @@ export function TransferenciasView({
                   </div>
                 )}
 
-                {isVendaForm && (
-                  <div className="sm:col-span-2">
-                    <label className={labelClass}>{t.toClubLabel}</label>
-                    <ClubAutocomplete
-                      value={form.toClub}
-                      onChange={(v) => set("toClub", v)}
-                      onSelectLogo={(logo) => set("toClubLogo", logo ?? "")}
-                      placeholder={t.toClubPlaceholder}
-                    />
-                    <p className="text-white/20 text-xs mt-1">{t.toClubHint}</p>
-                  </div>
-                )}
-
               </div>
 
               {!isVendaForm && !isEmprestimoForm && (
@@ -2107,6 +2094,19 @@ export function TransferenciasView({
                       )}
                     </div>
                   )}
+                </div>
+              )}
+
+              {isVendaForm && (
+                <div>
+                  <label className={labelClass}>{t.toClubLabel}</label>
+                  <ClubAutocomplete
+                    value={form.toClub}
+                    onChange={(v) => set("toClub", v)}
+                    onSelectLogo={(logo) => set("toClubLogo", logo ?? "")}
+                    placeholder={t.toClubPlaceholder}
+                  />
+                  <p className="text-white/20 text-xs mt-1">{t.toClubHint}</p>
                 </div>
               )}
 
