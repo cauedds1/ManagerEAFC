@@ -1657,7 +1657,7 @@ export function TransferenciasView({
               </div>
             )}
 
-            <div className="overflow-y-auto p-6 flex flex-col gap-5">
+            <div className="flex-1 min-h-0 overflow-y-auto p-6 flex flex-col gap-5">
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className={labelClass} style={{ marginBottom: 0 }}>{t.playerLabel}</label>
