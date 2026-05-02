@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
 import type { SquadPlayer, PositionPtBr } from "@/lib/squadCache";
 import { migratePositionOverride } from "@/lib/squadCache";
@@ -40,20 +40,36 @@ const NAT_CODE: Record<string, string> = {
   "Uzbekistan":"UZ","Venezuela":"VE","Vietnam":"VN","Zambia":"ZM","Zimbabwe":"ZW",
 };
 
-const FLAG_SPECIAL: Record<string, string> = {
-  "England": "🏴󠁧󠁢󠁥󠁮󠁧󠁿",
-  "Scotland": "🏴󠁧󠁢󠁳󠁣󠁴󠁿",
-  "Wales": "🏴󠁧󠁢󠁷󠁬󠁳󠁿",
-  "Northern Ireland": "🇬🇧",
-  "Kosovo": "🇽🇰",
+const FLAG_CDN_SPECIAL: Record<string, string> = {
+  "England":        "gb-eng",
+  "Scotland":       "gb-sct",
+  "Wales":          "gb-wls",
+  "Northern Ireland":"gb",
+  "Kosovo":         "xk",
 };
 
-function toFlag(nat: string): string {
-  if (!nat) return "";
-  if (FLAG_SPECIAL[nat]) return FLAG_SPECIAL[nat];
+function getFlagCode(nat: string): string | null {
+  if (!nat) return null;
+  if (FLAG_CDN_SPECIAL[nat]) return FLAG_CDN_SPECIAL[nat];
   const code = NAT_CODE[nat];
-  if (!code || code.length !== 2) return "";
-  return [...code.toUpperCase()].map(c => String.fromCodePoint(0x1F1E0 + c.charCodeAt(0) - 65)).join("");
+  return code ? code.toLowerCase() : null;
+}
+
+function FlagImg({ nat, size = 20 }: { nat: string; size?: number }) {
+  const code = getFlagCode(nat);
+  if (!code) return null;
+  return (
+    <img
+      src={`https://flagcdn.com/w${size}/${code}.png`}
+      srcSet={`https://flagcdn.com/w${size * 2}/${code}.png 2x`}
+      width={size}
+      height={Math.round(size * 0.75)}
+      alt={nat}
+      title={nat}
+      className="inline-block rounded-[2px] object-cover"
+      style={{ verticalAlign: "middle" }}
+    />
+  );
 }
 
 // ── Sparkline ─────────────────────────────────────────────────────────────────
@@ -409,8 +425,10 @@ export function PlayerProfileModal({
     </select>
   );
 
-  const bioItems = [
-    { label: t.nationality,   value: override?.nationality ? `${toFlag(override.nationality)} ${override.nationality}` : "—" },
+  const bioItems: { label: string; value: React.ReactNode }[] = [
+    { label: t.nationality,   value: override?.nationality
+        ? <span className="flex items-center gap-1.5"><FlagImg nat={override.nationality} size={16} />{override.nationality}</span>
+        : "—" },
     { label: t.age,           value: player.age > 0 ? `${player.age} ${lang === "pt" ? "anos" : "y.o."}` : "—" },
     { label: t.position,      value: displayPos || "—" },
     { label: t.height,        value: override?.height || "—" },
@@ -483,9 +501,7 @@ export function PlayerProfileModal({
                     </span>
                   )}
                   {override?.nationality && (
-                    <span className="text-sm" title={override.nationality}>
-                      {toFlag(override.nationality)}
-                    </span>
+                    <FlagImg nat={override.nationality} size={20} />
                   )}
                   {override?.shirtNumber != null && (
                     <span className="text-xs text-white/30 font-mono">#{override.shirtNumber}</span>
