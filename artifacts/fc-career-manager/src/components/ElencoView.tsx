@@ -291,8 +291,10 @@ export function ElencoView({
     if (backfillDoneRef.current || localStorage.getItem(persistKey)) return;
     const needsBackfill = allPlayers.some(p => !overrides[p.id]?.nationality);
     if (!needsBackfill) return;
+    // Mark in-memory to prevent duplicate in-session calls while fetch is in flight.
+    // The localStorage flag is only written after a successful response so that
+    // a transient API failure does not permanently suppress the backfill.
     backfillDoneRef.current = true;
-    localStorage.setItem(persistKey, "1");
     const playerIdSet = new Set(allPlayers.map(p => p.id));
     const season = String(backfillSeasonYear ?? new Date().getFullYear());
     const token = getEffectiveToken();
@@ -300,6 +302,9 @@ export function ElencoView({
     fetch(`/api/players/team-details?teamId=${teamId}&season=${season}`, { headers })
       .then(r => r.ok ? r.json() : null)
       .then((data: { players: Array<{ playerId: number; nationality: string; height: string; weight: string }> } | null) => {
+        // Persist the "done" flag only after a successful response so that
+        // API failures don't permanently block future backfill attempts.
+        localStorage.setItem(persistKey, "1");
         if (!data?.players?.length) return;
         for (const info of data.players) {
           if (!playerIdSet.has(info.playerId)) continue;
@@ -313,7 +318,7 @@ export function ElencoView({
         setOverrides(getAllPlayerOverrides(careerId));
         onOverridesUpdated?.();
       })
-      .catch(() => {});
+      .catch(() => { backfillDoneRef.current = false; });
   }, [allPlayers, customPlayers, teamId, isDemo, careerId, overrides, onOverridesUpdated, backfillSeasonYear]);
 
   type ExitEntry = { player: SquadPlayer; reason: string; date: number };

@@ -5,17 +5,30 @@ import { putSeasonData } from "@/lib/apiStorage";
 import { sessionGet, sessionSet, sessionKeys } from "@/lib/sessionStore";
 import { recordMatchInAgg, adjustCareerAgg } from "@/lib/careerAggregateStats";
 
+function lsGet<T>(key: string): T | null {
+  try { const v = localStorage.getItem(key); return v ? (JSON.parse(v) as T) : null; }
+  catch { return null; }
+}
+function lsSet(key: string, value: unknown): void {
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* quota */ }
+}
+
 function matchesKey(seasonId: string): string {
   return `fc-career-manager-matches-${seasonId}`;
 }
 
 export function getMatches(seasonId: string): MatchRecord[] {
-  return sessionGet<MatchRecord[]>(matchesKey(seasonId)) ?? [];
+  return (
+    sessionGet<MatchRecord[]>(matchesKey(seasonId)) ??
+    lsGet<MatchRecord[]>(matchesKey(seasonId)) ??
+    []
+  );
 }
 
 export function addMatch(seasonId: string, match: MatchRecord): void {
   const list = [...getMatches(seasonId), match];
   sessionSet(matchesKey(seasonId), list);
+  lsSet(matchesKey(seasonId), list);
   void putSeasonData(seasonId, "matches", list);
   if (match.careerId) {
     recordMatchInAgg(match.careerId, match.myScore, match.opponentScore);
@@ -27,6 +40,7 @@ export function updateMatch(seasonId: string, updated: MatchRecord): void {
   const old = existing.find((m) => m.id === updated.id);
   const list = existing.map((m) => m.id === updated.id ? updated : m);
   sessionSet(matchesKey(seasonId), list);
+  lsSet(matchesKey(seasonId), list);
   void putSeasonData(seasonId, "matches", list);
   if (updated.careerId && old) {
     adjustCareerAgg(updated.careerId, old.myScore, old.opponentScore, updated.myScore, updated.opponentScore);
