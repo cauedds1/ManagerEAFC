@@ -114,9 +114,17 @@ export function RecordesView({ careerId, seasons, clubName }: Props) {
       return;
     }
     syncedKeyRef.current = key;
+    // Only hydrate seasons with NO matches in local cache yet — this avoids
+    // overwriting optimistic local data on the active season (e.g. a match
+    // just added but not yet persisted to the DB) with stale rows.
+    const seasonsToSync = seasonIds.filter((id) => getMatches(id).length === 0);
+    if (seasonsToSync.length === 0) {
+      setSyncing(false);
+      return;
+    }
     setSyncing(localMatches.length === 0);
     let cancelled = false;
-    Promise.all(seasonIds.map((id) => syncSeasonFromDb(id).catch(() => {})))
+    Promise.all(seasonsToSync.map((id) => syncSeasonFromDb(id).catch(() => {})))
       .then(() => {
         if (cancelled) return;
         setMatches(loadAllSeasonMatches(seasons));
