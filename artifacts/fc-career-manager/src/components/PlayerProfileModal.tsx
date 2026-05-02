@@ -267,7 +267,7 @@ export function PlayerProfileModal({
         };
       }));
       if (cancelled) return;
-      setCareerData(rows);
+      setCareerData(rows.filter(r => r.matches > 0));
       setCareerLoaded(true);
     });
     return () => { cancelled = true; };
