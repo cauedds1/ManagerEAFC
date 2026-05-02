@@ -15,7 +15,7 @@ import { stepPlayerMood, stepPlayerFanMoral } from "@/lib/playerPerformanceEngin
 import { getMomentos, type Momento } from "@/lib/momentoStorage";
 import { getMatches } from "@/lib/matchStorage";
 import { useLang } from "@/hooks/useLang";
-import { PLAYER_DETAIL, POSITION_DISPLAY, MOOD_LABELS_I18N, FAN_MORAL_LABELS_I18N } from "@/lib/i18n";
+import { PLAYER_DETAIL, PLAYER_PROFILE, POSITION_DISPLAY, MOOD_LABELS_I18N, FAN_MORAL_LABELS_I18N } from "@/lib/i18n";
 
 const POS_STYLE: Record<PositionPtBr, { bg: string; color: string }> = {
   GOL: { bg: "rgba(245,158,11,0.18)",  color: "#f59e0b" },
@@ -95,6 +95,7 @@ interface PlayerDetailPanelProps {
   onClose: () => void;
   onUpdated: () => void;
   onRemove?: () => void;
+  onOpenProfile?: () => void;
   isDemo?: boolean;
 }
 
@@ -108,6 +109,7 @@ export function PlayerDetailPanel({
   onClose,
   onUpdated,
   onRemove,
+  onOpenProfile,
   isDemo,
 }: PlayerDetailPanelProps) {
   const [lang] = useLang();
@@ -451,6 +453,16 @@ export function PlayerDetailPanel({
                     ))}
                   </div>
                 </div>
+
+                {onOpenProfile && (
+                  <button
+                    onClick={onOpenProfile}
+                    className="w-full py-2.5 rounded-xl text-xs font-semibold transition-all"
+                    style={{ background: "rgba(var(--club-primary-rgb),0.1)", color: "var(--club-primary)", border: "1px solid rgba(var(--club-primary-rgb),0.2)" }}
+                  >
+                    {PLAYER_PROFILE[lang].fullProfileBtn} →
+                  </button>
+                )}
 
                 {onRemove && !isDemo && (
                   <div

@@ -71,6 +71,11 @@ export interface OvrHistoryEntry {
   date: number;
 }
 
+export interface MarketValueEntry {
+  value: number;
+  date: number;
+}
+
 export interface PlayerOverride {
   playerId: number;
   nameOverride?: string;
@@ -81,4 +86,13 @@ export interface PlayerOverride {
   salary?: number;
   positionOverride?: string;
   ovrHistory?: OvrHistoryEntry[];
+  nationality?: string;
+  height?: string;
+  weight?: string;
+  preferredFoot?: "right" | "left" | "both";
+  contractStart?: string;
+  contractEnd?: string;
+  marketValue?: number;
+  marketValueHistory?: MarketValueEntry[];
+  salaryHistory?: MarketValueEntry[];
 }

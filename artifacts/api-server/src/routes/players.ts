@@ -434,4 +434,67 @@ router.post("/players/sync", async (req, res) => {
   }
 });
 
+router.get("/players/team-details", async (req, res) => {
+  const apiKey = process.env.API_FOOTBALL_KEY ?? "";
+  if (!apiKey) return res.status(503).json({ error: "API_FOOTBALL_KEY not configured" });
+
+  const teamId = parseInt(String(req.query.teamId ?? ""), 10);
+  const baseSeason = parseInt(String(req.query.season ?? ""), 10) || new Date().getFullYear();
+
+  if (!teamId) return res.status(400).json({ error: "teamId required" });
+
+  type PlayerInfo = { playerId: number; nationality: string; height: string; weight: string };
+
+  async function fetchForSeason(season: number): Promise<PlayerInfo[]> {
+    const results: PlayerInfo[] = [];
+    let page = 1;
+    while (true) {
+      const url = `${API_FOOTBALL_BASE}/players?team=${teamId}&season=${season}&page=${page}`;
+      let afRes: Response;
+      try {
+        afRes = await fetch(url, {
+          headers: { "x-apisports-key": apiKey },
+          signal: AbortSignal.timeout(15000),
+        });
+      } catch { break; }
+      if (!afRes.ok) break;
+      const data = await afRes.json() as {
+        response?: Array<{
+          player: {
+            id: number;
+            nationality?: string;
+            height?: string;
+            weight?: string;
+          };
+        }>;
+        paging?: { current: number; total: number };
+      };
+      for (const item of (data.response ?? [])) {
+        if (!item.player?.id) continue;
+        results.push({
+          playerId: item.player.id,
+          nationality: item.player.nationality ?? "",
+          height: item.player.height ?? "",
+          weight: item.player.weight ?? "",
+        });
+      }
+      const paging = data.paging;
+      if (!paging || paging.current >= paging.total) break;
+      page++;
+    }
+    return results;
+  }
+
+  try {
+    let players = await fetchForSeason(baseSeason);
+    if (players.length === 0) {
+      players = await fetchForSeason(baseSeason - 1);
+    }
+    return res.json({ players });
+  } catch (err) {
+    console.error("GET /players/team-details error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 export default router;

@@ -133,9 +133,10 @@ interface Props {
   statsOverride?: Record<number, PlayerSeasonStats>;
   matchesOverride?: ReturnType<typeof getMatches>;
   formerPlayerIds?: Set<number>;
+  onPlayerProfile?: (player: SquadPlayer) => void;
 }
 
-export function PlayerStatsTable({ careerId, seasonId, allPlayers, statsOverride, matchesOverride, formerPlayerIds }: Props) {
+export function PlayerStatsTable({ careerId, seasonId, allPlayers, statsOverride, matchesOverride, formerPlayerIds, onPlayerProfile }: Props) {
   const [lang] = useLang();
   const t = CLUBE[lang];
 
@@ -556,7 +557,16 @@ export function PlayerStatsTable({ careerId, seasonId, allPlayers, statsOverride
                     <div className="flex items-center gap-2.5">
                       <PlayerPhoto src={overrides[player.id]?.photoOverride ?? player.photo} name={player.name} />
                       <div className="flex flex-col gap-0.5 min-w-0">
-                        <span className={`font-medium text-xs truncate max-w-[130px] ${isFormer ? "text-white/45" : "text-white/80"}`}>{player.name}</span>
+                        {onPlayerProfile ? (
+                          <button
+                            onClick={() => onPlayerProfile(player)}
+                            className={`font-medium text-xs truncate max-w-[130px] text-left hover:underline transition-opacity ${isFormer ? "text-white/45" : "text-white/80"}`}
+                          >
+                            {player.name}
+                          </button>
+                        ) : (
+                          <span className={`font-medium text-xs truncate max-w-[130px] ${isFormer ? "text-white/45" : "text-white/80"}`}>{player.name}</span>
+                        )}
                         {isFormer && (
                           <span className="text-[9px] font-bold uppercase tracking-wider" style={{ color: "rgba(251,146,60,0.6)" }}>{t.leftSquadBadge}</span>
                         )}

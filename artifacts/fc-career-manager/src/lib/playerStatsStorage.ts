@@ -1,4 +1,4 @@
-import type { PlayerSeasonStats, PlayerOverride } from "@/types/playerStats";
+import type { PlayerSeasonStats, PlayerOverride, MarketValueEntry } from "@/types/playerStats";
 import { putSeasonData, putCareerData } from "@/lib/apiStorage";
 import { sessionGet, sessionSet } from "@/lib/sessionStore";
 import { migratePositionOverride, PT_BR_TO_POSITION, type PositionPtBr, type PositionGroup } from "@/lib/squadCache";
@@ -205,4 +205,30 @@ export function setPlayerOverride(
   sessionSet(overridesKey(careerId), all);
   try { localStorage.setItem(overridesKey(careerId), JSON.stringify(all)); } catch {}
   void putCareerData(careerId, "overrides", all);
+}
+
+export function addMarketValueEntry(
+  careerId: string,
+  playerId: number,
+  value: number,
+  date?: number,
+): void {
+  const all = getAllPlayerOverrides(careerId);
+  const existing = all[playerId] ?? {};
+  const entry: MarketValueEntry = { value, date: date ?? Date.now() };
+  const history = [...(existing.marketValueHistory ?? []), entry];
+  setPlayerOverride(careerId, playerId, { marketValue: value, marketValueHistory: history });
+}
+
+export function addSalaryHistoryEntry(
+  careerId: string,
+  playerId: number,
+  value: number,
+  date?: number,
+): void {
+  const all = getAllPlayerOverrides(careerId);
+  const existing = all[playerId] ?? {};
+  const entry: MarketValueEntry = { value, date: date ?? Date.now() };
+  const history = [...(existing.salaryHistory ?? []), entry];
+  setPlayerOverride(careerId, playerId, { salary: value, salaryHistory: history });
 }

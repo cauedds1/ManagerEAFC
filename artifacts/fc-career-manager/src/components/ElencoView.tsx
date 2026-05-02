@@ -7,7 +7,9 @@ import type { SquadResult, SquadPlayer, PositionPtBr, PositionGroup } from "@/li
 import { migratePositionOverride, PT_BR_TO_POSITION } from "@/lib/squadCache";
 import type { PlayerOverride } from "@/types/playerStats";
 import type { TransferRecord } from "@/types/transfer";
-import { getAllPlayerOverrides, applyOverridesToPlayers } from "@/lib/playerStatsStorage";
+import { getAllPlayerOverrides, applyOverridesToPlayers, setPlayerOverride } from "@/lib/playerStatsStorage";
+import { getEffectiveToken } from "@/lib/authToken";
+import { PlayerProfileModal } from "./PlayerProfileModal";
 import {
   getCustomPlayers,
   addCustomPlayer,
@@ -251,6 +253,7 @@ export function ElencoView({
   finalizedSeasonStats,
   isCustomClub,
   isDemo,
+  teamId,
 }: ElencoViewProps) {
   const [lang] = useLang();
   const t = CLUBE[lang];
@@ -269,12 +272,43 @@ export function ElencoView({
   const [addForm, setAddForm] = useState<AddPlayerForm>(DEFAULT_ADD_FORM);
   const [importFeedback, setImportFeedback] = useState<"success" | "error" | null>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
+  const [profilePlayer, setProfilePlayer] = useState<SquadPlayer | null>(null);
+  const backfillDoneRef = useRef(false);
 
   const hiddenSet = useMemo(() => new Set(hiddenPlayerIds), [hiddenPlayerIds]);
 
   useEffect(() => {
     onCustomPlayersChange?.(customPlayers);
   }, [customPlayers, onCustomPlayersChange]);
+
+  useEffect(() => {
+    if (backfillDoneRef.current || !teamId || isDemo) return;
+    const combined = [...allPlayers, ...customPlayers];
+    const needsBackfill = combined.some(p => !overrides[p.id]?.nationality);
+    if (!needsBackfill) return;
+    backfillDoneRef.current = true;
+    const playerIdSet = new Set(combined.map(p => p.id));
+    const season = new Date().getFullYear().toString();
+    const token = getEffectiveToken();
+    const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
+    fetch(`/api/players/team-details?teamId=${teamId}&season=${season}`, { headers })
+      .then(r => r.ok ? r.json() : null)
+      .then((data: { players: Array<{ playerId: number; nationality: string; height: string; weight: string }> } | null) => {
+        if (!data?.players?.length) return;
+        for (const info of data.players) {
+          if (!playerIdSet.has(info.playerId)) continue;
+          if (!info.nationality && !info.height && !info.weight) continue;
+          setPlayerOverride(careerId, info.playerId, {
+            ...(info.nationality ? { nationality: info.nationality } : {}),
+            ...(info.height     ? { height: info.height }           : {}),
+            ...(info.weight     ? { weight: info.weight }           : {}),
+          });
+        }
+        setOverrides(getAllPlayerOverrides(careerId));
+        onOverridesUpdated?.();
+      })
+      .catch(() => {});
+  }, [allPlayers, customPlayers, teamId, isDemo, careerId, overrides, onOverridesUpdated]);
 
   type ExitEntry = { player: SquadPlayer; reason: string; date: number };
   const exitsList = useMemo<ExitEntry[]>(() => {
@@ -1228,7 +1262,20 @@ export function ElencoView({
           onClose={() => setDetailPlayer(null)}
           onUpdated={refreshOverrides}
           onRemove={!isDemo ? () => handleRemovePlayer(detailPlayer) : undefined}
+          onOpenProfile={() => { setProfilePlayer(detailPlayer); setDetailPlayer(null); }}
           isDemo={isDemo}
+        />,
+        document.body
+      )}
+
+      {profilePlayer && createPortal(
+        <PlayerProfileModal
+          player={profilePlayer}
+          careerId={careerId}
+          seasonId={seasonId}
+          override={overrides[profilePlayer.id]}
+          onClose={() => setProfilePlayer(null)}
+          onUpdated={refreshOverrides}
         />,
         document.body
       )}
