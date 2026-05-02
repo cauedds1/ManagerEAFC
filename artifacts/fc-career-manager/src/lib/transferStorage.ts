@@ -15,6 +15,11 @@ export function saveTransfers(seasonId: string, list: TransferRecord[]): void {
   void putSeasonData(seasonId, "transfers", list);
 }
 
+export async function saveTransfersAsync(seasonId: string, list: TransferRecord[]): Promise<void> {
+  sessionSet(transfersKey(seasonId), list);
+  await putSeasonData(seasonId, "transfers", list);
+}
+
 export function addTransfer(seasonId: string, transfer: TransferRecord): void {
   const list = [...getTransfers(seasonId), transfer];
   saveTransfers(seasonId, list);

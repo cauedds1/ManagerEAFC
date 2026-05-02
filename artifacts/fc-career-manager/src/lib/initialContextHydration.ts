@@ -3,7 +3,7 @@ import type { TransferRecord } from "@/types/transfer";
 import type { MatchRecord, MatchLocation } from "@/types/match";
 import {
   getTransfers,
-  saveTransfers,
+  saveTransfersAsync,
   generatePlayerId,
   generateTransferId,
 } from "@/lib/transferStorage";
@@ -157,12 +157,12 @@ export async function hydrateInitialContext(
     .slice(0, MAX_RIVALS);
 
   // Single batched write per category — avoids racing PUTs from multiple addTransfer/addMatch calls.
+  // All writes awaited together so we only mark the hydration flag after the durable PUTs settle.
   const writes: Promise<unknown>[] = [];
 
   if (newTransfers.length > 0) {
     const finalTransfers = [...getTransfers(seasonId), ...newTransfers];
-    // saveTransfers does sync session write + fire-and-forget PUT; wrap to await its underlying promise via a microtask.
-    saveTransfers(seasonId, finalTransfers);
+    writes.push(saveTransfersAsync(seasonId, finalTransfers));
   }
 
   if (newMatches.length > 0) {
