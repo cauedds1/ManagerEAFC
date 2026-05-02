@@ -132,7 +132,8 @@ export function ClubeView({
   const [seqScope, setSeqScope] = useState<SeqScope>("atual");
   const [statsScope, setStatsScope] = useState<SeqScope>("atual");
   const [profilePlayer, setProfilePlayer] = useState<SquadPlayer | null>(null);
-  const clubOverrides = useMemo(() => getAllPlayerOverrides(careerId), [careerId]);
+  const [overridesRefreshKey, setOverridesRefreshKey] = useState(0);
+  const clubOverrides = useMemo(() => getAllPlayerOverrides(careerId), [careerId, overridesRefreshKey]);
   const backfillSeasonYear = useMemo(() => {
     const m = career.season?.match(/\d{4}/);
     return m ? parseInt(m[0]) : new Date().getFullYear();
@@ -397,7 +398,7 @@ export function ClubeView({
           player={profilePlayer}
           override={clubOverrides[profilePlayer.id]}
           onClose={() => setProfilePlayer(null)}
-          onUpdated={() => setProfilePlayer(null)}
+          onUpdated={() => { setOverridesRefreshKey(k => k + 1); setProfilePlayer(null); }}
         />,
         document.body
       )}

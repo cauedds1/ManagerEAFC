@@ -1900,7 +1900,7 @@ export function RegistrarPartidaModal({
         playerSnapshot: Object.keys(playerSnapshot).length > 0 ? playerSnapshot : undefined,
       };
       addMatch(seasonId, match);
-      applyMatchToPlayerStats(seasonId, denseStarterIds, draft.subIds, draft.playerStats);
+      applyMatchToPlayerStats(seasonId, denseStarterIds, draft.subIds, draft.playerStats, draft.motmPlayerId);
       clearSavedDraft(careerId, seasonId);
       onMatchAdded(match);
       onClose();

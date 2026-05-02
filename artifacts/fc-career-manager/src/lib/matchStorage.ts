@@ -61,6 +61,7 @@ export function applyMatchToPlayerStats(
   starterIds: number[],
   subIds: number[],
   playerStats: Record<number, PlayerMatchStats>,
+  motmPlayerId?: number | null,
 ): void {
   const allPlayerIds = [...starterIds, ...subIds];
 
@@ -110,6 +111,7 @@ export function applyMatchToPlayerStats(
       ...(pStats.rating > 0 ? [pStats.rating] : []),
     ];
 
+    const isMotm = motmPlayerId != null && motmPlayerId === playerId;
     const updated: PlayerSeasonStats = {
       ...current,
       matchesAsStarter: current.matchesAsStarter + (isStarter ? 1 : 0),
@@ -122,6 +124,7 @@ export function applyMatchToPlayerStats(
       totalOwnGoals: (current.totalOwnGoals ?? 0) + (pStats.ownGoal ? 1 : 0),
       totalMissedPenalties: (current.totalMissedPenalties ?? 0) + (pStats.missedPenalty ? 1 : 0),
       recentRatings: newRatings,
+      motmCount: (current.motmCount ?? 0) + (isMotm ? 1 : 0),
     };
 
     setPlayerStats(seasonId, playerId, updated, false);

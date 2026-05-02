@@ -285,11 +285,10 @@ export function ElencoView({
 
   useEffect(() => {
     if (backfillDoneRef.current || !teamId || isDemo) return;
-    const combined = [...allPlayers, ...customPlayers];
-    const needsBackfill = combined.some(p => !overrides[p.id]?.nationality);
+    const needsBackfill = allPlayers.some(p => !overrides[p.id]?.nationality);
     if (!needsBackfill) return;
     backfillDoneRef.current = true;
-    const playerIdSet = new Set(combined.map(p => p.id));
+    const playerIdSet = new Set(allPlayers.map(p => p.id));
     const season = String(backfillSeasonYear ?? new Date().getFullYear());
     const token = getEffectiveToken();
     const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};

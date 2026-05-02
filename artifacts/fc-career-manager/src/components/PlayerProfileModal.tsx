@@ -202,8 +202,7 @@ export function PlayerProfileModal({
       const data = seasons
         .map(s => {
           const st = getPlayerStats(s.id, player.id);
-          const matches = getMatches(s.id);
-          const motm = matches.filter(m => m.motmPlayerId === player.id).length;
+          const motm = st.motmCount ?? 0;
           const ratings = st.recentRatings ?? [];
           const avgRating = ratings.length
             ? ratings.reduce((a: number, b: number) => a + b, 0) / ratings.length
@@ -349,10 +348,8 @@ export function PlayerProfileModal({
     { label: t.preferredFoot, value: override?.preferredFoot
       ? (override.preferredFoot === "right" ? t.footRight : override.preferredFoot === "left" ? t.footLeft : t.footBoth)
       : "—" },
-    { label: t.salary,        value: override?.salary && override.salary > 0 ? `€${fmt(override.salary)}/sem` : "—" },
     { label: t.marketValue,   value: override?.marketValue && override.marketValue > 0 ? `€${fmt(override.marketValue)}` : "—" },
-    { label: t.contractStart, value: override?.contractStart || "—" },
-    { label: t.contractEnd,   value: override?.contractEnd  || "—" },
+    { label: t.shirtNumber,   value: override?.shirtNumber != null ? `#${override.shirtNumber}` : "—" },
   ];
 
   return (
@@ -472,6 +469,36 @@ export function PlayerProfileModal({
                       <span className="text-white/80 text-xs font-semibold">{value}</span>
                     </div>
                   ))}
+                </div>
+
+                {/* ── Contract block ── */}
+                <div
+                  className="p-3 rounded-xl"
+                  style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}
+                >
+                  <p className="text-white/30 text-[10px] font-semibold uppercase tracking-wider mb-2.5">{t.contractSection}</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-white/30 text-[10px] font-medium">{t.contractStart}</span>
+                      <span className="text-white/75 text-xs font-semibold">{override?.contractStart || "—"}</span>
+                    </div>
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-white/30 text-[10px] font-medium">{t.contractEnd}</span>
+                      <span className="text-white/75 text-xs font-semibold">{override?.contractEnd || "—"}</span>
+                    </div>
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-white/30 text-[10px] font-medium">{t.salary} {t.weekly}</span>
+                      <span className="text-white/75 text-xs font-semibold">
+                        {override?.salary && override.salary > 0 ? `€${fmt(override.salary)}` : "—"}
+                      </span>
+                    </div>
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-white/30 text-[10px] font-medium">{t.salary} {t.annual}</span>
+                      <span className="text-white/75 text-xs font-semibold">
+                        {override?.salary && override.salary > 0 ? `€${fmt(override.salary * 52)}` : "—"}
+                      </span>
+                    </div>
+                  </div>
                 </div>
 
                 {(override?.ovrHistory?.length ?? 0) > 1 && (

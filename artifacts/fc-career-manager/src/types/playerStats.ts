@@ -64,6 +64,7 @@ export interface PlayerSeasonStats {
   recentRatings: number[];
   mood: Mood;
   fanMoral: FanMoral;
+  motmCount?: number;
 }
 
 export interface OvrHistoryEntry {
