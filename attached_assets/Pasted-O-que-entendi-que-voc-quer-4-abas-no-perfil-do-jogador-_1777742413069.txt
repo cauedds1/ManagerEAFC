@@ -1,0 +1,172 @@
+O que entendi que você quer: 4 abas no perfil do jogador
+
+Aba 1 — Detalhes
+
+Topo: foto, nome, badge de posição
+Grade de informações pessoais: Nacionalidade (com bandeira), Idade, Posição, Altura, Peso, Pé preferido, Salário, Valor de mercado, Número da camisa
+Bloco Classificação geral (Overall): valor atual + gráfico de linha mostrando a evolução histórica (esse dado já existe no sistema com o ovrHistory)
+Bloco Contrato atual: data de início, data de fim, valor semanal e anual
+Bloco Salário: valor atual + gráfico de linha com histórico
+Bloco Valor de mercado: valor atual + gráfico de linha com histórico
+Aba 2 — Temporada
+
+Seletor de temporada (dropdown)
+Gráfico de barras com a nota média mês a mês (calculado das partidas registradas)
+Blocos de estatísticas detalhadas:
+Partidas: total de jogos, jogos como titular, MOTM, minutos jogados
+Ataque: gols, gols de pênalti, gols por jogo, hat-tricks, minutos por gol, chutes, chutes por jogo
+Passes: assistências, assistências por jogo, minutos por assistência (os demais como passes totais, precisão etc. ficariam com "-" pois não são registrados por partida)
+Defesa: cartões amarelos, cartões vermelhos, gols contra
+Outro: pênaltis perdidos, lesões, e outros que não rastreamos ficam com "-"
+Aba 3 — Partidas
+
+Lista cronológica de todas as partidas em que o jogador participou naquela temporada
+Cada linha: data, competição + rodada, times + placar, ícone de gol(s) marcados, nota na partida
+Filtrável por temporada
+Aba 4 — Carreira
+
+Tabela com uma linha por temporada: MP (partidas), GLS (gols), AST (assistências), AR (nota média), MOTM, MIN (minutos)
+Linha de totais na base da tabela
+Dados novos que precisariam ser adicionados:
+
+Nacionalidade, Altura, Peso, Pé preferido → campos simples, editáveis
+Valor de mercado + histórico → similar ao sistema de overall com datas
+Datas de contrato (início/fim) → campos de data editáveis
+Dados que já existem e seriam reaproveitados:
+
+Overall + histórico, salário, posição, número, foto → já no sistema
+Gols, assistências, cartões, minutos, MOTM, nota média → já no sistema por temporada
+Partidas individuais com nota → já nos registros de partida
+
+A API Football que o projeto já usa fornece:
+
+✅ Foto — já é usada e cacheada
+✅ Idade — já salva no banco
+✅ Posição — já existe
+✅ Nome
+Mas não fornece:
+
+❌ Nacionalidade — a API Football tem no endpoint /players, mas o projeto só usa o endpoint de elenco (/players/squads) que não retorna esses campos detalhados
+❌ Altura, Peso, Pé preferido — idem, só estão no endpoint /players individual, não no elenco
+❌ Valor de mercado — a API Football não tem isso; seria de outra fonte (Transfermarkt, por exemplo, mas não temos acesso)
+❌ Contrato (início/fim) — não vem da API
+Então o plano real seria:
+
+Buscar da API: Foto, nome, idade, posição (já temos) + buscar os campos extras do endpoint /players?id=X&season=YYYY quando o jogador for visualizado — nacionalidade, altura, peso, pé preferido.
+
+Boa ideia — deixa eu verificar o que o endpoint /players da API Football retorna e se já temos a chave de API configurada:
+
+
+3 actions
+Deixa eu ver exatamente o que o projeto já chama no endpoint /players e o que a API retorna:
+
+
+3 actions
+Olhando o código, o /players já é parcialmente usado no projeto — e a interface ApiPlayerItem já tem nationality mapeada. O endpoint /players?id=X&season=YYYY da API Football retorna:
+
+✅ Nacionalidade (player.nationality) — ex: "Brazil"
+✅ Altura (player.height) — ex: "176 cm"
+✅ Peso (player.weight) — ex: "73 kg"
+✅ Data de nascimento (player.birth.date) — pra calcular idade exata
+❌ Pé preferido — não existe na API Football. Esse campo não está disponível em nenhum endpoint deles. Teria que ser inserido manualmente.
+Então o plano seria:
+
+Quando você abre o perfil de um jogador, buscamos os dados detalhados via /players?id={id}&season={currentSeason} — nacionalidade, altura, peso ficam automáticos
+Pé preferido seria um campo manual que você pode preencher na edição (junto com contrato, valor de mercado)
+Esses dados extras seriam salvos no PlayerOverride junto com o que já existe
+
+
+Pontos de acesso
+Na tabela de estatísticas (screenshot 1) — clicar no nome do jogador abre o perfil completo
+No card do jogador (screenshot 2) — o popup atual ganha um botão "Dados Completos" que abre o perfil completo
+O perfil atual (popup com Estatísticas/Editar) continua existindo — o botão é uma entrada para o perfil expandido
+O perfil completo — nova tela/modal de página inteira com 4 abas
+Aba 1 — Detalhes
+Topo: foto grande, nome, badge de posição, overall atual
+Grade de informações pessoais: Nacionalidade (com bandeira emoji), Idade, Posição, Altura, Peso, Pé Preferido, Salário, Valor de Mercado, Número da camisa
+Bloco Overall: valor atual + gráfico de linha com histórico de evoluções (usando ovrHistory que já existe)
+Bloco Contrato: data de início, data de fim, valor semanal, valor anual calculado
+Bloco Salário: valor atual + gráfico de linha com histórico (histórico similar ao overall)
+Bloco Valor de Mercado: valor atual + gráfico de linha com histórico de entradas manuais
+Aba 2 — Temporada
+Seletor dropdown de temporada
+Gráfico de barras com nota média por mês (calculado das partidas registradas naquela temporada)
+Blocos de estatísticas calculadas:
+Partidas: total de jogos, jogos como titular, MOTM, minutos jogados
+Ataque: gols, gols de pênalti, gols por jogo, hat-tricks, minutos por gol
+Passes: assistências, assistências por jogo, minutos por assistência
+Defesa: cartões amarelos, cartões vermelhos, gols contra
+Outro: pênaltis perdidos, lesões — outros campos mostram "—" pois não são rastreados por partida
+Aba 3 — Partidas
+Lista cronológica (mais recente primeiro) de todas as partidas em que o jogador aparece naquela temporada
+Cada item: data, competição + rodada, times + placar, ícone(s) de gol, nota na partida (badge colorido)
+Seletor de temporada no topo
+Aba 4 — Carreira
+Tabela com uma linha por temporada: J (jogos), GLS, AST, AR (nota média), MOTM, MIN
+Linha de totais somados na base
+Abrange todas as temporadas registradas no sistema
+Dados novos que precisam ser adicionados ao PlayerOverride
+Campo	Origem
+nationality	API Football /players?id=X — buscado automaticamente
+height	API Football — automático
+weight	API Football — automático
+preferredFoot	Manual (campo na edição: Direita / Esquerda / Ambos)
+contractStart	Manual (campo de data na edição)
+contractEnd	Manual (campo de data na edição)
+marketValue + histórico	Manual (igual ao sistema de overall — com data)
+Arquivos que seriam criados/modificados
+NOVO PlayerProfileModal.tsx — o perfil completo com as 4 abas
+MOD PlayerStatsTable.tsx — clicar no nome abre o perfil
+MOD PlayerDetailPanel.tsx — adicionar botão "Dados Completos"
+MOD PlayerOverride em playerStats.ts — novos campos
+MOD playerStatsStorage.ts — salvar/ler os novos campos
+MOD i18n.ts — strings PT/EN para as novas seções
+NOVO rota no backend GET /api/players/:id/details — busca dados da API Football e faz cache
+
+só precisa tomar muito cuidado para nao interferir na extração dos elencos, apenas puxar dados completos dos jogadores sem afetar as escalações reais
+
+52 minutes ago
+
+Show less
+
+Planning player details endpoint integration (11 seconds)
+Ponto importantíssimo — o endpoint novo vai ser somente leitura, não vai tocar na tabela squad_players nem no cache de elenco. Deixa eu ler os arquivos que vou modificar antes de começar:
+
+
+5 actions
+Deixa eu ler tudo que preciso antes de escrever uma linha de código:
+
+
+5 actions
+Deixa eu ver os logs do backend e ler os arquivos restantes em paralelo:
+
+
+2 actions
+Backends e frontend rodando. Vou ler os arquivos restantes necessários antes de escrever código:
+
+
+16 actions
+Tenho tudo que preciso. Vou ler as últimas peças e depois implementar tudo em paralelo:
+
+é importante ter apenas uma extração, depois disso TODOS os dados ficam salvos, ou seja, chama a api apenas uma vez e armazena todos os dados permanentemente
+
+49 minutes ago
+
+Worked for 3 minutes
+Free
+
+Show less
+
+Deciding on data fetching strategy (13 seconds)
+Entendido — ponto importante. O fluxo muda assim:
+
+Na abertura do PlayerProfileModal:
+
+Verifica se override.nationality já existe no PlayerOverride
+Se sim → usa os dados salvos, zero chamada à API
+Se não → chama o endpoint UMA VEZ, salva tudo no PlayerOverride (localStorage + Replit storage) e nunca mais chama
+Isso muda o item 2 do mapa (backend) e o item 3 (PlayerDetailPanel/modal):
+
+O backend ainda precisa existir (proxy seguro com a chave), mas é chamado no máximo uma vez por jogador em toda a carreira
+Os dados retornados (nationality, height, weight) são imediatamente salvos via setPlayerOverride — a partir daí vivem junto com os outros dados do jogador
+Sem cache no servidor necessário, porque o frontend já garante que não chama duas vezes
