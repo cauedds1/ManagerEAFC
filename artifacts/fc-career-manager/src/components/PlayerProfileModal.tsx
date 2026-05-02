@@ -146,6 +146,7 @@ export function PlayerProfileModal({
   const syncedRef = useRef(new Set<string>(seasonId ? [seasonId] : []));
   const [isSyncing, setIsSyncing] = useState(false);
   const [seasonMatches, setSeasonMatches] = useState<MatchItem[]>([]);
+  const [syncVersion, setSyncVersion] = useState(0);
 
   const [editMode, setEditMode] = useState(false);
   const [editFoot, setEditFoot] = useState(override?.preferredFoot ?? "");
@@ -190,6 +191,8 @@ export function PlayerProfileModal({
         try {
           await syncSeasonFromDb(selectedSeasonId);
           syncedRef.current.add(selectedSeasonId);
+          // Bump version so seasonStatsData useMemo re-reads from session storage.
+          if (!cancelled) setSyncVersion(v => v + 1);
         } catch { /* leave syncedRef unset → retries on next visit */ }
       }
       if (!cancelled) {
@@ -267,7 +270,9 @@ export function PlayerProfileModal({
 
   const seasonStatsData = useMemo(() =>
     getPlayerStats(selectedSeasonId, player.id)
-  , [selectedSeasonId, player.id]);
+  // syncVersion ensures a re-read after syncSeasonFromDb populates session storage.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  , [selectedSeasonId, player.id, syncVersion]);
 
   const motmInSeason = useMemo(() =>
     seasonMatches.filter(m => m.motmPlayerId === player.id).length
@@ -935,14 +940,19 @@ export function PlayerProfileModal({
                         {careerData.length > 1 && (() => {
                           const tot = careerData.reduce(
                             (acc, r) => ({
-                              matches:  acc.matches  + r.matches,
-                              goals:    acc.goals    + r.goals,
-                              assists:  acc.assists  + r.assists,
-                              minutes:  acc.minutes  + r.minutes,
-                              motm:     acc.motm     + r.motm,
+                              matches:        acc.matches        + r.matches,
+                              goals:          acc.goals          + r.goals,
+                              assists:        acc.assists        + r.assists,
+                              minutes:        acc.minutes        + r.minutes,
+                              motm:           acc.motm           + r.motm,
+                              ratingWeighted: acc.ratingWeighted + (r.avgRating > 0 ? r.avgRating * r.matches : 0),
+                              ratingMatches:  acc.ratingMatches  + (r.avgRating > 0 ? r.matches : 0),
                             }),
-                            { matches: 0, goals: 0, assists: 0, minutes: 0, motm: 0 },
+                            { matches: 0, goals: 0, assists: 0, minutes: 0, motm: 0, ratingWeighted: 0, ratingMatches: 0 },
                           );
+                          const aggRating = tot.ratingMatches > 0
+                            ? (tot.ratingWeighted / tot.ratingMatches).toFixed(1)
+                            : null;
                           return (
                             <tr style={{ borderTop: "1px solid rgba(255,255,255,0.08)", background: "rgba(var(--club-primary-rgb),0.04)" }}>
                               <td className="px-2 py-2.5 text-white/40 font-bold text-[10px] uppercase tracking-wider">{t.totals}</td>
@@ -950,7 +960,10 @@ export function PlayerProfileModal({
                               <td className="px-2 py-2.5 text-center tabular-nums font-bold" style={{ color: "#34d399" }}>{tot.goals || "—"}</td>
                               <td className="px-2 py-2.5 text-center tabular-nums font-bold" style={{ color: "#60a5fa" }}>{tot.assists || "—"}</td>
                               <td className="px-2 py-2.5 text-white/50 text-center tabular-nums font-bold">{tot.minutes || "—"}</td>
-                              <td className="px-2 py-2.5 text-white/25 text-center">—</td>
+                              <td className="px-2 py-2.5 text-center tabular-nums font-bold"
+                                style={{ color: aggRating ? (Number(aggRating) >= 8 ? "#34d399" : Number(aggRating) >= 7 ? "#a3e635" : Number(aggRating) >= 6 ? "#fbbf24" : "#f87171") : undefined }}>
+                                {aggRating ?? "—"}
+                              </td>
                               <td className="px-2 py-2.5 text-center tabular-nums font-bold" style={{ color: "#fbbf24" }}>
                                 {tot.motm > 0 ? `⭐${tot.motm}` : "—"}
                               </td>
