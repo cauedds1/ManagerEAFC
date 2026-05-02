@@ -8,6 +8,7 @@ import { TeamPreview } from "./TeamPreview";
 import { CareerSetupStep } from "./CareerSetupStep";
 import { createCareer } from "@/lib/careerStorage";
 import { createEmptyInitialContext } from "@/types/career";
+import { CareerRevealReel } from "./CareerRevealReel";
 import { getCurrentSeason } from "@/lib/api";
 import { applyTheme, resetTheme, extractColorsFromImage, getCurrentColors } from "@/lib/themeManager";
 import { getClubColors } from "@/lib/clubColors";
@@ -29,7 +30,7 @@ interface CreateCareerWizardProps {
 
 type ParsedContext = InitialContext;
 
-type PrePhase = "path-select" | "ongoing-input" | "ongoing-preview" | null;
+type PrePhase = "path-select" | "ongoing-input" | "reveal-splash" | "reveal-reel" | "ongoing-preview" | null;
 type Path = "quick" | "detailed" | "manual";
 
 function ProgressBar({ step, t }: { step: number; t: typeof WIZARD["pt"] }) {
@@ -309,7 +310,8 @@ export function CreateCareerWizard({
           }
         }
       }
-      setPrePhase("ongoing-preview");
+      // If we extracted a club, offer the cinematic reveal splash; otherwise straight to preview
+      setPrePhase(data?.club?.name ? "reveal-splash" : "ongoing-preview");
     } catch {
       setOngoingError(t.ongoingError);
     } finally {
@@ -597,6 +599,47 @@ export function CreateCareerWizard({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Pre-step: Cinematic reveal splash (offer reel before showing preview) */}
+      {prePhase === "reveal-splash" && parsedContext && (
+        <div className="fixed inset-0 z-[90] flex items-center justify-center px-6" style={{ background: "radial-gradient(circle at center, rgba(var(--club-primary-rgb),0.25), #000 70%)" }}>
+          <div className="max-w-md w-full text-center">
+            <p className="text-white/60 text-xs font-bold uppercase tracking-[0.4em] mb-3">{lang === "pt" ? "Análise concluída" : "Analysis complete"}</p>
+            <h2 className="text-white text-3xl sm:text-4xl font-black mb-2">{parsedContext.club.name || autoDetectedClub?.name}</h2>
+            <p className="text-white/70 text-sm mb-8">
+              {lang === "pt"
+                ? "Sua história está pronta. Quer ver a revelação cinematográfica?"
+                : "Your story is ready. Want to see the cinematic reveal?"}
+            </p>
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={() => setPrePhase("reveal-reel")}
+                className="w-full py-3 rounded-xl font-black text-white uppercase tracking-wider text-sm"
+                style={{ background: "var(--club-primary)", boxShadow: "0 10px 30px rgba(var(--club-primary-rgb),0.4)" }}
+              >
+                {lang === "pt" ? "▶  Ver revelação" : "▶  Watch reveal"}
+              </button>
+              <button
+                onClick={() => setPrePhase("ongoing-preview")}
+                className="w-full py-3 rounded-xl font-bold text-white/80 hover:text-white text-sm"
+                style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)" }}
+              >
+                {lang === "pt" ? "Ir direto ao preview" : "Skip to preview"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Pre-step: Cinematic reveal reel */}
+      {prePhase === "reveal-reel" && parsedContext && (
+        <CareerRevealReel
+          context={parsedContext}
+          club={autoDetectedClub}
+          onComplete={() => setPrePhase("ongoing-preview")}
+          onSkip={() => setPrePhase("ongoing-preview")}
+        />
       )}
 
       {/* Pre-step: Rich AI Parsed Context Preview */}
