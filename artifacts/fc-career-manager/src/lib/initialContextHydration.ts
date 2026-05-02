@@ -9,7 +9,7 @@ import {
 } from "@/lib/transferStorage";
 import { getMatches, saveMatches, generateMatchId } from "@/lib/matchStorage";
 import { recordMatchInAgg } from "@/lib/careerAggregateStats";
-import { setSeasonRivals, MAX_RIVALS } from "@/lib/rivalsStorage";
+import { getSeasonRivals, setSeasonRivals, MAX_RIVALS } from "@/lib/rivalsStorage";
 
 const HYDRATED_KEY = (careerId: string) => `fc-initial-hydrated-${careerId}`;
 
@@ -172,6 +172,17 @@ export async function hydrateInitialContext(
     return empty;
   }
 
+  // Guard contra carreiras legadas (criadas antes desta hidratação) que já têm dados reais
+  // persistidos no banco. Após syncSeasonFromDb, se já houver QUALQUER registro nas abas-alvo,
+  // assumimos que o usuário já preencheu manualmente e não sobrescrevemos.
+  const existingTransfers = getTransfers(seasonId);
+  const existingMatches = getMatches(seasonId);
+  const existingRivals = getSeasonRivals(seasonId);
+  if (existingTransfers.length > 0 || existingMatches.length > 0 || existingRivals.length > 0) {
+    markHydrated(career.id);
+    return empty;
+  }
+
   const newTransfers: TransferRecord[] = [];
   for (const entry of tIn) {
     if (entry?.name?.trim()) newTransfers.push(buildTransfer(career, entry, "compra"));
@@ -196,14 +207,11 @@ export async function hydrateInitialContext(
   const writes: Promise<unknown>[] = [];
 
   if (newTransfers.length > 0) {
-    const finalTransfers = [...getTransfers(seasonId), ...newTransfers];
-    writes.push(saveTransfersAsync(seasonId, finalTransfers));
+    writes.push(saveTransfersAsync(seasonId, newTransfers));
   }
 
   if (newMatches.length > 0) {
-    const finalMatches = [...getMatches(seasonId), ...newMatches];
-    writes.push(saveMatches(seasonId, finalMatches));
-    // Aggregates are local cache — safe to run synchronously after the persisted write is queued.
+    writes.push(saveMatches(seasonId, newMatches));
     for (const m of newMatches) {
       recordMatchInAgg(career.id, m.myScore, m.opponentScore);
     }
@@ -218,11 +226,11 @@ export async function hydrateInitialContext(
     );
   }
 
-  // Wait for the durable writes (matches + rivals) to actually complete before marking hydrated,
-  // so a reload before persistence finishes does NOT skip retry on the next launch.
-  await Promise.allSettled(writes);
-
-  markHydrated(career.id);
+  // Aguarda as escritas duráveis (PUTs) e só marca como hidratado se TODAS tiveram sucesso —
+  // assim, falha de rede no primeiro load deixa o flag livre pra retry no próximo launch.
+  const settled = await Promise.allSettled(writes);
+  const allOk = settled.every((s) => s.status === "fulfilled");
+  if (allOk) markHydrated(career.id);
 
   return {
     ran: true,

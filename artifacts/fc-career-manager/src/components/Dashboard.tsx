@@ -345,10 +345,6 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
         localStorage.setItem(moodSeedKey, "1");
       }
 
-      // Pre-popula Transferências/Partidas/Rivais a partir do contexto inicial extraído pela IA
-      // (idempotente — usa flag em localStorage). Caminhos manuais ficam com arrays vazios e nada acontece.
-      await hydrateInitialContext(career, initialSeasonId);
-
       await syncCareerFromDb(career.id);
 
       // Load all seasons first so we know which is truly active
@@ -368,6 +364,12 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
 
       // Sync and load data for the ACTIVE season (not the initial/first one)
       await syncSeasonFromDb(effectiveSeasonId);
+
+      // Pre-popula Transferências/Partidas/Rivais a partir do contexto inicial extraído pela IA.
+      // Roda depois do sync para que os guards possam comparar com os dados reais já persistidos
+      // (não sobrescreve carreiras legadas que já têm dados manuais). Idempotente via flag em localStorage.
+      await hydrateInitialContext(career, effectiveSeasonId);
+
       const loadedTransfers = getTransfers(effectiveSeasonId);
       const existingOverrides = getAllPlayerOverrides(career.id);
       for (const t of loadedTransfers) {
