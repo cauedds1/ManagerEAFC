@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import type { Career } from "@/types/career";
 import { useLang } from "@/hooks/useLang";
 import { WIZARD } from "@/lib/i18n";
+import { isInitialContextHydrated } from "@/lib/initialContextHydration";
 
 interface Props { career: Career }
 
@@ -31,6 +32,13 @@ export function InitialContextBanner({ career }: Props) {
   const ic = career.initialContext;
   if (!ic) return null;
 
+  const hydrated = isInitialContextHydrated(career.id) && (
+    (ic.transfersIn?.length ?? 0) > 0 ||
+    (ic.transfersOut?.length ?? 0) > 0 ||
+    (ic.recentMatches?.length ?? 0) > 0 ||
+    (ic.rivals?.length ?? 0) > 0
+  );
+
   const showLetter = !seen.letter && !!ic.boardLetter;
   const showSync = !seen.sync && (!!ic.squadSyncWarning || (ic.keyPlayers?.length ?? 0) > 0);
   const showMissions = !seen.missions && ic.missions?.length > 0;
@@ -51,7 +59,18 @@ export function InitialContextBanner({ career }: Props) {
             <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--club-primary)" }}>
               ✉ {t.boardLetterTitle}
             </span>
-            <button onClick={() => dismiss("letter")} className="text-white/40 hover:text-white text-xs">✕</button>
+            <div className="flex items-center gap-2">
+              {hydrated && (
+                <span
+                  title={t.appliedToTabsTooltip}
+                  className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded"
+                  style={{ color: "#34d399", background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.25)" }}
+                >
+                  ✓ {t.appliedToTabs}
+                </span>
+              )}
+              <button onClick={() => dismiss("letter")} className="text-white/40 hover:text-white text-xs">✕</button>
+            </div>
           </div>
           <p className="text-white/85 text-sm leading-relaxed italic" style={{ fontFamily: "Georgia, serif" }}>"{ic.boardLetter}"</p>
           {ic.prediction?.endOfSeason && (

@@ -54,6 +54,7 @@ import { FinalizeSeasonModal } from "./FinalizeSeasonModal";
 import { SeasonSummaryView } from "./SeasonSummaryView";
 import { getSeasons, createSeason, activateSeason, generateSeasonId, updateSeasonLabel } from "@/lib/seasonStorage";
 import { ensureCareerAndSeason1, deleteCareer } from "@/lib/careerStorage";
+import { hydrateInitialContext } from "@/lib/initialContextHydration";
 import { syncSeasonFromDb, syncCareerFromDb } from "@/lib/dbSync";
 import {
   getMembers,
@@ -343,6 +344,10 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
         }
         localStorage.setItem(moodSeedKey, "1");
       }
+
+      // Pre-popula Transferências/Partidas/Rivais a partir do contexto inicial extraído pela IA
+      // (idempotente — usa flag em localStorage). Caminhos manuais ficam com arrays vazios e nada acontece.
+      await hydrateInitialContext(career, initialSeasonId);
 
       await syncCareerFromDb(career.id);
 
