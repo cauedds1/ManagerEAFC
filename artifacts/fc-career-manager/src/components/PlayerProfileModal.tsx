@@ -55,24 +55,45 @@ function toFlag(nat: string): string {
 }
 
 // ── Sparkline ─────────────────────────────────────────────────────────────────
-function Sparkline({ data, color = "#34d399" }: {
+function Sparkline({ data, color = "#34d399", showValues = false }: {
   data: Array<{ value: number; date: number }>;
   color?: string;
+  showValues?: boolean;
 }) {
   if (data.length < 2) return null;
-  const W = 240, H = 50, PAD = 6;
+  const W = 240;
+  const TOP_PAD = showValues ? 18 : 6;
+  const BOT_PAD = 6;
+  const H = showValues ? 64 : 50;
   const values = data.map(d => d.value);
   const min = Math.min(...values);
   const max = Math.max(...values);
   const range = max === min ? 1 : max - min;
-  const toX = (i: number) => PAD + (i / (data.length - 1)) * (W - PAD * 2);
-  const toY = (v: number) => PAD + ((max - v) / range) * (H - PAD * 2);
+  const toX = (i: number) => 6 + (i / (data.length - 1)) * (W - 12);
+  const toY = (v: number) => TOP_PAD + ((max - v) / range) * (H - TOP_PAD - BOT_PAD);
   const pts = data.map((d, i) => [toX(i), toY(d.value)] as [number, number]);
   const path = pts.map(([x, y], i) => `${i === 0 ? "M" : "L"} ${x.toFixed(1)} ${y.toFixed(1)}`).join(" ");
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: H }}>
       <path d={path} stroke={color} strokeWidth={2} fill="none" strokeLinecap="round" strokeLinejoin="round" />
-      {pts.map(([x, y], i) => <circle key={i} cx={x} cy={y} r={2.5} fill={color} />)}
+      {pts.map(([x, y], i) => (
+        <g key={i}>
+          <circle cx={x} cy={y} r={2.5} fill={color} />
+          {showValues && (
+            <text
+              x={x}
+              y={y - 6}
+              textAnchor="middle"
+              fontSize={9}
+              fontWeight="700"
+              fill={color}
+              fontFamily="monospace"
+            >
+              {data[i].value}
+            </text>
+          )}
+        </g>
+      ))}
     </svg>
   );
 }
@@ -544,6 +565,7 @@ export function PlayerProfileModal({
                     <Sparkline
                       data={override!.ovrHistory!.map(e => ({ value: e.ovr, date: e.date }))}
                       color="var(--club-primary, #8b5cf6)"
+                      showValues
                     />
                     <div className="flex justify-between mt-1">
                       <span className="text-white/20 text-[10px]">
