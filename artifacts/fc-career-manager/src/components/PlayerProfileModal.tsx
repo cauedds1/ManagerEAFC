@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import type { SquadPlayer, PositionPtBr } from "@/lib/squadCache";
 import { migratePositionOverride } from "@/lib/squadCache";
 import type { PlayerOverride } from "@/types/playerStats";
-import { setPlayerOverride, addMarketValueEntry, getPlayerStats } from "@/lib/playerStatsStorage";
+import { setPlayerOverride, addMarketValueEntry, getPlayerStats, setPlayerStats } from "@/lib/playerStatsStorage";
 import { getMatches } from "@/lib/matchStorage";
 import { syncSeasonFromDb } from "@/lib/dbSync";
 import { getSeasons } from "@/lib/seasonStorage";
@@ -202,9 +202,13 @@ export function PlayerProfileModal({
       const data = seasons
         .map(s => {
           const st = getPlayerStats(s.id, player.id);
-          const motm = st.motmCount !== undefined
-            ? st.motmCount
-            : getMatches(s.id).filter(m => m.motmPlayerId === player.id).length;
+          let motm: number;
+          if (st.motmCount !== undefined) {
+            motm = st.motmCount;
+          } else {
+            motm = getMatches(s.id).filter(m => m.motmPlayerId === player.id).length;
+            setPlayerStats(s.id, player.id, { ...st, motmCount: motm }, false);
+          }
           const ratings = st.recentRatings ?? [];
           const avgRating = ratings.length
             ? ratings.reduce((a: number, b: number) => a + b, 0) / ratings.length
@@ -346,11 +350,13 @@ export function PlayerProfileModal({
   const bioItems = [
     { label: t.nationality,   value: override?.nationality ? `${toFlag(override.nationality)} ${override.nationality}` : "—" },
     { label: t.age,           value: player.age > 0 ? `${player.age} ${lang === "pt" ? "anos" : "y.o."}` : "—" },
+    { label: t.position,      value: displayPos || "—" },
     { label: t.height,        value: override?.height || "—" },
     { label: t.weight,        value: override?.weight || "—" },
     { label: t.preferredFoot, value: override?.preferredFoot
       ? (override.preferredFoot === "right" ? t.footRight : override.preferredFoot === "left" ? t.footLeft : t.footBoth)
       : "—" },
+    { label: t.salary,        value: override?.salary && override.salary > 0 ? `€${fmt(override.salary)}/sem` : "—" },
     { label: t.marketValue,   value: override?.marketValue && override.marketValue > 0 ? `€${fmt(override.marketValue)}` : "—" },
     { label: t.shirtNumber,   value: override?.shirtNumber != null ? `#${override.shirtNumber}` : "—" },
   ];
@@ -775,14 +781,33 @@ export function PlayerProfileModal({
                           style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}
                         >
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-white/70 text-xs font-semibold truncate">{match.opponent ?? "—"}</span>
-                              {isMotm && <span className="text-[10px]">⭐</span>}
-                            </div>
-                            <div className="flex items-center gap-2 mt-0.5">
+                            {/* Fixture line: both teams + score */}
+                            {(() => {
+                              const isHome = match.location !== "fora";
+                              const myLabel  = t.myClub;
+                              const oppLabel = match.opponent ?? "—";
+                              const [leftTeam, leftScore, rightScore, rightTeam] = isHome
+                                ? [myLabel,  match.myScore, match.opponentScore, oppLabel]
+                                : [oppLabel, match.opponentScore, match.myScore, myLabel];
+                              return (
+                                <div className="flex items-center gap-1 text-xs font-semibold">
+                                  <span className="text-white/70 truncate max-w-[5rem]">{leftTeam}</span>
+                                  <span className="font-black tabular-nums" style={{ color: resultColor }}>
+                                    {leftScore}–{rightScore}
+                                  </span>
+                                  <span className="text-white/70 truncate max-w-[5rem]">{rightTeam}</span>
+                                  {isMotm && <span className="text-[10px] ml-0.5">⭐</span>}
+                                </div>
+                              );
+                            })()}
+                            {/* Metadata row: date · competition · round */}
+                            <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                               <span className="text-white/25 text-[10px]">{match.date ?? ""}</span>
                               {match.tournament && (
                                 <span className="text-white/20 text-[10px] truncate">{match.tournament}</span>
+                              )}
+                              {match.stage && (
+                                <span className="text-white/20 text-[10px] truncate">{match.stage}</span>
                               )}
                             </div>
                           </div>
@@ -814,12 +839,6 @@ export function PlayerProfileModal({
                                 {rating.toFixed(1)}
                               </span>
                             )}
-                            <span
-                              className="text-xs font-black tabular-nums"
-                              style={{ color: resultColor, minWidth: "2.5rem", textAlign: "right" }}
-                            >
-                              {match.myScore}–{match.opponentScore}
-                            </span>
                           </div>
                         </div>
                       );

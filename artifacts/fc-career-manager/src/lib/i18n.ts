@@ -4830,6 +4830,7 @@ export const PLAYER_PROFILE: Record<Lang, Record<string, string>> = {
     appearance: "Entrada",
     starter: "Titular",
     sub: "Suplente",
+    myClub: "Meu Clube",
   },
   en: {
     tabDetails: "Details",
@@ -4911,6 +4912,7 @@ export const PLAYER_PROFILE: Record<Lang, Record<string, string>> = {
     appearance: "Appearance",
     starter: "Starter",
     sub: "Sub",
+    myClub: "My Club",
   },
 };
 
