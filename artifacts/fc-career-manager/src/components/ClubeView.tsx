@@ -17,13 +17,14 @@ import { FinanceiroView } from "./FinanceiroView";
 import { ClubStatsView } from "./ClubStatsView";
 import { CompetitionResultsView } from "./CompetitionResultsView";
 import { TrophyCabinetView } from "./TrophyCabinetView";
+import { RecordesView } from "./RecordesView";
 import { useLang } from "@/hooks/useLang";
 import { CLUBE } from "@/lib/i18n";
 import { SectionHelp } from "./SectionHelp";
 
 export const FC_ELENCO_TAB_VIEWED_EVENT = "fc:elenco_tab_viewed";
 
-type ClubeSubTab = "elenco" | "estatisticas" | "lesoes" | "sequencias" | "financeiro" | "competicoes" | "trofeus";
+type ClubeSubTab = "elenco" | "estatisticas" | "lesoes" | "sequencias" | "financeiro" | "competicoes" | "trofeus" | "recordes";
 type StatsMiniTab = "jogadores" | "clube";
 
 interface ClubeViewProps {
@@ -112,6 +113,7 @@ export function ClubeView({
     { id: "financeiro",   label: t.tabFinance,  icon: "💰" },
     { id: "competicoes",  label: t.tabComps,    icon: "🏆" },
     { id: "trofeus",      label: t.tabTrophies, icon: "🥇" },
+    { id: "recordes",     label: t.tabRecords,  icon: "🏅" },
   ];
 
   const statsPlayers = historicalPlayers ?? allPlayers;
@@ -262,7 +264,8 @@ export function ClubeView({
             : sub === "sequencias" ? "sequencias"
             : sub === "financeiro" ? "financeiro"
             : sub === "competicoes" ? "competicoes"
-            : "trofeus"
+            : sub === "trofeus" ? "trofeus"
+            : "recordes"
           } />
         </div>
       </div>
@@ -390,6 +393,9 @@ export function ClubeView({
         )}
         {sub === "trofeus" && (
           <TrophyCabinetView careerId={careerId} />
+        )}
+        {sub === "recordes" && (
+          <RecordesView careerId={careerId} seasons={seasons} />
         )}
       </div>
 
