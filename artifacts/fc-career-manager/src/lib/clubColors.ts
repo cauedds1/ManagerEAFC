@@ -42,6 +42,8 @@ export const CLUB_INFO: Record<string, ClubInfo> = {
   "Olympique de Marseille":{ primary: "#009AC7", secondary: "#FFFFFF", league: "Ligue 1 McDonald's", sofifaId: "76" },
   "Latium":           { primary: "#87CEEB", secondary: "#FFFFFF", league: "Serie A Enilive", sofifaId: "47" },
   "Spurs":            { primary: "#132257", secondary: "#FFFFFF", league: "Premier League", sofifaId: "6" },
+  "Tottenham":        { primary: "#132257", secondary: "#FFFFFF", league: "Premier League", sofifaId: "6" },
+  "Tottenham Hotspur":{ primary: "#132257", secondary: "#FFFFFF", league: "Premier League", sofifaId: "6" },
   "FC Porto":         { primary: "#003087", secondary: "#FFF200", league: "Liga Portugal", sofifaId: "229" },
   "Bergamo Calcio":   { primary: "#1C60A2", secondary: "#000000", league: "Serie A Enilive", sofifaId: "2687" },
   "Real Betis":       { primary: "#00A650", secondary: "#FFFFFF", league: "LALIGA EA SPORTS", sofifaId: "244" },
