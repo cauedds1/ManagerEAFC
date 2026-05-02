@@ -195,6 +195,7 @@ export function PlayerStatsTable({ careerId, seasonId, allPlayers, statsOverride
   const [sortCol, setSortCol] = useState<SortCol>("goals");
   const [asc, setAsc] = useState(false);
   const [showLegend, setShowLegend] = useState(false);
+  const [competitionFilter, setCompetitionFilter] = useState("");
   const legendRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -210,35 +211,75 @@ export function PlayerStatsTable({ careerId, seasonId, allPlayers, statsOverride
 
   const rawStats = useMemo(() => statsOverride ?? getAllPlayerStats(seasonId), [statsOverride, seasonId]);
   const overrides = useMemo(() => getAllPlayerOverrides(careerId), [careerId]);
-  const matches = useMemo(() => matchesOverride ?? getMatches(seasonId), [matchesOverride, seasonId]);
+  const allMatches = useMemo(() => matchesOverride ?? getMatches(seasonId), [matchesOverride, seasonId]);
 
-  const derivedMap = useMemo<Record<number, DerivedStats>>(() => {
-    const map: Record<number, DerivedStats> = {};
+  // Available competitions derived from match records
+  const competitions = useMemo(() => {
+    const seen = new Set<string>();
+    for (const m of allMatches) {
+      if (m.tournament) seen.add(m.tournament);
+    }
+    return [...seen].sort();
+  }, [allMatches]);
 
+  // Matches filtered by selected competition (or all matches)
+  const matches = useMemo(() =>
+    competitionFilter ? allMatches.filter(m => m.tournament === competitionFilter) : allMatches
+  , [allMatches, competitionFilter]);
+
+  // When competition filter is active, re-compute base stats from match records
+  // (rawStats are season-aggregated totals and cannot be split by competition)
+  const filteredStats = useMemo<Record<number, import("@/types/playerStats").PlayerSeasonStats> | null>(() => {
+    if (!competitionFilter) return null;
+    const map: Record<number, import("@/types/playerStats").PlayerSeasonStats> = {};
     for (const p of allPlayers) {
-      let ratingSum = 0; let ratingCount = 0;
-      let hatTricks = 0;
-      let totalPenScored = 0;
-      let totalMotm = 0;
-      let totalShots = 0;
-      let shotAccSum = 0; let shotAccCount = 0;
-      let totalPasses = 0;
-      let passAccSum = 0; let passAccCount = 0;
-      let totalKeyPasses = 0;
-      let totalDrib = 0;
-      let totalRecov = 0;
-      let totalLosses = 0;
-      let totalSaves = 0;
-      let totalPenSaved = 0;
-      let totalGoalsAgainst = 0;
-
+      let goals = 0, assists = 0, starters = 0, subs = 0;
+      let yellow = 0, red = 0, missedPen = 0;
       for (const m of matches) {
+        const isStarter = m.starterIds.includes(p.id);
+        const isSub     = m.subIds.includes(p.id);
+        if (!isStarter && !isSub) continue;
+        if (isStarter) starters++; else subs++;
+        const ps = m.playerStats?.[p.id];
+        if (ps) {
+          goals     += (ps.goals ?? []).length;
+          assists   += Object.values(m.playerStats ?? {}).reduce(
+            (a, pms) => a + (pms.goals ?? []).filter((g: { assistPlayerId?: number }) => g.assistPlayerId === p.id).length, 0
+          );
+          if (ps.yellowCard)  yellow++;
+          if (ps.yellowCard2) yellow++;
+          if (ps.redCard)     red++;
+          if (ps.missedPenalty) missedPen++;
+        }
+      }
+      map[p.id] = {
+        playerId: p.id,
+        goals, assists, matchesAsStarter: starters, matchesAsSubstitute: subs,
+        totalMinutes: 0, yellowCards: yellow, redCards: red,
+        totalOwnGoals: 0, totalMissedPenalties: missedPen,
+        recentRatings: [], mood: "neutro", fanMoral: "neutro",
+        motmCount: undefined,
+      };
+    }
+    return map;
+  }, [competitionFilter, allPlayers, matches]);
+
+  const activeStats = filteredStats ?? rawStats;
+
+  function computeDerived(playerList: typeof allPlayers, matchList: typeof matches): Record<number, DerivedStats> {
+    const map: Record<number, DerivedStats> = {};
+    for (const p of playerList) {
+      let ratingSum = 0; let ratingCount = 0;
+      let hatTricks = 0, totalPenScored = 0, totalMotm = 0;
+      let totalShots = 0, shotAccSum = 0, shotAccCount = 0;
+      let totalPasses = 0, passAccSum = 0, passAccCount = 0;
+      let totalKeyPasses = 0, totalDrib = 0, totalRecov = 0, totalLosses = 0;
+      let totalSaves = 0, totalPenSaved = 0, totalGoalsAgainst = 0;
+      for (const m of matchList) {
         const ps = m.playerStats[p.id];
         const isInMatch = m.starterIds.includes(p.id) || m.subIds.includes(p.id);
         if (!isInMatch) continue;
-
         if (m.motmPlayerId === p.id) totalMotm++;
-
         if (ps) {
           if (ps.rating > 0) { ratingSum += ps.rating; ratingCount++; }
           if (ps.goals.length >= 3) hatTricks++;
@@ -247,49 +288,43 @@ export function PlayerStatsTable({ careerId, seasonId, allPlayers, statsOverride
             totalShots += ps.shots;
             if (ps.shotsOnTargetPct != null) { shotAccSum += ps.shotsOnTargetPct; shotAccCount++; }
           }
-          if (ps.passes != null)            totalPasses     += ps.passes;
-          if (ps.passAccuracy != null)      { passAccSum += ps.passAccuracy; passAccCount++; }
-          if (ps.keyPasses != null)         totalKeyPasses  += ps.keyPasses;
-          if (ps.dribblesCompleted != null)  totalDrib       += ps.dribblesCompleted;
-          if (ps.ballRecoveries != null)    totalRecov       += ps.ballRecoveries;
-          if (ps.ballLosses != null)        totalLosses      += ps.ballLosses;
-          if (ps.saves != null)             totalSaves       += ps.saves;
-          if (ps.penaltiesSaved != null)    totalPenSaved    += ps.penaltiesSaved;
+          if (ps.passes != null)           totalPasses    += ps.passes;
+          if (ps.passAccuracy != null)     { passAccSum += ps.passAccuracy; passAccCount++; }
+          if (ps.keyPasses != null)        totalKeyPasses += ps.keyPasses;
+          if (ps.dribblesCompleted != null) totalDrib      += ps.dribblesCompleted;
+          if (ps.ballRecoveries != null)   totalRecov      += ps.ballRecoveries;
+          if (ps.ballLosses != null)       totalLosses     += ps.ballLosses;
+          if (ps.saves != null)            totalSaves      += ps.saves;
+          if (ps.penaltiesSaved != null)   totalPenSaved   += ps.penaltiesSaved;
         }
-
         const ov = overrides[p.id];
-        const effectivePos = (ov?.positionOverride ?? p.positionPtBr);
-        if (effectivePos === "GOL" && m.starterIds.includes(p.id)) {
-          totalGoalsAgainst += m.opponentScore;
-        }
+        const effectivePos = ov?.positionOverride ?? p.positionPtBr;
+        if (effectivePos === "GOL" && m.starterIds.includes(p.id)) totalGoalsAgainst += m.opponentScore;
       }
-
       map[p.id] = {
         avgRating: ratingCount > 0 ? ratingSum / ratingCount : null,
-        hatTricks,
-        totalPenScored,
-        totalMotm,
-        totalShots,
+        hatTricks, totalPenScored, totalMotm, totalShots,
         shotAccuracy: shotAccCount > 0 ? shotAccSum / shotAccCount : null,
         totalPasses,
         passAccuracy: passAccCount > 0 ? passAccSum / passAccCount : null,
-        totalKeyPasses,
-        totalDribblesCompleted: totalDrib,
-        totalBallRecoveries: totalRecov,
-        totalBallLosses: totalLosses,
-        totalSaves,
-        totalPenaltiesSaved: totalPenSaved,
-        totalGoalsAgainst,
+        totalKeyPasses, totalDribblesCompleted: totalDrib,
+        totalBallRecoveries: totalRecov, totalBallLosses: totalLosses,
+        totalSaves, totalPenaltiesSaved: totalPenSaved, totalGoalsAgainst,
       };
     }
-
     return map;
-  }, [allPlayers, matches, overrides]);
+  }
+
+  const derivedMap = useMemo<Record<number, DerivedStats>>(
+    () => computeDerived(allPlayers, matches),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [allPlayers, matches, overrides]
+  );
 
   const rows: Row[] = useMemo(() => {
     return allPlayers
       .filter((p) => {
-        const s = rawStats[p.id];
+        const s = activeStats[p.id];
         if (!s) return false;
         return s.goals > 0 || s.assists > 0 || s.matchesAsStarter > 0 || s.matchesAsSubstitute > 0;
       })
@@ -297,7 +332,7 @@ export function PlayerStatsTable({ careerId, seasonId, allPlayers, statsOverride
         const ov = overrides[p.id];
         return {
           player: p,
-          stats: rawStats[p.id],
+          stats: activeStats[p.id],
           derived: derivedMap[p.id] ?? {
             avgRating: null, hatTricks: 0, totalPenScored: 0, totalMotm: 0,
             totalShots: 0, shotAccuracy: null,
@@ -310,7 +345,7 @@ export function PlayerStatsTable({ careerId, seasonId, allPlayers, statsOverride
           displayPos: ov?.positionOverride ?? p.positionPtBr,
         };
       });
-  }, [allPlayers, rawStats, overrides, derivedMap]);
+  }, [allPlayers, activeStats, overrides, derivedMap]);
 
   const visibleRows = useMemo(() => {
     if (filter === "goleiro") return rows.filter((r) => r.displayPos === "GOL");
@@ -425,6 +460,27 @@ export function PlayerStatsTable({ careerId, seasonId, allPlayers, statsOverride
             </button>
           );
         })}
+
+        {competitions.length > 0 && (
+          <select
+            value={competitionFilter}
+            onChange={e => setCompetitionFilter(e.target.value)}
+            className="ml-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold focus:outline-none transition-all duration-200"
+            style={{
+              background: competitionFilter ? "rgba(var(--club-primary-rgb),0.15)" : "rgba(255,255,255,0.05)",
+              color: competitionFilter ? "var(--club-primary)" : "rgba(255,255,255,0.4)",
+              border: competitionFilter
+                ? "1px solid rgba(var(--club-primary-rgb),0.25)"
+                : "1px solid rgba(255,255,255,0.07)",
+              colorScheme: "dark",
+            }}
+          >
+            <option value="">🏆 Todas</option>
+            {competitions.map(c => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+        )}
 
         <div className="relative" ref={legendRef}>
           <button
