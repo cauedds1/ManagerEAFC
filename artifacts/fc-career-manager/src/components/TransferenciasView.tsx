@@ -1189,9 +1189,28 @@ export function TransferenciasView({
       ? Math.max(1, Math.min(99, ovrVal))
       : undefined;
 
-    if (isEntrada && signingOvr != null) {
-      setPlayerOverride(careerId, playerId, { overall: signingOvr });
+    if (isEntrada) {
+      const contractYearsNum = parseInt(form.contractYears, 10) || 0;
+      const salaryNum = parseFloat(form.salary) || 0;
+      const seasonStartYear = parseInt(season.split("/")[0], 10) || new Date().getFullYear();
+      const contractOverride: Record<string, unknown> = {};
+      if (signingOvr != null) contractOverride.overall = signingOvr;
+      if (salaryNum > 0) contractOverride.salary = salaryNum;
+      if (contractYearsNum > 0) {
+        contractOverride.contractStart = String(seasonStartYear);
+        contractOverride.contractEnd   = String(seasonStartYear + contractYearsNum);
+      }
+      if (form.playerPhoto.trim()) contractOverride.photoOverride = form.playerPhoto.trim();
+      if (form.shirtNumber.trim()) {
+        const num = parseInt(form.shirtNumber, 10);
+        if (!isNaN(num)) contractOverride.shirtNumber = num;
+      }
+      if (Object.keys(contractOverride).length > 0) {
+        setPlayerOverride(careerId, playerId, contractOverride as Parameters<typeof setPlayerOverride>[2]);
+      }
+    }
 
+    if (isEntrada && signingOvr != null) {
       if (onHighValueSigning) {
         const allOverrides = getAllPlayerOverrides(careerId);
         const ovrs = allPlayers
