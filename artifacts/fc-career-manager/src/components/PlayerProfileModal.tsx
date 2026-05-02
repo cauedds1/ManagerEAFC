@@ -218,8 +218,7 @@ export function PlayerProfileModal({
             avgRating,
             motm,
           };
-        })
-        ;
+        });
       setCareerData(data);
       setCareerLoaded(true);
     });
