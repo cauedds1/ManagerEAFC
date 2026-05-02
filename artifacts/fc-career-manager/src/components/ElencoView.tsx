@@ -302,15 +302,17 @@ export function ElencoView({
     fetch(`/api/players/team-details?teamId=${teamId}&season=${season}`, { headers })
       .then(r => r.ok ? r.json() : null)
       .then((data: { players: Array<{ playerId: number; nationality: string; height: string; weight: string }> } | null) => {
-        if (data === null) {
-          // HTTP error (4xx/5xx): don't persist flag, allow retry on next mount.
+        if (data === null || !data.players?.length) {
+          // HTTP error (non-OK response) or empty players array: don't persist
+          // the sentinel — no player data was actually populated, so allow
+          // retry on the next mount.
           backfillDoneRef.current = false;
           return;
         }
-        // HTTP-OK (even if players array is empty): mark as attempted so we
-        // never call the API again for this career+team combination.
+        // HTTP-OK with at least one player record: the backfill ran successfully.
+        // Persist the sentinel now so the API is never called again for this
+        // career+team (some players may legitimately have no API data).
         localStorage.setItem(persistKey, "1");
-        if (!data.players?.length) return;
         for (const info of data.players) {
           if (!playerIdSet.has(info.playerId)) continue;
           if (!info.nationality && !info.height && !info.weight) continue;

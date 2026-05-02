@@ -182,14 +182,15 @@ export function PlayerProfileModal({
     if (!selectedSeasonId || (tab !== "season" && tab !== "matches")) return;
     let cancelled = false;
     const load = async () => {
-      // Only sync from DB when the season hasn't been synced in this session
-      // AND match data isn't already available locally (session or localStorage).
-      const alreadyLoaded = syncedRef.current.has(selectedSeasonId)
-        || getMatches(selectedSeasonId).length > 0;
-      if (!alreadyLoaded) {
+      // Sync from DB every time a season is first visited in this session.
+      // syncedRef is only updated after a successful sync so a failed fetch
+      // does not permanently suppress future sync attempts.
+      if (!syncedRef.current.has(selectedSeasonId)) {
         setIsSyncing(true);
-        try { await syncSeasonFromDb(selectedSeasonId); } catch {}
-        syncedRef.current.add(selectedSeasonId);
+        try {
+          await syncSeasonFromDb(selectedSeasonId);
+          syncedRef.current.add(selectedSeasonId);
+        } catch { /* leave syncedRef unset → retries on next visit */ }
       }
       if (!cancelled) {
         setIsSyncing(false);
