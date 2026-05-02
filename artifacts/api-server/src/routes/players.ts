@@ -456,8 +456,16 @@ router.get("/players/team-details", async (req, res) => {
           headers: { "x-apisports-key": apiKey },
           signal: AbortSignal.timeout(15000),
         });
-      } catch { break; }
-      if (!afRes.ok) break;
+      } catch (err) {
+        // Network/timeout error — throw so the outer handler returns 502/503
+        // and the client knows the backfill was incomplete.
+        throw new Error(`Network error fetching page ${page} for season ${season}: ${String(err)}`);
+      }
+      if (!afRes.ok) {
+        // API Football returned an error (429 rate-limit, 5xx, etc.) — throw so
+        // the client can retry later instead of permanently marking as complete.
+        throw new Error(`API Football responded ${afRes.status} on page ${page} for season ${season}`);
+      }
       const data = await afRes.json() as {
         response?: Array<{
           player: {
@@ -492,8 +500,10 @@ router.get("/players/team-details", async (req, res) => {
     }
     return res.json({ players });
   } catch (err) {
+    // Upstream API failure (network, rate-limit, non-OK status): return 502 so
+    // the client knows the response is incomplete and can retry later.
     console.error("GET /players/team-details error:", err);
-    return res.status(500).json({ error: "Internal server error" });
+    return res.status(502).json({ error: "Upstream API error — please retry" });
   }
 });
 
