@@ -263,11 +263,75 @@ export function PlayerProfileModal({
   const displayPhoto = override?.photoOverride ?? player.photo;
   const posStyle     = POS_STYLE[displayPos] ?? POS_STYLE.MID;
 
+  // Reset cached career data when the modal switches to a different player
+  // or career so the dropdown filter and career table refetch correctly.
   useEffect(() => {
-    getSeasons(careerId).then(seasons =>
-      setAllSeasons(seasons.map(s => ({ id: s.id, label: s.label })))
-    );
-  }, [careerId]);
+    setCareerLoaded(false);
+    setCareerData([]);
+    setAllSeasons([]);
+  }, [careerId, player.id]);
+
+  // Eagerly load career-wide season stats on mount so the season dropdown can
+  // be filtered to only seasons where this player actually played for the club.
+  // For seasons whose stats are not yet in session storage we sync them once
+  // (the same logic the Career tab used to do lazily) and reuse the result.
+  useEffect(() => {
+    if (careerLoaded) return;
+    let cancelled = false;
+    getSeasons(careerId).then(async seasons => {
+      if (cancelled) return;
+      const rows = await Promise.all(seasons.map(async s => {
+        let st = getPlayerStats(s.id, player.id);
+        let motm: number;
+        if (st.motmCount !== undefined) {
+          motm = st.motmCount;
+        } else {
+          // motmCount not persisted — sync this season from DB so we can
+          // derive both player stats and MOTM accurately.
+          try { await syncSeasonFromDb(s.id); } catch { /* best-effort */ }
+          st = getPlayerStats(s.id, player.id);
+          const derived = getMatches(s.id).filter(m => m.motmPlayerId === player.id).length;
+          if (derived > 0) {
+            setPlayerStats(s.id, player.id, { ...st, motmCount: derived }, false);
+          }
+          motm = derived;
+        }
+        const ratings = st.recentRatings ?? [];
+        const avgRating = ratings.length
+          ? ratings.reduce((a: number, b: number) => a + b, 0) / ratings.length
+          : 0;
+        return {
+          seasonId: s.id,
+          label: s.label,
+          goals: st.goals,
+          assists: st.assists,
+          matches: st.matchesAsStarter + st.matchesAsSubstitute,
+          minutes: st.totalMinutes,
+          avgRating,
+          motm,
+        };
+      }));
+      if (cancelled) return;
+      const playedRows = rows.filter(r => r.matches > 0);
+      setCareerData(playedRows);
+      setAllSeasons(playedRows.map(r => ({ id: r.seasonId, label: r.label })));
+      setCareerLoaded(true);
+      // If the initially-selected season is one the player never played for
+      // this club, fall back to the most recent played season so the user
+      // does not see an empty "Sem dados" view by default. `playedRows`
+      // preserves the order of `seasons`, which the server returns sorted by
+      // `createdAt` ASC (see GET /careers/:id/seasons), so the tail is the
+      // most recently created season the player has matches in.
+      if (playedRows.length > 0 && !playedRows.some(r => r.seasonId === selectedSeasonId)) {
+        setSelectedSeasonId(playedRows[playedRows.length - 1].seasonId);
+      }
+    });
+    return () => { cancelled = true; };
+  // selectedSeasonId is read for the auto-select fallback but we deliberately
+  // don't re-run when it changes — this effect should only fire once per
+  // (career, player).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [careerLoaded, careerId, player.id]);
 
   useEffect(() => {
     if (tab !== "season" && tab !== "matches") return;
@@ -297,50 +361,6 @@ export function PlayerProfileModal({
     load();
     return () => { cancelled = true; };
   }, [selectedSeasonId, tab]);
-
-  useEffect(() => {
-    if (tab !== "career" || careerLoaded) return;
-    let cancelled = false;
-    getSeasons(careerId).then(async seasons => {
-      if (cancelled) return;
-      // Build career rows. For seasons where motmCount is not yet persisted,
-      // sync that season's matches from DB so MOTM can be derived accurately
-      // (parallel fetches — one per season that needs it).
-      const rows = await Promise.all(seasons.map(async s => {
-        const st = getPlayerStats(s.id, player.id);
-        let motm: number;
-        if (st.motmCount !== undefined) {
-          motm = st.motmCount;
-        } else {
-          // motmCount not persisted — sync this season from DB to get matches.
-          try { await syncSeasonFromDb(s.id); } catch { /* best-effort */ }
-          const derived = getMatches(s.id).filter(m => m.motmPlayerId === player.id).length;
-          if (derived > 0) {
-            setPlayerStats(s.id, player.id, { ...st, motmCount: derived }, false);
-          }
-          motm = derived;
-        }
-        const ratings = st.recentRatings ?? [];
-        const avgRating = ratings.length
-          ? ratings.reduce((a: number, b: number) => a + b, 0) / ratings.length
-          : 0;
-        return {
-          seasonId: s.id,
-          label: s.label,
-          goals: st.goals,
-          assists: st.assists,
-          matches: st.matchesAsStarter + st.matchesAsSubstitute,
-          minutes: st.totalMinutes,
-          avgRating,
-          motm,
-        };
-      }));
-      if (cancelled) return;
-      setCareerData(rows.filter(r => r.matches > 0));
-      setCareerLoaded(true);
-    });
-    return () => { cancelled = true; };
-  }, [tab, careerLoaded, careerId, player.id]);
 
   const playerMatches = useMemo<MatchItem[]>(() =>
     seasonMatches
