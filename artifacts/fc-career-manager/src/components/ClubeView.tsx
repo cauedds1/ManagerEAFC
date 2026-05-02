@@ -395,7 +395,13 @@ export function ClubeView({
           <TrophyCabinetView careerId={careerId} />
         )}
         {sub === "recordes" && (
-          <RecordesView careerId={careerId} seasons={seasons} clubName={career.clubName} />
+          <RecordesView
+            careerId={careerId}
+            seasons={seasons}
+            clubName={career.clubName}
+            allPlayers={statsPlayers}
+            overrides={clubOverrides}
+          />
         )}
       </div>
 

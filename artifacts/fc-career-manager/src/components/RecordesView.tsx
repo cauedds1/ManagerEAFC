@@ -5,12 +5,14 @@ import type { MatchRecord } from "@/types/match";
 import type { Season } from "@/types/career";
 import { useLang } from "@/hooks/useLang";
 import { CLUBE } from "@/lib/i18n";
-import { computeCareerRecords } from "@/lib/recordsCalculator";
+import { computeCareerRecords, type PlayerRecordEntry, type PlayerLookupEntry, type PlayerOverrideLookup } from "@/lib/recordsCalculator";
 
 interface Props {
   careerId: string;
   seasons: Season[];
   clubName: string;
+  allPlayers?: PlayerLookupEntry[];
+  overrides?: Record<number, PlayerOverrideLookup>;
 }
 
 function fmtDate(d: string | null): string {
@@ -78,6 +80,66 @@ function RecordCard({
   );
 }
 
+function PlayerRecordCard({
+  icon,
+  title,
+  accent = "rgba(var(--club-primary-rgb),0.9)",
+  entry,
+  subText,
+  formatValue,
+}: {
+  icon: string;
+  title: string;
+  accent?: string;
+  entry: PlayerRecordEntry | null;
+  subText?: string;
+  formatValue?: (v: number) => string;
+}) {
+  const empty = !entry;
+  const valueText = entry ? (formatValue ? formatValue(entry.value) : String(entry.value)) : "—";
+  const initials = entry?.playerName
+    ? entry.playerName.trim().split(/\s+/).slice(0, 2).map((s) => s[0]).join("").toUpperCase()
+    : "";
+  return (
+    <div
+      className="rounded-xl px-4 py-3 flex items-center gap-3"
+      style={{
+        background: "rgba(255,255,255,0.03)",
+        border: `1px solid ${empty ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.07)"}`,
+      }}
+    >
+      <span className="text-lg leading-none flex-shrink-0">{icon}</span>
+      <div
+        className="w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center overflow-hidden"
+        style={{ background: "rgba(255,255,255,0.06)" }}
+      >
+        {entry?.playerPhoto ? (
+          <img src={entry.playerPhoto} alt="" className="w-full h-full object-cover" />
+        ) : (
+          <span className="text-[10px] font-bold text-white/45">{initials || "—"}</span>
+        )}
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-[11px] font-semibold text-white/50 leading-tight">{title}</p>
+        <p className="text-[12px] text-white/80 mt-0.5 leading-snug truncate font-semibold">
+          {entry?.playerName ?? "—"}
+        </p>
+        {subText && (
+          <p className="text-[10px] text-white/35 mt-0.5 leading-snug truncate">
+            {entry?.matches != null ? `${entry.matches} · ${subText}` : subText}
+          </p>
+        )}
+      </div>
+      <div
+        className="text-xl font-black tabular-nums leading-none ml-2 flex-shrink-0"
+        style={{ color: empty ? "rgba(255,255,255,0.15)" : accent }}
+      >
+        {valueText}
+      </div>
+    </div>
+  );
+}
+
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="space-y-2">
@@ -89,7 +151,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-export function RecordesView({ careerId, seasons, clubName }: Props) {
+export function RecordesView({ careerId, seasons, clubName, allPlayers, overrides }: Props) {
   const [lang] = useLang();
   const t = CLUBE[lang];
 
@@ -125,8 +187,8 @@ export function RecordesView({ careerId, seasons, clubName }: Props) {
   }, [careerId, seasons]);
 
   const records = useMemo(
-    () => computeCareerRecords(matches, seasons, clubName),
-    [matches, seasons, clubName],
+    () => computeCareerRecords(matches, seasons, clubName, allPlayers ?? [], overrides ?? {}),
+    [matches, seasons, clubName, allPlayers, overrides],
   );
 
   if (matches.length === 0 && syncing) {
@@ -243,6 +305,21 @@ export function RecordesView({ careerId, seasons, clubName }: Props) {
         <RecordCard icon="🔥" title={t.recStreakWins}            accent={winColor}  {...streakRecord(records.sequencias.longestWinning)} />
         <RecordCard icon="🛡️" title={t.recStreakUnbeaten}       accent={blueColor} {...streakRecord(records.sequencias.longestUnbeaten)} />
         <RecordCard icon="🧤" title={t.recStreakCleanSheet}      accent={blueColor} {...streakRecord(records.sequencias.longestCleanSheet)} />
+      </Section>
+
+      <Section title={t.recordsSecPlayers}>
+        <PlayerRecordCard icon="👑" title={t.recPlayerTopScorer}    accent={goldColor} entry={records.jogadores.topScorer} />
+        <PlayerRecordCard icon="🎯" title={t.recPlayerTopAssists}   accent={blueColor} entry={records.jogadores.topAssists} />
+        <PlayerRecordCard icon="⭐" title={t.recPlayerMostMotm}     accent={goldColor} entry={records.jogadores.mostMotm} />
+        <PlayerRecordCard icon="📅" title={t.recPlayerMostMatches}  accent={blueColor} entry={records.jogadores.mostMatches} />
+        <PlayerRecordCard
+          icon="📈"
+          title={t.recPlayerBestRating}
+          accent={goldColor}
+          entry={records.jogadores.bestAvgRating}
+          subText={t.recPlayerMinMatches.replace("{n}", "10")}
+          formatValue={(v) => v.toFixed(2)}
+        />
       </Section>
 
       <Section title={t.recordsSecYear}>

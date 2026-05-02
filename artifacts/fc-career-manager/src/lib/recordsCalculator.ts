@@ -1,6 +1,25 @@
-import type { MatchRecord } from "@/types/match";
+import type { MatchRecord, PlayerSnapshotEntry } from "@/types/match";
 import { getMatchResultFull } from "@/types/match";
 import type { Season } from "@/types/career";
+
+export interface PlayerLookupEntry {
+  id: number;
+  name: string;
+  photo?: string;
+}
+
+export interface PlayerOverrideLookup {
+  nameOverride?: string;
+  photoOverride?: string;
+}
+
+export interface PlayerRecordEntry {
+  playerId: number;
+  playerName: string;
+  playerPhoto: string;
+  value: number;
+  matches?: number;
+}
 
 export interface MatchRecordEntry {
   value: number;
@@ -82,9 +101,17 @@ export interface CareerRecords {
     longestUnbeaten:       StreakRecordEntry | null;
     longestCleanSheet:     StreakRecordEntry | null;
   };
+  jogadores: {
+    topScorer:       PlayerRecordEntry | null;
+    topAssists:      PlayerRecordEntry | null;
+    mostMotm:        PlayerRecordEntry | null;
+    mostMatches:     PlayerRecordEntry | null;
+    bestAvgRating:   PlayerRecordEntry | null;
+  };
 }
 
 const MIN_MATCHES_FOR_AVG = 5;
+const MIN_MATCHES_FOR_RATING_AVG = 10;
 
 function scoreLineFor(m: MatchRecord, clubName: string): string {
   const us = clubName?.trim() || "—";
@@ -209,10 +236,115 @@ function computeStreaks(matches: MatchRecord[]): CareerRecords["sequencias"] {
   };
 }
 
+function computePlayerRecords(
+  matches: MatchRecord[],
+  players: PlayerLookupEntry[],
+  overrides: Record<number, PlayerOverrideLookup>,
+): CareerRecords["jogadores"] {
+  const goals       = new Map<number, number>();
+  const assists     = new Map<number, number>();
+  const motm        = new Map<number, number>();
+  const games       = new Map<number, number>();
+  const ratingSum   = new Map<number, number>();
+  const ratingCount = new Map<number, number>();
+  // Latest snapshot per player (so name/photo survives the player leaving the squad)
+  const snapByPlayer = new Map<number, { date: string; snap: PlayerSnapshotEntry }>();
+
+  function bump(map: Map<number, number>, id: number, delta: number): void {
+    map.set(id, (map.get(id) ?? 0) + delta);
+  }
+
+  for (const m of matches) {
+    if (m.playerSnapshot) {
+      for (const [idStr, snap] of Object.entries(m.playerSnapshot)) {
+        const id = Number(idStr);
+        const cur = snapByPlayer.get(id);
+        const date = m.date || "";
+        if (!cur || date >= cur.date) snapByPlayer.set(id, { date, snap });
+      }
+    }
+    const stats = m.playerStats || {};
+    const playedIds = new Set<number>();
+    for (const [idStr, ps] of Object.entries(stats)) {
+      const id = Number(idStr);
+      if (!ps) continue;
+      playedIds.add(id);
+      if (Array.isArray(ps.goals)) {
+        for (const g of ps.goals) {
+          bump(goals, id, 1);
+          if (g.assistPlayerId != null) bump(assists, g.assistPlayerId, 1);
+        }
+      }
+      if (typeof ps.rating === "number" && ps.rating > 0) {
+        bump(ratingSum, id, ps.rating);
+        bump(ratingCount, id, 1);
+      }
+    }
+    for (const id of playedIds) bump(games, id, 1);
+    if (m.motmPlayerId != null) bump(motm, m.motmPlayerId, 1);
+  }
+
+  const playerById = new Map(players.map((p) => [p.id, p]));
+
+  function resolveDisplay(id: number): { name: string; photo: string } {
+    const ovr = overrides[id];
+    const base = playerById.get(id);
+    const snap = snapByPlayer.get(id)?.snap;
+    const name =
+      ovr?.nameOverride
+      ?? base?.name
+      ?? snap?.name
+      ?? `#${id}`;
+    const photo =
+      ovr?.photoOverride
+      || base?.photo
+      || snap?.photo
+      || "";
+    return { name, photo };
+  }
+
+  function pickMax(map: Map<number, number>): PlayerRecordEntry | null {
+    let bestId: number | null = null;
+    let bestVal = 0;
+    for (const [id, v] of map.entries()) {
+      if (v > bestVal) { bestVal = v; bestId = id; }
+    }
+    if (bestId == null || bestVal <= 0) return null;
+    const d = resolveDisplay(bestId);
+    return { playerId: bestId, playerName: d.name, playerPhoto: d.photo, value: bestVal };
+  }
+
+  let bestAvg: PlayerRecordEntry | null = null;
+  for (const [id, count] of ratingCount.entries()) {
+    if (count < MIN_MATCHES_FOR_RATING_AVG) continue;
+    const avg = (ratingSum.get(id) ?? 0) / count;
+    if (!bestAvg || avg > bestAvg.value) {
+      const d = resolveDisplay(id);
+      bestAvg = {
+        playerId: id,
+        playerName: d.name,
+        playerPhoto: d.photo,
+        value: Math.round(avg * 100) / 100,
+        matches: count,
+      };
+    }
+  }
+
+  const topScorer   = pickMax(goals);
+  const topAssists  = pickMax(assists);
+  const mostMotm    = pickMax(motm);
+  const mostMatches = pickMax(games);
+  if (mostMatches) mostMatches.matches = mostMatches.value;
+
+  return { topScorer, topAssists, mostMotm, mostMatches, bestAvgRating: bestAvg };
+}
+
 export function computeCareerRecords(
   matches: MatchRecord[],
   seasons: Season[],
   clubName: string,
+  players: PlayerLookupEntry[] = [],
+  overrides: Record<number, PlayerOverrideLookup> = {},
 ): CareerRecords {
   const seasonsById = new Map(seasons.map((s) => [s.id, s]));
 
@@ -348,5 +480,6 @@ export function computeCareerRecords(
     temporada,
     anoCivil,
     sequencias: computeStreaks(matches),
+    jogadores: computePlayerRecords(matches, players, overrides),
   };
 }
