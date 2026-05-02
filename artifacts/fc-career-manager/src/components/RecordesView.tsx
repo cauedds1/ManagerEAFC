@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { getMatches } from "@/lib/matchStorage";
+import { getMatches, getAllMatchesForCareer } from "@/lib/matchStorage";
 import { syncSeasonFromDb } from "@/lib/dbSync";
 import type { MatchRecord } from "@/types/match";
 import type { Season } from "@/types/career";
@@ -26,18 +26,18 @@ function dateRange(start: string | null, end: string | null): string {
   return `${fmtDate(start)} → ${fmtDate(end)}`;
 }
 
-// Load matches across every provided season, falling back to the locally
-// cached values while the DB sync is in flight so the user sees data
-// immediately. Returns a deduped, freshly-computed array each call.
-function loadAllSeasonMatches(seasons: Season[]): MatchRecord[] {
+// Load every locally-cached match for the active career (across all
+// season storage keys). Used as the immediate source of truth while DB
+// hydration of any uncached seasons is in flight. Returns a deduped
+// array each call.
+function loadAllCareerMatches(careerId: string): MatchRecord[] {
+  const all = getAllMatchesForCareer(careerId);
   const seen = new Set<string>();
   const out: MatchRecord[] = [];
-  for (const s of seasons) {
-    for (const m of getMatches(s.id)) {
-      if (seen.has(m.id)) continue;
-      seen.add(m.id);
-      out.push(m);
-    }
+  for (const m of all) {
+    if (seen.has(m.id)) continue;
+    seen.add(m.id);
+    out.push(m);
   }
   return out;
 }
@@ -96,27 +96,27 @@ export function RecordesView({ careerId, seasons, clubName }: Props) {
   const [lang] = useLang();
   const t = CLUBE[lang];
 
-  // Hydrate every season from the DB on mount so finalized/historical
-  // seasons whose matches aren't in the current sessionStorage are still
-  // included in the calculation. We fall back to the locally available
-  // matches immediately and re-render once the sync completes.
-  const [matches, setMatches] = useState<MatchRecord[]>(() => loadAllSeasonMatches(seasons));
-  const [syncing, setSyncing] = useState<boolean>(() => loadAllSeasonMatches(seasons).length === 0);
+  // Records are computed from every match in the active career
+  // (getAllMatchesForCareer scans every season storage key for matches
+  // tagged with this careerId). For seasons that have no entries cached
+  // yet — typically finalized/historical ones — we hydrate from the DB
+  // and recompute. We deliberately skip hydration for seasons that
+  // already have local data to avoid overwriting an optimistically-added
+  // match that hasn't persisted yet.
+  const [matches, setMatches] = useState<MatchRecord[]>(() => loadAllCareerMatches(careerId));
+  const [syncing, setSyncing] = useState<boolean>(() => loadAllCareerMatches(careerId).length === 0);
   const syncedKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     const seasonIds = seasons.map((s) => s.id);
     const key = `${careerId}::${seasonIds.join(",")}`;
-    const localMatches = loadAllSeasonMatches(seasons);
+    const localMatches = loadAllCareerMatches(careerId);
     setMatches(localMatches);
     if (syncedKeyRef.current === key || seasonIds.length === 0) {
       setSyncing(false);
       return;
     }
     syncedKeyRef.current = key;
-    // Only hydrate seasons with NO matches in local cache yet — this avoids
-    // overwriting optimistic local data on the active season (e.g. a match
-    // just added but not yet persisted to the DB) with stale rows.
     const seasonsToSync = seasonIds.filter((id) => getMatches(id).length === 0);
     if (seasonsToSync.length === 0) {
       setSyncing(false);
@@ -127,7 +127,7 @@ export function RecordesView({ careerId, seasons, clubName }: Props) {
     Promise.all(seasonsToSync.map((id) => syncSeasonFromDb(id).catch(() => {})))
       .then(() => {
         if (cancelled) return;
-        setMatches(loadAllSeasonMatches(seasons));
+        setMatches(loadAllCareerMatches(careerId));
         setSyncing(false);
       });
     return () => { cancelled = true; };
