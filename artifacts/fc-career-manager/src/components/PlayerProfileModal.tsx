@@ -206,8 +206,13 @@ export function PlayerProfileModal({
           if (st.motmCount !== undefined) {
             motm = st.motmCount;
           } else {
-            motm = getMatches(s.id).filter(m => m.motmPlayerId === player.id).length;
-            setPlayerStats(s.id, player.id, { ...st, motmCount: motm }, false);
+            const derived = getMatches(s.id).filter(m => m.motmPlayerId === player.id).length;
+            // Only persist when > 0 to avoid writing incorrect zeroes for
+            // historical seasons whose matches aren't loaded in this session.
+            if (derived > 0) {
+              setPlayerStats(s.id, player.id, { ...st, motmCount: derived }, false);
+            }
+            motm = derived;
           }
           const ratings = st.recentRatings ?? [];
           const avgRating = ratings.length

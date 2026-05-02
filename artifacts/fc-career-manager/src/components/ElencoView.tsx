@@ -284,10 +284,15 @@ export function ElencoView({
   }, [customPlayers, onCustomPlayersChange]);
 
   useEffect(() => {
-    if (backfillDoneRef.current || !teamId || isDemo) return;
+    if (!teamId || isDemo) return;
+    // Persist the backfill "attempted" flag in localStorage so we never retry
+    // even across remounts or page reloads for this career+team combination.
+    const persistKey = `bf_done_${careerId}_${teamId}`;
+    if (backfillDoneRef.current || localStorage.getItem(persistKey)) return;
     const needsBackfill = allPlayers.some(p => !overrides[p.id]?.nationality);
     if (!needsBackfill) return;
     backfillDoneRef.current = true;
+    localStorage.setItem(persistKey, "1");
     const playerIdSet = new Set(allPlayers.map(p => p.id));
     const season = String(backfillSeasonYear ?? new Date().getFullYear());
     const token = getEffectiveToken();
