@@ -277,6 +277,7 @@ export function ElencoView({
   const importInputRef = useRef<HTMLInputElement>(null);
   const [profilePlayer, setProfilePlayer] = useState<SquadPlayer | null>(null);
   const backfillDoneRef = useRef(false);
+  const [backfillLoading, setBackfillLoading] = useState(false);
 
   const hiddenSet = useMemo(() => new Set(hiddenPlayerIds), [hiddenPlayerIds]);
 
@@ -284,67 +285,60 @@ export function ElencoView({
     onCustomPlayersChange?.(customPlayers);
   }, [customPlayers, onCustomPlayersChange]);
 
-  useEffect(() => {
-    // Skip for demo mode and custom clubs (no valid API Football teamId).
+  async function runBackfill(force = false) {
     if (!teamId || isDemo || isCustomClub) return;
-    // Durable sentinel: written after the first HTTP-OK response so the API is
-    // never called again for this career+team, regardless of data completeness.
-    // Not written on HTTP errors (4xx/5xx) or network failures — those reset the
-    // in-memory ref so the next mount can retry the request.
     const persistKey = `bf_done_${careerId}_${teamId}`;
-    if (backfillDoneRef.current || localStorage.getItem(persistKey)) return;
-    const needsBackfill = allPlayers.some(p => !overrides[p.id]?.nationality);
+    const retryKey   = `bf_retry_${careerId}_${teamId}`;
+    if (!force && (backfillDoneRef.current || localStorage.getItem(persistKey))) return;
+    const needsBackfill = force || allPlayers.some(p => !overrides[p.id]?.nationality);
     if (!needsBackfill) return;
     backfillDoneRef.current = true;
+    if (force) setBackfillLoading(true);
     const playerIdSet = new Set(allPlayers.map(p => p.id));
     const season = String(backfillSeasonYear ?? new Date().getFullYear());
     const token = getEffectiveToken();
     const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
-    fetch(`/api/players/team-details?teamId=${teamId}&season=${season}`, { headers })
-      .then(r => r.ok ? r.json() : null)
-      .then((data: { players: Array<{ playerId: number; nationality: string; height: string; weight: string }> } | null) => {
-        if (data === null || !data.players?.length) {
-          // HTTP error (non-OK response) or empty players array: don't persist
-          // the sentinel — no player data was actually populated, so allow
-          // retry on the next mount.
-          backfillDoneRef.current = false;
-          return;
-        }
-        // Apply nationality/height/weight from the API response.
-        for (const info of data.players) {
-          if (!playerIdSet.has(info.playerId)) continue;
-          if (!info.nationality && !info.height && !info.weight) continue;
-          setPlayerOverride(careerId, info.playerId, {
-            ...(info.nationality ? { nationality: info.nationality } : {}),
-            ...(info.height     ? { height: info.height }           : {}),
-            ...(info.weight     ? { weight: info.weight }           : {}),
-          });
-        }
-        setOverrides(getAllPlayerOverrides(careerId));
-        onOverridesUpdated?.();
-        // Only write the durable sentinel when no active squad player is still
-        // missing nationality (i.e. the backfill actually covered the squad).
-        // Some players may legitimately be absent from the API (youth/loan);
-        // we allow up to 3 retries before giving up to avoid infinite loops.
-        const updatedOverrides = getAllPlayerOverrides(careerId);
-        const anyStillMissing = [...playerIdSet].some(id => !updatedOverrides[id]?.nationality);
-        const retryKey = `bf_retry_${careerId}_${teamId}`;
-        if (!anyStillMissing) {
+    try {
+      const r = await fetch(`/api/players/team-details?teamId=${teamId}&season=${season}`, { headers });
+      const data: { players: Array<{ playerId: number; nationality: string; height: string; weight: string }> } | null =
+        r.ok ? await r.json() : null;
+      if (!data?.players?.length) { backfillDoneRef.current = false; return; }
+      for (const info of data.players) {
+        if (!playerIdSet.has(info.playerId)) continue;
+        if (!info.nationality && !info.height && !info.weight) continue;
+        setPlayerOverride(careerId, info.playerId, {
+          ...(info.nationality ? { nationality: info.nationality } : {}),
+          ...(info.height      ? { height: info.height }           : {}),
+          ...(info.weight      ? { weight: info.weight }           : {}),
+        });
+      }
+      setOverrides(getAllPlayerOverrides(careerId));
+      onOverridesUpdated?.();
+      const updatedOverrides = getAllPlayerOverrides(careerId);
+      const anyStillMissing = [...playerIdSet].some(id => !updatedOverrides[id]?.nationality);
+      if (!anyStillMissing || force) {
+        localStorage.setItem(persistKey, "1");
+        localStorage.removeItem(retryKey);
+      } else {
+        const retries = Number(localStorage.getItem(retryKey) ?? 0);
+        if (retries >= 3) {
           localStorage.setItem(persistKey, "1");
           localStorage.removeItem(retryKey);
         } else {
-          const retries = Number(localStorage.getItem(retryKey) ?? 0);
-          if (retries >= 3) {
-            // Give up after 3 attempts — players permanently absent from API.
-            localStorage.setItem(persistKey, "1");
-            localStorage.removeItem(retryKey);
-          } else {
-            localStorage.setItem(retryKey, String(retries + 1));
-            backfillDoneRef.current = false;
-          }
+          localStorage.setItem(retryKey, String(retries + 1));
+          backfillDoneRef.current = false;
         }
-      })
-      .catch(() => { backfillDoneRef.current = false; });
+      }
+    } catch {
+      backfillDoneRef.current = false;
+    } finally {
+      if (force) setBackfillLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    runBackfill(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allPlayers, customPlayers, teamId, isDemo, isCustomClub, careerId, overrides, onOverridesUpdated, backfillSeasonYear]);
 
   type ExitEntry = { player: SquadPlayer; reason: string; date: number };
@@ -704,6 +698,23 @@ export function ElencoView({
             className="hidden"
             onChange={handleImportFile}
           />
+          {/* Refresh squad data button — only for real clubs with an API team ID */}
+          {!isDemo && !isCustomClub && teamId && !squadLoading && (
+            <button
+              onClick={() => { backfillDoneRef.current = false; runBackfill(true); }}
+              disabled={backfillLoading}
+              className="flex items-center gap-1.5 px-3 py-2 min-h-[44px] rounded-xl text-xs font-semibold transition-all duration-200 hover:opacity-90 active:scale-95 disabled:opacity-40"
+              style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.55)", border: "1px solid rgba(255,255,255,0.1)" }}
+              title="Atualizar dados do plantel (nacionalidade, altura, peso)"
+            >
+              <svg
+                className={`w-3.5 h-3.5 ${backfillLoading ? "animate-spin" : ""}`}
+                fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
+          )}
           {/* Export button */}
           {!isDemo && mergedPlayers.length > 0 && !squadLoading && (
             <button

@@ -56,8 +56,29 @@ function getFlagCode(nat: string): string | null {
 }
 
 function FlagImg({ nat, size = 20 }: { nat: string; size?: number }) {
+  const [broken, setBroken] = React.useState(false);
   const code = getFlagCode(nat);
-  if (!code) return null;
+  if (!code || broken) {
+    // Fallback: two-letter country code badge
+    const letters = (NAT_CODE[nat] ?? FLAG_CDN_SPECIAL[nat]?.toUpperCase() ?? nat.slice(0, 2)).toUpperCase();
+    return (
+      <span
+        title={nat}
+        className="inline-flex items-center justify-center rounded-[2px] font-bold"
+        style={{
+          width: size,
+          height: Math.round(size * 0.75),
+          fontSize: size * 0.38,
+          background: "rgba(255,255,255,0.12)",
+          color: "rgba(255,255,255,0.6)",
+          verticalAlign: "middle",
+          letterSpacing: "-0.5px",
+        }}
+      >
+        {letters.slice(0, 2)}
+      </span>
+    );
+  }
   return (
     <img
       src={`https://flagcdn.com/w${size}/${code}.png`}
@@ -68,6 +89,7 @@ function FlagImg({ nat, size = 20 }: { nat: string; size?: number }) {
       title={nat}
       className="inline-block rounded-[2px] object-cover"
       style={{ verticalAlign: "middle" }}
+      onError={() => setBroken(true)}
     />
   );
 }
