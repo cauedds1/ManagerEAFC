@@ -73,30 +73,45 @@ function FlagImg({ nat, size = 20 }: { nat: string; size?: number }) {
 }
 
 // ── Sparkline ─────────────────────────────────────────────────────────────────
-function Sparkline({ data, color = "#34d399", showValues = false }: {
+function Sparkline({ data, color = "#34d399", showValues = false, yMin, yMax }: {
   data: Array<{ value: number; date: number }>;
   color?: string;
   showValues?: boolean;
+  yMin?: number;
+  yMax?: number;
 }) {
   if (data.length < 2) return null;
   const W = 240;
+  const LEFT_PAD = yMin !== undefined ? 26 : 6;
   const TOP_PAD = showValues ? 18 : 6;
-  const BOT_PAD = 6;
-  const H = showValues ? 64 : 50;
+  const BOT_PAD = 14;
+  const H = showValues ? 72 : 56;
   const values = data.map(d => d.value);
-  const min = Math.min(...values);
-  const max = Math.max(...values);
+  const dataMin = Math.min(...values);
+  const dataMax = Math.max(...values);
+  const min = yMin !== undefined ? Math.min(yMin, dataMin) : dataMin;
+  const max = yMax !== undefined ? Math.max(yMax, dataMax) : dataMax;
   const range = max === min ? 1 : max - min;
-  const toX = (i: number) => 6 + (i / (data.length - 1)) * (W - 12);
+  const toX = (i: number) => LEFT_PAD + (i / (data.length - 1)) * (W - LEFT_PAD - 6);
   const toY = (v: number) => TOP_PAD + ((max - v) / range) * (H - TOP_PAD - BOT_PAD);
   const pts = data.map((d, i) => [toX(i), toY(d.value)] as [number, number]);
   const path = pts.map(([x, y], i) => `${i === 0 ? "M" : "L"} ${x.toFixed(1)} ${y.toFixed(1)}`).join(" ");
+  const yMaxPx = toY(max);
+  const yMinPx = toY(min);
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: H }}>
+      {yMin !== undefined && (
+        <>
+          <line x1={LEFT_PAD} y1={yMaxPx} x2={W - 6} y2={yMaxPx} stroke="rgba(255,255,255,0.06)" strokeWidth={1} strokeDasharray="3 3" />
+          <line x1={LEFT_PAD} y1={yMinPx} x2={W - 6} y2={yMinPx} stroke="rgba(255,255,255,0.06)" strokeWidth={1} strokeDasharray="3 3" />
+          <text x={LEFT_PAD - 4} y={yMaxPx + 3.5} textAnchor="end" fontSize={8} fill="rgba(255,255,255,0.25)" fontFamily="monospace">{max}</text>
+          <text x={LEFT_PAD - 4} y={yMinPx + 3.5} textAnchor="end" fontSize={8} fill="rgba(255,255,255,0.25)" fontFamily="monospace">{min}</text>
+        </>
+      )}
       <path d={path} stroke={color} strokeWidth={2} fill="none" strokeLinecap="round" strokeLinejoin="round" />
       {pts.map(([x, y], i) => (
         <g key={i}>
-          <circle cx={x} cy={y} r={2.5} fill={color} />
+          <circle cx={x} cy={y} r={i === pts.length - 1 ? 3.5 : 2.5} fill={i === pts.length - 1 ? "#fff" : color} stroke={i === pts.length - 1 ? color : "none"} strokeWidth={1.5} />
           {showValues && (
             <text
               x={x}
@@ -104,7 +119,7 @@ function Sparkline({ data, color = "#34d399", showValues = false }: {
               textAnchor="middle"
               fontSize={9}
               fontWeight="700"
-              fill={color}
+              fill={i === pts.length - 1 ? "#fff" : color}
               fontFamily="monospace"
             >
               {data[i].value}
@@ -589,27 +604,36 @@ export function PlayerProfileModal({
                   </div>
                 </div>
 
-                {(override?.ovrHistory?.length ?? 0) > 1 && (
-                  <div
-                    className="p-3 rounded-xl"
-                    style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}
-                  >
-                    <p className="text-white/30 text-[10px] font-semibold uppercase tracking-wider mb-3">{t.ovrSection}</p>
-                    <Sparkline
-                      data={override!.ovrHistory!.map(e => ({ value: e.ovr, date: e.date }))}
-                      color="var(--club-primary, #8b5cf6)"
-                      showValues
-                    />
-                    <div className="flex justify-between mt-1">
-                      <span className="text-white/20 text-[10px]">
-                        {new Date(override!.ovrHistory![0].date).toLocaleDateString()}
-                      </span>
-                      <span className="text-white/20 text-[10px]">
-                        {new Date(override!.ovrHistory![override!.ovrHistory!.length - 1].date).toLocaleDateString()}
-                      </span>
+                {(override?.ovrHistory?.length ?? 0) > 1 && (() => {
+                  const hist = override!.ovrHistory!;
+                  const base = hist.map(e => ({ value: e.ovr, date: e.date }));
+                  const lastHistOvr = hist[hist.length - 1].ovr;
+                  const currentOvr = displayOvr;
+                  const ovrData = currentOvr != null && currentOvr !== lastHistOvr
+                    ? [...base, { value: currentOvr, date: Date.now() }]
+                    : base;
+                  const firstDate = new Date(hist[0].date).toLocaleDateString();
+                  const lastDate  = new Date(ovrData[ovrData.length - 1].date).toLocaleDateString();
+                  return (
+                    <div
+                      className="p-3 rounded-xl"
+                      style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}
+                    >
+                      <p className="text-white/30 text-[10px] font-semibold uppercase tracking-wider mb-3">{t.ovrSection}</p>
+                      <Sparkline
+                        data={ovrData}
+                        color="var(--club-primary, #8b5cf6)"
+                        showValues
+                        yMin={50}
+                        yMax={99}
+                      />
+                      <div className="flex justify-between mt-1">
+                        <span className="text-white/20 text-[10px]">{firstDate}</span>
+                        <span className="text-white/20 text-[10px]">{lastDate}</span>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  );
+                })()}
 
                 {(override?.marketValueHistory?.length ?? 0) > 1 && (
                   <div
