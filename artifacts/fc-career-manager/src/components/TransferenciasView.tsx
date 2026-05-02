@@ -1676,7 +1676,7 @@ export function TransferenciasView({
               </div>
             )}
 
-            <div className="flex-1 min-h-0 overflow-y-auto p-6 flex flex-col gap-5">
+            <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4 flex flex-col gap-3.5">
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className={labelClass} style={{ marginBottom: 0 }}>{t.playerLabel}</label>
@@ -1752,7 +1752,7 @@ export function TransferenciasView({
                 )}
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className={labelClass}>{t.positionLabel}</label>
                   <select
@@ -1791,7 +1791,7 @@ export function TransferenciasView({
                       min={1}
                       max={99}
                     />
-                    <p className="text-white/20 text-xs mt-1">{t.overallHint}</p>
+                    <p className="text-white/20 text-[11px] mt-1 leading-tight">{t.overallHint}</p>
                   </div>
                 )}
 
@@ -1830,7 +1830,7 @@ export function TransferenciasView({
                         onSelectLogo={(logo) => set("fromClubLogo", logo ?? "")}
                         placeholder={t.fromClubPlaceholder}
                       />
-                      <p className="text-white/20 text-xs mt-1">{t.fromClubHint}</p>
+                      <p className="text-white/20 text-[11px] mt-1 leading-tight">{t.fromClubHint}</p>
                     </div>
                   </>
                 )}
@@ -1861,34 +1861,6 @@ export function TransferenciasView({
 
               </div>
 
-              {!isVendaForm && !isEmprestimoForm && (
-                <div>
-                  <label className={labelClass}>{t.squadRoleLabel}</label>
-                  <div className="flex flex-wrap gap-2">
-                    {ALL_ROLES.map((r) => {
-                      const c = ROLE_COLORS[r];
-                      const active = form.role === r;
-                      return (
-                        <button
-                          key={r}
-                          type="button"
-                          onClick={() => set("role", r)}
-                          className="px-3.5 py-2 rounded-xl text-xs font-bold transition-all duration-150"
-                          style={{
-                            background: active ? c.bg : "rgba(255,255,255,0.05)",
-                            color: active ? c.color : "rgba(255,255,255,0.4)",
-                            border: active ? `1px solid ${c.color}40` : "1px solid rgba(255,255,255,0.08)",
-                            transform: active ? "scale(1.04)" : "scale(1)",
-                          }}
-                        >
-                          {getRoleLabel(r, t)}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
               {!isEmprestimoForm && (
                 <div
                   className="rounded-2xl overflow-hidden transition-all duration-200"
@@ -1903,7 +1875,7 @@ export function TransferenciasView({
                 >
                   <button
                     type="button"
-                    className="w-full flex items-center justify-between px-4 py-4 transition-all"
+                    className="w-full flex items-center justify-between gap-3 px-3.5 py-2.5 transition-all"
                     onClick={() => setForm((f) => ({
                       ...f,
                       tradeEnabled: !f.tradeEnabled,
@@ -1917,22 +1889,24 @@ export function TransferenciasView({
                       tradePlayerMode: "search",
                     }))}
                   >
-                    <span className="flex items-center gap-3">
+                    <span className="flex items-center gap-2.5 min-w-0 flex-1">
                       <span
-                        className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
+                        className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
                         style={{ background: form.tradeEnabled ? "rgba(251,146,60,0.25)" : "rgba(251,146,60,0.15)" }}
                       >
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="#fb923c" strokeWidth={2.5}>
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="#fb923c" strokeWidth={2.5}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                         </svg>
                       </span>
-                      <span>
-                        <span className="block text-sm font-bold" style={{ color: "#fb923c" }}>
+                      <span className="min-w-0 flex-1 text-left">
+                        <span className="block text-sm font-bold truncate" style={{ color: "#fb923c" }}>
                           {isVendaForm ? t.tradeReceive : t.tradeInclude}
                         </span>
-                        <span className="block text-xs font-normal mt-0.5" style={{ color: "rgba(251,146,60,0.7)" }}>
-                          {isVendaForm ? t.tradeSubReceive : t.tradeSubInclude}
-                        </span>
+                        {form.tradeEnabled && (
+                          <span className="block text-[11px] font-normal mt-0.5 truncate" style={{ color: "rgba(251,146,60,0.7)" }}>
+                            {isVendaForm ? t.tradeSubReceive : t.tradeSubInclude}
+                          </span>
+                        )}
                       </span>
                     </span>
                     <span
@@ -2116,6 +2090,34 @@ export function TransferenciasView({
                 </div>
               )}
 
+              {!isVendaForm && !isEmprestimoForm && (
+                <div>
+                  <label className={labelClass}>{t.squadRoleLabel}</label>
+                  <div className="flex flex-wrap gap-2">
+                    {ALL_ROLES.map((r) => {
+                      const c = ROLE_COLORS[r];
+                      const active = form.role === r;
+                      return (
+                        <button
+                          key={r}
+                          type="button"
+                          onClick={() => set("role", r)}
+                          className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-150"
+                          style={{
+                            background: active ? c.bg : "rgba(255,255,255,0.05)",
+                            color: active ? c.color : "rgba(255,255,255,0.4)",
+                            border: active ? `1px solid ${c.color}40` : "1px solid rgba(255,255,255,0.08)",
+                            transform: active ? "scale(1.04)" : "scale(1)",
+                          }}
+                        >
+                          {getRoleLabel(r, t)}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               {isVendaForm && (
                 <div>
                   <label className={labelClass}>{t.toClubLabel}</label>
@@ -2141,13 +2143,13 @@ export function TransferenciasView({
               </div>
 
               <div
-                className="p-4 rounded-2xl flex flex-col gap-4"
+                className="px-3.5 py-3 rounded-2xl flex flex-col gap-3"
                 style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
               >
-                <p className="text-white/35 text-xs font-semibold uppercase tracking-wider">
+                <p className="text-white/35 text-[11px] font-semibold uppercase tracking-wider">
                   {isVendaForm ? t.financeSaleLabel : isEmprestimoForm ? t.financeLoanLabel : t.financeGeneralLabel}
                 </p>
-                <div className={`grid gap-4 ${isVendaForm || isEmprestimoForm ? "grid-cols-1" : "grid-cols-2"}`}>
+                <div className={`grid gap-3 ${isVendaForm || isEmprestimoForm ? "grid-cols-1" : "grid-cols-2"}`}>
                   <div>
                     <label className={labelClass}>{t.feeLabel}</label>
                     <input
