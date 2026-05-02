@@ -310,7 +310,7 @@ export function ElencoView({
         onOverridesUpdated?.();
       })
       .catch(() => {});
-  }, [allPlayers, customPlayers, teamId, isDemo, careerId, overrides, onOverridesUpdated]);
+  }, [allPlayers, customPlayers, teamId, isDemo, careerId, overrides, onOverridesUpdated, backfillSeasonYear]);
 
   type ExitEntry = { player: SquadPlayer; reason: string; date: number };
   const exitsList = useMemo<ExitEntry[]>(() => {

@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import type { SquadResult, SquadPlayer, PositionPtBr } from "@/lib/squadCache";
 import { PT_BR_TO_POSITION } from "@/lib/squadCache";
 import type { TransferRecord } from "@/types/transfer";
@@ -389,7 +390,7 @@ export function ClubeView({
         )}
       </div>
 
-      {profilePlayer && (
+      {profilePlayer && createPortal(
         <PlayerProfileModal
           careerId={careerId}
           seasonId={seasonId}
@@ -397,7 +398,8 @@ export function ClubeView({
           override={clubOverrides[profilePlayer.id]}
           onClose={() => setProfilePlayer(null)}
           onUpdated={() => setProfilePlayer(null)}
-        />
+        />,
+        document.body
       )}
     </div>
   );

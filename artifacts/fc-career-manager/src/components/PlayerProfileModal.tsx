@@ -268,7 +268,7 @@ export function PlayerProfileModal({
       const goalEntries = ps.goals ?? [];
       const mg = goalEntries.length;
       goals += mg;
-      penGoals += goalEntries.filter((g: { goalType?: string }) => g.goalType === "penalty").length;
+      penGoals += goalEntries.filter((g: { goalType?: string }) => g.goalType === "penalti").length;
       if (mg >= 3) hatTricks++;
       const ma = Object.values(m.playerStats ?? {}).reduce(
         (acc, pms) => acc + (pms.goals ?? []).filter((g: { assistPlayerId?: number }) => g.assistPlayerId === player.id).length, 0
@@ -675,13 +675,13 @@ export function PlayerProfileModal({
                             { label: t.assistsPerGame, value: matchAggregates.assistsPerGame },
                             { label: t.minPerAssist,   value: matchAggregates.minPerAssist ?? "—" },
                           ])}
-                          {(matchAggregates.passes > 0 || matchAggregates.keyPasses > 0 || matchAggregates.dribs > 0) && statBlock(t.passesBlock, [
+                          {statBlock(t.passesBlock, [
                             { label: "Passes",         value: matchAggregates.passes > 0 ? matchAggregates.passes : "—" },
                             { label: "Acerto %",       value: matchAggregates.avgPass != null ? `${Math.round(matchAggregates.avgPass)}%` : "—" },
                             { label: "Passes-chave",   value: matchAggregates.keyPasses > 0 ? matchAggregates.keyPasses : "—" },
                             { label: "Dribles",        value: matchAggregates.dribs > 0 ? matchAggregates.dribs : "—" },
                           ])}
-                          {(matchAggregates.ballRec > 0 || matchAggregates.ballLoss > 0) && statBlock(t.defenseBlock, [
+                          {statBlock(t.defenseBlock, [
                             { label: "Recuperações",   value: matchAggregates.ballRec > 0 ? matchAggregates.ballRec : "—" },
                             { label: "Perdas",         value: matchAggregates.ballLoss > 0 ? matchAggregates.ballLoss : "—" },
                           ])}
