@@ -180,7 +180,11 @@ export function PlayerProfileModal({
   }, [careerId]);
 
   useEffect(() => {
-    if (!selectedSeasonId || (tab !== "season" && tab !== "matches")) return;
+    if (tab !== "season" && tab !== "matches") return;
+    if (!selectedSeasonId) {
+      setSeasonMatches([]);
+      return;
+    }
     let cancelled = false;
     const load = async () => {
       // Sync from DB every time a season is first visited in this session.
@@ -376,7 +380,7 @@ export function PlayerProfileModal({
       : "—" },
     { label: t.salary,        value: override?.salary && override.salary > 0 ? `€${fmt(override.salary)}/sem` : "—" },
     { label: t.marketValue,   value: override?.marketValue && override.marketValue > 0 ? `€${fmt(override.marketValue)}` : "—" },
-    { label: t.shirtNumber,   value: override?.shirtNumber != null ? `#${override.shirtNumber}` : "—" },
+    { label: t.shirtNumber,   value: override?.shirtNumber != null ? `#${override.shirtNumber}` : (player as { number?: number }).number != null ? `#${(player as { number?: number }).number}` : "—" },
   ];
 
   return (
