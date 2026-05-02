@@ -198,7 +198,12 @@ export function PlayerProfileModal({
 
   useEffect(() => {
     if (tab !== "career" || careerLoaded) return;
-    getSeasons(careerId).then(seasons => {
+    let cancelled = false;
+    getSeasons(careerId).then(async seasons => {
+      // Sync all seasons from DB in parallel so historical match data (and
+      // therefore motmPlayerId) is available in session for MOTM derivation.
+      await Promise.all(seasons.map(s => syncSeasonFromDb(s.id).catch(() => {})));
+      if (cancelled) return;
       const data = seasons
         .map(s => {
           const st = getPlayerStats(s.id, player.id);
@@ -206,9 +211,8 @@ export function PlayerProfileModal({
           if (st.motmCount !== undefined) {
             motm = st.motmCount;
           } else {
+            // After DB sync, getMatches has historical data from session/ls.
             const derived = getMatches(s.id).filter(m => m.motmPlayerId === player.id).length;
-            // Only persist when > 0 to avoid writing incorrect zeroes for
-            // historical seasons whose matches aren't loaded in this session.
             if (derived > 0) {
               setPlayerStats(s.id, player.id, { ...st, motmCount: derived }, false);
             }
@@ -232,6 +236,7 @@ export function PlayerProfileModal({
       setCareerData(data);
       setCareerLoaded(true);
     });
+    return () => { cancelled = true; };
   }, [tab, careerLoaded, careerId, player.id]);
 
   const playerMatches = useMemo<MatchItem[]>(() =>

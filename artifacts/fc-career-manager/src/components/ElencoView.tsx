@@ -285,15 +285,13 @@ export function ElencoView({
 
   useEffect(() => {
     if (!teamId || isDemo) return;
-    // Persist the backfill "attempted" flag in localStorage so we never retry
-    // even across remounts or page reloads for this career+team combination.
-    const persistKey = `bf_done_${careerId}_${teamId}`;
-    if (backfillDoneRef.current || localStorage.getItem(persistKey)) return;
+    // Natural gate: skip if all active players already have nationality stored.
+    // Once the backfill succeeds, overrides persist to localStorage/DB so this
+    // becomes false on the next mount — no permanent "done" flag needed.
     const needsBackfill = allPlayers.some(p => !overrides[p.id]?.nationality);
     if (!needsBackfill) return;
-    // Mark in-memory to prevent duplicate in-session calls while fetch is in flight.
-    // The localStorage flag is only written after a successful response so that
-    // a transient API failure does not permanently suppress the backfill.
+    // In-memory guard prevents duplicate in-flight calls within the same session.
+    if (backfillDoneRef.current) return;
     backfillDoneRef.current = true;
     const playerIdSet = new Set(allPlayers.map(p => p.id));
     const season = String(backfillSeasonYear ?? new Date().getFullYear());
@@ -302,13 +300,11 @@ export function ElencoView({
     fetch(`/api/players/team-details?teamId=${teamId}&season=${season}`, { headers })
       .then(r => r.ok ? r.json() : null)
       .then((data: { players: Array<{ playerId: number; nationality: string; height: string; weight: string }> } | null) => {
-        // Persist the "done" flag only when we received a real HTTP-OK response
-        // (data !== null). A null data value means r.ok was false (503/429/500),
-        // so we leave the flag unset to allow a retry on the next mount.
-        if (data !== null) {
-          localStorage.setItem(persistKey, "1");
+        if (!data?.players?.length) {
+          // Non-OK or empty response: reset ref so the next mount can retry.
+          backfillDoneRef.current = false;
+          return;
         }
-        if (!data?.players?.length) return;
         for (const info of data.players) {
           if (!playerIdSet.has(info.playerId)) continue;
           if (!info.nationality && !info.height && !info.weight) continue;
