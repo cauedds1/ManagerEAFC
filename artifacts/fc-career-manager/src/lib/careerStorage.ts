@@ -1,4 +1,4 @@
-import { Career, CoachProfile } from "@/types/career";
+import { Career, CoachProfile, InitialContext } from "@/types/career";
 import { ClubEntry } from "@/types/club";
 import { getCurrentSeason } from "@/lib/api";
 import { createSeason } from "@/lib/seasonStorage";
@@ -96,6 +96,7 @@ export interface CareerExtras {
   backstory?: string;
   initialBoardMood?: number;
   initialFanMood?: number;
+  initialContext?: InitialContext;
 }
 
 export function createCareer(coach: CoachProfile, club: ClubEntry, extras?: CareerExtras): Career {
@@ -117,6 +118,7 @@ export function createCareer(coach: CoachProfile, club: ClubEntry, extras?: Care
     ...(extras?.backstory ? { backstory: extras.backstory } : {}),
     ...(extras?.initialBoardMood != null ? { initialBoardMood: extras.initialBoardMood } : {}),
     ...(extras?.initialFanMood != null ? { initialFanMood: extras.initialFanMood } : {}),
+    ...(extras?.initialContext ? { initialContext: extras.initialContext } : {}),
     createdAt: Date.now(),
     updatedAt: Date.now(),
   };
@@ -202,6 +204,7 @@ async function syncCareerToDb(career: Career): Promise<void> {
         competitions: career.competitions,
         currentSeasonId: career.currentSeasonId,
         backstory: career.backstory,
+        initialContext: career.initialContext,
         createdAt: career.createdAt,
         updatedAt: career.updatedAt,
       }),

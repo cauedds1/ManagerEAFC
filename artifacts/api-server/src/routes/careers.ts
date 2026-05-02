@@ -60,42 +60,56 @@ router.post("/careers/parse-ongoing-context", requireAuth, async (req: AuthReque
       return res.status(400).json({ error: "description is required" });
     }
 
-    const systemPrompt = `You are a football career mode analyst. The user will describe their ongoing career in EA FC (FIFA) in any language. Extract the following information and return ONLY valid JSON — no markdown, no code blocks, just the raw JSON object.
+    const systemPrompt = `You are an elite football career mode analyst. The user will describe their ongoing career in EA FC (FIFA) in any language, possibly with great detail (club, coach, league position, results, transfers, key players, board pressure, fan mood, finances, narrative arc, rivals). Your job is to extract MAXIMUM structured context so the system can pick up the career mid-stream.
 
-Return this exact JSON structure:
+Return ONLY a single valid JSON object — no markdown fences, no commentary. Use the SAME LANGUAGE as the user description for all human-readable strings (projeto, narratives, missions, board letter, predictions, reasons, questions).
+
+Required JSON schema:
 {
-  "boardMood": <integer 0-100, board satisfaction level>,
-  "fanMood": <integer 0-100, fan satisfaction level>,
-  "currentSeason": "<string, e.g. '2024/25' or '2025'>",
-  "projeto": "<string, suggested career objective in 1-2 sentences, in the same language as the user's description>",
-  "narrativeSummary": "<string, 2-3 sentences summarizing the career context for use as AI news generation background, in the same language as the user's description>",
-  "confidence": "<'low'|'medium'|'high'>"
+  "club": { "name": "<canonical club name in English when possible, e.g. 'Tottenham Hotspur'>", "league": "<league name>", "country": "<country>", "confidence": "<low|medium|high>" },
+  "coach": { "name": "<coach name if mentioned, else empty>", "nationality": "<country if mentioned>", "style": "<short tactical descriptor, e.g. 'gegenpressing 4-2-3-1'>", "confidence": "<low|medium|high>" },
+  "season": { "label": "<e.g. '2025/26'>", "stage": "<pre-season|early|mid|late|playoffs|finished>", "matchday": <integer or null>, "confidence": "<low|medium|high>" },
+  "leaguePosition": { "rank": <integer or null>, "points": <integer or null>, "form": "<short, e.g. 'WWDLW'>", "gap": "<short text describing distance to leaders/relegation>", "confidence": "<low|medium|high>" },
+  "moods": {
+    "board": { "value": <0-100>, "label": "<one-word, e.g. 'satisfeita'>", "reason": "<one short sentence why>" },
+    "fans":  { "value": <0-100>, "label": "<one-word>", "reason": "<one short sentence>" },
+    "dressingRoom": { "value": <0-100>, "label": "<one-word>", "reason": "<one short sentence>" }
+  },
+  "finances": { "summary": "<short text or empty>", "budget": "<short text or empty>", "confidence": "<low|medium|high>" },
+  "keyPlayers": [ { "name": "<player name>", "role": "<star|captain|young promise|loan|injured>", "note": "<short context>" } ],
+  "transfersIn":  [ { "name": "<player>", "from": "<club>", "fee": "<short, optional>", "note": "<short>" } ],
+  "transfersOut": [ { "name": "<player>", "to": "<club>", "fee": "<short, optional>", "note": "<short>" } ],
+  "rivals": [ "<rival club name>" ],
+  "recentMatches": [ { "opponent": "<club>", "competition": "<comp>", "result": "<W|D|L>", "score": "<e.g. '2-1'>", "note": "<short>" } ],
+  "storyArc": "<2-4 sentences capturing the narrative so far — origin, struggle, breakthrough, current chapter>",
+  "narrativeSummary": "<3 short sentences for AI news-generation background>",
+  "projeto": "<the suggested career project (1-2 sentences) given everything inferred>",
+  "competitions": [ "<competition names you would expect this season>" ],
+  "missions": [ { "title": "<short mission title>", "description": "<1 sentence>", "deadline": "<season|matchday X|short text>" }, ... up to 3 missions ],
+  "boardLetter": "<3-5 sentence letter from the board to the coach, in the language used by the user, addressing the moment>",
+  "prediction": { "endOfSeason": "<short text predicting where the club ends up>", "boardReaction": "<short text predicting board reaction>", "confidence": "<low|medium|high>" },
+  "inconsistencies": [ "<short note about anything contradictory or impossible>" ],
+  "deepeningQuestions": [ "<a question the user could answer to enrich the context further>", ... up to 3 ],
+  "squadSyncWarning": "<one short paragraph reminding the coach that real EA FC squad may differ from extracted players, and to verify in-game>",
+  "overallConfidence": "<low|medium|high>"
 }
 
 Rules:
-- boardMood: 80+ if board is happy/satisfied, 60-79 stable, 40-59 watching, 20-39 concerned, 0-19 crisis
-- fanMood: 80+ if fans are ecstatic/euphoric, 60-79 excited, 40-59 neutral, 20-39 unhappy, 0-19 revolted
-- If the user does not mention mood explicitly, infer from context (win streak = higher, relegation battle = lower)
-- If information is missing or unclear, use 50 for mood and mark confidence as 'low'
-- narrativeSummary should capture: club, competition context, recent form, key events, and career trajectory
-- Return ONLY the JSON object, nothing else`;
+- mood values: 80+ ecstatic/triumphant, 60-79 happy/stable, 40-59 neutral/watching, 20-39 unhappy/concerned, 0-19 crisis/revolt
+- If a field is unknown, use empty string / empty array / null and lower confidence accordingly
+- Be concise — short strings only. No paragraphs longer than ~280 chars
+- Never invent a club name; if unsure, leave club.name empty and mark confidence low
+- Always return arrays even if empty
+- Output ONLY the JSON object`;
 
-    const userPrompt = description.trim().slice(0, 4000);
+    const userPrompt = description.trim().slice(0, 8000);
 
     const [dbUser] = await db.select({ plan: usersTable.plan }).from(usersTable).where(eq(usersTable.id, req.user!.id)).limit(1);
     const plan = dbUser?.plan ?? "free";
 
-    const raw = await callDiretoriaWithPlan(plan, systemPrompt, userPrompt, 1024);
+    const raw = await callDiretoriaWithPlan(plan, systemPrompt, userPrompt, 4096);
 
-    let parsed: {
-      boardMood: number;
-      fanMood: number;
-      currentSeason: string;
-      projeto: string;
-      narrativeSummary: string;
-      confidence: string;
-    };
-
+    let parsed: any;
     try {
       const jsonMatch = raw.match(/\{[\s\S]*\}/);
       if (!jsonMatch) throw new Error("No JSON found");
@@ -108,15 +122,82 @@ Rules:
       const n = Number(v);
       return isNaN(n) ? def : Math.max(0, Math.min(100, Math.round(n)));
     };
+    const str = (v: unknown, def = "") => (typeof v === "string" ? v.trim() : def);
+    const conf = (v: unknown): "low" | "medium" | "high" =>
+      v === "low" || v === "high" ? v : "medium";
+    const arr = <T>(v: unknown, mapFn: (x: any) => T | null): T[] =>
+      Array.isArray(v) ? v.map(mapFn).filter((x): x is T => x !== null).slice(0, 12) : [];
 
-    return res.json({
-      boardMood: clamp(parsed.boardMood, 50),
-      fanMood: clamp(parsed.fanMood, 50),
-      currentSeason: typeof parsed.currentSeason === "string" ? parsed.currentSeason.trim() : "",
-      projeto: typeof parsed.projeto === "string" ? parsed.projeto.trim() : "",
-      narrativeSummary: typeof parsed.narrativeSummary === "string" ? parsed.narrativeSummary.trim() : "",
-      confidence: ["low", "medium", "high"].includes(parsed.confidence) ? parsed.confidence : "medium",
+    const moodObj = (raw: any, def = 50) => ({
+      value: clamp(raw?.value, def),
+      label: str(raw?.label),
+      reason: str(raw?.reason),
     });
+
+    const result = {
+      club: {
+        name: str(parsed.club?.name),
+        league: str(parsed.club?.league),
+        country: str(parsed.club?.country),
+        confidence: conf(parsed.club?.confidence),
+      },
+      coach: {
+        name: str(parsed.coach?.name),
+        nationality: str(parsed.coach?.nationality),
+        style: str(parsed.coach?.style),
+        confidence: conf(parsed.coach?.confidence),
+      },
+      season: {
+        label: str(parsed.season?.label),
+        stage: str(parsed.season?.stage),
+        matchday: typeof parsed.season?.matchday === "number" ? parsed.season.matchday : null,
+        confidence: conf(parsed.season?.confidence),
+      },
+      leaguePosition: {
+        rank: typeof parsed.leaguePosition?.rank === "number" ? parsed.leaguePosition.rank : null,
+        points: typeof parsed.leaguePosition?.points === "number" ? parsed.leaguePosition.points : null,
+        form: str(parsed.leaguePosition?.form),
+        gap: str(parsed.leaguePosition?.gap),
+        confidence: conf(parsed.leaguePosition?.confidence),
+      },
+      moods: {
+        board: moodObj(parsed.moods?.board),
+        fans: moodObj(parsed.moods?.fans),
+        dressingRoom: moodObj(parsed.moods?.dressingRoom),
+      },
+      finances: {
+        summary: str(parsed.finances?.summary),
+        budget: str(parsed.finances?.budget),
+        confidence: conf(parsed.finances?.confidence),
+      },
+      keyPlayers: arr(parsed.keyPlayers, (p) => p?.name ? { name: str(p.name), role: str(p.role), note: str(p.note) } : null),
+      transfersIn: arr(parsed.transfersIn, (p) => p?.name ? { name: str(p.name), from: str(p.from), fee: str(p.fee), note: str(p.note) } : null),
+      transfersOut: arr(parsed.transfersOut, (p) => p?.name ? { name: str(p.name), to: str(p.to), fee: str(p.fee), note: str(p.note) } : null),
+      rivals: arr(parsed.rivals, (r) => typeof r === "string" && r.trim() ? r.trim() : null),
+      recentMatches: arr(parsed.recentMatches, (m) => m?.opponent ? { opponent: str(m.opponent), competition: str(m.competition), result: str(m.result), score: str(m.score), note: str(m.note) } : null),
+      storyArc: str(parsed.storyArc),
+      narrativeSummary: str(parsed.narrativeSummary),
+      projeto: str(parsed.projeto),
+      competitions: arr(parsed.competitions, (c) => typeof c === "string" && c.trim() ? c.trim() : null),
+      missions: arr(parsed.missions, (m) => m?.title ? { title: str(m.title), description: str(m.description), deadline: str(m.deadline) } : null).slice(0, 3),
+      boardLetter: str(parsed.boardLetter),
+      prediction: {
+        endOfSeason: str(parsed.prediction?.endOfSeason),
+        boardReaction: str(parsed.prediction?.boardReaction),
+        confidence: conf(parsed.prediction?.confidence),
+      },
+      inconsistencies: arr(parsed.inconsistencies, (s) => typeof s === "string" && s.trim() ? s.trim() : null),
+      deepeningQuestions: arr(parsed.deepeningQuestions, (s) => typeof s === "string" && s.trim() ? s.trim() : null).slice(0, 3),
+      squadSyncWarning: str(parsed.squadSyncWarning),
+      overallConfidence: conf(parsed.overallConfidence),
+      // legacy flat fields kept for backward compat
+      boardMood: clamp(parsed.moods?.board?.value, 50),
+      fanMood: clamp(parsed.moods?.fans?.value, 50),
+      currentSeason: str(parsed.season?.label),
+      confidence: conf(parsed.overallConfidence),
+    };
+
+    return res.json(result);
   } catch (err) {
     console.error("POST /careers/parse-ongoing-context error:", err);
     return res.status(500).json({ error: "Internal server error" });
@@ -151,6 +232,7 @@ router.get("/careers", requireAuth, async (req: AuthRequest, res) => {
         competitions: r.competitionsJson ? JSON.parse(r.competitionsJson) : undefined,
         currentSeasonId: r.currentSeasonId ?? undefined,
         backstory: r.backstory ?? undefined,
+        initialContext: r.initialContextJson ? JSON.parse(r.initialContextJson) : undefined,
         createdAt: Number(r.createdAt),
         updatedAt: Number(r.updatedAt),
       })),
@@ -183,6 +265,7 @@ router.post("/careers", requireAuth, async (req: AuthRequest, res) => {
       competitions?: string[];
       currentSeasonId?: string;
       backstory?: string;
+      initialContext?: object;
       createdAt?: number;
       updatedAt?: number;
     };
@@ -230,6 +313,7 @@ router.post("/careers", requireAuth, async (req: AuthRequest, res) => {
         competitionsJson: body.competitions ? JSON.stringify(body.competitions) : null,
         currentSeasonId: body.currentSeasonId ?? null,
         backstory: body.backstory ?? null,
+        initialContextJson: body.initialContext ? JSON.stringify(body.initialContext) : null,
         userId,
         createdAt: body.createdAt ?? now,
         updatedAt: body.updatedAt ?? now,
@@ -275,6 +359,7 @@ router.put("/careers/:id", requireAuth, async (req: AuthRequest, res) => {
       competitions: string[];
       currentSeasonId: string;
       backstory: string;
+      initialContext: object;
     }>;
 
     const patch: Record<string, unknown> = { updatedAt: Date.now() };
@@ -295,6 +380,7 @@ router.put("/careers/:id", requireAuth, async (req: AuthRequest, res) => {
     if (body.competitions !== undefined) patch.competitionsJson = JSON.stringify(body.competitions);
     if (body.currentSeasonId !== undefined) patch.currentSeasonId = body.currentSeasonId;
     if (body.backstory !== undefined) patch.backstory = body.backstory;
+    if (body.initialContext !== undefined) patch.initialContextJson = JSON.stringify(body.initialContext);
 
     await db.update(careersTable).set(patch).where(eq(careersTable.id, id));
 
