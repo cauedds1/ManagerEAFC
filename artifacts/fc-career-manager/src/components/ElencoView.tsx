@@ -1128,7 +1128,7 @@ export function ElencoView({
             {/* Left: pitch */}
             <div className="w-full lg:w-[420px] flex-shrink-0 min-w-0">
               <FootballPitch
-                players={mergedPlayers}
+                players={playersWithOverrides}
                 starterIds={starterIds}
                 className="w-full"
                 onPlayerClick={handlePlayerClick}
