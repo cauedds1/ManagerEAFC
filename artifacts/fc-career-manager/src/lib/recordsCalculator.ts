@@ -138,11 +138,17 @@ function isTrueDraw(m: MatchRecord): boolean {
 
 function pickOpponent(
   byOpp: Map<string, number>,
+  // For count-style records (most beaten / hardest) a max of 0 just means
+  // "no qualifying matches exist" and we want a "—" placeholder. For
+  // total-style records (goals for/against an opponent) 0 is a meaningful
+  // value when at least one opponent has been faced.
+  allowZero = false,
 ): OpponentRecordEntry | null {
   if (byOpp.size === 0) return null;
-  let max = 0;
+  let max = -Infinity;
   for (const v of byOpp.values()) if (v > max) max = v;
-  if (max <= 0) return null;
+  if (max < 0) return null;
+  if (!allowZero && max <= 0) return null;
   const opponents = Array.from(byOpp.entries())
     .filter(([, v]) => v === max)
     .map(([k]) => k)
@@ -221,33 +227,33 @@ export function computeCareerRecords(
   const seasonsById = new Map(seasons.map((s) => [s.id, s]));
 
   // ── Partidas (single-match records) ────────────────────────────────────
-  // Per task spec: goal-difference for "biggest win/loss" cards uses
-  // regular-time scores only; matches that finished level in regulation
-  // (even if won on penalties) have a 0 goal-difference and would never
-  // beat a real margin, so we keep them out of the candidate set.
-  const winsForMargin   = matches.filter((m) => m.myScore > m.opponentScore);
-  const lossesForMargin = matches.filter((m) => m.myScore < m.opponentScore);
-  const trueDraws  = matches.filter(isTrueDraw);
-  const winsHome   = winsForMargin.filter((m) => m.location === "casa");
-  const winsAway   = winsForMargin.filter((m) => m.location === "fora");
-  const lossHome   = lossesForMargin.filter((m) => m.location === "casa");
-  const lossAway   = lossesForMargin.filter((m) => m.location === "fora");
+  // Per task spec: a win/loss includes penalty-shootout outcomes, but the
+  // goal-difference shown on biggest-win/loss cards uses regular-time
+  // scores only. So a shootout-won 1-1 is a win with goal-diff 0 — it
+  // can still appear as the "biggest win" if no better margin exists.
+  const winsAll   = matches.filter(isWin);
+  const lossesAll = matches.filter(isLoss);
+  const trueDraws = matches.filter(isTrueDraw);
+  const winsHome  = winsAll.filter((m) => m.location === "casa");
+  const winsAway  = winsAll.filter((m) => m.location === "fora");
+  const lossHome  = lossesAll.filter((m) => m.location === "casa");
+  const lossAway  = lossesAll.filter((m) => m.location === "fora");
 
   const diffWin  = (m: MatchRecord) => m.myScore - m.opponentScore;
   const diffLoss = (m: MatchRecord) => m.opponentScore - m.myScore;
   const totalDraw= (m: MatchRecord) => m.myScore + m.opponentScore;
 
   const partidas: CareerRecords["partidas"] = {
-    biggestWin:       pickByMaxThenRecent(winsForMargin,   diffWin,                          clubName),
-    biggestWinHome:   pickByMaxThenRecent(winsHome,        diffWin,                          clubName),
-    biggestWinAway:   pickByMaxThenRecent(winsAway,        diffWin,                          clubName),
-    biggestLoss:      pickByMaxThenRecent(lossesForMargin, diffLoss,                         clubName),
-    biggestLossHome:  pickByMaxThenRecent(lossHome,        diffLoss,                         clubName),
-    biggestLossAway:  pickByMaxThenRecent(lossAway,        diffLoss,                         clubName),
-    highestDraw:      pickByMaxThenRecent(trueDraws,       totalDraw,                        clubName),
-    mostGoalsFor:     pickByMaxThenRecent(matches,         (m) => m.myScore,                 clubName),
-    mostGoalsAgainst: pickByMaxThenRecent(matches,         (m) => m.opponentScore,           clubName),
-    mostGoalsTotal:   pickByMaxThenRecent(matches,         (m) => m.myScore + m.opponentScore, clubName),
+    biggestWin:       pickByMaxThenRecent(winsAll,   diffWin,                            clubName),
+    biggestWinHome:   pickByMaxThenRecent(winsHome,  diffWin,                            clubName),
+    biggestWinAway:   pickByMaxThenRecent(winsAway,  diffWin,                            clubName),
+    biggestLoss:      pickByMaxThenRecent(lossesAll, diffLoss,                           clubName),
+    biggestLossHome:  pickByMaxThenRecent(lossHome,  diffLoss,                           clubName),
+    biggestLossAway:  pickByMaxThenRecent(lossAway,  diffLoss,                           clubName),
+    highestDraw:      pickByMaxThenRecent(trueDraws, totalDraw,                          clubName),
+    mostGoalsFor:     pickByMaxThenRecent(matches,   (m) => m.myScore,                   clubName),
+    mostGoalsAgainst: pickByMaxThenRecent(matches,   (m) => m.opponentScore,             clubName),
+    mostGoalsTotal:   pickByMaxThenRecent(matches,   (m) => m.myScore + m.opponentScore, clubName),
   };
 
   // ── Adversários (per-opponent cumulative) ──────────────────────────────
@@ -269,8 +275,8 @@ export function computeCareerRecords(
 
   const adversarios: CareerRecords["adversarios"] = {
     mostFaced:     pickOpponent(facedByOpp),
-    mostScoredVs:  pickOpponent(scoredByOpp),
-    mostConcededVs:pickOpponent(concededByOpp),
+    mostScoredVs:  pickOpponent(scoredByOpp,   true),
+    mostConcededVs:pickOpponent(concededByOpp, true),
     mostBeaten:    pickOpponent(beatenByOpp),
     hardest:       pickOpponent(lostToByOpp),
   };
