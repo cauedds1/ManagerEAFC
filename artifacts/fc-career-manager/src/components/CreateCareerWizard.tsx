@@ -28,7 +28,8 @@ interface CreateCareerWizardProps {
 
 type ParsedContext = InitialContext;
 
-type PrePhase = "type-select" | "ongoing-input" | "ongoing-preview" | null;
+type PrePhase = "path-select" | "ongoing-input" | "ongoing-preview" | null;
+type Path = "quick" | "detailed" | "manual";
 
 function ProgressBar({ step, t }: { step: number; t: typeof WIZARD["pt"] }) {
   const steps = [t.stepCoach, t.stepClub, t.stepPreview, t.stepSetup];
@@ -231,11 +232,14 @@ export function CreateCareerWizard({
   const [lang, setLang] = useLang();
   const t = WIZARD[lang];
 
-  const [prePhase, setPrePhase] = useState<PrePhase>(initialStep === 0 ? "type-select" : null);
+  const [prePhase, setPrePhase] = useState<PrePhase>(initialStep === 0 ? "path-select" : null);
+  const [chosenPath, setChosenPath] = useState<Path | null>(null);
   const [ongoingText, setOngoingText] = useState("");
   const [analyzing, setAnalyzing] = useState(false);
   const [ongoingError, setOngoingError] = useState("");
   const [parsedContext, setParsedContext] = useState<ParsedContext | null>(null);
+  const [extractedCoach, setExtractedCoach] = useState<CoachProfile | null>(null);
+  const [editedClubName, setEditedClubName] = useState("");
   const isOngoing = useRef(false);
 
   const [step, setStep] = useState<0 | 1 | 2 | 3>(initialStep as 0 | 1 | 2 | 3);
@@ -247,9 +251,10 @@ export function CreateCareerWizard({
   const clubInfoRef = useRef<{ description?: string; titles?: ClubTitle[] }>({});
 
   const autoDetectedClub = useMemo<ClubEntry | null>(() => {
-    if (!parsedContext?.club?.name) return null;
-    return findClubMatch(parsedContext.club.name, allClubs);
-  }, [parsedContext, allClubs]);
+    const name = editedClubName.trim() || parsedContext?.club?.name;
+    if (!name) return null;
+    return findClubMatch(name, allClubs);
+  }, [parsedContext, allClubs, editedClubName]);
 
   const handleAnalyze = async (textOverride?: string) => {
     const text = (textOverride ?? ongoingText).trim();
@@ -265,7 +270,16 @@ export function CreateCareerWizard({
       if (!res.ok) throw new Error("API error");
       const data = await res.json() as ParsedContext;
       setParsedContext(data);
-      // Progressive theming: if we detect a club, apply its theme right away
+      setEditedClubName("");
+      // Pre-fill coach from extracted info
+      if (data?.coach?.name) {
+        setExtractedCoach({
+          name: data.coach.name,
+          nationality: data.coach.nationality || "Brasil",
+          age: 40,
+        } as CoachProfile);
+      }
+      // If detected club exists, apply its theme right away
       if (data?.club?.name) {
         const match = findClubMatch(data.club.name, allClubs);
         if (match) {
@@ -294,6 +308,8 @@ export function CreateCareerWizard({
     setCoach(coachData);
     setStep(selectedClub ? 3 : 1);
   };
+
+  const effectiveInitialCoach = coach ?? extractedCoach ?? initialCoach ?? null;
 
   const handleClubSelect = async (club: ClubEntry, league: LeagueInfo | null) => {
     setSelectedLeague(league);
@@ -375,7 +391,7 @@ export function CreateCareerWizard({
   const season = getCurrentSeason();
   const isPreviewStep = step === 2;
 
-  const headerTitle = prePhase === "type-select"
+  const headerTitle = prePhase === "path-select"
     ? t.careerTypeTitle
     : isOngoing.current
     ? t.careerTypeOngoing
@@ -431,38 +447,63 @@ export function CreateCareerWizard({
         </div>
       </div>
 
-      {/* Pre-step: Career Type Selection */}
-      {prePhase === "type-select" && (
+      {/* Pre-step: Path Selection (3 paths) */}
+      {prePhase === "path-select" && (
         <div className="flex-1 overflow-y-auto">
           <div className="max-w-xl mx-auto px-4 sm:px-6 py-10 flex flex-col gap-6">
             <div className="text-center">
               <h2 className="text-2xl font-black text-white mb-2">{t.careerTypeTitle}</h2>
               <p className="text-white/40 text-sm">{t.careerTypeSubtitle}</p>
             </div>
-            <div className="flex flex-col gap-4">
-              <button
-                onClick={() => { isOngoing.current = false; setPrePhase(null); }}
-                className="flex flex-col gap-2 p-5 rounded-2xl text-left transition-all hover:scale-[1.01] active:scale-[0.99]"
-                style={{ background: "rgba(var(--club-primary-rgb),0.08)", border: "1.5px solid rgba(var(--club-primary-rgb),0.2)" }}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl" style={{ background: "rgba(var(--club-primary-rgb),0.15)" }}>✨</div>
-                  <span className="text-white font-bold text-base">{t.careerTypeNew}</span>
-                </div>
-                <p className="text-white/45 text-sm leading-relaxed">{t.careerTypeNewDesc}</p>
-              </button>
 
-              <button
-                onClick={() => { isOngoing.current = true; setPrePhase("ongoing-input"); }}
-                className="flex flex-col gap-2 p-5 rounded-2xl text-left transition-all hover:scale-[1.01] active:scale-[0.99]"
-                style={{ background: "rgba(255,255,255,0.04)", border: "1.5px solid rgba(255,255,255,0.10)" }}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl" style={{ background: "rgba(255,255,255,0.07)" }}>📊</div>
-                  <span className="text-white font-bold text-base">{t.careerTypeOngoing}</span>
-                </div>
-                <p className="text-white/45 text-sm leading-relaxed">{t.careerTypeOngoingDesc}</p>
-              </button>
+            <button
+              onClick={() => { isOngoing.current = false; setChosenPath(null); setPrePhase(null); }}
+              className="flex flex-col gap-2 p-5 rounded-2xl text-left transition-all hover:scale-[1.01] active:scale-[0.99]"
+              style={{ background: "rgba(var(--club-primary-rgb),0.08)", border: "1.5px solid rgba(var(--club-primary-rgb),0.2)" }}
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl" style={{ background: "rgba(var(--club-primary-rgb),0.15)" }}>✨</div>
+                <span className="text-white font-bold text-base">{t.careerTypeNew}</span>
+              </div>
+              <p className="text-white/45 text-sm leading-relaxed">{t.careerTypeNewDesc}</p>
+            </button>
+
+            <div className="flex items-center gap-3">
+              <div className="flex-1 h-px bg-white/10" />
+              <span className="text-white/30 text-[10px] font-bold uppercase tracking-widest">{t.careerTypeOngoing}</span>
+              <div className="flex-1 h-px bg-white/10" />
+            </div>
+
+            <div className="flex flex-col gap-3">
+              {([
+                { key: "detailed", title: t.pathDetailed, desc: t.pathDetailedDesc, icon: "📊", primary: true },
+                { key: "quick", title: t.pathQuick, desc: t.pathQuickDesc, icon: "⚡", primary: false },
+                { key: "manual", title: t.pathManual, desc: t.pathManualDesc, icon: "🎛️", primary: false },
+              ] as const).map((p) => (
+                <button
+                  key={p.key}
+                  onClick={() => {
+                    isOngoing.current = p.key !== "manual";
+                    setChosenPath(p.key);
+                    if (p.key === "manual") {
+                      setPrePhase(null);
+                    } else {
+                      setPrePhase("ongoing-input");
+                    }
+                  }}
+                  className="flex flex-col gap-2 p-4 rounded-2xl text-left transition-all hover:scale-[1.01] active:scale-[0.99]"
+                  style={{
+                    background: p.primary ? "rgba(var(--club-primary-rgb),0.06)" : "rgba(255,255,255,0.04)",
+                    border: p.primary ? "1.5px solid rgba(var(--club-primary-rgb),0.18)" : "1.5px solid rgba(255,255,255,0.08)",
+                  }}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center text-lg" style={{ background: "rgba(255,255,255,0.06)" }}>{p.icon}</div>
+                    <span className="text-white font-bold text-sm">{p.title}</span>
+                  </div>
+                  <p className="text-white/45 text-xs leading-relaxed">{p.desc}</p>
+                </button>
+              ))}
             </div>
           </div>
         </div>
@@ -473,8 +514,8 @@ export function CreateCareerWizard({
         <div className="flex-1 overflow-y-auto">
           <div className="max-w-xl mx-auto px-4 sm:px-6 py-8 flex flex-col gap-5">
             <div>
-              <h2 className="text-xl font-black text-white mb-1.5">{t.ongoingTitle}</h2>
-              <p className="text-white/40 text-sm leading-relaxed">{t.ongoingSubtitle}</p>
+              <h2 className="text-xl font-black text-white mb-1.5">{chosenPath === "quick" ? t.pathQuick : t.ongoingTitle}</h2>
+              <p className="text-white/40 text-sm leading-relaxed">{chosenPath === "quick" ? t.pathQuickDesc : t.ongoingSubtitle}</p>
             </div>
 
             <div>
@@ -504,11 +545,21 @@ export function CreateCareerWizard({
               onBlur={(e) => { e.currentTarget.style.border = "1px solid rgba(255,255,255,0.10)"; }}
             />
 
-            {ongoingError && <p className="text-red-400/80 text-xs font-medium">{ongoingError}</p>}
+            {ongoingError && (
+              <div className="rounded-lg p-3 flex flex-col gap-2" style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.25)" }}>
+                <p className="text-red-300 text-xs font-medium">{ongoingError}</p>
+                <button
+                  onClick={() => { isOngoing.current = false; setChosenPath("manual"); setPrePhase(null); }}
+                  className="text-xs font-bold underline text-red-200 self-start"
+                >
+                  {t.pathManual}
+                </button>
+              </div>
+            )}
 
             <div className="flex gap-3">
               <button
-                onClick={() => setPrePhase("type-select")}
+                onClick={() => setPrePhase("path-select")}
                 className="px-5 py-3 rounded-xl text-sm font-semibold text-white/50 hover:text-white/80 transition-colors"
                 style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
               >
@@ -523,13 +574,6 @@ export function CreateCareerWizard({
                 {analyzing ? t.ongoingAnalyzing : t.ongoingAnalyze}
               </button>
             </div>
-
-            <button
-              onClick={() => { isOngoing.current = false; setPrePhase(null); }}
-              className="text-white/25 hover:text-white/50 text-xs font-medium transition-colors text-center py-1"
-            >
-              {t.ongoingSkip}
-            </button>
           </div>
         </div>
       )}
@@ -564,28 +608,23 @@ export function CreateCareerWizard({
                     {t.autoFilledFromAI}
                   </span>
                 </div>
-              ) : parsedContext.club.name ? (
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-white font-bold text-sm">{parsedContext.club.name}</p>
-                    {parsedContext.club.league && <p className="text-white/40 text-xs">{parsedContext.club.league}</p>}
-                  </div>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  <input
+                    value={editedClubName || parsedContext.club.name}
+                    onChange={(e) => setEditedClubName(e.target.value)}
+                    placeholder={t.selectClubManually}
+                    className="w-full px-3 py-2 rounded-lg text-white text-sm font-semibold focus:outline-none"
+                    style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.10)" }}
+                  />
                   <button
                     onClick={handlePickClubManually}
-                    className="text-xs font-semibold px-3 py-1.5 rounded-lg"
+                    className="text-xs font-semibold px-3 py-2 rounded-lg self-end"
                     style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.7)" }}
                   >
                     {t.selectClubManually}
                   </button>
                 </div>
-              ) : (
-                <button
-                  onClick={handlePickClubManually}
-                  className="text-xs font-semibold px-3 py-2 rounded-lg w-full"
-                  style={{ background: "rgba(var(--club-primary-rgb),0.12)", color: "var(--club-primary)" }}
-                >
-                  {t.selectClubManually}
-                </button>
               )}
             </SectionCard>
 
@@ -851,7 +890,7 @@ export function CreateCareerWizard({
                   <div className="max-w-3xl mx-auto px-4 sm:px-6 py-5">
                     <ProgressBar step={step} t={t} />
                     <div key={step}>
-                      {step === 0 && <CoachSetup onNext={handleCoachNext} initial={coach} />}
+                      {step === 0 && <CoachSetup onNext={handleCoachNext} initial={effectiveInitialCoach} />}
                       {step === 3 && selectedClub && (
                         <CareerSetupStep
                           club={selectedClub}

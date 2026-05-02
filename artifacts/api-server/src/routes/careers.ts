@@ -69,7 +69,13 @@ Required JSON schema:
   "club": { "name": "<canonical club name in English when possible, e.g. 'Tottenham Hotspur'>", "league": "<league name>", "country": "<country>", "confidence": "<low|medium|high>" },
   "coach": { "name": "<coach name if mentioned, else empty>", "nationality": "<country if mentioned>", "style": "<short tactical descriptor, e.g. 'gegenpressing 4-2-3-1'>", "confidence": "<low|medium|high>" },
   "season": { "label": "<e.g. '2025/26'>", "stage": "<pre-season|early|mid|late|playoffs|finished>", "matchday": <integer or null>, "confidence": "<low|medium|high>" },
-  "leaguePosition": { "rank": <integer or null>, "points": <integer or null>, "form": "<short, e.g. 'WWDLW'>", "gap": "<short text describing distance to leaders/relegation>", "confidence": "<low|medium|high>" },
+  "leaguePosition": { "rank": <integer or null>, "points": <integer or null>, "form": "<short, e.g. 'WWDLW'>", "recentForm": ["W","W","D","L","W"], "goalDifference": <integer or null>, "gap": "<short text describing distance to leaders/relegation>", "currentMatchday": <integer or null>, "confidence": "<low|medium|high>" },
+  "preferredFormation": "<e.g. '4-3-3' or empty>",
+  "injuries": [ { "name": "<player>", "weeks": <integer or null>, "note": "<short>" } ],
+  "trophiesWon": [ "<trophy name>" ],
+  "ongoingCompetitions": [ { "name": "<comp>", "stage": "<short, e.g. 'Quartas'>", "nextOpponent": "<short>" } ],
+  "rivalsContext": [ { "name": "<rival club>", "context": "<1 sentence about the rivalry's current state>" } ],
+  "narrativeArcs": [ { "title": "<short arc title>", "description": "<1-2 sentences>", "status": "<rising|peaking|fading>" } ],
   "moods": {
     "board": { "value": <0-100>, "label": "<one-word, e.g. 'satisfeita'>", "reason": "<one short sentence why>" },
     "fans":  { "value": <0-100>, "label": "<one-word>", "reason": "<one short sentence>" },
@@ -102,18 +108,28 @@ Rules:
 - Always return arrays even if empty
 - Output ONLY the JSON object`;
 
-    const userPrompt = description.trim().slice(0, 8000);
+    // Allow very long multi-season histories; cap only at hard model context limits
+    const userPrompt = description.trim().slice(0, 60000);
 
     const [dbUser] = await db.select({ plan: usersTable.plan }).from(usersTable).where(eq(usersTable.id, req.user!.id)).limit(1);
     const plan = dbUser?.plan ?? "free";
 
     const raw = await callDiretoriaWithPlan(plan, systemPrompt, userPrompt, 4096);
 
-    let parsed: any;
+    type ParsedRaw = Record<string, unknown> & {
+      club?: Record<string, unknown>;
+      coach?: Record<string, unknown>;
+      season?: Record<string, unknown>;
+      leaguePosition?: Record<string, unknown>;
+      moods?: { board?: Record<string, unknown>; fans?: Record<string, unknown>; dressingRoom?: Record<string, unknown> };
+      finances?: Record<string, unknown>;
+      prediction?: Record<string, unknown>;
+    };
+    let parsed: ParsedRaw;
     try {
       const jsonMatch = raw.match(/\{[\s\S]*\}/);
       if (!jsonMatch) throw new Error("No JSON found");
-      parsed = JSON.parse(jsonMatch[0]);
+      parsed = JSON.parse(jsonMatch[0]) as ParsedRaw;
     } catch {
       return res.status(500).json({ error: "AI returned invalid JSON" });
     }
@@ -125,14 +141,16 @@ Rules:
     const str = (v: unknown, def = "") => (typeof v === "string" ? v.trim() : def);
     const conf = (v: unknown): "low" | "medium" | "high" =>
       v === "low" || v === "high" ? v : "medium";
-    const arr = <T>(v: unknown, mapFn: (x: any) => T | null): T[] =>
-      Array.isArray(v) ? v.map(mapFn).filter((x): x is T => x !== null).slice(0, 12) : [];
+    const arr = <T>(v: unknown, mapFn: (x: Record<string, unknown> | string) => T | null): T[] =>
+      Array.isArray(v) ? v.map((x) => mapFn(x as Record<string, unknown> | string)).filter((x): x is T => x !== null).slice(0, 16) : [];
 
-    const moodObj = (raw: any, def = 50) => ({
+    const moodObj = (raw: Record<string, unknown> | undefined, def = 50) => ({
       value: clamp(raw?.value, def),
       label: str(raw?.label),
       reason: str(raw?.reason),
     });
+    const numOrNull = (v: unknown) => (typeof v === "number" && !isNaN(v) ? v : null);
+    const obj = (v: unknown): Record<string, unknown> => (v && typeof v === "object" ? v as Record<string, unknown> : {});
 
     const result = {
       club: {
@@ -154,12 +172,32 @@ Rules:
         confidence: conf(parsed.season?.confidence),
       },
       leaguePosition: {
-        rank: typeof parsed.leaguePosition?.rank === "number" ? parsed.leaguePosition.rank : null,
-        points: typeof parsed.leaguePosition?.points === "number" ? parsed.leaguePosition.points : null,
+        rank: numOrNull(parsed.leaguePosition?.rank),
+        points: numOrNull(parsed.leaguePosition?.points),
         form: str(parsed.leaguePosition?.form),
+        recentForm: arr<string>(parsed.leaguePosition?.recentForm, (s) => {
+          const v = typeof s === "string" ? s.trim().toUpperCase() : "";
+          return v === "W" || v === "D" || v === "L" ? v : null;
+        }),
+        goalDifference: numOrNull(parsed.leaguePosition?.goalDifference),
         gap: str(parsed.leaguePosition?.gap),
+        currentMatchday: numOrNull(parsed.leaguePosition?.currentMatchday),
         confidence: conf(parsed.leaguePosition?.confidence),
       },
+      preferredFormation: str(parsed.preferredFormation),
+      injuries: arr(parsed.injuries, (p) => {
+        const o = obj(p); return o.name ? { name: str(o.name), weeks: numOrNull(o.weeks), note: str(o.note) } : null;
+      }),
+      trophiesWon: arr<string>(parsed.trophiesWon, (s) => typeof s === "string" && s.trim() ? s.trim() : null),
+      ongoingCompetitions: arr(parsed.ongoingCompetitions, (c) => {
+        const o = obj(c); return o.name ? { name: str(o.name), stage: str(o.stage), nextOpponent: str(o.nextOpponent) } : null;
+      }),
+      rivalsContext: arr(parsed.rivalsContext, (r) => {
+        const o = obj(r); return o.name ? { name: str(o.name), context: str(o.context) } : null;
+      }),
+      narrativeArcs: arr(parsed.narrativeArcs, (n) => {
+        const o = obj(n); return o.title ? { title: str(o.title), description: str(o.description), status: str(o.status) } : null;
+      }),
       moods: {
         board: moodObj(parsed.moods?.board),
         fans: moodObj(parsed.moods?.fans),
@@ -170,24 +208,24 @@ Rules:
         budget: str(parsed.finances?.budget),
         confidence: conf(parsed.finances?.confidence),
       },
-      keyPlayers: arr(parsed.keyPlayers, (p) => p?.name ? { name: str(p.name), role: str(p.role), note: str(p.note) } : null),
-      transfersIn: arr(parsed.transfersIn, (p) => p?.name ? { name: str(p.name), from: str(p.from), fee: str(p.fee), note: str(p.note) } : null),
-      transfersOut: arr(parsed.transfersOut, (p) => p?.name ? { name: str(p.name), to: str(p.to), fee: str(p.fee), note: str(p.note) } : null),
-      rivals: arr(parsed.rivals, (r) => typeof r === "string" && r.trim() ? r.trim() : null),
-      recentMatches: arr(parsed.recentMatches, (m) => m?.opponent ? { opponent: str(m.opponent), competition: str(m.competition), result: str(m.result), score: str(m.score), note: str(m.note) } : null),
+      keyPlayers: arr(parsed.keyPlayers, (p) => { const o = obj(p); return o.name ? { name: str(o.name), role: str(o.role), note: str(o.note) } : null; }),
+      transfersIn: arr(parsed.transfersIn, (p) => { const o = obj(p); return o.name ? { name: str(o.name), from: str(o.from), fee: str(o.fee), note: str(o.note) } : null; }),
+      transfersOut: arr(parsed.transfersOut, (p) => { const o = obj(p); return o.name ? { name: str(o.name), to: str(o.to), fee: str(o.fee), note: str(o.note) } : null; }),
+      rivals: arr<string>(parsed.rivals, (r) => typeof r === "string" && r.trim() ? r.trim() : null),
+      recentMatches: arr(parsed.recentMatches, (m) => { const o = obj(m); return o.opponent ? { opponent: str(o.opponent), competition: str(o.competition), result: str(o.result), score: str(o.score), note: str(o.note) } : null; }),
       storyArc: str(parsed.storyArc),
       narrativeSummary: str(parsed.narrativeSummary),
       projeto: str(parsed.projeto),
-      competitions: arr(parsed.competitions, (c) => typeof c === "string" && c.trim() ? c.trim() : null),
-      missions: arr(parsed.missions, (m) => m?.title ? { title: str(m.title), description: str(m.description), deadline: str(m.deadline) } : null).slice(0, 3),
+      competitions: arr<string>(parsed.competitions, (c) => typeof c === "string" && c.trim() ? c.trim() : null),
+      missions: arr(parsed.missions, (m) => { const o = obj(m); return o.title ? { title: str(o.title), description: str(o.description), deadline: str(o.deadline) } : null; }).slice(0, 5),
       boardLetter: str(parsed.boardLetter),
       prediction: {
         endOfSeason: str(parsed.prediction?.endOfSeason),
         boardReaction: str(parsed.prediction?.boardReaction),
         confidence: conf(parsed.prediction?.confidence),
       },
-      inconsistencies: arr(parsed.inconsistencies, (s) => typeof s === "string" && s.trim() ? s.trim() : null),
-      deepeningQuestions: arr(parsed.deepeningQuestions, (s) => typeof s === "string" && s.trim() ? s.trim() : null).slice(0, 3),
+      inconsistencies: arr<string>(parsed.inconsistencies, (s) => typeof s === "string" && s.trim() ? s.trim() : null),
+      deepeningQuestions: arr<string>(parsed.deepeningQuestions, (s) => typeof s === "string" && s.trim() ? s.trim() : null).slice(0, 5),
       squadSyncWarning: str(parsed.squadSyncWarning),
       overallConfidence: conf(parsed.overallConfidence),
       // legacy flat fields kept for backward compat

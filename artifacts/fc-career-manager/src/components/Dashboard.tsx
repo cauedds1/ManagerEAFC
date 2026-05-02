@@ -33,6 +33,7 @@ import type { MatchRecord } from "@/types/match";
 import { runPerformanceEngine } from "@/lib/playerPerformanceEngine";
 import { copyPlayerMoodsToNewSeason, getAllPlayerStats } from "@/lib/playerStatsStorage";
 import { getLeaguePosition, setLeaguePosition, type LeaguePosition } from "@/lib/leagueStorage";
+import { InitialContextBanner } from "./InitialContextBanner";
 import { runAutoNews, runRumorNews, runPromotionRelegationNews, leagueTierLevel } from "@/lib/autoNewsService";
 import { getAutoNewsEnabled } from "@/lib/autoNewsPreference";
 import type { NewsPost, NewsSource, NewsCategory } from "@/types/noticias";
@@ -2326,6 +2327,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
             )}
             {activeTab === "painel" && (
               <>
+                <InitialContextBanner career={career} />
                 {seasonObjectives.length > 0 && (
                   <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
                     <SeasonObjectivesCard objectives={seasonObjectives} seasonLabel={displayLabel} />

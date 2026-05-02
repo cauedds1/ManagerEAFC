@@ -45,13 +45,35 @@ export interface Mission {
   deadline: string;
 }
 
+export type Confidence = "low" | "medium" | "high";
+
+export interface Injury { name: string; weeks: number | null; note: string }
+export interface OngoingCompetition { name: string; stage: string; nextOpponent: string }
+export interface RivalContext { name: string; context: string }
+export interface NarrativeArc { title: string; description: string; status: string }
+
 export interface InitialContext {
-  club: { name: string; league: string; country: string; confidence: string };
-  coach: { name: string; nationality: string; style: string; confidence: string };
-  season: { label: string; stage: string; matchday: number | null; confidence: string };
-  leaguePosition: { rank: number | null; points: number | null; form: string; gap: string; confidence: string };
+  club: { name: string; league: string; country: string; confidence: Confidence };
+  coach: { name: string; nationality: string; style: string; confidence: Confidence };
+  season: { label: string; stage: string; matchday: number | null; confidence: Confidence };
+  leaguePosition: {
+    rank: number | null;
+    points: number | null;
+    form: string;
+    recentForm: string[];
+    goalDifference: number | null;
+    gap: string;
+    currentMatchday: number | null;
+    confidence: Confidence;
+  };
+  preferredFormation?: string;
+  injuries?: Injury[];
+  trophiesWon?: string[];
+  ongoingCompetitions?: OngoingCompetition[];
+  rivalsContext?: RivalContext[];
+  narrativeArcs?: NarrativeArc[];
   moods: { board: MoodBlock; fans: MoodBlock; dressingRoom: MoodBlock };
-  finances: { summary: string; budget: string; confidence: string };
+  finances: { summary: string; budget: string; confidence: Confidence };
   keyPlayers: KeyPlayer[];
   transfersIn: TransferEntry[];
   transfersOut: TransferEntry[];
@@ -63,11 +85,11 @@ export interface InitialContext {
   competitions: string[];
   missions: Mission[];
   boardLetter: string;
-  prediction: { endOfSeason: string; boardReaction: string; confidence: string };
+  prediction: { endOfSeason: string; boardReaction: string; confidence: Confidence };
   inconsistencies: string[];
   deepeningQuestions: string[];
   squadSyncWarning: string;
-  overallConfidence: string;
+  overallConfidence: Confidence;
 }
 
 export interface Career {
