@@ -292,6 +292,8 @@ export function ClubeView({
             isDemo={isDemo}
             teamId={career.clubId}
             backfillSeasonYear={backfillSeasonYear}
+            clubName={career.clubName}
+            clubLogoUrl={career.clubLogo || null}
           />
         )}
 

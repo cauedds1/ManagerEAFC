@@ -211,6 +211,7 @@ interface ElencoViewProps {
   careerId: string;
   seasonId?: string;
   clubName?: string;
+  clubLogoUrl?: string | null;
   teamId?: number;
   backfillSeasonYear?: number;
   squad: SquadResult | null;
@@ -237,6 +238,7 @@ export function ElencoView({
   careerId,
   seasonId,
   clubName,
+  clubLogoUrl,
   squad,
   squadLoading,
   squadError,
@@ -1415,6 +1417,7 @@ export function ElencoView({
           onUpdated={refreshOverrides}
           allPlayers={mergedPlayers}
           clubName={clubName}
+          clubLogoUrl={clubLogoUrl}
         />,
         document.body
       )}

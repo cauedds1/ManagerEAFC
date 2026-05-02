@@ -1113,21 +1113,29 @@ export function PlayerProfileModal({
     </div>
 
     {selectedMatchDetail && createPortal(
-      <MatchDetailPage
-        match={selectedMatchDetail as import("@/types/match").MatchRecord}
-        clubName={clubName ?? ""}
-        clubLogoUrl={clubLogoUrl}
-        allPlayers={allPlayers ?? []}
-        onBack={() => setSelectedMatchDetail(null)}
-        careerId={careerId}
-        seasonId={selectedSeasonId || seasonId}
-        competitions={competitions}
-        isReadOnly={isReadOnly}
-        onMatchUpdated={(updated) => {
-          setSelectedMatchDetail(updated as MatchItem);
-          onMatchUpdated?.(updated as MatchItem);
-        }}
-      />,
+      <div
+        className="fixed inset-0 z-[70] overflow-y-auto"
+        style={{ backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", background: "rgba(0,0,0,0.82)" }}
+        onClick={(e) => { if (e.target === e.currentTarget) setSelectedMatchDetail(null); }}
+      >
+        <div className="min-h-full px-4 sm:px-6 py-6 max-w-5xl mx-auto">
+          <MatchDetailPage
+            match={selectedMatchDetail as import("@/types/match").MatchRecord}
+            clubName={clubName ?? ""}
+            clubLogoUrl={clubLogoUrl}
+            allPlayers={allPlayers ?? []}
+            onBack={() => setSelectedMatchDetail(null)}
+            careerId={careerId}
+            seasonId={selectedSeasonId || seasonId}
+            competitions={competitions}
+            isReadOnly={isReadOnly}
+            onMatchUpdated={(updated) => {
+              setSelectedMatchDetail(updated as MatchItem);
+              onMatchUpdated?.(updated as MatchItem);
+            }}
+          />
+        </div>
+      </div>,
       document.body
     )}
     </>
