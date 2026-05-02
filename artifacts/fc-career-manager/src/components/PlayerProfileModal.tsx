@@ -199,10 +199,7 @@ export function PlayerProfileModal({
   useEffect(() => {
     if (tab !== "career" || careerLoaded) return;
     let cancelled = false;
-    getSeasons(careerId).then(async seasons => {
-      // Sync all seasons from DB in parallel so historical match data (and
-      // therefore motmPlayerId) is available in session for MOTM derivation.
-      await Promise.all(seasons.map(s => syncSeasonFromDb(s.id).catch(() => {})));
+    getSeasons(careerId).then(seasons => {
       if (cancelled) return;
       const data = seasons
         .map(s => {
@@ -211,7 +208,8 @@ export function PlayerProfileModal({
           if (st.motmCount !== undefined) {
             motm = st.motmCount;
           } else {
-            // After DB sync, getMatches has historical data from session/ls.
+            // getMatches reads session → localStorage fallback so locally-stored
+            // historical matches are available without an extra network sync.
             const derived = getMatches(s.id).filter(m => m.motmPlayerId === player.id).length;
             if (derived > 0) {
               setPlayerStats(s.id, player.id, { ...st, motmCount: derived }, false);

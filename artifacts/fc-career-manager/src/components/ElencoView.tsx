@@ -284,7 +284,8 @@ export function ElencoView({
   }, [customPlayers, onCustomPlayersChange]);
 
   useEffect(() => {
-    if (!teamId || isDemo) return;
+    // Skip for demo mode, custom clubs, and when teamId is not a valid API Football ID.
+    if (!teamId || isDemo || isCustomClub) return;
     // Natural gate: skip if all active players already have nationality stored.
     // Once the backfill succeeds, overrides persist to localStorage/DB so this
     // becomes false on the next mount — no permanent "done" flag needed.
@@ -318,7 +319,7 @@ export function ElencoView({
         onOverridesUpdated?.();
       })
       .catch(() => { backfillDoneRef.current = false; });
-  }, [allPlayers, customPlayers, teamId, isDemo, careerId, overrides, onOverridesUpdated, backfillSeasonYear]);
+  }, [allPlayers, customPlayers, teamId, isDemo, isCustomClub, careerId, overrides, onOverridesUpdated, backfillSeasonYear]);
 
   type ExitEntry = { player: SquadPlayer; reason: string; date: number };
   const exitsList = useMemo<ExitEntry[]>(() => {
