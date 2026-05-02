@@ -166,6 +166,7 @@ export function PlayerDetailPanel({
   const [editPosition, setEditPosition] = useState<PositionPtBr>(displayPosition);
   const [editPhoto,    setEditPhoto]    = useState(override?.photoOverride ?? "");
   const [photoPreviewErr, setPhotoPreviewErr] = useState(false);
+  const [editOvrDate,  setEditOvrDate]  = useState(() => new Date().toISOString().slice(0, 10));
 
   const pos      = POS_STYLE[displayPosition] ?? POS_STYLE.MID;
   const moodStyle = MOOD_COLORS[stats.mood];
@@ -175,6 +176,9 @@ export function PlayerDetailPanel({
     const numberVal  = parseInt(editNumber, 10);
     const overallVal = parseInt(editOverall, 10);
     const salaryVal  = parseInt(editSalary, 10);
+    const customDate = logHistory && editOvrDate
+      ? new Date(editOvrDate + "T12:00:00").getTime()
+      : undefined;
     setPlayerOverride(careerId, player.id, {
       nameOverride:     editName.trim() || undefined,
       photoOverride:    editPhoto.trim() || undefined,
@@ -182,7 +186,7 @@ export function PlayerDetailPanel({
       overall:          !isNaN(overallVal) && editOverall.trim() ? Math.max(1, Math.min(99, overallVal))  : undefined,
       salary:           !isNaN(salaryVal)  && editSalary.trim()  ? Math.max(0, salaryVal)                 : undefined,
       positionOverride: editPosition !== player.positionPtBr     ? editPosition                           : undefined,
-    }, logHistory);
+    }, logHistory, customDate);
     setTab("stats");
     onUpdated();
   };
@@ -195,6 +199,7 @@ export function PlayerDetailPanel({
     setEditPosition(displayPosition);
     setEditPhoto(override?.photoOverride ?? "");
     setPhotoPreviewErr(false);
+    setEditOvrDate(new Date().toISOString().slice(0, 10));
     setTab("stats");
   };
 
@@ -629,6 +634,31 @@ export function PlayerDetailPanel({
                     min={0}
                   />
                 </div>
+
+                {editOverall.trim() !== "" && (() => {
+                  const newOvrVal = parseInt(editOverall, 10);
+                  const newOvr = !isNaN(newOvrVal) ? Math.max(1, Math.min(99, newOvrVal)) : undefined;
+                  const isOvrChange = displayOverall != null && newOvr != null && newOvr !== displayOverall;
+                  if (!isOvrChange) return null;
+                  return (
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-white/40 text-xs font-semibold tracking-wide uppercase">
+                        {t.editOvrDate}
+                      </label>
+                      <input
+                        type="date"
+                        value={editOvrDate}
+                        onChange={(e) => setEditOvrDate(e.target.value)}
+                        className="w-full rounded-xl px-3 py-2.5 text-sm font-medium text-white/80 outline-none focus:ring-1"
+                        style={{
+                          background: "rgba(255,255,255,0.06)",
+                          border: "1px solid rgba(255,255,255,0.10)",
+                          colorScheme: "dark",
+                        }}
+                      />
+                    </div>
+                  );
+                })()}
 
                 {(() => {
                   const history: OvrHistoryEntry[] = override?.ovrHistory ?? [];

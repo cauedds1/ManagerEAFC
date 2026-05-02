@@ -182,12 +182,13 @@ export function setPlayerOverride(
   playerId: number,
   patch: Partial<Omit<PlayerOverride, "playerId">>,
   logHistory = false,
+  customDate?: number,
 ): void {
   const all = getAllPlayerOverrides(careerId);
   const existing = all[playerId] ?? {};
 
   let ovrHistory = existing.ovrHistory ?? [];
-  const now = Date.now();
+  const now = customDate ?? Date.now();
   const ovrIsChanging = patch.overall != null && patch.overall !== existing.overall;
 
   if (logHistory && existing.overall != null && ovrIsChanging) {
