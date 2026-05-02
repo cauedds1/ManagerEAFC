@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from "react";
+import { createPortal } from "react-dom";
 import type { SquadPlayer, PositionPtBr } from "@/lib/squadCache";
 import { migratePositionOverride } from "@/lib/squadCache";
 import type { PlayerOverride } from "@/types/playerStats";
@@ -8,6 +9,7 @@ import { syncSeasonFromDb } from "@/lib/dbSync";
 import { getSeasons } from "@/lib/seasonStorage";
 import { useLang } from "@/hooks/useLang";
 import { PLAYER_PROFILE, POSITION_DISPLAY } from "@/lib/i18n";
+import { MatchDetailPage } from "./MatchDetailPage";
 
 // ── Flag emoji ────────────────────────────────────────────────────────────────
 const NAT_CODE: Record<string, string> = {
@@ -147,6 +149,13 @@ interface PlayerProfileModalProps {
   override?: PlayerOverride;
   onClose: () => void;
   onUpdated: () => void;
+  // Optional props to enable match detail navigation
+  allPlayers?: SquadPlayer[];
+  clubName?: string;
+  clubLogoUrl?: string | null;
+  competitions?: string[];
+  isReadOnly?: boolean;
+  onMatchUpdated?: (match: MatchItem) => void;
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
@@ -157,6 +166,12 @@ export function PlayerProfileModal({
   override,
   onClose,
   onUpdated,
+  allPlayers,
+  clubName,
+  clubLogoUrl,
+  competitions,
+  isReadOnly,
+  onMatchUpdated,
 }: PlayerProfileModalProps) {
   const [lang] = useLang();
   const t = PLAYER_PROFILE[lang];
@@ -168,6 +183,7 @@ export function PlayerProfileModal({
   const [isSyncing, setIsSyncing] = useState(false);
   const [seasonMatches, setSeasonMatches] = useState<MatchItem[]>([]);
   const [syncVersion, setSyncVersion] = useState(0);
+  const [selectedMatchDetail, setSelectedMatchDetail] = useState<MatchItem | null>(null);
 
   const [editMode, setEditMode] = useState(false);
   const [editFoot, setEditFoot] = useState(override?.preferredFoot ?? "");
@@ -408,6 +424,7 @@ export function PlayerProfileModal({
   ];
 
   return (
+    <>
     <div
       className="fixed inset-0 z-[60] overflow-y-auto"
       style={{ backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", background: "rgba(0,0,0,0.72)" }}
@@ -824,8 +841,11 @@ export function PlayerProfileModal({
                       return (
                         <div
                           key={i}
-                          className="flex items-center gap-3 px-3 py-2.5 rounded-xl"
-                          style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}
+                          className="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors"
+                          style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)", cursor: allPlayers ? "pointer" : "default" }}
+                          onClick={() => allPlayers && setSelectedMatchDetail(match)}
+                          onMouseEnter={e => { if (allPlayers) (e.currentTarget as HTMLDivElement).style.background = "rgba(255,255,255,0.06)"; }}
+                          onMouseLeave={e => { if (allPlayers) (e.currentTarget as HTMLDivElement).style.background = "rgba(255,255,255,0.03)"; }}
                         >
                           <div className="flex-1 min-w-0">
                             {/* Fixture line: both teams + score */}
@@ -1009,5 +1029,25 @@ export function PlayerProfileModal({
         </div>
       </div>
     </div>
+
+    {selectedMatchDetail && allPlayers && createPortal(
+      <MatchDetailPage
+        match={selectedMatchDetail as import("@/types/match").MatchRecord}
+        clubName={clubName ?? ""}
+        clubLogoUrl={clubLogoUrl}
+        allPlayers={allPlayers}
+        onBack={() => setSelectedMatchDetail(null)}
+        careerId={careerId}
+        seasonId={selectedSeasonId || seasonId}
+        competitions={competitions}
+        isReadOnly={isReadOnly}
+        onMatchUpdated={(updated) => {
+          setSelectedMatchDetail(updated as MatchItem);
+          onMatchUpdated?.(updated as MatchItem);
+        }}
+      />,
+      document.body
+    )}
+    </>
   );
 }

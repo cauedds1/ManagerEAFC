@@ -236,6 +236,7 @@ interface ElencoViewProps {
 export function ElencoView({
   careerId,
   seasonId,
+  clubName,
   squad,
   squadLoading,
   squadError,
@@ -1312,6 +1313,8 @@ export function ElencoView({
           override={overrides[profilePlayer.id]}
           onClose={() => setProfilePlayer(null)}
           onUpdated={refreshOverrides}
+          allPlayers={allPlayers}
+          clubName={clubName}
         />,
         document.body
       )}

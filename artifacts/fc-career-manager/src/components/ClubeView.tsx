@@ -399,6 +399,10 @@ export function ClubeView({
           override={clubOverrides[profilePlayer.id]}
           onClose={() => setProfilePlayer(null)}
           onUpdated={() => { setOverridesRefreshKey(k => k + 1); setProfilePlayer(null); }}
+          allPlayers={allPlayers}
+          clubName={career.clubName}
+          clubLogoUrl={career.clubLogo || null}
+          isReadOnly={isReadOnly}
         />,
         document.body
       )}
