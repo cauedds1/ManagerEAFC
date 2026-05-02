@@ -190,7 +190,8 @@ export function PlayerDetailPanel({
       salary:           !isNaN(salaryVal)  && editSalary.trim()  ? Math.max(0, salaryVal)                 : undefined,
       positionOverride: editPosition !== player.positionPtBr     ? editPosition                           : undefined,
     }, logHistory, customDate);
-    if (!isNaN(salaryVal) && editSalary.trim() && salaryVal > 0) {
+    const currentSalary = override?.salary ?? 0;
+    if (!isNaN(salaryVal) && editSalary.trim() && salaryVal > 0 && salaryVal !== currentSalary) {
       addSalaryHistoryEntry(careerId, player.id, salaryVal, customDate);
     }
     setTab("stats");

@@ -202,7 +202,9 @@ export function PlayerProfileModal({
       const data = seasons
         .map(s => {
           const st = getPlayerStats(s.id, player.id);
-          const motm = st.motmCount ?? 0;
+          const motm = st.motmCount !== undefined
+            ? st.motmCount
+            : getMatches(s.id).filter(m => m.motmPlayerId === player.id).length;
           const ratings = st.recentRatings ?? [];
           const avgRating = ratings.length
             ? ratings.reduce((a: number, b: number) => a + b, 0) / ratings.length
@@ -309,7 +311,8 @@ export function PlayerProfileModal({
       contractEnd: editContractEnd.trim() || undefined,
     });
     const mvNum = parseFloat(editMv.replace(/[^0-9.]/g, ""));
-    if (!isNaN(mvNum) && mvNum > 0) {
+    const currentMv = override?.marketValue ?? 0;
+    if (!isNaN(mvNum) && mvNum > 0 && mvNum !== currentMv) {
       addMarketValueEntry(
         careerId,
         player.id,
@@ -703,14 +706,14 @@ export function PlayerProfileModal({
                             { label: t.minPerAssist,   value: matchAggregates.minPerAssist ?? "—" },
                           ])}
                           {statBlock(t.passesBlock, [
-                            { label: "Passes",         value: matchAggregates.passes > 0 ? matchAggregates.passes : "—" },
-                            { label: "Acerto %",       value: matchAggregates.avgPass != null ? `${Math.round(matchAggregates.avgPass)}%` : "—" },
-                            { label: "Passes-chave",   value: matchAggregates.keyPasses > 0 ? matchAggregates.keyPasses : "—" },
-                            { label: "Dribles",        value: matchAggregates.dribs > 0 ? matchAggregates.dribs : "—" },
+                            { label: t.passes,         value: matchAggregates.passes > 0 ? matchAggregates.passes : "—" },
+                            { label: t.passAccuracy,   value: matchAggregates.avgPass != null ? `${Math.round(matchAggregates.avgPass)}%` : "—" },
+                            { label: t.keyPasses,      value: matchAggregates.keyPasses > 0 ? matchAggregates.keyPasses : "—" },
+                            { label: t.dribbles,       value: matchAggregates.dribs > 0 ? matchAggregates.dribs : "—" },
                           ])}
                           {statBlock(t.defenseBlock, [
-                            { label: "Recuperações",   value: matchAggregates.ballRec > 0 ? matchAggregates.ballRec : "—" },
-                            { label: "Perdas",         value: matchAggregates.ballLoss > 0 ? matchAggregates.ballLoss : "—" },
+                            { label: t.ballRecoveries, value: matchAggregates.ballRec > 0 ? matchAggregates.ballRec : "—" },
+                            { label: t.ballLosses,     value: matchAggregates.ballLoss > 0 ? matchAggregates.ballLoss : "—" },
                           ])}
                           {statBlock(t.otherBlock, [
                             { label: t.yellowCards,      value: matchAggregates.yellows > 0 ? matchAggregates.yellows : "—",  color: matchAggregates.yellows > 0 ? "#fbbf24" : undefined },
