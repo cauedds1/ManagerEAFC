@@ -38,6 +38,10 @@ export interface StreakRecordEntry {
   endDate: string | null;
 }
 
+// Section-specific entry shapes are used instead of one uniform
+// `{value, label, ...}` because labels are i18n strings assembled in the
+// view (PT-BR / EN), and each section needs a distinct contextual field
+// (scoreLine, opponents, seasonId, year, dateRange).
 export interface CareerRecords {
   partidas: {
     biggestWin:        MatchRecordEntry | null;
@@ -82,17 +86,12 @@ export interface CareerRecords {
 
 const MIN_MATCHES_FOR_AVG = 5;
 
-// Build the full "{home} {hScore}-{aScore} {away}" score-line from the
-// managed-club perspective. `clubName` is the user's club name; if missing
-// we fall back to a neutral placeholder so the format is still valid.
 function scoreLineFor(m: MatchRecord, clubName: string): string {
   const us = clubName?.trim() || "—";
   const opp = m.opponent?.trim() || "—";
   if (m.location === "fora") {
-    // Away match — opponent is home side.
     return `${opp} ${m.opponentScore}-${m.myScore} ${us}`;
   }
-  // Home or neutral — managed club is shown on the left.
   return `${us} ${m.myScore}-${m.opponentScore} ${opp}`;
 }
 
@@ -122,26 +121,19 @@ function pickByMaxThenRecent(
   };
 }
 
-// Win / loss include penalty-shootout outcomes (per task spec for streaks
-// and season counters). `getMatchResultFull` is the single source of truth.
 function isWin(m: MatchRecord): boolean {
   return getMatchResultFull(m.myScore, m.opponentScore, m.penaltyShootout) === "vitoria";
 }
 function isLoss(m: MatchRecord): boolean {
   return getMatchResultFull(m.myScore, m.opponentScore, m.penaltyShootout) === "derrota";
 }
-// True draw per task spec: regular-time level AND not decided by a
-// penalty shootout. A 1-1 (5-4 on pens) is NOT a draw — it's a win.
+// A 1-1 won on penalties is a win, not a draw.
 function isTrueDraw(m: MatchRecord): boolean {
   return m.myScore === m.opponentScore && !m.penaltyShootout;
 }
 
 function pickOpponent(
   byOpp: Map<string, number>,
-  // For count-style records (most beaten / hardest) a max of 0 just means
-  // "no qualifying matches exist" and we want a "—" placeholder. For
-  // total-style records (goals for/against an opponent) 0 is a meaningful
-  // value when at least one opponent has been faced.
   allowZero = false,
 ): OpponentRecordEntry | null {
   if (byOpp.size === 0) return null;
@@ -166,7 +158,6 @@ function pickSeasonMax(
   for (const [id, v] of perSeason.entries()) {
     if (v > bestVal) { bestVal = v; bestId = id; }
   }
-  // Allow 0 — a record exists as long as the season has matches.
   if (bestId == null || bestVal < 0) return null;
   return {
     value: bestVal,
@@ -182,7 +173,6 @@ function pickYearMax(perYear: Map<string, number>): YearRecordEntry | null {
   for (const [y, v] of perYear.entries()) {
     if (v > bestVal) { bestVal = v; bestY = y; }
   }
-  // Allow 0 — a record exists as long as the year has matches.
   if (bestY == null || bestVal < 0) return null;
   return { value: bestVal, year: bestY };
 }
@@ -226,11 +216,6 @@ export function computeCareerRecords(
 ): CareerRecords {
   const seasonsById = new Map(seasons.map((s) => [s.id, s]));
 
-  // ── Partidas (single-match records) ────────────────────────────────────
-  // Per task spec: a win/loss includes penalty-shootout outcomes, but the
-  // goal-difference shown on biggest-win/loss cards uses regular-time
-  // scores only. So a shootout-won 1-1 is a win with goal-diff 0 — it
-  // can still appear as the "biggest win" if no better margin exists.
   const winsAll   = matches.filter(isWin);
   const lossesAll = matches.filter(isLoss);
   const trueDraws = matches.filter(isTrueDraw);
@@ -256,7 +241,6 @@ export function computeCareerRecords(
     mostGoalsTotal:   pickByMaxThenRecent(matches,   (m) => m.myScore + m.opponentScore, clubName),
   };
 
-  // ── Adversários (per-opponent cumulative) ──────────────────────────────
   const facedByOpp     = new Map<string, number>();
   const scoredByOpp    = new Map<string, number>();
   const concededByOpp  = new Map<string, number>();
@@ -281,7 +265,6 @@ export function computeCareerRecords(
     hardest:       pickOpponent(lostToByOpp),
   };
 
-  // ── Temporada (per-season) ─────────────────────────────────────────────
   const seasonGoals       = new Map<string, number>();
   const seasonMatches     = new Map<string, number>();
   const seasonWins        = new Map<string, number>();
@@ -292,9 +275,6 @@ export function computeCareerRecords(
   for (const m of matches) {
     const sid = m.season;
     if (!sid) continue;
-    // Seed each season's counters so a season with matches but zero of a
-    // given outcome (e.g. a flawless season with 0 losses) still produces
-    // a record of "0" instead of an empty placeholder.
     if (!seasonMatches.has(sid)) {
       seasonGoals.set(sid, 0);
       seasonMatches.set(sid, 0);
@@ -335,7 +315,6 @@ export function computeCareerRecords(
     bestGoalsAvg:    bestAvg,
   };
 
-  // ── Ano civil (per calendar year) ──────────────────────────────────────
   const yearGoals  = new Map<string, number>();
   const yearWins   = new Map<string, number>();
   const yearDraws  = new Map<string, number>();
@@ -344,7 +323,6 @@ export function computeCareerRecords(
   for (const m of matches) {
     const y = (m.date || "").slice(0, 4);
     if (!/^\d{4}$/.test(y)) continue;
-    // Seed defaults so 0-valued counts still surface as records.
     if (!yearGoals.has(y)) {
       yearGoals.set(y, 0);
       yearWins.set(y, 0);

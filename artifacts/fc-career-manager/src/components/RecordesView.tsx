@@ -26,9 +26,6 @@ function dateRange(start: string | null, end: string | null): string {
   return `${fmtDate(start)} → ${fmtDate(end)}`;
 }
 
-// Load matches across every season of the active career. getMatches reads
-// both sessionStorage and localStorage, so this picks up matches whether
-// they were just added in this tab or persisted from a previous load.
 function loadAllSeasonMatches(seasons: Season[]): MatchRecord[] {
   const seen = new Set<string>();
   const out: MatchRecord[] = [];
@@ -96,10 +93,6 @@ export function RecordesView({ careerId, seasons, clubName }: Props) {
   const [lang] = useLang();
   const t = CLUBE[lang];
 
-  // Records are computed from every match across every season of the
-  // active career. We read from local storage immediately and hydrate
-  // any seasons whose local cache is empty from the DB so finalized /
-  // historical seasons are included on first visit.
   const [matches, setMatches] = useState<MatchRecord[]>(() => loadAllSeasonMatches(seasons));
   const [syncing, setSyncing] = useState<boolean>(() => loadAllSeasonMatches(seasons).length === 0);
   const syncedKeyRef = useRef<string | null>(null);
@@ -247,9 +240,6 @@ export function RecordesView({ careerId, seasons, clubName }: Props) {
         <RecordCard icon="😤" title={t.recHardest}        accent={lossColor} {...opponentRecord(records.adversarios.hardest)} />
       </Section>
 
-      {/* Temporada bundles per-season records and the multi-match streak
-          records to match the four-section grouping requested in the spec
-          (Partidas / Adversários / Temporada / Ano civil). */}
       <Section title={t.recordsSecSeason}>
         <RecordCard icon="⚽" title={t.recSeasonMostGoals}       accent={winColor}  {...seasonRecord(records.temporada.mostGoals)} />
         <RecordCard icon="📅" title={t.recSeasonMostMatches}     accent={blueColor} {...seasonRecord(records.temporada.mostMatches)} />
