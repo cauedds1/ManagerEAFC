@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
-import { getAllMatchesForCareer } from "@/lib/matchStorage";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { getMatches } from "@/lib/matchStorage";
+import { syncSeasonFromDb } from "@/lib/dbSync";
 import type { MatchRecord } from "@/types/match";
 import type { Season } from "@/types/career";
 import { useLang } from "@/hooks/useLang";
@@ -9,6 +10,7 @@ import { computeCareerRecords } from "@/lib/recordsCalculator";
 interface Props {
   careerId: string;
   seasons: Season[];
+  clubName: string;
 }
 
 function fmtDate(d: string | null): string {
@@ -22,6 +24,22 @@ function dateRange(start: string | null, end: string | null): string {
   if (!start) return "";
   if (!end || start === end) return fmtDate(start);
   return `${fmtDate(start)} → ${fmtDate(end)}`;
+}
+
+// Load matches across every provided season, falling back to the locally
+// cached values while the DB sync is in flight so the user sees data
+// immediately. Returns a deduped, freshly-computed array each call.
+function loadAllSeasonMatches(seasons: Season[]): MatchRecord[] {
+  const seen = new Set<string>();
+  const out: MatchRecord[] = [];
+  for (const s of seasons) {
+    for (const m of getMatches(s.id)) {
+      if (seen.has(m.id)) continue;
+      seen.add(m.id);
+      out.push(m);
+    }
+  }
+  return out;
 }
 
 function RecordCard({
@@ -74,17 +92,36 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-export function RecordesView({ careerId, seasons }: Props) {
+export function RecordesView({ careerId, seasons, clubName }: Props) {
   const [lang] = useLang();
   const t = CLUBE[lang];
 
-  const [matches, setMatches] = useState<MatchRecord[]>(() => getAllMatchesForCareer(careerId));
+  // Hydrate every season from the DB on mount so finalized/historical
+  // seasons whose matches aren't in the current sessionStorage are still
+  // included in the calculation. We fall back to the locally available
+  // matches immediately and re-render once the sync completes.
+  const [matches, setMatches] = useState<MatchRecord[]>(() => loadAllSeasonMatches(seasons));
+  const syncedKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
-    setMatches(getAllMatchesForCareer(careerId));
-  }, [careerId]);
+    const seasonIds = seasons.map((s) => s.id);
+    const key = `${careerId}::${seasonIds.join(",")}`;
+    setMatches(loadAllSeasonMatches(seasons));
+    if (syncedKeyRef.current === key || seasonIds.length === 0) return;
+    syncedKeyRef.current = key;
+    let cancelled = false;
+    Promise.all(seasonIds.map((id) => syncSeasonFromDb(id).catch(() => {})))
+      .then(() => {
+        if (cancelled) return;
+        setMatches(loadAllSeasonMatches(seasons));
+      });
+    return () => { cancelled = true; };
+  }, [careerId, seasons]);
 
-  const records = useMemo(() => computeCareerRecords(matches, seasons), [matches, seasons]);
+  const records = useMemo(
+    () => computeCareerRecords(matches, seasons, clubName),
+    [matches, seasons, clubName],
+  );
 
   if (matches.length === 0) {
     return (

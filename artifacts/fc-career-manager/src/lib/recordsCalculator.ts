@@ -82,19 +82,24 @@ export interface CareerRecords {
 
 const MIN_MATCHES_FOR_AVG = 5;
 
-function scoreLineFor(m: MatchRecord): string {
-  if (m.location === "casa") {
-    return `${m.myScore}-${m.opponentScore} ${m.opponent}`;
-  }
+// Build the full "{home} {hScore}-{aScore} {away}" score-line from the
+// managed-club perspective. `clubName` is the user's club name; if missing
+// we fall back to a neutral placeholder so the format is still valid.
+function scoreLineFor(m: MatchRecord, clubName: string): string {
+  const us = clubName?.trim() || "—";
+  const opp = m.opponent?.trim() || "—";
   if (m.location === "fora") {
-    return `${m.opponent} ${m.opponentScore}-${m.myScore}`;
+    // Away match — opponent is home side.
+    return `${opp} ${m.opponentScore}-${m.myScore} ${us}`;
   }
-  return `${m.myScore}-${m.opponentScore} vs ${m.opponent}`;
+  // Home or neutral — managed club is shown on the left.
+  return `${us} ${m.myScore}-${m.opponentScore} ${opp}`;
 }
 
 function pickByMaxThenRecent(
   matches: MatchRecord[],
   scoreFn: (m: MatchRecord) => number | null,
+  clubName: string,
 ): MatchRecordEntry | null {
   let best: { m: MatchRecord; v: number } | null = null;
   for (const m of matches) {
@@ -111,20 +116,24 @@ function pickByMaxThenRecent(
   if (!best) return null;
   return {
     value: best.v,
-    scoreLine: scoreLineFor(best.m),
+    scoreLine: scoreLineFor(best.m, clubName),
     date: best.m.date || null,
     matchId: best.m.id,
   };
 }
 
+// Win / loss include penalty-shootout outcomes (per task spec for streaks
+// and season counters). `getMatchResultFull` is the single source of truth.
 function isWin(m: MatchRecord): boolean {
   return getMatchResultFull(m.myScore, m.opponentScore, m.penaltyShootout) === "vitoria";
 }
 function isLoss(m: MatchRecord): boolean {
   return getMatchResultFull(m.myScore, m.opponentScore, m.penaltyShootout) === "derrota";
 }
-function isRegulationDraw(m: MatchRecord): boolean {
-  return m.myScore === m.opponentScore;
+// True draw per task spec: regular-time level AND not decided by a
+// penalty shootout. A 1-1 (5-4 on pens) is NOT a draw — it's a win.
+function isTrueDraw(m: MatchRecord): boolean {
+  return m.myScore === m.opponentScore && !m.penaltyShootout;
 }
 
 function pickOpponent(
@@ -205,35 +214,38 @@ function computeStreaks(matches: MatchRecord[]): CareerRecords["sequencias"] {
 export function computeCareerRecords(
   matches: MatchRecord[],
   seasons: Season[],
+  clubName: string,
 ): CareerRecords {
   const seasonsById = new Map(seasons.map((s) => [s.id, s]));
 
   // ── Partidas (single-match records) ────────────────────────────────────
-  // Biggest win/loss uses regulation result only — a penalty-shootout win on
-  // a 1-1 game has goal-difference 0 and would make the card meaningless.
-  const regWins   = matches.filter((m) => m.myScore > m.opponentScore);
-  const regLosses = matches.filter((m) => m.myScore < m.opponentScore);
-  const draws     = matches.filter(isRegulationDraw);
-  const winsHome  = regWins.filter((m) => m.location === "casa");
-  const winsAway  = regWins.filter((m) => m.location === "fora");
-  const lossHome  = regLosses.filter((m) => m.location === "casa");
-  const lossAway  = regLosses.filter((m) => m.location === "fora");
+  // Per task spec: goal-difference for "biggest win/loss" cards uses
+  // regular-time scores only; matches that finished level in regulation
+  // (even if won on penalties) have a 0 goal-difference and would never
+  // beat a real margin, so we keep them out of the candidate set.
+  const winsForMargin   = matches.filter((m) => m.myScore > m.opponentScore);
+  const lossesForMargin = matches.filter((m) => m.myScore < m.opponentScore);
+  const trueDraws  = matches.filter(isTrueDraw);
+  const winsHome   = winsForMargin.filter((m) => m.location === "casa");
+  const winsAway   = winsForMargin.filter((m) => m.location === "fora");
+  const lossHome   = lossesForMargin.filter((m) => m.location === "casa");
+  const lossAway   = lossesForMargin.filter((m) => m.location === "fora");
 
   const diffWin  = (m: MatchRecord) => m.myScore - m.opponentScore;
   const diffLoss = (m: MatchRecord) => m.opponentScore - m.myScore;
   const totalDraw= (m: MatchRecord) => m.myScore + m.opponentScore;
 
   const partidas: CareerRecords["partidas"] = {
-    biggestWin:       pickByMaxThenRecent(regWins,   diffWin),
-    biggestWinHome:   pickByMaxThenRecent(winsHome,  diffWin),
-    biggestWinAway:   pickByMaxThenRecent(winsAway,  diffWin),
-    biggestLoss:      pickByMaxThenRecent(regLosses, diffLoss),
-    biggestLossHome:  pickByMaxThenRecent(lossHome,  diffLoss),
-    biggestLossAway:  pickByMaxThenRecent(lossAway,  diffLoss),
-    highestDraw:      pickByMaxThenRecent(draws,     totalDraw),
-    mostGoalsFor:     pickByMaxThenRecent(matches,   (m) => m.myScore),
-    mostGoalsAgainst: pickByMaxThenRecent(matches,   (m) => m.opponentScore),
-    mostGoalsTotal:   pickByMaxThenRecent(matches,   (m) => m.myScore + m.opponentScore),
+    biggestWin:       pickByMaxThenRecent(winsForMargin,   diffWin,                          clubName),
+    biggestWinHome:   pickByMaxThenRecent(winsHome,        diffWin,                          clubName),
+    biggestWinAway:   pickByMaxThenRecent(winsAway,        diffWin,                          clubName),
+    biggestLoss:      pickByMaxThenRecent(lossesForMargin, diffLoss,                         clubName),
+    biggestLossHome:  pickByMaxThenRecent(lossHome,        diffLoss,                         clubName),
+    biggestLossAway:  pickByMaxThenRecent(lossAway,        diffLoss,                         clubName),
+    highestDraw:      pickByMaxThenRecent(trueDraws,       totalDraw,                        clubName),
+    mostGoalsFor:     pickByMaxThenRecent(matches,         (m) => m.myScore,                 clubName),
+    mostGoalsAgainst: pickByMaxThenRecent(matches,         (m) => m.opponentScore,           clubName),
+    mostGoalsTotal:   pickByMaxThenRecent(matches,         (m) => m.myScore + m.opponentScore, clubName),
   };
 
   // ── Adversários (per-opponent cumulative) ──────────────────────────────
@@ -274,10 +286,9 @@ export function computeCareerRecords(
     if (!sid) continue;
     seasonGoals.set(sid, (seasonGoals.get(sid) ?? 0) + m.myScore);
     seasonMatches.set(sid, (seasonMatches.get(sid) ?? 0) + 1);
-    if (isWin(m))            seasonWins.set(sid,       (seasonWins.get(sid) ?? 0) + 1);
-    if (isRegulationDraw(m) && !isWin(m) && !isLoss(m))
-                              seasonDraws.set(sid,      (seasonDraws.get(sid) ?? 0) + 1);
-    if (isLoss(m))           seasonLosses.set(sid,     (seasonLosses.get(sid) ?? 0) + 1);
+    if (isWin(m))      seasonWins.set(sid,   (seasonWins.get(sid)   ?? 0) + 1);
+    if (isTrueDraw(m)) seasonDraws.set(sid,  (seasonDraws.get(sid)  ?? 0) + 1);
+    if (isLoss(m))     seasonLosses.set(sid, (seasonLosses.get(sid) ?? 0) + 1);
     if (m.opponentScore === 0) seasonCleanSheets.set(sid, (seasonCleanSheets.get(sid) ?? 0) + 1);
   }
 
@@ -315,10 +326,9 @@ export function computeCareerRecords(
     const y = (m.date || "").slice(0, 4);
     if (!/^\d{4}$/.test(y)) continue;
     yearGoals.set(y, (yearGoals.get(y) ?? 0) + m.myScore);
-    if (isWin(m))            yearWins.set(y,   (yearWins.get(y) ?? 0) + 1);
-    if (isRegulationDraw(m) && !isWin(m) && !isLoss(m))
-                              yearDraws.set(y,  (yearDraws.get(y) ?? 0) + 1);
-    if (isLoss(m))           yearLosses.set(y, (yearLosses.get(y) ?? 0) + 1);
+    if (isWin(m))      yearWins.set(y,   (yearWins.get(y)   ?? 0) + 1);
+    if (isTrueDraw(m)) yearDraws.set(y,  (yearDraws.get(y)  ?? 0) + 1);
+    if (isLoss(m))     yearLosses.set(y, (yearLosses.get(y) ?? 0) + 1);
   }
 
   const anoCivil: CareerRecords["anoCivil"] = {
