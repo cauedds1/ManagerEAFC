@@ -160,7 +160,8 @@ function pickSeasonMax(
   for (const [id, v] of perSeason.entries()) {
     if (v > bestVal) { bestVal = v; bestId = id; }
   }
-  if (bestId == null || bestVal <= 0) return null;
+  // Allow 0 — a record exists as long as the season has matches.
+  if (bestId == null || bestVal < 0) return null;
   return {
     value: bestVal,
     seasonId: bestId,
@@ -175,7 +176,8 @@ function pickYearMax(perYear: Map<string, number>): YearRecordEntry | null {
   for (const [y, v] of perYear.entries()) {
     if (v > bestVal) { bestVal = v; bestY = y; }
   }
-  if (bestY == null || bestVal <= 0) return null;
+  // Allow 0 — a record exists as long as the year has matches.
+  if (bestY == null || bestVal < 0) return null;
   return { value: bestVal, year: bestY };
 }
 
@@ -284,6 +286,17 @@ export function computeCareerRecords(
   for (const m of matches) {
     const sid = m.season;
     if (!sid) continue;
+    // Seed each season's counters so a season with matches but zero of a
+    // given outcome (e.g. a flawless season with 0 losses) still produces
+    // a record of "0" instead of an empty placeholder.
+    if (!seasonMatches.has(sid)) {
+      seasonGoals.set(sid, 0);
+      seasonMatches.set(sid, 0);
+      seasonWins.set(sid, 0);
+      seasonDraws.set(sid, 0);
+      seasonLosses.set(sid, 0);
+      seasonCleanSheets.set(sid, 0);
+    }
     seasonGoals.set(sid, (seasonGoals.get(sid) ?? 0) + m.myScore);
     seasonMatches.set(sid, (seasonMatches.get(sid) ?? 0) + 1);
     if (isWin(m))      seasonWins.set(sid,   (seasonWins.get(sid)   ?? 0) + 1);
@@ -325,6 +338,13 @@ export function computeCareerRecords(
   for (const m of matches) {
     const y = (m.date || "").slice(0, 4);
     if (!/^\d{4}$/.test(y)) continue;
+    // Seed defaults so 0-valued counts still surface as records.
+    if (!yearGoals.has(y)) {
+      yearGoals.set(y, 0);
+      yearWins.set(y, 0);
+      yearDraws.set(y, 0);
+      yearLosses.set(y, 0);
+    }
     yearGoals.set(y, (yearGoals.get(y) ?? 0) + m.myScore);
     if (isWin(m))      yearWins.set(y,   (yearWins.get(y)   ?? 0) + 1);
     if (isTrueDraw(m)) yearDraws.set(y,  (yearDraws.get(y)  ?? 0) + 1);
