@@ -183,12 +183,25 @@ export function CareerRevealReel({ context, club, onComplete, onSkip }: Props) {
         {scene === "crest" && (
           <div key="cr" className="text-center reveal-zoom">
             {club?.logo ? (
-              <img src={club.logo} alt={club.name} className="w-48 h-48 sm:w-64 sm:h-64 object-contain mx-auto mb-6 reveal-crest" style={{ filter: "drop-shadow(0 0 60px rgba(var(--club-primary-rgb),0.7))" }} />
-            ) : (
-              <div className="w-48 h-48 mx-auto mb-6 rounded-full flex items-center justify-center text-6xl font-black" style={{ background: "rgba(var(--club-primary-rgb),0.2)", color: "var(--club-primary)" }}>
-                {(context.club.name || "?").slice(0,1)}
-              </div>
-            )}
+              <img
+                src={club.logo}
+                alt={club.name}
+                className="w-48 h-48 sm:w-64 sm:h-64 object-contain mx-auto mb-6 reveal-crest"
+                style={{ filter: "drop-shadow(0 0 60px rgba(var(--club-primary-rgb),0.7))" }}
+                onError={(e) => {
+                  const img = e.currentTarget;
+                  img.style.display = "none";
+                  const fb = img.nextElementSibling as HTMLElement | null;
+                  if (fb) fb.style.display = "flex";
+                }}
+              />
+            ) : null}
+            <div
+              className="w-48 h-48 mx-auto mb-6 rounded-full items-center justify-center text-7xl font-black reveal-crest"
+              style={{ display: club?.logo ? "none" : "flex", background: "rgba(var(--club-primary-rgb),0.2)", color: "var(--club-primary)", border: "3px solid rgba(var(--club-primary-rgb),0.5)" }}
+            >
+              {(context.club.name || club?.name || "?").slice(0, 1).toUpperCase()}
+            </div>
             <h2 className="text-white text-3xl sm:text-5xl font-black">{context.club.name || club?.name}</h2>
             {context.club.league && <p className="text-white/60 text-sm font-bold uppercase tracking-widest mt-2">{context.club.league}</p>}
           </div>

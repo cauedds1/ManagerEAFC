@@ -213,23 +213,39 @@ function MissionCard({ m }: { m: Mission }) {
 
 function findClubMatch(clubName: string, allClubs: ClubEntry[]): ClubEntry | null {
   if (!clubName.trim()) return null;
-  const exact = allClubs.find((c) => c.name.toLowerCase() === clubName.toLowerCase());
+  const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+  const target = norm(clubName);
+  const exact = allClubs.find((c) => norm(c.name) === target);
   if (exact) return exact;
   const fc26 = Object.entries(APIFOOTBALL_TO_FC26_NAME).find(([k, v]) =>
-    k.toLowerCase() === clubName.toLowerCase() || v.toLowerCase() === clubName.toLowerCase()
+    norm(k) === target || norm(v) === target
   );
   if (fc26) {
-    const found = allClubs.find((c) => c.name.toLowerCase() === fc26[0].toLowerCase());
+    const found = allClubs.find((c) => norm(c.name) === norm(fc26[0]));
     if (found) return found;
   }
-  const results = searchClubs(clubName, allClubs);
-  if (results.length > 0) {
-    const top = results[0];
-    const tn = top.name.toLowerCase();
-    const cn = clubName.toLowerCase();
-    if (tn.includes(cn) || cn.includes(tn)) return top;
+  // Substring either way
+  const sub = allClubs.find((c) => {
+    const cn = norm(c.name);
+    return cn.includes(target) || target.includes(cn);
+  });
+  if (sub) return sub;
+  // Token-based: count shared tokens of length >= 4
+  const STOP = new Set(["the", "club", "fc", "cf", "ac", "afc", "sc", "de", "do", "da", "of", "and", "e", "y"]);
+  const tokens = (s: string) => norm(s).split(/[\s.\-/]+/).filter((t) => t.length >= 4 && !STOP.has(t));
+  const qTokens = tokens(clubName);
+  if (qTokens.length === 0) return null;
+  let best: { club: ClubEntry; score: number } | null = null;
+  for (const c of allClubs) {
+    const cTokens = tokens(c.name);
+    if (cTokens.length === 0) continue;
+    let score = 0;
+    for (const qt of qTokens) {
+      if (cTokens.some((ct) => ct === qt || ct.startsWith(qt) || qt.startsWith(ct))) score++;
+    }
+    if (score > 0 && (!best || score > best.score)) best = { club: c, score };
   }
-  return null;
+  return best?.club ?? null;
 }
 
 function leagueForClub(club: ClubEntry): LeagueInfo | null {
