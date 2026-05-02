@@ -1313,7 +1313,7 @@ export function ElencoView({
           override={overrides[profilePlayer.id]}
           onClose={() => setProfilePlayer(null)}
           onUpdated={refreshOverrides}
-          allPlayers={allPlayers}
+          allPlayers={mergedPlayers}
           clubName={clubName}
         />,
         document.body

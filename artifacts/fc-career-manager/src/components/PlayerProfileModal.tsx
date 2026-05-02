@@ -882,16 +882,16 @@ export function PlayerProfileModal({
                         <div
                           key={i}
                           className="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors"
-                          style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)", cursor: allPlayers ? "pointer" : "default" }}
-                          onClick={() => allPlayers && setSelectedMatchDetail(match)}
-                          onMouseEnter={e => { if (allPlayers) (e.currentTarget as HTMLDivElement).style.background = "rgba(255,255,255,0.06)"; }}
-                          onMouseLeave={e => { if (allPlayers) (e.currentTarget as HTMLDivElement).style.background = "rgba(255,255,255,0.03)"; }}
+                          style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)", cursor: "pointer" }}
+                          onClick={() => setSelectedMatchDetail(match)}
+                          onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.background = "rgba(255,255,255,0.06)"; }}
+                          onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = "rgba(255,255,255,0.03)"; }}
                         >
                           <div className="flex-1 min-w-0">
                             {/* Fixture line: both teams + score */}
                             {(() => {
                               const isHome = match.location !== "fora";
-                              const myLabel  = t.myClub;
+                              const myLabel  = clubName ?? t.myClub;
                               const oppLabel = match.opponent ?? "—";
                               const [leftTeam, leftScore, rightScore, rightTeam] = isHome
                                 ? [myLabel,  match.myScore, match.opponentScore, oppLabel]
@@ -1070,12 +1070,12 @@ export function PlayerProfileModal({
       </div>
     </div>
 
-    {selectedMatchDetail && allPlayers && createPortal(
+    {selectedMatchDetail && createPortal(
       <MatchDetailPage
         match={selectedMatchDetail as import("@/types/match").MatchRecord}
         clubName={clubName ?? ""}
         clubLogoUrl={clubLogoUrl}
-        allPlayers={allPlayers}
+        allPlayers={allPlayers ?? []}
         onBack={() => setSelectedMatchDetail(null)}
         careerId={careerId}
         seasonId={selectedSeasonId || seasonId}
