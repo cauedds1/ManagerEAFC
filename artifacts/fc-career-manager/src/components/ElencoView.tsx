@@ -309,10 +309,7 @@ export function ElencoView({
           backfillDoneRef.current = false;
           return;
         }
-        // HTTP-OK with at least one player record: the backfill ran successfully.
-        // Persist the sentinel now so the API is never called again for this
-        // career+team (some players may legitimately have no API data).
-        localStorage.setItem(persistKey, "1");
+        // Apply nationality/height/weight from the API response.
         for (const info of data.players) {
           if (!playerIdSet.has(info.playerId)) continue;
           if (!info.nationality && !info.height && !info.weight) continue;
@@ -324,6 +321,27 @@ export function ElencoView({
         }
         setOverrides(getAllPlayerOverrides(careerId));
         onOverridesUpdated?.();
+        // Only write the durable sentinel when no active squad player is still
+        // missing nationality (i.e. the backfill actually covered the squad).
+        // Some players may legitimately be absent from the API (youth/loan);
+        // we allow up to 3 retries before giving up to avoid infinite loops.
+        const updatedOverrides = getAllPlayerOverrides(careerId);
+        const anyStillMissing = [...playerIdSet].some(id => !updatedOverrides[id]?.nationality);
+        const retryKey = `bf_retry_${careerId}_${teamId}`;
+        if (!anyStillMissing) {
+          localStorage.setItem(persistKey, "1");
+          localStorage.removeItem(retryKey);
+        } else {
+          const retries = Number(localStorage.getItem(retryKey) ?? 0);
+          if (retries >= 3) {
+            // Give up after 3 attempts — players permanently absent from API.
+            localStorage.setItem(persistKey, "1");
+            localStorage.removeItem(retryKey);
+          } else {
+            localStorage.setItem(retryKey, String(retries + 1));
+            backfillDoneRef.current = false;
+          }
+        }
       })
       .catch(() => { backfillDoneRef.current = false; });
   }, [allPlayers, customPlayers, teamId, isDemo, isCustomClub, careerId, overrides, onOverridesUpdated, backfillSeasonYear]);

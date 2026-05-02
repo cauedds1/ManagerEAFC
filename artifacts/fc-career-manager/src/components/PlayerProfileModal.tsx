@@ -211,39 +211,42 @@ export function PlayerProfileModal({
   useEffect(() => {
     if (tab !== "career" || careerLoaded) return;
     let cancelled = false;
-    getSeasons(careerId).then(seasons => {
+    getSeasons(careerId).then(async seasons => {
       if (cancelled) return;
-      const data = seasons
-        .map(s => {
-          const st = getPlayerStats(s.id, player.id);
-          let motm: number;
-          if (st.motmCount !== undefined) {
-            motm = st.motmCount;
-          } else {
-            // getMatches reads session → localStorage fallback so locally-stored
-            // historical matches are available without an extra network sync.
-            const derived = getMatches(s.id).filter(m => m.motmPlayerId === player.id).length;
-            if (derived > 0) {
-              setPlayerStats(s.id, player.id, { ...st, motmCount: derived }, false);
-            }
-            motm = derived;
+      // Build career rows. For seasons where motmCount is not yet persisted,
+      // sync that season's matches from DB so MOTM can be derived accurately
+      // (parallel fetches — one per season that needs it).
+      const rows = await Promise.all(seasons.map(async s => {
+        const st = getPlayerStats(s.id, player.id);
+        let motm: number;
+        if (st.motmCount !== undefined) {
+          motm = st.motmCount;
+        } else {
+          // motmCount not persisted — sync this season from DB to get matches.
+          try { await syncSeasonFromDb(s.id); } catch { /* best-effort */ }
+          const derived = getMatches(s.id).filter(m => m.motmPlayerId === player.id).length;
+          if (derived > 0) {
+            setPlayerStats(s.id, player.id, { ...st, motmCount: derived }, false);
           }
-          const ratings = st.recentRatings ?? [];
-          const avgRating = ratings.length
-            ? ratings.reduce((a: number, b: number) => a + b, 0) / ratings.length
-            : 0;
-          return {
-            seasonId: s.id,
-            label: s.label,
-            goals: st.goals,
-            assists: st.assists,
-            matches: st.matchesAsStarter + st.matchesAsSubstitute,
-            minutes: st.totalMinutes,
-            avgRating,
-            motm,
-          };
-        });
-      setCareerData(data);
+          motm = derived;
+        }
+        const ratings = st.recentRatings ?? [];
+        const avgRating = ratings.length
+          ? ratings.reduce((a: number, b: number) => a + b, 0) / ratings.length
+          : 0;
+        return {
+          seasonId: s.id,
+          label: s.label,
+          goals: st.goals,
+          assists: st.assists,
+          matches: st.matchesAsStarter + st.matchesAsSubstitute,
+          minutes: st.totalMinutes,
+          avgRating,
+          motm,
+        };
+      }));
+      if (cancelled) return;
+      setCareerData(rows);
       setCareerLoaded(true);
     });
     return () => { cancelled = true; };
