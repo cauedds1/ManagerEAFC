@@ -101,19 +101,26 @@ export function RecordesView({ careerId, seasons, clubName }: Props) {
   // included in the calculation. We fall back to the locally available
   // matches immediately and re-render once the sync completes.
   const [matches, setMatches] = useState<MatchRecord[]>(() => loadAllSeasonMatches(seasons));
+  const [syncing, setSyncing] = useState<boolean>(() => loadAllSeasonMatches(seasons).length === 0);
   const syncedKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     const seasonIds = seasons.map((s) => s.id);
     const key = `${careerId}::${seasonIds.join(",")}`;
-    setMatches(loadAllSeasonMatches(seasons));
-    if (syncedKeyRef.current === key || seasonIds.length === 0) return;
+    const localMatches = loadAllSeasonMatches(seasons);
+    setMatches(localMatches);
+    if (syncedKeyRef.current === key || seasonIds.length === 0) {
+      setSyncing(false);
+      return;
+    }
     syncedKeyRef.current = key;
+    setSyncing(localMatches.length === 0);
     let cancelled = false;
     Promise.all(seasonIds.map((id) => syncSeasonFromDb(id).catch(() => {})))
       .then(() => {
         if (cancelled) return;
         setMatches(loadAllSeasonMatches(seasons));
+        setSyncing(false);
       });
     return () => { cancelled = true; };
   }, [careerId, seasons]);
@@ -122,6 +129,15 @@ export function RecordesView({ careerId, seasons, clubName }: Props) {
     () => computeCareerRecords(matches, seasons, clubName),
     [matches, seasons, clubName],
   );
+
+  if (matches.length === 0 && syncing) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 gap-4 text-center">
+        <span className="inline-block w-8 h-8 rounded-full border-2 border-white/15 border-t-white/55 animate-spin" />
+        <p className="text-white/40 text-sm">{t.recordsLoading}</p>
+      </div>
+    );
+  }
 
   if (matches.length === 0) {
     return (

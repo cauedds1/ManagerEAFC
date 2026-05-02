@@ -1453,6 +1453,7 @@ export const CLUBE = {
     recordsHeading: "Recordes da Carreira",
     recordsSubtitle: "Os melhores momentos de toda a sua jornada",
     recordsEmpty: "Sem dados ainda — registre suas partidas para começar a quebrar recordes",
+    recordsLoading: "Carregando recordes da carreira…",
     recordsSecMatches: "Partidas",
     recordsSecOpponents: "Adversários",
     recordsSecSeason: "Temporada",
@@ -1790,6 +1791,7 @@ export const CLUBE = {
     recordsHeading: "Career Records",
     recordsSubtitle: "The all-time peaks of your journey",
     recordsEmpty: "No data yet — log matches to start setting records",
+    recordsLoading: "Loading career records…",
     recordsSecMatches: "Matches",
     recordsSecOpponents: "Opponents",
     recordsSecSeason: "Season",
@@ -4256,6 +4258,17 @@ export const SECTION_HELP: Record<Lang, Record<string, SectionHelpContent>> = {
       tip: "Dica: Limite de tamanho por arquivo: Pro 200 MB · Ultra 500 MB.",
       limit: "Pro: 25 momentos · Ultra: 60 momentos",
     },
+    recordes: {
+      title: "Recordes",
+      desc: "Os melhores feitos da sua carreira inteira — calculados a partir de todas as partidas registradas.",
+      steps: [
+        { icon: "🏆", text: "Maiores vitórias e derrotas (em casa, fora e geral)" },
+        { icon: "🆚", text: "Recordes contra adversários: mais enfrentados, mais batidos, mais difíceis" },
+        { icon: "📅", text: "Melhores temporadas e melhores anos civis" },
+        { icon: "🔥", text: "Sequências de vitórias, invencibilidade e jogos sem sofrer gol" },
+      ],
+      tip: "Dica: Os recordes consideram todas as temporadas da carreira, incluindo as já finalizadas.",
+    },
   },
   en: {
     painel: {
@@ -4403,6 +4416,17 @@ export const SECTION_HELP: Record<Lang, Record<string, SectionHelpContent>> = {
       ],
       tip: "Tip: File size limit: Pro 200 MB · Ultra 500 MB.",
       limit: "Pro: 25 moments · Ultra: 60 moments",
+    },
+    recordes: {
+      title: "Records",
+      desc: "Your career-best feats — computed from every match you've logged.",
+      steps: [
+        { icon: "🏆", text: "Biggest wins and losses (home, away, and overall)" },
+        { icon: "🆚", text: "Opponent records: most faced, most beaten, toughest" },
+        { icon: "📅", text: "Best seasons and best calendar years" },
+        { icon: "🔥", text: "Winning, unbeaten and clean-sheet streaks" },
+      ],
+      tip: "Tip: Records cover every season of the career, including finalized ones.",
     },
   },
 };
