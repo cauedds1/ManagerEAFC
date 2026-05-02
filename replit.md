@@ -169,3 +169,38 @@ Auto-fill / pickBestEleven rules (`ElencoView`, `RegistrarPartidaModal`):
 Script at `scripts/post-merge.sh`:
 1. `pnpm install --frozen-lockfile`
 2. `pnpm --filter db push`
+
+## Stripe webhook (production)
+
+The webhook URL in production is:
+`https://managereafc-production.up.railway.app/api/stripe/webhook`
+
+### Secret resolution (the source of truth)
+The handler in `artifacts/api-server/src/app.ts` accepts events signed by
+EITHER of two secrets (DB first, env as fallback):
+1. **Primary**: `stripe._managed_webhooks.secret` for the current Stripe
+   account, populated by `stripeSync.findOrCreateManagedWebhook(...)` on
+   every server boot. This is the source of truth.
+2. **Fallback**: `STRIPE_WEBHOOK_SECRET` env var. Only used when the DB
+   secret fails verification. A warning is logged whenever this fallback
+   succeeds, because it means the env var is out of sync with the
+   managed webhook and should be removed or updated.
+
+`findOrCreateManagedWebhook` is idempotent: it reuses the existing
+endpoint when status is `enabled`, deletes and recreates it (with a new
+secret) when Stripe has marked it `disabled`, and dedupes endpoints
+pointing at any other URL for the same account.
+
+### If Stripe disables the endpoint again
+1. Check Railway logs for `Webhook signature verification failed against
+   all candidate secrets` and the `tried` array of secret fingerprints.
+2. In Stripe Dashboard → Developers → Webhooks, confirm only one
+   endpoint points at `…/api/stripe/webhook`. Delete duplicates.
+3. Click `Enable endpoint` (or `Send test webhook`) in the dashboard.
+4. The next API server restart on Railway will refresh
+   `stripe._managed_webhooks.secret` automatically.
+5. If a stale `STRIPE_WEBHOOK_SECRET` is set in Railway env, prefer
+   removing it so the DB-managed secret is the single source of truth.
+
+A `GET /api/stripe/webhook` route returns 200 for manual healthchecks
+(not used by Stripe itself).

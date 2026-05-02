@@ -61,10 +61,34 @@ async function initStripe() {
           ? `https://${process.env.PUBLIC_DOMAIN}`
           : null;
 
+    const fp = (s: string | null | undefined): string => {
+      if (!s) return "<none>";
+      if (s.length < 12) return `${s.slice(0, 3)}…(${s.length})`;
+      return `${s.slice(0, 8)}…${s.slice(-4)}(${s.length})`;
+    };
+
     if (webhookBaseUrl) {
-      logger.info({ webhookBaseUrl }, "Setting up managed Stripe webhook...");
-      await stripeSync.findOrCreateManagedWebhook(`${webhookBaseUrl}/api/stripe/webhook`);
-      logger.info("Stripe webhook configured");
+      const webhookUrl = `${webhookBaseUrl}/api/stripe/webhook`;
+      logger.info({ webhookUrl }, "Setting up managed Stripe webhook...");
+      try {
+        const wh = await stripeSync.findOrCreateManagedWebhook(webhookUrl);
+        logger.info(
+          {
+            webhookId: wh.id,
+            webhookUrl: wh.url,
+            status: wh.status,
+            envSecretFp: fp(process.env.STRIPE_WEBHOOK_SECRET),
+          },
+          "Stripe webhook configured (DB-managed secret is the source of truth; env STRIPE_WEBHOOK_SECRET is only a fallback)",
+        );
+        if (process.env.STRIPE_WEBHOOK_SECRET) {
+          logger.warn(
+            "STRIPE_WEBHOOK_SECRET is set in env — if it differs from the managed webhook's secret in stripe._managed_webhooks, signature verification will fall back to env. Prefer unsetting it and relying on the managed webhook.",
+          );
+        }
+      } catch (whErr) {
+        logger.error({ err: whErr, webhookUrl }, "Failed to configure managed Stripe webhook");
+      }
     } else {
       const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
       if (!webhookSecret) {
@@ -73,7 +97,7 @@ async function initStripe() {
           "Set RAILWAY_PUBLIC_DOMAIN or PUBLIC_DOMAIN for automatic webhook setup, or add STRIPE_WEBHOOK_SECRET to your environment."
         );
       } else {
-        logger.info("Stripe webhook secret configured (manual mode)");
+        logger.info({ envSecretFp: fp(webhookSecret) }, "Stripe webhook secret configured (manual mode)");
       }
     }
 
