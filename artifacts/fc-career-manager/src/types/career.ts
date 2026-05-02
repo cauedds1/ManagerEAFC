@@ -52,6 +52,40 @@ export interface OngoingCompetition { name: string; stage: string; nextOpponent:
 export interface RivalContext { name: string; context: string }
 export interface NarrativeArc { title: string; description: string; status: string }
 
+export function createEmptyInitialContext(): InitialContext {
+  const mood = (): MoodBlock => ({ value: 50, label: "neutro", reason: "" });
+  return {
+    club: { name: "", league: "", country: "", confidence: "low" },
+    coach: { name: "", nationality: "", style: "", confidence: "low" },
+    season: { label: "", stage: "", matchday: null, confidence: "low" },
+    leaguePosition: { rank: null, points: null, form: "", recentForm: [], goalDifference: null, gap: "", currentMatchday: null, confidence: "low" },
+    preferredFormation: "",
+    injuries: [],
+    trophiesWon: [],
+    ongoingCompetitions: [],
+    rivalsContext: [],
+    narrativeArcs: [],
+    moods: { board: mood(), fans: mood(), dressingRoom: mood() },
+    finances: { summary: "", budget: "", confidence: "low" },
+    keyPlayers: [],
+    transfersIn: [],
+    transfersOut: [],
+    rivals: [],
+    recentMatches: [],
+    storyArc: "",
+    narrativeSummary: "",
+    projeto: "",
+    competitions: [],
+    missions: [],
+    boardLetter: "",
+    prediction: { endOfSeason: "", boardReaction: "", confidence: "low" },
+    inconsistencies: [],
+    deepeningQuestions: [],
+    squadSyncWarning: "",
+    overallConfidence: "low",
+  };
+}
+
 export interface InitialContext {
   club: { name: string; league: string; country: string; confidence: Confidence };
   coach: { name: string; nationality: string; style: string; confidence: Confidence };

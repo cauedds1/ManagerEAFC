@@ -92,6 +92,13 @@
       "when": 1777320000000,
       "tag": "0012_career_backstory",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1777380000000,
+      "tag": "0013_career_initial_context",
+      "breakpoints": true
     }
   ]
 }

@@ -7,6 +7,7 @@ import { ClubPicker } from "./ClubPicker";
 import { TeamPreview } from "./TeamPreview";
 import { CareerSetupStep } from "./CareerSetupStep";
 import { createCareer } from "@/lib/careerStorage";
+import { createEmptyInitialContext } from "@/types/career";
 import { getCurrentSeason } from "@/lib/api";
 import { applyTheme, resetTheme, extractColorsFromImage, getCurrentColors } from "@/lib/themeManager";
 import { getClubColors } from "@/lib/clubColors";
@@ -498,35 +499,8 @@ export function CreateCareerWizard({
                     isOngoing.current = p.key !== "manual";
                     setChosenPath(p.key);
                     if (p.key === "manual") {
-                      // Manual: build empty template + go straight to editable preview
                       isOngoing.current = true;
-                      const empty: ParsedContext = {
-                        club: { name: "", confidence: "low" },
-                        coach: { name: "", confidence: "low" },
-                        season: { label: "", confidence: "low" },
-                        leaguePosition: { rank: null, points: null, gap: null, form: null, confidence: "low" },
-                        moods: {
-                          board: { value: 50, confidence: "low" },
-                          fans: { value: 50, confidence: "low" },
-                          dressingRoom: { value: 50, confidence: "low" },
-                        },
-                        finances: { confidence: "low" },
-                        keyPlayers: [],
-                        transfersIn: [],
-                        transfersOut: [],
-                        rivals: [],
-                        recentMatches: [],
-                        missions: [],
-                        injuries: [],
-                        trophiesWon: [],
-                        ongoingCompetitions: [],
-                        rivalsContext: [],
-                        narrativeArcs: [],
-                        inconsistencies: [],
-                        deepeningQuestions: [],
-                        overallConfidence: "low",
-                      } as ParsedContext;
-                      setParsedContext(empty);
+                      setParsedContext(createEmptyInitialContext());
                       setPrePhase("ongoing-preview");
                     } else {
                       setPrePhase("ongoing-input");
@@ -590,7 +564,13 @@ export function CreateCareerWizard({
               <div className="rounded-lg p-3 flex flex-col gap-2" style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.25)" }}>
                 <p className="text-red-300 text-xs font-medium">{ongoingError}</p>
                 <button
-                  onClick={() => { isOngoing.current = false; setChosenPath("manual"); setPrePhase(null); }}
+                  onClick={() => {
+                    isOngoing.current = true;
+                    setChosenPath("manual");
+                    setParsedContext(createEmptyInitialContext());
+                    setOngoingError("");
+                    setPrePhase("ongoing-preview");
+                  }}
                   className="text-xs font-bold underline text-red-200 self-start"
                 >
                   {t.pathManual}
