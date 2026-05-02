@@ -93,8 +93,9 @@ export function RecordesView({ careerId, seasons, clubName }: Props) {
   const [lang] = useLang();
   const t = CLUBE[lang];
 
-  const [matches, setMatches] = useState<MatchRecord[]>(() => loadAllSeasonMatches(seasons));
-  const [syncing, setSyncing] = useState<boolean>(() => loadAllSeasonMatches(seasons).length === 0);
+  const initialMatches = loadAllSeasonMatches(seasons);
+  const [matches, setMatches] = useState<MatchRecord[]>(initialMatches);
+  const [syncing, setSyncing] = useState<boolean>(initialMatches.length === 0);
   const syncedKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -148,16 +149,7 @@ export function RecordesView({ careerId, seasons, clubName }: Props) {
 
   const dash = "—";
 
-  // ── Match records helpers
   const matchRecord = (
-    rec: { value: number; scoreLine: string; date: string | null } | null,
-  ): { value: string; subLabel?: string } => {
-    if (!rec) return { value: dash };
-    const dateStr = rec.date ? `, ${fmtDate(rec.date)}` : "";
-    return { value: String(rec.value), subLabel: `${rec.scoreLine}${dateStr}` };
-  };
-
-  const matchTotalRecord = (
     rec: { value: number; scoreLine: string; date: string | null } | null,
   ): { value: string; subLabel?: string } => {
     if (!rec) return { value: dash };
@@ -226,10 +218,10 @@ export function RecordesView({ careerId, seasons, clubName }: Props) {
         <RecordCard icon="💔" title={t.recBiggestLoss}     accent={lossColor} {...matchRecord(records.partidas.biggestLoss)} />
         <RecordCard icon="🏠" title={t.recBiggestLossHome} accent={lossColor} {...matchRecord(records.partidas.biggestLossHome)} />
         <RecordCard icon="✈️" title={t.recBiggestLossAway} accent={lossColor} {...matchRecord(records.partidas.biggestLossAway)} />
-        <RecordCard icon="🤝" title={t.recHighestDraw}     accent={drawColor} {...matchTotalRecord(records.partidas.highestDraw)} />
-        <RecordCard icon="⚽" title={t.recMostGoalsFor}    accent={winColor}  {...matchTotalRecord(records.partidas.mostGoalsFor)} />
-        <RecordCard icon="🥅" title={t.recMostGoalsAgainst}accent={lossColor} {...matchTotalRecord(records.partidas.mostGoalsAgainst)} />
-        <RecordCard icon="🎯" title={t.recMostGoalsTotal}  accent={goldColor} {...matchTotalRecord(records.partidas.mostGoalsTotal)} />
+        <RecordCard icon="🤝" title={t.recHighestDraw}     accent={drawColor} {...matchRecord(records.partidas.highestDraw)} />
+        <RecordCard icon="⚽" title={t.recMostGoalsFor}    accent={winColor}  {...matchRecord(records.partidas.mostGoalsFor)} />
+        <RecordCard icon="🥅" title={t.recMostGoalsAgainst}accent={lossColor} {...matchRecord(records.partidas.mostGoalsAgainst)} />
+        <RecordCard icon="🎯" title={t.recMostGoalsTotal}  accent={goldColor} {...matchRecord(records.partidas.mostGoalsTotal)} />
       </Section>
 
       <Section title={t.recordsSecOpponents}>
