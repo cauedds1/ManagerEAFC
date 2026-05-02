@@ -43,10 +43,21 @@ export function InitialContextBanner({ career }: Props) {
   const showSync = !seen.sync && (!!ic.squadSyncWarning || (ic.keyPlayers?.length ?? 0) > 0);
   const showMissions = !seen.missions && ic.missions?.length > 0;
 
-  if (!showLetter && !showSync && !showMissions) return null;
+  if (!showLetter && !showSync && !showMissions && !hydrated) return null;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 flex flex-col gap-3">
+      {hydrated && (
+        <div className="flex justify-end">
+          <span
+            title={t.appliedToTabsTooltip}
+            className="inline-flex items-center text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full"
+            style={{ color: "#34d399", background: "rgba(16,185,129,0.10)", border: "1px solid rgba(16,185,129,0.25)" }}
+          >
+            ✓ {t.appliedToTabs}
+          </span>
+        </div>
+      )}
       {showLetter && (
         <div
           className="rounded-2xl p-4 flex flex-col gap-2 animate-slide-up"
@@ -59,18 +70,7 @@ export function InitialContextBanner({ career }: Props) {
             <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--club-primary)" }}>
               ✉ {t.boardLetterTitle}
             </span>
-            <div className="flex items-center gap-2">
-              {hydrated && (
-                <span
-                  title={t.appliedToTabsTooltip}
-                  className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded"
-                  style={{ color: "#34d399", background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.25)" }}
-                >
-                  ✓ {t.appliedToTabs}
-                </span>
-              )}
-              <button onClick={() => dismiss("letter")} className="text-white/40 hover:text-white text-xs">✕</button>
-            </div>
+            <button onClick={() => dismiss("letter")} className="text-white/40 hover:text-white text-xs">✕</button>
           </div>
           <p className="text-white/85 text-sm leading-relaxed italic" style={{ fontFamily: "Georgia, serif" }}>"{ic.boardLetter}"</p>
           {ic.prediction?.endOfSeason && (

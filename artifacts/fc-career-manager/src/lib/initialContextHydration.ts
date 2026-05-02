@@ -2,11 +2,13 @@ import type { Career, RecentMatch, TransferEntry } from "@/types/career";
 import type { TransferRecord } from "@/types/transfer";
 import type { MatchRecord, MatchLocation } from "@/types/match";
 import {
-  addTransfer,
+  getTransfers,
+  saveTransfers,
   generatePlayerId,
   generateTransferId,
 } from "@/lib/transferStorage";
-import { addMatch, generateMatchId } from "@/lib/matchStorage";
+import { getMatches, saveMatches, generateMatchId } from "@/lib/matchStorage";
+import { recordMatchInAgg } from "@/lib/careerAggregateStats";
 import { setSeasonRivals, MAX_RIVALS } from "@/lib/rivalsStorage";
 
 const HYDRATED_KEY = (careerId: string) => `fc-initial-hydrated-${careerId}`;
@@ -87,11 +89,7 @@ function buildTransfer(
   };
 }
 
-function buildMatch(
-  career: Career,
-  seasonId: string,
-  rm: RecentMatch,
-): MatchRecord | null {
+function buildMatch(career: Career, rm: RecentMatch): MatchRecord | null {
   const score = parseScore(rm.score);
   if (!score) return null;
   return {
@@ -132,42 +130,69 @@ export async function hydrateInitialContext(
 
   const tIn = ic.transfersIn ?? [];
   const tOut = ic.transfersOut ?? [];
-  const matches = ic.recentMatches ?? [];
+  const recentMatches = ic.recentMatches ?? [];
   const rivals = ic.rivals ?? [];
-  if (tIn.length === 0 && tOut.length === 0 && matches.length === 0 && rivals.length === 0) {
+  if (tIn.length === 0 && tOut.length === 0 && recentMatches.length === 0 && rivals.length === 0) {
     markHydrated(career.id);
     return empty;
   }
 
-  const result: HydrationResult = { ...empty, ran: true };
-
+  const newTransfers: TransferRecord[] = [];
   for (const entry of tIn) {
-    if (!entry?.name?.trim()) continue;
-    addTransfer(seasonId, buildTransfer(career, entry, "compra"));
-    result.transfersAdded++;
+    if (entry?.name?.trim()) newTransfers.push(buildTransfer(career, entry, "compra"));
   }
   for (const entry of tOut) {
-    if (!entry?.name?.trim()) continue;
-    addTransfer(seasonId, buildTransfer(career, entry, "venda"));
-    result.transfersAdded++;
+    if (entry?.name?.trim()) newTransfers.push(buildTransfer(career, entry, "venda"));
   }
 
-  for (const rm of matches) {
-    const match = buildMatch(career, seasonId, rm);
-    if (match) {
-      addMatch(seasonId, match);
-      result.matchesAdded++;
+  const newMatches: MatchRecord[] = [];
+  for (const rm of recentMatches) {
+    const match = buildMatch(career, rm);
+    if (match) newMatches.push(match);
+  }
+
+  const cleanedRivals = rivals
+    .map((r) => r.trim())
+    .filter(Boolean)
+    .slice(0, MAX_RIVALS);
+
+  // Single batched write per category — avoids racing PUTs from multiple addTransfer/addMatch calls.
+  const writes: Promise<unknown>[] = [];
+
+  if (newTransfers.length > 0) {
+    const finalTransfers = [...getTransfers(seasonId), ...newTransfers];
+    // saveTransfers does sync session write + fire-and-forget PUT; wrap to await its underlying promise via a microtask.
+    saveTransfers(seasonId, finalTransfers);
+  }
+
+  if (newMatches.length > 0) {
+    const finalMatches = [...getMatches(seasonId), ...newMatches];
+    writes.push(saveMatches(seasonId, finalMatches));
+    // Aggregates are local cache — safe to run synchronously after the persisted write is queued.
+    for (const m of newMatches) {
+      recordMatchInAgg(career.id, m.myScore, m.opponentScore);
     }
   }
 
-  if (rivals.length > 0) {
-    const cleaned = rivals.map((r) => r.trim()).filter(Boolean).slice(0, MAX_RIVALS);
-    if (cleaned.length > 0) {
-      const ok = await setSeasonRivals(seasonId, cleaned);
-      if (ok) result.rivalsSet = cleaned.length;
-    }
+  let rivalsSet = 0;
+  if (cleanedRivals.length > 0) {
+    writes.push(
+      setSeasonRivals(seasonId, cleanedRivals).then((ok) => {
+        if (ok) rivalsSet = cleanedRivals.length;
+      }),
+    );
   }
+
+  // Wait for the durable writes (matches + rivals) to actually complete before marking hydrated,
+  // so a reload before persistence finishes does NOT skip retry on the next launch.
+  await Promise.allSettled(writes);
 
   markHydrated(career.id);
-  return result;
+
+  return {
+    ran: true,
+    transfersAdded: newTransfers.length,
+    matchesAdded: newMatches.length,
+    rivalsSet,
+  };
 }

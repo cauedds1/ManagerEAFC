@@ -35,6 +35,12 @@ export function addMatch(seasonId: string, match: MatchRecord): void {
   }
 }
 
+export async function saveMatches(seasonId: string, list: MatchRecord[]): Promise<void> {
+  sessionSet(matchesKey(seasonId), list);
+  lsSet(matchesKey(seasonId), list);
+  await putSeasonData(seasonId, "matches", list);
+}
+
 export function updateMatch(seasonId: string, updated: MatchRecord): void {
   const existing = getMatches(seasonId);
   const old = existing.find((m) => m.id === updated.id);
