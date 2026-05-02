@@ -285,37 +285,58 @@ export function ElencoView({
     onCustomPlayersChange?.(customPlayers);
   }, [customPlayers, onCustomPlayersChange]);
 
-  async function runBackfill(force = false) {
-    if (!teamId || isDemo || isCustomClub) return;
+  // Tracks player IDs we've already attempted via the per-player /players/details
+  // endpoint in this session, so a player whose API-Football lookup returned no
+  // data (or failed transiently) doesn't trigger a fetch on every render.
+  const detailsTriedRef = useRef(new Set<number>());
+
+  function applyDetailsRecords(
+    records: Array<{ playerId: number; nationality: string; height: string; weight: string }>,
+    knownPlayerIds: Set<number>,
+  ): boolean {
+    let updated = false;
+    for (const info of records) {
+      if (!knownPlayerIds.has(info.playerId)) continue;
+      if (!info.nationality && !info.height && !info.weight) continue;
+      setPlayerOverride(careerId, info.playerId, {
+        ...(info.nationality ? { nationality: info.nationality } : {}),
+        ...(info.height      ? { height: info.height }           : {}),
+        ...(info.weight      ? { weight: info.weight }           : {}),
+      });
+      updated = true;
+    }
+    return updated;
+  }
+
+  // Backfill path 1: bulk fetch via our own team's API-Football roster.
+  // Covers native squad players. Gated by a per-team localStorage flag so it
+  // runs at most once successfully per (career, team).
+  async function runTeamDetailsBackfill(
+    force: boolean,
+    season: string,
+    headers: HeadersInit,
+  ): Promise<boolean> {
     const persistKey = `bf_done_${careerId}_${teamId}`;
     const retryKey   = `bf_retry_${careerId}_${teamId}`;
-    if (!force && (backfillDoneRef.current || localStorage.getItem(persistKey))) return;
-    const needsBackfill = force || allPlayers.some(p => !overrides[p.id]?.nationality);
-    if (!needsBackfill) return;
-    backfillDoneRef.current = true;
-    if (force) setBackfillLoading(true);
+    if (!force && localStorage.getItem(persistKey)) return false;
+    const needsBackfill = force || allPlayers.some(p => p.id > 0 && !overrides[p.id]?.nationality);
+    if (!needsBackfill) return false;
     const playerIdSet = new Set(allPlayers.map(p => p.id));
-    const season = String(backfillSeasonYear ?? new Date().getFullYear());
-    const token = getEffectiveToken();
-    const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
     try {
       const r = await fetch(`/api/players/team-details?teamId=${teamId}&season=${season}`, { headers });
       const data: { players: Array<{ playerId: number; nationality: string; height: string; weight: string }> } | null =
         r.ok ? await r.json() : null;
-      if (!data?.players?.length) { backfillDoneRef.current = false; return; }
-      for (const info of data.players) {
-        if (!playerIdSet.has(info.playerId)) continue;
-        if (!info.nationality && !info.height && !info.weight) continue;
-        setPlayerOverride(careerId, info.playerId, {
-          ...(info.nationality ? { nationality: info.nationality } : {}),
-          ...(info.height      ? { height: info.height }           : {}),
-          ...(info.weight      ? { weight: info.weight }           : {}),
-        });
-      }
-      setOverrides(getAllPlayerOverrides(careerId));
-      onOverridesUpdated?.();
+      if (!data?.players?.length) return false;
+      const updated = applyDetailsRecords(data.players, playerIdSet);
       const updatedOverrides = getAllPlayerOverrides(careerId);
-      const anyStillMissing = [...playerIdSet].some(id => !updatedOverrides[id]?.nationality);
+      // Only "still missing" applies to native (non-transferred) players that
+      // were expected to be in the team-details response — transferred-in
+      // players (handled by the per-player path) are excluded here so retry
+      // logic doesn't loop forever on signings.
+      const teamDetailsIds = new Set(data.players.map(p => p.playerId));
+      const anyStillMissing = [...playerIdSet].some(id =>
+        teamDetailsIds.has(id) && !updatedOverrides[id]?.nationality,
+      );
       if (!anyStillMissing || force) {
         localStorage.setItem(persistKey, "1");
         localStorage.removeItem(retryKey);
@@ -326,12 +347,80 @@ export function ElencoView({
           localStorage.removeItem(retryKey);
         } else {
           localStorage.setItem(retryKey, String(retries + 1));
-          backfillDoneRef.current = false;
         }
       }
+      return updated;
     } catch {
-      backfillDoneRef.current = false;
+      return false;
+    }
+  }
+
+  // Backfill path 2: per-player fetch for signings that are not part of our
+  // team's API-Football roster (e.g. recently transferred in from another club).
+  // Tracks attempted IDs in a ref so a missing-data result is not retried on
+  // every render. Custom (negative-ID) players are skipped because they don't
+  // exist in API-Football.
+  async function runPerPlayerDetailsBackfill(
+    force: boolean,
+    season: string,
+    headers: HeadersInit,
+  ): Promise<boolean> {
+    const candidates = allPlayers
+      .filter(p => p.id > 0 && !overrides[p.id]?.nationality)
+      .filter(p => force || !detailsTriedRef.current.has(p.id))
+      .map(p => p.id)
+      .slice(0, 50);
+    if (candidates.length === 0) return false;
+    for (const id of candidates) detailsTriedRef.current.add(id);
+    const playerIdSet = new Set(allPlayers.map(p => p.id));
+    const releaseForRetry = () => {
+      for (const id of candidates) detailsTriedRef.current.delete(id);
+    };
+    try {
+      const idsParam = candidates.join(",");
+      const r = await fetch(`/api/players/details?ids=${idsParam}&season=${season}`, { headers });
+      // Treat any non-OK response (429/5xx/network blip) as transient: release
+      // the candidate IDs so a later render can retry them.
+      if (!r.ok) {
+        releaseForRetry();
+        return false;
+      }
+      type DetailsResponse = { players?: Array<{ playerId: number; nationality: string; height: string; weight: string }> };
+      let data: DetailsResponse | null = null;
+      try {
+        data = (await r.json()) as DetailsResponse;
+      } catch {
+        releaseForRetry();
+        return false;
+      }
+      if (!data?.players?.length) return false;
+      return applyDetailsRecords(data.players, playerIdSet);
+    } catch {
+      // Network failure — allow retry on next render.
+      releaseForRetry();
+      return false;
+    }
+  }
+
+  async function runBackfill(force = false) {
+    if (!teamId || isDemo || isCustomClub) return;
+    if (!force && backfillDoneRef.current) return;
+    backfillDoneRef.current = true;
+    if (force) setBackfillLoading(true);
+    const season = String(backfillSeasonYear ?? new Date().getFullYear());
+    const token = getEffectiveToken();
+    const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
+    try {
+      const teamUpdated = await runTeamDetailsBackfill(force, season, headers);
+      const perPlayerUpdated = await runPerPlayerDetailsBackfill(force, season, headers);
+      if (teamUpdated || perPlayerUpdated) {
+        setOverrides(getAllPlayerOverrides(careerId));
+        onOverridesUpdated?.();
+      }
     } finally {
+      // Allow the effect to re-trigger when allPlayers changes (e.g. after a
+      // new signing) so the per-player path can pick up new IDs.
+      backfillDoneRef.current = false;
       if (force) setBackfillLoading(false);
     }
   }

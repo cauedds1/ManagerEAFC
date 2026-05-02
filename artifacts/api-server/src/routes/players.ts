@@ -434,6 +434,78 @@ router.post("/players/sync", async (req, res) => {
   }
 });
 
+// Backfill nationality/height/weight for individual players (e.g. transferred-in
+// signings) that are not part of our team's API-Football roster. Accepts a
+// comma-separated list of player IDs and queries API-Football's /players
+// endpoint by id+season for each, in parallel with a small concurrency cap.
+router.get("/players/details", async (req, res) => {
+  const apiKey = process.env.API_FOOTBALL_KEY ?? "";
+  if (!apiKey) return res.status(503).json({ error: "API_FOOTBALL_KEY not configured" });
+
+  const idsParam = String(req.query.ids ?? "").trim();
+  const baseSeason = parseInt(String(req.query.season ?? ""), 10) || new Date().getFullYear();
+
+  if (!idsParam) return res.status(400).json({ error: "ids required (comma-separated)" });
+
+  const ids = idsParam
+    .split(",")
+    .map((s) => parseInt(s.trim(), 10))
+    .filter((n) => Number.isFinite(n) && n > 0);
+
+  if (ids.length === 0) return res.json({ players: [] });
+  if (ids.length > 50) return res.status(400).json({ error: "max 50 ids per request" });
+
+  type PlayerInfo = { playerId: number; nationality: string; height: string; weight: string };
+
+  async function fetchOne(id: number, season: number): Promise<PlayerInfo | null> {
+    const url = `${API_FOOTBALL_BASE}/players?id=${id}&season=${season}`;
+    let afRes: Response;
+    try {
+      afRes = await fetch(url, {
+        headers: { "x-apisports-key": apiKey },
+        signal: AbortSignal.timeout(10000),
+      });
+    } catch {
+      return null;
+    }
+    if (!afRes.ok) return null;
+    const data = await afRes.json() as {
+      response?: Array<{
+        player?: { id?: number; nationality?: string; height?: string; weight?: string };
+      }>;
+    };
+    const player = data.response?.[0]?.player;
+    if (!player?.id) return null;
+    return {
+      playerId: player.id,
+      nationality: player.nationality ?? "",
+      height: player.height ?? "",
+      weight: player.weight ?? "",
+    };
+  }
+
+  // Run with limited concurrency (5) so we don't burst the upstream rate limit.
+  const CONCURRENCY = 5;
+  const results: PlayerInfo[] = [];
+  for (let i = 0; i < ids.length; i += CONCURRENCY) {
+    const batch = ids.slice(i, i + CONCURRENCY);
+    const settled = await Promise.all(batch.map(async (id) => {
+      let info = await fetchOne(id, baseSeason);
+      // Fall back to previous season if current returns nothing (some players
+      // are not yet listed for the current season early in the year).
+      if (!info || (!info.nationality && !info.height && !info.weight)) {
+        const prev = await fetchOne(id, baseSeason - 1);
+        if (prev) info = prev;
+      }
+      return info;
+    }));
+    for (const r of settled) {
+      if (r && (r.nationality || r.height || r.weight)) results.push(r);
+    }
+  }
+  return res.json({ players: results });
+});
+
 router.get("/players/team-details", async (req, res) => {
   const apiKey = process.env.API_FOOTBALL_KEY ?? "";
   if (!apiKey) return res.status(503).json({ error: "API_FOOTBALL_KEY not configured" });
