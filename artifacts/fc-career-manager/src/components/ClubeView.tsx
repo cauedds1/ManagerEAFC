@@ -9,6 +9,8 @@ import { aggregatePlayerStats } from "@/lib/playerStatsStorage";
 import { syncSeasonFromDb } from "@/lib/dbSync";
 import { ElencoView } from "./ElencoView";
 import { PlayerStatsTable } from "./PlayerStatsTable";
+import { PlayerProfileModal } from "./PlayerProfileModal";
+import { getAllPlayerOverrides } from "@/lib/playerStatsStorage";
 import { LesoesView } from "./LesoesView";
 import { SequenciasView } from "./SequenciasView";
 import { FinanceiroView } from "./FinanceiroView";
@@ -129,6 +131,12 @@ export function ClubeView({
   const [statsMini, setStatsMini] = useState<StatsMiniTab>("jogadores");
   const [seqScope, setSeqScope] = useState<SeqScope>("atual");
   const [statsScope, setStatsScope] = useState<SeqScope>("atual");
+  const [profilePlayer, setProfilePlayer] = useState<SquadPlayer | null>(null);
+  const clubOverrides = useMemo(() => getAllPlayerOverrides(careerId), [careerId]);
+  const backfillSeasonYear = useMemo(() => {
+    const m = career.season?.match(/\d{4}/);
+    return m ? parseInt(m[0]) : new Date().getFullYear();
+  }, [career.season]);
   const [pastSeasonsLoaded, setPastSeasonsLoaded] = useState(false);
   const loadingPastRef = useRef(false);
 
@@ -281,6 +289,8 @@ export function ClubeView({
             finalizedSeasonStats={finalizedSeasonStats}
             isCustomClub={isCustomClub}
             isDemo={isDemo}
+            teamId={career.clubId}
+            backfillSeasonYear={backfillSeasonYear}
           />
         )}
 
@@ -322,6 +332,7 @@ export function ClubeView({
                   statsOverride={statsScope === "todas" && hasMultipleSeasons ? allStatsOverride : undefined}
                   matchesOverride={statsScope === "todas" && hasMultipleSeasons ? allSeasonMatches : undefined}
                   formerPlayerIds={statsScope === "todas" && hasMultipleSeasons ? expandedFormerPlayerIds : formerPlayerIds}
+                  onPlayerProfile={(p) => setProfilePlayer(p)}
                 />
               </div>
             )}
@@ -378,6 +389,17 @@ export function ClubeView({
           <TrophyCabinetView careerId={careerId} />
         )}
       </div>
+
+      {profilePlayer && (
+        <PlayerProfileModal
+          careerId={careerId}
+          seasonId={seasonId}
+          player={profilePlayer}
+          override={clubOverrides[profilePlayer.id]}
+          onClose={() => setProfilePlayer(null)}
+          onUpdated={() => setProfilePlayer(null)}
+        />
+      )}
     </div>
   );
 }

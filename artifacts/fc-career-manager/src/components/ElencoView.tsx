@@ -212,6 +212,7 @@ interface ElencoViewProps {
   seasonId?: string;
   clubName?: string;
   teamId?: number;
+  backfillSeasonYear?: number;
   squad: SquadResult | null;
   squadLoading: boolean;
   squadError: boolean;
@@ -254,6 +255,7 @@ export function ElencoView({
   isCustomClub,
   isDemo,
   teamId,
+  backfillSeasonYear,
 }: ElencoViewProps) {
   const [lang] = useLang();
   const t = CLUBE[lang];
@@ -288,7 +290,7 @@ export function ElencoView({
     if (!needsBackfill) return;
     backfillDoneRef.current = true;
     const playerIdSet = new Set(combined.map(p => p.id));
-    const season = new Date().getFullYear().toString();
+    const season = String(backfillSeasonYear ?? new Date().getFullYear());
     const token = getEffectiveToken();
     const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
     fetch(`/api/players/team-details?teamId=${teamId}&season=${season}`, { headers })

@@ -219,7 +219,7 @@ export function PlayerProfileModal({
             motm,
           };
         })
-        .filter(d => d.matches > 0 || d.goals > 0);
+        ;
       setCareerData(data);
       setCareerLoaded(true);
     });
@@ -255,6 +255,54 @@ export function PlayerProfileModal({
   const motmInSeason = useMemo(() =>
     seasonMatches.filter(m => m.motmPlayerId === player.id).length
   , [seasonMatches, player.id]);
+
+  const matchAggregates = useMemo(() => {
+    let goals = 0, penGoals = 0, hatTricks = 0;
+    let assists = 0;
+    let passes = 0, passAccSum = 0, passAccWeightCount = 0;
+    let keyPasses = 0, dribs = 0;
+    let ballRec = 0, ballLoss = 0;
+    let yellows = 0, reds = 0, ownGoals = 0, missedPen = 0;
+    for (const m of playerMatches) {
+      const ps = m.playerStats?.[player.id];
+      if (!ps) continue;
+      const goalEntries = ps.goals ?? [];
+      const mg = goalEntries.length;
+      goals += mg;
+      penGoals += goalEntries.filter((g: { goalType?: string }) => g.goalType === "penalty").length;
+      if (mg >= 3) hatTricks++;
+      const ma = Object.values(m.playerStats ?? {}).reduce(
+        (acc, pms) => acc + (pms.goals ?? []).filter((g: { assistPlayerId?: number }) => g.assistPlayerId === player.id).length, 0
+      );
+      assists += ma;
+      if (ps.passes != null) {
+        passes += ps.passes;
+        if (ps.passAccuracy != null) {
+          passAccSum += ps.passAccuracy * ps.passes;
+          passAccWeightCount += ps.passes;
+        }
+      }
+      if (ps.keyPasses != null) keyPasses += ps.keyPasses;
+      if (ps.dribblesCompleted != null) dribs += ps.dribblesCompleted;
+      if (ps.ballRecoveries != null) ballRec += ps.ballRecoveries;
+      if (ps.ballLosses != null) ballLoss += ps.ballLosses;
+      if (ps.yellowCard) yellows++;
+      if (ps.yellowCard2) yellows++;
+      if (ps.redCard) reds++;
+      if (ps.ownGoal) ownGoals++;
+      if (ps.missedPenalty) missedPen++;
+    }
+    const totalMin = seasonStatsData.totalMinutes;
+    const totalGames = playerMatches.length;
+    const avgPass = passAccWeightCount > 0 ? passAccSum / passAccWeightCount : null;
+    const goalsPerGame = totalGames > 0 ? (goals / totalGames).toFixed(2) : "—";
+    const assistsPerGame = totalGames > 0 ? (assists / totalGames).toFixed(2) : "—";
+    const minPerGoal = goals > 0 ? Math.round(totalMin / goals) : null;
+    const minPerAssist = assists > 0 ? Math.round(totalMin / assists) : null;
+    return { goals, penGoals, hatTricks, assists, passes, avgPass, keyPasses, dribs,
+             ballRec, ballLoss, yellows, reds, ownGoals, missedPen,
+             goalsPerGame, assistsPerGame, minPerGoal, minPerAssist };
+  }, [playerMatches, player.id, seasonStatsData.totalMinutes]);
 
   const saveEdit = () => {
     setPlayerOverride(careerId, player.id, {
@@ -581,31 +629,72 @@ export function PlayerProfileModal({
 
                 {!isSyncing && selectedSeasonId && (
                   <>
-                    <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-                      {[
-                        { label: t.gamesCol,   value: String(seasonStatsData.matchesAsStarter + seasonStatsData.matchesAsSubstitute) },
-                        { label: t.goalsCol,   value: String(seasonStatsData.goals),   color: "#34d399" },
-                        { label: t.assistsCol, value: String(seasonStatsData.assists), color: "#60a5fa" },
-                        { label: t.minutesCol, value: String(seasonStatsData.totalMinutes) },
-                        { label: t.motmCol,    value: motmInSeason > 0 ? `⭐${motmInSeason}` : "—", color: "#fbbf24" },
-                        { label: t.ratingCol,  value: (() => {
-                          const r = seasonStatsData.recentRatings ?? [];
-                          if (!r.length) return "—";
-                          return (r.reduce((a: number, b: number) => a + b, 0) / r.length).toFixed(1);
-                        })(), color: "#a78bfa" },
-                      ].map(({ label, value, color }) => (
+                    {(() => {
+                      const avgRating = (() => {
+                        const r = seasonStatsData.recentRatings ?? [];
+                        return r.length ? r.reduce((a: number, b: number) => a + b, 0) / r.length : null;
+                      })();
+                      const totalGames = seasonStatsData.matchesAsStarter + seasonStatsData.matchesAsSubstitute;
+                      const statBlock = (title: string, items: { label: string; value: string | number | null; color?: string }[]) => (
                         <div
-                          key={label}
-                          className="flex flex-col items-center gap-1 py-3 rounded-xl"
+                          key={title}
+                          className="p-3 rounded-xl"
                           style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}
                         >
-                          <span className="text-sm font-black tabular-nums" style={{ color: color ?? "rgba(255,255,255,0.8)" }}>
-                            {value}
-                          </span>
-                          <span className="text-white/30 text-[10px] font-semibold uppercase tracking-wider">{label}</span>
+                          <p className="text-white/30 text-[10px] font-semibold uppercase tracking-wider mb-2.5">{title}</p>
+                          <div className="grid grid-cols-3 gap-2">
+                            {items.map(({ label, value, color }) => (
+                              <div key={label} className="flex flex-col gap-0.5">
+                                <span
+                                  className="text-sm font-black tabular-nums"
+                                  style={{ color: color ?? "rgba(255,255,255,0.75)" }}
+                                >
+                                  {value ?? "—"}
+                                </span>
+                                <span className="text-white/30 text-[10px] font-medium leading-tight">{label}</span>
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                      ))}
-                    </div>
+                      );
+                      return (
+                        <>
+                          {statBlock(t.matchesBlock, [
+                            { label: t.totalGames, value: totalGames },
+                            { label: t.starters,   value: seasonStatsData.matchesAsStarter },
+                            { label: t.minutesCol, value: seasonStatsData.totalMinutes },
+                            { label: t.motm,       value: motmInSeason > 0 ? `⭐${motmInSeason}` : "—", color: "#fbbf24" },
+                            { label: t.avgRating,  value: avgRating ? avgRating.toFixed(1) : "—", color: "#a78bfa" },
+                          ])}
+                          {statBlock(t.attackBlock, [
+                            { label: t.goals,          value: matchAggregates.goals,          color: matchAggregates.goals > 0 ? "#34d399" : undefined },
+                            { label: t.penGoals,       value: matchAggregates.penGoals > 0 ? matchAggregates.penGoals : "—" },
+                            { label: t.goalsPerGame,   value: matchAggregates.goalsPerGame },
+                            { label: t.hatTricks,      value: matchAggregates.hatTricks > 0 ? matchAggregates.hatTricks : "—", color: matchAggregates.hatTricks > 0 ? "#fbbf24" : undefined },
+                            { label: t.minPerGoal,     value: matchAggregates.minPerGoal ?? "—" },
+                            { label: t.assists,        value: matchAggregates.assists,         color: matchAggregates.assists > 0 ? "#60a5fa" : undefined },
+                            { label: t.assistsPerGame, value: matchAggregates.assistsPerGame },
+                            { label: t.minPerAssist,   value: matchAggregates.minPerAssist ?? "—" },
+                          ])}
+                          {(matchAggregates.passes > 0 || matchAggregates.keyPasses > 0 || matchAggregates.dribs > 0) && statBlock(t.passesBlock, [
+                            { label: "Passes",         value: matchAggregates.passes > 0 ? matchAggregates.passes : "—" },
+                            { label: "Acerto %",       value: matchAggregates.avgPass != null ? `${Math.round(matchAggregates.avgPass)}%` : "—" },
+                            { label: "Passes-chave",   value: matchAggregates.keyPasses > 0 ? matchAggregates.keyPasses : "—" },
+                            { label: "Dribles",        value: matchAggregates.dribs > 0 ? matchAggregates.dribs : "—" },
+                          ])}
+                          {(matchAggregates.ballRec > 0 || matchAggregates.ballLoss > 0) && statBlock(t.defenseBlock, [
+                            { label: "Recuperações",   value: matchAggregates.ballRec > 0 ? matchAggregates.ballRec : "—" },
+                            { label: "Perdas",         value: matchAggregates.ballLoss > 0 ? matchAggregates.ballLoss : "—" },
+                          ])}
+                          {statBlock(t.otherBlock, [
+                            { label: t.yellowCards,      value: matchAggregates.yellows > 0 ? matchAggregates.yellows : "—",  color: matchAggregates.yellows > 0 ? "#fbbf24" : undefined },
+                            { label: t.redCards,         value: matchAggregates.reds > 0 ? matchAggregates.reds : "—",        color: matchAggregates.reds > 0 ? "#f87171" : undefined },
+                            { label: t.ownGoals,         value: matchAggregates.ownGoals > 0 ? matchAggregates.ownGoals : "—" },
+                            { label: t.missedPenalties,  value: matchAggregates.missedPen > 0 ? matchAggregates.missedPen : "—" },
+                          ])}
+                        </>
+                      );
+                    })()}
 
                     <div
                       className="p-4 rounded-xl"

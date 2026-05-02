@@ -10,6 +10,7 @@ import {
   getPlayerStats,
   setPlayerStats,
   setPlayerOverride,
+  addSalaryHistoryEntry,
 } from "@/lib/playerStatsStorage";
 import { stepPlayerMood, stepPlayerFanMoral } from "@/lib/playerPerformanceEngine";
 import { getMomentos, type Momento } from "@/lib/momentoStorage";
@@ -189,6 +190,9 @@ export function PlayerDetailPanel({
       salary:           !isNaN(salaryVal)  && editSalary.trim()  ? Math.max(0, salaryVal)                 : undefined,
       positionOverride: editPosition !== player.positionPtBr     ? editPosition                           : undefined,
     }, logHistory, customDate);
+    if (!isNaN(salaryVal) && editSalary.trim() && salaryVal > 0) {
+      addSalaryHistoryEntry(careerId, player.id, salaryVal, customDate);
+    }
     setTab("stats");
     onUpdated();
   };
