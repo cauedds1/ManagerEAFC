@@ -29,24 +29,44 @@ function markHydrated(careerId: string): void {
   }
 }
 
+function normalizeNumeric(raw: string): number {
+  // Distinguish decimal vs thousands separators so both "1.5" (EN) and "1,5" (PT) → 1.5,
+  // while "1.500" / "1,500" → 1500.
+  const hasDot = raw.includes(".");
+  const hasComma = raw.includes(",");
+  let cleaned = raw;
+  if (hasDot && hasComma) {
+    // Whichever appears last is the decimal separator.
+    if (raw.lastIndexOf(",") > raw.lastIndexOf(".")) {
+      cleaned = raw.replace(/\./g, "").replace(",", ".");
+    } else {
+      cleaned = raw.replace(/,/g, "");
+    }
+  } else if (hasComma) {
+    const parts = raw.split(",");
+    cleaned = parts.length === 2 && parts[1].length !== 3
+      ? raw.replace(",", ".")
+      : raw.replace(/,/g, "");
+  } else if (hasDot) {
+    const parts = raw.split(".");
+    cleaned = parts.length === 2 && parts[1].length !== 3
+      ? raw
+      : raw.replace(/\./g, "");
+  }
+  const num = parseFloat(cleaned);
+  return isNaN(num) ? 0 : num;
+}
+
 function parseFee(raw?: string): number {
   if (!raw) return 0;
   const trimmed = raw.trim().replace(/€|\$|£/g, "").replace(/\s/g, "");
   if (!trimmed) return 0;
   const lower = trimmed.toLowerCase();
   const mMatch = lower.match(/^([\d.,]+)\s*m/);
-  if (mMatch) {
-    const base = parseFloat(mMatch[1].replace(/\./g, "").replace(",", "."));
-    return isNaN(base) ? 0 : Math.round(base * 1_000_000);
-  }
+  if (mMatch) return Math.round(normalizeNumeric(mMatch[1]) * 1_000_000);
   const kMatch = lower.match(/^([\d.,]+)\s*k/);
-  if (kMatch) {
-    const base = parseFloat(kMatch[1].replace(/\./g, "").replace(",", "."));
-    return isNaN(base) ? 0 : Math.round(base * 1_000);
-  }
-  const cleaned = lower.replace(/\./g, "").replace(",", ".");
-  const num = parseFloat(cleaned);
-  return isNaN(num) ? 0 : Math.round(num);
+  if (kMatch) return Math.round(normalizeNumeric(kMatch[1]) * 1_000);
+  return Math.round(normalizeNumeric(lower));
 }
 
 function parseScore(raw?: string): { my: number; opp: number } | null {
@@ -89,9 +109,24 @@ function buildTransfer(
   };
 }
 
+function normalizeScoreToResult(
+  score: { my: number; opp: number },
+  result?: string,
+): { my: number; opp: number } {
+  if (!result) return score;
+  const r = result.trim().toLowerCase();
+  const isWin = /^(w|v|vit|win|venc)/.test(r);
+  const isLoss = /^(l|d(er|f)|loss|lost|perd)/.test(r);
+  if (score.my === score.opp) return score;
+  if (isWin && score.my < score.opp) return { my: score.opp, opp: score.my };
+  if (isLoss && score.my > score.opp) return { my: score.opp, opp: score.my };
+  return score;
+}
+
 function buildMatch(career: Career, rm: RecentMatch): MatchRecord | null {
-  const score = parseScore(rm.score);
-  if (!score) return null;
+  const parsed = parseScore(rm.score);
+  if (!parsed) return null;
+  const score = normalizeScoreToResult(parsed, rm.result);
   return {
     id: generateMatchId(),
     careerId: career.id,
