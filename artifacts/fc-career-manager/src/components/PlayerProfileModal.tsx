@@ -182,7 +182,11 @@ export function PlayerProfileModal({
     if (!selectedSeasonId || (tab !== "season" && tab !== "matches")) return;
     let cancelled = false;
     const load = async () => {
-      if (!syncedRef.current.has(selectedSeasonId)) {
+      // Only sync from DB when the season hasn't been synced in this session
+      // AND match data isn't already available locally (session or localStorage).
+      const alreadyLoaded = syncedRef.current.has(selectedSeasonId)
+        || getMatches(selectedSeasonId).length > 0;
+      if (!alreadyLoaded) {
         setIsSyncing(true);
         try { await syncSeasonFromDb(selectedSeasonId); } catch {}
         syncedRef.current.add(selectedSeasonId);

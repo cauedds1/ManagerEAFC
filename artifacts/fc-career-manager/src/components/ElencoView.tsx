@@ -284,15 +284,16 @@ export function ElencoView({
   }, [customPlayers, onCustomPlayersChange]);
 
   useEffect(() => {
-    // Skip for demo mode, custom clubs, and when teamId is not a valid API Football ID.
+    // Skip for demo mode and custom clubs (no valid API Football teamId).
     if (!teamId || isDemo || isCustomClub) return;
-    // Natural gate: skip if all active players already have nationality stored.
-    // Once the backfill succeeds, overrides persist to localStorage/DB so this
-    // becomes false on the next mount — no permanent "done" flag needed.
+    // Durable sentinel: written after the first HTTP-OK response so the API is
+    // never called again for this career+team, regardless of data completeness.
+    // Not written on HTTP errors (4xx/5xx) or network failures — those reset the
+    // in-memory ref so the next mount can retry the request.
+    const persistKey = `bf_done_${careerId}_${teamId}`;
+    if (backfillDoneRef.current || localStorage.getItem(persistKey)) return;
     const needsBackfill = allPlayers.some(p => !overrides[p.id]?.nationality);
     if (!needsBackfill) return;
-    // In-memory guard prevents duplicate in-flight calls within the same session.
-    if (backfillDoneRef.current) return;
     backfillDoneRef.current = true;
     const playerIdSet = new Set(allPlayers.map(p => p.id));
     const season = String(backfillSeasonYear ?? new Date().getFullYear());
@@ -301,11 +302,15 @@ export function ElencoView({
     fetch(`/api/players/team-details?teamId=${teamId}&season=${season}`, { headers })
       .then(r => r.ok ? r.json() : null)
       .then((data: { players: Array<{ playerId: number; nationality: string; height: string; weight: string }> } | null) => {
-        if (!data?.players?.length) {
-          // Non-OK or empty response: reset ref so the next mount can retry.
+        if (data === null) {
+          // HTTP error (4xx/5xx): don't persist flag, allow retry on next mount.
           backfillDoneRef.current = false;
           return;
         }
+        // HTTP-OK (even if players array is empty): mark as attempted so we
+        // never call the API again for this career+team combination.
+        localStorage.setItem(persistKey, "1");
+        if (!data.players?.length) return;
         for (const info of data.players) {
           if (!playerIdSet.has(info.playerId)) continue;
           if (!info.nationality && !info.height && !info.weight) continue;
