@@ -72,11 +72,25 @@ async function initStripe() {
       logger.info({ webhookUrl }, "Setting up managed Stripe webhook...");
       try {
         const wh = await stripeSync.findOrCreateManagedWebhook(webhookUrl);
+        let dbSecretFp = "<unknown>";
+        try {
+          const accountId = await stripeSync.getAccountId();
+          const { db: pgDb } = await import("@workspace/db");
+          const { sql: pgSql } = await import("drizzle-orm");
+          const result = await pgDb.execute(
+            pgSql`SELECT secret FROM stripe._managed_webhooks WHERE account_id = ${accountId} LIMIT 1`,
+          );
+          const rows = (result as unknown as { rows: Record<string, unknown>[] }).rows;
+          dbSecretFp = fp((rows?.[0]?.secret as string) ?? null);
+        } catch (fpErr) {
+          logger.warn({ err: fpErr }, "Could not read managed webhook secret fingerprint for diagnostics");
+        }
         logger.info(
           {
             webhookId: wh.id,
             webhookUrl: wh.url,
             status: wh.status,
+            dbSecretFp,
             envSecretFp: fp(process.env.STRIPE_WEBHOOK_SECRET),
           },
           "Stripe webhook configured (DB-managed secret is the source of truth; env STRIPE_WEBHOOK_SECRET is only a fallback)",
