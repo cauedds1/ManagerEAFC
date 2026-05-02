@@ -387,6 +387,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
       setLeaguePositionState(getLeaguePosition(effectiveSeasonId));
       setOverrides(getAllPlayerOverrides(career.id));
       setFormerPlayers(getFormerPlayers(career.id));
+      setCustomPlayers(getCustomPlayers(career.id));
 
       // Default to "resumo" tab if the active season is already finalized
       const activeSeason = loaded.find((s) => s.id === effectiveSeasonId);

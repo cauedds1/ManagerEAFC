@@ -10,12 +10,40 @@ import {
 import { getMatches, saveMatches, generateMatchId } from "@/lib/matchStorage";
 import { recordMatchInAgg } from "@/lib/careerAggregateStats";
 import { getSeasonRivals, setSeasonRivals, MAX_RIVALS } from "@/lib/rivalsStorage";
+import {
+  getSquad,
+  PT_BR_TO_POSITION,
+  type SquadPlayer,
+  type PositionPtBr,
+  type PositionGroup,
+} from "@/lib/squadCache";
+import {
+  findBestPlayerMatch,
+  findBestSearchHit,
+  normalizeName,
+  type SearchHit,
+} from "@/lib/playerNameMatch";
+import {
+  addFormerPlayer,
+  addHiddenPlayerId,
+  addCustomPlayer,
+  getCustomPlayers,
+} from "@/lib/customPlayersStorage";
 
-const HYDRATED_KEY = (careerId: string) => `fc-initial-hydrated-${careerId}`;
+const HYDRATED_KEY_V1 = (careerId: string) => `fc-initial-hydrated-${careerId}`;
+const HYDRATED_KEY_V2 = (careerId: string) => `fc-initial-hydrated-v2-${careerId}`;
 
 export function isInitialContextHydrated(careerId: string): boolean {
   try {
-    return localStorage.getItem(HYDRATED_KEY(careerId)) === "1";
+    return localStorage.getItem(HYDRATED_KEY_V2(careerId)) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function isV1Hydrated(careerId: string): boolean {
+  try {
+    return localStorage.getItem(HYDRATED_KEY_V1(careerId)) === "1";
   } catch {
     return false;
   }
@@ -23,20 +51,18 @@ export function isInitialContextHydrated(careerId: string): boolean {
 
 function markHydrated(careerId: string): void {
   try {
-    localStorage.setItem(HYDRATED_KEY(careerId), "1");
+    localStorage.setItem(HYDRATED_KEY_V2(careerId), "1");
+    localStorage.setItem(HYDRATED_KEY_V1(careerId), "1");
   } catch {
     /* quota */
   }
 }
 
 function normalizeNumeric(raw: string): number {
-  // Distinguish decimal vs thousands separators so both "1.5" (EN) and "1,5" (PT) → 1.5,
-  // while "1.500" / "1,500" → 1500.
   const hasDot = raw.includes(".");
   const hasComma = raw.includes(",");
   let cleaned = raw;
   if (hasDot && hasComma) {
-    // Whichever appears last is the decimal separator.
     if (raw.lastIndexOf(",") > raw.lastIndexOf(".")) {
       cleaned = raw.replace(/\./g, "").replace(",", ".");
     } else {
@@ -83,7 +109,7 @@ function inferLocation(rm: RecentMatch): MatchLocation {
   return "casa";
 }
 
-function buildTransfer(
+function buildTransferGeneric(
   career: Career,
   entry: TransferEntry,
   type: "compra" | "venda",
@@ -107,6 +133,81 @@ function buildTransfer(
     toClub: isBuy ? career.clubName : (entry.to?.trim() || undefined),
     transferredAt: Date.now(),
   };
+}
+
+function buildTransferFromPlayer(
+  career: Career,
+  entry: TransferEntry,
+  type: "compra" | "venda",
+  player: SquadPlayer,
+): TransferRecord {
+  const isBuy = type === "compra";
+  return {
+    id: generateTransferId(),
+    careerId: career.id,
+    season: career.season,
+    playerId: player.id,
+    playerName: player.name,
+    playerPhoto: player.photo ?? "",
+    playerPositionPtBr: player.positionPtBr,
+    playerAge: player.age || 25,
+    fee: parseFee(entry.fee),
+    salary: 0,
+    contractYears: isBuy ? 4 : 0,
+    role: "esporadico",
+    type,
+    fromClub: isBuy ? (entry.from?.trim() || undefined) : career.clubName,
+    toClub: isBuy ? career.clubName : (entry.to?.trim() || undefined),
+    transferredAt: Date.now(),
+  };
+}
+
+function squadPlayerFromHit(hit: SearchHit): SquadPlayer {
+  const VALID: PositionPtBr[] = ["GOL", "DEF", "MID", "ATA"];
+  const ptBr: PositionPtBr = (VALID as string[]).includes(hit.position)
+    ? (hit.position as PositionPtBr)
+    : "MID";
+  return {
+    id: hit.id,
+    name: hit.name,
+    age: hit.age || 25,
+    photo: hit.photo || "",
+    positionPtBr: ptBr,
+    position: (PT_BR_TO_POSITION[ptBr] ?? "Midfielder") as PositionGroup,
+  };
+}
+
+async function searchPlayer(name: string): Promise<SearchHit | null> {
+  try {
+    const res = await fetch(`/api/players/search?q=${encodeURIComponent(name)}`);
+    if (!res.ok) return null;
+    const data = (await res.json()) as { players?: SearchHit[] };
+    return findBestSearchHit(name, data.players ?? []);
+  } catch {
+    return null;
+  }
+}
+
+function isLegacyHydrationData(
+  existing: TransferRecord[],
+  tIn: TransferEntry[],
+  tOut: TransferEntry[],
+): boolean {
+  if (existing.length === 0) return true;
+  const icEntries = [...tIn, ...tOut]
+    .map((e) => normalizeName(e?.name?.trim() ?? ""))
+    .filter(Boolean);
+  if (icEntries.length === 0) return false;
+  // Strict guard against wiping manual edits: lengths must match AND every existing
+  // transfer must look like a v1 hydration record (synthetic defaults) AND the
+  // name set must align exactly with the IC entries.
+  if (existing.length !== icEntries.length) return false;
+  const looksSynthetic = existing.every(
+    (t) => t.playerPhoto === "" && t.playerAge === 25 && t.playerPositionPtBr === "MID",
+  );
+  if (!looksSynthetic) return false;
+  const icSet = new Set(icEntries);
+  return existing.every((t) => icSet.has(normalizeName(t.playerName)));
 }
 
 function normalizeScoreToResult(
@@ -151,6 +252,8 @@ export interface HydrationResult {
   transfersAdded: number;
   matchesAdded: number;
   rivalsSet: number;
+  vendasMatched: number;
+  comprasMatched: number;
   ran: boolean;
 }
 
@@ -158,7 +261,14 @@ export async function hydrateInitialContext(
   career: Career,
   seasonId: string,
 ): Promise<HydrationResult> {
-  const empty: HydrationResult = { transfersAdded: 0, matchesAdded: 0, rivalsSet: 0, ran: false };
+  const empty: HydrationResult = {
+    transfersAdded: 0,
+    matchesAdded: 0,
+    rivalsSet: 0,
+    vendasMatched: 0,
+    comprasMatched: 0,
+    ran: false,
+  };
   if (isInitialContextHydrated(career.id)) return empty;
   const ic = career.initialContext;
   if (!ic) return empty;
@@ -172,41 +282,94 @@ export async function hydrateInitialContext(
     return empty;
   }
 
-  // Guard contra carreiras legadas (criadas antes desta hidratação) que já têm dados reais
-  // persistidos no banco. Após syncSeasonFromDb, se já houver QUALQUER registro nas abas-alvo,
-  // assumimos que o usuário já preencheu manualmente e não sobrescrevemos.
   const existingTransfers = getTransfers(seasonId);
   const existingMatches = getMatches(seasonId);
   const existingRivals = getSeasonRivals(seasonId);
-  if (existingTransfers.length > 0 || existingMatches.length > 0 || existingRivals.length > 0) {
+
+  // Decouple guards: we may re-enrich legacy v1 transfers while preserving manual matches/rivals.
+  const transfersWereLegacy = isV1Hydrated(career.id) && isLegacyHydrationData(existingTransfers, tIn, tOut);
+  const canHydrateTransfers = (existingTransfers.length === 0 || transfersWereLegacy)
+    && (tIn.length > 0 || tOut.length > 0);
+  const canHydrateMatches = existingMatches.length === 0 && recentMatches.length > 0;
+  const canHydrateRivals = existingRivals.length === 0 && rivals.length > 0;
+
+  // ── Transfers: try to bind to real squad (vendas) and real player search (compras) ──
+  let newTransfers: TransferRecord[] = [];
+  const vendasMatched: SquadPlayer[] = [];
+  const comprasMatched: SquadPlayer[] = [];
+
+  if (canHydrateTransfers) {
+    let squadPlayers: SquadPlayer[] = [];
+    if (career.clubId && career.clubId > 0) {
+      try {
+        const squad = await getSquad(career.clubId, career.clubName);
+        squadPlayers = squad?.players ?? [];
+      } catch {
+        squadPlayers = [];
+      }
+    }
+
+    for (const entry of tOut) {
+      const name = entry?.name?.trim();
+      if (!name) continue;
+      const m = squadPlayers.length > 0 ? findBestPlayerMatch(name, squadPlayers) : null;
+      if (m) {
+        newTransfers.push(buildTransferFromPlayer(career, entry, "venda", m.player));
+        vendasMatched.push(m.player);
+      } else {
+        newTransfers.push(buildTransferGeneric(career, entry, "venda"));
+      }
+    }
+
+    // Compras: search backend for each name. Limited concurrency (3) keeps the wait
+    // short for typical 3–10 incoming transfers without hammering the API.
+    const incoming = tIn.filter((e): e is TransferEntry => !!e?.name?.trim());
+    const hits: (SearchHit | null)[] = new Array(incoming.length).fill(null);
+    const CONCURRENCY = 3;
+    let cursor = 0;
+    async function worker() {
+      while (true) {
+        const i = cursor++;
+        if (i >= incoming.length) return;
+        hits[i] = await searchPlayer(incoming[i].name.trim());
+      }
+    }
+    await Promise.all(Array.from({ length: Math.min(CONCURRENCY, incoming.length) }, worker));
+    for (let i = 0; i < incoming.length; i++) {
+      const entry = incoming[i];
+      const hit = hits[i];
+      if (hit) {
+        const real = squadPlayerFromHit(hit);
+        newTransfers.push(buildTransferFromPlayer(career, entry, "compra", real));
+        comprasMatched.push(real);
+      } else {
+        newTransfers.push(buildTransferGeneric(career, entry, "compra"));
+      }
+    }
+  }
+
+  // ── Matches ──
+  const newMatches: MatchRecord[] = [];
+  if (canHydrateMatches) {
+    for (const rm of recentMatches) {
+      const match = buildMatch(career, rm);
+      if (match) newMatches.push(match);
+    }
+  }
+
+  // ── Rivals ──
+  const cleanedRivals = canHydrateRivals
+    ? rivals.map((r) => r.trim()).filter(Boolean).slice(0, MAX_RIVALS)
+    : [];
+
+  if (!canHydrateTransfers && !canHydrateMatches && !canHydrateRivals) {
     markHydrated(career.id);
     return empty;
   }
 
-  const newTransfers: TransferRecord[] = [];
-  for (const entry of tIn) {
-    if (entry?.name?.trim()) newTransfers.push(buildTransfer(career, entry, "compra"));
-  }
-  for (const entry of tOut) {
-    if (entry?.name?.trim()) newTransfers.push(buildTransfer(career, entry, "venda"));
-  }
-
-  const newMatches: MatchRecord[] = [];
-  for (const rm of recentMatches) {
-    const match = buildMatch(career, rm);
-    if (match) newMatches.push(match);
-  }
-
-  const cleanedRivals = rivals
-    .map((r) => r.trim())
-    .filter(Boolean)
-    .slice(0, MAX_RIVALS);
-
-  // Single batched write per category — avoids racing PUTs from multiple addTransfer/addMatch calls.
-  // All writes awaited together so we only mark the hydration flag after the durable PUTs settle.
   const writes: Promise<unknown>[] = [];
 
-  if (newTransfers.length > 0) {
+  if (canHydrateTransfers) {
     writes.push(saveTransfersAsync(seasonId, newTransfers));
   }
 
@@ -226,16 +389,37 @@ export async function hydrateInitialContext(
     );
   }
 
-  // Aguarda as escritas duráveis (PUTs) e só marca como hidratado se TODAS tiveram sucesso —
-  // assim, falha de rede no primeiro load deixa o flag livre pra retry no próximo launch.
   const settled = await Promise.allSettled(writes);
   const allOk = settled.every((s) => s.status === "fulfilled");
-  if (allOk) markHydrated(career.id);
+
+  if (allOk) {
+    // Apply squad-side effects: hide sold real players + add bought real players.
+    // All addX helpers de-dup by id, but addCustomPlayer doesn't — guard manually.
+    for (const p of vendasMatched) {
+      addFormerPlayer(career.id, p);
+      if (p.id > 0) addHiddenPlayerId(career.id, p.id);
+    }
+    if (comprasMatched.length > 0) {
+      const existingCustom = getCustomPlayers(career.id);
+      const existingIds = new Set(existingCustom.map((p) => p.id));
+      const existingNames = new Set(existingCustom.map((p) => normalizeName(p.name)));
+      for (const p of comprasMatched) {
+        if (existingIds.has(p.id)) continue;
+        if (existingNames.has(normalizeName(p.name))) continue;
+        addCustomPlayer(career.id, p);
+        existingIds.add(p.id);
+        existingNames.add(normalizeName(p.name));
+      }
+    }
+    markHydrated(career.id);
+  }
 
   return {
     ran: true,
-    transfersAdded: newTransfers.length,
+    transfersAdded: canHydrateTransfers ? newTransfers.length : 0,
     matchesAdded: newMatches.length,
     rivalsSet,
+    vendasMatched: vendasMatched.length,
+    comprasMatched: comprasMatched.length,
   };
 }
