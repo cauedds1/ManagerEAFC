@@ -250,6 +250,9 @@ export function RecordesView({ careerId, seasons, clubName }: Props) {
         <RecordCard icon="😤" title={t.recHardest}        accent={lossColor} {...opponentRecord(records.adversarios.hardest)} />
       </Section>
 
+      {/* Temporada bundles per-season records and the multi-match streak
+          records to match the four-section grouping requested in the spec
+          (Partidas / Adversários / Temporada / Ano civil). */}
       <Section title={t.recordsSecSeason}>
         <RecordCard icon="⚽" title={t.recSeasonMostGoals}       accent={winColor}  {...seasonRecord(records.temporada.mostGoals)} />
         <RecordCard icon="📅" title={t.recSeasonMostMatches}     accent={blueColor} {...seasonRecord(records.temporada.mostMatches)} />
@@ -258,6 +261,9 @@ export function RecordesView({ careerId, seasons, clubName }: Props) {
         <RecordCard icon="💔" title={t.recSeasonMostLosses}      accent={lossColor} {...seasonRecord(records.temporada.mostLosses)} />
         <RecordCard icon="🧤" title={t.recSeasonMostCleanSheets} accent={blueColor} {...seasonRecord(records.temporada.mostCleanSheets)} />
         <RecordCard icon="📈" title={t.recSeasonBestAvg}         accent={goldColor} {...avgRecord(records.temporada.bestGoalsAvg)} />
+        <RecordCard icon="🔥" title={t.recStreakWins}            accent={winColor}  {...streakRecord(records.sequencias.longestWinning)} />
+        <RecordCard icon="🛡️" title={t.recStreakUnbeaten}       accent={blueColor} {...streakRecord(records.sequencias.longestUnbeaten)} />
+        <RecordCard icon="🧤" title={t.recStreakCleanSheet}      accent={blueColor} {...streakRecord(records.sequencias.longestCleanSheet)} />
       </Section>
 
       <Section title={t.recordsSecYear}>
@@ -265,12 +271,6 @@ export function RecordesView({ careerId, seasons, clubName }: Props) {
         <RecordCard icon="🏆" title={t.recYearMostWins}   accent={winColor}  {...yearRecord(records.anoCivil.mostWins)} />
         <RecordCard icon="🤝" title={t.recYearMostDraws}  accent={drawColor} {...yearRecord(records.anoCivil.mostDraws)} />
         <RecordCard icon="💔" title={t.recYearMostLosses} accent={lossColor} {...yearRecord(records.anoCivil.mostLosses)} />
-      </Section>
-
-      <Section title={t.recordsSecStreaks}>
-        <RecordCard icon="🔥" title={t.recStreakWins}      accent={winColor}  {...streakRecord(records.sequencias.longestWinning)} />
-        <RecordCard icon="🛡️" title={t.recStreakUnbeaten} accent={blueColor} {...streakRecord(records.sequencias.longestUnbeaten)} />
-        <RecordCard icon="🧤" title={t.recStreakCleanSheet} accent={blueColor} {...streakRecord(records.sequencias.longestCleanSheet)} />
       </Section>
     </div>
   );
