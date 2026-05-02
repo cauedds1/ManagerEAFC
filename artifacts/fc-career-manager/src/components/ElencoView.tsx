@@ -302,9 +302,12 @@ export function ElencoView({
     fetch(`/api/players/team-details?teamId=${teamId}&season=${season}`, { headers })
       .then(r => r.ok ? r.json() : null)
       .then((data: { players: Array<{ playerId: number; nationality: string; height: string; weight: string }> } | null) => {
-        // Persist the "done" flag only after a successful response so that
-        // API failures don't permanently block future backfill attempts.
-        localStorage.setItem(persistKey, "1");
+        // Persist the "done" flag only when we received a real HTTP-OK response
+        // (data !== null). A null data value means r.ok was false (503/429/500),
+        // so we leave the flag unset to allow a retry on the next mount.
+        if (data !== null) {
+          localStorage.setItem(persistKey, "1");
+        }
         if (!data?.players?.length) return;
         for (const info of data.players) {
           if (!playerIdSet.has(info.playerId)) continue;
