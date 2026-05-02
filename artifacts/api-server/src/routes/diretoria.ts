@@ -46,6 +46,8 @@ interface ClubContext {
   projeto?: string;
   currentCompetitions?: string[];
   backstory?: string;
+  ongoingNarrative?: string;
+  ongoingMissions?: string[];
 }
 
 interface MemberProfile {
@@ -113,6 +115,9 @@ function moodLabel(mood: string): string {
 function buildClubContext(ctx: ClubContext): string {
   const tier = clubTierFromLeague(ctx.clubLeague);
   const matches = ctx.recentMatches.slice(0, 8);
+  const narrativeBlock = ctx.ongoingNarrative?.trim()
+    ? `\n━━━ CONTEXTO INICIAL DA CARREIRA (importado pelo técnico) ━━━\n${ctx.ongoingNarrative.trim()}\n${ctx.ongoingMissions?.length ? `MISSÕES INICIAIS: ${ctx.ongoingMissions.join(" | ")}\n` : ""}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`
+    : "";
 
   const matchStr = matches.length > 0
     ? matches.map((m) => {
@@ -173,7 +178,7 @@ function buildClubContext(ctx: ClubContext): string {
 
   return `CLUBE: ${ctx.clubName} | LIGA: ${ctx.clubLeague} (${tier}) | TEMP: ${ctx.season}${competitionsLine}
 TÉCNICO: ${ctx.coachName} | ELENCO: ${ctx.squadSize} jogadores | CONTRATAÇÕES: ${ctx.transfersCount}
-TABELA: ${leagueStr}${streakAlert}${finStr}${projetoLine}${backstoryLine}
+TABELA: ${leagueStr}${streakAlert}${finStr}${projetoLine}${backstoryLine}${narrativeBlock}
 ÚLTIMAS PARTIDAS:
 ${matchStr}`;
 }

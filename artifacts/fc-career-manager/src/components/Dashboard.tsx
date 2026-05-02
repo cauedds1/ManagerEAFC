@@ -1389,6 +1389,8 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
       wageRoom: finSettings.salaryBudget > 0 ? finSnapshot.wageRoom : undefined,
       netSpend: finSettings.transferBudget > 0 ? finSnapshot.netSpend : undefined,
       projeto: career.projeto,
+      ongoingNarrative: career.initialContext?.narrativeSummary,
+      ongoingMissions: career.initialContext?.missions?.map((m) => m.title).filter(Boolean),
     };
 
     const playerPerf = buildPlayerPerformanceContext(activeSeasonId, currentAllPlayers, career.id);

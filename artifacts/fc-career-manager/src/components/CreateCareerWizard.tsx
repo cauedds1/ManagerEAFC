@@ -75,7 +75,7 @@ function ProgressBar({ step, t }: { step: number; t: typeof WIZARD["pt"] }) {
   );
 }
 
-function MoodBar({ value, label, reason }: { value: number; label: string; reason?: string }) {
+function MoodBar({ value, label, reason, onChange }: { value: number; label: string; reason?: string; onChange?: (v: number) => void }) {
   const color = value >= 70 ? "#22c55e" : value >= 40 ? "#eab308" : "#ef4444";
   return (
     <div className="flex flex-col gap-1.5">
@@ -83,9 +83,21 @@ function MoodBar({ value, label, reason }: { value: number; label: string; reaso
         <span className="text-white/60 text-xs font-semibold uppercase tracking-wide">{label}</span>
         <span className="text-white font-bold text-sm tabular-nums">{value}/100</span>
       </div>
-      <div className="h-2 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.08)" }}>
-        <div className="h-full rounded-full transition-all duration-700" style={{ width: `${value}%`, background: color }} />
-      </div>
+      {onChange ? (
+        <input
+          type="range"
+          min={0}
+          max={100}
+          value={value}
+          onChange={(e) => onChange(Number(e.target.value))}
+          className="w-full h-2 rounded-full appearance-none cursor-pointer"
+          style={{ background: `linear-gradient(to right, ${color} 0%, ${color} ${value}%, rgba(255,255,255,0.08) ${value}%, rgba(255,255,255,0.08) 100%)` }}
+        />
+      ) : (
+        <div className="h-2 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.08)" }}>
+          <div className="h-full rounded-full transition-all duration-700" style={{ width: `${value}%`, background: color }} />
+        </div>
+      )}
       {reason && <p className="text-white/45 text-[11px] leading-snug italic">{reason}</p>}
     </div>
   );
@@ -486,7 +498,36 @@ export function CreateCareerWizard({
                     isOngoing.current = p.key !== "manual";
                     setChosenPath(p.key);
                     if (p.key === "manual") {
-                      setPrePhase(null);
+                      // Manual: build empty template + go straight to editable preview
+                      isOngoing.current = true;
+                      const empty: ParsedContext = {
+                        club: { name: "", confidence: "low" },
+                        coach: { name: "", confidence: "low" },
+                        season: { label: "", confidence: "low" },
+                        leaguePosition: { rank: null, points: null, gap: null, form: null, confidence: "low" },
+                        moods: {
+                          board: { value: 50, confidence: "low" },
+                          fans: { value: 50, confidence: "low" },
+                          dressingRoom: { value: 50, confidence: "low" },
+                        },
+                        finances: { confidence: "low" },
+                        keyPlayers: [],
+                        transfersIn: [],
+                        transfersOut: [],
+                        rivals: [],
+                        recentMatches: [],
+                        missions: [],
+                        injuries: [],
+                        trophiesWon: [],
+                        ongoingCompetitions: [],
+                        rivalsContext: [],
+                        narrativeArcs: [],
+                        inconsistencies: [],
+                        deepeningQuestions: [],
+                        overallConfidence: "low",
+                      } as ParsedContext;
+                      setParsedContext(empty);
+                      setPrePhase("ongoing-preview");
                     } else {
                       setPrePhase("ongoing-input");
                     }
@@ -582,14 +623,37 @@ export function CreateCareerWizard({
       {prePhase === "ongoing-preview" && parsedContext && (
         <div className="flex-1 overflow-y-auto">
           <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6 flex flex-col gap-4">
-            {/* Header with overall confidence */}
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <h2 className="text-xl font-black text-white mb-1">{t.previewTitle}</h2>
-                <p className="text-white/40 text-sm">{t.previewSubtitle}</p>
-              </div>
-              <ConfidenceBadge value={parsedContext.overallConfidence} t={t} />
-            </div>
+            {/* Header with overall confidence + field counter */}
+            {(() => {
+              const totalFields = 14;
+              let captured = 0;
+              if (parsedContext.club?.name) captured++;
+              if (parsedContext.coach?.name) captured++;
+              if (parsedContext.season?.label) captured++;
+              if (parsedContext.leaguePosition?.rank != null) captured++;
+              if (parsedContext.preferredFormation) captured++;
+              if (parsedContext.keyPlayers?.length) captured++;
+              if (parsedContext.transfersIn?.length || parsedContext.transfersOut?.length) captured++;
+              if (parsedContext.recentMatches?.length) captured++;
+              if (parsedContext.injuries?.length) captured++;
+              if (parsedContext.trophiesWon?.length) captured++;
+              if (parsedContext.ongoingCompetitions?.length) captured++;
+              if (parsedContext.missions?.length) captured++;
+              if (parsedContext.boardLetter) captured++;
+              if (parsedContext.narrativeSummary || parsedContext.storyArc) captured++;
+              return (
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h2 className="text-xl font-black text-white mb-1">{t.previewTitle}</h2>
+                    <p className="text-white/40 text-sm">{t.previewSubtitle}</p>
+                    <p className="text-white/55 text-xs mt-2 font-semibold">
+                      <span style={{ color: "var(--club-primary)" }}>{captured}</span>/{totalFields} {t.fieldsCaptured}
+                    </p>
+                  </div>
+                  <ConfidenceBadge value={parsedContext.overallConfidence} t={t} />
+                </div>
+              );
+            })()}
 
             {/* Club + Season + Position quick row */}
             <SectionCard
@@ -668,9 +732,9 @@ export function CreateCareerWizard({
             {/* Moods */}
             <SectionCard title={t.previewBoardMood + " · " + t.previewFanMood + " · " + t.extractedDressingRoom} delay={100}>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <MoodBar value={parsedContext.moods.board.value} label={t.previewBoardMood} reason={parsedContext.moods.board.reason} />
-                <MoodBar value={parsedContext.moods.fans.value} label={t.previewFanMood} reason={parsedContext.moods.fans.reason} />
-                <MoodBar value={parsedContext.moods.dressingRoom.value} label={t.extractedDressingRoom} reason={parsedContext.moods.dressingRoom.reason} />
+                <MoodBar value={parsedContext.moods.board.value} label={t.previewBoardMood} reason={parsedContext.moods.board.reason} onChange={(v) => setParsedContext((p) => p && ({ ...p, moods: { ...p.moods, board: { ...p.moods.board, value: v } } }))} />
+                <MoodBar value={parsedContext.moods.fans.value} label={t.previewFanMood} reason={parsedContext.moods.fans.reason} onChange={(v) => setParsedContext((p) => p && ({ ...p, moods: { ...p.moods, fans: { ...p.moods.fans, value: v } } }))} />
+                <MoodBar value={parsedContext.moods.dressingRoom.value} label={t.extractedDressingRoom} reason={parsedContext.moods.dressingRoom.reason} onChange={(v) => setParsedContext((p) => p && ({ ...p, moods: { ...p.moods, dressingRoom: { ...p.moods.dressingRoom, value: v } } }))} />
               </div>
             </SectionCard>
 
