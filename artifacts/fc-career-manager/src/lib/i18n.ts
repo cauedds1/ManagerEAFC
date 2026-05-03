@@ -5203,6 +5203,7 @@ export const BASE: Record<Lang, Record<string, string>> = {
     errPotential: "Potencial inválido — min ≥ OVR atual e max ≥ min, ambos ≤ 99.",
     errFull: "Limite de 25 vagas atingido.",
     criaBadge: "Cria do clube",
+    criaBadgeTooltip: "Cria do clube · Promovido em {season}",
   },
   en: {
     tabBase: "Academy",
@@ -5237,5 +5238,6 @@ export const BASE: Record<Lang, Record<string, string>> = {
     errPotential: "Invalid potential — min ≥ current OVR and max ≥ min, both ≤ 99.",
     errFull: "Reached the 25-slot limit.",
     criaBadge: "Academy product",
+    criaBadgeTooltip: "Academy product · Promoted in {season}",
   },
 } satisfies Record<Lang, Record<string, string>>;

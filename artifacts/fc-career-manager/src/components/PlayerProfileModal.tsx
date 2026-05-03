@@ -8,7 +8,7 @@ import { getMatches } from "@/lib/matchStorage";
 import { syncSeasonFromDb } from "@/lib/dbSync";
 import { getSeasons } from "@/lib/seasonStorage";
 import { useLang } from "@/hooks/useLang";
-import { isCria } from "@/lib/criaStorage";
+import { isCria, getCriaRecord } from "@/lib/criaStorage";
 import { PLAYER_PROFILE, POSITION_DISPLAY, BASE as BASE_I18N } from "@/lib/i18n";
 import { MatchDetailPage } from "./MatchDetailPage";
 
@@ -260,6 +260,7 @@ export function PlayerProfileModal({
 
   const displayName  = override?.nameOverride ?? player.name;
   const isCriaPlayer = useMemo(() => isCria(careerId, player.id), [careerId, player.id]);
+  const criaRecord = useMemo(() => getCriaRecord(careerId, player.id), [careerId, player.id]);
   const displayOvr   = override?.overall;
   const displayPos   = (migratePositionOverride(override?.positionOverride) ?? player.positionPtBr) as PositionPtBr;
   const displayPhoto = override?.photoOverride ?? player.photo;
@@ -547,7 +548,9 @@ export function PlayerProfileModal({
                   <span className="truncate">{displayName}</span>
                   {isCriaPlayer && (
                     <span
-                      title={BASE_I18N[lang].criaBadge}
+                      title={criaRecord?.promotedSeasonLabel
+                        ? BASE_I18N[lang].criaBadgeTooltip.replace("{season}", criaRecord.promotedSeasonLabel)
+                        : BASE_I18N[lang].criaBadge}
                       aria-label={BASE_I18N[lang].criaBadge}
                       className="text-base leading-none"
                       style={{ color: "#86efac" }}

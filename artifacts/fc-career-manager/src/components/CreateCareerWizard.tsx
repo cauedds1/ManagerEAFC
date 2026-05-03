@@ -409,6 +409,12 @@ export function CreateCareerWizard({
     };
     try {
       await onComplete(career);
+      try {
+        const { seedAcademyForNewCareer } = await import("@/lib/baseStorage");
+        seedAcademyForNewCareer(career.id);
+      } catch (err) {
+        console.error("[base] seedAcademyForNewCareer failed", err);
+      }
     } finally {
       setConfirming(false);
     }

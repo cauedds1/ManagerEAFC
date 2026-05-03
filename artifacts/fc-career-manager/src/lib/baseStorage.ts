@@ -80,10 +80,41 @@ export function generateBasePlayerId(): string {
   return `base-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-/** Indicador "pronto pra promover": idade ≥ 18 ou OVR ≥ 80% do potentialMin. */
+/** Indicador "pronto pra promover": idade ≥ 18 ou OVR ≥ 80% do potentialMax. */
 export function isReadyToPromote(p: BasePlayer): boolean {
   if (p.age >= 18) return true;
-  return p.overall >= Math.round(p.potentialMin * 0.8);
+  return p.overall >= Math.round(p.potentialMax * 0.8);
+}
+
+/**
+ * Seeds the academy for a brand-new career. Sets the seed-flag so the
+ * BaseView never re-seeds. Idempotent: skipped if a flag or any record
+ * already exists for that career.
+ */
+export function seedAcademyForNewCareer(careerId: string): void {
+  const seedFlag = `fc-career-manager-base-seeded-${careerId}`;
+  try {
+    if (localStorage.getItem(seedFlag)) return;
+  } catch {}
+  if (getAllBasePlayersRaw(careerId).length > 0) {
+    try { localStorage.setItem(seedFlag, "1"); } catch {}
+    return;
+  }
+  // Lazy import avoids a cycle (basePlayerSeed depends on baseStorage).
+  import("./basePlayerSeed").then(({ generateInitialBaseSeed }) => {
+    const seed = generateInitialBaseSeed();
+    saveBasePlayers(careerId, seed);
+    try { localStorage.setItem(seedFlag, "1"); } catch {}
+  }).catch(() => {});
+}
+
+/**
+ * Marks an existing career as "already seeded" without inserting players —
+ * used by App boot migration so legacy careers stay empty.
+ */
+export function markCareerSeededWithoutSeeding(careerId: string): void {
+  const seedFlag = `fc-career-manager-base-seeded-${careerId}`;
+  try { localStorage.setItem(seedFlag, "1"); } catch {}
 }
 
 export function getLastAdvanceSeasonId(careerId: string): string | null {

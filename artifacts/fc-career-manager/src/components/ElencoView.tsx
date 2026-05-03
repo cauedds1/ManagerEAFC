@@ -2,7 +2,7 @@ import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useLang } from "@/hooks/useLang";
 import { CLUBE, BASE as BASE_I18N } from "@/lib/i18n";
-import { getCriaIds } from "@/lib/criaStorage";
+import { getCriaIds, buildCriaTooltipMap } from "@/lib/criaStorage";
 import { SectionHelp } from "./SectionHelp";
 import type { SquadResult, SquadPlayer, PositionPtBr, PositionGroup } from "@/lib/squadCache";
 import { migratePositionOverride, PT_BR_TO_POSITION } from "@/lib/squadCache";
@@ -321,6 +321,10 @@ export function ElencoView({
   const t = CLUBE[lang];
   const baseT = BASE_I18N[lang];
   const criaSet = useMemo(() => new Set(getCriaIds(careerId)), [careerId]);
+  const criaTooltips = useMemo(
+    () => buildCriaTooltipMap(careerId, baseT.criaBadgeTooltip, baseT.criaBadge),
+    [careerId, baseT.criaBadgeTooltip, baseT.criaBadge],
+  );
 
   const [tab, setTab] = useState<SquadTab>("pitch");
   const [pendingSwap, setPendingSwap] = useState<SquadPlayer | null>(null);
@@ -1184,7 +1188,7 @@ export function ElencoView({
                             injuryTooltip={injuryInfoMap.get(player.id)?.tooltip}
                             injuredLabel={t.injuredBadge}
                             isCria={criaSet.has(player.id)}
-                            criaLabel={baseT.criaBadge}
+                            criaLabel={criaTooltips.get(player.id) ?? baseT.criaBadge}
                           />
                         ))}
                       </div>
@@ -1356,7 +1360,7 @@ export function ElencoView({
                         injuryTooltip={injuryInfoMap.get(player.id)?.tooltip}
                         injuredLabel={t.injuredBadge}
                         isCria={criaSet.has(player.id)}
-                        criaLabel={baseT.criaBadge}
+                        criaLabel={criaTooltips.get(player.id) ?? baseT.criaBadge}
                       />
                     ))}
                   </div>
@@ -1379,7 +1383,7 @@ export function ElencoView({
                           injuryTooltip={injuryInfoMap.get(player.id)?.tooltip}
                           injuredLabel={t.injuredBadge}
                           isCria={criaSet.has(player.id)}
-                          criaLabel={baseT.criaBadge}
+                          criaLabel={criaTooltips.get(player.id) ?? baseT.criaBadge}
                         />
                       ))
                     )}
@@ -1480,7 +1484,7 @@ export function ElencoView({
                     injuryTooltip={injuryInfoMap.get(player.id)?.tooltip}
                     injuredLabel={t.injuredBadge}
                     isCria={criaSet.has(player.id)}
-                    criaLabel={baseT.criaBadge}
+                    criaLabel={criaTooltips.get(player.id) ?? baseT.criaBadge}
                   />
                 ))}
               </div>
@@ -1503,7 +1507,7 @@ export function ElencoView({
                       injuryTooltip={injuryInfoMap.get(player.id)?.tooltip}
                       injuredLabel={t.injuredBadge}
                       isCria={criaSet.has(player.id)}
-                      criaLabel={baseT.criaBadge}
+                      criaLabel={criaTooltips.get(player.id) ?? baseT.criaBadge}
                     />
                   ))}
                 </div>

@@ -307,6 +307,7 @@ export function ClubeView({
           <BaseView
             careerId={careerId}
             seasonId={seasonId}
+            seasonLabel={career.season}
             clubName={career.clubName}
             onPromoted={onRefresh}
           />

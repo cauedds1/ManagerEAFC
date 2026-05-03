@@ -594,6 +594,19 @@ export default function App() {
   useEffect(() => {
     migrateFromLegacy();
 
+    // One-time guard: any career that already exists when the academy
+    // feature ships should NOT be auto-seeded. Mark them so the BaseView
+    // / future seeding helpers skip them.
+    try {
+      const flag = "fc-career-manager-base-existing-careers-marked";
+      if (!localStorage.getItem(flag)) {
+        import("@/lib/baseStorage").then(({ markCareerSeededWithoutSeeding }) => {
+          for (const c of listCareers()) markCareerSeededWithoutSeeding(c.id);
+          try { localStorage.setItem(flag, "1"); } catch {}
+        }).catch(() => {});
+      }
+    } catch {}
+
     const urlParams = new URLSearchParams(window.location.search);
 
     const demoParam = urlParams.get("demo");

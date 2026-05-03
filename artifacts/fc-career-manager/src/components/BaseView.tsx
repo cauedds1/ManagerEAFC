@@ -4,7 +4,6 @@ import type { SquadPlayer } from "@/lib/squadCache";
 import { PT_BR_TO_POSITION } from "@/lib/squadCache";
 import {
   getBasePlayers,
-  getAllBasePlayersRaw,
   addBasePlayer,
   removeBasePlayer,
   updateBasePlayer,
@@ -15,7 +14,6 @@ import {
   BASE_MAX_AGE,
   type BasePlayer,
 } from "@/lib/baseStorage";
-import { generateInitialBaseSeed } from "@/lib/basePlayerSeed";
 import { addCustomPlayer, generateCustomPlayerId } from "@/lib/customPlayersStorage";
 import { setPlayerOverride } from "@/lib/playerStatsStorage";
 import { addCriaId } from "@/lib/criaStorage";
@@ -26,6 +24,7 @@ import { BASE as BASE_I18N } from "@/lib/i18n";
 interface BaseViewProps {
   careerId: string;
   seasonId: string;
+  seasonLabel: string;
   clubName: string;
   onPromoted?: () => void;
 }
@@ -79,7 +78,7 @@ function PotentialBadge({ min, max }: { min: number; max: number }) {
   );
 }
 
-export function BaseView({ careerId, seasonId, clubName, onPromoted }: BaseViewProps) {
+export function BaseView({ careerId, seasonId, seasonLabel, clubName, onPromoted }: BaseViewProps) {
   const [lang] = useLang();
   const t = BASE_I18N[lang];
 
@@ -91,25 +90,6 @@ export function BaseView({ careerId, seasonId, clubName, onPromoted }: BaseViewP
   const players = useMemo(() => getBasePlayers(careerId), [careerId, refreshKey]);
 
   const refresh = () => setRefreshKey((k) => k + 1);
-
-  // Lazy seed: if academy was never touched (no record at all, even promoted),
-  // generate the initial 8–12 youngsters. Uses raw storage so promoted/dispensed
-  // history prevents re-seeding on subsequent visits.
-  useMemo(() => {
-    const seedFlag = `fc-career-manager-base-seeded-${careerId}`;
-    try {
-      if (localStorage.getItem(seedFlag)) return;
-      if (getAllBasePlayersRaw(careerId).length > 0) {
-        localStorage.setItem(seedFlag, "1");
-        return;
-      }
-      const seed = generateInitialBaseSeed();
-      for (const p of seed) addBasePlayer(careerId, p);
-      localStorage.setItem(seedFlag, "1");
-      setRefreshKey((k) => k + 1);
-    } catch {}
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [careerId]);
 
   const handleAdd = () => {
     setError(null);
@@ -166,7 +146,7 @@ export function BaseView({ careerId, seasonId, clubName, onPromoted }: BaseViewP
       overall: p.overall,
       nationality: p.nationality,
     });
-    addCriaId(careerId, newId);
+    addCriaId(careerId, newId, seasonId, seasonLabel);
     updateBasePlayer(careerId, p.id, { promotedAt: Date.now(), promotedAsId: newId });
     try {
       emitPromotionNews(seasonId, careerId, p, clubName, lang);

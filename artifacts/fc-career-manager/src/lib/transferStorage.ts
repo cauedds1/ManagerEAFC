@@ -3,6 +3,7 @@ import { putSeasonData } from "@/lib/apiStorage";
 import { sessionGet, sessionSet } from "@/lib/sessionStore";
 import { isCria } from "@/lib/criaStorage";
 import { emitReturningCriaNews } from "@/lib/basePromotionNews";
+import { getActiveCareer } from "@/lib/careerStorage";
 
 function readLang(): "pt" | "en" {
   try {
@@ -39,7 +40,8 @@ export function addTransfer(seasonId: string, transfer: TransferRecord): void {
     if (transfer.type === "compra" && transfer.careerId
       && typeof transfer.playerId === "number"
       && isCria(transfer.careerId, transfer.playerId)) {
-      emitReturningCriaNews(seasonId, transfer.careerId, transfer.playerName, readLang());
+      const club = getActiveCareer(transfer.careerId)?.clubName ?? "";
+      emitReturningCriaNews(seasonId, transfer.careerId, transfer.playerName, club, readLang());
     }
   } catch (err) {
     console.error("[transfers] returning-cria news failed", err);

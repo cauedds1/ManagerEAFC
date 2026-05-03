@@ -207,15 +207,17 @@ export function emitReturningCriaNews(
   seasonId: string,
   careerId: string,
   playerName: string,
+  clubName: string,
   lang: Lang,
 ): void {
+  const venue = clubName.trim() || (lang === "en" ? "the club" : "o clube");
   const title = lang === "en"
-    ? `Academy son returns home — ${playerName} is back!`
-    : `Cria de volta pra casa — ${playerName} retorna ao clube!`;
+    ? `${playerName} is back at ${venue}!`
+    : `${playerName} está de volta ao ${venue}!`;
   const content = lang === "en"
-    ? `🌱 ACADEMY HOMECOMING\n\nThe club have re-signed academy product ${playerName}. ` +
+    ? `🌱 ACADEMY HOMECOMING\n\n${venue} have re-signed academy product ${playerName}. ` +
       `The Cria do Clube badge stays for life — fans welcome him back with open arms. ❤️`
-    : `🌱 CRIA DE VOLTA EM CASA\n\nO clube recontratou ${playerName}, formado na própria base. ` +
+    : `🌱 CRIA DE VOLTA EM CASA\n\n${venue} recontratou ${playerName}, formado na própria base. ` +
       `O selo de Cria do Clube é permanente — a torcida recebe o ídolo de volta de braços abertos. ❤️`;
 
   const post: NewsPost = {
@@ -232,6 +234,43 @@ export function emitReturningCriaNews(
     comments: [],
     createdAt: Date.now(),
     category: "transferencia",
+  };
+  addPost(seasonId, post);
+}
+
+/** Small summer note when youngsters age out of the academy at 20. */
+export function emitAcademyDeparturesNews(
+  seasonId: string,
+  careerId: string,
+  departed: BasePlayer[],
+  lang: Lang,
+): void {
+  if (departed.length === 0) return;
+  const names = departed.map((p) => `${p.firstName} ${p.lastName}`.trim()).join(", ");
+  const title = lang === "en"
+    ? `Academy farewell — ${departed.length} youngster${departed.length > 1 ? "s" : ""} aged out`
+    : `Despedida da base — ${departed.length} cria${departed.length > 1 ? "s" : ""} se despede${departed.length > 1 ? "m" : ""}`;
+  const content = lang === "en"
+    ? `🌱 SUMMER NOTE\n\nThe academy says goodbye to: ${names}. ` +
+      `They turned 20 without being promoted and leave the youth setup. ` +
+      `Best of luck, kids — keep an eye on them out there.`
+    : `🌱 NOTA DE VERÃO\n\nA base se despede de: ${names}. ` +
+      `Eles fizeram 20 anos sem serem promovidos e deixam a categoria juvenil. ` +
+      `Boa sorte, garotada — fica de olho no caminho deles por aí.`;
+  const post: NewsPost = {
+    id: generatePostId(),
+    careerId,
+    source: "fanpage",
+    sourceHandle: "@academiaclub",
+    sourceName: lang === "en" ? "Academy Watch" : "Olho na Base",
+    title,
+    content,
+    likes: 180,
+    commentsCount: 12,
+    sharesCount: 22,
+    comments: [],
+    createdAt: Date.now(),
+    category: "geral",
   };
   addPost(seasonId, post);
 }
