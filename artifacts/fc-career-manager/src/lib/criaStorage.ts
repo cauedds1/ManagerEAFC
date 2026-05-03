@@ -3,9 +3,14 @@ import { sessionGet, sessionSet } from "@/lib/sessionStore";
 
 export interface CriaRecord {
   playerId: number;
+  playerName: string;
   promotedSeasonId: string;
   promotedSeasonLabel: string;
   promotedAt: number;
+}
+
+function nameKey(name: string): string {
+  return name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim().replace(/\s+/g, " ");
 }
 
 function lsGet<T>(key: string): T | null {
@@ -35,6 +40,7 @@ function loadRecords(careerId: string): CriaRecord[] {
   if (Array.isArray(legacy) && legacy.length > 0) {
     const migrated = legacy.map<CriaRecord>((id) => ({
       playerId: id,
+      playerName: "",
       promotedSeasonId: "",
       promotedSeasonLabel: "",
       promotedAt: 0,
@@ -43,6 +49,30 @@ function loadRecords(careerId: string): CriaRecord[] {
     return migrated;
   }
   return [];
+}
+
+/** Look up an academy product by player name (case/accents-insensitive). */
+export function findCriaByName(careerId: string, name: string): CriaRecord | undefined {
+  if (!name) return undefined;
+  const k = nameKey(name);
+  return loadRecords(careerId).find((r) => r.playerName && nameKey(r.playerName) === k);
+}
+
+/**
+ * Re-attach the permanent Cria identity to a new playerId after a rehire,
+ * preserving the original promoted-season metadata.
+ */
+export function relinkCriaToNewPlayerId(
+  careerId: string,
+  originalRecord: CriaRecord,
+  newPlayerId: number,
+): void {
+  const list = loadRecords(careerId);
+  if (list.some((r) => r.playerId === newPlayerId)) return;
+  save(careerId, [...list, {
+    ...originalRecord,
+    playerId: newPlayerId,
+  }]);
 }
 
 function save(careerId: string, list: CriaRecord[]): void {
@@ -94,11 +124,13 @@ export function addCriaId(
   playerId: number,
   promotedSeasonId = "",
   promotedSeasonLabel = "",
+  playerName = "",
 ): void {
   const list = loadRecords(careerId);
   if (list.some((r) => r.playerId === playerId)) return;
   save(careerId, [...list, {
     playerId,
+    playerName,
     promotedSeasonId,
     promotedSeasonLabel,
     promotedAt: Date.now(),

@@ -146,7 +146,7 @@ export function BaseView({ careerId, seasonId, seasonLabel, clubName, onPromoted
       overall: p.overall,
       nationality: p.nationality,
     });
-    addCriaId(careerId, newId, seasonId, seasonLabel);
+    addCriaId(careerId, newId, seasonId, seasonLabel, `${p.firstName} ${p.lastName}`.trim());
     updateBasePlayer(careerId, p.id, { promotedAt: Date.now(), promotedAsId: newId });
     try {
       emitPromotionNews(seasonId, careerId, p, clubName, lang);

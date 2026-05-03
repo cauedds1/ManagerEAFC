@@ -630,10 +630,12 @@ export function PlayerStatsTable({ careerId, seasonId, allPlayers, statsOverride
                             )}
                           </button>
                         ) : (
-                          <span className={`font-medium text-xs truncate max-w-[130px] ${isFormer ? "text-white/45" : "text-white/80"}`}>{player.name}</span>
-                        )}
-                        {criaSet.has(player.id) && (
-                          <span title={criaTooltips.get(player.id) ?? BASE_I18N[lang].criaBadge} aria-label={BASE_I18N[lang].criaBadge} className="text-[10px] leading-none" style={{ color: "#86efac" }}>🌱</span>
+                          <span className={`font-medium text-xs truncate max-w-[130px] ${isFormer ? "text-white/45" : "text-white/80"}`}>
+                            {player.name}
+                            {criaSet.has(player.id) && (
+                              <span title={criaTooltips.get(player.id) ?? BASE_I18N[lang].criaBadge} aria-label={BASE_I18N[lang].criaBadge} className="text-[10px] leading-none ml-1" style={{ color: "#86efac" }}>🌱</span>
+                            )}
+                          </span>
                         )}
                         {isFormer && (
                           <span className="text-[9px] font-bold uppercase tracking-wider" style={{ color: "rgba(251,146,60,0.6)" }}>{t.leftSquadBadge}</span>
