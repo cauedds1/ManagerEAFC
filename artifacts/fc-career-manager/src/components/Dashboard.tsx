@@ -432,7 +432,9 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     clearSquadCache(teamId, career.clubName);
     setSquad(null);
     setRefetchKey((k) => k + 1);
-  }, [teamId, career.clubName]);
+    setCustomPlayers(getCustomPlayers(career.id));
+    setOverrides(getAllPlayerOverrides(career.id));
+  }, [teamId, career.clubName, career.id]);
 
   const [overrides, setOverrides] = useState(() => getAllPlayerOverrides(career.id));
 

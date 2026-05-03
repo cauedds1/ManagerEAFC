@@ -63,6 +63,10 @@ export function saveBasePlayers(careerId: string, players: BasePlayer[]): void {
 
 export function addBasePlayer(careerId: string, player: BasePlayer): void {
   const all = getAllBasePlayersRaw(careerId);
+  const active = all.filter((p) => !p.promotedAt);
+  if (active.length >= BASE_MAX_SLOTS) {
+    throw new Error(`Base academy is full (${BASE_MAX_SLOTS} slots).`);
+  }
   saveBasePlayers(careerId, [...all, player]);
 }
 
