@@ -1,4 +1,5 @@
 import type { SquadPlayer } from "@/lib/squadCache";
+import { expandAliases } from "@/lib/playerAliases";
 
 export function normalizeName(s: string): string {
   return s
@@ -44,6 +45,21 @@ function score(query: string, candidate: string): number {
   return s;
 }
 
+// Alias-aware score: when the query has known nicknames (e.g. "Savinho" → "Sávio"),
+// take the best score across all variants so candidates spelled with the canonical
+// name still match.
+function aliasAwareScore(query: string, candidate: string): number {
+  const variants = expandAliases(query);
+  if (variants.length <= 1) return score(query, candidate);
+  let best = score(query, candidate);
+  for (const v of variants) {
+    if (v === query) continue;
+    const s = score(v, candidate);
+    if (s > best) best = s;
+  }
+  return best;
+}
+
 export interface SearchHit {
   id: number;
   name: string;
@@ -67,7 +83,7 @@ export function findBestPlayerMatch(
   const minMargin = opts.minMargin ?? 0.15;
   if (!name?.trim() || pool.length === 0) return null;
   const scored = pool
-    .map((p) => ({ player: p, score: score(name, p.name) }))
+    .map((p) => ({ player: p, score: aliasAwareScore(name, p.name) }))
     .sort((a, b) => b.score - a.score);
   const best = scored[0];
   if (!best || best.score < minScore) return null;
@@ -85,7 +101,7 @@ export function findBestSearchHit(
   const minMargin = opts.minMargin ?? 0.15;
   if (!name?.trim() || hits.length === 0) return null;
   const scored = hits
-    .map((h) => ({ hit: h, score: score(name, h.name) }))
+    .map((h) => ({ hit: h, score: aliasAwareScore(name, h.name) }))
     .sort((a, b) => b.score - a.score);
   const best = scored[0];
   if (!best || best.score < minScore) return null;

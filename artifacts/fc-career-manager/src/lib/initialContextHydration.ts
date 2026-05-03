@@ -35,12 +35,34 @@ import {
 const HYDRATED_KEY_V1 = (careerId: string) => `fc-initial-hydrated-${careerId}`;
 const HYDRATED_KEY_V2 = (careerId: string) => `fc-initial-hydrated-v2-${careerId}`;
 const HYDRATED_KEY_V3 = (careerId: string) => `fc-initial-hydrated-v3-${careerId}`;
+// One-time pass that re-runs name matching on already-hydrated transfers to
+// replace AI nicknames (e.g. "Savinho") with the canonical player name from the
+// squad / api-football catalog (e.g. "Sávio"). Independent of HYDRATED_KEY_V3
+// because it must run for careers that were hydrated before alias support
+// existed without re-creating their transfer records.
+const CANONICALIZED_KEY = (careerId: string) => `fc-transfers-canonicalized-v1-${careerId}`;
 
 export function isInitialContextHydrated(careerId: string): boolean {
   try {
     return localStorage.getItem(HYDRATED_KEY_V3(careerId)) === "1";
   } catch {
     return false;
+  }
+}
+
+function isCanonicalized(careerId: string): boolean {
+  try {
+    return localStorage.getItem(CANONICALIZED_KEY(careerId)) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function markCanonicalized(careerId: string): void {
+  try {
+    localStorage.setItem(CANONICALIZED_KEY(careerId), "1");
+  } catch {
+    /* quota */
   }
 }
 
@@ -61,9 +83,143 @@ function markHydrated(careerId: string): void {
     localStorage.setItem(HYDRATED_KEY_V3(careerId), "1");
     localStorage.setItem(HYDRATED_KEY_V2(careerId), "1");
     localStorage.setItem(HYDRATED_KEY_V1(careerId), "1");
+    // Fresh hydration uses alias-aware matching, so canonical names are already
+    // applied — skip the migration pass for this career.
+    localStorage.setItem(CANONICALIZED_KEY(careerId), "1");
   } catch {
     /* quota */
   }
+}
+
+// Re-applies alias-aware matching to already-saved transfers, replacing AI
+// nicknames in `playerName` with the canonical name from the squad / search
+// catalog. Updates `playerId` and `playerPhoto` only when the current record is
+// still a synthetic placeholder (no real player bound yet); otherwise only the
+// display name is corrected, so user-edited fees, salaries, etc. are preserved.
+interface CanonicalizationResult {
+  attempted: number;
+  updates: number;
+  /** True if every record we needed to resolve actually got a candidate (or
+   *  there was nothing to resolve). False if any network/search call failed
+   *  to return a result for a record we tried to canonicalize. */
+  reliable: boolean;
+}
+
+// Like searchPlayer but distinguishes "no match found" from "request failed".
+// Returns { hit } on a successful response (hit may be null for no match) or
+// { error: true } on network/HTTP failure so the migration can defer marking.
+async function searchPlayerForMigration(name: string): Promise<
+  { hit: SearchHit | null; error: false } | { hit: null; error: true }
+> {
+  try {
+    const res = await fetch(`/api/players/search?q=${encodeURIComponent(name)}`);
+    if (!res.ok) return { hit: null, error: true };
+    const data = (await res.json()) as { players?: SearchHit[] };
+    return { hit: findBestSearchHit(name, data.players ?? []), error: false };
+  } catch {
+    return { hit: null, error: true };
+  }
+}
+
+async function canonicalizeTransferNames(
+  career: Career,
+  seasonId: string,
+): Promise<CanonicalizationResult> {
+  const ic = career.initialContext;
+  if (!ic) return { attempted: 0, updates: 0, reliable: true };
+  const tIn = ic.transfersIn ?? [];
+  const tOut = ic.transfersOut ?? [];
+  if (tIn.length === 0 && tOut.length === 0) return { attempted: 0, updates: 0, reliable: true };
+
+  const existing = getTransfers(seasonId);
+  if (existing.length === 0) return { attempted: 0, updates: 0, reliable: true };
+
+  // Load squad once. Track whether the load actually succeeded so we don't
+  // mark vendas as "reliably canonicalized" when the squad never came through.
+  let squadPlayers: SquadPlayer[] = [];
+  let squadReliable = true;
+  if (career.clubId && career.clubId > 0 && tOut.length > 0) {
+    let loaded = false;
+    try {
+      const squad = await getSquad(career.clubId, career.clubName);
+      squadPlayers = squad?.players ?? [];
+      loaded = squadPlayers.length > 0;
+    } catch {
+      squadPlayers = [];
+    }
+    if (!loaded) {
+      try {
+        const fetched = await fetchSquadFromBackend(career.clubId);
+        squadPlayers = fetched?.players ?? [];
+        loaded = squadPlayers.length > 0;
+      } catch {
+        squadPlayers = [];
+      }
+    }
+    squadReliable = loaded;
+  }
+
+  let updates = 0;
+  let attempted = 0;
+  let reliable = true;
+
+  const updated: TransferRecord[] = await Promise.all(
+    existing.map(async (t) => {
+      const pool = t.type === "compra" ? tIn : tOut;
+      const entry = pool.find((e) => {
+        const n = e?.name?.trim();
+        return n && fuzzyNameMatch(n, t.playerName);
+      });
+      if (!entry) return t;
+      const aiName = entry.name.trim();
+      attempted++;
+
+      let canonical: { id: number; name: string; photo: string } | null = null;
+
+      if (t.type === "venda") {
+        if (!squadReliable) {
+          reliable = false;
+          return t;
+        }
+        const m = findBestPlayerMatch(aiName, squadPlayers);
+        if (m) canonical = { id: m.player.id, name: m.player.name, photo: m.player.photo ?? "" };
+      } else {
+        const result = await searchPlayerForMigration(aiName);
+        if (result.error) {
+          reliable = false;
+          return t;
+        }
+        if (result.hit) {
+          canonical = { id: result.hit.id, name: result.hit.name, photo: result.hit.photo ?? "" };
+        }
+      }
+
+      if (!canonical) return t;
+      const sameName = normalizeName(canonical.name) === normalizeName(t.playerName);
+      const sameId = canonical.id === t.playerId;
+      if (sameName && sameId) return t;
+
+      const looksSynthetic =
+        t.playerPhoto === "" && t.playerAge === 25 && t.playerPositionPtBr === "MID";
+      updates++;
+      return {
+        ...t,
+        playerName: canonical.name,
+        playerId: looksSynthetic ? canonical.id : t.playerId,
+        playerPhoto: t.playerPhoto || canonical.photo,
+      };
+    }),
+  );
+
+  if (updates > 0) {
+    try {
+      await saveTransfersAsync(seasonId, updated);
+    } catch {
+      // Persistence failed — don't mark as canonicalized so we retry next time.
+      return { attempted, updates: 0, reliable: false };
+    }
+  }
+  return { attempted, updates, reliable };
 }
 
 function normalizeNumeric(raw: string): number {
@@ -294,6 +450,21 @@ export async function hydrateInitialContext(
     comprasMatched: 0,
     ran: false,
   };
+  // One-time migration for careers hydrated before alias support: re-runs
+  // matching to replace AI nicknames with canonical player names. Runs even
+  // when the career is already hydrated.
+  if (!isCanonicalized(career.id)) {
+    try {
+      const result = await canonicalizeTransferNames(career, seasonId);
+      // Only mark when the pass was reliable. If a network/save failure
+      // prevented us from resolving every record, leave the flag unset so a
+      // future call retries.
+      if (result.reliable) markCanonicalized(career.id);
+    } catch {
+      /* unexpected failure — leave flag unset to retry */
+    }
+  }
+
   if (isInitialContextHydrated(career.id)) return empty;
   const ic = career.initialContext;
   if (!ic) return empty;
