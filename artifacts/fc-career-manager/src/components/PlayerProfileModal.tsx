@@ -8,7 +8,8 @@ import { getMatches } from "@/lib/matchStorage";
 import { syncSeasonFromDb } from "@/lib/dbSync";
 import { getSeasons } from "@/lib/seasonStorage";
 import { useLang } from "@/hooks/useLang";
-import { PLAYER_PROFILE, POSITION_DISPLAY } from "@/lib/i18n";
+import { isCria } from "@/lib/criaStorage";
+import { PLAYER_PROFILE, POSITION_DISPLAY, BASE as BASE_I18N } from "@/lib/i18n";
 import { MatchDetailPage } from "./MatchDetailPage";
 
 // ── Flag emoji ────────────────────────────────────────────────────────────────
@@ -258,6 +259,7 @@ export function PlayerProfileModal({
   const [careerLoaded, setCareerLoaded] = useState(false);
 
   const displayName  = override?.nameOverride ?? player.name;
+  const isCriaPlayer = useMemo(() => isCria(careerId, player.id), [careerId, player.id]);
   const displayOvr   = override?.overall;
   const displayPos   = (migratePositionOverride(override?.positionOverride) ?? player.positionPtBr) as PositionPtBr;
   const displayPhoto = override?.photoOverride ?? player.photo;
@@ -541,7 +543,17 @@ export function PlayerProfileModal({
                 )}
               </div>
               <div className="min-w-0">
-                <h2 className="text-white text-lg font-black leading-tight truncate">{displayName}</h2>
+                <h2 className="text-white text-lg font-black leading-tight truncate flex items-center gap-1.5">
+                  <span className="truncate">{displayName}</span>
+                  {isCriaPlayer && (
+                    <span
+                      title={BASE_I18N[lang].criaBadge}
+                      aria-label={BASE_I18N[lang].criaBadge}
+                      className="text-base leading-none"
+                      style={{ color: "#86efac" }}
+                    >🌱</span>
+                  )}
+                </h2>
                 <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                   <span
                     className="text-xs font-bold px-2.5 py-0.5 rounded-lg"

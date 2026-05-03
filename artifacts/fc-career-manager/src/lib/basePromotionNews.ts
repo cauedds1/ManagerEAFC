@@ -1,0 +1,237 @@
+import type { NewsPost } from "@/types/noticias";
+import type { BasePlayer } from "@/lib/baseStorage";
+import { addPost, generatePostId, generateCommentId } from "@/lib/noticiaStorage";
+import type { Lang } from "@/lib/i18n";
+
+type Position = "GOL" | "DEF" | "MID" | "ATA";
+
+interface Legend { name: string; nationality: string; positions: Position[] }
+
+// Pequeno banco de craques históricos por posição + nacionalidade, usado
+// apenas como referência ("o novo X") em notícias de potencial elite.
+const LEGENDS: Legend[] = [
+  // Brazilian
+  { name: "Pelé",        nationality: "Brazil",   positions: ["ATA"] },
+  { name: "Ronaldo",     nationality: "Brazil",   positions: ["ATA"] },
+  { name: "Romário",     nationality: "Brazil",   positions: ["ATA"] },
+  { name: "Neymar",      nationality: "Brazil",   positions: ["ATA", "MID"] },
+  { name: "Ronaldinho",  nationality: "Brazil",   positions: ["MID", "ATA"] },
+  { name: "Kaká",        nationality: "Brazil",   positions: ["MID"] },
+  { name: "Cafu",        nationality: "Brazil",   positions: ["DEF"] },
+  { name: "Roberto Carlos", nationality: "Brazil", positions: ["DEF"] },
+  { name: "Thiago Silva", nationality: "Brazil",  positions: ["DEF"] },
+  { name: "Taffarel",    nationality: "Brazil",   positions: ["GOL"] },
+  // Argentina
+  { name: "Maradona",    nationality: "Argentina", positions: ["MID", "ATA"] },
+  { name: "Messi",       nationality: "Argentina", positions: ["ATA", "MID"] },
+  { name: "Batistuta",   nationality: "Argentina", positions: ["ATA"] },
+  { name: "Mascherano",  nationality: "Argentina", positions: ["MID", "DEF"] },
+  { name: "Romero",      nationality: "Argentina", positions: ["GOL"] },
+  // Portugal
+  { name: "Cristiano Ronaldo", nationality: "Portugal", positions: ["ATA"] },
+  { name: "Eusébio",     nationality: "Portugal", positions: ["ATA"] },
+  { name: "Figo",        nationality: "Portugal", positions: ["MID"] },
+  { name: "Pepe",        nationality: "Portugal", positions: ["DEF"] },
+  // Spain
+  { name: "Iniesta",     nationality: "Spain",    positions: ["MID"] },
+  { name: "Xavi",        nationality: "Spain",    positions: ["MID"] },
+  { name: "Raúl",        nationality: "Spain",    positions: ["ATA"] },
+  { name: "Ramos",       nationality: "Spain",    positions: ["DEF"] },
+  { name: "Casillas",    nationality: "Spain",    positions: ["GOL"] },
+  // France
+  { name: "Zidane",      nationality: "France",   positions: ["MID"] },
+  { name: "Henry",       nationality: "France",   positions: ["ATA"] },
+  { name: "Mbappé",      nationality: "France",   positions: ["ATA"] },
+  { name: "Pogba",       nationality: "France",   positions: ["MID"] },
+  { name: "Maldini",     nationality: "Italy",    positions: ["DEF"] },
+  { name: "Buffon",      nationality: "Italy",    positions: ["GOL"] },
+  { name: "Pirlo",       nationality: "Italy",    positions: ["MID"] },
+  { name: "Del Piero",   nationality: "Italy",    positions: ["ATA"] },
+  // Germany
+  { name: "Beckenbauer", nationality: "Germany",  positions: ["DEF"] },
+  { name: "Müller",      nationality: "Germany",  positions: ["ATA", "MID"] },
+  { name: "Neuer",       nationality: "Germany",  positions: ["GOL"] },
+  // England
+  { name: "Beckham",     nationality: "England",  positions: ["MID"] },
+  { name: "Lampard",     nationality: "England",  positions: ["MID"] },
+  { name: "Rooney",      nationality: "England",  positions: ["ATA"] },
+  // Netherlands
+  { name: "Cruyff",      nationality: "Netherlands", positions: ["MID", "ATA"] },
+  { name: "Van Basten",  nationality: "Netherlands", positions: ["ATA"] },
+  { name: "Van der Sar", nationality: "Netherlands", positions: ["GOL"] },
+  // Generic fallbacks per position
+  { name: "Modrić",      nationality: "*",        positions: ["MID"] },
+  { name: "Lewandowski", nationality: "*",        positions: ["ATA"] },
+  { name: "Van Dijk",    nationality: "*",        positions: ["DEF"] },
+  { name: "Courtois",    nationality: "*",        positions: ["GOL"] },
+];
+
+function pickLegend(pos: Position, nationality: string, lang: Lang): string {
+  const exact = LEGENDS.filter((l) => l.nationality === nationality && l.positions.includes(pos));
+  const pool = exact.length > 0 ? exact : LEGENDS.filter((l) => l.positions.includes(pos));
+  if (pool.length === 0) return lang === "en" ? "a football legend" : "uma lenda do futebol";
+  return pool[Math.floor(Math.random() * pool.length)].name;
+}
+
+export type PromoTier = "modesto" | "promissor" | "elite";
+
+export function tierForPotential(potentialMax: number): PromoTier {
+  if (potentialMax >= 88) return "elite";
+  if (potentialMax >= 75) return "promissor";
+  return "modesto";
+}
+
+const POS_NAME_PT: Record<Position, string> = {
+  GOL: "goleiro", DEF: "zagueiro", MID: "meio-campista", ATA: "atacante",
+};
+const POS_NAME_EN: Record<Position, string> = {
+  GOL: "goalkeeper", DEF: "defender", MID: "midfielder", ATA: "forward",
+};
+
+interface NewsCopy { title: string; content: string }
+
+function buildPromotionCopy(
+  player: BasePlayer,
+  clubName: string,
+  tier: PromoTier,
+  lang: Lang,
+): NewsCopy {
+  const fullName = `${player.firstName} ${player.lastName}`.trim();
+  const posPt = POS_NAME_PT[player.position];
+  const posEn = POS_NAME_EN[player.position];
+  const legend = pickLegend(player.position, player.nationality, lang);
+
+  if (lang === "en") {
+    if (tier === "elite") {
+      return {
+        title: `Academy gem ${fullName} promoted — could be the next ${legend}`,
+        content:
+          `🌱 ACADEMY PROMOTION\n\n` +
+          `${clubName} have promoted ${fullName} (${player.age}) from the youth academy ` +
+          `to the first team. The ${posEn} from ${player.nationality} comes with an OVR of ${player.overall} ` +
+          `and is already drawing comparisons inside the club to ${legend}.\n\n` +
+          `Scouts from across Europe are expected to follow every minute he plays. ` +
+          `A new ${legend}? Time will tell — but the talent is real. 🌟`,
+      };
+    }
+    if (tier === "promissor") {
+      return {
+        title: `Promising youth ${fullName} promoted to ${clubName}'s first team`,
+        content:
+          `🌱 ACADEMY PROMOTION\n\n` +
+          `${clubName} have promoted ${fullName} (${player.age}) from the youth academy. ` +
+          `The ${posEn} from ${player.nationality} (OVR ${player.overall}) is highly rated ` +
+          `internally and joins the senior squad with real prospects of breaking through.`,
+      };
+    }
+    return {
+      title: `${fullName} promoted from the academy`,
+      content:
+        `🌱 ACADEMY PROMOTION\n\n` +
+        `${clubName} have promoted ${fullName} (${player.age}, ${posEn}) from the youth academy. ` +
+        `A modest profile to add depth — the academy gives the kid a chance.`,
+    };
+  }
+
+  if (tier === "elite") {
+    return {
+      title: `Joia da base ${fullName} promovida — pode ser o novo ${legend}`,
+      content:
+        `🌱 PROMOÇÃO DA BASE\n\n` +
+        `O ${clubName} promoveu ${fullName} (${player.age}) das categorias de base ` +
+        `para o time principal. O ${posPt} ${player.nationality} chega com OVR ${player.overall} ` +
+        `e internamente já é comparado a ${legend}.\n\n` +
+        `Olheiros do mundo todo devem acompanhar cada minuto deste talento. ` +
+        `Novo ${legend}? O tempo dirá — mas o potencial é gigante. 🌟`,
+    };
+  }
+  if (tier === "promissor") {
+    return {
+      title: `Promessa da base ${fullName} é promovida ao profissional do ${clubName}`,
+      content:
+        `🌱 PROMOÇÃO DA BASE\n\n` +
+        `O ${clubName} promoveu ${fullName} (${player.age}) das categorias de base. ` +
+        `O ${posPt} ${player.nationality} (OVR ${player.overall}) é bem cotado internamente ` +
+        `e chega ao elenco principal com chances reais de aparecer.`,
+    };
+  }
+  return {
+    title: `${fullName} é promovido das categorias de base`,
+    content:
+      `🌱 PROMOÇÃO DA BASE\n\n` +
+      `O ${clubName} promoveu ${fullName} (${player.age}, ${posPt}) da base. ` +
+      `Perfil modesto que reforça o elenco — a base dá uma oportunidade ao garoto.`,
+  };
+}
+
+export function emitPromotionNews(
+  seasonId: string,
+  careerId: string,
+  player: BasePlayer,
+  clubName: string,
+  lang: Lang,
+): void {
+  const tier = tierForPotential(player.potentialMax);
+  const { title, content } = buildPromotionCopy(player, clubName, tier, lang);
+  const post: NewsPost = {
+    id: generatePostId(),
+    careerId,
+    source: "fanpage",
+    sourceHandle: "@academiaclub",
+    sourceName: lang === "en" ? "Academy Watch" : "Olho na Base",
+    title,
+    content,
+    likes: tier === "elite" ? 5240 : tier === "promissor" ? 1830 : 420,
+    commentsCount: tier === "elite" ? 312 : tier === "promissor" ? 88 : 21,
+    sharesCount: tier === "elite" ? 980 : tier === "promissor" ? 240 : 38,
+    comments: [
+      {
+        id: generateCommentId(),
+        username: "@cria_da_base",
+        displayName: lang === "en" ? "Academy Fan" : "Torcedor da Base",
+        content: lang === "en"
+          ? `Academy products are the soul of the club ❤️`
+          : `Cria do clube é a alma da torcida ❤️`,
+        likes: 124,
+        personality: "otimista",
+        createdAt: Date.now() - 3_600_000,
+      },
+    ],
+    createdAt: Date.now(),
+    category: "geral",
+  };
+  addPost(seasonId, post);
+}
+
+export function emitReturningCriaNews(
+  seasonId: string,
+  careerId: string,
+  playerName: string,
+  lang: Lang,
+): void {
+  const title = lang === "en"
+    ? `Academy son returns home — ${playerName} is back!`
+    : `Cria de volta pra casa — ${playerName} retorna ao clube!`;
+  const content = lang === "en"
+    ? `🌱 ACADEMY HOMECOMING\n\nThe club have re-signed academy product ${playerName}. ` +
+      `The Cria do Clube badge stays for life — fans welcome him back with open arms. ❤️`
+    : `🌱 CRIA DE VOLTA EM CASA\n\nO clube recontratou ${playerName}, formado na própria base. ` +
+      `O selo de Cria do Clube é permanente — a torcida recebe o ídolo de volta de braços abertos. ❤️`;
+
+  const post: NewsPost = {
+    id: generatePostId(),
+    careerId,
+    source: "fanpage",
+    sourceHandle: "@academiaclub",
+    sourceName: lang === "en" ? "Academy Watch" : "Olho na Base",
+    title,
+    content,
+    likes: 8210,
+    commentsCount: 412,
+    sharesCount: 1320,
+    comments: [],
+    createdAt: Date.now(),
+    category: "transferencia",
+  };
+  addPost(seasonId, post);
+}

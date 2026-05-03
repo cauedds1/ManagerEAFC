@@ -9,6 +9,8 @@ import { getMatches } from "@/lib/matchStorage";
 import { aggregatePlayerStats, getAllPlayerOverrides } from "@/lib/playerStatsStorage";
 import { syncSeasonFromDb } from "@/lib/dbSync";
 import { ElencoView } from "./ElencoView";
+import { BaseView } from "./BaseView";
+import { BASE as BASE_I18N } from "@/lib/i18n";
 import { PlayerStatsTable } from "./PlayerStatsTable";
 import { PlayerProfileModal } from "./PlayerProfileModal";
 import { LesoesView } from "./LesoesView";
@@ -24,7 +26,7 @@ import { SectionHelp } from "./SectionHelp";
 
 export const FC_ELENCO_TAB_VIEWED_EVENT = "fc:elenco_tab_viewed";
 
-type ClubeSubTab = "elenco" | "estatisticas" | "lesoes" | "sequencias" | "financeiro" | "competicoes" | "trofeus" | "recordes";
+type ClubeSubTab = "elenco" | "base" | "estatisticas" | "lesoes" | "sequencias" | "financeiro" | "competicoes" | "trofeus" | "recordes";
 type StatsMiniTab = "jogadores" | "clube";
 
 interface ClubeViewProps {
@@ -107,6 +109,7 @@ export function ClubeView({
 
   const SUB_TABS: { id: ClubeSubTab; label: string; icon: string }[] = [
     { id: "elenco",       label: t.tabSquad,    icon: "👥" },
+    { id: "base",         label: BASE_I18N[lang].tabBase, icon: "🌱" },
     { id: "estatisticas", label: t.tabStats,    icon: "📊" },
     { id: "lesoes",       label: t.tabInjuries, icon: "🤕" },
     { id: "sequencias",   label: t.tabStreaks,  icon: "🔥" },
@@ -297,6 +300,15 @@ export function ClubeView({
             backfillSeasonYear={backfillSeasonYear}
             clubName={career.clubName}
             clubLogoUrl={career.clubLogo || null}
+          />
+        )}
+
+        {sub === "base" && (
+          <BaseView
+            careerId={careerId}
+            seasonId={seasonId}
+            clubName={career.clubName}
+            onPromoted={onRefresh}
           />
         )}
 

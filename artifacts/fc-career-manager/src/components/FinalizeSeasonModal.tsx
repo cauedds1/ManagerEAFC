@@ -3,15 +3,17 @@ import { getLeaguePosition } from "@/lib/leagueStorage";
 import { setSeasonSummary } from "@/lib/seasonSummaryStorage";
 import { finalizeSeasonApi } from "@/lib/seasonStorage";
 import type { SeasonSummaryLeague } from "@/lib/seasonSummaryStorage";
+import { advanceBaseSeason, setLastAdvanceSeasonId, getLastAdvanceSeasonId } from "@/lib/baseStorage";
 
 interface FinalizeSeasonModalProps {
   seasonId: string;
   seasonLabel: string;
+  careerId?: string;
   onFinalize: () => void;
   onCancel: () => void;
 }
 
-export function FinalizeSeasonModal({ seasonId, seasonLabel, onFinalize, onCancel }: FinalizeSeasonModalProps) {
+export function FinalizeSeasonModal({ seasonId, seasonLabel, careerId, onFinalize, onCancel }: FinalizeSeasonModalProps) {
   const existing = getLeaguePosition(seasonId);
 
   const [position, setPosition] = useState(existing?.position ?? 1);
@@ -53,6 +55,15 @@ export function FinalizeSeasonModal({ seasonId, seasonLabel, onFinalize, onCance
         league,
         finalizedAt: Date.now(),
       });
+
+      if (careerId && getLastAdvanceSeasonId(careerId) !== seasonId) {
+        try {
+          advanceBaseSeason(careerId);
+          setLastAdvanceSeasonId(careerId, seasonId);
+        } catch (err) {
+          console.error("[base] advanceBaseSeason failed", err);
+        }
+      }
 
       onFinalize();
     } catch {

@@ -1,6 +1,16 @@
 import type { TransferRecord } from "@/types/transfer";
 import { putSeasonData } from "@/lib/apiStorage";
 import { sessionGet, sessionSet } from "@/lib/sessionStore";
+import { isCria } from "@/lib/criaStorage";
+import { emitReturningCriaNews } from "@/lib/basePromotionNews";
+
+function readLang(): "pt" | "en" {
+  try {
+    const s = localStorage.getItem("fc_lang");
+    if (s === "pt" || s === "en") return s;
+  } catch {}
+  return "pt";
+}
 
 function transfersKey(seasonId: string): string {
   return `fc-career-manager-transfers-${seasonId}`;
@@ -23,6 +33,17 @@ export async function saveTransfersAsync(seasonId: string, list: TransferRecord[
 export function addTransfer(seasonId: string, transfer: TransferRecord): void {
   const list = [...getTransfers(seasonId), transfer];
   saveTransfers(seasonId, list);
+  // Selo de Cria do Clube é permanente — quando o jogador é recontratado,
+  // dispara notícia automaticamente.
+  try {
+    if (transfer.type === "compra" && transfer.careerId
+      && typeof transfer.playerId === "number"
+      && isCria(transfer.careerId, transfer.playerId)) {
+      emitReturningCriaNews(seasonId, transfer.careerId, transfer.playerName, readLang());
+    }
+  } catch (err) {
+    console.error("[transfers] returning-cria news failed", err);
+  }
 }
 
 export function updateTransfer(seasonId: string, id: string, changes: Partial<TransferRecord>): void {

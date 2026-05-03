@@ -204,3 +204,35 @@ pointing at any other URL for the same account.
 
 A `GET /api/stripe/webhook` route returns 200 for manual healthchecks
 (not used by Stripe itself).
+
+## Base (Youth Academy) — Task #26
+
+Submenu **Base** added to the Clube tab (icon 🌱). Cadastro de jogadores
+juvenis (15–19 anos) com nome, sobrenome, nacionalidade, posição, OVR,
+potencial em faixa min–max e foto opcional. Limite de 25 vagas. Seed
+inicial automática de 8–12 garotos no primeiro acesso (flag
+`fc-career-manager-base-seeded-{careerId}`).
+
+- `lib/baseStorage.ts` — CRUD + `advanceBaseSeason` (idade +1, OVR cresce
+  20–40% do gap até `potentialMax`, jogadores que viram 20 anos saem) +
+  `isReadyToPromote` (idade ≥ 18 ou OVR ≥ 80% do `potentialMin`).
+- `lib/criaStorage.ts` — Set permanente de IDs Cria do Clube (selo
+  vitalício; volta sozinho na recontratação).
+- `lib/basePlayerSeed.ts` — pools de nomes BR/AR/ES/PT/FR/EN/IT,
+  distribuição 8% elite / 35% promissor / 57% modesto.
+- `lib/basePromotionNews.ts` — 3 níveis de notícia por `potentialMax`
+  (60–74 modesto, 75–87 promissor, 88+ elite com comparação a craque
+  histórico por nacionalidade+posição). Também emite notícia de retorno
+  da cria.
+- `components/BaseView.tsx` — UI do submenu (lista, modal de cadastro,
+  botão Promover, ⭐ pronto pra promover, contador de vagas).
+- Promoção cria `SquadPlayer` custom (`addCustomPlayer`), define
+  override de OVR/nacionalidade, marca cria e dispara notícia.
+- Hook em `FinalizeSeasonModal.handleFinalize` (recebe `careerId`)
+  chama `advanceBaseSeason` uma vez por temporada (controlado por
+  `getLastAdvanceSeasonId`).
+- Hook em `transferStorage.addTransfer`: detecta `compra` de jogador
+  cria e chama `emitReturningCriaNews`.
+- Selo 🌱 "Cria do clube" exibido em `ElencoView` (PlayerRow),
+  `PlayerProfileModal` (header) e `PlayerStatsTable` (linha do nome).
+- i18n PT/EN no bloco `BASE` em `lib/i18n.ts`.

@@ -1,7 +1,8 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useLang } from "@/hooks/useLang";
-import { CLUBE } from "@/lib/i18n";
+import { CLUBE, BASE as BASE_I18N } from "@/lib/i18n";
+import { getCriaIds } from "@/lib/criaStorage";
 import { SectionHelp } from "./SectionHelp";
 import type { SquadResult, SquadPlayer, PositionPtBr, PositionGroup } from "@/lib/squadCache";
 import { migratePositionOverride, PT_BR_TO_POSITION } from "@/lib/squadCache";
@@ -142,6 +143,19 @@ function SquadSkeleton() {
   );
 }
 
+function CriaLeaf({ label }: { label: string }) {
+  return (
+    <span
+      title={label}
+      aria-label={label}
+      className="text-[10px] leading-none"
+      style={{ color: "#86efac" }}
+    >
+      🌱
+    </span>
+  );
+}
+
 function PlayerRow({
   player,
   overrides,
@@ -152,6 +166,8 @@ function PlayerRow({
   injured,
   injuryTooltip,
   injuredLabel,
+  isCria,
+  criaLabel,
 }: {
   player: SquadPlayer;
   overrides: Record<number, PlayerOverride>;
@@ -162,6 +178,8 @@ function PlayerRow({
   injured?: boolean;
   injuryTooltip?: string;
   injuredLabel?: string;
+  isCria?: boolean;
+  criaLabel?: string;
 }) {
   const ov = overrides[player.id];
   const displayName = ov?.nameOverride ?? player.name;
@@ -206,7 +224,10 @@ function PlayerRow({
         )}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-white text-sm font-semibold leading-tight truncate">{displayName}</p>
+        <p className="text-white text-sm font-semibold leading-tight truncate flex items-center gap-1">
+          <span className="truncate">{displayName}</span>
+          {isCria && <CriaLeaf label={criaLabel ?? "Cria do clube"} />}
+        </p>
         <p className="text-white/30 text-xs mt-0.5 truncate">
           {player.age > 0 ? `${player.age} ${ageYears}` : ""}
           {injured && injuryTooltip ? `${player.age > 0 ? " · " : ""}${injuryTooltip}` : ""}
@@ -298,6 +319,8 @@ export function ElencoView({
 }: ElencoViewProps) {
   const [lang] = useLang();
   const t = CLUBE[lang];
+  const baseT = BASE_I18N[lang];
+  const criaSet = useMemo(() => new Set(getCriaIds(careerId)), [careerId]);
 
   const [tab, setTab] = useState<SquadTab>("pitch");
   const [pendingSwap, setPendingSwap] = useState<SquadPlayer | null>(null);
@@ -1160,6 +1183,8 @@ export function ElencoView({
                             injured={injuredIds.has(player.id)}
                             injuryTooltip={injuryInfoMap.get(player.id)?.tooltip}
                             injuredLabel={t.injuredBadge}
+                            isCria={criaSet.has(player.id)}
+                            criaLabel={baseT.criaBadge}
                           />
                         ))}
                       </div>
@@ -1330,6 +1355,8 @@ export function ElencoView({
                         injured={injuredIds.has(player.id)}
                         injuryTooltip={injuryInfoMap.get(player.id)?.tooltip}
                         injuredLabel={t.injuredBadge}
+                        isCria={criaSet.has(player.id)}
+                        criaLabel={baseT.criaBadge}
                       />
                     ))}
                   </div>
@@ -1351,6 +1378,8 @@ export function ElencoView({
                           injured={injuredIds.has(player.id)}
                           injuryTooltip={injuryInfoMap.get(player.id)?.tooltip}
                           injuredLabel={t.injuredBadge}
+                          isCria={criaSet.has(player.id)}
+                          criaLabel={baseT.criaBadge}
                         />
                       ))
                     )}
@@ -1450,6 +1479,8 @@ export function ElencoView({
                     injured={injuredIds.has(player.id)}
                     injuryTooltip={injuryInfoMap.get(player.id)?.tooltip}
                     injuredLabel={t.injuredBadge}
+                    isCria={criaSet.has(player.id)}
+                    criaLabel={baseT.criaBadge}
                   />
                 ))}
               </div>
@@ -1471,6 +1502,8 @@ export function ElencoView({
                       injured={injuredIds.has(player.id)}
                       injuryTooltip={injuryInfoMap.get(player.id)?.tooltip}
                       injuredLabel={t.injuredBadge}
+                      isCria={criaSet.has(player.id)}
+                      criaLabel={baseT.criaBadge}
                     />
                   ))}
                 </div>

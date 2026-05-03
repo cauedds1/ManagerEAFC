@@ -1922,6 +1922,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
           <FinalizeSeasonModal
             seasonId={finalizeTargetSeasonId}
             seasonLabel={targetSeason?.label ?? displayLabel}
+            careerId={career.id}
             onFinalize={handleFinalizeConfirm}
             onCancel={() => { setShowFinalizeModal(false); setFinalizeTargetSeasonId(null); }}
           />
