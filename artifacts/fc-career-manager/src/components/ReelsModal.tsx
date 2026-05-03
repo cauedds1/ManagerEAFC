@@ -15,7 +15,7 @@ const SOURCE_CONFIG: Record<NewsSource, { color: string; bgColor: string; verifi
 
 const CATEGORY_LABEL: Record<string, string> = {
   resultado: "Resultado", lesao: "Lesão", transferencia: "Transferência",
-  renovacao: "Renovação", treino: "Treino", conquista: "Conquista", geral: "Geral",
+  renovacao: "Renovação", treino: "Treino", conquista: "Conquista", base_promotion: "Base", geral: "Geral",
 };
 const CATEGORY_COLOR: Record<string, { bg: string; color: string }> = {
   resultado:    { bg: "rgba(52,211,153,0.15)",   color: "#34d399" },
@@ -24,6 +24,7 @@ const CATEGORY_COLOR: Record<string, { bg: string; color: string }> = {
   renovacao:    { bg: "rgba(167,139,250,0.15)",  color: "#a78bfa" },
   treino:       { bg: "rgba(251,191,36,0.15)",   color: "#fbbf24" },
   conquista:    { bg: "rgba(250,204,21,0.15)",   color: "#facc15" },
+  base_promotion:{ bg: "rgba(34,197,94,0.15)",   color: "#22c55e" },
   geral:        { bg: "rgba(148,163,184,0.15)",  color: "#94a3b8" },
 };
 

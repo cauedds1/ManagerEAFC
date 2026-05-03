@@ -124,6 +124,7 @@ const CATEGORY_LABELS: Record<NewsCategory, string> = {
   renovacao: "Renovação",
   treino: "Treino",
   conquista: "Conquista",
+  base_promotion: "Base",
   geral: "Geral",
 };
 
@@ -1261,6 +1262,7 @@ export function NoticiasView({ career, seasonId, allPlayers = [], matches: _matc
     renovacao: t.catRenovacao,
     treino: t.catTreino,
     conquista: t.catConquista,
+    base_promotion: (t as { catBase?: string }).catBase ?? "Base",
     geral: t.catGeral,
   });
   const getSourceLabels = (): Record<NewsSource, string> => ({

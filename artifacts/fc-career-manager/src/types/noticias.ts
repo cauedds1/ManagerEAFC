@@ -16,6 +16,7 @@ export type NewsCategory =
   | "renovacao"
   | "treino"
   | "conquista"
+  | "base_promotion"
   | "geral";
 
 export interface NewsComment {

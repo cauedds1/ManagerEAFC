@@ -211,7 +211,7 @@ export function emitPromotionNews(
       },
     ],
     createdAt: Date.now(),
-    category: "geral",
+    category: "base_promotion",
   };
   addPost(seasonId, post);
   dispatchNoticiaGenerated(seasonId, post);
@@ -247,7 +247,7 @@ export function emitReturningCriaNews(
     sharesCount: 1320,
     comments: [],
     createdAt: Date.now(),
-    category: "transferencia",
+    category: "base_promotion",
   };
   addPost(seasonId, post);
   dispatchNoticiaGenerated(seasonId, post);
@@ -285,7 +285,7 @@ export function emitAcademyDeparturesNews(
     sharesCount: 22,
     comments: [],
     createdAt: Date.now(),
-    category: "geral",
+    category: "base_promotion",
   };
   addPost(seasonId, post);
   dispatchNoticiaGenerated(seasonId, post);
