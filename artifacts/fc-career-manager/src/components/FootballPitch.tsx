@@ -96,7 +96,7 @@ export function pickBestElevenIds(players: { id: number; positionPtBr: PositionP
 }
 
 function PlayerCircle({
-  x, y, player, onClick, highlighted, dimmed, injured, injuryTooltip,
+  x, y, player, onClick, highlighted, dimmed, injured, injuryTooltip, isCria, criaTooltip,
 }: {
   x: number;
   y: number;
@@ -106,6 +106,8 @@ function PlayerCircle({
   dimmed?: boolean;
   injured?: boolean;
   injuryTooltip?: string;
+  isCria?: boolean;
+  criaTooltip?: string;
 }) {
   const [lang] = useLang();
   const rating = player.rating ?? 0;
@@ -208,6 +210,12 @@ function PlayerCircle({
           <rect x={x + radius - 4.5} y={y - radius + 1.7} width={3} height={2.6} fill="white" transform={`rotate(90 ${x + radius - 3} ${y - radius + 3})`} />
         </g>
       )}
+      {isCria && (
+        <g style={{ pointerEvents: "none" }}>
+          {criaTooltip && <title>{criaTooltip}</title>}
+          <text x={x - radius + 2} y={y - radius + 6} fontSize={10}>🌱</text>
+        </g>
+      )}
     </g>
   );
 }
@@ -275,6 +283,8 @@ interface FootballPitchProps {
   injuryTooltips?: Map<number, string>;
   onEmptySlotClick?: (slotIndex: number) => void;
   pendingSlotIndex?: number | null;
+  criaIds?: Set<number>;
+  criaTooltips?: Map<number, string>;
 }
 
 export function FootballPitch({
@@ -292,13 +302,15 @@ export function FootballPitch({
   injuryTooltips,
   onEmptySlotClick,
   pendingSlotIndex,
+  criaIds,
+  criaTooltips,
 }: FootballPitchProps) {
   const positions = getFormationPositions(formation);
   const orderedIds = externalStarters ?? (players.length > 0 ? pickBestEleven(players) : []);
 
   const pitchData: (PitchPlayerData | null)[] = positions.map((_, i) => {
     const id = orderedIds[i];
-    if (id == null || id <= 0) return null;
+    if (id == null || id === 0) return null;
     const p = players.find((pl) => pl.id === id);
     if (!p) return null;
     return {
@@ -391,6 +403,8 @@ export function FootballPitch({
                 dimmed={dimmedPlayerIds?.has(player.id)}
                 injured={injuredPlayerIds?.has(player.id)}
                 injuryTooltip={injuryTooltips?.get(player.id)}
+                isCria={criaIds?.has(player.id)}
+                criaTooltip={criaTooltips?.get(player.id)}
               />
             );
           })}

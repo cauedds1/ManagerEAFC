@@ -1167,6 +1167,8 @@ export function ElencoView({
                     dimmedPlayerIds={finalizedLeftIds}
                     injuredPlayerIds={injuredIds}
                     injuryTooltips={injuryTooltips}
+                    criaIds={criaSet}
+                    criaTooltips={criaTooltips}
                   />
                 </div>
                 <div className="flex-1 min-w-0 w-full">
@@ -1333,6 +1335,8 @@ export function ElencoView({
                 injuryTooltips={injuryTooltips}
                 onEmptySlotClick={(i) => { setPendingSwap(null); setPendingSlot(i); }}
                 pendingSlotIndex={pendingSlot}
+                criaIds={criaSet}
+                criaTooltips={criaTooltips}
               />
             </div>
 

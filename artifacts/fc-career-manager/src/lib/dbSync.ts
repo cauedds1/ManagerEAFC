@@ -30,6 +30,9 @@ function customPlayersKey(cid: string) { return `fc-career-manager-custom-player
 function formerPlayersKey(cid: string) { return `fc-career-manager-former-players-${cid}`; }
 function hiddenKey(cid: string) { return `fc-career-manager-hidden-players-${cid}`; }
 function exitSeasonKey(cid: string) { return `fc-career-manager-exit-season-${cid}`; }
+function basePlayersKey(cid: string) { return `fc-career-manager-base-players-${cid}`; }
+function criaRecordsKey(cid: string) { return `fc-career-manager-cria-records-${cid}`; }
+function baseLastAdvanceKey(cid: string) { return `fc-career-manager-base-last-advance-${cid}`; }
 
 function getLocal<T>(key: string): T | null {
   try {
@@ -149,6 +152,18 @@ export async function syncCareerFromDb(careerId: string): Promise<void> {
     sessionSet(exitSeasonKey(careerId), data.exitSeasonMap);
     try { localStorage.setItem(exitSeasonKey(careerId), JSON.stringify(data.exitSeasonMap)); } catch {}
   }
+  if (data.basePlayers !== undefined) {
+    sessionSet(basePlayersKey(careerId), data.basePlayers);
+    try { localStorage.setItem(basePlayersKey(careerId), JSON.stringify(data.basePlayers)); } catch {}
+  }
+  if (data.criaRecords !== undefined) {
+    sessionSet(criaRecordsKey(careerId), data.criaRecords);
+    try { localStorage.setItem(criaRecordsKey(careerId), JSON.stringify(data.criaRecords)); } catch {}
+  }
+  if (data.baseLastAdvanceSeasonId !== undefined && data.baseLastAdvanceSeasonId !== null) {
+    sessionSet(baseLastAdvanceKey(careerId), data.baseLastAdvanceSeasonId);
+    try { localStorage.setItem(baseLastAdvanceKey(careerId), String(data.baseLastAdvanceSeasonId)); } catch {}
+  }
 
   hydrateMissionsFromDb(careerId, {
     missions: data.missions as Record<string, boolean> | undefined,
@@ -199,6 +214,13 @@ async function migrateCareerToDb(careerId: string): Promise<void> {
   if (hiddenPlayerIds) { sessionSet(hiddenKey(careerId), hiddenPlayerIds); tasks.push(putCareerData(careerId, "hiddenPlayerIds", hiddenPlayerIds)); }
   const exitSeasonMapRaw = getLocal<Record<string, string>>(exitSeasonKey(careerId));
   if (exitSeasonMapRaw) { sessionSet(exitSeasonKey(careerId), exitSeasonMapRaw); tasks.push(putCareerData(careerId, "exitSeasonMap", exitSeasonMapRaw)); }
+  const basePlayers = getLocal(basePlayersKey(careerId));
+  if (basePlayers) { sessionSet(basePlayersKey(careerId), basePlayers); tasks.push(putCareerData(careerId, "basePlayers", basePlayers)); }
+  const criaRecords = getLocal(criaRecordsKey(careerId));
+  if (criaRecords) { sessionSet(criaRecordsKey(careerId), criaRecords); tasks.push(putCareerData(careerId, "criaRecords", criaRecords)); }
+  let baseLast: string | null = null;
+  try { baseLast = localStorage.getItem(baseLastAdvanceKey(careerId)); } catch {}
+  if (baseLast) { sessionSet(baseLastAdvanceKey(careerId), baseLast); tasks.push(putCareerData(careerId, "baseLastAdvanceSeasonId", baseLast)); }
 
   const missionState = getMissionsLocalState(careerId);
   if (Object.keys(missionState.missions).length > 0) tasks.push(putCareerData(careerId, "missions", missionState.missions));
