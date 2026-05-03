@@ -162,7 +162,7 @@ export async function syncCareerFromDb(careerId: string): Promise<void> {
   }
   if (data.baseLastAdvanceSeasonId !== undefined && data.baseLastAdvanceSeasonId !== null) {
     sessionSet(baseLastAdvanceKey(careerId), data.baseLastAdvanceSeasonId);
-    try { localStorage.setItem(baseLastAdvanceKey(careerId), String(data.baseLastAdvanceSeasonId)); } catch {}
+    try { localStorage.setItem(baseLastAdvanceKey(careerId), JSON.stringify(data.baseLastAdvanceSeasonId)); } catch {}
   }
 
   hydrateMissionsFromDb(careerId, {
@@ -218,8 +218,7 @@ async function migrateCareerToDb(careerId: string): Promise<void> {
   if (basePlayers) { sessionSet(basePlayersKey(careerId), basePlayers); tasks.push(putCareerData(careerId, "basePlayers", basePlayers)); }
   const criaRecords = getLocal(criaRecordsKey(careerId));
   if (criaRecords) { sessionSet(criaRecordsKey(careerId), criaRecords); tasks.push(putCareerData(careerId, "criaRecords", criaRecords)); }
-  let baseLast: string | null = null;
-  try { baseLast = localStorage.getItem(baseLastAdvanceKey(careerId)); } catch {}
+  const baseLast = getLocal<string>(baseLastAdvanceKey(careerId));
   if (baseLast) { sessionSet(baseLastAdvanceKey(careerId), baseLast); tasks.push(putCareerData(careerId, "baseLastAdvanceSeasonId", baseLast)); }
 
   const missionState = getMissionsLocalState(careerId);
