@@ -378,14 +378,14 @@ export default function ConfiguracoesScreen() {
 
   const handleDeleteAccount = () => {
     Alert.alert(
-      'Excluir conta',
-      'Esta ação é irreversível. Todos os seus dados serão apagados permanentemente.',
+      tr('settings.deleteAccount'),
+      tr('settings.deleteAccountMsg'),
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: tr('common.cancel'), style: 'cancel' },
         {
-          text: 'Excluir',
+          text: tr('common.delete'),
           style: 'destructive',
-          onPress: () => Alert.alert('Exclusão solicitada', 'Entraremos em contato pelo e-mail cadastrado para confirmar.'),
+          onPress: () => Alert.alert(tr('settings.deleteRequested'), tr('settings.deleteRequestedMsg')),
         },
       ]
     );
@@ -393,20 +393,20 @@ export default function ConfiguracoesScreen() {
 
   const handleFinalizeSeasonConfirm = () => {
     if (!activeCareer) {
-      Alert.alert('Carreira não selecionada', 'Selecione uma carreira primeiro.');
+      Alert.alert(tr('settings.career.notSelectedTitle'), tr('settings.career.notSelectedMsg'));
       return;
     }
     if (!activeSeason) {
-      Alert.alert('Nenhuma temporada ativa', 'Não há temporada ativa para finalizar.');
+      Alert.alert(tr('settings.season.noActiveTitle'), tr('settings.season.noActiveMsg'));
       return;
     }
     Alert.alert(
-      'Finalizar temporada',
-      `Deseja finalizar "${activeSeason.label}"? Esta ação não pode ser desfeita e a temporada ficará como encerrada no histórico.`,
+      tr('settings.season.finalize'),
+      `"${activeSeason.label}"`,
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: tr('common.cancel'), style: 'cancel' },
         {
-          text: 'Finalizar',
+          text: tr('settings.season.finalizeAction'),
           style: 'destructive',
           onPress: async () => {
             try {
@@ -695,13 +695,13 @@ export default function ConfiguracoesScreen() {
             <Row
               icon="add-circle-outline"
               iconColor={Colors.success}
-              label="Nova temporada"
+              label={tr('settings.season.new')}
               onPress={() => router.push('/nova-temporada')}
             />
             <Row
               icon="flag-outline"
               iconColor={Colors.warning}
-              label="Finalizar temporada"
+              label={tr('settings.season.finalize')}
               onPress={handleFinalizeSeasonConfirm}
             />
           </Section>
@@ -713,15 +713,15 @@ export default function ConfiguracoesScreen() {
             icon="sparkles-outline"
             iconColor={Colors.warning}
             label={tr('settings.ai.enabled')}
-            hint="Notícias geradas por IA, análises e Diretoria"
+            hint={tr('settings.ai.hint')}
             value={prefsLoaded ? aiEnabled : true}
             onToggle={toggleAi}
           />
           <Row
             icon="chatbubble-ellipses-outline"
             iconColor={Colors.info}
-            label="Diretoria IA"
-            value={isProOrAbove ? 'Ativada' : 'Requer Pro'}
+            label={tr('settings.boardAi')}
+            value={isProOrAbove ? tr('settings.boardAi.active') : tr('settings.boardAi.requires')}
             onPress={isProOrAbove ? undefined : handleUpgrade}
           />
         </Section>
@@ -732,7 +732,7 @@ export default function ConfiguracoesScreen() {
             icon="volume-high-outline"
             iconColor={Colors.success}
             label={tr('settings.sound.enabled')}
-            hint="Feedback tátil ao registrar partidas e ações"
+            hint={tr('settings.sound.hint')}
             value={prefsLoaded ? soundEnabled : true}
             onToggle={toggleSound}
           />
@@ -753,7 +753,7 @@ export default function ConfiguracoesScreen() {
         <Section title={tr('settings.account')}>
           <Row
             icon="person-outline"
-            label="E-mail"
+            label={tr('common.email')}
             value={user?.email ?? '—'}
           />
           <Row
@@ -872,10 +872,10 @@ export default function ConfiguracoesScreen() {
         </Section>
 
         {/* ZONA DE PERIGO */}
-        <Section title="Zona de perigo">
+        <Section title={tr('settings.danger')}>
           <Row
             icon="trash-outline"
-            label="Excluir conta"
+            label={tr('settings.deleteAccount')}
             destructive
             onPress={handleDeleteAccount}
           />
@@ -892,14 +892,14 @@ export default function ConfiguracoesScreen() {
         <View style={[styles.modalContainer, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 24 }]}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setShowNewPortal(false)}>
-              <Text style={styles.modalCancel}>Cancelar</Text>
+              <Text style={styles.modalCancel}>{tr('common.cancel')}</Text>
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>Novo portal</Text>
+            <Text style={styles.modalTitle}>{tr('settings.newPortal')}</Text>
             <TouchableOpacity onPress={handleCreatePortal} disabled={savingPortal}>
               {savingPortal ? (
                 <ActivityIndicator color={Colors.primary} size="small" />
               ) : (
-                <Text style={styles.modalSave}>Criar</Text>
+                <Text style={styles.modalSave}>{tr('settings.newPortal.create')}</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -910,29 +910,29 @@ export default function ConfiguracoesScreen() {
             keyboardShouldPersistTaps="handled"
           >
             <View style={styles.field}>
-              <Text style={styles.fieldLabel}>Nome do portal *</Text>
+              <Text style={styles.fieldLabel}>{tr('settings.newPortal.name')}</Text>
               <TextInput
                 style={styles.input}
                 value={newPortal.name}
                 onChangeText={(v) => setNewPortal((p) => ({ ...p, name: v }))}
-                placeholder="Ex: Folha do Torcedor"
+                placeholder={tr('settings.newPortal.namePh')}
                 placeholderTextColor={Colors.mutedForeground}
                 autoFocus
               />
             </View>
             <View style={styles.field}>
-              <Text style={styles.fieldLabel}>Descrição</Text>
+              <Text style={styles.fieldLabel}>{tr('settings.newPortal.desc')}</Text>
               <TextInput
                 style={[styles.input, { minHeight: 70, textAlignVertical: 'top' }]}
                 value={newPortal.description}
                 onChangeText={(v) => setNewPortal((p) => ({ ...p, description: v }))}
-                placeholder="Como este portal cobre as notícias…"
+                placeholder={tr('settings.newPortal.descPh')}
                 placeholderTextColor={Colors.mutedForeground}
                 multiline
               />
             </View>
             <View style={styles.field}>
-              <Text style={styles.fieldLabel}>Tom de escrita</Text>
+              <Text style={styles.fieldLabel}>{tr('settings.newPortal.tone')}</Text>
               <View style={styles.toneGrid}>
                 {PORTAL_TONES.map((t) => {
                   const selected = newPortal.tone === t.id;

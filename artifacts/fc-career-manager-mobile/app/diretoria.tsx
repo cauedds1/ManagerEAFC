@@ -46,6 +46,7 @@ function MeetingModal({
 }: MeetingModalProps) {
   const theme = useClubTheme();
   const insets = useSafeAreaInsets();
+  const t = useT();
   const [step, setStep] = useState<'select_member' | 'select_topic' | 'result'>('select_member');
   const [selectedMember, setSelectedMember] = useState<DiretoraaMember | null>(null);
   const [selectedTopic, setSelectedTopic] = useState('');
@@ -225,7 +226,7 @@ function MeetingModal({
                     style={styles.topicInput}
                     value={customTopic}
                     onChangeText={setCustomTopic}
-                    placeholder="Descreva a pauta…"
+                    placeholder={t('diretoria.field.topicPh')}
                     placeholderTextColor={Colors.mutedForeground}
                     multiline
                     maxLength={300}
@@ -417,6 +418,7 @@ function MemberManagementModal({
   visible, members, meetings, careerClubName, careerClubLeague, onClose, onSaveMembers,
 }: MemberManagementModalProps) {
   const theme = useClubTheme();
+  const t = useT();
   const [panel, setPanel] = useState<ManagePanel>('list');
   const [editingMember, setEditingMember] = useState<DiretoraaMember | null>(null);
   const [form, setForm] = useState<MemberFormState>(defaultForm());
@@ -455,7 +457,7 @@ function MemberManagementModal({
   };
 
   const handleDelete = (id: string) => {
-    Alert.alert('Remover membro', 'Tem certeza?', [
+    Alert.alert(t('diretoria.removeMemberTitle'), t('diretoria.removeMemberMsg'), [
       { text: 'Cancelar', style: 'cancel' },
       {
         text: 'Remover', style: 'destructive',
@@ -485,7 +487,7 @@ function MemberManagementModal({
       onSaveMembers([...members, newMember]);
       setPanel('list');
     } catch {
-      Alert.alert('Erro', 'Não foi possível gerar o membro. Tente novamente.');
+      Alert.alert('Erro', t('diretoria.generateError'));
     }
     setAiGenerating(false);
   };
@@ -590,7 +592,7 @@ function MemberManagementModal({
                     style={styles.textInput}
                     value={form.name}
                     onChangeText={(v) => setField('name', v)}
-                    placeholder="Nome do dirigente"
+                    placeholder={t('diretoria.field.namePh')}
                     placeholderTextColor={Colors.mutedForeground}
                     autoFocus={panel === 'add'}
                   />
@@ -644,7 +646,7 @@ function MemberManagementModal({
                     style={[styles.textInput, { minHeight: 60 }]}
                     value={form.description}
                     onChangeText={(v) => setField('description', v)}
-                    placeholder="Personalidade, histórico…"
+                    placeholder={t('diretoria.field.bioPh')}
                     placeholderTextColor={Colors.mutedForeground}
                     multiline
                   />
