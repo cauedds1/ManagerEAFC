@@ -14,6 +14,7 @@ import { useClubTheme } from '@/contexts/ClubThemeContext';
 import { api, type NewsItem, type CustomPortal } from '@/lib/api';
 import { Colors } from '@/constants/colors';
 import { queryClient } from '@/lib/queryClient';
+import { router } from 'expo-router';
 import { getLang, useT } from '@/lib/i18n';
 import { UpgradePrompt } from '@/components/UpgradePrompt';
 import { useToast } from '@/components/Toast';
@@ -273,6 +274,7 @@ function GenerateModal({
     GEN_OPTIONS.find((o) => o.id === selected)?.planRequired ?? null;
 
   const lang = getLang();
+  const t = useT();
   const handleGenerate = async () => {
     setError(null);
     setLoading(true);
@@ -305,9 +307,7 @@ function GenerateModal({
       } else if (selected === 'leak') {
         const portal = portals?.[0];
         if (!portal) {
-          setError(lang === 'en'
-            ? 'Create a custom portal in Settings to use this option.'
-            : 'Crie um portal personalizado nas Configurações para usar esta opção.');
+          setError(t('news.createPortalFirst'));
           setLoading(false);
           return;
         }
@@ -340,9 +340,10 @@ function GenerateModal({
       if (msg.includes('Ultra') || msg.includes('Pro') || msg.includes('PLAN')) {
         setShowPaywall(true);
       } else if (msg.includes('Limite') || msg.includes('limit')) {
-        setError(lang === 'en' ? 'Daily AI limit reached. Try again tomorrow.' : 'Limite de gerações do dia atingido. Tente amanhã.');
+        setError(t('news.dailyLimitReached'));
+        setShowPaywall(true);
       } else {
-        setError(lang === 'en' ? 'Failed to generate. Try again.' : 'Erro ao gerar. Tente novamente.');
+        setError(t('news.generateError'));
       }
     }
     setLoading(false);
@@ -372,16 +373,20 @@ function GenerateModal({
                 const active = selected === opt.id;
                 const lockLabel = planLocked
                   ? (opt.planRequired === 'ultra' ? '  •  Ultra' : '  •  Pro')
-                  : portalLocked ? '  •  Portal necessário' : '';
+                  : portalLocked ? `  •  ${getLang() === 'en' ? 'Portal required' : 'Portal necessário'}` : '';
                 return (
                   <TouchableOpacity
                     key={opt.id}
                     style={[
                       styles.optionRow,
                       active && { backgroundColor: `rgba(${theme.primaryRgb},0.12)`, borderColor: `rgba(${theme.primaryRgb},0.35)` },
-                      locked && { opacity: 0.55 },
+                      locked && !planLocked && { opacity: 0.55 },
                     ]}
-                    onPress={() => { if (!locked) setSelected(opt.id); }}
+                    onPress={() => {
+                      setSelected(opt.id);
+                      if (planLocked) setShowPaywall(true);
+                      else setShowPaywall(false);
+                    }}
                     activeOpacity={0.75}
                   >
                     <Text style={styles.optionIcon}>{opt.icon}</Text>
@@ -432,8 +437,8 @@ function GenerateModal({
                 <UpgradePrompt
                   currentPlan={userPlan}
                   requiredPlan={requiredForSelected}
-                  featureName={requiredForSelected === 'ultra' ? (getLang() === 'en' ? 'AI rumors' : 'Rumores com IA') : (getLang() === 'en' ? 'Leaked stories' : 'Vazamentos com IA')}
-                  description={getLang() === 'en' ? 'Available on the required plan.' : 'Disponível no plano necessário.'}
+                  featureName={requiredForSelected === 'ultra' ? t('news.aiRumors') : t('news.aiLeaks')}
+                  description={t('news.requiredPlanHint')}
                   compact
                   onUpgraded={() => setShowPaywall(false)}
                 />
@@ -556,9 +561,9 @@ export default function NewsScreen() {
     <View style={[styles.container, { paddingTop: topPad }]}>
       <View style={styles.header}>
         <View>
-          <Text style={styles.title}>Notícias</Text>
+          <Text style={styles.title}>{getLang() === 'en' ? 'News' : 'Notícias'}</Text>
           {!isLoading && news.length > 0 && (
-            <Text style={styles.subtitle}>{news.length} notícia{news.length !== 1 ? 's' : ''}</Text>
+            <Text style={styles.subtitle}>{news.length} {getLang() === 'en' ? (news.length === 1 ? 'item' : 'items') : `notícia${news.length !== 1 ? 's' : ''}`}</Text>
           )}
         </View>
         {activeSeason && (
@@ -568,15 +573,46 @@ export default function NewsScreen() {
             activeOpacity={0.7}
           >
             <Ionicons name="sparkles-outline" size={18} color={theme.primary} />
-            <Text style={[styles.genFabText, { color: theme.primary }]}>Gerar</Text>
+            <Text style={[styles.genFabText, { color: theme.primary }]}>{getLang() === 'en' ? 'Generate' : 'Gerar'}</Text>
           </TouchableOpacity>
         )}
       </View>
 
+      {aiUsage && aiUsage.aiUsageLimit > 0 && aiUsage.aiUsageLimit < 9999 ? (
+        <View style={styles.aiUsageCard}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.aiUsageLabel}>{tr('news.aiUsage')}</Text>
+            <Text style={styles.aiUsageValue}>
+              {aiUsage.aiUsageToday} / {aiUsage.aiUsageLimit} · {Math.max(0, aiUsage.aiUsageLimit - aiUsage.aiUsageToday)} {tr('news.aiUsageRemaining')}
+            </Text>
+            <View style={styles.aiUsageBarTrack}>
+              <View
+                style={[
+                  styles.aiUsageBarFill,
+                  {
+                    width: `${Math.min(100, Math.round(usagePct * 100))}%`,
+                    backgroundColor: usagePct >= 1 ? Colors.destructive : usagePct >= 0.8 ? '#f59e0b' : theme.primary,
+                  },
+                ]}
+              />
+            </View>
+          </View>
+          {(usagePct >= 0.8 || (user?.plan ?? 'free') === 'free') ? (
+            <TouchableOpacity
+              style={[styles.aiUsageCta, { backgroundColor: `rgba(${theme.primaryRgb},0.18)`, borderColor: `rgba(${theme.primaryRgb},0.35)` }]}
+              onPress={() => router.push('/(tabs)/perfil')}
+            >
+              <Ionicons name="diamond-outline" size={14} color={theme.primary} />
+              <Text style={[styles.aiUsageCtaText, { color: theme.primary }]}>{tr('news.aiUsageUpgrade')}</Text>
+            </TouchableOpacity>
+          ) : null}
+        </View>
+      ) : null}
+
       {generating && (
         <View style={styles.generatingBar}>
           <ActivityIndicator size="small" color={theme.primary} />
-          <Text style={styles.generatingText}>Adicionando notícia ao feed…</Text>
+          <Text style={styles.generatingText}>{getLang() === 'en' ? 'Adding news to feed…' : 'Adicionando notícia ao feed…'}</Text>
         </View>
       )}
 
@@ -589,9 +625,11 @@ export default function NewsScreen() {
           <View style={[styles.iconWrap, { backgroundColor: `rgba(${theme.primaryRgb}, 0.12)` }]}>
             <Ionicons name="newspaper-outline" size={40} color={theme.primary} />
           </View>
-          <Text style={styles.emptyTitle}>Sem notícias</Text>
+          <Text style={styles.emptyTitle}>{getLang() === 'en' ? 'No news yet' : 'Sem notícias'}</Text>
           <Text style={styles.emptyText}>
-            Notícias aparecem após registrar partidas ou ao gerar com IA.
+            {getLang() === 'en'
+              ? 'News appears after recording matches or generating with AI.'
+              : 'Notícias aparecem após registrar partidas ou ao gerar com IA.'}
           </Text>
           {activeSeason && (
             <TouchableOpacity
@@ -599,7 +637,9 @@ export default function NewsScreen() {
               onPress={() => setShowGenerate(true)}
             >
               <Ionicons name="sparkles-outline" size={16} color={theme.primary} />
-              <Text style={[styles.emptyGenBtnText, { color: theme.primary }]}>Gerar primeira notícia</Text>
+              <Text style={[styles.emptyGenBtnText, { color: theme.primary }]}>
+                {getLang() === 'en' ? 'Generate your first news' : 'Gerar primeira notícia'}
+              </Text>
             </TouchableOpacity>
           )}
         </View>
@@ -808,4 +848,19 @@ const styles = StyleSheet.create({
     borderRadius: Colors.radius, paddingVertical: 14, borderWidth: 1,
   },
   genBtnText: { fontSize: 15, fontWeight: '600' as const, fontFamily: 'Inter_600SemiBold' },
+  aiUsageCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    marginHorizontal: 16, marginBottom: 8, padding: 12,
+    backgroundColor: Colors.card, borderRadius: 14,
+    borderWidth: 1, borderColor: Colors.border,
+  },
+  aiUsageLabel: { fontSize: 11, color: Colors.mutedForeground, fontFamily: 'Inter_600SemiBold', textTransform: 'uppercase', letterSpacing: 0.6 },
+  aiUsageValue: { fontSize: 13, color: Colors.foreground, fontFamily: 'Inter_600SemiBold', marginTop: 2 },
+  aiUsageBarTrack: { height: 5, backgroundColor: Colors.muted, borderRadius: 99, marginTop: 8, overflow: 'hidden' },
+  aiUsageBarFill: { height: '100%', borderRadius: 99 },
+  aiUsageCta: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingHorizontal: 10, paddingVertical: 7, borderRadius: 10, borderWidth: 1,
+  },
+  aiUsageCtaText: { fontSize: 12, fontWeight: '700' as const, fontFamily: 'Inter_700Bold' },
 });

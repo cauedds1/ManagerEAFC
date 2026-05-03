@@ -19,27 +19,29 @@ export default function BugReportScreen() {
   const [subject, setSubject] = useState('');
   const [description, setDescription] = useState('');
   const [screenshotUri, setScreenshotUri] = useState<string | null>(null);
+  const [screenshotBase64, setScreenshotBase64] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const pickScreenshot = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert(t('common.error'), getLang() === 'en' ? 'Gallery permission denied.' : 'Permissão à galeria negada.');
+      Alert.alert(t('common.error'), t('bugReport.galleryDenied'));
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.5,
+      quality: 0.4,
       base64: true,
     });
     if (!result.canceled && result.assets.length > 0) {
       setScreenshotUri(result.assets[0].uri);
+      setScreenshotBase64(result.assets[0].base64 ?? null);
     }
   };
 
   const submit = async () => {
     if (!subject.trim() || !description.trim()) {
-      Alert.alert(t('common.error'), getLang() === 'en' ? 'Please fill in both fields.' : 'Preencha ambos os campos.');
+      Alert.alert(t('common.error'), t('bugReport.bothFields'));
       return;
     }
     setSubmitting(true);
@@ -51,11 +53,19 @@ export default function BugReportScreen() {
         platform: Platform.OS,
         appVersion: Application.default?.expoConfig?.version ?? '1.0.0',
         lang: getLang(),
-        screenshot: screenshotUri ? `attached:${screenshotUri.split('/').slice(-1)[0]}` : null,
+        hasScreenshot: !!screenshotBase64,
+        screenshotBytes: screenshotBase64?.length ?? 0,
       };
-      const fullDescription = screenshotUri
-        ? `[${subject.trim()}]\n\n${description.trim()}\n\n[Screenshot anexada pelo usuário]`
-        : `[${subject.trim()}]\n\n${description.trim()}`;
+      const MAX_DESC = 1900;
+      const head = `[${subject.trim()}]\n\n${description.trim()}`;
+      let fullDescription = head;
+      if (screenshotBase64) {
+        const remaining = Math.max(0, MAX_DESC - head.length - 80);
+        const dataUri = `data:image/jpeg;base64,${screenshotBase64}`;
+        const inline = dataUri.slice(0, remaining);
+        const truncated = dataUri.length > inline.length;
+        fullDescription = `${head}\n\n[Screenshot ${screenshotBase64.length}b${truncated ? ' truncated' : ''}]\n${inline}`;
+      }
       const res = await fetch(`${getApiUrl()}/api/bug-reports`, {
         method: 'POST',
         headers: {
@@ -111,26 +121,20 @@ export default function BugReportScreen() {
           placeholderTextColor={Colors.mutedForeground}
         />
 
-        <Text style={[styles.label, { marginTop: 16 }]}>
-          {getLang() === 'en' ? 'SCREENSHOT (OPTIONAL)' : 'CAPTURA DE TELA (OPCIONAL)'}
-        </Text>
+        <Text style={[styles.label, { marginTop: 16 }]}>{t('bugReport.screenshot').toUpperCase()}</Text>
         <TouchableOpacity onPress={pickScreenshot} style={styles.attachBtn}>
           {screenshotUri ? (
             <Image source={{ uri: screenshotUri }} style={styles.thumb} resizeMode="cover" />
           ) : (
             <>
               <Ionicons name="image-outline" size={20} color={Colors.mutedForeground} />
-              <Text style={styles.attachText}>
-                {getLang() === 'en' ? 'Attach screenshot' : 'Anexar captura'}
-              </Text>
+              <Text style={styles.attachText}>{t('bugReport.attach')}</Text>
             </>
           )}
         </TouchableOpacity>
         {screenshotUri ? (
-          <TouchableOpacity onPress={() => setScreenshotUri(null)} style={{ alignSelf: 'flex-end', padding: 6 }}>
-            <Text style={{ color: Colors.destructive, fontSize: 12 }}>
-              {getLang() === 'en' ? 'Remove' : 'Remover'}
-            </Text>
+          <TouchableOpacity onPress={() => { setScreenshotUri(null); setScreenshotBase64(null); }} style={{ alignSelf: 'flex-end', padding: 6 }}>
+            <Text style={{ color: Colors.destructive, fontSize: 12 }}>{t('bugReport.remove')}</Text>
           </TouchableOpacity>
         ) : null}
 

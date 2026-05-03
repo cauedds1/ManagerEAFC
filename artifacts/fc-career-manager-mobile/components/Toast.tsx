@@ -37,8 +37,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const showToast = useCallback((toast: Omit<ToastItem, 'id'>) => {
     const id = `toast_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
     setToasts((prev) => [...prev.slice(-2), { ...toast, id }]);
-    if (toast.type === 'diretoria') playNotificationSound('diretoria');
-    else if (toast.type === 'noticias') playNotificationSound('noticias');
+    if (toast.type === 'diretoria' || toast.type === 'warning') playNotificationSound('diretoria');
+    else if (toast.type === 'noticias' || toast.type === 'info') playNotificationSound('noticias');
   }, []);
 
   return (

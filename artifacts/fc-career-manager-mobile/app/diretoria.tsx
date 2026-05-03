@@ -13,6 +13,8 @@ import { useCareer } from '@/contexts/CareerContext';
 import { useClubTheme } from '@/contexts/ClubThemeContext';
 import { api, type DiretoraaMember, type DiretoraaMeeting, type MatchRecord, getMatchResult } from '@/lib/api';
 import { Colors } from '@/constants/colors';
+import { useToast } from '@/components/Toast';
+import { useT } from '@/lib/i18n';
 
 const MEETING_TOPICS = [
   'Avaliação do desempenho na temporada',
@@ -754,6 +756,8 @@ export default function DiretoraScreen() {
   const { activeCareer, activeSeason } = useCareer();
   const theme = useClubTheme();
   const qc = useQueryClient();
+  const { showToast } = useToast();
+  const t = useT();
   const topPad = Platform.OS === 'web' ? 0 : insets.top;
   const listRef = useRef<FlatList>(null);
   const [inputText, setInputText] = useState('');
@@ -919,6 +923,13 @@ export default function DiretoraScreen() {
       if (boardMsg) {
         setLocalMessages((prev) => [...prev, boardMsg]);
         qc.invalidateQueries({ queryKey: ['/api/data/career/diretoria', activeCareer?.id] });
+        try {
+          showToast({
+            type: 'diretoria',
+            title: boardMsg.memberName ?? t('toast.board.newReply'),
+            preview: boardMsg.text.slice(0, 140),
+          });
+        } catch {}
       }
     },
     onError: () => {},

@@ -135,6 +135,46 @@ const DICTIONARY: Record<string, Record<Lang, string>> = {
   // referral
   'referral.title':      { pt: 'Seu link de convite',   en: 'Your referral link' },
   'referral.hint':       { pt: 'Convide um amigo e ganhe benefícios.', en: 'Invite a friend and earn perks.' },
+
+  // perfil (profile tab)
+  'perfil.activeCareer':   { pt: 'Carreira Ativa',     en: 'Active Career' },
+  'perfil.club':           { pt: 'Clube',              en: 'Club' },
+  'perfil.coach':          { pt: 'Treinador',          en: 'Coach' },
+  'perfil.activeSeason':   { pt: 'Temporada ativa',    en: 'Active season' },
+  'perfil.league':         { pt: 'Liga',               en: 'League' },
+  'perfil.email':          { pt: 'E-mail',             en: 'E-mail' },
+  'perfil.upgradeTitle':   { pt: 'Upgrade para Pro',   en: 'Upgrade to Pro' },
+  'perfil.upgradeText':    { pt: 'Desbloqueie a Diretoria com IA, análises avançadas, múltiplas temporadas e muito mais.', en: 'Unlock the AI Boardroom, advanced analytics, multiple seasons and more.' },
+  'perfil.viewPlans':      { pt: 'Ver planos',         en: 'View plans' },
+  'perfil.theme':          { pt: 'Tema',               en: 'Theme' },
+  'perfil.themeDark':      { pt: 'Escuro',             en: 'Dark' },
+  'perfil.notificationsOn':{ pt: 'Ativadas',           en: 'Enabled' },
+  'perfil.logout':         { pt: 'Sair da conta',      en: 'Sign out' },
+  'perfil.logoutConfirm':  { pt: 'Deseja sair da sua conta?', en: 'Sign out of your account?' },
+  'perfil.referralSection':{ pt: 'Indicações',         en: 'Referrals' },
+
+  // news
+  'news.aiUsage':            { pt: 'Uso de IA hoje',         en: 'AI usage today' },
+  'news.aiUsageRemaining':   { pt: 'restantes',              en: 'remaining' },
+  'news.aiUsageUpgrade':     { pt: 'Aumente seu limite',     en: 'Increase your limit' },
+  'news.locked':             { pt: 'Bloqueado',              en: 'Locked' },
+  'news.portalRequired':     { pt: 'Portal necessário',      en: 'Portal required' },
+  'news.dailyLimitReached':  { pt: 'Limite de gerações do dia atingido. Tente amanhã.', en: 'Daily AI limit reached. Try again tomorrow.' },
+  'news.generateError':      { pt: 'Erro ao gerar. Tente novamente.', en: 'Failed to generate. Try again.' },
+  'news.createPortalFirst':  { pt: 'Crie um portal personalizado nas Configurações para usar esta opção.', en: 'Create a custom portal in Settings to use this option.' },
+  'news.aiRumors':           { pt: 'Rumores com IA',         en: 'AI rumors' },
+  'news.aiLeaks':            { pt: 'Vazamentos com IA',      en: 'Leaked stories' },
+  'news.requiredPlanHint':   { pt: 'Disponível no plano necessário.', en: 'Available on the required plan.' },
+
+  // bug report
+  'bugReport.screenshot':    { pt: 'Captura de tela (opcional)', en: 'Screenshot (optional)' },
+  'bugReport.attach':        { pt: 'Anexar captura',           en: 'Attach screenshot' },
+  'bugReport.remove':        { pt: 'Remover',                  en: 'Remove' },
+  'bugReport.bothFields':    { pt: 'Preencha ambos os campos.',en: 'Please fill in both fields.' },
+  'bugReport.galleryDenied': { pt: 'Permissão à galeria negada.', en: 'Gallery permission denied.' },
+
+  // toasts
+  'toast.board.newReply':    { pt: 'Resposta da diretoria', en: 'Board reply' },
 };
 
 export const i18n = new I18n(
