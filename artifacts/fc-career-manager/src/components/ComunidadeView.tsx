@@ -3,6 +3,7 @@ import type { CommunityPost, DiscoverProfile, ActivityItem } from "@/types/commu
 import { REACTION_EMOJI, type ReactionType } from "@/types/community";
 import {
   getFeed, getDiscover, getTopWeek, getActivity, getMyUsername, getQuota, markSeen,
+  getProfile, updateProfile,
 } from "@/lib/community";
 import { CommunityPostCard } from "./CommunityPostCard";
 import { CommentsModal } from "./CommentsModal";
@@ -35,6 +36,8 @@ const T = {
     quotaUsed: "Cota hoje",
     loadMore: "Carregar mais",
     reactedTo: "reagiu", commentedOn: "comentou em", repostedYour: "repostou seu post",
+    careerPublic: "Carreira pública na Comunidade",
+    careerPublicHint: "Quando ativada, suas notícias publicadas aparecem no feed e seu perfil em Descobrir.",
   },
   en: {
     title: "Community",
@@ -47,6 +50,8 @@ const T = {
     quotaUsed: "Today's quota",
     loadMore: "Load more",
     reactedTo: "reacted", commentedOn: "commented on", repostedYour: "reposted your post",
+    careerPublic: "Career public on Community",
+    careerPublicHint: "When on, your published news appears in the feed and your profile in Discover.",
   },
 };
 
@@ -67,6 +72,31 @@ export function ComunidadeView({ career, lang, viewerUserId }: Props) {
   const [quota, setQuota] = useState<{ used: number; limit: number } | null>(null);
   const [showUsernameModal, setShowUsernameModal] = useState(false);
   const [hasUsername, setHasUsername] = useState<boolean | null>(null);
+  const [isPublic, setIsPublic] = useState<boolean | null>(null);
+  const [togglingPublic, setTogglingPublic] = useState(false);
+
+  useEffect(() => {
+    if (!career?.id) return;
+    let cancelled = false;
+    getProfile(career.id)
+      .then((p) => { if (!cancelled) setIsPublic(!!p.isPublic); })
+      .catch(() => { if (!cancelled) setIsPublic(false); });
+    return () => { cancelled = true; };
+  }, [career?.id]);
+
+  const togglePublic = useCallback(async () => {
+    if (!career?.id || togglingPublic) return;
+    setTogglingPublic(true);
+    const next = !isPublic;
+    try {
+      await updateProfile(career.id, { isPublic: next });
+      setIsPublic(next);
+      if (tab === "feed") void loadFeed(false);
+    } catch (e) {
+      window.alert((e as Error).message);
+    } finally { setTogglingPublic(false); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [career?.id, isPublic, togglingPublic, tab]);
 
   // Username gate + initial seen
   useEffect(() => {
@@ -134,6 +164,23 @@ export function ComunidadeView({ career, lang, viewerUserId }: Props) {
           <span className="text-xs text-white/50 tabular-nums">{t.quotaUsed}: {quota.used}/{quota.limit}</span>
         )}
       </div>
+
+      {/* Career public toggle */}
+      {hasUsername && isPublic !== null && (
+        <div className="flex items-start gap-3 rounded-xl px-3 py-2.5"
+          style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+          <button onClick={togglePublic} disabled={togglingPublic}
+            className="relative w-10 h-6 rounded-full flex-shrink-0 transition"
+            style={{ background: isPublic ? "var(--club-primary)" : "rgba(255,255,255,0.15)", opacity: togglingPublic ? 0.5 : 1 }}>
+            <span className="absolute top-0.5 w-5 h-5 bg-white rounded-full transition-all"
+              style={{ left: isPublic ? "calc(100% - 22px)" : "2px" }} />
+          </button>
+          <div className="flex-1 min-w-0">
+            <div className="text-white text-sm font-semibold">{t.careerPublic}</div>
+            <div className="text-white/45 text-xs">{t.careerPublicHint}</div>
+          </div>
+        </div>
+      )}
 
       {/* Sub tabs */}
       <div className="flex gap-1 overflow-x-auto scrollbar-none">

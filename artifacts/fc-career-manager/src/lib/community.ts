@@ -55,6 +55,8 @@ export interface PublishParams {
 }
 export const publishPost = (p: PublishParams) => req<{ id: string; publishedAt?: number; alreadyPublished?: boolean }>("/community/posts", { method: "POST", body: JSON.stringify(p) });
 export const unpublishPost = (id: string) => req<{ ok: true }>(`/community/posts/${encodeURIComponent(id)}`, { method: "DELETE" });
+export const lookupPublishedPost = (careerId: string, originalNewsPostId: string) =>
+  req<{ id: string | null }>(`/community/posts/lookup?careerId=${encodeURIComponent(careerId)}&originalNewsPostId=${encodeURIComponent(originalNewsPostId)}`);
 
 // ─── Feed ────
 export interface FeedParams { lang?: "pt" | "en"; myClub?: boolean; myLeague?: boolean; limit?: number; before?: number }

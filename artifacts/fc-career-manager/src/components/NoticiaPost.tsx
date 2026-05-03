@@ -8,7 +8,7 @@ import { getCommentAvatarUrl } from "@/lib/commentAvatar";
 import { ReelsModal } from "./ReelsModal";
 import { NOTICIAS } from "@/lib/i18n";
 import type { Lang } from "@/lib/i18n";
-import { publishPost as publishToCommunity, unpublishPost as unpublishFromCommunity } from "@/lib/community";
+import { publishPost as publishToCommunity, unpublishPost as unpublishFromCommunity, lookupPublishedPost } from "@/lib/community";
 
 const SOURCE_CONFIG: Record<NewsSource, { color: string; bgColor: string; verified: boolean; emoji: string }> = {
   tnt: {
@@ -247,6 +247,15 @@ export function NoticiaPost({ post, portalPhotos, customPortals, onUpdateImage, 
   const [localImageUrl, setLocalImageUrl] = useState<string | null>(null);
   const [communityPostId, setCommunityPostId] = useState<string | null>(null);
   const [communityBusy, setCommunityBusy] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!post.careerId || !post.id) return;
+    lookupPublishedPost(post.careerId, post.id)
+      .then((r) => { if (!cancelled) setCommunityPostId(r.id); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [post.careerId, post.id]);
   const menuRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 

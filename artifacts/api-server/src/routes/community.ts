@@ -261,8 +261,24 @@ router.delete("/community/posts/:id", requireAuth, async (req: AuthRequest, res)
   const [post] = await db.select().from(publicPostsTable).where(eq(publicPostsTable.id, id)).limit(1);
   if (!post) return res.status(404).json({ error: "Not found" });
   if (post.userId !== userId) return res.status(403).json({ error: "Forbidden" });
-  await db.delete(publicPostsTable).where(eq(publicPostsTable.id, id));
+  // Soft-delete: hide post but preserve engagement (comments/reactions/reposts)
+  await db.update(publicPostsTable).set({ isHidden: true, hiddenReason: "unpublished" }).where(eq(publicPostsTable.id, id));
   res.json({ ok: true });
+});
+
+// Lookup whether a news post is already published in the community
+router.get("/community/posts/lookup", requireAuth, async (req: AuthRequest, res) => {
+  const userId = req.user!.id;
+  const careerId = String(req.query.careerId ?? "");
+  const originalNewsPostId = String(req.query.originalNewsPostId ?? "");
+  if (!careerId || !originalNewsPostId) return res.status(400).json({ error: "careerId, originalNewsPostId required" });
+  if (!(await ownsCareer(userId, careerId))) return res.status(403).json({ error: "Forbidden" });
+  const [row] = await db.select({ id: publicPostsTable.id, isHidden: publicPostsTable.isHidden, hiddenReason: publicPostsTable.hiddenReason })
+    .from(publicPostsTable)
+    .where(and(eq(publicPostsTable.careerId, careerId), eq(publicPostsTable.originalNewsPostId, originalNewsPostId)))
+    .limit(1);
+  if (!row || row.isHidden) return res.json({ id: null });
+  res.json({ id: row.id });
 });
 
 // ─── Feed ──────────────────────────────────────────────────────────────────
@@ -362,39 +378,21 @@ router.get("/community/feed", requireAuth, async (req: AuthRequest, res) => {
       myLeagueName = c?.clubLeague ?? null;
     }
 
-    const conditions = [eq(publicPostsTable.isHidden, false)];
+    const conditions = [eq(publicPostsTable.isHidden, false), eq(publicProfilesTable.isPublic, true)];
     if (before) conditions.push(sql`${publicPostsTable.publishedAt} < ${before}`);
     if (lang) conditions.push(eq(publicPostsTable.lang, lang));
     if (blocked.length > 0) conditions.push(notInArray(publicPostsTable.userId, blocked));
+    if (myClub && myClubId) conditions.push(eq(careersTable.clubId, myClubId));
+    else if (myLeague && myLeagueName) conditions.push(eq(careersTable.clubLeague, myLeagueName));
 
-    let query = db.select({
+    const query = db.select({
       id: publicPostsTable.id, careerId: publicPostsTable.careerId, userId: publicPostsTable.userId,
       contentJson: publicPostsTable.contentJson, lang: publicPostsTable.lang,
       publishedAt: publicPostsTable.publishedAt, isSpecial: publicPostsTable.isSpecial, isHidden: publicPostsTable.isHidden,
     }).from(publicPostsTable)
       .innerJoin(careersTable, eq(careersTable.id, publicPostsTable.careerId))
-      .where(and(...conditions))
-      .$dynamic();
-
-    if (myClub && myClubId) {
-      query = db.select({
-        id: publicPostsTable.id, careerId: publicPostsTable.careerId, userId: publicPostsTable.userId,
-        contentJson: publicPostsTable.contentJson, lang: publicPostsTable.lang,
-        publishedAt: publicPostsTable.publishedAt, isSpecial: publicPostsTable.isSpecial, isHidden: publicPostsTable.isHidden,
-      }).from(publicPostsTable)
-        .innerJoin(careersTable, eq(careersTable.id, publicPostsTable.careerId))
-        .where(and(...conditions, eq(careersTable.clubId, myClubId)))
-        .$dynamic();
-    } else if (myLeague && myLeagueName) {
-      query = db.select({
-        id: publicPostsTable.id, careerId: publicPostsTable.careerId, userId: publicPostsTable.userId,
-        contentJson: publicPostsTable.contentJson, lang: publicPostsTable.lang,
-        publishedAt: publicPostsTable.publishedAt, isSpecial: publicPostsTable.isSpecial, isHidden: publicPostsTable.isHidden,
-      }).from(publicPostsTable)
-        .innerJoin(careersTable, eq(careersTable.id, publicPostsTable.careerId))
-        .where(and(...conditions, eq(careersTable.clubLeague, myLeagueName)))
-        .$dynamic();
-    }
+      .innerJoin(publicProfilesTable, eq(publicProfilesTable.careerId, publicPostsTable.careerId))
+      .where(and(...conditions));
 
     const rows = await query.orderBy(desc(publicPostsTable.publishedAt)).limit(limit);
     const enriched = await enrichPosts(rows.map((r) => ({ ...r, publishedAt: Number(r.publishedAt) })), userId);
@@ -553,7 +551,7 @@ router.get("/community/top-week", requireAuth, async (req: AuthRequest, res) => 
   try {
     const since = Date.now() - 7 * 24 * 3600 * 1000;
     const blocked = await getBlockedUserIds(req.user!.id);
-    const conds = [eq(publicPostsTable.isHidden, false), gte(publicPostsTable.publishedAt, since)];
+    const conds = [eq(publicPostsTable.isHidden, false), eq(publicProfilesTable.isPublic, true), gte(publicPostsTable.publishedAt, since)];
     if (blocked.length > 0) conds.push(notInArray(publicPostsTable.userId, blocked));
 
     const rows = await db.select({
@@ -562,6 +560,7 @@ router.get("/community/top-week", requireAuth, async (req: AuthRequest, res) => 
       publishedAt: publicPostsTable.publishedAt, isSpecial: publicPostsTable.isSpecial, isHidden: publicPostsTable.isHidden,
       reactionCount: sql<number>`(select count(*)::int from post_reactions pr where pr.post_id = ${publicPostsTable.id})`,
     }).from(publicPostsTable)
+      .innerJoin(publicProfilesTable, eq(publicProfilesTable.careerId, publicPostsTable.careerId))
       .where(and(...conds))
       .orderBy(desc(sql`(select count(*) from post_reactions pr where pr.post_id = ${publicPostsTable.id})`))
       .limit(5);
@@ -865,7 +864,9 @@ router.get("/community/preview", async (_req, res) => {
       id: publicPostsTable.id, careerId: publicPostsTable.careerId, userId: publicPostsTable.userId,
       contentJson: publicPostsTable.contentJson, lang: publicPostsTable.lang,
       publishedAt: publicPostsTable.publishedAt, isSpecial: publicPostsTable.isSpecial, isHidden: publicPostsTable.isHidden,
-    }).from(publicPostsTable).where(eq(publicPostsTable.isHidden, false))
+    }).from(publicPostsTable)
+      .innerJoin(publicProfilesTable, eq(publicProfilesTable.careerId, publicPostsTable.careerId))
+      .where(and(eq(publicPostsTable.isHidden, false), eq(publicProfilesTable.isPublic, true)))
       .orderBy(desc(publicPostsTable.publishedAt)).limit(10);
     const enriched = await enrichPosts(rows.map((r) => ({ ...r, publishedAt: Number(r.publishedAt) })), null);
     res.json(enriched);
