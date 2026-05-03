@@ -49,6 +49,23 @@ async function ownsCareer(userId: number, careerId: string): Promise<boolean> {
   return !!c && c.userId === userId;
 }
 
+// Returns post if visible (not hidden AND owning profile is public). Null otherwise.
+async function getVisiblePost(postId: string): Promise<{ id: string; userId: number; careerId: string } | null> {
+  const [row] = await db.select({
+    id: publicPostsTable.id,
+    userId: publicPostsTable.userId,
+    careerId: publicPostsTable.careerId,
+    isHidden: publicPostsTable.isHidden,
+    isPublic: publicProfilesTable.isPublic,
+  })
+    .from(publicPostsTable)
+    .innerJoin(publicProfilesTable, eq(publicProfilesTable.careerId, publicPostsTable.careerId))
+    .where(eq(publicPostsTable.id, postId))
+    .limit(1);
+  if (!row || row.isHidden || !row.isPublic) return null;
+  return { id: row.id, userId: row.userId, careerId: row.careerId };
+}
+
 async function isBlockedBetween(a: number, b: number): Promise<boolean> {
   if (a === b) return false;
   const [r] = await db.select({ id: userBlocksTable.blockerId })
@@ -579,8 +596,8 @@ router.post("/community/posts/:id/reactions", requireAuth, async (req: AuthReque
   const { id } = req.params;
   const t = String((req.body as { type?: string })?.type ?? "like");
   if (!VALID_REACTIONS.has(t)) return res.status(400).json({ error: "Reação inválida" });
-  const [post] = await db.select({ id: publicPostsTable.id, userId: publicPostsTable.userId, careerId: publicPostsTable.careerId, isHidden: publicPostsTable.isHidden }).from(publicPostsTable).where(eq(publicPostsTable.id, id)).limit(1);
-  if (!post || post.isHidden) return res.status(404).json({ error: "Not found" });
+  const post = await getVisiblePost(id);
+  if (!post) return res.status(404).json({ error: "Not found" });
   if (await isBlockedBetween(userId, post.userId)) return res.status(403).json({ error: "Blocked", code: "BLOCKED" });
   await db.insert(postReactionsTable).values({ postId: id, userId, reactionType: t, createdAt: Date.now() }).onConflictDoNothing();
   await db.update(publicProfilesTable).set({ lastActivityAt: Date.now() }).where(eq(publicProfilesTable.careerId, post.careerId));
@@ -599,6 +616,8 @@ router.delete("/community/posts/:id/reactions", requireAuth, async (req: AuthReq
 router.get("/community/posts/:id/comments", requireAuth, async (req: AuthRequest, res) => {
   const userId = req.user!.id;
   const { id } = req.params;
+  const visible = await getVisiblePost(id);
+  if (!visible) return res.status(404).json({ error: "Not found" });
   const blocked = await getBlockedUserIds(userId);
   const conds = [eq(postCommentsTable.postId, id), eq(postCommentsTable.isHidden, false), sql`${postCommentsTable.deletedAt} IS NULL`];
   if (blocked.length > 0) conds.push(notInArray(postCommentsTable.userId, blocked));
@@ -644,8 +663,8 @@ router.post("/community/posts/:id/comments", requireAuth, async (req: AuthReques
   const username = await getUsername(userId);
   if (!username) return res.status(400).json({ error: "Defina seu @username", code: "NO_USERNAME" });
 
-  const [post] = await db.select({ id: publicPostsTable.id, careerId: publicPostsTable.careerId, userId: publicPostsTable.userId, isHidden: publicPostsTable.isHidden }).from(publicPostsTable).where(eq(publicPostsTable.id, id)).limit(1);
-  if (!post || post.isHidden) return res.status(404).json({ error: "Not found" });
+  const post = await getVisiblePost(id);
+  if (!post) return res.status(404).json({ error: "Not found" });
   if (await isBlockedBetween(userId, post.userId)) return res.status(403).json({ error: "Blocked", code: "BLOCKED" });
 
   let parent: number | null = null;
@@ -703,8 +722,8 @@ router.delete("/community/comments/:id", requireAuth, async (req: AuthRequest, r
 router.post("/community/posts/:id/repost", requireAuth, async (req: AuthRequest, res) => {
   const userId = req.user!.id;
   const { id } = req.params;
-  const [post] = await db.select({ id: publicPostsTable.id, careerId: publicPostsTable.careerId, userId: publicPostsTable.userId, isHidden: publicPostsTable.isHidden }).from(publicPostsTable).where(eq(publicPostsTable.id, id)).limit(1);
-  if (!post || post.isHidden) return res.status(404).json({ error: "Not found" });
+  const post = await getVisiblePost(id);
+  if (!post) return res.status(404).json({ error: "Not found" });
   if (await isBlockedBetween(userId, post.userId)) return res.status(403).json({ error: "Blocked", code: "BLOCKED" });
   await db.insert(postRepostsTable).values({ postId: id, userId, createdAt: Date.now() }).onConflictDoNothing();
   await db.update(publicProfilesTable).set({ lastActivityAt: Date.now() }).where(eq(publicProfilesTable.careerId, post.careerId));
@@ -750,6 +769,20 @@ router.post("/community/reports", requireAuth, async (req: AuthRequest, res) => 
   const body = req.body as { targetType?: string; targetId?: string; reason?: string; notes?: string };
   if (!body?.targetType || !body?.targetId || !body?.reason) return res.status(400).json({ error: "targetType, targetId, reason required" });
   if (!["post", "comment", "profile"].includes(body.targetType)) return res.status(400).json({ error: "Invalid target type" });
+
+  // Verify target is publicly visible — cannot report private/hidden content
+  if (body.targetType === "post") {
+    if (!(await getVisiblePost(body.targetId))) return res.status(404).json({ error: "Not found" });
+  } else if (body.targetType === "comment") {
+    const cid = Number(body.targetId);
+    const [c] = await db.select({ postId: postCommentsTable.postId, isHidden: postCommentsTable.isHidden, deletedAt: postCommentsTable.deletedAt })
+      .from(postCommentsTable).where(eq(postCommentsTable.id, cid)).limit(1);
+    if (!c || c.isHidden || c.deletedAt) return res.status(404).json({ error: "Not found" });
+    if (!(await getVisiblePost(c.postId))) return res.status(404).json({ error: "Not found" });
+  } else {
+    const [p] = await db.select({ isPublic: publicProfilesTable.isPublic }).from(publicProfilesTable).where(eq(publicProfilesTable.careerId, body.targetId)).limit(1);
+    if (!p?.isPublic) return res.status(404).json({ error: "Not found" });
+  }
 
   // Dedupe: one report per (reporter, target) pair — counts only first
   const [existing] = await db.select({ id: contentReportsTable.id }).from(contentReportsTable)
