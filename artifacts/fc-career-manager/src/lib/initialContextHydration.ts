@@ -44,8 +44,7 @@ export function isInitialContextHydrated(careerId: string): boolean {
   }
 }
 
-// True if a previous (v1 or v2) hydration ever marked this career. Used to
-// detect carriers eligible for re-enrichment on the v3 upgrade path.
+// True if a previous (v1 or v2) hydration ever marked this career.
 function isPreV3Hydrated(careerId: string): boolean {
   try {
     return (
@@ -197,26 +196,40 @@ async function searchPlayer(name: string): Promise<SearchHit | null> {
   }
 }
 
+function fuzzyNameMatch(a: string, b: string): boolean {
+  const na = normalizeName(a);
+  const nb = normalizeName(b);
+  if (!na || !nb) return false;
+  if (na === nb) return true;
+  const shorter = na.length <= nb.length ? na : nb;
+  if (shorter.length >= 4 && (na.includes(nb) || nb.includes(na))) return true;
+  const at = na.split(" ").filter(Boolean);
+  const bt = nb.split(" ").filter(Boolean);
+  const aLast = at[at.length - 1] ?? "";
+  const bLast = bt[bt.length - 1] ?? "";
+  return aLast.length >= 3 && aLast === bLast;
+}
+
 function isLegacyHydrationData(
   existing: TransferRecord[],
   tIn: TransferEntry[],
   tOut: TransferEntry[],
 ): boolean {
-  if (existing.length === 0) return true;
-  const icEntries = [...tIn, ...tOut]
-    .map((e) => normalizeName(e?.name?.trim() ?? ""))
+  const icNames = [...tIn, ...tOut]
+    .map((e) => e?.name?.trim() ?? "")
     .filter(Boolean);
-  if (icEntries.length === 0) return false;
-  // Strict guard against wiping manual edits: lengths must match AND every existing
-  // transfer must look like a v1 hydration record (synthetic defaults) AND the
-  // name set must align exactly with the IC entries.
-  if (existing.length !== icEntries.length) return false;
-  const looksSynthetic = existing.every(
-    (t) => t.playerPhoto === "" && t.playerAge === 25 && t.playerPositionPtBr === "MID",
-  );
-  if (!looksSynthetic) return false;
-  const icSet = new Set(icEntries);
-  return existing.every((t) => icSet.has(normalizeName(t.playerName)));
+  if (icNames.length === 0 || existing.length === 0) return false;
+  if (existing.length !== icNames.length) return false;
+  // Each existing record must (a) look synthetic by ANY default marker and
+  // (b) fuzzy-match some entry in the initialContext name list.
+  for (const t of existing) {
+    const looksSynthetic =
+      t.playerPhoto === "" || t.playerAge === 25 || t.playerPositionPtBr === "MID";
+    if (!looksSynthetic) return false;
+    const matched = icNames.some((n) => fuzzyNameMatch(t.playerName, n));
+    if (!matched) return false;
+  }
+  return true;
 }
 
 function normalizeScoreToResult(
@@ -295,9 +308,16 @@ export async function hydrateInitialContext(
   const existingMatches = getMatches(seasonId);
   const existingRivals = getSeasonRivals(seasonId);
 
-  // Decouple guards: we may re-enrich legacy v1 transfers while preserving manual matches/rivals.
-  const transfersWereLegacy = isPreV3Hydrated(career.id) && isLegacyHydrationData(existingTransfers, tIn, tOut);
-  const canHydrateTransfers = (existingTransfers.length === 0 || transfersWereLegacy)
+  // Three cases qualify for transfer hydration:
+  //   1. First-time hydration (no prior flag, no existing transfers).
+  //   2. Pre-v3 marked career whose existing records still look like legacy
+  //      synthetic hydration (re-enrich with real data).
+  // Pre-v3 marked careers with NO existing transfers are skipped — the user
+  // likely deleted them manually and we must not resurrect them.
+  const preV3 = isPreV3Hydrated(career.id);
+  const isFirstTime = !preV3 && existingTransfers.length === 0;
+  const transfersWereLegacy = preV3 && isLegacyHydrationData(existingTransfers, tIn, tOut);
+  const canHydrateTransfers = (isFirstTime || transfersWereLegacy)
     && (tIn.length > 0 || tOut.length > 0);
   const canHydrateMatches = existingMatches.length === 0 && recentMatches.length > 0;
   const canHydrateRivals = existingRivals.length === 0 && rivals.length > 0;
@@ -421,22 +441,14 @@ export async function hydrateInitialContext(
       if (p.id > 0) addHiddenPlayerId(career.id, p.id);
     }
     if (comprasMatched.length > 0) {
-      // Remove orphan custom players left behind by v1/v2 hydration: shape is
-      // clearly synthetic (empty photo + age 25 + MID), and the name matches
-      // an entry in the current transfersIn list. Manual user-added players
-      // are preserved — they almost always have a real photo or non-default
-      // age/position.
-      const tInNameSet = new Set(
-        tIn.map((e) => normalizeName(e?.name?.trim() ?? "")).filter(Boolean),
-      );
+      // Drop orphan custom players from prior v1/v2 hydration: synthetic by
+      // any default marker AND name matches a transfersIn entry.
+      const tInNames = tIn.map((e) => e?.name?.trim() ?? "").filter(Boolean);
       const existingCustom = getCustomPlayers(career.id);
       const cleanedCustom = existingCustom.filter((p) => {
-        const isSyntheticHydrationLeftover =
-          (!p.photo || p.photo === "")
-          && p.age === 25
-          && p.positionPtBr === "MID"
-          && tInNameSet.has(normalizeName(p.name));
-        return !isSyntheticHydrationLeftover;
+        const looksSynthetic = !p.photo || p.age === 25 || p.positionPtBr === "MID";
+        const matchesIn = tInNames.some((n) => fuzzyNameMatch(p.name, n));
+        return !(looksSynthetic && matchesIn);
       });
       if (cleanedCustom.length !== existingCustom.length) {
         saveCustomPlayers(career.id, cleanedCustom);
