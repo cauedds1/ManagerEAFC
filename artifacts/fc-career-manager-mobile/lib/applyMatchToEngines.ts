@@ -25,6 +25,7 @@ import {
   setBoardMood,
   hydrateBoardMoodCache,
 } from '@/lib/boardMoodStorage';
+import { emitMatchMilestoneNews } from '@/lib/autoNewsEmitter';
 
 export interface ApplyMatchOptions {
   careerId: string;
@@ -58,6 +59,8 @@ export interface ApplyMatchOptions {
    * before applying the new match. Pass `seasonData?.data` if available.
    */
   seasonPayload?: Record<string, unknown> | null;
+  /** Club display name — used for milestone news headlines. */
+  clubName?: string;
 }
 
 function isClassicoMatch(opponent: string, rivals?: string[]): boolean {
@@ -171,7 +174,7 @@ export async function applyMatchToEngines(opts: ApplyMatchOptions): Promise<void
     careerId, seasonId, match, allMatches,
     rivals, squadAvgOvr, leagueAvgOvr, clubTotalTitles,
     projeto, league, leaguePosition, objectivePenalty,
-    squad, seasonPayload,
+    squad, seasonPayload, clubName,
   } = opts;
 
   if (seasonPayload) {
@@ -210,5 +213,9 @@ export async function applyMatchToEngines(opts: ApplyMatchOptions): Promise<void
   });
   if (boardDelta !== 0) {
     await setBoardMood(seasonId, getBoardMood(seasonId) + boardDelta);
+  }
+
+  if (clubName) {
+    await emitMatchMilestoneNews(seasonId, match, allMatches, clubName);
   }
 }

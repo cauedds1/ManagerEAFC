@@ -557,20 +557,17 @@ export default function RegistrarPartidaScreen() {
       await api.seasonData.set(activeSeason.id, 'matches', allMatchesAfter);
       if (draftKey) await AsyncStorage.removeItem(draftKey).catch(() => {});
 
-      try {
-        await applyMatchToEngines({
-          careerId: activeCareer.id,
-          seasonId: activeSeason.id,
-          match: newMatch,
-          allMatches: allMatchesAfter,
-          rivals: (seasonData?.data?.rivals ?? careerDataResp?.data?.rivals) as string[] | undefined,
-          league: activeCareer.clubLeague,
-          squad: squadPlayers.map((p) => ({ id: p.id, name: p.name })),
-          seasonPayload: (seasonData?.data ?? null) as Record<string, unknown> | null,
-        });
-      } catch (engineErr) {
-        console.warn('[registrar-partida] applyMatchToEngines failed:', engineErr);
-      }
+      await applyMatchToEngines({
+        careerId: activeCareer.id,
+        seasonId: activeSeason.id,
+        match: newMatch,
+        allMatches: allMatchesAfter,
+        rivals: (seasonData?.data?.rivals ?? careerDataResp?.data?.rivals) as string[] | undefined,
+        league: activeCareer.clubLeague,
+        squad: squadPlayers.map((p) => ({ id: p.id, name: p.name })),
+        seasonPayload: (seasonData?.data ?? null) as Record<string, unknown> | null,
+        clubName: activeCareer.clubName,
+      });
 
       return newMatch;
     },
