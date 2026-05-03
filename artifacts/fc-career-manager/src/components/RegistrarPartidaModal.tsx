@@ -1546,10 +1546,14 @@ export function RegistrarPartidaModal({
   }, [allPlayers, insertSortedByPosition]);
 
   const handleAutoFill = useCallback(() => {
+    // Auto Fill must never put injured players on the pitch.
+    const healthyPool = playersWithOverrides.filter((p) => !injuredIds.has(p.id));
     const saved = getCustomLineup(careerId);
-    const candidateIds = saved ?? (playersWithOverrides.length > 0 ? pickBestEleven(playersWithOverrides, pitchFormation) : []);
+    const candidateIds = saved
+      ? saved.filter((id) => !injuredIds.has(id))
+      : (healthyPool.length > 0 ? pickBestEleven(healthyPool, pitchFormation) : []);
     const validPlayers = candidateIds
-      .map((id) => playersWithOverrides.find((p) => p.id === id))
+      .map((id) => healthyPool.find((p) => p.id === id))
       .filter(Boolean) as SquadPlayer[];
     const orderedIds = pickBestEleven(validPlayers, pitchFormation);
     const newSectorMap: Record<number, "GOL" | "DEF" | "MID" | "ATA"> = {};
@@ -1573,7 +1577,7 @@ export function RegistrarPartidaModal({
       orderedIds.forEach((id, i) => { newSlots[i] = id; });
       setPitchSlots(newSlots);
     }
-  }, [careerId, playersWithOverrides, lineupMode, pitchFormation]);
+  }, [careerId, playersWithOverrides, lineupMode, pitchFormation, injuredIds]);
 
   const handleEnterCampinho = useCallback(() => {
     const currentStarters = draft.starterIds
@@ -2550,13 +2554,10 @@ export function RegistrarPartidaModal({
                   {/* Bench (relacionados) — right */}
                   <div className="flex flex-col min-w-0 flex-1 overflow-hidden">
                     {(() => {
-                      const selectedSlotIdx = pitchSelectedId !== null
-                        ? pitchSlots.findIndex((id) => id === pitchSelectedId)
-                        : -1;
                       const slotPos = pitchPendingSlot !== null
                         ? sectorForSlotIndex(pitchPendingSlot, pitchFormation)
-                        : selectedSlotIdx >= 0
-                          ? sectorForSlotIndex(selectedSlotIdx, pitchFormation)
+                        : pitchSelectedId !== null
+                          ? getPlayerSector(pitchSelectedId)
                           : null;
                       const posColor = slotPos ? POS_COLOR_BADGE[slotPos] : null;
                       const available = benchPlayers.filter((p) => !usedIds.has(p.id));
