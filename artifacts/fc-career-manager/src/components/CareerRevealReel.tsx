@@ -93,6 +93,8 @@ export function CareerRevealReel({ context, club, onComplete, onSkip }: Props) {
   const [sceneIdx, setSceneIdx] = useState(0);
   const [muted, setMuted] = useState(false);
   const [squad, setSquad] = useState<SquadPlayer[]>([]);
+  const [extraPhotos, setExtraPhotos] = useState<Record<string, string>>({});
+  const requestedNamesRef = useRef<Set<string>>(new Set());
   const sfxRef = useRef(new SfxPlayer());
   const startRef = useRef<number>(Date.now());
 
@@ -140,6 +142,44 @@ export function CareerRevealReel({ context, club, onComplete, onSkip }: Props) {
       name: kp.name, role: kp.role, note: kp.note, squad: matchPlayer(kp.name, squad),
     }));
   }, [context.keyPlayers, squad]);
+
+  useEffect(() => {
+    const requested = requestedNamesRef.current;
+    const missing = Array.from(new Set(
+      matchedPlayers
+        .filter((p) => !p.squad?.photo && !extraPhotos[p.name] && !requested.has(p.name))
+        .map((p) => p.name)
+    ));
+    if (missing.length === 0) return;
+    for (const name of missing) requested.add(name);
+    const controller = new AbortController();
+    (async () => {
+      const entries = await Promise.all(missing.map(async (name) => {
+        try {
+          const res = await fetch(`/api/players/search?q=${encodeURIComponent(name)}`, { signal: controller.signal });
+          if (!res.ok) return [name, ""] as const;
+          const data = (await res.json()) as { players?: Array<{ photo?: string }> };
+          const hit = (data.players ?? []).find((p) => !!p.photo);
+          return [name, hit?.photo ?? ""] as const;
+        } catch {
+          return [name, ""] as const;
+        }
+      }));
+      if (controller.signal.aborted) return;
+      setExtraPhotos((prev) => {
+        let changed = false;
+        const next = { ...prev };
+        for (const [name, photo] of entries) {
+          if (photo && !next[name]) {
+            next[name] = photo;
+            changed = true;
+          }
+        }
+        return changed ? next : prev;
+      });
+    })();
+    return () => { controller.abort(); };
+  }, [matchedPlayers, extraPhotos]);
 
   const elapsed = Date.now() - startRef.current;
   const progress = Math.min(100, (elapsed / TOTAL_MS) * 100);
@@ -260,11 +300,13 @@ export function CareerRevealReel({ context, club, onComplete, onSkip }: Props) {
           <div className="w-full max-w-3xl reveal-fade">
             {matchedPlayers.length > 0 ? (
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-                {matchedPlayers.map((p, i) => (
+                {matchedPlayers.map((p, i) => {
+                  const displayPhoto = p.squad?.photo || extraPhotos[p.name] || "";
+                  return (
                   <div key={i} className="reveal-card flex flex-col items-center text-center" style={{ animationDelay: `${i * 180}ms` }}>
                     <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden mb-2 flex items-center justify-center" style={{ background: "linear-gradient(135deg, rgba(var(--club-primary-rgb),0.35), rgba(0,0,0,0.5))", border: "2px solid rgba(var(--club-primary-rgb),0.6)", boxShadow: "0 8px 30px rgba(0,0,0,0.5)" }}>
-                      {p.squad?.photo ? (
-                        <img src={p.squad.photo} alt={p.name} className="w-full h-full object-cover" onError={(e) => { e.currentTarget.style.display = "none"; }} />
+                      {displayPhoto ? (
+                        <img src={displayPhoto} alt={p.name} className="w-full h-full object-cover" onError={(e) => { e.currentTarget.style.display = "none"; }} />
                       ) : (
                         <span className="text-white font-black text-2xl">{p.name.split(/\s+/).map((s) => s[0]).slice(0,2).join("")}</span>
                       )}
@@ -272,7 +314,8 @@ export function CareerRevealReel({ context, club, onComplete, onSkip }: Props) {
                     <p className="text-white text-xs font-bold leading-tight line-clamp-2">{p.squad?.name || p.name}</p>
                     {p.role && <p className="text-white/50 text-[10px] uppercase tracking-wider mt-0.5">{p.role}</p>}
                   </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <p className="text-white/40 text-center text-sm">···</p>
