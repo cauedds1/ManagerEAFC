@@ -201,7 +201,7 @@ function NewsModal({ item, onClose, userPlan, clubName, onImageGenerated }: News
             <View style={styles.modalMeta}>
               <Text style={styles.modalDate}>{formatDate(item.createdAt)}</Text>
               {item.source ? (
-                <Text style={styles.modalSource}>{getLang() === 'en' ? 'Source' : 'Fonte'}: {item.source}</Text>
+                <Text style={styles.modalSource}>{t('news.modal.source')}: {item.source}</Text>
               ) : null}
             </View>
             <View style={styles.modalDivider} />
@@ -224,13 +224,13 @@ function NewsModal({ item, onClose, userPlan, clubName, onImageGenerated }: News
                   }
                   <Text style={[styles.closeBtnText, { color: Colors.info }]}>
                     {imgLoading
-                      ? (getLang() === 'en' ? 'Generating…' : 'Gerando…')
-                      : (getLang() === 'en' ? 'Generate Image' : 'Gerar Imagem')}
+                      ? t('news.modal.generatingImage')
+                      : t('news.modal.generateImage')}
                   </Text>
                 </TouchableOpacity>
               )}
               <TouchableOpacity style={[styles.closeBtn, { flex: 1 }]} onPress={onClose}>
-                <Text style={styles.closeBtnText}>{getLang() === 'en' ? 'Close' : 'Fechar'}</Text>
+                <Text style={styles.closeBtnText}>{t('news.modal.close')}</Text>
               </TouchableOpacity>
             </View>
           </TouchableOpacity>
@@ -383,7 +383,7 @@ function GenerateModal({
                 const active = selected === opt.id;
                 const lockLabel = planLocked
                   ? (opt.planRequired === 'ultra' ? '  •  Ultra' : '  •  Pro')
-                  : portalLocked ? `  •  ${getLang() === 'en' ? 'Portal required' : 'Portal necessário'}` : '';
+                  : portalLocked ? `  •  ${t('news.modal.portalRequired')}` : '';
                 return (
                   <TouchableOpacity
                     key={opt.id}

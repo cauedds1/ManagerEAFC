@@ -291,6 +291,16 @@ const DICTIONARY: Record<string, Record<Lang, string>> = {
   'news.modal.titleHeader':      { pt: '✨ Gerar com IA',          en: '✨ Generate with AI' },
   'news.modal.typeLabel':        { pt: 'TIPO',                    en: 'TYPE' },
   'news.modal.portalPrefix':     { pt: 'Portal:',                 en: 'Portal:' },
+  'news.modal.source':           { pt: 'Fonte',                   en: 'Source' },
+  'news.modal.generatingImage':  { pt: 'Gerando…',                en: 'Generating…' },
+  'news.modal.generateImage':    { pt: 'Gerar Imagem',            en: 'Generate Image' },
+  'news.modal.close':            { pt: 'Fechar',                  en: 'Close' },
+  'news.modal.portalRequired':   { pt: 'Portal necessário',       en: 'Portal required' },
+  'checkout.success.title':      { pt: 'Pagamento confirmado',    en: 'Payment confirmed' },
+  'checkout.success.body':       { pt: 'Seu plano foi atualizado. Você já pode voltar ao app.', en: 'Your plan has been updated. You can return to the app.' },
+  'checkout.cancel.title':       { pt: 'Pagamento cancelado',     en: 'Payment canceled' },
+  'checkout.cancel.body':        { pt: 'Nenhuma cobrança foi feita. Você pode tentar novamente quando quiser.', en: 'No charge was made. You can try again whenever you like.' },
+  'checkout.back':               { pt: 'Voltar ao app',           en: 'Return to app' },
 };
 
 export const i18n = new I18n(
