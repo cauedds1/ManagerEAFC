@@ -1433,7 +1433,7 @@ export function RegistrarPartidaModal({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (isEditMode) return;
-    const slotIds = pitchSlots.filter((id): id is number => id != null && id > 0);
+    const slotIds = pitchSlots.filter((id): id is number => id != null && id !== 0);
     if (slotIds.length === 0) return;
     const draftHasStarters = draft.starterIds.length > 0;
     if (draftHasStarters) return; // user resumed a saved draft — don't clobber it
@@ -1446,7 +1446,7 @@ export function RegistrarPartidaModal({
     });
     const newSectorMap: Record<number, "GOL" | "DEF" | "MID" | "ATA"> = {};
     pitchSlots.forEach((id, slotIndex) => {
-      if (id != null && id > 0) {
+      if (id != null && id !== 0) {
         newSectorMap[id] = sectorForSlotIndex(slotIndex, pitchFormation);
       }
     });
@@ -1749,7 +1749,7 @@ export function RegistrarPartidaModal({
   const usedIds = useMemo(() => new Set([...draft.starterIds, ...draft.subIds]), [draft.starterIds, draft.subIds]);
 
   const benchPlayers = useMemo(() => {
-    const starterSet = new Set(pitchSlots.filter((id): id is number => id != null && id > 0));
+    const starterSet = new Set(pitchSlots.filter((id): id is number => id != null && id !== 0));
 
     // Mirror Elenco's "Relacionados" definition: take the saved Elenco bench
     // (everything that's NOT in the saved starting XI), keep the user's saved
@@ -1757,10 +1757,10 @@ export function RegistrarPartidaModal({
     // for matchday — non-related squad members never appear here.
     const customLineup = getCustomLineup(careerId);
     const elencoStarterFullIds = new Set(
-      (customLineup && customLineup.filter((id) => id > 0).length > 0
+      (customLineup && customLineup.filter((id) => id !== 0).length > 0
         ? customLineup
         : pickBestEleven(playersWithOverrides, pitchFormation)
-      ).filter((id) => id > 0),
+      ).filter((id) => id !== 0),
     );
 
     const elencoBench = playersWithOverrides.filter((p) => !elencoStarterFullIds.has(p.id));
@@ -1806,10 +1806,10 @@ export function RegistrarPartidaModal({
   // their saved starters.
   const elencoStarterIds = useMemo(() => {
     const customIds = getCustomLineup(careerId);
-    const ids = customIds && customIds.filter((id) => id > 0).length > 0
+    const ids = customIds && customIds.filter((id) => id !== 0).length > 0
       ? customIds
       : pickBestEleven(playersWithOverrides, pitchFormation);
-    return new Set(ids.filter((id) => id > 0));
+    return new Set(ids.filter((id) => id !== 0));
   }, [careerId, playersWithOverrides, pitchFormation]);
 
   const resultLabel = draft.myScore > draft.opponentScore ? "V" : draft.myScore < draft.opponentScore ? "D" : "E";
