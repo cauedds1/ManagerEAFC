@@ -1,0 +1,170 @@
+Tenho o mapa completo agora. Vou te apresentar a visão consolidada do que falta no mobile para igualar o webapp, seção por seção, com prioridades.
+
+📱 FC Career Manager Mobile — Mapa de Paridade vs Web
+🟢 O que o mobile JÁ tem (≈55% do escopo do web)
+Área	Mobile	Equivalente Web
+Auth (login/register)	(auth)/login.tsx, (auth)/register.tsx	AuthPage.tsx
+Seleção/criação de carreira	career-select.tsx, career-create.tsx (591L)	CareerSelection.tsx, CreateCareerWizard.tsx
+Dashboard (Painel)	(tabs)/index.tsx (602L)	Dashboard.tsx aba "painel" + PainelView.tsx
+Notícias (feed + gerar/rumor/welcome/leak)	(tabs)/news.tsx (759L)	NoticiasView.tsx (2455L)
+Elenco básico (campo, lista, saídas)	(tabs)/squad.tsx (1621L)	ElencoView.tsx (1690L)
+Lista de partidas	(tabs)/matches.tsx (324L)	PartidasView.tsx
+Registrar partida (6 passos)	registrar-partida.tsx (1313L)	RegistrarPartidaModal.tsx (2883L)
+Detalhe de partida	match-detail.tsx (597L)	MatchDetailPage.tsx (1386L)
+Diretoria (chat + reuniões)	diretoria.tsx (1377L)	DiretoriaView.tsx (2285L)
+Transferências	transfers.tsx (851L)	TransferenciasView.tsx (2256L)
+Financeiro	financeiro.tsx (505L)	FinanceiroView.tsx (461L)
+Lesões	injuries.tsx (480L)	LesoesView.tsx (432L)
+Momentos (com foto)	momentos.tsx (819L)	MomentosView.tsx (1152L)
+Rivais	rivais.tsx (569L)	RivaisView.tsx (360L)
+Sequências	sequencias.tsx (416L)	SequenciasView.tsx
+Troféus	trophies.tsx (565L)	TrophyCabinetView.tsx (431L)
+Competições (resultados)	competicoes.tsx (1020L)	CompetitionResultsView.tsx (1227L)
+Estatísticas do elenco	estatisticas.tsx (445L)	ClubStatsView.tsx (732L) + PlayerStatsTable.tsx
+Nova temporada (wizard)	nova-temporada.tsx (587L)	NewSeasonWizard.tsx (442L)
+Configurações + portais customizados	configuracoes.tsx (931L)	SettingsPage.tsx (1912L)
+Missões (widget)	app/components/MissionsCard.tsx	MissionWidget.tsx
+Push notifications	services/notifications.ts + users/push-token	(não tem na web)
+🔴 GAPS — O que falta no mobile
+🔥 GAP 1 — COMUNIDADE (Task #27 inteira ausente no mobile)
+A web acabou de ganhar Comunidade completa, mobile não tem nada disso:
+
+Web	Mobile	Status
+ComunidadeView.tsx (4 sub-abas: Para Você, Descobrir, Top Semana, Atividade)	—	❌ MISSING
+CommunityPostCard.tsx (post + reactions + repost + comentários)	—	❌ MISSING
+CommentsModal.tsx + FanCommentsList.tsx	—	❌ MISSING
+PublicProfileView.tsx (perfil público de carreira)	—	❌ MISSING
+UsernameModal.tsx (forçar username no 1º acesso)	—	❌ MISSING
+commentAvatar.ts (geração de avatar de torcedor)	—	❌ MISSING
+Hooks de auto-publicar (final de temporada, partida grande, transferência bombástica)	—	❌ MISSING
+Toggle "publicar" por notícia em NoticiasView	news.tsx não tem	❌ MISSING
+Configurações de comunidade (toggle público, bio, clube favorito)	configuracoes.tsx não tem	❌ MISSING
+API endpoints: community/feed, discover, top-week, profile/:careerId, posts, comments, reactions, repost, blocks, reports, username, quota, notifications, activity, preview (16 endpoints)	lib/api.ts não expõe nenhum	❌ MISSING
+Notificações de comunidade (badge no header)	—	❌ MISSING
+🟠 GAP 2 — Páginas/views ausentes
+Web	Mobile	Impacto
+LandingPage.tsx (1894L — landing pública com preview comunidade, ticker, carrossel)	só tem welcome.tsx (220L) básico	Médio (pode ficar só na web)
+SeasonSummaryView.tsx (462L — resumo final da temporada com troféus, MOTM, KPIs)	—	Alto — falta a tela "Resumo" pós-finalização
+ClubeView.tsx (441L — perfil/identidade do clube + escudo + cores)	—	Médio
+RecordesView.tsx (333L — recordes do clube/jogadores)	—	Alto — recurso pedido por usuários
+ReelsModal.tsx + CareerRevealReel.tsx (415L — animação de revelação de carreira)	—	Baixo (visual/UX)
+PlayerDetailPanel.tsx (813L) + PlayerProfileModal.tsx (1158L) — perfil completo do jogador com edições, override, foto crop, contexto	squad.tsx tem versão simplificada	Alto
+ImageCropModal.tsx (recorte de fotos antes do upload)	usa picker nativo sem crop	Médio
+NewsTicker.tsx (manchete rolando no topo)	—	Baixo
+NotificationPopup.tsx + NotificationToast.tsx (in-app)	só push	Médio
+UpgradePrompt.tsx (paywall Pro/Ultra)	—	Alto — bloqueia monetização
+TeamPreview.tsx / ClubDemoMockup.tsx (preview de clube na criação)	—	Baixo
+DefineObjectivesModal.tsx + SeasonObjectivesCard.tsx	—	Médio
+FinalizeSeasonModal.tsx	nova-temporada.tsx faz parcial	Médio
+SeasonSelectModal.tsx	tem inline em (tabs)/index.tsx ✅	OK
+SectionHelp.tsx / InitialContextBanner.tsx / CuriosityTeaser.tsx (onboarding contextual)	—	Baixo
+OnboardingEntry.tsx / WelcomeScreen.tsx (fluxo guiado)	tem welcome.tsx reduzido	Médio
+🟠 GAP 3 — Bibliotecas/lógica de negócio (storage layer)
+A web tem 30+ módulos lib/ que processam regras. Mobile só tem 6:
+
+Web lib/*	Função	Mobile
+autoNewsService.ts + autoNewsEngine.ts + autoNewsStorage.ts + autoNewsPreference.ts	Geração automática de notícias por evento	❌
+playerPerformanceEngine.ts	Calcula moral/forma/cansaço de jogadores	❌
+recordsCalculator.ts	Calcula recordes do clube (maior goleada, sequência, etc)	❌
+themeManager.ts	Aplica tema dinâmico (mobile tem ClubThemeContext ✅)	parcial ✅
+boardMoodStorage.ts	Humor da diretoria (gatilhos automáticos)	❌
+fanMoodStorage.ts	Humor da torcida (afeta moral)	❌
+transferWindowStorage.ts	Janela de transferências aberta/fechada	❌
+seasonObjectivesStorage.ts	Metas da temporada definidas pela diretoria	❌
+seasonSummaryStorage.ts	Persistência do resumo de temporada	❌
+missionStorage.ts	Missões dinâmicas (XP, recompensas)	parcial (só widget)
+criaStorage.ts	Crias da base/categorias inferiores	❌
+competitionResultStorage.ts	Resultados consolidados por torneio	❌
+playerStatsStorage.ts	Stats agregadas além do season_data	parcial
+unreadStorage.ts	Marcação de não-lidos (notícias, diretoria)	❌
+customPortalStorage.ts	Portais customizados	✅ via API
+portalPhotosStorage.ts	Fotos por portal	❌
+openaiKeyStorage.ts	Chave OpenAI BYOK p/ imagens	❌ (UI ausente)
+careerAggregateStats.ts	Stats de toda a carreira	❌
+commentAvatar.ts	Avatar de torcedor	❌
+clubPresidents.ts	Banco de presidentes (diretoria)	❌
+basePlayerSeed.ts / basePromotionNews.ts	Seeds para promoções de base	❌
+leagueStorage.ts + lineupStorage.ts	Tabela do campeonato + escalação	parcial
+imageCache.ts / clubListCache.ts / squadCache.ts	Caches de performance	parcial (TanStack)
+i18n.ts	Internacionalização PT/EN	❌ — mobile só PT
+🟠 GAP 4 — Endpoints de API não consumidos pelo mobile
+Backend tem, mobile ignora:
+
+Endpoint	Função
+community/* (16 rotas)	Comunidade inteira
+careers/parse-ongoing-context	IA parser de carreira em andamento
+careers/:id/export	Exportar carreira (backup)
+bug-reports	Relatar bug
+notifications/pending + notifications/:id/read	Notificações in-app
+stripe/checkout + stripe/portal + stripe/checkout-register + stripe/products-with-plan + stripe/subscription	Upgrade Pro/Ultra
+referrals/my-link	Programa de indicação
+storage/uploads/video	Upload de vídeo (momentos)
+noticias/ai-usage	Quota de IA do usuário
+diretoria/check-triggers + meeting-round + suggest-transfer	Diretoria avançada (gatilhos automáticos, sugestões)
+generate-projeto	IA gera o projeto da carreira
+club-info	Enriquecimento de info do clube
+seasons/:id/label + seasons/:id/activate	Renomear/ativar temporada
+community/notifications/seen + summary	Badge de comunidade
+auth/from-checkout + auth/demo	Conta demo / pós-checkout
+🟠 GAP 5 — Funções específicas dentro de telas que existem
+Telas existem mas com escopo reduzido vs a web:
+
+Mobile	O que falta vs web
+(tabs)/squad.tsx	Edição completa de jogador (override de nome/foto/posição/salário/overall), foto com crop, contexto/aliases, perfil completo do jogador com histórico, promoção da base
+diretoria.tsx	Gatilhos automáticos (check-triggers), meeting-round (rodada de reuniões), suggest-transfer, persistência do humor, presidentes pré-definidos
+(tabs)/news.tsx	Toggle publicar na comunidade, AI usage display, geração de imagem com BYOK key, ticker de manchetes, portais com foto
+transfers.tsx	Janela de transferências (abre/fecha), sugestão da diretoria, contratos com renovação
+configuracoes.tsx	Username, bio, clube favorito, toggle público (Comunidade), Stripe upgrade, referral, exportar carreira, BYOK OpenAI, idioma EN
+(tabs)/perfil.tsx (276L)	Plano badge, indicação, gerenciar assinatura, exportar dados, link p/ perfil público
+nova-temporada.tsx	Resumo da temporada anterior (SeasonSummaryView), definir objetivos, salvar troféus na vitrine
+registrar-partida.tsx	MOTM auto-sugerido, cálculo automático de moral, gatilhos de notícia/diretoria/comunidade pós-partida, snapshot de jogadores
+🟠 GAP 6 — Infra/UX
+i18n — web tem PT/EN via i18n.ts, mobile é hardcoded em PT
+Crop de imagem — web tem ImageCropModal (cropperjs), mobile usa picker direto
+Som de notificação — notificationSound.ts na web, mobile só haptic
+Offline cache real — mobile tem useOfflineCache.ts esqueleto, mas não está plumbed
+Bug report UI — web tem (provavelmente em SettingsPage), mobile não
+Deep linking — universal links pra perfil de comunidade, post compartilhado
+Painel admin — mobile não acessa (e nem precisa, ok)
+🗺️ Roadmap proposto (priorizado)
+Fase 1 — Comunidade no mobile (parity gap mais crítica)
+Estender lib/api.ts com 16 endpoints community.* + tipos
+app/(tabs)/comunidade.tsx com 4 sub-abas (substituir uma aba ou adicionar 6ª)
+Componentes: CommunityPostCard, CommentsModal, UsernameModal, commentAvatar
+app/perfil-publico/[careerId].tsx (PublicProfileView)
+Toggle "publicar" em news.tsx + auto-publish hooks (final temporada, partida bomba, transfer)
+Settings: username, bio, toggle público, clube favorito
+Badge de notificações no header
+Fase 2 — Telas faltantes essenciais
+app/resumo-temporada.tsx (SeasonSummaryView)
+app/recordes.tsx (RecordesView + recordsCalculator.ts portado)
+app/clube.tsx (ClubeView — identidade, cores, escudo)
+PlayerProfileModal completo (override nome/foto/overall/salário com crop)
+Fase 3 — Lógica de negócio
+Portar playerPerformanceEngine, boardMoodStorage, fanMoodStorage, transferWindowStorage, seasonObjectivesStorage
+autoNewsService + autoNewsEngine (gatilhos automáticos)
+Diretoria avançada: check-triggers, meeting-round, suggest-transfer
+Missões completas + careerAggregateStats
+Fase 4 — Monetização & i18n
+Stripe checkout/portal/upgrade prompts (Pro/Ultra)
+Programa de indicação
+i18n PT/EN com expo-localization + i18n-js
+AI usage display + BYOK OpenAI key
+Bug report screen
+Notificações in-app (popup/toast) + sons
+Fase 5 — Polimento
+Crop de imagem (expo-image-manipulator)
+Deep linking (perfil público, post compartilhado)
+Career export/backup
+CareerRevealReel / Reels animados
+Onboarding contextual (SectionHelp, CuriosityTeaser, InitialContextBanner)
+📊 Resumo numérico
+Categoria	Web	Mobile	Cobertura
+Componentes/Views	38	24 telas + 1 componente	~55%
+Endpoints API consumidos	~100	35	35%
+Módulos lib (regra de negócio)	30	6	20%
+Comunidade	100%	0%	🔴
+Stripe/Monetização	100%	0%	🔴
+i18n EN	100%	0%	🔴
+Recordes/Resumo Temporada/Clube views	100%	0%	🔴
+Gameplay core (partida/elenco/diretoria/notícias)	100%	~70%	🟡
