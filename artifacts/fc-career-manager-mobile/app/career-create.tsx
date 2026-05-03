@@ -15,6 +15,7 @@ import { api, type Club, getApiUrl, TOKEN_KEY } from '@/lib/api';
 import { getClubColors } from '@/lib/clubColors';
 import { Colors } from '@/constants/colors';
 import * as SecureStore from 'expo-secure-store';
+import { CareerRevealReel } from '@/components/CareerRevealReel';
 
 type Step = 'club' | 'coach' | 'season';
 
@@ -67,6 +68,14 @@ export default function CareerCreateScreen() {
   const [seasonLabel, setSeasonLabel] = useState('Temporada 1');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [revealData, setRevealData] = useState<null | {
+    clubName: string;
+    clubLogo?: string | null;
+    coachName: string;
+    coachPhoto?: string | null;
+    season: string;
+    accent: string;
+  }>(null);
 
   const [debouncedSearch, setDebouncedSearch] = useState('');
 
@@ -187,13 +196,26 @@ export default function CareerCreateScreen() {
       await loadSeasons(id);
 
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-      router.replace('/(tabs)');
+      setRevealData({
+        clubName: selectedClub.name,
+        clubLogo: selectedClub.logo,
+        coachName: coachName.trim(),
+        coachPhoto: coachPhotoUrl ?? coachPhotoUri,
+        season: seasonLabel.trim(),
+        accent: clubColors.primary || Colors.primary,
+      });
+      setSaving(false);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro ao criar carreira';
       setError(msg);
       setSaving(false);
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
     }
+  };
+
+  const handleRevealClose = () => {
+    setRevealData(null);
+    router.replace('/(tabs)');
   };
 
   const topPad = Platform.OS === 'web' ? 67 : insets.top;
@@ -421,6 +443,19 @@ export default function CareerCreateScreen() {
           </TouchableOpacity>
         </ScrollView>
       )}
+
+      {revealData ? (
+        <CareerRevealReel
+          visible
+          onClose={handleRevealClose}
+          clubName={revealData.clubName}
+          clubLogoUrl={revealData.clubLogo}
+          coachName={revealData.coachName}
+          coachPhotoUrl={revealData.coachPhoto}
+          seasonLabel={revealData.season}
+          accent={revealData.accent}
+        />
+      ) : null}
     </View>
   );
 }

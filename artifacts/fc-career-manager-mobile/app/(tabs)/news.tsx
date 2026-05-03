@@ -18,6 +18,7 @@ import { router } from 'expo-router';
 import { getLang, useT } from '@/lib/i18n';
 import { UpgradePrompt } from '@/components/UpgradePrompt';
 import { useToast } from '@/components/Toast';
+import { NewsTicker } from '@/components/NewsTicker';
 
 const TYPE_CONFIG: Record<string, { icon: string; color: string; labelKey: string }> = {
   vitoria:      { icon: '🏆', color: Colors.success,          labelKey: 'news.type.vitoria' },
@@ -591,6 +592,17 @@ export default function NewsScreen() {
           </TouchableOpacity>
         )}
       </View>
+
+      {news.length > 0 ? (
+        <NewsTicker
+          accent={theme.primary}
+          items={news.slice(0, 8).map((n) => ({ id: n.id, title: n.headline, source: n.source }))}
+          onPressItem={(id) => {
+            const item = news.find((n) => n.id === id);
+            if (item) handlePress(item);
+          }}
+        />
+      ) : null}
 
       {aiUsage && aiUsage.aiUsageLimit > 0 && aiUsage.aiUsageLimit < 9999 ? (
         <View style={styles.aiUsageCard}>

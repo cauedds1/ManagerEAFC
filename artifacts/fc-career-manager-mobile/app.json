@@ -14,14 +14,31 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.fccareer.manager"
+      "bundleIdentifier": "com.fccareer.manager",
+      "associatedDomains": ["applinks:fccareer.app", "applinks:www.fccareer.app"]
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#0B0714"
       },
-      "package": "com.fccareer.manager"
+      "package": "com.fccareer.manager",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            { "scheme": "https", "host": "fccareer.app" },
+            { "scheme": "https", "host": "www.fccareer.app" }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        },
+        {
+          "action": "VIEW",
+          "data": [{ "scheme": "fccareer" }],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
     },
     "web": {
       "bundler": "metro",

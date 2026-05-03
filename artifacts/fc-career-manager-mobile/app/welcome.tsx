@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, Animated, Platform,
+  View, Text, StyleSheet, TouchableOpacity, Animated, Platform, ScrollView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -10,6 +10,7 @@ import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/colors';
+import { useT } from '@/lib/i18n';
 
 export const WELCOME_SEEN_KEY = 'fc_welcome_seen';
 
@@ -17,16 +18,10 @@ export function getWelcomeSeenKey(userId?: string | number): string {
   return userId != null ? `fc_welcome_seen_${userId}` : WELCOME_SEEN_KEY;
 }
 
-const FEATURES = [
-  { icon: 'football-outline' as const, label: 'Partidas', desc: 'Registre resultados e estatísticas', color: Colors.primary },
-  { icon: 'people-outline' as const, label: 'Elenco', desc: 'Gerencie seus jogadores', color: Colors.success },
-  { icon: 'trophy-outline' as const, label: 'Troféus', desc: 'Conquistas e histórico', color: '#f59e0b' },
-  { icon: 'stats-chart-outline' as const, label: 'Estatísticas', desc: 'Análise completa da temporada', color: Colors.info },
-];
-
 export default function WelcomeScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
+  const t = useT();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(32)).current;
 
@@ -35,94 +30,110 @@ export default function WelcomeScreen() {
       Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }),
       Animated.spring(slideAnim, { toValue: 0, useNativeDriver: true, damping: 20, stiffness: 100 }),
     ]).start();
-  }, []);
+  }, [fadeAnim, slideAnim]);
+
+  const persistSeen = async () => {
+    try {
+      const key = getWelcomeSeenKey(user?.id);
+      if (Platform.OS === 'web') localStorage.setItem(key, '1');
+      else await SecureStore.setItemAsync(key, '1');
+    } catch {}
+  };
 
   const handleStart = async () => {
     if (Platform.OS !== 'web') {
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     }
-    try {
-      const key = getWelcomeSeenKey(user?.id);
-      if (Platform.OS === 'web') {
-        localStorage.setItem(key, '1');
-      } else {
-        await SecureStore.setItemAsync(key, '1');
-      }
-    } catch {}
+    await persistSeen();
     router.replace('/career-select');
   };
 
-  const firstName = user?.name?.split(' ')[0] ?? 'Treinador';
+  const handleLogin = async () => {
+    await persistSeen();
+    router.replace('/(auth)');
+  };
+
+  const firstName = user?.name?.split(' ')[0] ?? t('landing.coachFallback');
+
+  const FEATURES: Array<{ icon: keyof typeof Ionicons.glyphMap; titleKey: string; descKey: string; color: string }> = [
+    { icon: 'sparkles-outline',     titleKey: 'landing.feature.ai.title',       descKey: 'landing.feature.ai.desc',       color: Colors.primary },
+    { icon: 'newspaper-outline',    titleKey: 'landing.feature.news.title',     descKey: 'landing.feature.news.desc',     color: Colors.info },
+    { icon: 'people-outline',       titleKey: 'landing.feature.community.title',descKey: 'landing.feature.community.desc',color: Colors.success },
+    { icon: 'trophy-outline',       titleKey: 'landing.feature.trophies.title', descKey: 'landing.feature.trophies.desc', color: '#f59e0b' },
+  ];
+
+  const STEPS: Array<{ titleKey: string; descKey: string }> = [
+    { titleKey: 'landing.step1.title', descKey: 'landing.step1.desc' },
+    { titleKey: 'landing.step2.title', descKey: 'landing.step2.desc' },
+    { titleKey: 'landing.step3.title', descKey: 'landing.step3.desc' },
+  ];
 
   return (
     <LinearGradient
-      colors={[`rgba(139, 92, 246, 0.18)`, `rgba(139, 92, 246, 0.04)`, Colors.background]}
-      style={[styles.container, { paddingTop: insets.top + 32, paddingBottom: insets.bottom + 24 }]}
+      colors={['rgba(139, 92, 246, 0.18)', 'rgba(139, 92, 246, 0.04)', Colors.background]}
+      style={[styles.container, { paddingTop: insets.top + 24 }]}
     >
-      <Animated.View style={[styles.inner, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-        <View style={styles.heroSection}>
-          <View style={styles.logoWrap}>
-            <Ionicons name="football" size={48} color={Colors.primary} />
+      <Animated.View style={[{ flex: 1 }, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+        <ScrollView
+          contentContainerStyle={[styles.inner, { paddingBottom: insets.bottom + 24 }]}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.heroSection}>
+            <View style={styles.logoWrap}>
+              <Ionicons name="football" size={44} color={Colors.primary} />
+            </View>
+            <Text style={styles.kicker}>{t('landing.kicker')}</Text>
+            <Text style={styles.title}>{t('landing.title')}</Text>
+            <Text style={styles.heroName}>{firstName}</Text>
+            <Text style={styles.subtitle}>{t('landing.subtitle')}</Text>
           </View>
-          <Text style={styles.title}>Bem-vindo,</Text>
-          <Text style={styles.name}>{firstName}!</Text>
-          <Text style={styles.subtitle}>
-            Gerencie sua carreira no FC Career Manager.{'\n'}Acompanhe cada detalhe da sua jornada.
-          </Text>
-        </View>
 
-        <View style={styles.featuresGrid}>
-          {FEATURES.map((f) => (
-            <View key={f.label} style={[styles.featureCard, { borderColor: `${f.color}25` }]}>
-              <View style={[styles.featureIcon, { backgroundColor: `${f.color}18` }]}>
-                <Ionicons name={f.icon} size={22} color={f.color} />
+          <View style={styles.featuresGrid}>
+            {FEATURES.map((f) => (
+              <View key={f.titleKey} style={[styles.featureCard, { borderColor: `${f.color}25` }]}>
+                <View style={[styles.featureIcon, { backgroundColor: `${f.color}18` }]}>
+                  <Ionicons name={f.icon} size={20} color={f.color} />
+                </View>
+                <Text style={styles.featureLabel}>{t(f.titleKey)}</Text>
+                <Text style={styles.featureDesc}>{t(f.descKey)}</Text>
               </View>
-              <Text style={styles.featureLabel}>{f.label}</Text>
-              <Text style={styles.featureDesc}>{f.desc}</Text>
+            ))}
+          </View>
+
+          <View style={styles.stepsSection}>
+            <Text style={styles.sectionLabel}>{t('landing.howItWorks')}</Text>
+            {STEPS.map((s, i) => (
+              <View key={s.titleKey} style={styles.stepRow}>
+                <View style={styles.stepNumWrap}>
+                  <Text style={styles.stepNum}>{i + 1}</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.stepTitle}>{t(s.titleKey)}</Text>
+                  <Text style={styles.stepDesc}>{t(s.descKey)}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+
+          <View style={styles.communityCard}>
+            <View style={[styles.liveDot, { backgroundColor: Colors.success }]} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.communityTitle}>{t('landing.community.title')}</Text>
+              <Text style={styles.communitySub}>{t('landing.community.sub')}</Text>
             </View>
-          ))}
-        </View>
+          </View>
 
-        {(() => {
-          const plan = user?.plan ?? 'free';
-          const planConfig: Record<string, { icon: 'star-outline' | 'star' | 'diamond'; color: string; label: string; hint: string }> = {
-            free: {
-              icon: 'star-outline',
-              color: Colors.mutedForeground,
-              label: 'Gratuito',
-              hint: 'Upgrade para Pro ou Ultra para recursos avançados de IA e análise.',
-            },
-            pro: {
-              icon: 'star',
-              color: Colors.primary,
-              label: 'Pro',
-              hint: 'Você tem acesso à Diretoria IA, análises avançadas e múltiplas temporadas.',
-            },
-            ultra: {
-              icon: 'diamond',
-              color: '#f59e0b',
-              label: 'Ultra',
-              hint: 'Você tem acesso completo a todos os recursos premium do app.',
-            },
-          };
-          const cfg = planConfig[plan] ?? planConfig.free;
-          return (
-            <View style={[styles.planBanner, { backgroundColor: `${cfg.color}10`, borderColor: `${cfg.color}30` }]}>
-              <View style={[styles.planIconWrap, { backgroundColor: `${cfg.color}18` }]}>
-                <Ionicons name={cfg.icon} size={18} color={cfg.color} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.planBadgeLabel, { color: cfg.color }]}>Plano {cfg.label}</Text>
-                <Text style={styles.planBannerText}>{cfg.hint}</Text>
-              </View>
-            </View>
-          );
-        })()}
+          <TouchableOpacity style={styles.startBtn} onPress={handleStart} activeOpacity={0.85}>
+            <Text style={styles.startBtnText}>{t('landing.cta.start')}</Text>
+            <Ionicons name="arrow-forward" size={18} color="#fff" />
+          </TouchableOpacity>
 
-        <TouchableOpacity style={styles.startBtn} onPress={handleStart} activeOpacity={0.85}>
-          <Text style={styles.startBtnText}>Começar</Text>
-          <Ionicons name="arrow-forward" size={18} color="#fff" />
-        </TouchableOpacity>
+          {!user ? (
+            <TouchableOpacity style={styles.loginBtn} onPress={handleLogin} activeOpacity={0.7}>
+              <Text style={styles.loginBtnText}>{t('landing.cta.login')}</Text>
+            </TouchableOpacity>
+          ) : null}
+        </ScrollView>
       </Animated.View>
     </LinearGradient>
   );
@@ -130,91 +141,86 @@ export default function WelcomeScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  inner: { flex: 1, paddingHorizontal: 24, justifyContent: 'space-between' },
-  heroSection: { alignItems: 'center', gap: 8, marginBottom: 8 },
+  inner: { paddingHorizontal: 20, gap: 18 },
+  heroSection: { alignItems: 'center', gap: 6, marginTop: 4 },
   logoWrap: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
+    width: 72, height: 72, borderRadius: 36,
     backgroundColor: 'rgba(139, 92, 246, 0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
+    alignItems: 'center', justifyContent: 'center',
+    marginBottom: 6,
     borderWidth: 2,
     borderColor: 'rgba(139, 92, 246, 0.3)',
   },
-  title: { fontSize: 28, fontWeight: '700' as const, color: Colors.foreground, fontFamily: 'Inter_700Bold' },
-  name: { fontSize: 32, fontWeight: '700' as const, color: Colors.primary, fontFamily: 'Inter_700Bold', marginTop: -4 },
+  kicker: {
+    color: Colors.primary, fontSize: 11, fontWeight: '800' as const,
+    letterSpacing: 1.6, textTransform: 'uppercase',
+    fontFamily: 'Inter_700Bold',
+  },
+  title: {
+    fontSize: 26, fontWeight: '700' as const, color: Colors.foreground,
+    fontFamily: 'Inter_700Bold', textAlign: 'center',
+  },
+  heroName: {
+    fontSize: 30, fontWeight: '700' as const, color: Colors.primary,
+    fontFamily: 'Inter_700Bold', marginTop: -4,
+  },
   subtitle: {
-    fontSize: 15,
-    color: Colors.mutedForeground,
+    fontSize: 14, color: Colors.mutedForeground,
     fontFamily: 'Inter_400Regular',
-    textAlign: 'center',
-    lineHeight: 22,
-    marginTop: 8,
+    textAlign: 'center', lineHeight: 21, marginTop: 6,
+    paddingHorizontal: 8,
   },
   featuresGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-    marginVertical: 16,
+    flexDirection: 'row', flexWrap: 'wrap', gap: 10,
   },
   featureCard: {
-    flex: 1,
-    minWidth: '45%',
-    backgroundColor: Colors.card,
-    borderRadius: Colors.radius,
-    borderWidth: 1,
-    padding: 14,
-    gap: 6,
+    flex: 1, minWidth: '45%',
+    backgroundColor: Colors.card, borderRadius: Colors.radius,
+    borderWidth: 1, padding: 12, gap: 5,
   },
   featureIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 36, height: 36, borderRadius: 9,
+    alignItems: 'center', justifyContent: 'center',
   },
-  featureLabel: { fontSize: 14, fontWeight: '600' as const, color: Colors.foreground, fontFamily: 'Inter_600SemiBold' },
-  featureDesc: { fontSize: 12, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular', lineHeight: 16 },
-  planBanner: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10,
+  featureLabel: { fontSize: 13, fontWeight: '600' as const, color: Colors.foreground, fontFamily: 'Inter_600SemiBold' },
+  featureDesc: { fontSize: 11, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular', lineHeight: 15 },
+  stepsSection: {
+    backgroundColor: Colors.card,
     borderRadius: Colors.radius,
-    borderWidth: 1,
-    padding: 12,
-    marginBottom: 8,
+    borderWidth: 1, borderColor: Colors.border,
+    padding: 14, gap: 12,
   },
-  planIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
+  sectionLabel: {
+    fontSize: 10, fontWeight: '800' as const,
+    color: Colors.mutedForeground, letterSpacing: 1.2,
+    textTransform: 'uppercase', fontFamily: 'Inter_700Bold',
   },
-  planBadgeLabel: {
-    fontSize: 13,
-    fontWeight: '600' as const,
-    fontFamily: 'Inter_600SemiBold',
-    marginBottom: 2,
+  stepRow: { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
+  stepNumWrap: {
+    width: 26, height: 26, borderRadius: 13,
+    backgroundColor: `${Colors.primary}22`,
+    borderWidth: 1, borderColor: `${Colors.primary}55`,
+    alignItems: 'center', justifyContent: 'center',
   },
-  planBannerText: {
-    fontSize: 12,
-    color: Colors.mutedForeground,
-    fontFamily: 'Inter_400Regular',
-    lineHeight: 17,
+  stepNum: { color: Colors.primary, fontSize: 12, fontWeight: '700' as const, fontFamily: 'Inter_700Bold' },
+  stepTitle: { color: Colors.foreground, fontSize: 13, fontWeight: '600' as const, fontFamily: 'Inter_600SemiBold' },
+  stepDesc: { color: Colors.mutedForeground, fontSize: 12, lineHeight: 17, fontFamily: 'Inter_400Regular' },
+  communityCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: 'rgba(34,197,94,0.08)',
+    borderWidth: 1, borderColor: 'rgba(34,197,94,0.25)',
+    borderRadius: Colors.radius, padding: 12,
   },
+  liveDot: { width: 8, height: 8, borderRadius: 4 },
+  communityTitle: { color: Colors.foreground, fontSize: 13, fontWeight: '600' as const, fontFamily: 'Inter_600SemiBold' },
+  communitySub: { color: Colors.mutedForeground, fontSize: 11, fontFamily: 'Inter_400Regular', marginTop: 2 },
   startBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: Colors.primary,
-    borderRadius: Colors.radius,
-    paddingVertical: 16,
-    marginTop: 8,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 8, backgroundColor: Colors.primary,
+    borderRadius: Colors.radius, paddingVertical: 16,
+    marginTop: 4,
   },
-  startBtnText: { color: '#fff', fontSize: 17, fontWeight: '600' as const, fontFamily: 'Inter_600SemiBold' },
+  startBtnText: { color: '#fff', fontSize: 16, fontWeight: '600' as const, fontFamily: 'Inter_600SemiBold' },
+  loginBtn: { alignItems: 'center', paddingVertical: 10 },
+  loginBtnText: { color: Colors.mutedForeground, fontSize: 13, fontFamily: 'Inter_500Medium' },
 });
