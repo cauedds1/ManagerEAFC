@@ -136,7 +136,14 @@ async function backfillMissingPhotos(rows: DbRow[]): Promise<DbRow[]> {
   return rows.map((r) => {
     if (r.photo) return r;
     const donor = photoByKey.get(nameKey(r.name));
-    return donor ? { ...r, photo: donor } : r;
+    if (donor) return { ...r, photo: donor };
+    // Fallback: synthesize the api-football CDN URL from the player id.
+    // Safe only when the row was actually sourced from api-football (msmc may
+    // use unrelated ids that would 404 against the football CDN).
+    if (r.playerId > 0 && (r.source ?? "").startsWith("api-football")) {
+      return { ...r, photo: `https://media.api-sports.io/football/players/${r.playerId}.png` };
+    }
+    return r;
   });
 }
 
