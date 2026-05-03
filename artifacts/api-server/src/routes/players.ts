@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, squadPlayersTable, clubsTable } from "@workspace/db";
-import { eq, ilike, inArray, sql, gt } from "drizzle-orm";
+import { eq, ilike, inArray, sql, gt, and, or, ne } from "drizzle-orm";
 import { mapPosition } from "../lib/positions";
 
 const router = Router();
@@ -94,6 +94,52 @@ function formatResponse(rows: DbRow[]) {
   }));
 }
 
+// Photo backfill: if a chosen row has empty photo, look across the whole DB
+// for any row with the same nameKey that DOES have a photo (typically an
+// api-football@v2 record stored under a different teamId or abbreviated name)
+// and copy the photo over. Handles the common case where the api-football
+// squad for the player's club wasn't auto-discovered during the search.
+async function backfillMissingPhotos(rows: DbRow[]): Promise<DbRow[]> {
+  const missing = rows.filter((r) => !r.photo);
+  if (missing.length === 0) return rows;
+
+  // Collect unique last-name tokens (accent-stripped) to seed a broad ILIKE OR.
+  const lastNames = new Set<string>();
+  for (const r of missing) {
+    const norm = r.name
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase().replace(/\./g, "").trim();
+    const parts = norm.split(/\s+/).filter(Boolean);
+    const last = parts[parts.length - 1];
+    if (last && last.length >= 3) lastNames.add(last);
+  }
+  if (lastNames.size === 0) return rows;
+
+  const conditions = [...lastNames].map((ln) =>
+    ilike(squadPlayersTable.name, `%${ln}%`),
+  );
+  const candidates = await db
+    .select({ name: squadPlayersTable.name, photo: squadPlayersTable.photo })
+    .from(squadPlayersTable)
+    .where(and(or(...conditions), ne(squadPlayersTable.photo, "")))
+    .limit(500);
+
+  if (candidates.length === 0) return rows;
+
+  // Index donor photos by nameKey, keeping the first non-empty seen.
+  const photoByKey = new Map<string, string>();
+  for (const c of candidates) {
+    const k = nameKey(c.name);
+    if (c.photo && !photoByKey.has(k)) photoByKey.set(k, c.photo);
+  }
+
+  return rows.map((r) => {
+    if (r.photo) return r;
+    const donor = photoByKey.get(nameKey(r.name));
+    return donor ? { ...r, photo: donor } : r;
+  });
+}
+
 router.get("/players/search", async (req, res) => {
   const q = String(req.query.q ?? "").trim();
   const apiKey = process.env.API_FOOTBALL_KEY ?? "";
@@ -111,7 +157,8 @@ router.get("/players/search", async (req, res) => {
 
     const dedupedRows = deduplicateByName(dbRows);
     if (dedupedRows.length >= 5) {
-      return res.json({ players: dedupedRows.slice(0, 12).map((r) => ({
+      const filled = await backfillMissingPhotos(dedupedRows);
+      return res.json({ players: filled.slice(0, 12).map((r) => ({
         id: r.playerId, name: r.name, photo: r.photo, age: r.age, position: r.positionPtBr, teamId: r.teamId,
       })) });
     }
@@ -296,7 +343,10 @@ router.get("/players/search", async (req, res) => {
       }
     }
 
-    return res.json({ players: formatResponse(merged) });
+    const finalRows = await backfillMissingPhotos(deduplicateByName(merged));
+    return res.json({ players: finalRows.slice(0, 12).map((r) => ({
+      id: r.playerId, name: r.name, photo: r.photo, age: r.age, position: r.positionPtBr, teamId: r.teamId,
+    })) });
   } catch (err) {
     console.error("GET /players/search error:", err);
     return res.status(500).json({ error: "Internal server error" });
