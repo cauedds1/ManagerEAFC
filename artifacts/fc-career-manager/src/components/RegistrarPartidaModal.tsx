@@ -1545,6 +1545,11 @@ export function RegistrarPartidaModal({
     });
   }, [allPlayers, insertSortedByPosition]);
 
+  // Players with an active injury this season — never offered as bench/sub
+  // candidates and never auto-filled onto the pitch. Declared early so all
+  // hooks below (handleAutoFill, benchPlayers, picker pools) can reference it.
+  const injuredIds = useMemo(() => getActiveInjuredIds(seasonId), [seasonId]);
+
   const handleAutoFill = useCallback(() => {
     // Auto Fill must never put injured players on the pitch.
     const healthyPool = playersWithOverrides.filter((p) => !injuredIds.has(p.id));
@@ -1742,11 +1747,6 @@ export function RegistrarPartidaModal({
   );
 
   const usedIds = useMemo(() => new Set([...draft.starterIds, ...draft.subIds]), [draft.starterIds, draft.subIds]);
-
-  // Players with an active injury this season — never offered as bench/sub
-  // candidates. Recomputed when the injuries map changes (we re-read on each
-  // render of the modal, which is fine since it's only opened occasionally).
-  const injuredIds = useMemo(() => getActiveInjuredIds(seasonId), [seasonId]);
 
   const benchPlayers = useMemo(() => {
     const starterSet = new Set(pitchSlots.filter((id): id is number => id != null && id > 0));
