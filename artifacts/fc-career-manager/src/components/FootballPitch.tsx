@@ -248,7 +248,7 @@ function EmptySlotCircle({
 
 interface FootballPitchProps {
   players: SquadPlayer[];
-  starterIds?: number[];
+  starterIds?: (number | null)[];
   loading?: boolean;
   className?: string;
   style?: React.CSSProperties;
@@ -280,7 +280,7 @@ export function FootballPitch({
 
   const pitchData: (PitchPlayerData | null)[] = positions.map((_, i) => {
     const id = orderedIds[i];
-    if (id == null) return null;
+    if (id == null || id <= 0) return null;
     const p = players.find((pl) => pl.id === id);
     if (!p) return null;
     return {

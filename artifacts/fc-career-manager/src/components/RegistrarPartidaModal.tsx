@@ -2445,7 +2445,7 @@ export function RegistrarPartidaModal({
                   <div className="relative h-full flex-shrink-0">
                     <FootballPitch
                       players={allPlayers}
-                      starterIds={pitchSlots.map((id) => id ?? 0)}
+                      starterIds={pitchSlots}
                       formation={pitchFormation}
                       ratings={Object.fromEntries(
                         Object.entries(draft.playerStats)
