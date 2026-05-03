@@ -11,10 +11,13 @@ import { CAREER_SEL } from "@/lib/i18n";
 import { LangToggle } from "@/components/LangToggle";
 import { getAllCareersAgg } from "@/lib/careerAggregateStats";
 import { getSeasons } from "@/lib/seasonStorage";
+import { getPreviewPosts } from "@/lib/community";
+import type { CommunityPost, ReactionType } from "@/types/community";
+import { REACTION_EMOJI } from "@/types/community";
 
 interface CareerSelectionProps {
   careers: Career[];
-  onSelectCareer: (career: Career) => void;
+  onSelectCareer: (career: Career, initialTab?: "comunidade") => void;
   onCreateNew: () => void;
   onCareersChange: (careers: Career[]) => void;
   onLogout?: () => void;
@@ -388,6 +391,82 @@ function NewCareerCard({ onClick, index, label }: { onClick: () => void; index: 
   );
 }
 
+function CommunityPreviewPanel({ lang, onAccess }: { lang: "pt" | "en"; onAccess: () => void }) {
+  const [posts, setPosts] = useState<CommunityPost[] | null>(null);
+  useEffect(() => { getPreviewPosts().then((p) => setPosts(p ?? [])).catch(() => setPosts([])); }, []);
+
+  const t = lang === "en"
+    ? { title: "Community", live: "LIVE", sub: "What other coaches are sharing right now", access: "Open Community", empty: "Be the first to share something with the community.", noUserYet: "No public posts yet — be the first." }
+    : { title: "Comunidade", live: "AO VIVO", sub: "O que outros treinadores estão compartilhando agora", access: "Acessar Comunidade", empty: "Seja o primeiro a compartilhar algo com a comunidade.", noUserYet: "Ainda não há publicações — seja o primeiro." };
+
+  return (
+    <div className="rounded-2xl p-5 sm:p-6 mt-4 sm:mt-6 flex flex-col gap-4"
+      style={{ background: "linear-gradient(180deg, rgba(124,92,252,0.06), rgba(255,255,255,0.02))", border: "1px solid rgba(124,92,252,0.18)" }}>
+
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "#7c5cfc", boxShadow: "0 0 12px #7c5cfc" }} />
+            <span className="text-[10px] font-bold tracking-widest uppercase" style={{ color: "#a78bfa" }}>{t.live}</span>
+          </div>
+          <h3 className="text-white font-black text-lg sm:text-xl leading-tight">{t.title}</h3>
+          <p className="text-white/45 text-xs sm:text-sm mt-0.5">{t.sub}</p>
+        </div>
+        <button onClick={onAccess}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-white text-sm transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] flex-shrink-0"
+          style={{ background: "linear-gradient(135deg,#8b5cf6,#6366f1)", boxShadow: "0 4px 18px rgba(124,92,252,0.35)" }}>
+          {t.access}
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+          </svg>
+        </button>
+      </div>
+
+      {posts === null ? (
+        <div className="text-white/35 text-xs py-4">…</div>
+      ) : posts.length === 0 ? (
+        <div className="text-white/40 text-sm py-4">{t.empty}</div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+          {posts.slice(0, 6).map((p) => {
+            const accent = p.clubPrimary ?? "#7c5cfc";
+            const teamLogo = p.clubLogo || (p.clubId > 0 ? `https://media.api-sports.io/football/teams/${p.clubId}.png` : "");
+            const totalReactions = Object.values(p.reactions ?? {}).reduce((a, b) => a + b, 0);
+            const topReaction = Object.entries(p.reactions ?? {}).sort((a, b) => b[1] - a[1])[0]?.[0] as ReactionType | undefined;
+            return (
+              <button key={p.id} onClick={onAccess}
+                className="text-left rounded-xl p-3 flex flex-col gap-2 hover:opacity-95 transition cursor-pointer"
+                style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)", borderLeft: `3px solid ${accent}` }}>
+                <div className="flex items-center gap-2 min-w-0">
+                  {teamLogo && <img src={teamLogo} alt="" className="w-8 h-8 rounded-full object-contain flex-shrink-0" style={{ background: "rgba(255,255,255,0.04)" }} />}
+                  <div className="min-w-0 flex-1">
+                    <div className="text-white font-bold text-xs truncate">{p.coachName || "—"}</div>
+                    <div className="text-white/40 text-[10px] truncate">@{p.username ?? "anon"} · {p.clubName}</div>
+                  </div>
+                </div>
+                {p.content.title && (
+                  <div className="text-white/90 text-xs font-semibold leading-snug line-clamp-2">{String(p.content.title)}</div>
+                )}
+                {p.content.content && (
+                  <div className="text-white/55 text-[11px] leading-relaxed line-clamp-2">{String(p.content.content)}</div>
+                )}
+                {(totalReactions > 0 || p.commentsCount > 0) && (
+                  <div className="flex items-center gap-3 text-[10px] text-white/40 mt-auto pt-1.5 border-t border-white/5">
+                    {totalReactions > 0 && (
+                      <span className="flex items-center gap-1">{topReaction ? REACTION_EMOJI[topReaction] : "👍"}<span className="tabular-nums">{totalReactions}</span></span>
+                    )}
+                    {p.commentsCount > 0 && <span className="flex items-center gap-1">💬<span className="tabular-nums">{p.commentsCount}</span></span>}
+                  </div>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function CareerSelection({ careers, onSelectCareer, onCreateNew, onCareersChange, onLogout, onUpgrade, userPlan }: CareerSelectionProps) {
   const [lang, setLang] = useLang();
   const t = CAREER_SEL[lang];
@@ -644,19 +723,22 @@ export function CareerSelection({ careers, onSelectCareer, onCreateNew, onCareer
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 xl:gap-4 auto-rows-max">
-            {localCareers.map((career, i) => (
-              <CareerCard
-                key={career.id}
-                career={career}
-                onSelect={() => onSelectCareer(career)}
-                onRequestDelete={() => setPendingDeleteCareer(career)}
-                index={i}
-                t={t}
-              />
-            ))}
-            {!atCareerLimit && <NewCareerCard onClick={onCreateNew} index={localCareers.length} label={t.newCareer} />}
-          </div>
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 xl:gap-4 auto-rows-max">
+              {localCareers.map((career, i) => (
+                <CareerCard
+                  key={career.id}
+                  career={career}
+                  onSelect={() => onSelectCareer(career)}
+                  onRequestDelete={() => setPendingDeleteCareer(career)}
+                  index={i}
+                  t={t}
+                />
+              ))}
+              {!atCareerLimit && <NewCareerCard onClick={onCreateNew} index={localCareers.length} label={t.newCareer} />}
+            </div>
+            <CommunityPreviewPanel lang={lang} onAccess={() => onSelectCareer(localCareers[0], "comunidade")} />
+          </>
         )}
       </div>
     </div>

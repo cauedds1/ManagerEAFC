@@ -780,7 +780,9 @@ export default function App() {
     });
   }, [startFetching, resolveViewAfterClubs]);
 
-  const enterCareer = useCallback(async (career: Career) => {
+  const [pendingInitialTab, setPendingInitialTab] = useState<"comunidade" | undefined>(undefined);
+  const enterCareer = useCallback(async (career: Career, initialTab?: "comunidade") => {
+    setPendingInitialTab(initialTab);
     setActiveCareer(career);
     const colors = await resolveTheme({
       name: career.clubName,
@@ -950,7 +952,7 @@ export default function App() {
           onChangeClub={isDemo ? () => {} : handleChangeClub}
           onReloadClubs={handleReloadClubs}
           onDeleteCareer={isDemo ? undefined : handleGoToCareers}
-          initialTab={demoInitialTab as Parameters<typeof Dashboard>[0]["initialTab"] ?? undefined}
+          initialTab={(pendingInitialTab ?? demoInitialTab) as Parameters<typeof Dashboard>[0]["initialTab"] ?? undefined}
           isDemo={isDemo}
         />
       );
