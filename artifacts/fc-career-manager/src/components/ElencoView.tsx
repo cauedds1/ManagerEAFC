@@ -22,6 +22,7 @@ import {
   generateCustomPlayerId,
 } from "@/lib/customPlayersStorage";
 import { FootballPitch, pickBestEleven } from "./FootballPitch";
+import { getInjuries, daysBetween, type InjuryRecord } from "@/lib/injuryStorage";
 import { PlayerDetailPanel } from "./PlayerDetailPanel";
 import {
   getCustomLineup,
@@ -148,6 +149,9 @@ function PlayerRow({
   onClick,
   dimmed,
   ageYears,
+  injured,
+  injuryTooltip,
+  injuredLabel,
 }: {
   player: SquadPlayer;
   overrides: Record<number, PlayerOverride>;
@@ -155,6 +159,9 @@ function PlayerRow({
   onClick: (player: SquadPlayer) => void;
   dimmed?: boolean;
   ageYears: string;
+  injured?: boolean;
+  injuryTooltip?: string;
+  injuredLabel?: string;
 }) {
   const ov = overrides[player.id];
   const displayName = ov?.nameOverride ?? player.name;
@@ -164,28 +171,57 @@ function PlayerRow({
   const displayPhoto = ov?.photoOverride ?? player.photo;
   const pos = POS_STYLE[displayPos] ?? POS_STYLE.MID;
 
+  const tooltip = injured ? injuryTooltip : undefined;
   return (
     <button
       onClick={() => onClick(player)}
+      title={tooltip}
       className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl transition-all duration-200 text-left${selected ? " pulse-swap" : ""}`}
       style={{
         background: selected
           ? "rgba(var(--club-primary-rgb),0.14)"
+          : injured
+          ? "rgba(239,68,68,0.06)"
           : "rgba(255,255,255,0.04)",
         border: selected
           ? "1px solid rgba(var(--club-primary-rgb),0.35)"
+          : injured
+          ? "1px solid rgba(239,68,68,0.25)"
           : "1px solid rgba(255,255,255,0.06)",
         cursor: "pointer",
-        opacity: dimmed ? 0.4 : 1,
-        filter: dimmed ? "grayscale(0.5)" : undefined,
+        opacity: dimmed ? 0.4 : injured ? 0.65 : 1,
+        filter: dimmed ? "grayscale(0.5)" : injured ? "grayscale(0.4)" : undefined,
       }}
     >
-      <PlayerPhoto src={displayPhoto} name={displayName} />
+      <div className="relative flex-shrink-0">
+        <PlayerPhoto src={displayPhoto} name={displayName} />
+        {injured && (
+          <span
+            className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-black leading-none"
+            style={{ background: "#ef4444", color: "white", boxShadow: "0 0 0 1.5px #1a1030" }}
+            aria-hidden
+          >
+            +
+          </span>
+        )}
+      </div>
       <div className="flex-1 min-w-0">
         <p className="text-white text-sm font-semibold leading-tight truncate">{displayName}</p>
-        <p className="text-white/30 text-xs mt-0.5">{player.age > 0 ? `${player.age} ${ageYears}` : ""}</p>
+        <p className="text-white/30 text-xs mt-0.5 truncate">
+          {player.age > 0 ? `${player.age} ${ageYears}` : ""}
+          {injured && injuryTooltip ? `${player.age > 0 ? " · " : ""}${injuryTooltip}` : ""}
+        </p>
       </div>
       <div className="flex items-center gap-2 flex-shrink-0">
+        {injured && (
+          <span
+            className="text-[10px] font-bold px-1.5 py-0.5 rounded-md flex items-center gap-1"
+            style={{ background: "rgba(239,68,68,0.18)", color: "#f87171" }}
+          >
+            <span aria-hidden>🤕</span>
+            <span className="hidden sm:inline">{injuredLabel ?? "Lesionado"}</span>
+          </span>
+        )}
         {displayOverall != null && (
           <OvrBadge ovr={displayOverall} />
         )}
@@ -476,6 +512,40 @@ export function ElencoView({
 
     return list.sort((a, b) => b.date - a.date);
   }, [transfers, formerPlayers, hiddenSet, customPlayers, seasonId, careerId]);
+
+  const [injuries, setInjuries] = useState<InjuryRecord[]>(
+    () => (seasonId ? getInjuries(seasonId) : []),
+  );
+  useEffect(() => {
+    setInjuries(seasonId ? getInjuries(seasonId) : []);
+    if (!seasonId) return;
+    const handler = () => setInjuries(getInjuries(seasonId));
+    window.addEventListener("focus", handler);
+    return () => window.removeEventListener("focus", handler);
+  }, [seasonId]);
+
+  const injuryInfoMap = useMemo(() => {
+    const map = new Map<number, { tooltip: string; days: number; name: string }>();
+    const today = new Date().toISOString().slice(0, 10);
+    for (const r of injuries) {
+      if (r.releasedAt) continue;
+      const days = daysBetween(r.matchDate, today);
+      const dayWord = days === 1 ? t.daySingular : t.dayPlural;
+      const base = `${days} ${dayWord} ${t.awayFromGame}`;
+      const tooltip = r.injuryName ? `${r.injuryName} · ${base}` : base;
+      map.set(r.playerId, { tooltip, days, name: r.injuryName });
+    }
+    return map;
+  }, [injuries, t]);
+
+  const injuredIds = useMemo(() => new Set(injuryInfoMap.keys()), [injuryInfoMap]);
+  const injuryTooltips = useMemo(() => {
+    const m = new Map<number, string>();
+    for (const [id, info] of injuryInfoMap) {
+      m.set(id, `${t.injuredBadge} · ${info.tooltip}`);
+    }
+    return m;
+  }, [injuryInfoMap, t]);
 
   const loanedOutOrSoldIds = useMemo(() => new Set(
     (transfers ?? [])
@@ -1068,6 +1138,8 @@ export function ElencoView({
                     onPlayerClick={handlePlayerClick}
                     formation={formation}
                     dimmedPlayerIds={finalizedLeftIds}
+                    injuredPlayerIds={injuredIds}
+                    injuryTooltips={injuryTooltips}
                   />
                 </div>
                 <div className="flex-1 min-w-0 w-full">
@@ -1085,6 +1157,9 @@ export function ElencoView({
                             onClick={handlePlayerClick}
                             dimmed={finalizedLeftIds?.has(player.id)}
                             ageYears={t.ageYears}
+                            injured={injuredIds.has(player.id)}
+                            injuryTooltip={injuryInfoMap.get(player.id)?.tooltip}
+                            injuredLabel={t.injuredBadge}
                           />
                         ))}
                       </div>
@@ -1225,6 +1300,8 @@ export function ElencoView({
                 onPlayerClick={handlePlayerClick}
                 highlightedPlayerId={pendingSwap?.id}
                 formation={formation}
+                injuredPlayerIds={injuredIds}
+                injuryTooltips={injuryTooltips}
                 onEmptySlotClick={(i) => { setPendingSwap(null); setPendingSlot(i); }}
                 pendingSlotIndex={pendingSlot}
               />
@@ -1250,6 +1327,9 @@ export function ElencoView({
                         selected={pendingSwap?.id === player.id}
                         onClick={handlePlayerClick}
                         ageYears={t.ageYears}
+                        injured={injuredIds.has(player.id)}
+                        injuryTooltip={injuryInfoMap.get(player.id)?.tooltip}
+                        injuredLabel={t.injuredBadge}
                       />
                     ))}
                   </div>
@@ -1268,6 +1348,9 @@ export function ElencoView({
                           selected={pendingSwap?.id === player.id}
                           onClick={handlePlayerClick}
                           ageYears={t.ageYears}
+                          injured={injuredIds.has(player.id)}
+                          injuryTooltip={injuryInfoMap.get(player.id)?.tooltip}
+                          injuredLabel={t.injuredBadge}
                         />
                       ))
                     )}
@@ -1364,6 +1447,9 @@ export function ElencoView({
                     selected={pendingSwap?.id === player.id}
                     onClick={handlePlayerClick}
                     ageYears={t.ageYears}
+                    injured={injuredIds.has(player.id)}
+                    injuryTooltip={injuryInfoMap.get(player.id)?.tooltip}
+                    injuredLabel={t.injuredBadge}
                   />
                 ))}
               </div>
@@ -1382,6 +1468,9 @@ export function ElencoView({
                       selected={pendingSwap?.id === player.id}
                       onClick={handlePlayerClick}
                       ageYears={t.ageYears}
+                      injured={injuredIds.has(player.id)}
+                      injuryTooltip={injuryInfoMap.get(player.id)?.tooltip}
+                      injuredLabel={t.injuredBadge}
                     />
                   ))}
                 </div>

@@ -96,7 +96,7 @@ export function pickBestElevenIds(players: { id: number; positionPtBr: PositionP
 }
 
 function PlayerCircle({
-  x, y, player, onClick, highlighted, dimmed,
+  x, y, player, onClick, highlighted, dimmed, injured, injuryTooltip,
 }: {
   x: number;
   y: number;
@@ -104,6 +104,8 @@ function PlayerCircle({
   onClick?: (player: PitchPlayerData) => void;
   highlighted?: boolean;
   dimmed?: boolean;
+  injured?: boolean;
+  injuryTooltip?: string;
 }) {
   const [lang] = useLang();
   const rating = player.rating ?? 0;
@@ -125,8 +127,13 @@ function PlayerCircle({
   return (
     <g
       onClick={onClick ? () => onClick(player) : undefined}
-      style={{ cursor: onClick ? "pointer" : "default", opacity: dimmed ? 0.38 : 1, filter: dimmed ? "grayscale(0.6)" : undefined }}
+      style={{
+        cursor: onClick ? "pointer" : "default",
+        opacity: dimmed ? 0.38 : injured ? 0.55 : 1,
+        filter: dimmed ? "grayscale(0.6)" : injured ? "grayscale(0.4)" : undefined,
+      }}
     >
+      {injuryTooltip && <title>{injuryTooltip}</title>}
       <defs>
         <clipPath id={clipId}>
           <circle cx={x} cy={y} r={radius - 1} />
@@ -194,6 +201,13 @@ function PlayerCircle({
       <text x={x} y={y + radius + 11} textAnchor="middle" dominantBaseline="middle" fill="white" opacity={0.85} fontSize={8} fontWeight="500" fontFamily="Inter, sans-serif">
         {displayName.length > 11 ? displayName.slice(0, 10) + "." : displayName}
       </text>
+      {injured && (
+        <g style={{ pointerEvents: "none" }}>
+          <circle cx={x + radius - 3} cy={y - radius + 3} r={6.5} fill="#ef4444" stroke="white" strokeWidth={1.2} />
+          <rect x={x + radius - 4.5} y={y - radius + 1.7} width={3} height={2.6} fill="white" />
+          <rect x={x + radius - 4.5} y={y - radius + 1.7} width={3} height={2.6} fill="white" transform={`rotate(90 ${x + radius - 3} ${y - radius + 3})`} />
+        </g>
+      )}
     </g>
   );
 }
@@ -257,6 +271,8 @@ interface FootballPitchProps {
   formation?: FormationKey;
   ratings?: Record<number, number>;
   dimmedPlayerIds?: Set<number>;
+  injuredPlayerIds?: Set<number>;
+  injuryTooltips?: Map<number, string>;
   onEmptySlotClick?: (slotIndex: number) => void;
   pendingSlotIndex?: number | null;
 }
@@ -272,6 +288,8 @@ export function FootballPitch({
   formation = DEFAULT_FORMATION,
   ratings,
   dimmedPlayerIds,
+  injuredPlayerIds,
+  injuryTooltips,
   onEmptySlotClick,
   pendingSlotIndex,
 }: FootballPitchProps) {
@@ -371,6 +389,8 @@ export function FootballPitch({
                 onClick={handlePlayerClick}
                 highlighted={highlightedPlayerId === player.id}
                 dimmed={dimmedPlayerIds?.has(player.id)}
+                injured={injuredPlayerIds?.has(player.id)}
+                injuryTooltip={injuryTooltips?.get(player.id)}
               />
             );
           })}
