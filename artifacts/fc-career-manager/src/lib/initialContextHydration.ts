@@ -449,8 +449,9 @@ export async function hydrateInitialContext(
       if (p.id > 0) addHiddenPlayerId(career.id, p.id);
     }
     if (comprasMatched.length > 0) {
-      // Drop orphan custom players from prior v1/v2 hydration: synthetic by
-      // any default marker AND name matches a transfersIn entry.
+      // Drop orphan custom players from prior v1/v2 hydration: must be fully
+      // synthetic (empty photo AND age 25 AND MID) AND name matches a
+      // transfersIn entry. Manual user edits with any real attribute survive.
       const tInNames = tIn.map((e) => e?.name?.trim() ?? "").filter(Boolean);
       const existingCustom = getCustomPlayers(career.id);
       const cleanedCustom = existingCustom.filter((p) => {
