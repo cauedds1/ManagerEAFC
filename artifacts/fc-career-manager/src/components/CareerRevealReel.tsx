@@ -93,6 +93,7 @@ export function CareerRevealReel({ context, club, onComplete, onSkip }: Props) {
   const [sceneIdx, setSceneIdx] = useState(0);
   const [muted, setMuted] = useState(false);
   const [squad, setSquad] = useState<SquadPlayer[]>([]);
+  const [squadLoaded, setSquadLoaded] = useState(false);
   const [extraPhotos, setExtraPhotos] = useState<Record<string, string>>({});
   const requestedNamesRef = useRef<Set<string>>(new Set());
   const sfxRef = useRef(new SfxPlayer());
@@ -103,9 +104,12 @@ export function CareerRevealReel({ context, club, onComplete, onSkip }: Props) {
   useEffect(() => { sfxRef.current.setMuted(muted); }, [muted]);
 
   useEffect(() => {
-    if (!club || club.id <= 0) return;
+    if (!club || club.id <= 0) { setSquadLoaded(true); return; }
     let cancelled = false;
-    fetchSquadFromBackend(club.id).then((r) => { if (!cancelled && r) setSquad(r.players); }).catch(() => {});
+    fetchSquadFromBackend(club.id)
+      .then((r) => { if (!cancelled && r) setSquad(r.players); })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setSquadLoaded(true); });
     return () => { cancelled = true; };
   }, [club]);
 
@@ -144,6 +148,7 @@ export function CareerRevealReel({ context, club, onComplete, onSkip }: Props) {
   }, [context.keyPlayers, squad]);
 
   useEffect(() => {
+    if (!squadLoaded) return;
     const requested = requestedNamesRef.current;
     const missing = Array.from(new Set(
       matchedPlayers
@@ -179,7 +184,7 @@ export function CareerRevealReel({ context, club, onComplete, onSkip }: Props) {
       });
     })();
     return () => { controller.abort(); };
-  }, [matchedPlayers, extraPhotos]);
+  }, [matchedPlayers, extraPhotos, squadLoaded]);
 
   const elapsed = Date.now() - startRef.current;
   const progress = Math.min(100, (elapsed / TOTAL_MS) * 100);
