@@ -1,4 +1,5 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { hydrateLocalCache } from '@/lib/localCache';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -90,13 +91,18 @@ export default function RootLayout() {
     Inter_700Bold,
   });
 
+  const [cacheReady, setCacheReady] = useState(false);
   useEffect(() => {
-    if (fontsLoaded || fontError) {
+    void hydrateLocalCache().finally(() => setCacheReady(true));
+  }, []);
+
+  useEffect(() => {
+    if ((fontsLoaded || fontError) && cacheReady) {
       SplashScreen.hideAsync();
     }
-  }, [fontsLoaded, fontError]);
+  }, [fontsLoaded, fontError, cacheReady]);
 
-  if (!fontsLoaded && !fontError) return null;
+  if ((!fontsLoaded && !fontError) || !cacheReady) return null;
 
   return (
     <GestureHandlerRootView style={styles.root}>

@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { useCareer } from '@/contexts/CareerContext';
+import { applyMatchToEngines } from '@/lib/applyMatchToEngines';
 import { useClubTheme } from '@/contexts/ClubThemeContext';
 import { api, type MatchLocation, type MatchRecord, type PlayerMatchStats, type SquadPlayer } from '@/lib/api';
 import { Colors } from '@/constants/colors';
@@ -552,8 +553,25 @@ export default function RegistrarPartidaScreen() {
         createdAt: Date.now(),
       };
 
-      await api.seasonData.set(activeSeason.id, 'matches', [...existingMatches, newMatch]);
+      const allMatchesAfter = [...existingMatches, newMatch];
+      await api.seasonData.set(activeSeason.id, 'matches', allMatchesAfter);
       if (draftKey) await AsyncStorage.removeItem(draftKey).catch(() => {});
+
+      try {
+        await applyMatchToEngines({
+          careerId: activeCareer.id,
+          seasonId: activeSeason.id,
+          match: newMatch,
+          allMatches: allMatchesAfter,
+          rivals: (seasonData?.data?.rivals ?? careerDataResp?.data?.rivals) as string[] | undefined,
+          league: activeCareer.clubLeague,
+          squad: squadPlayers.map((p) => ({ id: p.id, name: p.name })),
+          seasonPayload: (seasonData?.data ?? null) as Record<string, unknown> | null,
+        });
+      } catch (engineErr) {
+        console.warn('[registrar-partida] applyMatchToEngines failed:', engineErr);
+      }
+
       return newMatch;
     },
     onSuccess: () => {
