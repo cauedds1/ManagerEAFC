@@ -56,7 +56,7 @@ function getFlagCode(nat: string): string | null {
   return code ? code.toLowerCase() : null;
 }
 
-function FlagImg({ nat, size = 20 }: { nat: string; size?: number }) {
+export function FlagImg({ nat, size = 20 }: { nat: string; size?: number }) {
   const [broken, setBroken] = React.useState(false);
   const code = getFlagCode(nat);
   if (!code || broken) {

@@ -19,6 +19,7 @@ import { setPlayerOverride } from "@/lib/playerStatsStorage";
 import { addCriaId } from "@/lib/criaStorage";
 import { emitPromotionNews } from "@/lib/basePromotionNews";
 import { useLang } from "@/hooks/useLang";
+import { FlagImg } from "@/components/PlayerProfileModal";
 import { BASE as BASE_I18N } from "@/lib/i18n";
 
 interface BaseViewProps {
@@ -248,8 +249,13 @@ export function BaseView({ careerId, seasonId, seasonLabel, clubName, onPromoted
                     </span>
                   )}
                 </div>
-                <p className="text-white/40 text-[11px] mt-0.5 truncate">
-                  {p.age} {t.yrs} · {p.nationality} · OVR {p.overall}
+                <p className="text-white/40 text-[11px] mt-0.5 truncate flex items-center gap-1.5">
+                  <span>{p.age} {t.yrs}</span>
+                  <span>·</span>
+                  <FlagImg nat={p.nationality} size={12} />
+                  <span>{p.nationality}</span>
+                  <span>·</span>
+                  <span>OVR {p.overall}</span>
                 </p>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
