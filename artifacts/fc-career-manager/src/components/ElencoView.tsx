@@ -693,9 +693,9 @@ export function ElencoView({
     : [];
   const starterIds: number[] = customLineup ?? defaultStarterIds;
   // 0 is used as a "reserved empty slot" placeholder — filter it out for the player lists
-  const starterSet = new Set(starterIds.filter((id) => id > 0));
+  const starterSet = new Set(starterIds.filter((id) => id !== 0));
   const starters = starterIds
-    .map((id) => (id > 0 ? playersWithOverrides.find((p) => p.id === id) : null))
+    .map((id) => (id !== 0 ? playersWithOverrides.find((p) => p.id === id) : null))
     .filter((p): p is SquadPlayer => p != null);
 
   const rawBench = playersWithOverrides.filter((p) => !starterSet.has(p.id));
@@ -715,7 +715,7 @@ export function ElencoView({
   const squadAvgOvr = useMemo(() => {
     const ovrs = mergedPlayers
       .map((p) => overrides[p.id]?.overall)
-      .filter((o): o is number => o != null && o > 0);
+      .filter((o): o is number => o != null && o !== 0);
     if (ovrs.length === 0) return null;
     return Math.round(ovrs.reduce((a, b) => a + b, 0) / ovrs.length);
   }, [mergedPlayers, overrides]);
