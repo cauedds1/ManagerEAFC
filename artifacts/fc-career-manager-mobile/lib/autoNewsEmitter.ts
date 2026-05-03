@@ -9,6 +9,7 @@
 
 import { api, type NewsItem, type MatchRecord } from '@/lib/api';
 import { wasEventHandled, markEventHandled } from '@/lib/autoNewsStorage';
+import { getAutoNewsEnabled } from '@/lib/autoNewsPreference';
 
 function genId(): string {
   return `news_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
@@ -25,7 +26,9 @@ export async function emitMatchMilestoneNews(
   match: MatchRecord,
   allMatches: MatchRecord[],
   clubName: string,
+  careerId?: string,
 ): Promise<void> {
+  if (careerId && !getAutoNewsEnabled(careerId)) return;
   const diff = match.myScore - match.opponentScore;
 
   if (Math.abs(diff) >= 4) {
@@ -81,6 +84,7 @@ export async function emitPromotionNews(
   player: { firstName: string; lastName: string; age: number; overall: number; potentialMax: number; nationality: string; position: 'GOL' | 'DEF' | 'MID' | 'ATA' },
   clubName: string,
 ): Promise<void> {
+  if (!getAutoNewsEnabled(careerId)) return;
   const fullName = `${player.firstName} ${player.lastName}`.trim();
   const tier = player.potentialMax >= 88 ? 'elite' : player.potentialMax >= 75 ? 'promissor' : 'modesto';
   const posPt: Record<string, string> = { GOL: 'goleiro', DEF: 'zagueiro', MID: 'meio-campista', ATA: 'atacante' };

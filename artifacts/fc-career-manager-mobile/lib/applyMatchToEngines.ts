@@ -216,6 +216,6 @@ export async function applyMatchToEngines(opts: ApplyMatchOptions): Promise<void
   }
 
   if (clubName) {
-    await emitMatchMilestoneNews(seasonId, match, allMatches, clubName);
+    await emitMatchMilestoneNews(seasonId, match, allMatches, clubName, careerId);
   }
 }
