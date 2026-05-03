@@ -2,6 +2,8 @@ import { useState } from "react";
 import type { CommunityPost, ReactionType } from "@/types/community";
 import { REACTION_EMOJI } from "@/types/community";
 import { addReaction, removeReaction, repost as doRepost, unrepost, reportContent, blockUser, unpublishPost } from "@/lib/community";
+import { FanCommentsList } from "./FanCommentsList";
+import type { NewsComment } from "@/types/noticias";
 
 interface Props {
   post: CommunityPost;
@@ -142,6 +144,16 @@ export function CommunityPostCard({ post, lang, viewerUserId, compact, onOpenCom
       )}
       {post.content.imageUrl && !compact && (
         <img src={post.content.imageUrl} alt="" className="w-full max-h-96 rounded-xl object-cover" />
+      )}
+
+      {/* Fan comments preview (AI-generated, imported from career news) */}
+      {!compact && Array.isArray((post.content as { comments?: unknown }).comments) && (
+        <FanCommentsList
+          comments={(post.content as { comments: NewsComment[] }).comments}
+          lang={lang}
+          limit={2}
+          onShowAll={() => onOpenComments?.(post)}
+        />
       )}
 
       {/* Reactions strip */}

@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import type { CommunityPost, CommunityComment } from "@/types/community";
 import { getComments, addComment, deleteComment, updateComment, reportContent } from "@/lib/community";
+import { FanCommentsList } from "./FanCommentsList";
+import type { NewsComment } from "@/types/noticias";
 
 interface Props {
   post: CommunityPost;
@@ -10,8 +12,8 @@ interface Props {
 }
 
 const T = {
-  pt: { title: "Comentários", placeholder: "Comentar como...", send: "Enviar", pin: "Fixar", unpin: "Desafixar", delete: "Excluir", report: "Denunciar", reasonPrompt: "Motivo:", confirmDelete: "Excluir comentário?", empty: "Seja o primeiro a comentar." },
-  en: { title: "Comments", placeholder: "Comment as...", send: "Send", pin: "Pin", unpin: "Unpin", delete: "Delete", report: "Report", reasonPrompt: "Reason:", confirmDelete: "Delete comment?", empty: "Be the first to comment." },
+  pt: { title: "Comentários", placeholder: "Comentar como...", send: "Enviar", pin: "Fixar", unpin: "Desafixar", delete: "Excluir", report: "Denunciar", reasonPrompt: "Motivo:", confirmDelete: "Excluir comentário?", empty: "Seja o primeiro a comentar.", community: "Comunidade" },
+  en: { title: "Comments", placeholder: "Comment as...", send: "Send", pin: "Pin", unpin: "Unpin", delete: "Delete", report: "Report", reasonPrompt: "Reason:", confirmDelete: "Delete comment?", empty: "Be the first to comment.", community: "Community" },
 };
 
 export function CommentsModal({ post, lang, viewerUserId, onClose }: Props) {
@@ -36,6 +38,9 @@ export function CommentsModal({ post, lang, viewerUserId, onClose }: Props) {
   };
 
   const isPostOwner = viewerUserId === post.userId;
+  const fanComments = Array.isArray((post.content as { comments?: unknown }).comments)
+    ? ((post.content as { comments: NewsComment[] }).comments)
+    : [];
 
   return (
     <div className="fixed inset-0 z-[300] flex items-end sm:items-center justify-center" style={{ background: "rgba(0,0,0,0.85)", backdropFilter: "blur(10px)" }} onClick={onClose}>
@@ -47,6 +52,12 @@ export function CommentsModal({ post, lang, viewerUserId, onClose }: Props) {
           <button onClick={onClose} className="text-white/50 hover:text-white text-xl">×</button>
         </div>
         <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
+          {fanComments.length > 0 && (
+            <FanCommentsList comments={fanComments} lang={lang} />
+          )}
+          {fanComments.length > 0 && (
+            <div className="text-[11px] font-bold uppercase tracking-wider text-white/40 pt-3 border-t border-white/5">{t.community}</div>
+          )}
           {loading ? (
             <div className="text-white/40 text-sm text-center py-8">…</div>
           ) : comments.length === 0 ? (
