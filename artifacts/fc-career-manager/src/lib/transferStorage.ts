@@ -31,28 +31,31 @@ export async function saveTransfersAsync(seasonId: string, list: TransferRecord[
   await putSeasonData(seasonId, "transfers", list);
 }
 
-export function addTransfer(seasonId: string, transfer: TransferRecord): void {
-  const list = [...getTransfers(seasonId), transfer];
-  saveTransfers(seasonId, list);
-  // Selo de Cria do Clube é permanente — sobrevive a venda/recontratação
-  // mesmo quando um novo playerId é gerado para o jogador que retorna.
+export function maybeEmitReturningCriaForTransfer(seasonId: string, transfer: TransferRecord): void {
   try {
-    if (transfer.type === "compra" && transfer.careerId && typeof transfer.playerId === "number") {
-      let isReturningCria = isCria(transfer.careerId, transfer.playerId);
-      if (!isReturningCria) {
-        const original = findCriaByName(transfer.careerId, transfer.playerName);
-        if (original) {
-          relinkCriaToNewPlayerId(transfer.careerId, original, transfer.playerId);
-          isReturningCria = true;
-        }
+    if (transfer.type !== "compra" || !transfer.careerId || typeof transfer.playerId !== "number") return;
+    let isReturningCria = isCria(transfer.careerId, transfer.playerId);
+    if (!isReturningCria) {
+      const original = findCriaByName(transfer.careerId, transfer.playerName);
+      if (original) {
+        relinkCriaToNewPlayerId(transfer.careerId, original, transfer.playerId);
+        isReturningCria = true;
       }
-      if (isReturningCria) {
-        const club = getActiveCareer(transfer.careerId)?.clubName ?? "";
-        emitReturningCriaNews(seasonId, transfer.careerId, transfer.playerName, club, readLang());
-      }
+    }
+    if (isReturningCria) {
+      const club = getActiveCareer(transfer.careerId)?.clubName ?? "";
+      emitReturningCriaNews(seasonId, transfer.careerId, transfer.playerName, club, readLang());
     }
   } catch (err) {
     console.error("[transfers] returning-cria news failed", err);
+  }
+}
+
+export function addTransfer(seasonId: string, transfer: TransferRecord): void {
+  const list = [...getTransfers(seasonId), transfer];
+  saveTransfers(seasonId, list);
+  if (!transfer.windowPending) {
+    maybeEmitReturningCriaForTransfer(seasonId, transfer);
   }
 }
 

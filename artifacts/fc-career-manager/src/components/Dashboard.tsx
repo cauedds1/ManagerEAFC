@@ -16,7 +16,7 @@ import {
   migratePositionOverride,
 } from "@/lib/squadCache";
 import { getAllPlayerOverrides, setPlayerOverride, deletePlayerStats, deletePlayerOverride } from "@/lib/playerStatsStorage";
-import { getTransfers, addTransfer, updateTransfer, removeTransfer, saveTransfers } from "@/lib/transferStorage";
+import { getTransfers, addTransfer, updateTransfer, removeTransfer, saveTransfers, maybeEmitReturningCriaForTransfer } from "@/lib/transferStorage";
 import { getTransferWindow, saveTransferWindow, type TransferWindowState } from "@/lib/transferWindowStorage";
 import { getRivals } from "@/lib/rivalsStorage";
 import { fetchPortals } from "@/lib/customPortalStorage";
@@ -1239,8 +1239,12 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
           (t) => t.windowPending && (t.type === "compra" || !t.type || (t.type === "emprestimo" && t.loanDirection === "entrada"))
         ).length;
         setWindowActivatedCount(incomingCount);
+        const justActivated = prev.filter((t) => t.windowPending);
         const activated = prev.map((t) => t.windowPending ? { ...t, windowPending: false } : t);
         saveTransfers(activeSeasonId, activated);
+        for (const t of justActivated) {
+          maybeEmitReturningCriaForTransfer(activeSeasonId, { ...t, windowPending: false });
+        }
         return activated;
       });
     }
