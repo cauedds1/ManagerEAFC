@@ -254,9 +254,33 @@ export function BaseView({ careerId, seasonId, seasonLabel, clubName, onPromoted
                   <span>·</span>
                   <FlagImg nat={p.nationality} size={12} />
                   <span>{p.nationality}</span>
-                  <span>·</span>
-                  <span>OVR {p.overall}</span>
                 </p>
+                <div className="mt-1 flex items-center gap-2">
+                  <span className="text-[10px] font-bold text-white/60 leading-none w-12">OVR {p.overall}</span>
+                  <div
+                    className="flex-1 h-1.5 rounded-full overflow-hidden relative"
+                    style={{ background: "rgba(255,255,255,0.08)" }}
+                    title={`OVR ${p.overall} / Pot ${p.potentialMin}-${p.potentialMax}`}
+                  >
+                    <div
+                      className="absolute inset-y-0 left-0 rounded-full"
+                      style={{
+                        width: `${Math.min(100, Math.max(0, (p.potentialMax / 99) * 100))}%`,
+                        background: "rgba(234,179,8,0.35)",
+                      }}
+                    />
+                    <div
+                      className="absolute inset-y-0 left-0 rounded-full"
+                      style={{
+                        width: `${Math.min(100, Math.max(0, (p.overall / 99) * 100))}%`,
+                        background: "var(--club-gradient)",
+                      }}
+                    />
+                  </div>
+                  <span className="text-[10px] font-bold text-yellow-400/80 leading-none w-10 text-right">
+                    {p.potentialMax}
+                  </span>
+                </div>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
                 <PotentialBadge min={p.potentialMin} max={p.potentialMax} />
