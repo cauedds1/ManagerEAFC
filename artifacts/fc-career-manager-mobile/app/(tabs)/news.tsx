@@ -19,15 +19,15 @@ import { getLang, useT } from '@/lib/i18n';
 import { UpgradePrompt } from '@/components/UpgradePrompt';
 import { useToast } from '@/components/Toast';
 
-const TYPE_CONFIG: Record<string, { icon: string; color: string; label: string }> = {
-  vitoria:      { icon: '🏆', color: Colors.success,          label: 'Vitória' },
-  derrota:      { icon: '😔', color: Colors.destructive,      label: 'Derrota' },
-  empate:       { icon: '🤝', color: Colors.warning,          label: 'Empate' },
-  lesao:        { icon: '🤕', color: Colors.destructive,      label: 'Lesão' },
-  transferencia:{ icon: '🔄', color: Colors.info,             label: 'Transferência' },
-  conquista:    { icon: '🥇', color: Colors.warning,          label: 'Conquista' },
-  treino:       { icon: '⚽', color: Colors.mutedForeground,  label: 'Treino' },
-  geral:        { icon: '📰', color: Colors.mutedForeground,  label: 'Notícia' },
+const TYPE_CONFIG: Record<string, { icon: string; color: string; labelKey: string }> = {
+  vitoria:      { icon: '🏆', color: Colors.success,          labelKey: 'news.type.vitoria' },
+  derrota:      { icon: '😔', color: Colors.destructive,      labelKey: 'news.type.derrota' },
+  empate:       { icon: '🤝', color: Colors.warning,          labelKey: 'news.type.empate' },
+  lesao:        { icon: '🤕', color: Colors.destructive,      labelKey: 'news.type.lesao' },
+  transferencia:{ icon: '🔄', color: Colors.info,             labelKey: 'news.type.transferencia' },
+  conquista:    { icon: '🥇', color: Colors.warning,          labelKey: 'news.type.conquista' },
+  treino:       { icon: '⚽', color: Colors.mutedForeground,  labelKey: 'news.type.treino' },
+  geral:        { icon: '📰', color: Colors.mutedForeground,  labelKey: 'news.type.geral' },
 };
 
 function getTypeCfg(type?: string) {
@@ -93,6 +93,7 @@ async function saveOpenAiKey(key: string): Promise<void> {
 
 function ImageKeyModal({ visible, onClose, onConfirm }: { visible: boolean; onClose: () => void; onConfirm: (key: string) => void }) {
   const insets = useSafeAreaInsets();
+  const t = useT();
   const [key, setKey] = useState('');
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
@@ -100,15 +101,13 @@ function ImageKeyModal({ visible, onClose, onConfirm }: { visible: boolean; onCl
         <View style={[styles.genSheet, { paddingBottom: insets.bottom + 16 }]}>
           <View style={styles.sheetHandle} />
           <View style={styles.genHeader}>
-            <Text style={styles.genTitle}>🔑 Chave OpenAI</Text>
+            <Text style={styles.genTitle}>{t('news.imageKey.title')}</Text>
             <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
               <Ionicons name="close" size={22} color={Colors.mutedForeground} />
             </TouchableOpacity>
           </View>
           <View style={[styles.genBody, { gap: 12 }]}>
-            <Text style={styles.optionDesc}>
-              Para gerar imagens, insira sua chave de API da OpenAI (começa com sk-). Ela é salva localmente no dispositivo.
-            </Text>
+            <Text style={styles.optionDesc}>{t('news.imageKey.hint')}</Text>
             <TextInput
               style={styles.descInput}
               value={key}
@@ -127,7 +126,7 @@ function ImageKeyModal({ visible, onClose, onConfirm }: { visible: boolean; onCl
               disabled={!key.startsWith('sk-')}
             >
               <Ionicons name="checkmark" size={18} color={Colors.primary} />
-              <Text style={[styles.genBtnText, { color: Colors.primary }]}>Confirmar</Text>
+              <Text style={[styles.genBtnText, { color: Colors.primary }]}>{t('news.imageKey.confirm')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -146,6 +145,7 @@ interface NewsModalProps {
 
 function NewsModal({ item, onClose, userPlan, clubName, onImageGenerated }: NewsModalProps) {
   const insets = useSafeAreaInsets();
+  const t = useT();
   const cfg = getTypeCfg(item.type);
   const [imgLoading, setImgLoading] = useState(false);
   const [imgError, setImgError] = useState<string | null>(null);
@@ -195,7 +195,7 @@ function NewsModal({ item, onClose, userPlan, clubName, onImageGenerated }: News
             ) : null}
             <View style={[styles.typeChip, { backgroundColor: `${cfg.color}18`, borderColor: `${cfg.color}33` }]}>
               <Text style={styles.typeChipEmoji}>{cfg.icon}</Text>
-              <Text style={[styles.typeChipText, { color: cfg.color }]}>{cfg.label}</Text>
+              <Text style={[styles.typeChipText, { color: cfg.color }]}>{t(cfg.labelKey)}</Text>
             </View>
             <Text style={styles.modalHeadline}>{item.headline}</Text>
             <View style={styles.modalMeta}>
@@ -272,9 +272,12 @@ function GenerateModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPaywall, setShowPaywall] = useState(false);
+  const [quotaPaywallPlan, setQuotaPaywallPlan] = useState<'pro' | 'ultra' | null>(null);
 
   const requiredForSelected: 'pro' | 'ultra' | null =
     GEN_OPTIONS.find((o) => o.id === selected)?.planRequired ?? null;
+  const effectivePaywallPlan: 'pro' | 'ultra' | null =
+    requiredForSelected ?? quotaPaywallPlan;
 
   const lang = getLang();
   const t = useT();
@@ -342,9 +345,13 @@ function GenerateModal({
       const msg = e instanceof Error ? e.message : String(e);
       if (msg.includes('Ultra') || msg.includes('Pro') || msg.includes('PLAN')) {
         setShowPaywall(true);
+        if (!requiredForSelected) {
+          setQuotaPaywallPlan(userPlan === 'free' ? 'pro' : 'ultra');
+        }
       } else if (msg.includes('Limite') || msg.includes('limit')) {
         setError(t('news.dailyLimitReached'));
         setShowPaywall(true);
+        setQuotaPaywallPlan(userPlan === 'free' ? 'pro' : 'ultra');
       } else {
         setError(t('news.generateError'));
       }
@@ -435,15 +442,19 @@ function GenerateModal({
               </View>
             ) : null}
 
-            {showPaywall && requiredForSelected ? (
+            {showPaywall && effectivePaywallPlan ? (
               <View style={{ marginTop: 12 }}>
                 <UpgradePrompt
                   currentPlan={userPlan}
-                  requiredPlan={requiredForSelected}
-                  featureName={requiredForSelected === 'ultra' ? t('news.aiRumors') : t('news.aiLeaks')}
+                  requiredPlan={effectivePaywallPlan}
+                  featureName={
+                    requiredForSelected === 'ultra' ? t('news.aiRumors')
+                    : requiredForSelected === 'pro' ? t('news.aiLeaks')
+                    : t('news.dailyLimitReached')
+                  }
                   description={t('news.requiredPlanHint')}
                   compact
-                  onUpgraded={() => setShowPaywall(false)}
+                  onUpgraded={() => { setShowPaywall(false); setQuotaPaywallPlan(null); }}
                 />
               </View>
             ) : null}
@@ -665,7 +676,7 @@ export default function NewsScreen() {
                 <View style={styles.cardTop}>
                   <View style={[styles.typeChip, { backgroundColor: `${cfg.color}18`, borderColor: `${cfg.color}33` }]}>
                     <Text style={styles.typeChipEmoji}>{cfg.icon}</Text>
-                    <Text style={[styles.typeChipText, { color: cfg.color }]}>{cfg.label}</Text>
+                    <Text style={[styles.typeChipText, { color: cfg.color }]}>{tr(cfg.labelKey)}</Text>
                   </View>
                   <View style={{ alignItems: 'flex-end' }}>
                     <Text style={styles.cardDate}>{formatDate(item.createdAt)}</Text>

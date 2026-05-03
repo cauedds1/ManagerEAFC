@@ -213,6 +213,42 @@ const DICTIONARY: Record<string, Record<Lang, string>> = {
   'settings.about':              { pt: 'Sobre',                  en: 'About' },
   'settings.exportShare':        { pt: 'Compartilhar exportação',en: 'Share export' },
   'settings.exportSubject':      { pt: 'Exportação da carreira', en: 'Career export' },
+
+  // news type labels
+  'news.type.vitoria':       { pt: 'Vitória',         en: 'Win' },
+  'news.type.derrota':       { pt: 'Derrota',         en: 'Loss' },
+  'news.type.empate':        { pt: 'Empate',          en: 'Draw' },
+  'news.type.lesao':         { pt: 'Lesão',           en: 'Injury' },
+  'news.type.transferencia': { pt: 'Transferência',   en: 'Transfer' },
+  'news.type.conquista':     { pt: 'Conquista',       en: 'Achievement' },
+  'news.type.treino':        { pt: 'Treino',          en: 'Training' },
+  'news.type.geral':         { pt: 'Notícia',         en: 'News' },
+
+  // image-key modal
+  'news.imageKey.title':     { pt: '🔑 Chave OpenAI',  en: '🔑 OpenAI Key' },
+  'news.imageKey.hint':      { pt: 'Para gerar imagens, insira sua chave de API da OpenAI (começa com sk-). Ela é salva localmente no dispositivo.', en: 'To generate images, enter your OpenAI API key (starts with sk-). Stored locally on your device.' },
+  'news.imageKey.confirm':   { pt: 'Confirmar',        en: 'Confirm' },
+
+  // configuracoes settings
+  'settings.section.portals':    { pt: 'Portais de Notícias',     en: 'News Portals' },
+  'settings.section.season':     { pt: 'Temporada',               en: 'Season' },
+  'settings.section.ai':         { pt: 'Inteligência Artificial', en: 'Artificial Intelligence' },
+  'settings.section.sound':      { pt: 'Som e Haptics',           en: 'Sound & Haptics' },
+  'settings.portals.default':    { pt: 'Portais padrão',          en: 'Default portals' },
+  'settings.portals.custom':     { pt: 'Portais personalizados',  en: 'Custom portals' },
+  'settings.portals.create':     { pt: 'Criar portal',            en: 'Create portal' },
+  'settings.portals.deleteTitle':{ pt: 'Excluir portal',          en: 'Delete portal' },
+  'settings.portals.deleteMsg':  { pt: 'Deseja excluir este portal?', en: 'Delete this portal?' },
+  'settings.portals.nameRequired':{ pt: 'Nome obrigatório',       en: 'Name required' },
+  'settings.portals.nameRequiredMsg':{ pt: 'Digite o nome do portal.', en: 'Enter the portal name.' },
+  'settings.portals.createError':{ pt: 'Não foi possível criar o portal.', en: 'Could not create the portal.' },
+  'settings.portals.photoError': { pt: 'Não foi possível atualizar a foto do portal.', en: 'Could not update the portal photo.' },
+  'settings.season.endTitle':    { pt: 'Temporada finalizada',    en: 'Season ended' },
+  'common.email':                { pt: 'E-mail',                  en: 'Email' },
+  'common.delete':               { pt: 'Excluir',                 en: 'Delete' },
+  'settings.season.active':      { pt: 'Temporada ativa',         en: 'Active season' },
+  'settings.ai.enabled':         { pt: 'IA ativada',              en: 'AI enabled' },
+  'settings.sound.enabled':      { pt: 'Som e vibrações',         en: 'Sound & vibrations' },
 };
 
 export const i18n = new I18n(

@@ -417,13 +417,13 @@ export default function ConfiguracoesScreen() {
                 void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
               }
               Alert.alert(
-                'Temporada finalizada',
-                `"${activeSeason.label}" foi encerrada. Crie uma nova temporada para continuar.`,
+                tr('settings.season.endTitle'),
+                `"${activeSeason.label}"`,
                 [{ text: 'OK' }]
               );
             } catch (err) {
-              const msg = err instanceof Error ? err.message : 'Erro ao finalizar a temporada.';
-              Alert.alert('Erro', msg);
+              const msg = err instanceof Error ? err.message : tr('common.error');
+              Alert.alert(tr('common.error'), msg);
             }
           },
         },
@@ -437,7 +437,7 @@ export default function ConfiguracoesScreen() {
     try {
       const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!perm.granted) {
-        Alert.alert('Permissão necessária', 'Permita o acesso à galeria para escolher uma foto.');
+        Alert.alert(tr('common.error'), tr('bugReport.galleryDenied'));
         return;
       }
       const result = await ImagePicker.launchImageLibraryAsync({
@@ -457,7 +457,7 @@ export default function ConfiguracoesScreen() {
         }
       }
     } catch {
-      Alert.alert('Erro', 'Não foi possível atualizar a foto do portal.');
+      Alert.alert(tr('common.error'), tr('settings.portals.photoError'));
     } finally {
       setUploadingFixedSource(null);
     }
@@ -469,7 +469,7 @@ export default function ConfiguracoesScreen() {
     try {
       const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!perm.granted) {
-        Alert.alert('Permissão necessária', 'Permita o acesso à galeria para escolher uma foto.');
+        Alert.alert(tr('common.error'), tr('bugReport.galleryDenied'));
         return;
       }
       const result = await ImagePicker.launchImageLibraryAsync({
@@ -488,7 +488,7 @@ export default function ConfiguracoesScreen() {
         }
       }
     } catch {
-      Alert.alert('Erro', 'Não foi possível atualizar a foto do portal.');
+      Alert.alert(tr('common.error'), tr('settings.portals.photoError'));
     } finally {
       setUploadingPortalId(null);
     }
@@ -497,12 +497,12 @@ export default function ConfiguracoesScreen() {
   const handleDeletePortal = (portal: CustomPortal) => {
     if (!activeCareer) return;
     Alert.alert(
-      'Excluir portal',
-      `Deseja excluir o portal "${portal.name}"?`,
+      tr('settings.portals.deleteTitle'),
+      `${tr('settings.portals.deleteMsg')} "${portal.name}"`,
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: tr('common.cancel'), style: 'cancel' },
         {
-          text: 'Excluir',
+          text: tr('common.delete'),
           style: 'destructive',
           onPress: async () => {
             await api.portals.delete(activeCareer.id, portal.id);
@@ -516,7 +516,7 @@ export default function ConfiguracoesScreen() {
   const handleCreatePortal = async () => {
     if (!activeCareer) return;
     if (!newPortal.name.trim()) {
-      Alert.alert('Nome obrigatório', 'Digite o nome do portal.');
+      Alert.alert(tr('settings.portals.nameRequired'), tr('settings.portals.nameRequiredMsg'));
       return;
     }
     setSavingPortal(true);
@@ -531,7 +531,7 @@ export default function ConfiguracoesScreen() {
       setShowNewPortal(false);
       if (Platform.OS !== 'web') void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     } catch {
-      Alert.alert('Erro', 'Não foi possível criar o portal.');
+      Alert.alert(tr('common.error'), tr('settings.portals.createError'));
     } finally {
       setSavingPortal(false);
     }
@@ -556,9 +556,9 @@ export default function ConfiguracoesScreen() {
       >
         {/* PORTAIS */}
         {activeCareer && (
-          <Section title="Portais de Notícias">
+          <Section title={tr('settings.section.portals')}>
             <>
-              <Text style={styles.portalGroupLabel}>Portais padrão</Text>
+              <Text style={styles.portalGroupLabel}>{tr('settings.portals.default')}</Text>
               {FIXED_PORTALS.map((fp, idx) => {
                 const photo = fixedPortalPhoto(fp.source);
                 const isUploading = uploadingFixedSource === fp.source;
@@ -610,7 +610,7 @@ export default function ConfiguracoesScreen() {
               })}
 
               <View style={[styles.rowDivider, { marginLeft: 0, marginTop: 8 }]} />
-              <Text style={[styles.portalGroupLabel, { marginTop: 8 }]}>Portais personalizados</Text>
+              <Text style={[styles.portalGroupLabel, { marginTop: 8 }]}>{tr('settings.portals.custom')}</Text>
 
               {portalsLoading ? (
                 <View style={styles.loadingRow}>
@@ -685,11 +685,11 @@ export default function ConfiguracoesScreen() {
 
         {/* TEMPORADA */}
         {activeCareer && (
-          <Section title="Temporada">
+          <Section title={tr('settings.section.season')}>
             <Row
               icon="calendar-outline"
               iconColor={Colors.info}
-              label="Temporada ativa"
+              label={tr('settings.season.active')}
               value={activeSeason?.label ?? activeCareer.season}
             />
             <Row
@@ -708,11 +708,11 @@ export default function ConfiguracoesScreen() {
         )}
 
         {/* IA */}
-        <Section title="Inteligência Artificial">
+        <Section title={tr('settings.section.ai')}>
           <ToggleRow
             icon="sparkles-outline"
             iconColor={Colors.warning}
-            label="IA ativada"
+            label={tr('settings.ai.enabled')}
             hint="Notícias geradas por IA, análises e Diretoria"
             value={prefsLoaded ? aiEnabled : true}
             onToggle={toggleAi}
@@ -727,11 +727,11 @@ export default function ConfiguracoesScreen() {
         </Section>
 
         {/* SOM */}
-        <Section title="Som e Haptics">
+        <Section title={tr('settings.section.sound')}>
           <ToggleRow
             icon="volume-high-outline"
             iconColor={Colors.success}
-            label="Som e vibrações"
+            label={tr('settings.sound.enabled')}
             hint="Feedback tátil ao registrar partidas e ações"
             value={prefsLoaded ? soundEnabled : true}
             onToggle={toggleSound}
