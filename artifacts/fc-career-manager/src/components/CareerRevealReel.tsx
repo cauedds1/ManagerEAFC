@@ -25,8 +25,8 @@ const SCENES = [
 const TOTAL_MS = SCENES.reduce((a, s) => a + s.ms, 0);
 
 const STRINGS = {
-  pt: { skip: "Pular", season: "TEMPORADA", pos: "COLOCADO", pts: "PTS", board: "DIRETORIA", fans: "TORCIDA", room: "VESTIÁRIO", forecast: "PREVISÃO", soundOn: "🔊", soundOff: "🔇" },
-  en: { skip: "Skip",  season: "SEASON",    pos: "PLACE",    pts: "PTS", board: "BOARD",     fans: "FANS",    room: "DRESSING ROOM", forecast: "FORECAST", soundOn: "🔊", soundOff: "🔇" },
+  pt: { skip: "Pular", prev: "Voltar", next: "Avançar", season: "TEMPORADA", pos: "COLOCADO", pts: "PTS", board: "DIRETORIA", fans: "TORCIDA", room: "VESTIÁRIO", forecast: "PREVISÃO", soundOn: "🔊", soundOff: "🔇" },
+  en: { skip: "Skip",  prev: "Back",   next: "Next",    season: "SEASON",    pos: "PLACE",    pts: "PTS", board: "BOARD",     fans: "FANS",    room: "DRESSING ROOM", forecast: "FORECAST", soundOn: "🔊", soundOff: "🔇" },
 };
 
 function normalize(s: string) {
@@ -91,6 +91,7 @@ export function CareerRevealReel({ context, club, onComplete, onSkip }: Props) {
   const [lang] = useLang();
   const s = STRINGS[lang];
   const [sceneIdx, setSceneIdx] = useState(0);
+  const [manualMode, setManualMode] = useState(false);
   const [muted, setMuted] = useState(false);
   const [squad, setSquad] = useState<SquadPlayer[]>([]);
   const [squadLoaded, setSquadLoaded] = useState(false);
@@ -115,28 +116,49 @@ export function CareerRevealReel({ context, club, onComplete, onSkip }: Props) {
 
   useEffect(() => {
     if (reduced) { onComplete(); return; }
-    let cumulative = 0;
-    const timeouts: ReturnType<typeof setTimeout>[] = [];
-    SCENES.forEach((scene, i) => {
-      cumulative += scene.ms;
-      timeouts.push(setTimeout(() => {
-        if (i + 1 < SCENES.length) {
-          setSceneIdx(i + 1);
-          if (scene.key === "crest" || scene.key === "letter") sfxRef.current.swoosh();
-          if (scene.key === "position" || scene.key === "players") sfxRef.current.thud();
-        } else {
-          sfxRef.current.ding();
-          timeouts.push(setTimeout(onComplete, 600));
-        }
-      }, cumulative));
-    });
-    sfxRef.current.swoosh();
-    const sfx = sfxRef.current;
-    return () => { timeouts.forEach(clearTimeout); sfx.destroy(); };
-  }, [onComplete, reduced]);
+    if (manualMode) return;
+    const current = SCENES[sceneIdx];
+    if (!current) return;
+    const t = setTimeout(() => {
+      if (sceneIdx + 1 < SCENES.length) {
+        setSceneIdx(sceneIdx + 1);
+        if (current.key === "crest" || current.key === "letter") sfxRef.current.swoosh();
+        if (current.key === "position" || current.key === "players") sfxRef.current.thud();
+      } else {
+        sfxRef.current.ding();
+        setTimeout(onComplete, 600);
+      }
+    }, current.ms);
+    return () => clearTimeout(t);
+  }, [onComplete, reduced, sceneIdx, manualMode]);
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onSkip(); };
+    sfxRef.current.swoosh();
+    const sfx = sfxRef.current;
+    return () => { sfx.destroy(); };
+  }, []);
+
+  const goPrev = () => {
+    setManualMode(true);
+    setSceneIdx((i) => Math.max(0, i - 1));
+    sfxRef.current.swoosh();
+  };
+  const goNext = () => {
+    if (sceneIdx + 1 < SCENES.length) {
+      setSceneIdx((i) => i + 1);
+      sfxRef.current.thud();
+    } else {
+      sfxRef.current.ding();
+      onComplete();
+    }
+  };
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onSkip();
+      else if (e.key === "ArrowLeft") goPrev();
+      else if (e.key === "ArrowRight") goNext();
+    };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onSkip]);
@@ -211,6 +233,27 @@ export function CareerRevealReel({ context, club, onComplete, onSkip }: Props) {
         </button>
         <button onClick={onSkip} className="text-white/80 hover:text-white text-xs font-bold uppercase tracking-widest px-4 py-2 rounded-full" style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)" }}>
           {s.skip} →
+        </button>
+      </div>
+
+      {/* Bottom bar: prev / next navigation */}
+      <div className="absolute bottom-0 left-0 right-0 px-4 sm:px-6 pb-6 z-10 flex items-center justify-between gap-3">
+        <button
+          onClick={goPrev}
+          disabled={sceneIdx === 0}
+          className="text-white/80 hover:text-white text-xs font-bold uppercase tracking-widest px-5 py-3 rounded-full disabled:opacity-30 disabled:cursor-not-allowed"
+          style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)" }}
+          aria-label={s.prev}
+        >
+          ← {s.prev}
+        </button>
+        <button
+          onClick={goNext}
+          className="text-white text-xs font-bold uppercase tracking-widest px-5 py-3 rounded-full"
+          style={{ background: "rgba(var(--club-primary-rgb),0.85)", border: "1px solid rgba(255,255,255,0.25)" }}
+          aria-label={s.next}
+        >
+          {s.next} →
         </button>
       </div>
 
