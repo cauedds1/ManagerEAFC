@@ -310,6 +310,7 @@ export function ClubeView({
             seasonLabel={career.season}
             clubName={career.clubName}
             onPromoted={onRefresh}
+            isFinalized={isFinalized}
           />
         )}
 

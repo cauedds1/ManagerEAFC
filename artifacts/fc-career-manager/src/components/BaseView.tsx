@@ -28,6 +28,7 @@ interface BaseViewProps {
   seasonLabel: string;
   clubName: string;
   onPromoted?: () => void;
+  isFinalized?: boolean;
 }
 
 const POS_STYLE: Record<PositionPtBr, { bg: string; color: string }> = {
@@ -79,7 +80,7 @@ function PotentialBadge({ min, max }: { min: number; max: number }) {
   );
 }
 
-export function BaseView({ careerId, seasonId, seasonLabel, clubName, onPromoted }: BaseViewProps) {
+export function BaseView({ careerId, seasonId, seasonLabel, clubName, onPromoted, isFinalized }: BaseViewProps) {
   const [lang] = useLang();
   const t = BASE_I18N[lang];
 
@@ -189,9 +190,10 @@ export function BaseView({ careerId, seasonId, seasonLabel, clubName, onPromoted
           </span>
           <button
             onClick={() => { setShowAdd(true); setError(null); }}
-            disabled={players.length >= BASE_MAX_SLOTS}
+            disabled={isFinalized || players.length >= BASE_MAX_SLOTS}
             className="px-3 py-1.5 rounded-xl text-xs font-bold text-white transition-all hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
             style={{ background: "var(--club-gradient)" }}
+            title={isFinalized ? (lang === "en" ? "Season finalized — read only" : "Temporada finalizada — somente leitura") : undefined}
           >
             + {t.addBtn}
           </button>
@@ -292,15 +294,18 @@ export function BaseView({ careerId, seasonId, seasonLabel, clubName, onPromoted
                 </span>
                 <button
                   onClick={() => handlePromote(p)}
-                  className="text-[11px] font-bold px-2.5 py-1 rounded-lg text-white transition-all hover:opacity-90"
+                  disabled={isFinalized}
+                  className="text-[11px] font-bold px-2.5 py-1 rounded-lg text-white transition-all hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
                   style={{ background: "var(--club-gradient)" }}
+                  title={isFinalized ? (lang === "en" ? "Season finalized — read only" : "Temporada finalizada — somente leitura") : undefined}
                 >
                   {t.promoteBtn}
                 </button>
                 <button
                   onClick={() => handleRelease(p)}
-                  className="text-[11px] font-semibold px-2 py-1 rounded-lg text-white/40 hover:text-red-400 hover:bg-red-500/10 transition-all"
-                  title={t.releaseTooltip}
+                  disabled={isFinalized}
+                  className="text-[11px] font-semibold px-2 py-1 rounded-lg text-white/40 hover:text-red-400 hover:bg-red-500/10 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                  title={isFinalized ? (lang === "en" ? "Season finalized — read only" : "Temporada finalizada — somente leitura") : t.releaseTooltip}
                 >
                   ✕
                 </button>
