@@ -4,6 +4,7 @@ import { useIsNarrow } from "@/hooks/use-mobile";
 import { PAINEL, DASHBOARD } from "@/lib/i18n";
 import type { Career, Season } from "@/types/career";
 import { SettingsPage } from "./SettingsPage";
+import { ComunidadeView } from "./ComunidadeView";
 import {
   getSquad,
   clearSquadCache,
@@ -112,7 +113,7 @@ interface DashboardProps {
   isDemo?: boolean;
 }
 
-type CareerTab = "resumo" | "painel" | "partidas" | "clube" | "transferencias" | "noticias" | "diretoria" | "momentos" | "configuracoes";
+type CareerTab = "resumo" | "painel" | "partidas" | "clube" | "transferencias" | "noticias" | "diretoria" | "momentos" | "comunidade" | "configuracoes";
 type BgGenStatus = "idle" | "generating" | "done" | "error";
 
 const TABS: { id: CareerTab; label: string; icon: React.ReactNode }[] = [
@@ -180,6 +181,15 @@ const TABS: { id: CareerTab; label: string; icon: React.ReactNode }[] = [
       </svg>
     ),
   },
+  {
+    id: "comunidade",
+    label: "comunidade",
+    icon: (
+      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20h10M9 7a3 3 0 116 0 3 3 0 01-6 0zM3 10a2 2 0 114 0 2 2 0 01-4 0zm14 0a2 2 0 114 0 2 2 0 01-4 0z" />
+      </svg>
+    ),
+  },
 ];
 
 function saveDiretoriaNotificationAsChatMessage(careerId: string, memberId: string, preview: string): void {
@@ -215,6 +225,17 @@ function useClubLogo(career: Career): string | null {
   return src;
 }
 
+function getCurrentUserId(): number | undefined {
+  try {
+    const imp = sessionStorage.getItem("fc_impersonation_user");
+    if (imp) { const u = JSON.parse(imp) as { id?: number }; if (u.id) return u.id; }
+    const raw = localStorage.getItem("fc_auth_user");
+    if (!raw) return undefined;
+    const u = JSON.parse(raw) as { id?: number };
+    return u.id;
+  } catch { return undefined; }
+}
+
 function CoachAvatar({ career }: { career: Career }) {
   const [imgErr, setImgErr] = useState(false);
   const { photo, name } = career.coach;
@@ -245,6 +266,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
     noticias: t.tabNoticias,
     diretoria: t.tabDiretoria,
     momentos: t.tabMomentos,
+    comunidade: lang === "en" ? "Community" : "Comunidade",
   };
   const userPlan = getUserPlan();
   const teamId = career.clubId > 0 ? career.clubId : 0;
@@ -2443,6 +2465,9 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
                 highlightMomentoId={highlightMomentoId}
                 onClearHighlight={() => setHighlightMomentoId(undefined)}
               />
+            )}
+            {activeTab === "comunidade" && !isDemo && (
+              <ComunidadeView career={career} lang={lang} viewerUserId={getCurrentUserId()} />
             )}
             {activeTab === "configuracoes" && !isDemo && (
               <SettingsPage

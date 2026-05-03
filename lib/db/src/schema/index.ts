@@ -97,6 +97,113 @@ export const usersTable = pgTable("users", {
   lastLoginAt: bigint("last_login_at", { mode: "number" }),
   referralCode: text("referral_code").unique(),
   pushToken: text("push_token"),
+  username: text("username").unique(),
+});
+
+export const publicProfilesTable = pgTable("public_profiles", {
+  careerId: text("career_id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  isPublic: boolean("is_public").notNull().default(false),
+  bio: text("bio"),
+  favoriteClubId: integer("favorite_club_id"),
+  publishedAt: bigint("published_at", { mode: "number" }),
+  lastActivityAt: bigint("last_activity_at", { mode: "number" }),
+  autoPublish: boolean("auto_publish").notNull().default(false),
+});
+
+export const publicPostsTable = pgTable("public_posts", {
+  id: text("id").primaryKey(),
+  careerId: text("career_id").notNull(),
+  userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  originalNewsPostId: text("original_news_post_id").notNull(),
+  contentJson: text("content_json").notNull(),
+  lang: text("lang").notNull().default("pt"),
+  publishedAt: bigint("published_at", { mode: "number" }).notNull(),
+  isHidden: boolean("is_hidden").notNull().default(false),
+  hiddenReason: text("hidden_reason"),
+  isSpecial: text("is_special"),
+  reportsCount: integer("reports_count").notNull().default(0),
+});
+
+export const postReactionsTable = pgTable(
+  "post_reactions",
+  {
+    postId: text("post_id").notNull().references(() => publicPostsTable.id, { onDelete: "cascade" }),
+    userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+    reactionType: text("reaction_type").notNull(),
+    createdAt: bigint("created_at", { mode: "number" }).notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.postId, table.userId, table.reactionType] })],
+);
+
+export const postCommentsTable = pgTable("post_comments", {
+  id: serial("id").primaryKey(),
+  postId: text("post_id").notNull().references(() => publicPostsTable.id, { onDelete: "cascade" }),
+  userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  parentCommentId: integer("parent_comment_id"),
+  content: text("content").notNull(),
+  isPinned: boolean("is_pinned").notNull().default(false),
+  isHidden: boolean("is_hidden").notNull().default(false),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+  deletedAt: bigint("deleted_at", { mode: "number" }),
+  reportsCount: integer("reports_count").notNull().default(0),
+});
+
+export const commentReactionsTable = pgTable(
+  "comment_reactions",
+  {
+    commentId: integer("comment_id").notNull().references(() => postCommentsTable.id, { onDelete: "cascade" }),
+    userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+    createdAt: bigint("created_at", { mode: "number" }).notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.commentId, table.userId] })],
+);
+
+export const postRepostsTable = pgTable(
+  "post_reposts",
+  {
+    postId: text("post_id").notNull().references(() => publicPostsTable.id, { onDelete: "cascade" }),
+    userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+    createdAt: bigint("created_at", { mode: "number" }).notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.postId, table.userId] })],
+);
+
+export const userBlocksTable = pgTable(
+  "user_blocks",
+  {
+    blockerId: integer("blocker_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+    blockedId: integer("blocked_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+    createdAt: bigint("created_at", { mode: "number" }).notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.blockerId, table.blockedId] })],
+);
+
+export const contentReportsTable = pgTable("content_reports", {
+  id: serial("id").primaryKey(),
+  targetType: text("target_type").notNull(),
+  targetId: text("target_id").notNull(),
+  reporterId: integer("reporter_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  reason: text("reason").notNull(),
+  notes: text("notes"),
+  status: text("status").notNull().default("pending"),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+  reviewedAt: bigint("reviewed_at", { mode: "number" }),
+});
+
+export const userDailyQuotaTable = pgTable(
+  "user_daily_quota",
+  {
+    userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+    dateUtc: text("date_utc").notNull(),
+    postsPublished: integer("posts_published").notNull().default(0),
+  },
+  (table) => [primaryKey({ columns: [table.userId, table.dateUtc] })],
+);
+
+export const communityLastSeenTable = pgTable("community_last_seen", {
+  userId: integer("user_id").primaryKey().references(() => usersTable.id, { onDelete: "cascade" }),
+  lastSeenAt: bigint("last_seen_at", { mode: "number" }).notNull(),
 });
 
 export const referralsTable = pgTable("referrals", {

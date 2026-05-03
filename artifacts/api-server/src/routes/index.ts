@@ -15,6 +15,8 @@ import portalsRouter from "./portals";
 import authRouter from "./auth";
 import stripeRouter from "./stripe";
 import leaguesRouter from "./leagues";
+import communityRouter from "./community";
+import communityAdminRouter from "./communityAdmin";
 
 const router: IRouter = Router();
 
@@ -34,5 +36,7 @@ router.use(careersRouter);
 router.use(gamedataRouter);
 router.use(portalsRouter);
 router.use(leaguesRouter);
+router.use(communityRouter);
+router.use(communityAdminRouter);
 
 export default router;

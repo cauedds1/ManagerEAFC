@@ -99,6 +99,13 @@
       "when": 1777380000000,
       "tag": "0013_career_initial_context",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1777440000000,
+      "tag": "0014_community",
+      "breakpoints": true
     }
   ]
 }

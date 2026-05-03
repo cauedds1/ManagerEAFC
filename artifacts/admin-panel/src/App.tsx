@@ -34,7 +34,94 @@ async function apiFetch<T>(path: string, opts: RequestInit = {}): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-type Tab = "overview" | "users" | "bug-reports" | "career-recovery" | "notifications" | "referrals";
+type Tab = "overview" | "users" | "bug-reports" | "career-recovery" | "notifications" | "referrals" | "community-reports";
+
+interface CommunityReport {
+  id: number;
+  targetType: "post" | "comment" | "profile";
+  targetId: string;
+  reporterId: number;
+  reporterUsername: string | null;
+  reporterEmail: string | null;
+  reason: string;
+  notes: string | null;
+  status: string;
+  createdAt: number;
+  preview: { type: string; content?: unknown; isHidden?: boolean; userId?: number; careerId?: string; bio?: string | null } | null;
+}
+
+function CommunityReportsTab() {
+  const qc = useQueryClient();
+  const [status, setStatus] = useState<"pending" | "approved" | "rejected">("pending");
+  const { data, isLoading, error } = useQuery<CommunityReport[]>({
+    queryKey: ["community-reports", status],
+    queryFn: () => apiFetch(`/admin-panel/community/reports?status=${status}`),
+  });
+  const actionMut = useMutation({
+    mutationFn: ({ id, action }: { id: number; action: "approve" | "reject" }) =>
+      apiFetch<{ ok: true }>(`/admin-panel/community/reports/${id}/action`, { method: "POST", body: JSON.stringify({ action }) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["community-reports"] }),
+  });
+  if (isLoading) return <div className="text-white/40 text-sm py-8 text-center">Carregando...</div>;
+  if (error) return <div className="text-red-400 text-sm py-8 text-center">{String((error as Error).message)}</div>;
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-white font-bold text-base">Comunidade — Denúncias</h2>
+          <p className="text-white/40 text-xs mt-0.5">{data?.length ?? 0} {status}</p>
+        </div>
+        <div className="flex gap-1">
+          {(["pending", "approved", "rejected"] as const).map((s) => (
+            <button key={s} onClick={() => setStatus(s)}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold"
+              style={{ background: status === s ? "rgba(74,222,128,0.15)" : "rgba(255,255,255,0.04)", color: status === s ? "#4ade80" : "rgba(255,255,255,0.55)" }}>
+              {s}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="flex flex-col gap-2">
+        {(data ?? []).length === 0 && <div className="text-white/30 text-sm py-8 text-center">Nada aqui.</div>}
+        {(data ?? []).map((r) => {
+          const previewText = r.preview && typeof r.preview === "object"
+            ? ("content" in r.preview && r.preview.content
+                ? (typeof r.preview.content === "string" ? r.preview.content : JSON.stringify(r.preview.content).slice(0, 240))
+                : "bio" in r.preview ? (r.preview.bio ?? "—") : "—")
+            : "—";
+          return (
+            <div key={r.id} className="rounded-xl p-4 flex flex-col gap-2"
+              style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="px-2 py-0.5 rounded font-bold" style={{ background: "rgba(99,102,241,0.15)", color: "#a5b4fc" }}>{r.targetType}</span>
+                  <span className="text-white/55">por @{r.reporterUsername ?? r.reporterEmail ?? r.reporterId}</span>
+                  <span className="text-white/30">· {new Date(r.createdAt).toLocaleString("pt-BR")}</span>
+                </div>
+                {status === "pending" && (
+                  <div className="flex gap-2">
+                    <button onClick={() => actionMut.mutate({ id: r.id, action: "approve" })}
+                      className="px-3 py-1 rounded-lg text-xs font-bold text-white"
+                      style={{ background: "#dc2626" }}>Ocultar</button>
+                    <button onClick={() => actionMut.mutate({ id: r.id, action: "reject" })}
+                      className="px-3 py-1 rounded-lg text-xs font-bold text-white/80"
+                      style={{ background: "rgba(255,255,255,0.06)" }}>Rejeitar</button>
+                  </div>
+                )}
+              </div>
+              <div className="text-white/85 text-sm">
+                <b>Motivo:</b> {r.reason}{r.notes ? ` — ${r.notes}` : ""}
+              </div>
+              <div className="text-white/55 text-xs italic break-words" style={{ background: "rgba(0,0,0,0.2)", padding: 8, borderRadius: 6 }}>
+                {String(previewText).slice(0, 300)}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 interface Stats {
   users: { total: number; free: number; pro: number; ultra: number };
@@ -1722,6 +1809,15 @@ const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
     ),
   },
   {
+    id: "community-reports",
+    label: "Comunidade",
+    icon: (
+      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+      </svg>
+    ),
+  },
+  {
     id: "referrals",
     label: "Convites",
     icon: (
@@ -1910,6 +2006,7 @@ function AdminApp() {
           {tab === "career-recovery" && <CareerRecoveryTab />}
           {tab === "notifications" && <NotificationsTab />}
           {tab === "referrals" && <ReferralsTab />}
+          {tab === "community-reports" && <CommunityReportsTab />}
         </main>
       </div>
     </div>

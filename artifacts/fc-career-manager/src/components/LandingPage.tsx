@@ -2,6 +2,52 @@ import { useState, useEffect, useRef, useCallback, useMemo, type CSSProperties }
 import { ClubDemoMockup } from "./ClubDemoMockup";
 import { LangToggle } from "./LangToggle";
 import { LP, getAiTexts, getHeadlineTemplates, getBodyTemplates, getSteps, getFaqItems, getFeaturesExplorer, getTestimonials, type Lang } from "@/lib/i18n";
+import { getPreviewPosts } from "@/lib/community";
+import type { CommunityPost } from "@/types/community";
+
+function CommunityPreviewSection({ lang }: { lang: Lang }) {
+  const [posts, setPosts] = useState<CommunityPost[]>([]);
+  useEffect(() => { getPreviewPosts().then(setPosts).catch(() => {}); }, []);
+  if (posts.length === 0) return null;
+  const tickerText = posts.slice(0, 8).map((p) => `${p.coachName ?? "—"} (@${p.username ?? "anon"}) · ${p.clubName}`).join("   ●   ");
+  const sub = lang === "en" ? "What coaches around the world are saying" : "O que treinadores do mundo estão dizendo";
+  const title = lang === "en" ? "Live Community" : "Comunidade ao Vivo";
+  return (
+    <section style={{ padding: "70px 0", background: "linear-gradient(180deg,#06060c,#0a0813)", borderTop: "1px solid rgba(124,92,252,0.15)", borderBottom: "1px solid rgba(124,92,252,0.15)" }}>
+      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 40px" }}>
+        <div style={{ textAlign: "center", marginBottom: 40 }}>
+          <p style={{ color: "#7c5cfc", fontSize: 11, fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", marginBottom: 12 }}>● {lang === "en" ? "LIVE" : "AO VIVO"}</p>
+          <h2 className="font-bebas" style={{ fontSize: "clamp(2rem,4vw,3.2rem)", color: "#f0f0ff", lineHeight: 1, marginBottom: 8 }}>{title}</h2>
+          <p style={{ color: "#88889a", fontSize: 14 }}>{sub}</p>
+        </div>
+        <div style={{ overflow: "hidden", padding: "10px 0", marginBottom: 32, background: "rgba(124,92,252,0.04)", border: "1px solid rgba(124,92,252,0.1)", borderRadius: 8 }}>
+          <div style={{ display: "inline-block", whiteSpace: "nowrap", animation: "marqueeScroll 40s linear infinite", color: "#aaaacc", fontSize: 12, fontWeight: 500, letterSpacing: "0.04em" }}>
+            {tickerText}   ●   {tickerText}
+          </div>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16 }}>
+          {posts.slice(0, 5).map((p) => {
+            const accent = p.clubPrimary ?? "#7c5cfc";
+            const teamLogo = p.clubLogo || (p.clubId > 0 ? `https://media.api-sports.io/football/teams/${p.clubId}.png` : "");
+            return (
+              <div key={p.id} style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)", borderLeft: `3px solid ${accent}`, borderRadius: 14, padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  {teamLogo && <img src={teamLogo} alt="" style={{ width: 32, height: 32, borderRadius: "50%", objectFit: "contain", background: "rgba(255,255,255,0.04)" }} />}
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ color: "#f0f0ff", fontSize: 12, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.coachName || "—"}</div>
+                    <div style={{ color: "#666688", fontSize: 10, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>@{p.username ?? "anon"} · {p.clubName}</div>
+                  </div>
+                </div>
+                {p.content.title && <div style={{ color: "#f0f0ff", fontSize: 13, fontWeight: 600, lineHeight: 1.3, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{String(p.content.title)}</div>}
+                {p.content.content && <div style={{ color: "#aaaacc", fontSize: 11, lineHeight: 1.4, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{String(p.content.content)}</div>}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
 
 /* ─── Types ─────────────────────────────────────────────── */
 interface LandingPageProps {
@@ -1362,6 +1408,9 @@ function LandingPageDesktop({ onStart, onLogin, onStartWithPlan, lang, setLang }
           ))}
         </div>
       </div>
+
+      {/* ════════════════ COMUNIDADE PREVIEW ════════════════ */}
+      <CommunityPreviewSection lang={lang} />
 
       {/* ════════════════ FEATURE EXPLORER ════════════════ */}
       <section id="features" className="lp-section-v" style={{ padding: "100px 0", background: "#09090f" }}>

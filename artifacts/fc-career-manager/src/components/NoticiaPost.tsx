@@ -8,6 +8,7 @@ import { getCommentAvatarUrl } from "@/lib/commentAvatar";
 import { ReelsModal } from "./ReelsModal";
 import { NOTICIAS } from "@/lib/i18n";
 import type { Lang } from "@/lib/i18n";
+import { publishPost as publishToCommunity, unpublishPost as unpublishFromCommunity } from "@/lib/community";
 
 const SOURCE_CONFIG: Record<NewsSource, { color: string; bgColor: string; verified: boolean; emoji: string }> = {
   tnt: {
@@ -244,6 +245,8 @@ export function NoticiaPost({ post, portalPhotos, customPortals, onUpdateImage, 
   const [menuOpen, setMenuOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [localImageUrl, setLocalImageUrl] = useState<string | null>(null);
+  const [communityPostId, setCommunityPostId] = useState<string | null>(null);
+  const [communityBusy, setCommunityBusy] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -470,6 +473,39 @@ export function NoticiaPost({ post, portalPhotos, customPortals, onUpdateImage, 
                   {t.menuRemoveImage}
                 </button>
               )}
+              <button
+                onClick={async () => {
+                  setMenuOpen(false);
+                  if (communityBusy) return;
+                  setCommunityBusy(true);
+                  try {
+                    if (communityPostId) {
+                      await unpublishFromCommunity(communityPostId);
+                      setCommunityPostId(null);
+                    } else {
+                      const r = await publishToCommunity({
+                        careerId: post.careerId,
+                        originalNewsPostId: post.id,
+                        content: post as unknown as Record<string, unknown>,
+                        lang: lang === "en" ? "en" : "pt",
+                      });
+                      setCommunityPostId(r.id);
+                      window.alert(lang === "en" ? "Published to Community ✓" : "Publicado na Comunidade ✓");
+                    }
+                  } catch (e) {
+                    const err = e as Error & { code?: string };
+                    if (err.code === "QUOTA") window.alert(lang === "en" ? "Daily community quota reached" : "Cota diária da Comunidade atingida");
+                    else if (err.code === "NO_USERNAME") window.alert(lang === "en" ? "Set your @username in Community first" : "Defina seu @username na Comunidade primeiro");
+                    else if (err.code === "PLAN_LIMIT") window.alert(lang === "en" ? "Free plan cannot publish to Community. Upgrade to Pro." : "Plano Free não publica na Comunidade. Faça upgrade para Pro.");
+                    else if (err.code === "NOT_PUBLIC") window.alert(lang === "en" ? "Make this career public in Community settings first" : "Torne esta carreira pública na Comunidade primeiro");
+                    else window.alert(err.message);
+                  } finally { setCommunityBusy(false); }
+                }}
+                className="w-full text-left text-sm px-4 py-2.5 transition-colors duration-100 hover:bg-white/[0.06]"
+                style={{ color: "var(--club-primary)", borderTop: "1px solid rgba(255,255,255,0.06)" }}
+              >
+                {communityBusy ? "…" : communityPostId ? (lang === "en" ? "Unpublish from Community" : "Despublicar da Comunidade") : (lang === "en" ? "Publish to Community" : "Publicar na Comunidade")}
+              </button>
               {onDelete && (
                 <button
                   onClick={handleDelete}
