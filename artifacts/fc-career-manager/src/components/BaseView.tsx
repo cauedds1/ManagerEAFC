@@ -359,7 +359,21 @@ export function BaseView({ careerId, seasonId, seasonLabel, clubName, onPromoted
                   </select>
                 </Field>
                 <Field label={t.nationality}>
-                  <input value={form.nationality} onChange={(e) => setForm({ ...form, nationality: e.target.value })} placeholder="Brazil" className={inputCls} />
+                  <div className="flex items-center gap-2">
+                    <FlagImg nat={form.nationality} size={18} />
+                    <input
+                      list="base-nat-list"
+                      value={form.nationality}
+                      onChange={(e) => setForm({ ...form, nationality: e.target.value })}
+                      placeholder="Brazil"
+                      className={inputCls + " flex-1"}
+                    />
+                  </div>
+                  <datalist id="base-nat-list">
+                    {["Brazil","Argentina","Uruguay","Chile","Colombia","Paraguay","Peru","Venezuela","Mexico","United States","Portugal","Spain","France","England","Italy","Germany","Netherlands","Belgium","Croatia","Poland","Serbia","Denmark","Norway","Sweden","Switzerland","Austria","Greece","Turkey","Russia","Ukraine","Japan","South Korea","China","Australia","Canada","Morocco","Senegal","Nigeria","Ghana","Cameroon","Ivory Coast","Egypt","Algeria","Tunisia","Saudi Arabia","Iran"].map((n) => (
+                      <option key={n} value={n} />
+                    ))}
+                  </datalist>
                 </Field>
               </div>
               <div className="grid grid-cols-3 gap-3">
