@@ -38,7 +38,9 @@
         {
           "icon": "./assets/images/icon.png",
           "color": "#8B5CF6",
-          "sounds": []
+          "sounds": ["./assets/sounds/notification.mp3"],
+          "androidMode": "default",
+          "androidCollapsedTitle": "FC Career Manager"
         }
       ],
       "expo-font"

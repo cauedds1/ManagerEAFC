@@ -281,6 +281,16 @@ const DICTIONARY: Record<string, Record<Lang, string>> = {
   'diretoria.field.topicPh':     { pt: 'Descreva a pauta…',       en: 'Describe the topic…' },
   'diretoria.field.namePh':      { pt: 'Nome do dirigente',       en: 'Member name' },
   'diretoria.field.bioPh':       { pt: 'Personalidade, histórico…', en: 'Personality, background…' },
+  'diretoria.meeting.title.member':{ pt: 'Convocar Reunião',      en: 'Call Meeting' },
+  'diretoria.meeting.title.topic': { pt: 'Escolher Pauta',        en: 'Choose Topic' },
+  'diretoria.meeting.title.minutes':{ pt: 'Ata da Reunião',       en: 'Meeting Minutes' },
+  'diretoria.meeting.minutesHeader':{ pt: '📋 Ata da Reunião',    en: '📋 Meeting Minutes' },
+  'diretoria.meeting.memberLabel':{ pt: 'Membro:',                 en: 'Member:' },
+  'diretoria.aiGenerate':        { pt: 'Gerar com IA',            en: 'Generate with AI' },
+  'common.remove':               { pt: 'Remover',                 en: 'Remove' },
+  'news.modal.titleHeader':      { pt: '✨ Gerar com IA',          en: '✨ Generate with AI' },
+  'news.modal.typeLabel':        { pt: 'TIPO',                    en: 'TYPE' },
+  'news.modal.portalPrefix':     { pt: 'Portal:',                 en: 'Portal:' },
 };
 
 export const i18n = new I18n(

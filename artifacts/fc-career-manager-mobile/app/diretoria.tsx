@@ -166,7 +166,7 @@ function MeetingModal({
               <Ionicons name={step === 'result' ? 'checkmark-circle-outline' : (step === 'select_member' ? 'close' : 'chevron-back')} size={22} color={Colors.mutedForeground} />
             </TouchableOpacity>
             <Text style={styles.modalTitle}>
-              {step === 'select_member' ? 'Convocar Reunião' : step === 'select_topic' ? 'Escolher Pauta' : 'Ata da Reunião'}
+              {step === 'select_member' ? t('diretoria.meeting.title.member') : step === 'select_topic' ? t('diretoria.meeting.title.topic') : t('diretoria.meeting.title.minutes')}
             </Text>
             <View style={{ width: 22 }} />
           </View>
@@ -267,11 +267,11 @@ function MeetingModal({
               <ScrollView contentContainerStyle={styles.meetingBody}>
                 <View style={styles.ataCard}>
                   <View style={styles.ataHeader}>
-                    <Text style={styles.ataTitle}>📋 Ata da Reunião</Text>
+                    <Text style={styles.ataTitle}>{t('diretoria.meeting.minutesHeader')}</Text>
                     <Text style={styles.ataDate}>{new Date().toLocaleDateString(getLang() === 'en' ? 'en-US' : 'pt-BR')}</Text>
                   </View>
                   <View style={styles.ataMeta}>
-                    <Text style={styles.ataMetaText}>Membro: {selectedMember?.name}</Text>
+                    <Text style={styles.ataMetaText}>{t('diretoria.meeting.memberLabel')} {selectedMember?.name}</Text>
                     <Text style={styles.ataMetaText}>
                       Cargo: {selectedMember?.roleLabel ?? selectedMember?.role ?? 'Membro'}
                     </Text>
@@ -458,9 +458,9 @@ function MemberManagementModal({
 
   const handleDelete = (id: string) => {
     Alert.alert(t('diretoria.removeMemberTitle'), t('diretoria.removeMemberMsg'), [
-      { text: 'Cancelar', style: 'cancel' },
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Remover', style: 'destructive',
+        text: t('common.remove'), style: 'destructive',
         onPress: () => onSaveMembers(members.filter((m) => m.id !== id)),
       },
     ]);
@@ -487,7 +487,7 @@ function MemberManagementModal({
       onSaveMembers([...members, newMember]);
       setPanel('list');
     } catch {
-      Alert.alert('Erro', t('diretoria.generateError'));
+      Alert.alert(t('common.error'), t('diretoria.generateError'));
     }
     setAiGenerating(false);
   };
@@ -568,7 +568,7 @@ function MemberManagementModal({
                   onPress={() => setPanel('ai')}
                 >
                   <Ionicons name="sparkles-outline" size={18} color="#8B5CF6" />
-                  <Text style={[styles.addMemberBtnText, { color: '#8B5CF6' }]}>Gerar com IA</Text>
+                  <Text style={[styles.addMemberBtnText, { color: '#8B5CF6' }]}>{t('diretoria.aiGenerate')}</Text>
                 </TouchableOpacity>
                 {meetings.length > 0 && (
                   <TouchableOpacity

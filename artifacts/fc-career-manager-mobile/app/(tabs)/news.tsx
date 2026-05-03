@@ -365,14 +365,14 @@ function GenerateModal({
         <View style={[styles.genSheet, { paddingBottom: insets.bottom + 16 }]}>
           <View style={styles.sheetHandle} />
           <View style={styles.genHeader}>
-            <Text style={styles.genTitle}>✨ Gerar com IA</Text>
+            <Text style={styles.genTitle}>{t('news.modal.titleHeader')}</Text>
             <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
               <Ionicons name="close" size={22} color={Colors.mutedForeground} />
             </TouchableOpacity>
           </View>
 
           <ScrollView contentContainerStyle={styles.genBody} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-            <Text style={styles.genSectionLabel}>TIPO</Text>
+            <Text style={styles.genSectionLabel}>{t('news.modal.typeLabel')}</Text>
             <View style={styles.optionList}>
               {GEN_OPTIONS.map((opt) => {
                 const planLocked =
@@ -430,7 +430,7 @@ function GenerateModal({
                   maxLength={300}
                 />
                 {selected === 'leak' && portals && portals.length > 0 && (
-                  <Text style={styles.optionDesc}>Portal: {portals[0].name}</Text>
+                  <Text style={styles.optionDesc}>{t('news.modal.portalPrefix')} {portals[0].name}</Text>
                 )}
               </View>
             )}
