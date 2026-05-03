@@ -366,9 +366,14 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
       await syncSeasonFromDb(effectiveSeasonId);
 
       // Pre-popula Transferências/Partidas/Rivais a partir do contexto inicial extraído pela IA.
-      // Roda depois do sync para que os guards possam comparar com os dados reais já persistidos
-      // (não sobrescreve carreiras legadas que já têm dados manuais). Idempotente via flag em localStorage.
-      await hydrateInitialContext(career, effectiveSeasonId);
+      // SEMPRE hidrata na temporada inicial (season 1), nunca na temporada ativa atual:
+      // o initialContext sempre se refere à temporada de início da carreira. Para carreiras
+      // que já avançaram para a season 2+, isto re-enriquece registros legados na season 1
+      // sem poluir a temporada corrente. Idempotente via flag v2 em localStorage.
+      if (initialSeasonId !== effectiveSeasonId) {
+        await syncSeasonFromDb(initialSeasonId);
+      }
+      await hydrateInitialContext(career, initialSeasonId);
 
       const loadedTransfers = getTransfers(effectiveSeasonId);
       const existingOverrides = getAllPlayerOverrides(career.id);
