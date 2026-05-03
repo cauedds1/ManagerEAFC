@@ -86,8 +86,19 @@ export function addTransfer(seasonId: string, transfer: TransferRecord): void {
 }
 
 export function updateTransfer(seasonId: string, id: string, changes: Partial<TransferRecord>): void {
+  const prev = getTransfers(seasonId).find((t) => t.id === id);
   const list = getTransfers(seasonId).map((t) => t.id === id ? { ...t, ...changes } : t);
   saveTransfers(seasonId, list);
+  const next = list.find((t) => t.id === id);
+  if (next && next.type === "compra" && !next.windowPending) {
+    const becameActivePurchase =
+      !prev ||
+      prev.type !== "compra" ||
+      prev.windowPending === true ||
+      prev.playerId !== next.playerId ||
+      prev.playerName !== next.playerName;
+    if (becameActivePurchase) maybeEmitReturningCriaForTransfer(seasonId, next);
+  }
 }
 
 export function removeTransfer(seasonId: string, id: string): void {

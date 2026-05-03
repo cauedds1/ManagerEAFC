@@ -408,13 +408,13 @@ export function CreateCareerWizard({
       clubSecondary: colors.secondary,
     };
     try {
+      await onComplete(career);
       try {
         const { seedAcademyForNewCareer } = await import("@/lib/baseStorage");
         await seedAcademyForNewCareer(career.id);
       } catch (err) {
         console.error("[base] seedAcademyForNewCareer failed", err);
       }
-      await onComplete(career);
     } finally {
       setConfirming(false);
     }
