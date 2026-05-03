@@ -215,7 +215,7 @@ inicial automática de 8–12 garotos no primeiro acesso (flag
 
 - `lib/baseStorage.ts` — CRUD + `advanceBaseSeason` (idade +1, OVR cresce
   20–40% do gap até `potentialMax`, jogadores que viram 20 anos saem) +
-  `isReadyToPromote` (idade ≥ 18 ou OVR ≥ 80% do `potentialMin`).
+  `isReadyToPromote` (idade ≥ 18 ou OVR ≥ 80% do `potentialMax`).
 - `lib/criaStorage.ts` — Set permanente de IDs Cria do Clube (selo
   vitalício; volta sozinho na recontratação).
 - `lib/basePlayerSeed.ts` — pools de nomes BR/AR/ES/PT/FR/EN/IT,
