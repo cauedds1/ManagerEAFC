@@ -31,9 +31,34 @@ export async function saveTransfersAsync(seasonId: string, list: TransferRecord[
   await putSeasonData(seasonId, "transfers", list);
 }
 
+function returningCriaDedupeKey(careerId: string): string {
+  return `fc-career-manager-returning-cria-emitted-${careerId}`;
+}
+
+function hasEmittedReturningCria(careerId: string, transferId: string): boolean {
+  try {
+    const raw = localStorage.getItem(returningCriaDedupeKey(careerId));
+    if (!raw) return false;
+    const arr = JSON.parse(raw) as string[];
+    return Array.isArray(arr) && arr.includes(transferId);
+  } catch { return false; }
+}
+
+function markEmittedReturningCria(careerId: string, transferId: string): void {
+  try {
+    const raw = localStorage.getItem(returningCriaDedupeKey(careerId));
+    const arr: string[] = raw ? (JSON.parse(raw) as string[]) : [];
+    if (!arr.includes(transferId)) {
+      arr.push(transferId);
+      localStorage.setItem(returningCriaDedupeKey(careerId), JSON.stringify(arr.slice(-200)));
+    }
+  } catch {}
+}
+
 export function maybeEmitReturningCriaForTransfer(seasonId: string, transfer: TransferRecord): void {
   try {
     if (transfer.type !== "compra" || !transfer.careerId || typeof transfer.playerId !== "number") return;
+    if (hasEmittedReturningCria(transfer.careerId, transfer.id)) return;
     let isReturningCria = isCria(transfer.careerId, transfer.playerId);
     if (!isReturningCria) {
       const original = findCriaByName(transfer.careerId, transfer.playerName);
@@ -45,6 +70,7 @@ export function maybeEmitReturningCriaForTransfer(seasonId: string, transfer: Tr
     if (isReturningCria) {
       const club = getActiveCareer(transfer.careerId)?.clubName ?? "";
       emitReturningCriaNews(seasonId, transfer.careerId, transfer.playerName, club, readLang());
+      markEmittedReturningCria(transfer.careerId, transfer.id);
     }
   } catch (err) {
     console.error("[transfers] returning-cria news failed", err);

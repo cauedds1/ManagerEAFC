@@ -2301,6 +2301,7 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
           <ClubeView
             careerId={career.id}
             seasonId={activeSeasonId}
+            seasonLabel={seasons.find((s) => s.id === activeSeasonId)?.label ?? activeSeasonLabel}
             career={career}
             seasons={seasons}
             squad={squad}

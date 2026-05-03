@@ -32,6 +32,7 @@ type StatsMiniTab = "jogadores" | "clube";
 interface ClubeViewProps {
   careerId: string;
   seasonId: string;
+  seasonLabel?: string;
   career: Career;
   seasons: Season[];
   squad: SquadResult | null;
@@ -81,6 +82,7 @@ function ScopeToggle({ scope, setScope, t }: { scope: SeqScope; setScope: (s: Se
 export function ClubeView({
   careerId,
   seasonId,
+  seasonLabel,
   career,
   seasons,
   squad,
@@ -307,7 +309,7 @@ export function ClubeView({
           <BaseView
             careerId={careerId}
             seasonId={seasonId}
-            seasonLabel={career.season}
+            seasonLabel={seasonLabel ?? career.season}
             clubName={career.clubName}
             onPromoted={onRefresh}
             isFinalized={isFinalized}
