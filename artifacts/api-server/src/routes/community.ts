@@ -228,9 +228,18 @@ router.post("/community/posts", requireAuth, async (req: AuthRequest, res) => {
   try {
     const result = await db.transaction(async (tx) => {
       // Dedupe inside tx
-      const [dupe] = await tx.select({ id: publicPostsTable.id }).from(publicPostsTable)
+      const [dupe] = await tx.select({ id: publicPostsTable.id, isHidden: publicPostsTable.isHidden, hiddenReason: publicPostsTable.hiddenReason })
+        .from(publicPostsTable)
         .where(and(eq(publicPostsTable.careerId, body.careerId), eq(publicPostsTable.originalNewsPostId, body.originalNewsPostId))).limit(1);
-      if (dupe) return { id: dupe.id, alreadyPublished: true as const };
+      if (dupe) {
+        if (!dupe.isHidden) return { id: dupe.id, alreadyPublished: true as const };
+        // If user previously unpublished, allow republish (consume quota again).
+        if (dupe.hiddenReason !== "unpublished") {
+          // Hidden by moderation/auto — do not let user re-expose it.
+          return { blocked: true as const };
+        }
+        // Republish flow handled below after quota check
+      }
 
       // Atomic quota increment: only if used < limit. Returns the row if increment applied.
       const incremented = await tx.execute(sql`
@@ -249,6 +258,20 @@ router.post("/community/posts", requireAuth, async (req: AuthRequest, res) => {
         return { quotaExceeded: true as const };
       }
 
+      if (dupe) {
+        // Republish: restore visibility, refresh content + timestamp
+        await tx.update(publicPostsTable).set({
+          isHidden: false,
+          hiddenReason: null,
+          contentJson: JSON.stringify(body.content),
+          lang: body.lang === "en" ? "en" : "pt",
+          publishedAt: now,
+          isSpecial: body.isSpecial ?? null,
+        }).where(eq(publicPostsTable.id, dupe.id));
+        await tx.update(publicProfilesTable).set({ lastActivityAt: now }).where(eq(publicProfilesTable.careerId, body.careerId));
+        return { id: dupe.id, publishedAt: now, used: usedAfter };
+      }
+
       await tx.insert(publicPostsTable).values({
         id, careerId: body.careerId, userId,
         originalNewsPostId: body.originalNewsPostId,
@@ -261,6 +284,9 @@ router.post("/community/posts", requireAuth, async (req: AuthRequest, res) => {
       return { id, publishedAt: now, used: usedAfter };
     });
 
+    if ("blocked" in result) {
+      return res.status(403).json({ error: "Esta notícia foi removida pela moderação", code: "MODERATION" });
+    }
     if ("quotaExceeded" in result) {
       return res.status(429).json({ error: `Cota diária atingida (${limit}/${limit})`, code: "QUOTA", limit, used: limit });
     }

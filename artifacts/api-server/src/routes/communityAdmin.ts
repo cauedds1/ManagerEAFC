@@ -1,7 +1,7 @@
 import { Router, type Request, type Response } from "express";
 import jwt from "jsonwebtoken";
 import { db, contentReportsTable, publicPostsTable, postCommentsTable, publicProfilesTable, usersTable } from "@workspace/db";
-import { eq, desc, sql } from "drizzle-orm";
+import { eq, desc, sql, and } from "drizzle-orm";
 
 const router = Router();
 
@@ -83,11 +83,22 @@ router.post("/admin-panel/community/reports/:id/action", async (req, res) => {
     }
     await db.update(contentReportsTable).set({ status: "approved", reviewedAt: Date.now() }).where(eq(contentReportsTable.id, id));
   } else {
-    // reject — clear auto-hide if any
+    // reject — only clear auto-moderation hides; never override owner-unpublish
+    // or admin "moderation" hide states.
     if (r.targetType === "post") {
-      await db.update(publicPostsTable).set({ isHidden: false, hiddenReason: null, reportsCount: 0 }).where(eq(publicPostsTable.id, r.targetId));
+      await db.update(publicPostsTable)
+        .set({ isHidden: false, hiddenReason: null, reportsCount: 0 })
+        .where(and(eq(publicPostsTable.id, r.targetId), eq(publicPostsTable.hiddenReason, "auto")));
+      // Always reset reports counter even when not unhiding
+      await db.update(publicPostsTable)
+        .set({ reportsCount: 0 })
+        .where(eq(publicPostsTable.id, r.targetId));
     } else if (r.targetType === "comment") {
-      await db.update(postCommentsTable).set({ isHidden: false, reportsCount: 0 }).where(eq(postCommentsTable.id, Number(r.targetId)));
+      // Comments don't currently track a hiddenReason; conservatively keep
+      // any existing hidden state and only reset the counter.
+      await db.update(postCommentsTable)
+        .set({ reportsCount: 0 })
+        .where(eq(postCommentsTable.id, Number(r.targetId)));
     }
     await db.update(contentReportsTable).set({ status: "rejected", reviewedAt: Date.now() }).where(eq(contentReportsTable.id, id));
   }
