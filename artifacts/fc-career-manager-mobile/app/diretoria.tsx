@@ -16,16 +16,16 @@ import { Colors } from '@/constants/colors';
 import { useToast } from '@/components/Toast';
 import { useT, getLang } from '@/lib/i18n';
 
-const MEETING_TOPICS = [
-  'Avaliação do desempenho na temporada',
-  'Situação no mercado de transferências',
-  'Gestão financeira e orçamento',
-  'Objetivos e metas da temporada',
-  'Pressão por resultados recentes',
-  'Renovações de contrato',
-  'Planejamento tático',
-  'Outro assunto',
-];
+const MEETING_TOPIC_KEYS = [
+  'diretoria.topic.0',
+  'diretoria.topic.1',
+  'diretoria.topic.2',
+  'diretoria.topic.3',
+  'diretoria.topic.4',
+  'diretoria.topic.5',
+  'diretoria.topic.6',
+  'diretoria.topic.7',
+] as const;
 
 interface MeetingModalProps {
   visible: boolean;
@@ -206,22 +206,25 @@ function MeetingModal({
           {step === 'select_topic' && (
             <>
               <ScrollView contentContainerStyle={styles.meetingBody} keyboardShouldPersistTaps="handled">
-                <Text style={styles.meetingHint}>Pauta da reunião com {selectedMember?.name?.split(' ')[0]}:</Text>
-                {MEETING_TOPICS.map((t) => (
+                <Text style={styles.meetingHint}>{t('diretoria.meetingHintPrefix')} {selectedMember?.name?.split(' ')[0]}:</Text>
+                {MEETING_TOPIC_KEYS.map((tk) => {
+                  const label = t(tk);
+                  return (
                   <TouchableOpacity
-                    key={t}
+                    key={tk}
                     style={[
                       styles.topicRow,
-                      selectedTopic === t && { backgroundColor: `rgba(${theme.primaryRgb},0.12)`, borderColor: `rgba(${theme.primaryRgb},0.35)` },
+                      selectedTopic === label && { backgroundColor: `rgba(${theme.primaryRgb},0.12)`, borderColor: `rgba(${theme.primaryRgb},0.35)` },
                     ]}
-                    onPress={() => setSelectedTopic(t)}
+                    onPress={() => setSelectedTopic(label)}
                     activeOpacity={0.75}
                   >
-                    <Text style={[styles.topicText, selectedTopic === t && { color: theme.primary }]}>{t}</Text>
-                    {selectedTopic === t && <Ionicons name="checkmark" size={18} color={theme.primary} />}
+                    <Text style={[styles.topicText, selectedTopic === label && { color: theme.primary }]}>{label}</Text>
+                    {selectedTopic === label && <Ionicons name="checkmark" size={18} color={theme.primary} />}
                   </TouchableOpacity>
-                ))}
-                {selectedTopic === 'Outro assunto' && (
+                  );
+                })}
+                {selectedTopic === t('diretoria.topic.7') && (
                   <TextInput
                     style={styles.topicInput}
                     value={customTopic}
@@ -1132,10 +1135,10 @@ export default function DiretoraScreen() {
             style={styles.input}
             placeholder={
               !canSend
-                ? 'Adicione membros da diretoria'
+                ? t('diretoria.input.noMembers')
                 : selectedMember
-                  ? `Mensagem para ${selectedMember.name.split(' ')[0]}…`
-                  : 'Escreva uma pauta ou pergunta…'
+                  ? `${t('diretoria.input.toMember')} ${selectedMember.name.split(' ')[0]}…`
+                  : t('diretoria.input.topicPh')
             }
             placeholderTextColor={Colors.mutedForeground}
             value={inputText}

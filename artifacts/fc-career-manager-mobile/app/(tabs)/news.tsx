@@ -169,7 +169,7 @@ function NewsModal({ item, onClose, userPlan, clubName, onImageGenerated }: News
       if (msg.includes('OpenAI') || msg.includes('sk-') || msg.includes('402')) {
         setShowKeyModal(true);
       } else {
-        setImgError('Erro ao gerar imagem. Tente novamente.');
+        setImgError(t('news.modal.imageError'));
       }
     }
     setImgLoading(false);
