@@ -95,7 +95,7 @@ export function isReadyToPromote(p: BasePlayer): boolean {
  * BaseView never re-seeds. Idempotent: skipped if a flag or any record
  * already exists for that career.
  */
-export function seedAcademyForNewCareer(careerId: string): void {
+export async function seedAcademyForNewCareer(careerId: string): Promise<void> {
   const seedFlag = `fc-career-manager-base-seeded-${careerId}`;
   try {
     if (localStorage.getItem(seedFlag)) return;
@@ -104,12 +104,14 @@ export function seedAcademyForNewCareer(careerId: string): void {
     try { localStorage.setItem(seedFlag, "1"); } catch {}
     return;
   }
-  // Lazy import avoids a cycle (basePlayerSeed depends on baseStorage).
-  import("./basePlayerSeed").then(({ generateInitialBaseSeed }) => {
+  try {
+    const { generateInitialBaseSeed } = await import("./basePlayerSeed");
     const seed = generateInitialBaseSeed();
     saveBasePlayers(careerId, seed);
     try { localStorage.setItem(seedFlag, "1"); } catch {}
-  }).catch(() => {});
+  } catch (err) {
+    console.error("[base] seedAcademyForNewCareer failed", err);
+  }
 }
 
 /**
