@@ -430,7 +430,9 @@ function CommunityPreviewPanel({ lang, onAccess }: { lang: "pt" | "en"; onAccess
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
           {posts.slice(0, 6).map((p) => {
             const accent = p.clubPrimary ?? "#7c5cfc";
-            const teamLogo = p.clubLogo || (p.clubId > 0 ? `https://media.api-sports.io/football/teams/${p.clubId}.png` : "");
+            const clubLogoUrl = p.clubLogo || (p.clubId > 0 ? `https://media.api-sports.io/football/teams/${p.clubId}.png` : "");
+            const avatarUrl = p.coachPhoto || clubLogoUrl;
+            const isCoachPhoto = !!p.coachPhoto;
             const totalReactions = Object.values(p.reactions ?? {}).reduce((a, b) => a + b, 0);
             const topReaction = Object.entries(p.reactions ?? {}).sort((a, b) => b[1] - a[1])[0]?.[0] as ReactionType | undefined;
             return (
@@ -438,7 +440,7 @@ function CommunityPreviewPanel({ lang, onAccess }: { lang: "pt" | "en"; onAccess
                 className="text-left rounded-xl p-3 flex flex-col gap-2 hover:opacity-95 transition cursor-pointer"
                 style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)", borderLeft: `3px solid ${accent}` }}>
                 <div className="flex items-center gap-2 min-w-0">
-                  {teamLogo && <img src={teamLogo} alt="" className="w-8 h-8 rounded-full object-contain flex-shrink-0" style={{ background: "rgba(255,255,255,0.04)" }} />}
+                  {avatarUrl && <img src={avatarUrl} alt="" className={"w-8 h-8 rounded-full flex-shrink-0 " + (isCoachPhoto ? "object-cover" : "object-contain")} style={{ background: "rgba(255,255,255,0.04)" }} />}
                   <div className="min-w-0 flex-1">
                     <div className="text-white font-bold text-xs truncate">{p.coachName || "—"}</div>
                     <div className="text-white/40 text-[10px] truncate">@{p.username ?? "anon"} · {p.clubName}</div>

@@ -372,7 +372,7 @@ async function enrichPosts(rows: Array<{ id: string; careerId: string; userId: n
   return rows.map((r) => {
     const career = careerMap.get(r.careerId);
     const user = userMap.get(r.userId);
-    const coach = career?.coachJson ? (JSON.parse(career.coachJson) as { name?: string }) : null;
+    const coach = career?.coachJson ? (JSON.parse(career.coachJson) as { name?: string; photo?: string }) : null;
     let content: unknown = {};
     try { content = JSON.parse(r.contentJson); } catch {}
     return {
@@ -382,6 +382,7 @@ async function enrichPosts(rows: Array<{ id: string; careerId: string; userId: n
       username: user?.username ?? null,
       plan: user?.plan ?? "free",
       coachName: coach?.name ?? "",
+      coachPhoto: coach?.photo ?? "",
       clubName: career?.clubName ?? "",
       clubLogo: career?.clubLogo ?? "",
       clubId: career?.clubId ?? 0,
@@ -494,6 +495,7 @@ router.get("/community/discover", requireAuth, async (req: AuthRequest, res) => 
       careerId: r.careerId, userId: r.userId, username: r.username,
       plan: r.plan, bio: r.bio, clubName: r.clubName, clubLogo: r.clubLogo, clubLeague: r.clubLeague,
       coachName: r.coachJson ? (JSON.parse(r.coachJson) as { name?: string }).name ?? "" : "",
+      coachPhoto: r.coachJson ? (JSON.parse(r.coachJson) as { photo?: string }).photo ?? "" : "",
       lastActivityAt: r.lastActivityAt ? Number(r.lastActivityAt) : null,
     })));
   } catch (err) {
@@ -562,7 +564,7 @@ router.get("/community/profiles/:username/:careerId", requireAuth, async (req: A
       if (shared) sharedHistory = { clubName: shared.clubName, season: shared.season };
     }
 
-    const coach = profile.coachJson ? (JSON.parse(profile.coachJson) as { name?: string }) : null;
+    const coach = profile.coachJson ? (JSON.parse(profile.coachJson) as { name?: string; photo?: string }) : null;
     const isLive = profile.lastActivityAt ? Date.now() - Number(profile.lastActivityAt) < 24 * 3600 * 1000 : false;
 
     res.json({
@@ -574,6 +576,7 @@ router.get("/community/profiles/:username/:careerId", requireAuth, async (req: A
       bio: profile.bio,
       favoriteClubId: profile.favoriteClubId,
       coachName: coach?.name ?? "",
+      coachPhoto: coach?.photo ?? "",
       clubName: profile.clubName, clubLogo: profile.clubLogo,
       clubLeague: profile.clubLeague, clubId: profile.clubId,
       clubPrimary: profile.clubPrimary, clubSecondary: profile.clubSecondary,
@@ -668,13 +671,14 @@ router.get("/community/posts/:id/comments", requireAuth, async (req: AuthRequest
 
   res.json(rows.map((r) => {
     const car = carMap.get(r.userId);
-    const coach = car?.coachJson ? (JSON.parse(car.coachJson) as { name?: string }) : null;
+    const coach = car?.coachJson ? (JSON.parse(car.coachJson) as { name?: string; photo?: string }) : null;
     return {
       id: r.id, postId: r.postId, userId: r.userId, parentCommentId: r.parentCommentId,
       content: r.content, isPinned: r.isPinned, createdAt: Number(r.createdAt),
       username: r.username, plan: r.plan,
       clubName: car?.clubName ?? "", clubLogo: car?.clubLogo ?? "",
       coachName: coach?.name ?? "",
+      coachPhoto: coach?.photo ?? "",
     };
   }));
 });

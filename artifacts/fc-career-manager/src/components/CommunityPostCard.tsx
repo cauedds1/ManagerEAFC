@@ -88,7 +88,9 @@ export function CommunityPostCard({ post, lang, viewerUserId, compact, onOpenCom
   const accent = post.clubPrimary ?? "#8b5cf6";
   const accentRgb = post.clubPrimary ? hexToRgb(post.clubPrimary) : "139,92,246";
 
-  const teamLogo = post.clubLogo || (post.clubId > 0 ? `https://media.api-sports.io/football/teams/${post.clubId}.png` : "");
+  const clubLogoUrl = post.clubLogo || (post.clubId > 0 ? `https://media.api-sports.io/football/teams/${post.clubId}.png` : "");
+  const avatarUrl = post.coachPhoto || clubLogoUrl;
+  const isCoachPhoto = !!post.coachPhoto;
 
   return (
     <div className="rounded-2xl p-4 sm:p-5 flex flex-col gap-3" style={{
@@ -99,7 +101,7 @@ export function CommunityPostCard({ post, lang, viewerUserId, compact, onOpenCom
       {/* Header — author identity */}
       <div className="flex items-start justify-between gap-2">
         <button onClick={() => post.username && onOpenProfile?.(post.username, post.careerId)} className="flex items-center gap-3 min-w-0 text-left hover:opacity-90 transition">
-          {teamLogo && <img src={teamLogo} alt="" className="w-10 h-10 rounded-full object-contain flex-shrink-0" style={{ background: "rgba(255,255,255,0.04)", border: `1.5px solid rgba(${accentRgb},0.35)` }} />}
+          {avatarUrl && <img src={avatarUrl} alt="" className={"w-10 h-10 rounded-full flex-shrink-0 " + (isCoachPhoto ? "object-cover" : "object-contain")} style={{ background: "rgba(255,255,255,0.04)", border: `1.5px solid rgba(${accentRgb},0.35)` }} />}
           <div className="flex flex-col min-w-0">
             <div className="flex items-center gap-1.5">
               <span className="text-white font-bold text-sm truncate">{post.coachName || "—"}</span>

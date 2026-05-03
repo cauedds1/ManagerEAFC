@@ -28,11 +28,13 @@ function CommunityPreviewSection({ lang }: { lang: Lang }) {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16 }}>
           {posts.slice(0, 5).map((p) => {
             const accent = p.clubPrimary ?? "#7c5cfc";
-            const teamLogo = p.clubLogo || (p.clubId > 0 ? `https://media.api-sports.io/football/teams/${p.clubId}.png` : "");
+            const clubLogoUrl = p.clubLogo || (p.clubId > 0 ? `https://media.api-sports.io/football/teams/${p.clubId}.png` : "");
+            const avatarUrl = p.coachPhoto || clubLogoUrl;
+            const isCoachPhoto = !!p.coachPhoto;
             return (
               <div key={p.id} style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)", borderLeft: `3px solid ${accent}`, borderRadius: 14, padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  {teamLogo && <img src={teamLogo} alt="" style={{ width: 32, height: 32, borderRadius: "50%", objectFit: "contain", background: "rgba(255,255,255,0.04)" }} />}
+                  {avatarUrl && <img src={avatarUrl} alt="" style={{ width: 32, height: 32, borderRadius: "50%", objectFit: isCoachPhoto ? "cover" : "contain", background: "rgba(255,255,255,0.04)" }} />}
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <div style={{ color: "#f0f0ff", fontSize: 12, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.coachName || "—"}</div>
                     <div style={{ color: "#666688", fontSize: 10, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>@{p.username ?? "anon"} · {p.clubName}</div>

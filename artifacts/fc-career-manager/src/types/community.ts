@@ -5,6 +5,7 @@ export interface CommunityPost {
   username: string | null;
   plan: string;
   coachName: string;
+  coachPhoto?: string;
   clubName: string;
   clubLogo: string;
   clubId: number;
@@ -44,6 +45,7 @@ export interface CommunityComment {
   clubName: string;
   clubLogo: string;
   coachName: string;
+  coachPhoto?: string;
 }
 
 export interface DiscoverProfile {
@@ -56,6 +58,7 @@ export interface DiscoverProfile {
   clubLogo: string;
   clubLeague: string;
   coachName: string;
+  coachPhoto?: string;
   lastActivityAt: number | null;
 }
 
@@ -68,6 +71,7 @@ export interface PublicProfileResponse {
   bio: string | null;
   favoriteClubId: number | null;
   coachName: string;
+  coachPhoto?: string;
   clubName: string;
   clubLogo: string;
   clubLeague: string;

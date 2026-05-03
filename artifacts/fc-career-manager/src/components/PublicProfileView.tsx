@@ -47,7 +47,11 @@ export function PublicProfileView({ username, careerId, lang, viewerUserId, onBa
       {/* Header */}
       <div className="rounded-3xl p-5 sm:p-6 flex flex-col gap-4" style={{ background: `linear-gradient(135deg, ${accent}22, transparent)`, border: `1px solid ${accent}44` }}>
         <div className="flex items-start gap-4">
-          {data.clubLogo && <img src={data.clubLogo} alt="" className="w-20 h-20 rounded-2xl object-contain" style={{ background: "rgba(255,255,255,0.05)", border: `2px solid ${accent}66` }} />}
+          {(data.coachPhoto || data.clubLogo) && (
+            <img src={data.coachPhoto || data.clubLogo} alt=""
+              className={"w-20 h-20 rounded-2xl " + (data.coachPhoto ? "object-cover" : "object-contain")}
+              style={{ background: "rgba(255,255,255,0.05)", border: `2px solid ${accent}66` }} />
+          )}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-white font-black text-2xl">{data.coachName || data.username}</h1>
