@@ -706,6 +706,39 @@ export const api = {
       }),
   },
 
+  aiUsage: {
+    get: () =>
+      request<{ aiUsageToday: number; aiUsageLimit: number }>('/api/noticias/ai-usage'),
+  },
+
+  bugReports: {
+    create: (payload: { subject: string; description: string; context?: Record<string, unknown> }) =>
+      request<{ ok: boolean }>('/api/bug-reports', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }),
+  },
+
+  referrals: {
+    myLink: () =>
+      request<{ code: string; url: string }>('/api/referrals/my-link'),
+  },
+
+  notificationsAdmin: {
+    pending: () =>
+      request<{ id: number; title: string; body: string; imageUrl: string | null; requiresResponse: boolean } | null>('/api/notifications/pending'),
+    markRead: (id: number, response?: string) =>
+      request<{ ok: boolean }>(`/api/notifications/${id}/read`, {
+        method: 'POST',
+        body: JSON.stringify({ response: response ?? '' }),
+      }),
+  },
+
+  stripeMobile: {
+    subscription: () =>
+      request<{ subscription: { status: string; current_period_end: string | null; cancel_at_period_end: boolean; product_name: string | null } | null }>('/api/stripe/subscription'),
+  },
+
   portals: {
     list: (careerId: string) =>
       request<CustomPortal[]>(`/api/careers/${encodeURIComponent(careerId)}/portals`),

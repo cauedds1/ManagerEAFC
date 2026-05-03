@@ -14,6 +14,13 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, PORTAL_TONES, type CustomPortal, type PortalTone, getApiUrl, TOKEN_KEY } from '@/lib/api';
 import { Colors } from '@/constants/colors';
 import * as SecureStore from 'expo-secure-store';
+import * as Clipboard from 'expo-clipboard';
+import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system/legacy';
+import { setLang as setI18nLang, t as tr } from '@/lib/i18n';
+import { setSoundEnabled as persistSoundEnabled } from '@/lib/notificationSound';
+import { getOpenAIKey, setOpenAIKey } from '@/lib/openaiKeyStorage';
+import { startCheckout, openCustomerPortal } from '@/lib/stripeFlow';
 
 async function loadPref(key: string, fallback: string): Promise<string> {
   try {
@@ -156,6 +163,10 @@ export default function ConfiguracoesScreen() {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [language, setLanguage] = useState<'pt' | 'en'>('pt');
   const [prefsLoaded, setPrefsLoaded] = useState(false);
+  const [openaiKey, setOpenaiKeyState] = useState('');
+  const [openingCheckout, setOpeningCheckout] = useState(false);
+  const [openingPortal, setOpeningPortal] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [showNewPortal, setShowNewPortal] = useState(false);
   const [newPortal, setNewPortal] = useState<NewPortalForm>({ name: '', description: '', tone: 'jornalistico' });
   const [savingPortal, setSavingPortal] = useState(false);
@@ -180,6 +191,8 @@ export default function ConfiguracoesScreen() {
       setAiEnabled(ai === '1');
       setSoundEnabled(sound === '1');
       setLanguage(lang as 'pt' | 'en');
+      const k = await getOpenAIKey();
+      setOpenaiKeyState(k);
       setPrefsLoaded(true);
     };
     void load();
@@ -194,11 +207,95 @@ export default function ConfiguracoesScreen() {
   const toggleSound = (v: boolean) => {
     setSoundEnabled(v);
     void savePref(prefKey('sound_enabled'), v ? '1' : '0');
+    void persistSoundEnabled(v);
   };
 
   const changeLanguage = (lang: 'pt' | 'en') => {
     setLanguage(lang);
     void savePref(prefKey('language'), lang);
+    void setI18nLang(lang);
+  };
+
+  const { data: aiUsage } = useQuery({
+    queryKey: ['/api/noticias/ai-usage'],
+    queryFn: () => api.aiUsage.get(),
+    staleTime: 60_000,
+  });
+
+  const { data: subscription } = useQuery({
+    queryKey: ['/api/stripe/subscription'],
+    queryFn: () => api.stripeMobile.subscription(),
+    enabled: isProOrAbove,
+  });
+
+  const handleSaveOpenAIKey = async () => {
+    await setOpenAIKey(openaiKey);
+    Alert.alert(tr('settings.byok.saved'));
+  };
+
+  const handleClearOpenAIKey = async () => {
+    await setOpenAIKey('');
+    setOpenaiKeyState('');
+    Alert.alert(tr('settings.byok.cleared'));
+  };
+
+  const handleCopyReferral = async () => {
+    try {
+      const { url } = await api.referrals.myLink();
+      await Clipboard.setStringAsync(url);
+      Alert.alert(tr('common.copied'), url);
+    } catch (err) {
+      Alert.alert(tr('common.error'), err instanceof Error ? err.message : 'Failed');
+    }
+  };
+
+  const handleExportCareer = async () => {
+    if (!activeCareer) return;
+    setExporting(true);
+    try {
+      const token = Platform.OS === 'web'
+        ? localStorage.getItem(TOKEN_KEY)
+        : await SecureStore.getItemAsync(TOKEN_KEY);
+      const res = await fetch(`${getApiUrl()}/api/careers/${activeCareer.id}/export`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.text();
+      const fileName = `career_${activeCareer.id}_${Date.now()}.json`;
+      const uri = `${FileSystem.documentDirectory}${fileName}`;
+      await FileSystem.writeAsStringAsync(uri, json, { encoding: FileSystem.EncodingType.UTF8 });
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, { mimeType: 'application/json', dialogTitle: 'Exportar carreira' });
+      } else {
+        Alert.alert(tr('settings.exportSuccess'), uri);
+      }
+    } catch (err) {
+      Alert.alert(tr('settings.exportError'), err instanceof Error ? err.message : 'Failed');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleStartCheckout = async (plan: 'pro' | 'ultra') => {
+    setOpeningCheckout(true);
+    try {
+      await startCheckout(plan, language);
+    } catch (err) {
+      Alert.alert(tr('common.error'), err instanceof Error ? err.message : 'Failed');
+    } finally {
+      setOpeningCheckout(false);
+    }
+  };
+
+  const handleOpenPortal = async () => {
+    setOpeningPortal(true);
+    try {
+      await openCustomerPortal(language);
+    } catch (err) {
+      Alert.alert(tr('common.error'), err instanceof Error ? err.message : 'Failed');
+    } finally {
+      setOpeningPortal(false);
+    }
   };
 
   const { data: portals, isLoading: portalsLoading } = useQuery({
@@ -233,7 +330,15 @@ export default function ConfiguracoesScreen() {
   };
 
   const handleUpgrade = () => {
-    Alert.alert('Upgrade', 'Para fazer upgrade acesse fc.replit.app no navegador.', [{ text: 'OK' }]);
+    Alert.alert(
+      tr('settings.upgrade'),
+      '',
+      [
+        { text: 'Pro', onPress: () => handleStartCheckout('pro') },
+        { text: 'Ultra', onPress: () => handleStartCheckout('ultra') },
+        { text: tr('common.cancel'), style: 'cancel' },
+      ]
+    );
   };
 
   const handleDeleteAccount = () => {
@@ -628,23 +733,67 @@ export default function ConfiguracoesScreen() {
               </View>
             }
           />
-          {!isProOrAbove && (
+          {!isProOrAbove ? (
             <Row
               icon="rocket-outline"
               iconColor="#f59e0b"
-              label="Fazer upgrade"
-              onPress={handleUpgrade}
+              label={openingCheckout ? tr('settings.openingCheckout') : tr('settings.upgrade')}
+              onPress={openingCheckout ? undefined : handleUpgrade}
+            />
+          ) : (
+            <Row
+              icon="card-outline"
+              iconColor={Colors.primary}
+              label={openingPortal ? tr('settings.openingPortal') : tr('settings.manageSubscription')}
+              value={subscription?.subscription?.product_name ?? undefined}
+              onPress={openingPortal ? undefined : handleOpenPortal}
             />
           )}
+        </Section>
+
+        {/* USO DE IA */}
+        <Section title={tr('settings.aiUsage')}>
+          <Row
+            icon="analytics-outline"
+            iconColor={Colors.warning}
+            label={tr('settings.aiUsage')}
+            value={aiUsage ? `${aiUsage.aiUsageToday} / ${aiUsage.aiUsageLimit > 9999 ? '∞' : aiUsage.aiUsageLimit}` : '—'}
+          />
+          <View style={{ paddingHorizontal: 16, paddingVertical: 12, gap: 8 }}>
+            <Text style={{ color: Colors.mutedForeground, fontSize: 12 }}>{tr('settings.byok.title')}</Text>
+            <TextInput
+              value={openaiKey}
+              onChangeText={setOpenaiKeyState}
+              placeholder={tr('settings.byok.placeholder')}
+              placeholderTextColor={Colors.mutedForeground}
+              autoCapitalize="none"
+              secureTextEntry
+              style={{
+                backgroundColor: Colors.background, borderColor: Colors.border, borderWidth: 1,
+                borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, color: Colors.foreground,
+              }}
+            />
+            <Text style={{ color: Colors.mutedForeground, fontSize: 11 }}>{tr('settings.byok.hint')}</Text>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <TouchableOpacity onPress={handleSaveOpenAIKey} style={{ flex: 1, backgroundColor: Colors.primary, padding: 10, borderRadius: 8, alignItems: 'center' }}>
+                <Text style={{ color: '#fff', fontWeight: '600' }}>{tr('common.save')}</Text>
+              </TouchableOpacity>
+              {openaiKey ? (
+                <TouchableOpacity onPress={handleClearOpenAIKey} style={{ flex: 1, backgroundColor: Colors.muted, padding: 10, borderRadius: 8, alignItems: 'center' }}>
+                  <Text style={{ color: Colors.foreground, fontWeight: '600' }}>{tr('common.close')}</Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+          </View>
         </Section>
 
         {/* SUPORTE */}
         <Section title="Suporte">
           <Row
-            icon="help-circle-outline"
-            iconColor={Colors.info}
-            label="Central de ajuda"
-            onPress={handleSupport}
+            icon="bug-outline"
+            iconColor={Colors.warning}
+            label={tr('settings.bugReport')}
+            onPress={() => router.push('/bug-report')}
           />
           <Row
             icon="mail-outline"
@@ -666,9 +815,17 @@ export default function ConfiguracoesScreen() {
           <Row
             icon="person-add-outline"
             iconColor={Colors.success}
-            label="Convidar amigos"
-            onPress={() => Alert.alert('Convidar amigos', 'Compartilhe o FC Career Manager com seus amigos!')}
+            label={tr('settings.referral')}
+            onPress={handleCopyReferral}
           />
+          {activeCareer ? (
+            <Row
+              icon="cloud-download-outline"
+              iconColor={Colors.info}
+              label={exporting ? tr('common.loading') : tr('settings.export')}
+              onPress={exporting ? undefined : handleExportCareer}
+            />
+          ) : null}
         </Section>
 
         {/* ZONA DE PERIGO */}

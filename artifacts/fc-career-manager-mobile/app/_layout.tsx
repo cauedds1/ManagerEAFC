@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react';
 import { hydrateLocalCache } from '@/lib/localCache';
+import { loadPersistedLang } from '@/lib/i18n';
+import { loadSoundPreference } from '@/lib/notificationSound';
+import { ToastProvider } from '@/components/Toast';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -79,6 +82,10 @@ function RootLayoutInner() {
         name="configuracoes"
         options={{ animation: 'slide_from_right' }}
       />
+      <Stack.Screen
+        name="bug-report"
+        options={{ animation: 'slide_from_right' }}
+      />
     </Stack>
   );
 }
@@ -93,7 +100,11 @@ export default function RootLayout() {
 
   const [cacheReady, setCacheReady] = useState(false);
   useEffect(() => {
-    void hydrateLocalCache().finally(() => setCacheReady(true));
+    void Promise.all([
+      hydrateLocalCache(),
+      loadPersistedLang(),
+      loadSoundPreference(),
+    ]).finally(() => setCacheReady(true));
   }, []);
 
   useEffect(() => {
@@ -121,15 +132,17 @@ export default function RootLayout() {
           <AuthProvider>
             <CareerProvider>
               <ClubThemeProvider>
-                <KeyboardProvider>
-                  <ErrorBoundary>
-                    <View style={styles.root}>
-                      <StatusBar style="light" />
-                      <OfflineBanner />
-                      <RootLayoutInner />
-                    </View>
-                  </ErrorBoundary>
-                </KeyboardProvider>
+                <ToastProvider>
+                  <KeyboardProvider>
+                    <ErrorBoundary>
+                      <View style={styles.root}>
+                        <StatusBar style="light" />
+                        <OfflineBanner />
+                        <RootLayoutInner />
+                      </View>
+                    </ErrorBoundary>
+                  </KeyboardProvider>
+                </ToastProvider>
               </ClubThemeProvider>
             </CareerProvider>
           </AuthProvider>

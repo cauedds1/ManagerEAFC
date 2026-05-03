@@ -27,10 +27,27 @@ let plansCache: { data: PlanEntry[]; expiresAt: number } | null = null;
 
 router.post("/stripe/checkout", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const { priceId } = req.body as { priceId?: string };
+    const { priceId, successUrl, cancelUrl } = req.body as { priceId?: string; successUrl?: string; cancelUrl?: string };
     if (!priceId || typeof priceId !== "string" || !priceId.startsWith("price_")) {
       return res.status(400).json({ error: "priceId inválido" });
     }
+    // Allow caller-supplied return URLs only when they use the trusted FRONTEND_URL
+    // origin or the mobile deep-link scheme `fccareer://`. This lets the Expo
+    // app reopen via `WebBrowser.openAuthSessionAsync` while preventing
+    // open-redirect abuse. We compare on parsed `origin` (not raw startsWith)
+    // so a hostile prefix can't smuggle through.
+    const frontendOrigin = (() => { try { return new URL(FRONTEND_URL).origin; } catch { return ""; } })();
+    const isAllowedReturnUrl = (u: unknown): u is string => {
+      if (typeof u !== "string") return false;
+      if (u.startsWith("fccareer://")) return true;
+      try { return new URL(u).origin === frontendOrigin; } catch { return false; }
+    };
+    const finalSuccessUrl = isAllowedReturnUrl(successUrl)
+      ? `${successUrl}${successUrl.includes("?") ? "&" : "?"}checkout=success&session_id={CHECKOUT_SESSION_ID}`
+      : `${FRONTEND_URL}/?checkout=success&session_id={CHECKOUT_SESSION_ID}`;
+    const finalCancelUrl = isAllowedReturnUrl(cancelUrl)
+      ? `${cancelUrl}${cancelUrl.includes("?") ? "&" : "?"}checkout=cancel`
+      : `${FRONTEND_URL}/?checkout=cancel`;
 
     const [user] = await db
       .select()
@@ -99,8 +116,8 @@ router.post("/stripe/checkout", requireAuth, async (req: AuthRequest, res) => {
       line_items: [{ price: priceId, quantity: 1 }],
       mode: "subscription",
       allow_promotion_codes: true,
-      success_url: `${FRONTEND_URL}/?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${FRONTEND_URL}/?checkout=cancel`,
+      success_url: finalSuccessUrl,
+      cancel_url: finalCancelUrl,
       metadata: {
         userId: String(user.id),
       },
@@ -115,6 +132,15 @@ router.post("/stripe/checkout", requireAuth, async (req: AuthRequest, res) => {
 
 router.post("/stripe/portal", requireAuth, async (req: AuthRequest, res) => {
   try {
+    const { returnUrl } = req.body as { returnUrl?: string };
+    const frontendOrigin = (() => { try { return new URL(FRONTEND_URL).origin; } catch { return ""; } })();
+    const isAllowedReturnUrl = (u: unknown): u is string => {
+      if (typeof u !== "string") return false;
+      if (u.startsWith("fccareer://")) return true;
+      try { return new URL(u).origin === frontendOrigin; } catch { return false; }
+    };
+    const finalReturnUrl = isAllowedReturnUrl(returnUrl) ? returnUrl : FRONTEND_URL;
+
     const [user] = await db
       .select()
       .from(usersTable)
@@ -128,7 +154,7 @@ router.post("/stripe/portal", requireAuth, async (req: AuthRequest, res) => {
     const stripe = await getUncachableStripeClient();
     const session = await stripe.billingPortal.sessions.create({
       customer: user.stripeCustomerId,
-      return_url: FRONTEND_URL,
+      return_url: finalReturnUrl,
     });
 
     return res.json({ url: session.url });
