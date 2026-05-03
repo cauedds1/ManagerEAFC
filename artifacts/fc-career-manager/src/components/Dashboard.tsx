@@ -1691,22 +1691,10 @@ export function Dashboard({ career, onSeasonChange, onGoToCareers, onChangeClub,
       }
     }
 
-    // League position objective evaluation — check if current standing already meets the target
-    if (leaguePos) {
-      const currentObjsForLeague = getSeasonObjectives(activeSeasonId);
-      const pendingLeagueObjs = currentObjsForLeague.filter(
-        (o) => o.status === "pending" && o.type === "league_position",
-      );
-      if (pendingLeagueObjs.length > 0) {
-        let latestLeagueObjs = currentObjsForLeague;
-        for (const obj of pendingLeagueObjs) {
-          if (isLeaguePositionAchieved(obj.target, leaguePos.position ?? 0, leaguePos.totalTeams)) {
-            latestLeagueObjs = markObjectiveAchieved(activeSeasonId, obj.id, updatedMatches.length);
-          }
-        }
-        setSeasonObjectives(latestLeagueObjs);
-      }
-    }
+    // League position objectives are deliberately NOT evaluated mid-season here.
+    // They reflect where the team FINISHES, not a moment-in-time standing, so the
+    // achievement / failure decision is made once in handleNewSeasonConfirm when
+    // the season ends.
 
     // Apply grace period: all penalties (match delta + objective failures) halved in first 8 matches
     const gracePeriod = isInGracePeriod(updatedMatches.length);
