@@ -39,7 +39,7 @@ async function ensureSoundLoaded(): Promise<void> {
       const av = await import('expo-av');
       const asset = require('../assets/sounds/notification.mp3');
       const { sound } = await av.Audio.Sound.createAsync(asset, { volume: 0.6 });
-      _sound = sound as unknown as typeof _sound extends infer T ? T : never;
+      _sound = sound as unknown as { replayAsync: () => Promise<unknown>; unloadAsync: () => Promise<unknown> };
     } catch {
       _sound = null;
     } finally {

@@ -54,9 +54,9 @@ export default function PerfilScreen() {
   const planKey = (user?.plan ?? 'free') as 'free' | 'pro' | 'ultra';
   const isProOrAbove = planKey === 'pro' || planKey === 'ultra';
   const planLabels: Record<string, string> = {
-    free: lang === 'en' ? 'Free' : 'Gratuito',
-    pro: 'Pro',
-    ultra: 'Ultra',
+    free: t('plan.free'),
+    pro: t('plan.pro'),
+    ultra: t('plan.ultra'),
   };
 
   useEffect(() => {

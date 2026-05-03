@@ -143,7 +143,12 @@ async function uploadPortalPhoto(uri: string, careerId: string): Promise<string 
   }
 }
 
-const PLAN_LABELS: Record<string, string> = { free: 'Gratuito', pro: 'Pro', ultra: 'Ultra' };
+function planLabelFor(plan: string, tr: (k: string) => string): string {
+  if (plan === 'pro') return tr('plan.pro');
+  if (plan === 'ultra') return tr('plan.ultra');
+  if (plan === 'free') return tr('plan.free');
+  return plan;
+}
 const PLAN_COLORS: Record<string, string> = { free: Colors.mutedForeground, pro: Colors.primary, ultra: '#f59e0b' };
 const PLAN_ICONS: Record<string, 'star-outline' | 'star' | 'diamond'> = { free: 'star-outline', pro: 'star', ultra: 'diamond' };
 
@@ -178,7 +183,7 @@ export default function ConfiguracoesScreen() {
   const [uploadingFixedSource, setUploadingFixedSource] = useState<PortalSource | null>(null);
 
   const planKey = user?.plan ?? 'free';
-  const planLabel = PLAN_LABELS[planKey] ?? planKey;
+  const planLabel = planLabelFor(planKey, tr);
   const planColor = PLAN_COLORS[planKey] ?? Colors.mutedForeground;
   const planIcon = PLAN_ICONS[planKey] ?? 'star-outline';
   const isProOrAbove = planKey === 'pro' || planKey === 'ultra';
@@ -295,7 +300,7 @@ export default function ConfiguracoesScreen() {
       const uri = `${FileSystem.documentDirectory}${fileName}`;
       await FileSystem.writeAsStringAsync(uri, json, { encoding: FileSystem.EncodingType.UTF8 });
       if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(uri, { mimeType: 'application/json', dialogTitle: 'Exportar carreira' });
+        await Sharing.shareAsync(uri, { mimeType: 'application/json', dialogTitle: tr('settings.exportSubject') });
       } else {
         Alert.alert(tr('settings.exportSuccess'), uri);
       }
@@ -355,7 +360,7 @@ export default function ConfiguracoesScreen() {
 
   const handleSupport = () => {
     Linking.openURL('mailto:suporte@fccareermanager.app').catch(() => {
-      Alert.alert('Suporte', 'Entre em contato: suporte@fccareermanager.app');
+      Alert.alert(tr('settings.support'), 'suporte@fccareermanager.app');
     });
   };
 
@@ -820,7 +825,7 @@ export default function ConfiguracoesScreen() {
         </Section>
 
         {/* SUPORTE */}
-        <Section title="Suporte">
+        <Section title={tr('settings.support')}>
           <Row
             icon="bug-outline"
             iconColor={Colors.warning}
@@ -830,15 +835,9 @@ export default function ConfiguracoesScreen() {
           <Row
             icon="mail-outline"
             iconColor={Colors.info}
-            label="Falar com suporte"
+            label={tr('settings.support.email')}
             value="E-mail"
             onPress={handleSupport}
-          />
-          <Row
-            icon="star-outline"
-            iconColor="#f59e0b"
-            label="Avaliar o app"
-            onPress={() => Alert.alert('Avalie-nos', 'Obrigado! Avalie na App Store / Google Play.')}
           />
         </Section>
 

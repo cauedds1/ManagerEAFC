@@ -14,7 +14,7 @@ import { useClubTheme } from '@/contexts/ClubThemeContext';
 import { api, type DiretoraaMember, type DiretoraaMeeting, type MatchRecord, getMatchResult } from '@/lib/api';
 import { Colors } from '@/constants/colors';
 import { useToast } from '@/components/Toast';
-import { useT } from '@/lib/i18n';
+import { useT, getLang } from '@/lib/i18n';
 
 const MEETING_TOPICS = [
   'Avaliação do desempenho na temporada',
@@ -131,7 +131,7 @@ function MeetingModal({
       const newMeeting: DiretoraaMeeting = {
         id: `mtg_${Date.now().toString(36)}_${Math.random().toString(36).slice(2)}`,
         memberId: selectedMember.id,
-        date: new Date().toLocaleDateString('pt-BR'),
+        date: new Date().toLocaleDateString(getLang() === 'en' ? 'en-US' : 'pt-BR'),
         topic,
         outcome: res.reply,
         createdAt: Date.now(),
@@ -267,7 +267,7 @@ function MeetingModal({
                 <View style={styles.ataCard}>
                   <View style={styles.ataHeader}>
                     <Text style={styles.ataTitle}>📋 Ata da Reunião</Text>
-                    <Text style={styles.ataDate}>{new Date().toLocaleDateString('pt-BR')}</Text>
+                    <Text style={styles.ataDate}>{new Date().toLocaleDateString(getLang() === 'en' ? 'en-US' : 'pt-BR')}</Text>
                   </View>
                   <View style={styles.ataMeta}>
                     <Text style={styles.ataMetaText}>Membro: {selectedMember?.name}</Text>
@@ -353,7 +353,7 @@ function MemberAvatar({ member, size = 36 }: { member?: DiretoraaMember; size?: 
 
 function ChatBubble({ msg, members }: { msg: LocalMessage; members: DiretoraaMember[] }) {
   const member = members.find((m) => m.name === msg.memberName);
-  const timeStr = new Date(msg.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  const timeStr = new Date(msg.createdAt).toLocaleTimeString(getLang() === 'en' ? 'en-US' : 'pt-BR', { hour: '2-digit', minute: '2-digit' });
 
   if (msg.fromBoard) {
     return (
@@ -923,13 +923,11 @@ export default function DiretoraScreen() {
       if (boardMsg) {
         setLocalMessages((prev) => [...prev, boardMsg]);
         qc.invalidateQueries({ queryKey: ['/api/data/career/diretoria', activeCareer?.id] });
-        try {
-          showToast({
-            type: 'diretoria',
-            title: boardMsg.memberName ?? t('toast.board.newReply'),
-            preview: boardMsg.text.slice(0, 140),
-          });
-        } catch {}
+        showToast({
+          type: 'diretoria',
+          title: boardMsg.memberName ?? t('toast.board.newReply'),
+          preview: boardMsg.text.slice(0, 140),
+        });
       }
     },
     onError: () => {},

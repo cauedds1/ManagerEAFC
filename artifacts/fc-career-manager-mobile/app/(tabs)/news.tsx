@@ -37,7 +37,8 @@ function getTypeCfg(type?: string) {
 
 function formatDate(ts: number): string {
   const d = new Date(ts);
-  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
+  const locale = getLang() === 'en' ? 'en-US' : 'pt-BR';
+  return d.toLocaleDateString(locale, { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
 function socialPostToNewsItem(raw: Record<string, unknown>, type?: string): NewsItem {
@@ -72,11 +73,11 @@ function socialPostToNewsItem(raw: Record<string, unknown>, type?: string): News
 
 type GenType = 'noticia' | 'rumor' | 'boas_vindas' | 'leak';
 
-const GEN_OPTIONS: { id: GenType; icon: string; label: string; desc: string; planRequired?: 'pro' | 'ultra'; needsPortal?: boolean }[] = [
-  { id: 'noticia',     icon: '📰', label: 'Gerar Notícia',         desc: 'Notícia sobre o clube com IA' },
-  { id: 'rumor',       icon: '🕵️', label: 'Gerar Rumor',           desc: 'Rumor de mercado de transferências', planRequired: 'ultra' },
-  { id: 'boas_vindas', icon: '👋', label: 'Post de Boas-Vindas',   desc: 'Apresentação do treinador ao clube' },
-  { id: 'leak',        icon: '🔓', label: 'Gerar Vazamento',        desc: 'Bastidores vazados para a imprensa', planRequired: 'pro', needsPortal: true },
+const GEN_OPTIONS: { id: GenType; icon: string; labelKey: string; descKey: string; planRequired?: 'pro' | 'ultra'; needsPortal?: boolean }[] = [
+  { id: 'noticia',     icon: '📰', labelKey: 'news.opt.noticia.label',     descKey: 'news.opt.noticia.desc' },
+  { id: 'rumor',       icon: '🕵️', labelKey: 'news.opt.rumor.label',       descKey: 'news.opt.rumor.desc',       planRequired: 'ultra' },
+  { id: 'boas_vindas', icon: '👋', labelKey: 'news.opt.boasVindas.label',  descKey: 'news.opt.boasVindas.desc' },
+  { id: 'leak',        icon: '🔓', labelKey: 'news.opt.leak.label',        descKey: 'news.opt.leak.desc',        planRequired: 'pro', needsPortal: true },
 ];
 
 const OPENAI_KEY_STORE = 'fc_openai_key';
@@ -200,7 +201,7 @@ function NewsModal({ item, onClose, userPlan, clubName, onImageGenerated }: News
             <View style={styles.modalMeta}>
               <Text style={styles.modalDate}>{formatDate(item.createdAt)}</Text>
               {item.source ? (
-                <Text style={styles.modalSource}>Fonte: {item.source}</Text>
+                <Text style={styles.modalSource}>{getLang() === 'en' ? 'Source' : 'Fonte'}: {item.source}</Text>
               ) : null}
             </View>
             <View style={styles.modalDivider} />
@@ -222,12 +223,14 @@ function NewsModal({ item, onClose, userPlan, clubName, onImageGenerated }: News
                     : <Ionicons name="image-outline" size={16} color={Colors.info} />
                   }
                   <Text style={[styles.closeBtnText, { color: Colors.info }]}>
-                    {imgLoading ? 'Gerando…' : 'Gerar Imagem'}
+                    {imgLoading
+                      ? (getLang() === 'en' ? 'Generating…' : 'Gerando…')
+                      : (getLang() === 'en' ? 'Generate Image' : 'Gerar Imagem')}
                   </Text>
                 </TouchableOpacity>
               )}
               <TouchableOpacity style={[styles.closeBtn, { flex: 1 }]} onPress={onClose}>
-                <Text style={styles.closeBtnText}>Fechar</Text>
+                <Text style={styles.closeBtnText}>{getLang() === 'en' ? 'Close' : 'Fechar'}</Text>
               </TouchableOpacity>
             </View>
           </TouchableOpacity>
@@ -391,8 +394,8 @@ function GenerateModal({
                   >
                     <Text style={styles.optionIcon}>{opt.icon}</Text>
                     <View style={{ flex: 1 }}>
-                      <Text style={[styles.optionLabel, active && { color: theme.primary }]}>{opt.label}</Text>
-                      <Text style={styles.optionDesc}>{opt.desc}{locked ? lockLabel : ''}</Text>
+                      <Text style={[styles.optionLabel, active && { color: theme.primary }]}>{t(opt.labelKey)}</Text>
+                      <Text style={styles.optionDesc}>{t(opt.descKey)}{locked ? lockLabel : ''}</Text>
                     </View>
                     {active && <Ionicons name="checkmark-circle" size={20} color={theme.primary} />}
                     {locked && <Ionicons name="lock-closed" size={16} color={Colors.mutedForeground} />}
@@ -456,7 +459,7 @@ function GenerateModal({
                 ? <ActivityIndicator size="small" color={theme.primary} />
                 : <>
                     <Ionicons name="sparkles-outline" size={18} color={theme.primary} />
-                    <Text style={[styles.genBtnText, { color: theme.primary }]}>Gerar</Text>
+                    <Text style={[styles.genBtnText, { color: theme.primary }]}>{t('news.modal.generateBtn')}</Text>
                   </>
               }
             </TouchableOpacity>
@@ -561,9 +564,9 @@ export default function NewsScreen() {
     <View style={[styles.container, { paddingTop: topPad }]}>
       <View style={styles.header}>
         <View>
-          <Text style={styles.title}>{getLang() === 'en' ? 'News' : 'Notícias'}</Text>
+          <Text style={styles.title}>{tr('news.title')}</Text>
           {!isLoading && news.length > 0 && (
-            <Text style={styles.subtitle}>{news.length} {getLang() === 'en' ? (news.length === 1 ? 'item' : 'items') : `notícia${news.length !== 1 ? 's' : ''}`}</Text>
+            <Text style={styles.subtitle}>{news.length} {news.length === 1 ? tr('news.itemsCount.one') : tr('news.itemsCount.other')}</Text>
           )}
         </View>
         {activeSeason && (
@@ -573,7 +576,7 @@ export default function NewsScreen() {
             activeOpacity={0.7}
           >
             <Ionicons name="sparkles-outline" size={18} color={theme.primary} />
-            <Text style={[styles.genFabText, { color: theme.primary }]}>{getLang() === 'en' ? 'Generate' : 'Gerar'}</Text>
+            <Text style={[styles.genFabText, { color: theme.primary }]}>{tr('news.headerCta')}</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -612,7 +615,7 @@ export default function NewsScreen() {
       {generating && (
         <View style={styles.generatingBar}>
           <ActivityIndicator size="small" color={theme.primary} />
-          <Text style={styles.generatingText}>{getLang() === 'en' ? 'Adding news to feed…' : 'Adicionando notícia ao feed…'}</Text>
+          <Text style={styles.generatingText}>{tr('news.adding')}</Text>
         </View>
       )}
 
@@ -625,21 +628,15 @@ export default function NewsScreen() {
           <View style={[styles.iconWrap, { backgroundColor: `rgba(${theme.primaryRgb}, 0.12)` }]}>
             <Ionicons name="newspaper-outline" size={40} color={theme.primary} />
           </View>
-          <Text style={styles.emptyTitle}>{getLang() === 'en' ? 'No news yet' : 'Sem notícias'}</Text>
-          <Text style={styles.emptyText}>
-            {getLang() === 'en'
-              ? 'News appears after recording matches or generating with AI.'
-              : 'Notícias aparecem após registrar partidas ou ao gerar com IA.'}
-          </Text>
+          <Text style={styles.emptyTitle}>{tr('news.empty.title')}</Text>
+          <Text style={styles.emptyText}>{tr('news.empty.text')}</Text>
           {activeSeason && (
             <TouchableOpacity
               style={[styles.emptyGenBtn, { backgroundColor: `rgba(${theme.primaryRgb},0.12)`, borderColor: `rgba(${theme.primaryRgb},0.3)` }]}
               onPress={() => setShowGenerate(true)}
             >
               <Ionicons name="sparkles-outline" size={16} color={theme.primary} />
-              <Text style={[styles.emptyGenBtnText, { color: theme.primary }]}>
-                {getLang() === 'en' ? 'Generate your first news' : 'Gerar primeira notícia'}
-              </Text>
+              <Text style={[styles.emptyGenBtnText, { color: theme.primary }]}>{tr('news.empty.cta')}</Text>
             </TouchableOpacity>
           )}
         </View>

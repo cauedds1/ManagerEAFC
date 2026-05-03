@@ -174,7 +174,45 @@ const DICTIONARY: Record<string, Record<Lang, string>> = {
   'bugReport.galleryDenied': { pt: 'Permissão à galeria negada.', en: 'Gallery permission denied.' },
 
   // toasts
-  'toast.board.newReply':    { pt: 'Resposta da diretoria', en: 'Board reply' },
+  'toast.board.newReply':    { pt: 'Resposta da diretoria',     en: 'Board reply' },
+  'toast.community.quotaWarn':    { pt: 'Cota da comunidade quase no limite', en: 'Community quota almost reached' },
+  'toast.community.quotaExceeded':{ pt: 'Cota da comunidade esgotada',        en: 'Community quota exceeded' },
+
+  // plan labels
+  'plan.free':  { pt: 'Gratuito', en: 'Free' },
+  'plan.pro':   { pt: 'Pro',      en: 'Pro' },
+  'plan.ultra': { pt: 'Ultra',    en: 'Ultra' },
+
+  // news option labels
+  'news.opt.noticia.label':     { pt: 'Gerar Notícia',          en: 'Generate News' },
+  'news.opt.noticia.desc':      { pt: 'Notícia sobre o clube com IA', en: 'AI-generated club news' },
+  'news.opt.rumor.label':       { pt: 'Gerar Rumor',            en: 'Generate Rumor' },
+  'news.opt.rumor.desc':        { pt: 'Rumor de mercado de transferências', en: 'Transfer market rumor' },
+  'news.opt.boasVindas.label':  { pt: 'Post de Boas-Vindas',    en: 'Welcome Post' },
+  'news.opt.boasVindas.desc':   { pt: 'Apresentação do treinador ao clube', en: 'Coach introduction to the club' },
+  'news.opt.leak.label':        { pt: 'Gerar Vazamento',        en: 'Generate Leak' },
+  'news.opt.leak.desc':         { pt: 'Bastidores vazados para a imprensa', en: 'Behind-the-scenes story for the press' },
+  'news.modal.title':           { pt: 'Gerar Conteúdo com IA',  en: 'Generate Content with AI' },
+  'news.modal.contextLabel':    { pt: 'CONTEXTO (OPCIONAL)',    en: 'CONTEXT (OPTIONAL)' },
+  'news.modal.contextHint':     { pt: 'Adicione detalhes para guiar a geração.', en: 'Add details to guide generation.' },
+  'news.modal.generateBtn':     { pt: 'Gerar',                  en: 'Generate' },
+  'news.modal.cancelBtn':       { pt: 'Cancelar',               en: 'Cancel' },
+  'news.title':                 { pt: 'Notícias',               en: 'News' },
+  'news.itemsCount.one':        { pt: 'notícia',                en: 'item' },
+  'news.itemsCount.other':      { pt: 'notícias',               en: 'items' },
+  'news.empty.title':           { pt: 'Sem notícias',           en: 'No news yet' },
+  'news.empty.text':            { pt: 'Notícias aparecem após registrar partidas ou ao gerar com IA.', en: 'News appears after recording matches or generating with AI.' },
+  'news.empty.cta':             { pt: 'Gerar primeira notícia', en: 'Generate your first news' },
+  'news.adding':                { pt: 'Adicionando notícia ao feed…', en: 'Adding news to feed…' },
+  'news.headerCta':             { pt: 'Gerar',                  en: 'Generate' },
+
+  // settings extras
+  'settings.support':            { pt: 'Suporte',                en: 'Support' },
+  'settings.support.bugReport':  { pt: 'Reportar problema',      en: 'Report a problem' },
+  'settings.support.email':      { pt: 'Falar com o suporte',    en: 'Contact support' },
+  'settings.about':              { pt: 'Sobre',                  en: 'About' },
+  'settings.exportShare':        { pt: 'Compartilhar exportação',en: 'Share export' },
+  'settings.exportSubject':      { pt: 'Exportação da carreira', en: 'Career export' },
 };
 
 export const i18n = new I18n(
