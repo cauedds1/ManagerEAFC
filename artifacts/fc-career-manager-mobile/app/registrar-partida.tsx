@@ -16,6 +16,7 @@ import { api, type MatchLocation, type MatchRecord, type PlayerMatchStats, type 
 import { Colors } from '@/constants/colors';
 import { searchStaticClubs, type StaticClub } from '@/lib/staticClubList';
 import { pickBestEleven, type FormationKey, DEFAULT_FORMATION } from '@/lib/formations';
+import { useT } from '@/lib/i18n';
 
 type Step = 1 | 2 | 3 | 4 | 5 | 6;
 const TOTAL_STEPS = 6;
@@ -236,6 +237,7 @@ export default function RegistrarPartidaScreen() {
   const { activeCareer, activeSeason } = useCareer();
   const theme = useClubTheme();
   const qc = useQueryClient();
+  const t = useT();
   const topPad = Platform.OS === 'web' ? 0 : insets.top;
 
   const draftKey = activeCareer && activeSeason
@@ -576,7 +578,7 @@ export default function RegistrarPartidaScreen() {
       if (Platform.OS !== 'web') void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       router.back();
     },
-    onError: (err: Error) => Alert.alert('Erro', err.message),
+    onError: (err: Error) => Alert.alert(t('common.error'), err.message || t('registrarPartida.saveError')),
   });
 
   const canProceedStep1 = opponent.trim().length > 0 && tournament.trim().length > 0;

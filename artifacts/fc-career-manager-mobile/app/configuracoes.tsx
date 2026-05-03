@@ -419,7 +419,7 @@ export default function ConfiguracoesScreen() {
               Alert.alert(
                 tr('settings.season.endTitle'),
                 `"${activeSeason.label}"`,
-                [{ text: 'OK' }]
+                [{ text: tr('common.ok') }]
               );
             } catch (err) {
               const msg = err instanceof Error ? err.message : tr('common.error');

@@ -314,6 +314,10 @@ const DICTIONARY: Record<string, Record<Lang, string>> = {
   'checkout.cancel.title':       { pt: 'Pagamento cancelado',     en: 'Payment canceled' },
   'checkout.cancel.body':        { pt: 'Nenhuma cobrança foi feita. Você pode tentar novamente quando quiser.', en: 'No charge was made. You can try again whenever you like.' },
   'checkout.back':               { pt: 'Voltar ao app',           en: 'Return to app' },
+  'checkout.billing.title':      { pt: 'Assinatura atualizada',   en: 'Subscription updated' },
+  'checkout.billing.body':       { pt: 'Suas alterações de assinatura foram salvas. Você já pode voltar ao app.', en: 'Your subscription changes have been saved. You can return to the app.' },
+  'common.ok':                   { pt: 'OK',                      en: 'OK' },
+  'registrarPartida.saveError':  { pt: 'Não foi possível salvar a partida.', en: 'Could not save the match.' },
 };
 
 export const i18n = new I18n(

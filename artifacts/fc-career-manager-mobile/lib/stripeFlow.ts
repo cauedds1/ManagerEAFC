@@ -14,7 +14,7 @@ async function authHeader(): Promise<Record<string, string>> {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-export function getReturnUrl(path: 'success' | 'cancel'): string {
+export function getReturnUrl(path: 'success' | 'cancel' | 'billing'): string {
   return Linking.createURL(`/checkout/${path}`);
 }
 
@@ -63,11 +63,11 @@ export async function openCustomerPortal(lang: 'pt' | 'en' = 'pt'): Promise<void
   const res = await fetch(`${getApiUrl()}/api/stripe/portal`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...headers },
-    body: JSON.stringify({ returnUrl: getReturnUrl('success') }),
+    body: JSON.stringify({ returnUrl: getReturnUrl('billing') }),
   });
   if (!res.ok) throw new Error(lang === 'en' ? 'Could not open billing portal.' : 'Não foi possível abrir o portal de cobrança.');
   const { url } = await res.json() as { url?: string };
   if (!url) throw new Error(lang === 'en' ? 'Invalid portal URL.' : 'URL do portal inválida.');
-  await WebBrowser.openAuthSessionAsync(url, getReturnUrl('success'));
+  await WebBrowser.openAuthSessionAsync(url, getReturnUrl('billing'));
   for (const fn of _returnListeners) { try { fn(); } catch {} }
 }

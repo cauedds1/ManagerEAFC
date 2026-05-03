@@ -79,7 +79,7 @@ export default function BugReportScreen() {
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       Alert.alert(t('bugReport.sent'), t('bugReport.thanks'), [
-        { text: 'OK', onPress: () => router.back() },
+        { text: t('common.ok'), onPress: () => router.back() },
       ]);
     } catch (err) {
       Alert.alert(t('common.error'), err instanceof Error ? err.message : 'Failed to submit');
