@@ -2556,7 +2556,7 @@ export function RegistrarPartidaModal({
                     {(() => {
                       const slotPos = pitchPendingSlot !== null
                         ? sectorForSlotIndex(pitchPendingSlot, pitchFormation)
-                        : pitchSelectedId !== null
+                        : pitchSelectedId !== null && pitchSlots.includes(pitchSelectedId)
                           ? getPlayerSector(pitchSelectedId)
                           : null;
                       const posColor = slotPos ? POS_COLOR_BADGE[slotPos] : null;
