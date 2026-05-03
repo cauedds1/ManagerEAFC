@@ -15,7 +15,8 @@ import { setPlayerStats, defaultStats, setPlayerOverride, getAllPlayerOverrides 
 import { getCachedClubList } from "@/lib/clubListCache";
 import { searchStaticClubs } from "@/lib/staticClubList";
 import { useLang } from "@/hooks/useLang";
-import { TRANSFERENCIAS, LOAN_DURATION_LABELS, LOAN_DURATION_DISPLAY } from "@/lib/i18n";
+import { TRANSFERENCIAS, LOAN_DURATION_LABELS, LOAN_DURATION_DISPLAY, BASE as BASE_I18N } from "@/lib/i18n";
+import { isCria as isCriaCheck, buildCriaTooltipMap } from "@/lib/criaStorage";
 import { SectionHelp } from "./SectionHelp";
 
 const ALL_POSITIONS: PositionPtBr[] = ["GOL","DEF","MID","ATA"];
@@ -393,12 +394,16 @@ function TransferCard({
   clubLogoUrl,
   onLoanAction,
   onEdit,
+  isCriaPlayer,
+  criaTooltip,
 }: {
   transfer: TransferRecord;
   clubName: string;
   clubLogoUrl?: string | null;
   onLoanAction?: (id: string, changes: Partial<TransferRecord>) => void;
   onEdit?: (transfer: TransferRecord) => void;
+  isCriaPlayer?: boolean;
+  criaTooltip?: string;
 }) {
   const [lang] = useLang();
   const t = TRANSFERENCIAS[lang];
@@ -430,6 +435,15 @@ function TransferCard({
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap mb-1">
           <p className="text-white font-bold text-sm truncate">{transfer.playerName}</p>
+          {isCriaPlayer && (
+            <span
+              className="text-[10px] font-black px-1.5 py-0.5 rounded leading-none flex-shrink-0"
+              style={{ background: "rgba(34,197,94,0.18)", color: "#86efac", border: "1px solid rgba(34,197,94,0.3)" }}
+              title={criaTooltip ?? "Cria do clube"}
+            >
+              🌱
+            </span>
+          )}
           <span className="text-xs font-bold px-2 py-0.5 rounded-md flex-shrink-0" style={{ background: pos.bg, color: pos.color }}>
             {migratedPosKey}
           </span>
@@ -1544,16 +1558,26 @@ export function TransferenciasView({
         </div>
       ) : (
         <div className="flex flex-col gap-3 overflow-x-auto">
-          {sortedTransfers.map((tr) => (
-            <TransferCard
-              key={tr.id}
-              transfer={tr}
-              clubName={clubName}
-              clubLogoUrl={clubLogoUrl}
-              onLoanAction={!isReadOnly && onTransferUpdated ? onTransferUpdated : undefined}
-              onEdit={!isReadOnly ? (t) => setEditingTransfer(t) : undefined}
-            />
-          ))}
+          {sortedTransfers.map((tr) => {
+            const cria = tr.careerId && typeof tr.playerId === "number"
+              ? isCriaCheck(tr.careerId, tr.playerId)
+              : false;
+            const tooltip = cria && tr.careerId
+              ? buildCriaTooltipMap(tr.careerId, BASE_I18N[lang].criaBadgeTooltip, BASE_I18N[lang].criaBadge).get(tr.playerId as number)
+              : undefined;
+            return (
+              <TransferCard
+                key={tr.id}
+                transfer={tr}
+                clubName={clubName}
+                clubLogoUrl={clubLogoUrl}
+                onLoanAction={!isReadOnly && onTransferUpdated ? onTransferUpdated : undefined}
+                onEdit={!isReadOnly ? (t) => setEditingTransfer(t) : undefined}
+                isCriaPlayer={cria}
+                criaTooltip={tooltip}
+              />
+            );
+          })}
         </div>
       )}
 
