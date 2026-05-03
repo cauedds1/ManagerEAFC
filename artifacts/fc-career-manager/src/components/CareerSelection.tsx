@@ -725,23 +725,25 @@ export function CareerSelection({ careers, onSelectCareer, onCreateNew, onCareer
             </button>
           </div>
         ) : (
-          <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 xl:gap-4 auto-rows-max">
-              {localCareers.map((career, i) => (
-                <CareerCard
-                  key={career.id}
-                  career={career}
-                  onSelect={() => onSelectCareer(career)}
-                  onRequestDelete={() => setPendingDeleteCareer(career)}
-                  index={i}
-                  t={t}
-                />
-              ))}
-              {!atCareerLimit && <NewCareerCard onClick={onCreateNew} index={localCareers.length} label={t.newCareer} />}
-            </div>
-            <CommunityPreviewPanel lang={lang} onAccess={() => onSelectCareer(localCareers[0], "comunidade")} />
-          </>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 xl:gap-4 auto-rows-max">
+            {localCareers.map((career, i) => (
+              <CareerCard
+                key={career.id}
+                career={career}
+                onSelect={() => onSelectCareer(career)}
+                onRequestDelete={() => setPendingDeleteCareer(career)}
+                index={i}
+                t={t}
+              />
+            ))}
+            {!atCareerLimit && <NewCareerCard onClick={onCreateNew} index={localCareers.length} label={t.newCareer} />}
+          </div>
         )}
+
+        <CommunityPreviewPanel
+          lang={lang}
+          onAccess={hasCareer ? () => onSelectCareer(localCareers[0], "comunidade") : onCreateNew}
+        />
       </div>
     </div>
 
