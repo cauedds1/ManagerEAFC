@@ -93,9 +93,10 @@ function markHydrated(careerId: string): void {
 
 // Re-applies alias-aware matching to already-saved transfers, replacing AI
 // nicknames in `playerName` with the canonical name from the squad / search
-// catalog. Updates `playerId` and `playerPhoto` only when the current record is
-// still a synthetic placeholder (no real player bound yet); otherwise only the
-// display name is corrected, so user-edited fees, salaries, etc. are preserved.
+// catalog. Always fills an empty `playerPhoto` from the canonical match (a
+// strict improvement). Updates `playerId` only when the current record is
+// still a synthetic placeholder (no real player bound yet). User-edited fields
+// (fee, salary, contract, etc.) are always preserved.
 interface CanonicalizationResult {
   attempted: number;
   updates: number;
