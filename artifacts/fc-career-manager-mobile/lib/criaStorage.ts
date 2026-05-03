@@ -1,3 +1,4 @@
+// PORTED FROM artifacts/fc-career-manager/src/lib/criaStorage.ts — adapted for React Native (AsyncStorage-backed localCache, no DOM).
 import { putCareerData } from '@/lib/apiStorage';
 import { sessionGet, sessionSet } from '@/lib/sessionStore';
 import { localCache } from '@/lib/localCache';

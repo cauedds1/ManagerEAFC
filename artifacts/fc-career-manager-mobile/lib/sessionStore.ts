@@ -1,3 +1,4 @@
+// PORTED FROM artifacts/fc-career-manager/src/lib/sessionStore.ts — adapted for React Native (AsyncStorage-backed localCache, no DOM).
 const _store: Map<string, unknown> = new Map();
 
 export function sessionGet<T>(key: string): T | null {

@@ -1,3 +1,4 @@
+// PORTED FROM artifacts/fc-career-manager/src/lib/missionStorage.ts — adapted for React Native (AsyncStorage-backed localCache, no DOM).
 import type { Plan } from '@/lib/userPlan';
 import { putCareerData } from '@/lib/apiStorage';
 import { localCache } from '@/lib/localCache';

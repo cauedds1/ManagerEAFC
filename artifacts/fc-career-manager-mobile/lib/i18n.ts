@@ -1,3 +1,4 @@
+// PORTED FROM artifacts/fc-career-manager/src/lib/i18n.ts — adapted for React Native (AsyncStorage-backed localCache, no DOM).
 /**
  * Minimal i18n shim used by the mobile ports of mood/board engines.
  * Currently only Portuguese strings are required by the engines we ship;

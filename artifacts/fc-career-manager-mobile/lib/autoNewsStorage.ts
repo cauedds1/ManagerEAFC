@@ -1,3 +1,4 @@
+// PORTED FROM artifacts/fc-career-manager/src/lib/autoNewsStorage.ts — adapted for React Native (AsyncStorage-backed localCache, no DOM).
 import { localCache } from '@/lib/localCache';
 
 function handledKey(seasonId: string): string {

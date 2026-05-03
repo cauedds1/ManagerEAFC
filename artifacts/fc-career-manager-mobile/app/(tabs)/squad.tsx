@@ -21,6 +21,7 @@ import {
   type FormationKey, FORMATION_GROUPS, getFormationPositions, getFormationLabel,
   DEFAULT_FORMATION, pickBestEleven,
 } from '@/lib/formations';
+import { getCriaIds } from '@/lib/criaStorage';
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
 type PosFilter = 'Todos' | 'GOL' | 'DEF' | 'MID' | 'ATA';
@@ -852,6 +853,11 @@ export default function SquadScreen() {
     return map;
   }, [seasonData]);
 
+  const criaIds = useMemo<Set<number>>(
+    () => new Set(activeCareer ? getCriaIds(activeCareer.id) : []),
+    [activeCareer],
+  );
+
   const filteredPlayers = useMemo(() => {
     const q = search.trim().toLowerCase();
     return allPlayers.filter((p) => {
@@ -1135,6 +1141,7 @@ export default function SquadScreen() {
                     const stats = statsMap.get(item.id);
                     const posCfg = POS_CONFIG[item.positionPtBr] ?? POS_CONFIG.MID;
                     const inLu = lineupSet.has(item.id);
+                    const isCriaPlayer = criaIds.has(item.id);
                     return (
                       <TouchableOpacity
                         style={styles.playerRow}
@@ -1143,7 +1150,14 @@ export default function SquadScreen() {
                       >
                         <PlayerPhoto src={item.photo} name={item.name} size={44} />
                         <View style={styles.playerInfo}>
-                          <Text style={styles.playerName} numberOfLines={1}>{item.name}</Text>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                            <Text style={styles.playerName} numberOfLines={1}>{item.name}</Text>
+                            {isCriaPlayer && (
+                              <View style={styles.criaBadge}>
+                                <Text style={styles.criaBadgeText}>🌱 cria</Text>
+                              </View>
+                            )}
+                          </View>
                           <Text style={styles.playerAge}>{item.age} anos{item.number != null ? ` · #${item.number}` : ''}</Text>
                         </View>
                         <View style={styles.playerRight}>
@@ -1461,6 +1475,8 @@ const styles = StyleSheet.create({
   playerInfo: { flex: 1 },
   playerName: { fontSize: 15, fontWeight: '500' as const, color: Colors.foreground, fontFamily: 'Inter_500Medium' },
   playerAge: { fontSize: 12, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular', marginTop: 2 },
+  criaBadge: { paddingHorizontal: 6, paddingVertical: 1, borderRadius: 6, backgroundColor: 'rgba(34,197,94,0.15)', borderWidth: 1, borderColor: 'rgba(34,197,94,0.35)' },
+  criaBadgeText: { fontSize: 10, fontWeight: '600' as const, color: '#22c55e', fontFamily: 'Inter_600SemiBold' },
   playerRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   ratingText: { fontSize: 13, fontWeight: '700' as const, fontFamily: 'Inter_700Bold' },
   lineupDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: Colors.success },

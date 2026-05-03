@@ -1,3 +1,4 @@
+// PORTED FROM artifacts/fc-career-manager/src/lib/userPlan.ts — adapted for React Native (AsyncStorage-backed localCache, no DOM).
 export type Plan = 'free' | 'pro' | 'ultra';
 
 export interface FrontendPlanLimits {

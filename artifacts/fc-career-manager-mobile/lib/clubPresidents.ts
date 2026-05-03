@@ -1,3 +1,4 @@
+// PORTED FROM artifacts/fc-career-manager/src/lib/clubPresidents.ts — adapted for React Native (AsyncStorage-backed localCache, no DOM).
 export type PersonalityStyle =
   | 'conservador'
   | 'agressivo'

@@ -1,18 +1,5 @@
-/**
- * Single entry point called from registrar-partida (and any other place
- * that records a finished match) to keep all derived statistics and mood
- * scores consistent.  Runs:
- *
- *   1. Career aggregate (W/D/L/goals)
- *   2. Per-player season stats (goals, assists, ratings, cards, ownGoals, missed pens)
- *   3. Player performance engine (mood + fanMoral progression)
- *   4. Fan mood delta
- *   5. Board mood delta
- *
- * The function never throws — engine failures are logged but do not abort
- * the caller.  All persistence already happens through the underlying
- * storage adapters (memory cache + best-effort API push).
- */
+// Mobile orchestrator that mirrors the web post-match engine pipeline.
+// Steps: career aggregate → per-player stats → performance → fan mood → board mood.
 
 import type { MatchRecord } from '@/lib/api';
 import { recordMatchInAgg } from '@/lib/careerAggregateStats';
@@ -188,65 +175,40 @@ export async function applyMatchToEngines(opts: ApplyMatchOptions): Promise<void
   } = opts;
 
   if (seasonPayload) {
-    try {
-      hydratePlayerStatsCache(seasonId, seasonPayload);
-      hydrateFanMoodCache(seasonId, seasonPayload);
-      hydrateBoardMoodCache(seasonId, seasonPayload);
-    } catch (err) {
-      console.warn('[engines] hydrate caches failed:', err);
-    }
+    hydratePlayerStatsCache(seasonId, seasonPayload);
+    hydrateFanMoodCache(seasonId, seasonPayload);
+    hydrateBoardMoodCache(seasonId, seasonPayload);
   }
 
-  try {
-    recordMatchInAgg(careerId, match.myScore, match.opponentScore);
-  } catch (err) {
-    console.warn('[engines] recordMatchInAgg failed:', err);
+  recordMatchInAgg(careerId, match.myScore, match.opponentScore);
+  await updatePerPlayerStats(seasonId, match, squad);
+  await runPerformanceEngine(seasonId);
+
+  const isClassico = isClassicoMatch(match.opponent, rivals);
+  const streak = unbeatenStreak(allMatches);
+  const elite = isEliteClub(match.opponent);
+
+  const fanDelta = computeFanMoodDelta(
+    match.myScore, match.opponentScore,
+    isClassico, streak, clubTotalTitles,
+    squadAvgOvr ?? undefined, leagueAvgOvr ?? undefined, elite,
+  );
+  if (fanDelta !== 0) {
+    await setFanMood(seasonId, getFanMood(seasonId) + fanDelta);
   }
 
-  try {
-    await updatePerPlayerStats(seasonId, match, squad);
-  } catch (err) {
-    console.warn('[engines] updatePerPlayerStats failed:', err);
-  }
-
-  try {
-    await runPerformanceEngine(seasonId);
-  } catch (err) {
-    console.warn('[engines] runPerformanceEngine failed:', err);
-  }
-
-  try {
-    const isClassico = isClassicoMatch(match.opponent, rivals);
-    const streak = unbeatenStreak(allMatches);
-    const elite = isEliteClub(match.opponent);
-    const fanDelta = computeFanMoodDelta(
-      match.myScore, match.opponentScore,
-      isClassico, streak, clubTotalTitles,
-      squadAvgOvr ?? undefined, leagueAvgOvr ?? undefined, elite,
-    );
-    if (fanDelta !== 0) {
-      await setFanMood(seasonId, getFanMood(seasonId) + fanDelta);
-    }
-  } catch (err) {
-    console.warn('[engines] fan mood delta failed:', err);
-  }
-
-  try {
-    const boardDelta = computeBoardMoodDelta({
-      myScore: match.myScore,
-      opponentScore: match.opponentScore,
-      isClassico: isClassicoMatch(match.opponent, rivals),
-      matchCount: allMatches.length,
-      squadAvgOvr,
-      league,
-      projeto,
-      leaguePosition,
-      objectivePenalty,
-    });
-    if (boardDelta !== 0) {
-      await setBoardMood(seasonId, getBoardMood(seasonId) + boardDelta);
-    }
-  } catch (err) {
-    console.warn('[engines] board mood delta failed:', err);
+  const boardDelta = computeBoardMoodDelta({
+    myScore: match.myScore,
+    opponentScore: match.opponentScore,
+    isClassico,
+    matchCount: allMatches.length,
+    squadAvgOvr,
+    league,
+    projeto,
+    leaguePosition,
+    objectivePenalty,
+  });
+  if (boardDelta !== 0) {
+    await setBoardMood(seasonId, getBoardMood(seasonId) + boardDelta);
   }
 }

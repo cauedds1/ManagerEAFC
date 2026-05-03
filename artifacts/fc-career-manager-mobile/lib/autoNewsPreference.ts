@@ -1,3 +1,4 @@
+// PORTED FROM artifacts/fc-career-manager/src/lib/autoNewsPreference.ts — adapted for React Native (AsyncStorage-backed localCache, no DOM).
 import { localCache } from '@/lib/localCache';
 
 type Listener = (careerId: string, enabled: boolean) => void;
