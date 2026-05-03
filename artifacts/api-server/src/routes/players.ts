@@ -2,6 +2,7 @@ import { Router } from "express";
 import { db, squadPlayersTable, clubsTable } from "@workspace/db";
 import { eq, ilike, inArray, sql, gt, and, or, ne } from "drizzle-orm";
 import { mapPosition } from "../lib/positions";
+import { expandAliases } from "../data/playerAliases";
 
 const router = Router();
 
@@ -153,12 +154,20 @@ router.get("/players/search", async (req, res) => {
 
   if (!q || q.length < 2) return res.json({ players: [] });
 
+  // Expand the query through the curated alias map so nicknames like "Savinho"
+  // also find canonical entries like "Sávio". Always includes q itself.
+  const queryVariants = expandAliases(q);
+  const ilikeConditions = queryVariants.map((v) =>
+    ilike(squadPlayersTable.name, `%${v}%`),
+  );
+  const nameWhere = ilikeConditions.length === 1 ? ilikeConditions[0] : or(...ilikeConditions);
+
   try {
     // ── 1. Search DB ──────────────────────────────────────────────────────────
     const dbRows = await db
       .select()
       .from(squadPlayersTable)
-      .where(ilike(squadPlayersTable.name, `%${q}%`))
+      .where(nameWhere)
       .orderBy(sql`length(name)`)
       .limit(60); // fetch more so deduplication can pick the best-sourced entry
 
@@ -323,7 +332,7 @@ router.get("/players/search", async (req, res) => {
     const merged = await db
       .select()
       .from(squadPlayersTable)
-      .where(ilike(squadPlayersTable.name, `%${q}%`))
+      .where(nameWhere)
       .orderBy(sql`length(name)`)
       .limit(60);
 
