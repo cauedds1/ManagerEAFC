@@ -6,6 +6,7 @@ import { requireAuth, type AuthRequest } from "../middleware/auth";
 import { db, usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { getPlanLimits, getTodayDateString } from "../lib/planLimits";
+import { buildFanNamingRule } from "../lib/fanRegion";
 
 import { checkDemoRateLimit } from "../lib/demoRateLimit";
 
@@ -512,7 +513,7 @@ REGRAS DE REPLIES — OBRIGATÓRIO:
   * Torcedor de outro clube se intrometendo: "@usuario Vocês vivem nessa lamentação mesmo kkk"
   * Réplica de defesa: "@usuario Pode discordar à vontade, não muda o que eu pensei"
 - Replies podem gerar subconflitos — duas ou mais pessoas discutindo no mesmo thread
-- NUNCA gere replies genéricos como "concordo" ou "verdade" sozinhos — sempre adicione personalidade e contexto`;
+- NUNCA gere replies genéricos como "concordo" ou "verdade" sozinhos — sempre adicione personalidade e contexto${buildFanNamingRule(clubLeague)}`;
 
   try {
     const raw = await callNewsWithPlan(userPlan, systemPrompt, userPrompt, 8192);
@@ -673,7 +674,7 @@ REGRAS DE REPLIES — OBRIGATÓRIO:
 - Os replies devem ser VARIADOS: concordância entusiasmada, discordância com argumento, zoeira por opinião contrária, ironia, torcedores de outros clubes se intrometendo com provocações
 - Replies podem gerar subconflitos — duas pessoas discutindo no mesmo thread
 - NUNCA gere replies genéricos como "concordo" sozinhos — sempre adicione personalidade
-- Se o técnico for famoso do mundo real, fãs internacionais são esperados e podem ter replies de outros internacionais`;
+- Se o técnico for famoso do mundo real, fãs internacionais são esperados e podem ter replies de outros internacionais${buildFanNamingRule(clubLeague)}`;
 
   try {
     const raw = await callNewsCompletion(client, usingUserKey, systemPrompt, userPrompt, 4096);
@@ -851,7 +852,7 @@ REGRAS DE REPLIES — OBRIGATÓRIO:
 - 2 a 4 comentários DEVEM ter replies
 - Os replies devem ser variados: concordância, discordância, zoeira por opinião contrária ("que análise lixo", "cala boca"), ironia, torcedor de outro clube se intrometendo
 - Replies podem gerar subconflitos no mesmo thread
-- NUNCA gere replies genéricos como "concordo" sozinhos — sempre adicione personalidade`;
+- NUNCA gere replies genéricos como "concordo" sozinhos — sempre adicione personalidade${buildFanNamingRule(clubLeague)}`;
 
   try {
     const raw = await callNewsWithPlan(userPlan, systemPrompt, userPrompt, 6144);
@@ -986,7 +987,7 @@ Gere 5 a 8 comentários.
 REGRAS DE REPLIES:
 - 2 a 3 comentários devem ter replies
 - Varie o tom: concordância, discordância, zoeira, ironia, briga por opinião contrária
-- NUNCA gere replies genéricos — sempre adicione personalidade e contexto`;
+- NUNCA gere replies genéricos — sempre adicione personalidade e contexto${buildFanNamingRule(clubLeague)}`;
 
   try {
     const raw = await callNewsWithPlan(userPlan, systemPrompt, userPrompt, 6144);
