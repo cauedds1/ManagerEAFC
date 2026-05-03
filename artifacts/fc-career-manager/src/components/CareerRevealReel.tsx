@@ -13,13 +13,13 @@ interface Props {
 }
 
 const SCENES = [
-  { key: "opening",   ms: 1800 },
-  { key: "crest",     ms: 2200 },
-  { key: "position",  ms: 2200 },
-  { key: "moods",     ms: 3000 },
-  { key: "players",   ms: 3000 },
-  { key: "letter",    ms: 2200 },
-  { key: "prediction",ms: 1600 },
+  { key: "opening",   ms: 2600 },
+  { key: "crest",     ms: 3200 },
+  { key: "position",  ms: 3500 },
+  { key: "moods",     ms: 4800 },
+  { key: "players",   ms: 5000 },
+  { key: "letter",    ms: 4200 },
+  { key: "prediction",ms: 4000 },
 ] as const;
 
 const TOTAL_MS = SCENES.reduce((a, s) => a + s.ms, 0);
