@@ -1,4 +1,3 @@
-// PORTED FROM artifacts/fc-career-manager/src/lib/playerStatsStorage.ts — adapted for React Native (AsyncStorage-backed localCache, no DOM).
 import type { Mood, FanMoral, PlayerSeasonStats, PlayerOverride } from '@/lib/api';
 import { putSeasonData, putCareerData } from '@/lib/apiStorage';
 import { sessionGet, sessionSet } from '@/lib/sessionStore';

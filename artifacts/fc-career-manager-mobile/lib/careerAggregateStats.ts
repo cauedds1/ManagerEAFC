@@ -1,4 +1,3 @@
-// PORTED FROM artifacts/fc-career-manager/src/lib/careerAggregateStats.ts — adapted for React Native (AsyncStorage-backed localCache, no DOM).
 import { localCache } from '@/lib/localCache';
 
 export interface CareerAggregateStats {

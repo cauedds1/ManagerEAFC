@@ -1,6 +1,3 @@
-// Mobile orchestrator that mirrors the web post-match engine pipeline.
-// Steps: career aggregate → per-player stats → performance → fan mood → board mood.
-
 import type { MatchRecord } from '@/lib/api';
 import { recordMatchInAgg } from '@/lib/careerAggregateStats';
 import {

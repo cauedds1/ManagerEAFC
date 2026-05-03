@@ -1,7 +1,3 @@
-// PORTED FROM artifacts/fc-career-manager/src/components/NotificationToast.tsx —
-// adapted for React Native: ToastProvider + useToast hook, uses native View/Text,
-// auto-dismisses after 5s, plays notification sound on show.
-
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';

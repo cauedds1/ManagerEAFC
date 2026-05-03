@@ -17,7 +17,8 @@ import * as SecureStore from 'expo-secure-store';
 import * as Clipboard from 'expo-clipboard';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
-import { setLang as setI18nLang, t as tr } from '@/lib/i18n';
+import { setLang as setI18nLang, useT, useLang } from '@/lib/i18n';
+import { onCheckoutReturn } from '@/lib/stripeFlow';
 import { setSoundEnabled as persistSoundEnabled } from '@/lib/notificationSound';
 import { getOpenAIKey, setOpenAIKey } from '@/lib/openaiKeyStorage';
 import { startCheckout, openCustomerPortal } from '@/lib/stripeFlow';
@@ -154,7 +155,10 @@ interface NewPortalForm {
 
 export default function ConfiguracoesScreen() {
   const insets = useSafeAreaInsets();
-  const { user } = useAuth();
+  const { user, refresh: refreshAuth } = useAuth();
+  const tr = useT();
+  const lang = useLang();
+  const [referralUrl, setReferralUrl] = useState<string>('');
   const { activeCareer, activeSeason, loadSeasons } = useCareer();
   const qc = useQueryClient();
   const topPad = Platform.OS === 'web' ? 67 : insets.top;
@@ -239,11 +243,37 @@ export default function ConfiguracoesScreen() {
     Alert.alert(tr('settings.byok.cleared'));
   };
 
+  useEffect(() => {
+    api.referrals.myLink().then(({ url }) => setReferralUrl(url)).catch(() => {});
+  }, [user?.id]);
+
+  useEffect(() => {
+    return onCheckoutReturn(() => { void refreshAuth(); });
+  }, [refreshAuth]);
+
   const handleCopyReferral = async () => {
     try {
-      const { url } = await api.referrals.myLink();
+      const url = referralUrl || (await api.referrals.myLink()).url;
+      if (!referralUrl) setReferralUrl(url);
       await Clipboard.setStringAsync(url);
       Alert.alert(tr('common.copied'), url);
+    } catch (err) {
+      Alert.alert(tr('common.error'), err instanceof Error ? err.message : 'Failed');
+    }
+  };
+
+  const handleShareReferral = async () => {
+    try {
+      const url = referralUrl || (await api.referrals.myLink()).url;
+      if (!referralUrl) setReferralUrl(url);
+      if (await Sharing.isAvailableAsync()) {
+        const fileUri = `${FileSystem.documentDirectory}referral.txt`;
+        await FileSystem.writeAsStringAsync(fileUri, url, { encoding: FileSystem.EncodingType.UTF8 });
+        await Sharing.shareAsync(fileUri, { mimeType: 'text/plain', dialogTitle: tr('settings.referral') });
+      } else {
+        await Clipboard.setStringAsync(url);
+        Alert.alert(tr('common.copied'), url);
+      }
     } catch (err) {
       Alert.alert(tr('common.error'), err instanceof Error ? err.message : 'Failed');
     }
@@ -316,10 +346,10 @@ export default function ConfiguracoesScreen() {
   };
 
   const handleLanguage = () => {
-    Alert.alert('Idioma', 'Selecione o idioma', [
-      { text: 'Português (BR)', onPress: () => changeLanguage('pt') },
-      { text: 'English', onPress: () => changeLanguage('en') },
-      { text: 'Cancelar', style: 'cancel' },
+    Alert.alert(tr('settings.language'), '', [
+      { text: tr('settings.language.portuguese'), onPress: () => changeLanguage('pt') },
+      { text: tr('settings.language.english'),    onPress: () => changeLanguage('en') },
+      { text: tr('common.cancel'), style: 'cancel' },
     ]);
   };
 
@@ -510,7 +540,7 @@ export default function ConfiguracoesScreen() {
         <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
           <Ionicons name="arrow-back" size={24} color={Colors.foreground} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Configurações</Text>
+        <Text style={styles.headerTitle}>{tr('settings.title')}</Text>
         <View style={{ width: 24 }} />
       </View>
 
@@ -704,18 +734,18 @@ export default function ConfiguracoesScreen() {
         </Section>
 
         {/* IDIOMA */}
-        <Section title="Idioma">
+        <Section title={tr('settings.language')}>
           <Row
             icon="language-outline"
             iconColor={Colors.info}
-            label="Idioma do app"
-            value={language === 'pt' ? '🇧🇷 Português (BR)' : '🇺🇸 English'}
+            label={tr('settings.language')}
+            value={lang === 'pt' ? `🇧🇷 ${tr('settings.language.portuguese')}` : `🇺🇸 ${tr('settings.language.english')}`}
             onPress={handleLanguage}
           />
         </Section>
 
         {/* CONTA */}
-        <Section title="Conta">
+        <Section title={tr('settings.account')}>
           <Row
             icon="person-outline"
             label="E-mail"
@@ -724,7 +754,7 @@ export default function ConfiguracoesScreen() {
           <Row
             icon={planIcon}
             iconColor={planColor}
-            label="Plano atual"
+            label={tr('settings.plan')}
             value={planLabel}
             trailing={
               <View style={[styles.planBadge, { backgroundColor: `${planColor}18`, borderColor: `${planColor}35` }]}>
@@ -759,32 +789,34 @@ export default function ConfiguracoesScreen() {
             label={tr('settings.aiUsage')}
             value={aiUsage ? `${aiUsage.aiUsageToday} / ${aiUsage.aiUsageLimit > 9999 ? '∞' : aiUsage.aiUsageLimit}` : '—'}
           />
-          <View style={{ paddingHorizontal: 16, paddingVertical: 12, gap: 8 }}>
-            <Text style={{ color: Colors.mutedForeground, fontSize: 12 }}>{tr('settings.byok.title')}</Text>
-            <TextInput
-              value={openaiKey}
-              onChangeText={setOpenaiKeyState}
-              placeholder={tr('settings.byok.placeholder')}
-              placeholderTextColor={Colors.mutedForeground}
-              autoCapitalize="none"
-              secureTextEntry
-              style={{
-                backgroundColor: Colors.background, borderColor: Colors.border, borderWidth: 1,
-                borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, color: Colors.foreground,
-              }}
-            />
-            <Text style={{ color: Colors.mutedForeground, fontSize: 11 }}>{tr('settings.byok.hint')}</Text>
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <TouchableOpacity onPress={handleSaveOpenAIKey} style={{ flex: 1, backgroundColor: Colors.primary, padding: 10, borderRadius: 8, alignItems: 'center' }}>
-                <Text style={{ color: '#fff', fontWeight: '600' }}>{tr('common.save')}</Text>
-              </TouchableOpacity>
-              {openaiKey ? (
-                <TouchableOpacity onPress={handleClearOpenAIKey} style={{ flex: 1, backgroundColor: Colors.muted, padding: 10, borderRadius: 8, alignItems: 'center' }}>
-                  <Text style={{ color: Colors.foreground, fontWeight: '600' }}>{tr('common.close')}</Text>
+          {isProOrAbove ? (
+            <View style={{ paddingHorizontal: 16, paddingVertical: 12, gap: 8 }}>
+              <Text style={{ color: Colors.mutedForeground, fontSize: 12 }}>{tr('settings.byok.title')}</Text>
+              <TextInput
+                value={openaiKey}
+                onChangeText={setOpenaiKeyState}
+                placeholder={tr('settings.byok.placeholder')}
+                placeholderTextColor={Colors.mutedForeground}
+                autoCapitalize="none"
+                secureTextEntry
+                style={{
+                  backgroundColor: Colors.background, borderColor: Colors.border, borderWidth: 1,
+                  borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, color: Colors.foreground,
+                }}
+              />
+              <Text style={{ color: Colors.mutedForeground, fontSize: 11 }}>{tr('settings.byok.hint')}</Text>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <TouchableOpacity onPress={handleSaveOpenAIKey} style={{ flex: 1, backgroundColor: Colors.primary, padding: 10, borderRadius: 8, alignItems: 'center' }}>
+                  <Text style={{ color: '#fff', fontWeight: '600' }}>{tr('common.save')}</Text>
                 </TouchableOpacity>
-              ) : null}
+                {openaiKey ? (
+                  <TouchableOpacity onPress={handleClearOpenAIKey} style={{ flex: 1, backgroundColor: Colors.muted, padding: 10, borderRadius: 8, alignItems: 'center' }}>
+                    <Text style={{ color: Colors.foreground, fontWeight: '600' }}>{tr('common.close')}</Text>
+                  </TouchableOpacity>
+                ) : null}
+              </View>
             </View>
-          </View>
+          ) : null}
         </Section>
 
         {/* SUPORTE */}
@@ -811,12 +843,24 @@ export default function ConfiguracoesScreen() {
         </Section>
 
         {/* COMUNIDADE */}
-        <Section title="Comunidade">
+        <Section title={tr('settings.referral')}>
           <Row
-            icon="person-add-outline"
+            icon="link-outline"
             iconColor={Colors.success}
-            label={tr('settings.referral')}
+            label={tr('referral.title')}
+            value={referralUrl ? referralUrl.replace(/^https?:\/\//, '') : '—'}
+          />
+          <Row
+            icon="copy-outline"
+            iconColor={Colors.info}
+            label={tr('common.copy')}
             onPress={handleCopyReferral}
+          />
+          <Row
+            icon="share-outline"
+            iconColor={Colors.success}
+            label={tr('common.share')}
+            onPress={handleShareReferral}
           />
           {activeCareer ? (
             <Row

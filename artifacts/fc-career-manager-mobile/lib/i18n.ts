@@ -1,11 +1,8 @@
-// PORTED FROM artifacts/fc-career-manager/src/lib/i18n.ts — adapted for React Native.
-// Provides `t(key)` plus a Settings/Toast/Upgrade dictionary in PT and EN.
-// Persisted to SecureStore via `setLang(lang)` and read on boot via
-// `loadPersistedLang()`. Triggers listeners so React components can re-render.
-
+import { useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import * as Localization from 'expo-localization';
+import { I18n } from 'i18n-js';
 
 export type Lang = 'pt' | 'en';
 
@@ -140,7 +137,36 @@ const DICTIONARY: Record<string, Record<Lang, string>> = {
   'referral.hint':       { pt: 'Convide um amigo e ganhe benefícios.', en: 'Invite a friend and earn perks.' },
 };
 
+export const i18n = new I18n(
+  (() => {
+    const pt: Record<string, string> = {};
+    const en: Record<string, string> = {};
+    for (const k of Object.keys(DICTIONARY)) {
+      pt[k] = DICTIONARY[k].pt;
+      en[k] = DICTIONARY[k].en;
+    }
+    return { pt, en };
+  })(),
+  { defaultLocale: 'pt', enableFallback: true, missingBehavior: 'guess' as const },
+);
+i18n.locale = _currentLang;
+onLangChange((l) => { i18n.locale = l; });
+
 export function t(key: string, lang?: Lang): string {
-  const l = lang ?? _currentLang;
-  return DICTIONARY[key]?.[l] ?? key;
+  if (lang) return DICTIONARY[key]?.[lang] ?? i18n.t(key);
+  return DICTIONARY[key]?.[_currentLang] ?? i18n.t(key);
+}
+
+export function useLang(): Lang {
+  const [lang, setLangState] = useState<Lang>(_currentLang);
+  useEffect(() => {
+    setLangState(_currentLang);
+    return onLangChange((l) => setLangState(l));
+  }, []);
+  return lang;
+}
+
+export function useT(): (key: string) => string {
+  const lang = useLang();
+  return (key: string) => DICTIONARY[key]?.[lang] ?? key;
 }

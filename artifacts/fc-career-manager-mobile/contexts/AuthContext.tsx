@@ -1,5 +1,5 @@
-import { createContext, useContext, useState, useCallback, useEffect, useMemo, ReactNode } from 'react';
-import { Platform } from 'react-native';
+import { createContext, useContext, useState, useCallback, useEffect, useMemo, useRef, ReactNode } from 'react';
+import { Platform, AppState, type AppStateStatus } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import { api, saveToken, deleteToken, TOKEN_KEY, type User } from '@/lib/api';
 import { queryClient } from '@/lib/queryClient';
@@ -12,6 +12,7 @@ interface AuthContextValue {
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, name: string) => Promise<void>;
   logout: () => Promise<void>;
+  refresh: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -79,9 +80,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     queryClient.clear();
   }, []);
 
+  const refresh = useCallback(async () => {
+    if (!token) return;
+    try {
+      const { user: freshUser } = await api.auth.me();
+      setUser(freshUser);
+      await queryClient.invalidateQueries({ queryKey: ['/api/stripe/subscription'] });
+    } catch {}
+  }, [token]);
+
+  const lastRefreshRef = useRef(0);
+  useEffect(() => {
+    const onChange = (state: AppStateStatus) => {
+      if (state === 'active' && token) {
+        const now = Date.now();
+        if (now - lastRefreshRef.current > 5000) {
+          lastRefreshRef.current = now;
+          void refresh();
+        }
+      }
+    };
+    const sub = AppState.addEventListener('change', onChange);
+    return () => sub.remove();
+  }, [token, refresh]);
+
   const value = useMemo<AuthContextValue>(
-    () => ({ user, token, isLoading, login, register, logout }),
-    [user, token, isLoading, login, register, logout]
+    () => ({ user, token, isLoading, login, register, logout, refresh }),
+    [user, token, isLoading, login, register, logout, refresh]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

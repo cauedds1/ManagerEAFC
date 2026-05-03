@@ -1,4 +1,3 @@
-// PORTED FROM artifacts/fc-career-manager/src/lib/apiStorage.ts — adapted for React Native (AsyncStorage-backed localCache, no DOM).
 import { api } from '@/lib/api';
 import type { SeasonGameData, CareerGameData } from '@/lib/api';
 

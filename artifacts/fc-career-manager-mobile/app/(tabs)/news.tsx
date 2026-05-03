@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity, Modal,
   ScrollView, Platform, RefreshControl, ActivityIndicator, Image, TextInput,
@@ -14,6 +14,9 @@ import { useClubTheme } from '@/contexts/ClubThemeContext';
 import { api, type NewsItem, type CustomPortal } from '@/lib/api';
 import { Colors } from '@/constants/colors';
 import { queryClient } from '@/lib/queryClient';
+import { getLang, useT } from '@/lib/i18n';
+import { UpgradePrompt } from '@/components/UpgradePrompt';
+import { useToast } from '@/components/Toast';
 
 const TYPE_CONFIG: Record<string, { icon: string; color: string; label: string }> = {
   vitoria:      { icon: '🏆', color: Colors.success,          label: 'Vitória' },
@@ -264,14 +267,21 @@ function GenerateModal({
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showPaywall, setShowPaywall] = useState(false);
 
+  const requiredForSelected: 'pro' | 'ultra' | null =
+    GEN_OPTIONS.find((o) => o.id === selected)?.planRequired ?? null;
+
+  const lang = getLang();
   const handleGenerate = async () => {
     setError(null);
     setLoading(true);
     try {
       let raw: Record<string, unknown>;
       if (selected === 'noticia') {
-        const desc = description.trim() || `Gere uma notícia criativa e interessante sobre o ${clubName} na temporada ${seasonLabel ?? ''}.`;
+        const desc = description.trim() || (lang === 'en'
+          ? `Write a creative, interesting news article about ${clubName} in season ${seasonLabel ?? ''}.`
+          : `Gere uma notícia criativa e interessante sobre o ${clubName} na temporada ${seasonLabel ?? ''}.`);
         raw = await api.noticias.generateManual({
           description: desc,
           clubName,
@@ -281,7 +291,7 @@ function GenerateModal({
           clubLeague,
           clubDescription,
           projeto,
-          lang: 'pt',
+          lang,
         });
       } else if (selected === 'rumor') {
         raw = await api.noticias.generateRumor({
@@ -290,33 +300,37 @@ function GenerateModal({
           clubLeague,
           clubDescription,
           projeto,
-          lang: 'pt',
+          lang,
         });
       } else if (selected === 'leak') {
         const portal = portals?.[0];
         if (!portal) {
-          setError('Crie um portal personalizado nas Configurações para usar esta opção.');
+          setError(lang === 'en'
+            ? 'Create a custom portal in Settings to use this option.'
+            : 'Crie um portal personalizado nas Configurações para usar esta opção.');
           setLoading(false);
           return;
         }
-        const ctx = description.trim() || `Bastidores do ${clubName} na temporada ${seasonLabel ?? ''}`;
+        const ctx = description.trim() || (lang === 'en'
+          ? `Behind the scenes at ${clubName} in season ${seasonLabel ?? ''}`
+          : `Bastidores do ${clubName} na temporada ${seasonLabel ?? ''}`);
         raw = await api.noticias.generateLeak({
           clubName,
           season: seasonLabel,
           clubLeague,
           notificationPreview: ctx,
           customPortal: { name: portal.name, tone: portal.tone },
-          lang: 'pt',
+          lang,
         });
       } else {
         raw = await api.noticias.generateWelcome({
-          coachName: coachName ?? 'Técnico',
+          coachName: coachName ?? (lang === 'en' ? 'Coach' : 'Técnico'),
           coachNationality,
           clubName,
           clubLeague,
           clubDescription,
           projeto,
-          lang: 'pt',
+          lang,
         });
       }
       const item = socialPostToNewsItem(raw, selected === 'rumor' ? 'transferencia' : selected === 'leak' ? 'geral' : 'geral');
@@ -324,11 +338,11 @@ function GenerateModal({
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       if (msg.includes('Ultra') || msg.includes('Pro') || msg.includes('PLAN')) {
-        setError('Este recurso requer o plano Pro ou superior.');
-      } else if (msg.includes('Limite')) {
-        setError('Limite de gerações do dia atingido. Tente amanhã.');
+        setShowPaywall(true);
+      } else if (msg.includes('Limite') || msg.includes('limit')) {
+        setError(lang === 'en' ? 'Daily AI limit reached. Try again tomorrow.' : 'Limite de gerações do dia atingido. Tente amanhã.');
       } else {
-        setError('Erro ao gerar. Tente novamente.');
+        setError(lang === 'en' ? 'Failed to generate. Try again.' : 'Erro ao gerar. Tente novamente.');
       }
     }
     setLoading(false);
@@ -412,6 +426,19 @@ function GenerateModal({
                 <Text style={styles.errorText}>{error}</Text>
               </View>
             ) : null}
+
+            {showPaywall && requiredForSelected ? (
+              <View style={{ marginTop: 12 }}>
+                <UpgradePrompt
+                  currentPlan={userPlan}
+                  requiredPlan={requiredForSelected}
+                  featureName={requiredForSelected === 'ultra' ? (getLang() === 'en' ? 'AI rumors' : 'Rumores com IA') : (getLang() === 'en' ? 'Leaked stories' : 'Vazamentos com IA')}
+                  description={getLang() === 'en' ? 'Available on the required plan.' : 'Disponível no plano necessário.'}
+                  compact
+                  onUpgraded={() => setShowPaywall(false)}
+                />
+              </View>
+            ) : null}
           </ScrollView>
 
           <View style={styles.genFooter}>
@@ -440,12 +467,37 @@ export default function NewsScreen() {
   const { activeSeason, activeCareer } = useCareer();
   const { user } = useAuth();
   const theme = useClubTheme();
+  const tr = useT();
+  const { showToast } = useToast();
   const [selected, setSelected] = useState<NewsItem | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [showGenerate, setShowGenerate] = useState(false);
   const [generating, setGenerating] = useState(false);
 
   const topPad = Platform.OS === 'web' ? 67 : insets.top;
+
+  const { data: aiUsage } = useQuery({
+    queryKey: ['/api/noticias/ai-usage'],
+    queryFn: () => api.aiUsage.get(),
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+    refetchIntervalInBackground: false,
+  });
+
+  const usagePct = aiUsage && aiUsage.aiUsageLimit > 0 ? aiUsage.aiUsageToday / aiUsage.aiUsageLimit : 0;
+  const lastWarnRef = useRef(0);
+  useEffect(() => {
+    if (!aiUsage) return;
+    const now = Date.now();
+    if (now - lastWarnRef.current < 60_000) return;
+    if (aiUsage.aiUsageToday >= aiUsage.aiUsageLimit && aiUsage.aiUsageLimit > 0 && aiUsage.aiUsageLimit < 9999) {
+      lastWarnRef.current = now;
+      showToast({ type: 'warning', title: tr('toast.aiQuota.exceeded'), preview: `${aiUsage.aiUsageToday}/${aiUsage.aiUsageLimit}` });
+    } else if (usagePct >= 0.8 && aiUsage.aiUsageLimit < 9999) {
+      lastWarnRef.current = now;
+      showToast({ type: 'warning', title: tr('toast.aiQuota.warn'), preview: `${aiUsage.aiUsageToday}/${aiUsage.aiUsageLimit}` });
+    }
+  }, [aiUsage, usagePct, tr, showToast]);
 
   const { data: seasonData, isLoading } = useQuery({
     queryKey: ['/api/data/season', activeSeason?.id],

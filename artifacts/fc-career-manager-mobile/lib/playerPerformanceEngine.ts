@@ -1,4 +1,3 @@
-// PORTED FROM artifacts/fc-career-manager/src/lib/playerPerformanceEngine.ts — adapted for React Native (AsyncStorage-backed localCache, no DOM).
 import type { Mood, FanMoral } from '@/lib/api';
 import {
   getAllPlayerStats,

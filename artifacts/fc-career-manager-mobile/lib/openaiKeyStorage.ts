@@ -1,8 +1,3 @@
-// PORTED FROM artifacts/fc-career-manager/src/lib/openaiKeyStorage.ts — adapted
-// for React Native: persisted to expo-secure-store on device (encrypted at
-// rest), with localStorage fallback on web. Never logged or sent to backend
-// outside of the per-request `x-openai-key` header.
-
 import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 

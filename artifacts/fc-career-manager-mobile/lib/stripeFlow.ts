@@ -1,8 +1,3 @@
-// Mobile Stripe flow — opens Stripe checkout / customer portal in the device
-// browser via expo-web-browser.openAuthSessionAsync, so the app reopens via
-// the deep-link scheme on success/cancel. Stripe stays web-only (no native
-// IAP) — see Master Plan.
-
 import * as WebBrowser from 'expo-web-browser';
 import { Platform } from 'react-native';
 import * as Linking from 'expo-linking';
@@ -54,6 +49,13 @@ export async function startCheckout(plan: RequiredPlan, lang: 'pt' | 'en' = 'pt'
   if (!url) throw new Error(lang === 'en' ? 'Invalid checkout URL.' : 'URL de pagamento inválida.');
 
   await WebBrowser.openAuthSessionAsync(url, getReturnUrl('success'));
+  for (const fn of _returnListeners) { try { fn(); } catch {} }
+}
+
+const _returnListeners = new Set<() => void>();
+export function onCheckoutReturn(fn: () => void): () => void {
+  _returnListeners.add(fn);
+  return () => _returnListeners.delete(fn);
 }
 
 export async function openCustomerPortal(lang: 'pt' | 'en' = 'pt'): Promise<void> {
@@ -67,4 +69,5 @@ export async function openCustomerPortal(lang: 'pt' | 'en' = 'pt'): Promise<void
   const { url } = await res.json() as { url?: string };
   if (!url) throw new Error(lang === 'en' ? 'Invalid portal URL.' : 'URL do portal inválida.');
   await WebBrowser.openAuthSessionAsync(url, getReturnUrl('success'));
+  for (const fn of _returnListeners) { try { fn(); } catch {} }
 }

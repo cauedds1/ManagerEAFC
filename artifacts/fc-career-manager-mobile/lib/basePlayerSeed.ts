@@ -1,4 +1,3 @@
-// PORTED FROM artifacts/fc-career-manager/src/lib/basePlayerSeed.ts — adapted for React Native (AsyncStorage-backed localCache, no DOM).
 /**
  * Base / academy player seed generator. Self-contained (no `baseStorage`
  * dependency on mobile yet — the BasePlayer type is declared inline).

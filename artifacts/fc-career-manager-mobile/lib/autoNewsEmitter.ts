@@ -1,12 +1,3 @@
-// PORTED FROM artifacts/fc-career-manager/src/lib/basePromotionNews.ts and a
-// small subset of autoNewsEngine.ts — adapted to the mobile NewsItem shape
-// (headline/body/type) and persisted via api.seasonData.set('news', ...).
-//
-// This is intentionally a minimal slice of the web auto-news pipeline: it
-// covers post-match milestone news (big result, win streak) plus academy
-// promotion news. It is idempotent at the storage layer (each event has a
-// stable key).
-
 import { api, type NewsItem, type MatchRecord } from '@/lib/api';
 import { wasEventHandled, markEventHandled } from '@/lib/autoNewsStorage';
 import { getAutoNewsEnabled } from '@/lib/autoNewsPreference';

@@ -1,4 +1,3 @@
-// PORTED FROM artifacts/fc-career-manager/src/lib/fanMoodStorage.ts — adapted for React Native (AsyncStorage-backed localCache, no DOM).
 import { putSeasonData } from '@/lib/apiStorage';
 import { sessionGet, sessionSet } from '@/lib/sessionStore';
 import { DASHBOARD, type Lang } from '@/lib/i18n';

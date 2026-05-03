@@ -1,6 +1,3 @@
-// PORTED FROM artifacts/fc-career-manager/src/components/UpgradePrompt.tsx —
-// adapted for React Native: native View/Text, opens checkout via stripeFlow.
-
 import { useState } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';

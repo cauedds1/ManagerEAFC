@@ -1,4 +1,3 @@
-// PORTED FROM artifacts/fc-career-manager/src/lib/unreadStorage.ts — adapted for React Native (AsyncStorage-backed localCache, no DOM).
 import { localCache } from '@/lib/localCache';
 
 const noticiasSeenKey  = (seasonId: string) => `fc-noticias-seen-at-${seasonId}`;
