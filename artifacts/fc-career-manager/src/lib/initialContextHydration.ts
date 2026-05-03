@@ -29,22 +29,29 @@ import {
   addHiddenPlayerId,
   addCustomPlayer,
   getCustomPlayers,
+  saveCustomPlayers,
 } from "@/lib/customPlayersStorage";
 
 const HYDRATED_KEY_V1 = (careerId: string) => `fc-initial-hydrated-${careerId}`;
 const HYDRATED_KEY_V2 = (careerId: string) => `fc-initial-hydrated-v2-${careerId}`;
+const HYDRATED_KEY_V3 = (careerId: string) => `fc-initial-hydrated-v3-${careerId}`;
 
 export function isInitialContextHydrated(careerId: string): boolean {
   try {
-    return localStorage.getItem(HYDRATED_KEY_V2(careerId)) === "1";
+    return localStorage.getItem(HYDRATED_KEY_V3(careerId)) === "1";
   } catch {
     return false;
   }
 }
 
-function isV1Hydrated(careerId: string): boolean {
+// True if a previous (v1 or v2) hydration ever marked this career. Used to
+// detect carriers eligible for re-enrichment on the v3 upgrade path.
+function isPreV3Hydrated(careerId: string): boolean {
   try {
-    return localStorage.getItem(HYDRATED_KEY_V1(careerId)) === "1";
+    return (
+      localStorage.getItem(HYDRATED_KEY_V2(careerId)) === "1"
+      || localStorage.getItem(HYDRATED_KEY_V1(careerId)) === "1"
+    );
   } catch {
     return false;
   }
@@ -52,6 +59,7 @@ function isV1Hydrated(careerId: string): boolean {
 
 function markHydrated(careerId: string): void {
   try {
+    localStorage.setItem(HYDRATED_KEY_V3(careerId), "1");
     localStorage.setItem(HYDRATED_KEY_V2(careerId), "1");
     localStorage.setItem(HYDRATED_KEY_V1(careerId), "1");
   } catch {
@@ -288,7 +296,7 @@ export async function hydrateInitialContext(
   const existingRivals = getSeasonRivals(seasonId);
 
   // Decouple guards: we may re-enrich legacy v1 transfers while preserving manual matches/rivals.
-  const transfersWereLegacy = isV1Hydrated(career.id) && isLegacyHydrationData(existingTransfers, tIn, tOut);
+  const transfersWereLegacy = isPreV3Hydrated(career.id) && isLegacyHydrationData(existingTransfers, tIn, tOut);
   const canHydrateTransfers = (existingTransfers.length === 0 || transfersWereLegacy)
     && (tIn.length > 0 || tOut.length > 0);
   const canHydrateMatches = existingMatches.length === 0 && recentMatches.length > 0;
@@ -413,9 +421,29 @@ export async function hydrateInitialContext(
       if (p.id > 0) addHiddenPlayerId(career.id, p.id);
     }
     if (comprasMatched.length > 0) {
+      // Remove orphan custom players left behind by v1/v2 hydration: shape is
+      // clearly synthetic (empty photo + age 25 + MID), and the name matches
+      // an entry in the current transfersIn list. Manual user-added players
+      // are preserved — they almost always have a real photo or non-default
+      // age/position.
+      const tInNameSet = new Set(
+        tIn.map((e) => normalizeName(e?.name?.trim() ?? "")).filter(Boolean),
+      );
       const existingCustom = getCustomPlayers(career.id);
-      const existingIds = new Set(existingCustom.map((p) => p.id));
-      const existingNames = new Set(existingCustom.map((p) => normalizeName(p.name)));
+      const cleanedCustom = existingCustom.filter((p) => {
+        const isSyntheticHydrationLeftover =
+          (!p.photo || p.photo === "")
+          && p.age === 25
+          && p.positionPtBr === "MID"
+          && tInNameSet.has(normalizeName(p.name));
+        return !isSyntheticHydrationLeftover;
+      });
+      if (cleanedCustom.length !== existingCustom.length) {
+        saveCustomPlayers(career.id, cleanedCustom);
+      }
+
+      const existingIds = new Set(cleanedCustom.map((p) => p.id));
+      const existingNames = new Set(cleanedCustom.map((p) => normalizeName(p.name)));
       for (const p of comprasMatched) {
         if (existingIds.has(p.id)) continue;
         if (existingNames.has(normalizeName(p.name))) continue;
