@@ -221,13 +221,16 @@ function isLegacyHydrationData(
   if (icNames.length === 0 || existing.length === 0) return false;
   if (existing.length !== icNames.length) return false;
   // Each existing record must (a) look synthetic by ANY default marker and
-  // (b) fuzzy-match some entry in the initialContext name list.
+  // (b) fuzzy-match an unconsumed entry in the initialContext name list
+  // (one-to-one — duplicates can't all collapse onto the same IC entry).
+  const remaining = [...icNames];
   for (const t of existing) {
     const looksSynthetic =
       t.playerPhoto === "" || t.playerAge === 25 || t.playerPositionPtBr === "MID";
     if (!looksSynthetic) return false;
-    const matched = icNames.some((n) => fuzzyNameMatch(t.playerName, n));
-    if (!matched) return false;
+    const idx = remaining.findIndex((n) => fuzzyNameMatch(t.playerName, n));
+    if (idx === -1) return false;
+    remaining.splice(idx, 1);
   }
   return true;
 }
@@ -347,6 +350,11 @@ export async function hydrateInitialContext(
         squadPlayers = [];
       }
     }
+    if (squadPlayers.length === 0) {
+      console.warn(
+        `[hydrateInitialContext] empty squad for clubId=${career.clubId} (${career.clubName}); falling back to generic vendas records.`,
+      );
+    }
   }
 
   if (canHydrateTransfers) {
@@ -446,9 +454,12 @@ export async function hydrateInitialContext(
       const tInNames = tIn.map((e) => e?.name?.trim() ?? "").filter(Boolean);
       const existingCustom = getCustomPlayers(career.id);
       const cleanedCustom = existingCustom.filter((p) => {
-        const looksSynthetic = !p.photo || p.age === 25 || p.positionPtBr === "MID";
+        const fullySynthetic =
+          (!p.photo || p.photo === "")
+          && p.age === 25
+          && p.positionPtBr === "MID";
         const matchesIn = tInNames.some((n) => fuzzyNameMatch(p.name, n));
-        return !(looksSynthetic && matchesIn);
+        return !(fullySynthetic && matchesIn);
       });
       if (cleanedCustom.length !== existingCustom.length) {
         saveCustomPlayers(career.id, cleanedCustom);
