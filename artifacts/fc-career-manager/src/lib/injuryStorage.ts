@@ -19,6 +19,17 @@ export function getInjuries(seasonId: string): InjuryRecord[] {
   return sessionGet<InjuryRecord[]>(KEY(seasonId)) ?? [];
 }
 
+// Returns the set of player IDs with an active (non-released) injury for the
+// current season. Use this to filter players out of selection UIs (match
+// registration bench, substitute pickers, etc.).
+export function getActiveInjuredIds(seasonId: string): Set<number> {
+  const ids = new Set<number>();
+  for (const r of getInjuries(seasonId)) {
+    if (!r.releasedAt) ids.add(r.playerId);
+  }
+  return ids;
+}
+
 export function saveInjuries(seasonId: string, records: InjuryRecord[]): void {
   sessionSet(KEY(seasonId), records);
   void putSeasonData(seasonId, "injuries", records);

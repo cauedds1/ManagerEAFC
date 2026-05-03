@@ -24,6 +24,7 @@ import {
   getMatches,
 } from "@/lib/matchStorage";
 import { getCustomLineup, getFormation, getBenchOrder } from "@/lib/lineupStorage";
+import { getActiveInjuredIds } from "@/lib/injuryStorage";
 import { getAllPlayerOverrides, applyOverridesToPlayers } from "@/lib/playerStatsStorage";
 import { getCachedClubList } from "@/lib/clubListCache";
 import { FootballPitch, pickBestEleven } from "@/components/FootballPitch";
@@ -1738,46 +1739,63 @@ export function RegistrarPartidaModal({
 
   const usedIds = useMemo(() => new Set([...draft.starterIds, ...draft.subIds]), [draft.starterIds, draft.subIds]);
 
+  // Players with an active injury this season — never offered as bench/sub
+  // candidates. Recomputed when the injuries map changes (we re-read on each
+  // render of the modal, which is fine since it's only opened occasionally).
+  const injuredIds = useMemo(() => getActiveInjuredIds(seasonId), [seasonId]);
+
   const benchPlayers = useMemo(() => {
     const starterSet = new Set(pitchSlots.filter((id): id is number => id != null && id > 0));
-    const rawBench = allPlayers.filter((p) => !starterSet.has(p.id));
-    const rawBenchMap = new Map(rawBench.map((p) => [p.id, p]));
 
-    // Players ejected from the pitch that must always appear
-    const ejectedInBench = [...pitchEjected]
-      .filter((id) => !starterSet.has(id))
-      .map((id) => rawBenchMap.get(id))
-      .filter((p): p is SquadPlayer => p != null);
-    const ejectedIds = new Set(ejectedInBench.map((p) => p.id));
+    // Mirror Elenco's "Relacionados" definition: take the saved Elenco bench
+    // (everything that's NOT in the saved starting XI), keep the user's saved
+    // bench order, then take the first 9. These are the players "called up"
+    // for matchday — non-related squad members never appear here.
+    const customLineup = getCustomLineup(careerId);
+    const elencoStarterFullIds = new Set(
+      (customLineup && customLineup.filter((id) => id > 0).length > 0
+        ? customLineup
+        : pickBestEleven(playersWithOverrides, pitchFormation)
+      ).filter((id) => id > 0),
+    );
 
-    // Saved starters from Elenco tab (getCustomLineup).
-    // If no explicit lineup was saved, fall back to pickBestEleven so the
-    // "default" Elenco starters still appear in the bench (same as Auto Fill).
-    const customLineupIds = getCustomLineup(careerId);
-    const savedLineupIds: number[] = customLineupIds && customLineupIds.filter((id) => id > 0).length > 0
-      ? customLineupIds
-      : pickBestEleven(playersWithOverrides, pitchFormation);
-    const savedStartersInBench = savedLineupIds
-      .filter((id) => rawBenchMap.has(id) && !ejectedIds.has(id))
-      .map((id) => rawBenchMap.get(id)!);
-    const savedStarterIds = new Set(savedStartersInBench.map((p) => p.id));
-
-    // Bench order players (saved banco from Elenco tab)
+    const elencoBench = playersWithOverrides.filter((p) => !elencoStarterFullIds.has(p.id));
+    const elencoBenchMap = new Map(elencoBench.map((p) => [p.id, p]));
     const order = getBenchOrder(careerId) ?? [];
-    const benchOrdered = order
-      .filter((id) => rawBenchMap.has(id) && !ejectedIds.has(id) && !savedStarterIds.has(id))
-      .map((id) => rawBenchMap.get(id)!);
-    const knownIds = new Set([...order, ...savedLineupIds, ...ejectedIds]);
-    const extras = rawBench.filter((p) => !knownIds.has(p.id));
+    const ordered = order
+      .filter((id) => elencoBenchMap.has(id))
+      .map((id) => elencoBenchMap.get(id)!);
+    const known = new Set(order);
+    const extras = elencoBench.filter((p) => !known.has(p.id));
+    const fullElencoBench = [...ordered, ...extras];
 
-    // Combine: ejected (priority) + saved bench + saved starters (all shown) + extras capped at 9
-    const cappedExtras = extras.slice(0, 9);
-    return [...ejectedInBench, ...benchOrdered, ...savedStartersInBench, ...cappedExtras];
-  }, [careerId, allPlayers, pitchSlots, pitchEjected, playersWithOverrides, pitchFormation]);
+    // Bench = top-9 Relacionados + any ejected players (kept visible even when
+    // outside the top-9 so the user can re-substitute them). Players currently
+    // on the pitch are excluded from the bench panel entirely. Lesionados are
+    // filtered out everywhere.
+    const related = fullElencoBench
+      .slice(0, 9)
+      .filter((p) => !starterSet.has(p.id) && !injuredIds.has(p.id));
+    const relatedSet = new Set(related.map((p) => p.id));
+
+    const allPlayersMap = new Map(allPlayers.map((p) => [p.id, p]));
+    const ejectedFirst = [...pitchEjected]
+      .map((id) => allPlayersMap.get(id))
+      .filter((p): p is SquadPlayer => p != null && !starterSet.has(p.id) && !injuredIds.has(p.id) && !relatedSet.has(p.id));
+
+    return [...ejectedFirst, ...related];
+  }, [careerId, allPlayers, pitchSlots, pitchEjected, playersWithOverrides, pitchFormation, injuredIds]);
 
   const allUnusedForSub = useCallback((excludeId: number) => {
-    return allPlayers.filter((p) => !usedIds.has(p.id) && p.id !== excludeId);
-  }, [allPlayers, usedIds]);
+    return allPlayers.filter((p) => !usedIds.has(p.id) && p.id !== excludeId && !injuredIds.has(p.id));
+  }, [allPlayers, usedIds, injuredIds]);
+
+  // PlayerPicker pool that excludes injured players so they can't be picked
+  // as starter/sub via the search dialog.
+  const pickerPlayers = useMemo(
+    () => allPlayers.filter((p) => !injuredIds.has(p.id)),
+    [allPlayers, injuredIds],
+  );
 
   // Set of player IDs that are Elenco starters (or best-11 fallback) — used
   // to show a "T" badge in the bench panel so users know which players are
@@ -2361,7 +2379,7 @@ export function RegistrarPartidaModal({
               <>
                 {pickerMode === "starter" && (
                   <PlayerPicker
-                    allPlayers={allPlayers}
+                    allPlayers={pickerPlayers}
                     usedIds={usedIds}
                     onSelect={(p) => addPlayer(p, false)}
                     onClose={() => setPickerMode(null)}
@@ -2532,7 +2550,14 @@ export function RegistrarPartidaModal({
                   {/* Bench (relacionados) — right */}
                   <div className="flex flex-col min-w-0 flex-1 overflow-hidden">
                     {(() => {
-                      const slotPos = pitchPendingSlot !== null ? sectorForSlotIndex(pitchPendingSlot, pitchFormation) : null;
+                      const selectedSlotIdx = pitchSelectedId !== null
+                        ? pitchSlots.findIndex((id) => id === pitchSelectedId)
+                        : -1;
+                      const slotPos = pitchPendingSlot !== null
+                        ? sectorForSlotIndex(pitchPendingSlot, pitchFormation)
+                        : selectedSlotIdx >= 0
+                          ? sectorForSlotIndex(selectedSlotIdx, pitchFormation)
+                          : null;
                       const posColor = slotPos ? POS_COLOR_BADGE[slotPos] : null;
                       const available = benchPlayers.filter((p) => !usedIds.has(p.id));
                       const priPlayers = slotPos ? available.filter((p) => p.positionPtBr === slotPos) : [];
@@ -2619,7 +2644,7 @@ export function RegistrarPartidaModal({
                 {/* Player picker for pending slot (fallback when no bench players) */}
                 {pitchPendingSlot !== null && benchPlayers.filter((p) => !usedIds.has(p.id)).length === 0 && (
                   <PlayerPicker
-                    allPlayers={allPlayers}
+                    allPlayers={pickerPlayers}
                     usedIds={usedIds}
                     onSelect={(player) => handlePitchAssign(pitchPendingSlot, player)}
                     onClose={() => setPitchPendingSlot(null)}
@@ -2679,7 +2704,7 @@ export function RegistrarPartidaModal({
 
             {pickerMode === "sub" && (
               <PlayerPicker
-                allPlayers={allPlayers}
+                allPlayers={pickerPlayers}
                 usedIds={usedIds}
                 onSelect={(p) => addPlayer(p, true)}
                 onClose={() => setPickerMode(null)}
