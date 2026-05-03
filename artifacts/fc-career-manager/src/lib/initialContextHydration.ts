@@ -12,6 +12,7 @@ import { recordMatchInAgg } from "@/lib/careerAggregateStats";
 import { getSeasonRivals, setSeasonRivals, MAX_RIVALS } from "@/lib/rivalsStorage";
 import {
   getSquad,
+  fetchSquadFromBackend,
   PT_BR_TO_POSITION,
   type SquadPlayer,
   type PositionPtBr,
@@ -298,8 +299,14 @@ export async function hydrateInitialContext(
   const vendasMatched: SquadPlayer[] = [];
   const comprasMatched: SquadPlayer[] = [];
 
+  // When clubId is real (>0) AND we have vendas to bind, ensure the squad is
+  // actually loaded — fetch from the backend if cache/DB are empty. If the
+  // squad still can't be loaded, defer transfer hydration so we don't lock in
+  // generic synthetic records (the v2 flag stays unset and the next session
+  // will retry once squad data is available).
+  let squadPlayers: SquadPlayer[] = [];
+  let squadAttemptFailedForVendas = false;
   if (canHydrateTransfers) {
-    let squadPlayers: SquadPlayer[] = [];
     if (career.clubId && career.clubId > 0) {
       try {
         const squad = await getSquad(career.clubId, career.clubName);
@@ -307,8 +314,24 @@ export async function hydrateInitialContext(
       } catch {
         squadPlayers = [];
       }
+      if (squadPlayers.length === 0) {
+        try {
+          const fetched = await fetchSquadFromBackend(career.clubId);
+          squadPlayers = fetched?.players ?? [];
+        } catch {
+          squadPlayers = [];
+        }
+      }
+      if (squadPlayers.length === 0 && tOut.length > 0) {
+        squadAttemptFailedForVendas = true;
+      }
     }
+  }
 
+  const deferTransferHydration = canHydrateTransfers && squadAttemptFailedForVendas;
+  const willHydrateTransfers = canHydrateTransfers && !deferTransferHydration;
+
+  if (willHydrateTransfers) {
     for (const entry of tOut) {
       const name = entry?.name?.trim();
       if (!name) continue;
@@ -369,7 +392,7 @@ export async function hydrateInitialContext(
 
   const writes: Promise<unknown>[] = [];
 
-  if (canHydrateTransfers) {
+  if (willHydrateTransfers) {
     writes.push(saveTransfersAsync(seasonId, newTransfers));
   }
 
@@ -411,12 +434,17 @@ export async function hydrateInitialContext(
         existingNames.add(normalizeName(p.name));
       }
     }
-    markHydrated(career.id);
+    // Only commit the v2 flag once squad hydration actually had its chance.
+    // If we deferred transfer hydration because the real squad couldn't be
+    // loaded yet, leave the flag unset so the next session retries.
+    if (!deferTransferHydration) {
+      markHydrated(career.id);
+    }
   }
 
   return {
     ran: true,
-    transfersAdded: canHydrateTransfers ? newTransfers.length : 0,
+    transfersAdded: willHydrateTransfers ? newTransfers.length : 0,
     matchesAdded: newMatches.length,
     rivalsSet,
     vendasMatched: vendasMatched.length,
