@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import type { Lang } from "@/lib/i18n";
+import { getEffectiveToken } from "@/lib/authToken";
 
 export type { Lang };
 
@@ -15,6 +16,33 @@ function readLang(): Lang {
   }
 }
 
+let _syncInFlight = false;
+
+async function syncLangToServer(lang: Lang): Promise<void> {
+  if (_syncInFlight) return;
+  const token = getEffectiveToken();
+  if (!token) return;
+  _syncInFlight = true;
+  try {
+    await fetch("/api/auth/lang", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ lang }),
+    });
+  } catch {
+  } finally {
+    _syncInFlight = false;
+  }
+}
+
+export function applyLangFromServer(lang: string | null | undefined): void {
+  if (lang !== "pt" && lang !== "en") return;
+  try {
+    localStorage.setItem(LANG_KEY, lang);
+  } catch {}
+  window.dispatchEvent(new StorageEvent("storage", { key: LANG_KEY, newValue: lang }));
+}
+
 export function useLang(): [Lang, (l: Lang) => void] {
   const [lang, setLangState] = useState<Lang>(readLang);
 
@@ -24,6 +52,7 @@ export function useLang(): [Lang, (l: Lang) => void] {
       localStorage.setItem(LANG_KEY, l);
     } catch {}
     window.dispatchEvent(new StorageEvent("storage", { key: LANG_KEY, newValue: l }));
+    void syncLangToServer(l);
   }, []);
 
   useEffect(() => {

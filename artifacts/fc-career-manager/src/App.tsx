@@ -23,6 +23,7 @@ import {
 import { listCareers, saveCareer, migrateFromLegacy, updateCareerSeason, fetchCareersFromApi, AuthExpiredError, getEffectiveToken } from "@/lib/careerStorage";
 import { sessionClear } from "@/lib/sessionStore";
 import { PLAN_PROMOTION } from "@/lib/i18n";
+import { applyLangFromServer } from "@/hooks/useLang";
 
 const AUTH_TOKEN_KEY = "fc_auth_token";
 const AUTH_USER_KEY = "fc_auth_user";
@@ -418,13 +419,14 @@ export default function App() {
 
   const WELCOME_KEY = (userId: number) => `fc_onboarded_${userId}`;
 
-  const handleAuthSuccess = useCallback(async (token: string, user: AuthUser) => {
+  const handleAuthSuccess = useCallback(async (token: string, user: AuthUser & { lang?: string }) => {
     sessionStorage.removeItem(AUTH_TOKEN_KEY);
     sessionStorage.removeItem(IMPERSONATION_USER_KEY);
     setIsImpersonating(false);
     setImpersonatedUserName("");
     localStorage.setItem(AUTH_TOKEN_KEY, token);
     localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user));
+    if (user.lang) applyLangFromServer(user.lang);
     setAuthUser(user);
     const fetched = await fetchCareersFromApi();
     setCareers(fetched);
@@ -659,6 +661,11 @@ export default function App() {
         setIsImpersonating(true);
         setImpersonatedUserName(impUser.name);
         setAuthUser(impUser);
+        // Fetch the impersonated user's lang preference from server and apply it
+        fetch(`${API_BASE}/auth/me`, { headers: { Authorization: `Bearer ${impersonationToken}` } })
+          .then(r => r.ok ? r.json() as Promise<{ user?: { lang?: string } }> : null)
+          .then(data => { if (data?.user?.lang) applyLangFromServer(data.user.lang); })
+          .catch(() => {});
         fetchCareersFromApi().then((fetchedCareers) => {
           setCareers(fetchedCareers);
           const localCached = getCachedClubList();
@@ -683,6 +690,14 @@ export default function App() {
         setIsImpersonating(true);
         setImpersonatedUserName(impUser.name);
         setAuthUser(impUser);
+        // On session restore, also sync the impersonated user's lang from DB
+        const impToken = sessionStorage.getItem(AUTH_TOKEN_KEY);
+        if (impToken) {
+          fetch(`${API_BASE}/auth/me`, { headers: { Authorization: `Bearer ${impToken}` } })
+            .then(r => r.ok ? r.json() as Promise<{ user?: { lang?: string } }> : null)
+            .then(data => { if (data?.user?.lang) applyLangFromServer(data.user.lang); })
+            .catch(() => {});
+        }
       } catch {}
     } else {
       const storedUser = localStorage.getItem(AUTH_USER_KEY);
@@ -692,9 +707,12 @@ export default function App() {
       const syncToken = localStorage.getItem(AUTH_TOKEN_KEY);
       if (syncToken) {
         fetch(`${API_BASE}/auth/me`, { headers: { Authorization: `Bearer ${syncToken}` } })
-          .then(r => r.ok ? r.json() as Promise<{ user?: { plan?: string } }> : null)
+          .then(r => r.ok ? r.json() as Promise<{ user?: { plan?: string; lang?: string } }> : null)
           .then(data => {
-            if (!data?.user?.plan) return;
+            if (!data?.user) return;
+            // Apply user's language preference from DB (overwrites browser default)
+            if (data.user.lang) applyLangFromServer(data.user.lang);
+            if (!data.user.plan) return;
             const serverPlan = data.user.plan as "free" | "pro" | "ultra";
             try {
               const raw = localStorage.getItem(AUTH_USER_KEY);

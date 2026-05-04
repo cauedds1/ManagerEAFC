@@ -96,7 +96,7 @@ router.post("/auth/login", authRateLimit, async (req, res) => {
     const token = signToken({ id: user.id, email: user.email, name: user.name, plan: user.plan });
     return res.json({
       token,
-      user: { id: user.id, email: user.email, name: user.name, plan: user.plan },
+      user: { id: user.id, email: user.email, name: user.name, plan: user.plan, lang: user.lang ?? "pt" },
     });
   } catch (err) {
     console.error("POST /auth/login error:", err);
@@ -107,7 +107,7 @@ router.post("/auth/login", authRateLimit, async (req, res) => {
 router.get("/auth/me", requireAuth, async (req: AuthRequest, res) => {
   try {
     const [freshUser] = await db
-      .select({ id: usersTable.id, email: usersTable.email, name: usersTable.name, plan: usersTable.plan })
+      .select({ id: usersTable.id, email: usersTable.email, name: usersTable.name, plan: usersTable.plan, lang: usersTable.lang })
       .from(usersTable)
       .where(eq(usersTable.id, req.user!.id))
       .limit(1);
@@ -120,6 +120,20 @@ router.get("/auth/me", requireAuth, async (req: AuthRequest, res) => {
   } catch (err) {
     console.error("GET /auth/me error:", err);
     return res.json({ user: req.user });
+  }
+});
+
+router.patch("/auth/lang", requireAuth, async (req: AuthRequest, res) => {
+  const { lang } = req.body as { lang?: string };
+  if (lang !== "pt" && lang !== "en") {
+    return res.status(400).json({ error: "lang deve ser 'pt' ou 'en'" });
+  }
+  try {
+    await db.update(usersTable).set({ lang }).where(eq(usersTable.id, req.user!.id));
+    return res.json({ ok: true, lang });
+  } catch (err) {
+    console.error("PATCH /auth/lang error:", err);
+    return res.status(500).json({ error: "Erro ao salvar preferência de idioma" });
   }
 });
 
