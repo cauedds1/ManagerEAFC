@@ -1,7 +1,6 @@
 import { useState, useCallback, useRef, useMemo, useEffect } from "react";
 import { createPortal } from "react-dom";
 import type { SquadPlayer } from "@/lib/squadCache";
-import { getAllCachedPlayers } from "@/lib/squadCache";
 import type {
   MatchRecord,
   PlayerMatchStats,
@@ -394,10 +393,9 @@ function GoalEditor({
 }
 
 function OpponentGoalEditor({
-  goal, index, opponentName, allSystemPlayers, onChange, onRemove,
+  goal, index, opponentName, onChange, onRemove,
 }: {
   goal: OpponentGoalEntry; index: number; opponentName: string;
-  allSystemPlayers: SquadPlayer[];
   onChange: (g: OpponentGoalEntry) => void; onRemove: () => void;
 }) {
   const [lang] = useLang();
@@ -418,7 +416,7 @@ function OpponentGoalEditor({
         <MotmAutocomplete
           playerId={null}
           playerName={goal.playerName ?? ""}
-          allPlayers={allSystemPlayers}
+          allPlayers={[]}
           onChange={(val) => onChange({ ...goal, playerName: val.playerName || undefined })}
         />
       </div>
@@ -1355,12 +1353,6 @@ export function RegistrarPartidaModal({
     return "MID";
   }, [sectorMap, playersWithOverrides]);
 
-  const allSystemPlayers = useMemo(() => {
-    const cached = getAllCachedPlayers();
-    const ownIds = new Set(allPlayers.map((p) => p.id));
-    const extras = cached.filter((p) => !ownIds.has(p.id));
-    return [...allPlayers, ...extras].sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
-  }, [allPlayers]);
 
   const initial = useMemo(() => buildInitialDraft(seasonId), [seasonId]);
 
@@ -1827,7 +1819,7 @@ export function RegistrarPartidaModal({
     const overriddenMap = new Map<number, SquadPlayer>(playersWithOverrides.map((p) => [p.id, p]));
     for (const id of ids) {
       const overridden = overriddenMap.get(id);
-      const fallback = allSystemPlayers.find((pl) => pl.id === id);
+      const fallback = allPlayers.find((pl) => pl.id === id);
       const p = overridden ?? fallback;
       if (p) {
         snapshot[id] = {
@@ -1839,7 +1831,7 @@ export function RegistrarPartidaModal({
       }
     }
     return snapshot;
-  }, [allSystemPlayers, playersWithOverrides]);
+  }, [allPlayers, playersWithOverrides]);
 
   const handleConfirm = useCallback(() => {
     if (!canSave || saving) return;
@@ -2761,7 +2753,6 @@ export function RegistrarPartidaModal({
                       goal={g}
                       index={idx}
                       opponentName={draft.opponent}
-                      allSystemPlayers={allSystemPlayers}
                       onChange={(updated) => onChange({ opponentGoals: draft.opponentGoals.map((og, i) => i === idx ? updated : og) })}
                       onRemove={() => onChange({ opponentGoals: draft.opponentGoals.filter((_, i) => i !== idx), opponentScore: Math.max(0, draft.opponentScore - 1) })}
                     />
@@ -2776,7 +2767,7 @@ export function RegistrarPartidaModal({
               <MotmAutocomplete
                 playerId={draft.motmPlayerId}
                 playerName={draft.motmPlayerName}
-                allPlayers={allSystemPlayers}
+                allPlayers={allPlayers}
                 onChange={(val) => onChange({ motmPlayerId: val.playerId, motmPlayerName: val.playerName })}
               />
             </div>
