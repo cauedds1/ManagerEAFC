@@ -280,6 +280,11 @@ export default function RegistrarPartidaScreen() {
   const [motm, setMotm] = useState<SquadPlayer | null>(null);
   const [motmPickerOpen, setMotmPickerOpen] = useState(false);
 
+  const [playerSubbedOff, setPlayerSubbedOff] = useState<Record<string, boolean>>({});
+  const [playerSubMinute, setPlayerSubMinute] = useState<Record<string, string>>({});
+  const [playerSubInId, setPlayerSubInId] = useState<Record<string, number | null>>({});
+  const [subPickerForPlayer, setSubPickerForPlayer] = useState<string | null>(null);
+
   const { data: seasonData } = useQuery({
     queryKey: ['/api/data/season', activeSeason?.id],
     queryFn: () => activeSeason ? api.seasonData.get(activeSeason.id) : null,
@@ -352,11 +357,13 @@ export default function RegistrarPartidaScreen() {
     motmId: motm?.id ?? null, motmName: motm?.name ?? null,
     legType, tieId,
     firstLegId: firstLegContext?.id ?? null,
+    playerSubbedOff, playerSubMinute, playerSubInId,
   }), [
     step, tournament, opponent, opponentLogoUrl, location, date, stage,
     myScore, opponentScore, possession, observations,
     lineupRoles, goalRows, playerRatings, detailedStats, motm,
     legType, tieId, firstLegContext,
+    playerSubbedOff, playerSubMinute, playerSubInId,
   ]);
 
   useEffect(() => {
@@ -391,6 +398,9 @@ export default function RegistrarPartidaScreen() {
                 setGoalRows(d.goalRows ?? []);
                 setPlayerRatings(d.playerRatings ?? {});
                 setDetailedStats(d.detailedStats ?? {});
+                if (d.playerSubbedOff) setPlayerSubbedOff(d.playerSubbedOff);
+                if (d.playerSubMinute) setPlayerSubMinute(d.playerSubMinute);
+                if (d.playerSubInId) setPlayerSubInId(d.playerSubInId);
                 if (d.lineupRoles && Object.keys(d.lineupRoles).length > 0) {
                   autoFilledRef.current = true;
                 }
@@ -515,13 +525,18 @@ export default function RegistrarPartidaScreen() {
         const role = lineupRoles[p.id] ?? 'none';
         if (role === 'none') return;
         const ds = detailedStats[p.name];
+        const subbedOff = role === 'starter' && (playerSubbedOff[p.name] ?? false);
+        const subMin = subbedOff && playerSubMinute[p.name] ? Number(playerSubMinute[p.name]) : undefined;
+        const subById = subbedOff && playerSubInId[p.name] != null ? playerSubInId[p.name]! : undefined;
         const entry: PlayerMatchStats = {
           startedOnBench: role === 'bench',
           rating: 0,
           goals: [],
           ownGoal: false,
           injured: false,
-          substituted: false,
+          substituted: subbedOff,
+          ...(subMin != null ? { substitutionMinute: subMin } : {}),
+          ...(subById != null ? { substitutedByPlayerId: subById } : {}),
         };
         if (ds) {
           if (ds.shots) entry.shots = ds.shots;
@@ -1109,6 +1124,59 @@ export default function RegistrarPartidaScreen() {
                         </View>
                       </View>
                       <RatingBar rating={rating} />
+                      {lineupRoles[p.id] === 'starter' && (
+                        <View style={styles.subToggleRow}>
+                          <Text style={styles.subToggleLabel}>Substituído</Text>
+                          <TouchableOpacity
+                            style={[styles.subToggleBtn, playerSubbedOff[p.name] && { backgroundColor: theme.primary, borderColor: theme.primary }]}
+                            onPress={() => setPlayerSubbedOff((prev) => ({ ...prev, [p.name]: !prev[p.name] }))}
+                            activeOpacity={0.7}
+                          >
+                            <Ionicons name={playerSubbedOff[p.name] ? 'checkmark' : 'close'} size={13} color={playerSubbedOff[p.name] ? '#fff' : Colors.mutedForeground} />
+                          </TouchableOpacity>
+                        </View>
+                      )}
+                      {playerSubbedOff[p.name] && lineupRoles[p.id] === 'starter' && (
+                        <View style={styles.subDetailsBox}>
+                          <View style={styles.subMinuteRow}>
+                            <Text style={styles.subDetailLabel}>Minuto:</Text>
+                            <TextInput
+                              style={styles.subMinuteInput}
+                              value={playerSubMinute[p.name] ?? ''}
+                              onChangeText={(v) => setPlayerSubMinute((prev) => ({ ...prev, [p.name]: v.replace(/[^0-9]/g, '') }))}
+                              keyboardType="number-pad"
+                              placeholder="Min"
+                              placeholderTextColor={Colors.mutedForeground}
+                              maxLength={3}
+                            />
+                          </View>
+                          <View style={styles.subPickerRow}>
+                            <Text style={styles.subDetailLabel}>Quem entrou:</Text>
+                            {playerSubInId[p.name] != null ? (
+                              <View style={styles.pickedPlayer}>
+                                <Text style={styles.pickedPlayerName} numberOfLines={1}>
+                                  {benchPlayers.find((b) => b.id === playerSubInId[p.name])?.name ?? '?'}
+                                </Text>
+                                <TouchableOpacity
+                                  onPress={() => setPlayerSubInId((prev) => ({ ...prev, [p.name]: null }))}
+                                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                >
+                                  <Ionicons name="close-circle" size={18} color={Colors.mutedForeground} />
+                                </TouchableOpacity>
+                              </View>
+                            ) : (
+                              <TouchableOpacity
+                                style={styles.pickerBtn}
+                                onPress={() => setSubPickerForPlayer(p.name)}
+                                activeOpacity={0.7}
+                              >
+                                <Ionicons name="person-add-outline" size={14} color={theme.primary} />
+                                <Text style={[styles.pickerBtnText, { color: theme.primary }]}>Selecionar reserva</Text>
+                              </TouchableOpacity>
+                            )}
+                          </View>
+                        </View>
+                      )}
                       {isExpanded && (
                         <View style={styles.detailedStatsBox}>
                           {isGK ? (
@@ -1264,6 +1332,17 @@ export default function RegistrarPartidaScreen() {
           title="Melhor em Campo (MOTM)"
           onSelect={(player) => { setMotm(player); setMotmPickerOpen(false); }}
           onClose={() => setMotmPickerOpen(false)}
+        />
+      )}
+      {subPickerForPlayer !== null && (
+        <PlayerPickerModal
+          players={benchPlayers}
+          title="Quem entrou"
+          onSelect={(player) => {
+            setPlayerSubInId((prev) => ({ ...prev, [subPickerForPlayer]: player.id }));
+            setSubPickerForPlayer(null);
+          }}
+          onClose={() => setSubPickerForPlayer(null)}
         />
       )}
     </KeyboardAvoidingView>
@@ -1457,4 +1536,28 @@ const styles = StyleSheet.create({
   aggregateBannerLabel: { fontSize: 12, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular' },
   aggregateBannerScore: { flex: 1, fontSize: 22, fontWeight: '700' as const, fontFamily: 'Inter_700Bold', textAlign: 'center' },
   aggregateBannerStatus: { fontSize: 13, fontWeight: '600' as const, fontFamily: 'Inter_600SemiBold' },
+  subToggleRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    marginTop: 6, paddingHorizontal: 2,
+  },
+  subToggleLabel: { fontSize: 12, fontWeight: '600' as const, color: Colors.mutedForeground, fontFamily: 'Inter_600SemiBold' },
+  subToggleBtn: {
+    width: 26, height: 26, borderRadius: 13,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.card,
+  },
+  subDetailsBox: {
+    marginTop: 8, gap: 8,
+    backgroundColor: Colors.card, borderRadius: Colors.radius, borderWidth: 1, borderColor: Colors.border,
+    padding: 10,
+  },
+  subMinuteRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  subDetailLabel: { fontSize: 12, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular', flex: 1 },
+  subMinuteInput: {
+    width: 60, textAlign: 'center',
+    backgroundColor: Colors.background, borderRadius: 6, borderWidth: 1, borderColor: Colors.border,
+    paddingHorizontal: 8, paddingVertical: 4,
+    color: Colors.foreground, fontFamily: 'Inter_400Regular', fontSize: 14,
+  },
+  subPickerRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
 });

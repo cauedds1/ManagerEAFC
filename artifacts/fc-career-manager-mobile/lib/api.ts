@@ -151,6 +151,8 @@ export interface PlayerMatchStats {
   ownGoal: boolean;
   injured: boolean;
   substituted: boolean;
+  substitutionMinute?: number;
+  substitutedByPlayerId?: number;
   yellowCard?: boolean;
   redCard?: boolean;
   shots?: number;
