@@ -92,7 +92,3 @@ MIGRATIONS_PATH = "/home/runner/workspace/lib/db/migrations"
 [[ports]]
 localPort = 5000
 externalPort = 80
-
-[[ports]]
-localPort = 8080
-externalPort = 8080
