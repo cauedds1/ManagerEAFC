@@ -61,12 +61,14 @@ args = "cd /home/runner/workspace/artifacts/api-server && PORT=8080 NODE_ENV=dev
 name = "Expo Mobile App"
 author = "agent"
 
-[workflows.workflow.metadata]
-outputType = "console"
-
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "mkdir -p ~/.ngrok2 && echo \"authtoken: $NGROK_AUTHTOKEN\" > ~/.ngrok2/ngrok.yml && EXPO_PUBLIC_API_URL=https://managereafc-production.up.railway.app pnpm --filter @workspace/fc-career-manager-mobile exec expo start --tunnel"
+args = "EXPO_PUBLIC_API_URL=https://managereafc-production.up.railway.app pnpm --filter @workspace/fc-career-manager-mobile exec expo start --web --port 8000"
+waitForPort = 8000
+
+[workflows.workflow.metadata]
+outputType = "console"
+isCanvasWorkflow = true
 
 [agent]
 stack = "BEST_EFFORT_FALLBACK"
@@ -91,3 +93,7 @@ MIGRATIONS_PATH = "/home/runner/workspace/lib/db/migrations"
 [[ports]]
 localPort = 5000
 externalPort = 80
+
+[[ports]]
+localPort = 8000
+externalPort = 8000
