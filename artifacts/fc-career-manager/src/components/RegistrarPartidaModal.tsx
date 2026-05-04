@@ -783,9 +783,11 @@ function SearchablePlayerSelect({
     ? (allUnused.find((p) => p.id === selectedId) ?? allParticipants.find((p) => p.id === selectedId))
     : null;
 
-  const filtered = allUnused.filter((p) =>
-    query === "" || p.name.toLowerCase().includes(query.toLowerCase()) || p.positionPtBr.toLowerCase().includes(query.toLowerCase())
-  );
+  const filtered = query.trim() === ""
+    ? []
+    : allUnused.filter((p) =>
+        p.name.toLowerCase().includes(query.toLowerCase()) || p.positionPtBr.toLowerCase().includes(query.toLowerCase())
+      );
 
   const updateRect = useCallback(() => {
     if (containerRef.current) {
@@ -873,7 +875,9 @@ function SearchablePlayerSelect({
           }}
         >
           <div className="overflow-y-auto" style={{ maxHeight: 220 }}>
-            {filtered.length === 0 ? (
+            {query.trim() === "" ? (
+              <p className="text-white/25 text-xs text-center py-5">{t.playerSearchPlaceholder}</p>
+            ) : filtered.length === 0 ? (
               <p className="text-white/25 text-xs text-center py-5">{t.noPlayersAvailable}</p>
             ) : (
               filtered.map((p) => (
