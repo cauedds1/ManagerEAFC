@@ -1067,6 +1067,8 @@ function LandingPageDesktop({ onStart, onLogin, onStartWithPlan, lang, setLang }
   const [homeScore, setHomeScore]             = useState(2);
   const [awayScore, setAwayScore]             = useState(1);
   const [menuOpen,  setMenuOpen]              = useState(false);
+  const [supportOpen, setSupportOpen]         = useState(false);
+  const supportRef                            = useRef<HTMLDivElement>(null);
 
   const inputText = customClubInput.trim();
   const club = (() => {
@@ -1085,6 +1087,18 @@ function LandingPageDesktop({ onStart, onLogin, onStartWithPlan, lang, setLang }
     const tmr = setInterval(() => setLiveCount(getLiveCoaches()), 45000);
     return () => clearInterval(tmr);
   }, []);
+
+  /* ── Close support dropdown on outside click ─── */
+  useEffect(() => {
+    if (!supportOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (supportRef.current && !supportRef.current.contains(e.target as Node)) {
+        setSupportOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [supportOpen]);
 
   /* ── Mobile detection ─── */
   useEffect(() => {
@@ -1871,10 +1885,43 @@ function LandingPageDesktop({ onStart, onLogin, onStartWithPlan, lang, setLang }
           <img src="/logo.png" alt="FC Career Manager" style={{ width: 22, height: 22, objectFit: "contain", opacity: 0.7 }} />
           <span style={{ color: "#444466", fontSize: 13, fontWeight: 600 }}>FC Career Manager</span>
         </div>
-        <div style={{ display: "flex", gap: 28 }}>
-          {[t.footerTerms, t.footerPrivacy, t.footerSupport].map(l => (
+        <div style={{ display: "flex", gap: 28, alignItems: "center" }}>
+          {[t.footerTerms, t.footerPrivacy].map(l => (
             <a key={l} href="#" style={{ color: "#444466", fontSize: 12, textDecoration: "none" }} onMouseEnter={e => (e.currentTarget.style.color = "#888899")} onMouseLeave={e => (e.currentTarget.style.color = "#444466")}>{l}</a>
           ))}
+          <div ref={supportRef} style={{ position: "relative" }}>
+            <button
+              onClick={() => setSupportOpen(o => !o)}
+              style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: supportOpen ? "#888899" : "#444466", fontSize: 12, fontFamily: "inherit" }}
+              onMouseEnter={e => (e.currentTarget.style.color = "#888899")}
+              onMouseLeave={e => { if (!supportOpen) e.currentTarget.style.color = "#444466"; }}
+            >
+              {t.footerSupport}
+            </button>
+            {supportOpen && (
+              <div style={{ position: "absolute", bottom: "calc(100% + 10px)", left: "50%", transform: "translateX(-50%)", background: "#13111f", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, padding: "12px 16px", whiteSpace: "nowrap", boxShadow: "0 8px 32px rgba(0,0,0,0.5)", zIndex: 100 }}>
+                <div style={{ position: "absolute", bottom: -6, left: "50%", transform: "translateX(-50%)", width: 10, height: 10, background: "#13111f", border: "1px solid rgba(255,255,255,0.1)", borderTop: "none", borderLeft: "none", rotate: "45deg" }} />
+                <p style={{ color: "#666688", fontSize: 10, margin: "0 0 6px", textTransform: "uppercase", letterSpacing: "0.1em" }}>
+                  {lang === "pt" ? "Entre em contato" : "Contact us"}
+                </p>
+                <a
+                  href="https://mail.google.com/mail/?view=cm&to=fccareermanager1@gmail.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setSupportOpen(false)}
+                  style={{ display: "flex", alignItems: "center", gap: 8, color: "#c4b5fd", fontSize: 13, textDecoration: "none", fontWeight: 500, transition: "color 0.2s" }}
+                  onMouseEnter={e => (e.currentTarget.style.color = "#a78bfa")}
+                  onMouseLeave={e => (e.currentTarget.style.color = "#c4b5fd")}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                    <rect width="20" height="16" x="2" y="4" rx="2" />
+                    <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+                  </svg>
+                  fccareermanager1@gmail.com
+                </a>
+              </div>
+            )}
+          </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <img src="/logo.png" alt="" style={{ width: 16, height: 16, objectFit: "contain", opacity: 0.5 }} />
