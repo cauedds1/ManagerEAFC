@@ -26,6 +26,7 @@ import { isSoundEnabled, setSoundEnabled, playNotificationSound } from "@/lib/no
 import { RivaisView } from "./RivaisView";
 import { getUserPlan, getPlanLimits, getPlanLabel, getPlanColor, type Plan } from "@/lib/userPlan";
 import { UpgradePrompt } from "@/components/UpgradePrompt";
+import { ManageSubscriptionModal } from "@/components/ManageSubscriptionModal";
 
 interface SettingsPageProps {
   onReloadClubs: () => void;
@@ -391,8 +392,7 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
 
   const pwa = usePWAInstall();
 
-  const [portalLoading, setPortalLoading] = useState(false);
-  const [portalError, setPortalError] = useState("");
+  const [showManageModal, setShowManageModal] = useState(false);
 
   const [subscription, setSubscription] = useState<{
     status: string;
@@ -417,27 +417,6 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
       .finally(() => setSubLoading(false));
   }, [resolvedPlan]);
 
-  const handleOpenPortal = useCallback(async () => {
-    setPortalError("");
-    setPortalLoading(true);
-    try {
-      const token = getEffectiveToken();
-      const res = await fetch(`${API_BASE}/stripe/portal`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-      });
-      if (!res.ok) {
-        const d = await res.json() as { error?: string };
-        throw new Error(d.error ?? SETTINGS[lang].openPortalError);
-      }
-      const { url } = await res.json() as { url?: string };
-      if (url) { window.location.href = url; }
-    } catch (e) {
-      setPortalError(e instanceof Error ? e.message : SETTINGS[lang].unexpectedError);
-    } finally {
-      setPortalLoading(false);
-    }
-  }, [lang]);
   const [section, setSection] = useState<Section>("temporada");
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [soundEnabled, setSoundEnabledState] = useState(() => isSoundEnabled());
@@ -1142,11 +1121,23 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
           </div>
 
           {resolvedPlan === "free" && (
-            <div className="rounded-xl px-4 py-3 flex flex-col gap-1" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
-              <div className="flex items-center justify-between">
-                <span className="text-white/40 text-xs">{t.statusLabel}</span>
-                <span className="text-white/80 text-xs font-semibold">{t.freeStatus}</span>
+            <div className="flex flex-col gap-2">
+              <div className="rounded-xl px-4 py-3 flex flex-col gap-1" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                <div className="flex items-center justify-between">
+                  <span className="text-white/40 text-xs">{t.statusLabel}</span>
+                  <span className="text-white/80 text-xs font-semibold">{t.freeStatus}</span>
+                </div>
               </div>
+              <button
+                onClick={() => setShowManageModal(true)}
+                className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 hover:opacity-80 active:scale-[0.98]"
+                style={{ background: "rgba(245,158,11,0.12)", border: "1px solid rgba(245,158,11,0.25)", color: "#f59e0b" }}
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                </svg>
+                {lang === "pt" ? "Ver planos disponíveis" : "View available plans"}
+              </button>
             </div>
           )}
           {resolvedPlan !== "free" && (
@@ -1183,32 +1174,16 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
                   )}
                 </div>
               )}
-              <div className="flex flex-col gap-1.5">
-                <button
-                  onClick={handleOpenPortal}
-                  disabled={portalLoading}
-                  className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 hover:opacity-80 active:scale-[0.98] disabled:opacity-50"
-                  style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.7)" }}
-                >
-                  {portalLoading ? (
-                    <>
-                      <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                      </svg>
-                      {t.openingPortal}
-                    </>
-                  ) : (
-                    <>
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" />
-                      </svg>
-                      {t.manageSubBtn}
-                    </>
-                  )}
-                </button>
-                {portalError && <p className="text-red-400 text-xs text-center">{portalError}</p>}
-              </div>
+              <button
+                onClick={() => setShowManageModal(true)}
+                className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 hover:opacity-80 active:scale-[0.98]"
+                style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.7)" }}
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" />
+                </svg>
+                {t.manageSubBtn}
+              </button>
             </div>
           )}
         </div>
@@ -1906,6 +1881,13 @@ export function SettingsPage({ onReloadClubs, careerId, seasonId, onDeleteCareer
       >
         {bugToast.msg}
       </div>
+    )}
+
+    {showManageModal && (
+      <ManageSubscriptionModal
+        currentPlan={resolvedPlan}
+        onClose={() => setShowManageModal(false)}
+      />
     )}
     </>
   );
