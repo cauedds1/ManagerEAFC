@@ -82,15 +82,31 @@ Game data is stored in PostgreSQL via `career_data` and `season_data` key-value 
 Season-level: matches, player_stats, transfers, league_position, finances, news, injuries, rivals, rivalsLocked, fan_mood
 Career-level: overrides, lineup, benchOrder, formation, diretoria_members, diretoria_meetings, diretoria_notifications, conv_*, trophies, comp_results, customPlayers, formerPlayers, hiddenPlayerIds
 
-## Payments (Stripe)
+## Payments
 
-The app has full Stripe integration code already in place (`artifacts/api-server/src/lib/stripeClient.ts`). It is coded to use the Replit Stripe integration first, then falls back to `STRIPE_SECRET_KEY` / `STRIPE_PUBLISHABLE_KEY` env vars.
+### Stripe
+The app has full Stripe integration code in `artifacts/api-server/src/lib/stripeClient.ts`. Uses Replit Stripe integration first, then falls back to `STRIPE_SECRET_KEY` / `STRIPE_PUBLISHABLE_KEY` env vars. Webhook at `POST /api/stripe/webhook`. Stripe is non-fatal — app runs fully without it.
 
-**NOTE:** The Stripe Replit integration was not connected during migration (user dismissed). To enable payments, either:
-1. Connect the Stripe integration via the Integrations panel in Replit (recommended), OR
-2. Set `STRIPE_SECRET_KEY` and `STRIPE_PUBLISHABLE_KEY` as secrets in the environment
+### Lemon Squeezy (PayPal alternative)
+Added as a PayPal-enabled payment alternative (migration `0015_lemon_squeezy`). Architecture:
 
-Stripe initialization is non-fatal — the app runs fully without it; only subscription/checkout features are affected.
+- `artifacts/api-server/src/lib/lemonWebhook.ts` — HMAC-SHA256 signature verification + event handler
+- `artifacts/api-server/src/routes/lemon.ts` — `POST /api/lemon/checkout`, `POST /api/lemon/portal`
+- Webhook at `POST /api/lemon/webhook` (raw body parsing, registered in `app.ts`)
+- `artifacts/fc-career-manager-mobile/lib/lemonFlow.ts` — mobile checkout + portal
+- DB column: `users.lemon_squeezy_customer_id`
+
+**Railway env vars required:**
+- `LEMONSQUEEZY_API_KEY` — from LS dashboard > Settings > API
+- `LEMONSQUEEZY_WEBHOOK_SECRET` — from LS webhook settings page
+- `LEMONSQUEEZY_STORE_ID` — numeric store ID from LS dashboard
+- `LEMONSQUEEZY_PRO_VARIANT_ID` — variant ID for Pro plan
+- `LEMONSQUEEZY_ULTRA_VARIANT_ID` — variant ID for Ultra plan
+
+**LS Webhook URL:** `https://[railway-domain]/api/lemon/webhook`
+**Events to subscribe:** `subscription_created`, `subscription_updated`, `subscription_cancelled`, `subscription_expired`
+
+The web modal (`ManageSubscriptionModal.tsx`) auto-detects if Lemon Squeezy is configured and shows "PayPal" button alongside the Stripe card/GPay/APay button for each paid plan.
 
 ## Required Environment Variables
 

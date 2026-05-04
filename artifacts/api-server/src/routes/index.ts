@@ -14,6 +14,7 @@ import gamedataRouter from "./gamedata";
 import portalsRouter from "./portals";
 import authRouter from "./auth";
 import stripeRouter from "./stripe";
+import lemonRouter from "./lemon";
 import leaguesRouter from "./leagues";
 import communityRouter from "./community";
 import communityAdminRouter from "./communityAdmin";
@@ -22,6 +23,7 @@ const router: IRouter = Router();
 
 router.use(authRouter);
 router.use(stripeRouter);
+router.use(lemonRouter);
 router.use(healthRouter);
 router.use(clubsRouter);
 router.use(squadRouter);

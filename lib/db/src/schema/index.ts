@@ -94,6 +94,7 @@ export const usersTable = pgTable("users", {
   aiUsageCount: integer("ai_usage_count").notNull().default(0),
   aiUsageResetDate: text("ai_usage_reset_date").notNull().default(""),
   stripeCustomerId: text("stripe_customer_id"),
+  lemonSqueezyCustomerId: text("lemon_squeezy_customer_id"),
   lastLoginAt: bigint("last_login_at", { mode: "number" }),
   referralCode: text("referral_code").unique(),
   pushToken: text("push_token"),

@@ -10,6 +10,7 @@ import router from "./routes";
 import { logger } from "./lib/logger";
 import { WebhookHandlers } from "./lib/webhookHandlers";
 import { handleStripeEvent } from "./lib/stripeWebhook";
+import { handleLemonEvent, verifyLemonWebhookSignature } from "./lib/lemonWebhook";
 import type Stripe from "stripe";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -72,6 +73,33 @@ function fingerprintSecret(s: string | null | undefined): string {
   if (s.length < 12) return `${s.slice(0, 3)}…(${s.length})`;
   return `${s.slice(0, 8)}…${s.slice(-4)}(${s.length})`;
 }
+
+app.post(
+  "/api/lemon/webhook",
+  express.raw({ type: "application/json" }),
+  async (req: Request, res: Response) => {
+    const sig = req.headers["x-signature"] as string | undefined;
+    if (!sig) {
+      res.status(400).json({ error: "Missing Lemon Squeezy signature" });
+      return;
+    }
+
+    if (!verifyLemonWebhookSignature(req.body as Buffer, sig)) {
+      logger.error("Lemon Squeezy webhook signature verification failed");
+      res.status(400).json({ error: "Invalid signature" });
+      return;
+    }
+
+    res.json({ received: true });
+
+    try {
+      const payload = JSON.parse((req.body as Buffer).toString("utf-8"));
+      await handleLemonEvent(payload);
+    } catch (err) {
+      logger.error({ err }, "Lemon Squeezy webhook processing error");
+    }
+  }
+);
 
 app.get("/api/stripe/webhook", (_req: Request, res: Response) => {
   res.status(200).json({
