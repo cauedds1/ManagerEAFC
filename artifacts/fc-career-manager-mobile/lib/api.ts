@@ -211,6 +211,10 @@ export interface MatchRecord {
    * Captures name/photo/position/number AT REGISTRATION TIME so future Elenco
    * edits (retraining, renaming, transfers) never alter past matches. */
   playerSnapshot?: Record<number, PlayerSnapshotEntry>;
+  /** Whether this is a single match, first leg, or second leg of a two-legged tie. */
+  legType?: 'single' | 'first_leg' | 'second_leg';
+  /** Links both legs of a two-legged tie together. Generated on first-leg save. */
+  tieId?: string;
 }
 
 export interface SquadPlayer {

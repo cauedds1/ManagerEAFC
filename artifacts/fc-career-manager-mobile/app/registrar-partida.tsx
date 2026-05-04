@@ -17,6 +17,7 @@ import { Colors } from '@/constants/colors';
 import { searchStaticClubs, type StaticClub } from '@/lib/staticClubList';
 import { pickBestEleven, type FormationKey, DEFAULT_FORMATION } from '@/lib/formations';
 import { useT } from '@/lib/i18n';
+import { getAutoFillForTournament } from '@/lib/matchAutoFill';
 
 type Step = 1 | 2 | 3 | 4 | 5 | 6;
 const TOTAL_STEPS = 6;
@@ -258,6 +259,10 @@ export default function RegistrarPartidaScreen() {
   const [location, setLocation] = useState<MatchLocation>('casa');
   const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [stage, setStage] = useState('Rodada 1');
+  const [legType, setLegType] = useState<'single' | 'first_leg' | 'second_leg'>('single');
+  const [tieId, setTieId] = useState<string | null>(null);
+  const [firstLegContext, setFirstLegContext] = useState<MatchRecord | null>(null);
+  const pendingFirstLegIdRef = useRef<string | null>(null);
 
   const [myScore, setMyScore] = useState(0);
   const [opponentScore, setOpponentScore] = useState(0);
@@ -345,10 +350,13 @@ export default function RegistrarPartidaScreen() {
     myScore, opponentScore, possession, observations,
     lineupRoles, goalRows, playerRatings, detailedStats,
     motmId: motm?.id ?? null, motmName: motm?.name ?? null,
+    legType, tieId,
+    firstLegId: firstLegContext?.id ?? null,
   }), [
     step, tournament, opponent, opponentLogoUrl, location, date, stage,
     myScore, opponentScore, possession, observations,
     lineupRoles, goalRows, playerRatings, detailedStats, motm,
+    legType, tieId, firstLegContext,
   ]);
 
   useEffect(() => {
@@ -372,6 +380,9 @@ export default function RegistrarPartidaScreen() {
                 setLocation(d.location ?? 'casa');
                 setDate(d.date ?? new Date().toISOString().split('T')[0]);
                 setStage(d.stage ?? 'Rodada 1');
+                setLegType(d.legType ?? 'single');
+                setTieId(d.tieId ?? null);
+                if (d.firstLegId) pendingFirstLegIdRef.current = d.firstLegId;
                 setMyScore(d.myScore ?? 0);
                 setOpponentScore(d.opponentScore ?? 0);
                 setPossession(d.possession ?? 50);
@@ -410,6 +421,16 @@ export default function RegistrarPartidaScreen() {
   }, [squadPlayers, motm]);
 
   useEffect(() => {
+    if (!pendingFirstLegIdRef.current || !seasonData) return;
+    const allM = (seasonData?.data?.matches as MatchRecord[] | undefined) ?? [];
+    const found = allM.find((m) => m.id === pendingFirstLegIdRef.current);
+    if (found) {
+      setFirstLegContext(found);
+      pendingFirstLegIdRef.current = null;
+    }
+  }, [seasonData]);
+
+  useEffect(() => {
     if (!draftKey || step === 6) return;
     const draft = getDraftState();
     AsyncStorage.setItem(draftKey, JSON.stringify(draft)).catch(() => {});
@@ -428,6 +449,22 @@ export default function RegistrarPartidaScreen() {
     setOpponentLogoUrl(club.logo);
     setClubSuggestions([]);
   }, []);
+
+  const handleTournamentAutoFill = useCallback((t: string) => {
+    if (!t.trim()) return;
+    const allM = (seasonData?.data?.matches as MatchRecord[] | undefined) ?? [];
+    const result = getAutoFillForTournament(allM, t);
+    setStage(result.stage);
+    if (result.twoLeggedContext.isSecondLeg) {
+      setLegType('second_leg');
+      setTieId(result.twoLeggedContext.tieId);
+      setFirstLegContext(result.twoLeggedContext.firstLeg);
+    } else {
+      setLegType((prev) => prev === 'second_leg' ? 'single' : prev);
+      setTieId(null);
+      setFirstLegContext(null);
+    }
+  }, [seasonData]);
 
   const syncGoalRows = useCallback((newScore: number) => {
     setGoalRows((prev) => {
@@ -553,6 +590,9 @@ export default function RegistrarPartidaScreen() {
         motmPlayerName: motm?.name,
         observations: observations.trim() || undefined,
         createdAt: Date.now(),
+        ...(legType !== 'single' ? { legType } : {}),
+        ...(legType === 'first_leg' ? { tieId: `tie_${Date.now()}` } : {}),
+        ...(legType === 'second_leg' && tieId ? { tieId } : {}),
       };
 
       const allMatchesAfter = [...existingMatches, newMatch];
@@ -618,6 +658,14 @@ export default function RegistrarPartidaScreen() {
 
   const resultLabel = myScore > opponentScore ? 'VITÓRIA' : myScore < opponentScore ? 'DERROTA' : 'EMPATE';
   const resultColor = myScore > opponentScore ? Colors.success : myScore < opponentScore ? Colors.destructive : Colors.warning;
+  const aggFor = legType === 'second_leg' && firstLegContext ? firstLegContext.myScore + myScore : null;
+  const aggAgainst = legType === 'second_leg' && firstLegContext ? firstLegContext.opponentScore + opponentScore : null;
+  const aggColor = aggFor !== null && aggAgainst !== null
+    ? aggFor > aggAgainst ? Colors.success : aggFor < aggAgainst ? Colors.destructive : Colors.warning
+    : null;
+  const aggLabel = aggFor !== null && aggAgainst !== null
+    ? aggFor > aggAgainst ? '✓ Classificado' : aggFor < aggAgainst ? '✗ Eliminado' : '→ Pênaltis'
+    : null;
 
   const stepLabels = ['Informações', 'Resultado', 'Escalação', 'Gols & Assistências', 'Avaliações', 'Confirmar'];
   const stepLabel = stepLabels[step - 1];
@@ -654,6 +702,7 @@ export default function RegistrarPartidaScreen() {
                 style={styles.input}
                 value={tournament}
                 onChangeText={setTournament}
+                onBlur={() => handleTournamentAutoFill(tournament)}
                 placeholder="Ex: Brasileirão Série A"
                 placeholderTextColor={Colors.mutedForeground}
               />
@@ -663,7 +712,7 @@ export default function RegistrarPartidaScreen() {
                     <TouchableOpacity
                       key={t}
                       style={[styles.chip, tournament === t && { backgroundColor: theme.primary, borderColor: theme.primary }]}
-                      onPress={() => setTournament(t)}
+                      onPress={() => { setTournament(t); handleTournamentAutoFill(t); }}
                       activeOpacity={0.7}
                     >
                       <Text style={[styles.chipText, tournament === t && { color: '#fff' }]}>{t}</Text>
@@ -761,6 +810,38 @@ export default function RegistrarPartidaScreen() {
                 />
               </View>
             </View>
+
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>Formato da partida</Text>
+              <View style={styles.legTypeRow}>
+                {([
+                  { key: 'single' as const, label: 'Jogo único', icon: 'football-outline' as const },
+                  { key: 'first_leg' as const, label: 'Jogo de ida', icon: 'arrow-up-circle-outline' as const },
+                  { key: 'second_leg' as const, label: 'Jogo de volta', icon: 'arrow-down-circle-outline' as const },
+                ]).map(({ key, label, icon }) => (
+                  <TouchableOpacity
+                    key={key}
+                    style={[
+                      styles.legTypeChip,
+                      legType === key && { backgroundColor: theme.primary, borderColor: theme.primary },
+                    ]}
+                    onPress={() => {
+                      setLegType(key);
+                      if (key !== 'second_leg') { setTieId(null); setFirstLegContext(null); }
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name={icon} size={14} color={legType === key ? '#fff' : Colors.mutedForeground} />
+                    <Text style={[styles.legTypeChipText, legType === key && { color: '#fff' }]}>{label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              {legType === 'second_leg' && !firstLegContext && (
+                <Text style={{ fontSize: 12, color: Colors.warning, fontFamily: 'Inter_400Regular', marginTop: 4 }}>
+                  Selecione o torneio e rodada para vincular a 1ª mão automaticamente.
+                </Text>
+              )}
+            </View>
           </View>
         )}
 
@@ -771,6 +852,14 @@ export default function RegistrarPartidaScreen() {
               {opponentLogoUrl ? <ClubLogo uri={opponentLogoUrl} size={24} /> : null}
               <Text style={styles.matchLabel}>{activeCareer?.clubName ?? 'Seu time'} vs {opponent}</Text>
             </View>
+
+            {legType === 'second_leg' && firstLegContext && (
+              <View style={styles.firstLegBanner}>
+                <Ionicons name="arrow-up-circle-outline" size={16} color={Colors.mutedForeground} />
+                <Text style={styles.firstLegBannerText}>Ida vs {firstLegContext.opponent}</Text>
+                <Text style={styles.firstLegBannerScore}>{firstLegContext.myScore}–{firstLegContext.opponentScore}</Text>
+              </View>
+            )}
 
             <View style={styles.scoreArea}>
               <View style={styles.scoreTeam}>
@@ -791,6 +880,14 @@ export default function RegistrarPartidaScreen() {
                 </View>
               </View>
             </View>
+
+            {aggFor !== null && aggAgainst !== null && aggColor && aggLabel && (
+              <View style={[styles.aggregateBanner, { backgroundColor: `${aggColor}12`, borderColor: `${aggColor}40` }]}>
+                <Text style={styles.aggregateBannerLabel}>Agregado</Text>
+                <Text style={[styles.aggregateBannerScore, { color: aggColor }]}>{aggFor}–{aggAgainst}</Text>
+                <Text style={[styles.aggregateBannerStatus, { color: aggColor }]}>{aggLabel}</Text>
+              </View>
+            )}
 
             <View style={[styles.resultBadge, { backgroundColor: `${resultColor}20`, borderColor: `${resultColor}40` }]}>
               <Text style={[styles.resultBadgeText, { color: resultColor }]}>{resultLabel}</Text>
@@ -1067,6 +1164,18 @@ export default function RegistrarPartidaScreen() {
               <SummaryRow label="Local" value={LOCATION_OPTIONS.find((o) => o.value === location)?.label ?? location} />
               <View style={styles.summaryDivider} />
               <SummaryRow label="Rodada" value={stage} />
+              {legType !== 'single' && (
+                <>
+                  <View style={styles.summaryDivider} />
+                  <SummaryRow label="Formato" value={legType === 'first_leg' ? 'Jogo de ida' : 'Jogo de volta'} />
+                </>
+              )}
+              {aggFor !== null && aggAgainst !== null && aggColor && (
+                <>
+                  <View style={styles.summaryDivider} />
+                  <SummaryRow label="Agregado" value={`${aggFor}–${aggAgainst}`} valueColor={aggColor} />
+                </>
+              )}
               <View style={styles.summaryDivider} />
               <SummaryRow label="Placar" value={`${myScore} – ${opponentScore}`} valueColor={resultColor} />
               <View style={styles.summaryDivider} />
@@ -1327,4 +1436,25 @@ const styles = StyleSheet.create({
   pickerPlayerPos: { fontSize: 12, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular' },
   pickerEmpty: { padding: 24, alignItems: 'center' },
   pickerEmptyText: { fontSize: 14, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular' },
+  legTypeRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
+  legTypeChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingHorizontal: 12, paddingVertical: 8,
+    backgroundColor: Colors.card, borderRadius: 99, borderWidth: 1, borderColor: Colors.border,
+  },
+  legTypeChipText: { fontSize: 12, fontWeight: '500' as const, color: Colors.foreground, fontFamily: 'Inter_500Medium' },
+  firstLegBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: Colors.card, borderRadius: Colors.radius, borderWidth: 1, borderColor: Colors.border,
+    paddingHorizontal: 14, paddingVertical: 10,
+  },
+  firstLegBannerText: { flex: 1, fontSize: 13, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular' },
+  firstLegBannerScore: { fontSize: 15, fontWeight: '700' as const, color: Colors.foreground, fontFamily: 'Inter_700Bold' },
+  aggregateBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    borderRadius: Colors.radius, borderWidth: 1, padding: 14,
+  },
+  aggregateBannerLabel: { fontSize: 12, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular' },
+  aggregateBannerScore: { flex: 1, fontSize: 22, fontWeight: '700' as const, fontFamily: 'Inter_700Bold', textAlign: 'center' },
+  aggregateBannerStatus: { fontSize: 13, fontWeight: '600' as const, fontFamily: 'Inter_600SemiBold' },
 });

@@ -12,6 +12,7 @@ import * as Haptics from 'expo-haptics';
 import { useCareer } from '@/contexts/CareerContext';
 import { useClubTheme } from '@/contexts/ClubThemeContext';
 import { api, getMatchResult, type MatchRecord } from '@/lib/api';
+import { getMatchAggregateInfo } from '@/lib/matchAutoFill';
 import { Colors } from '@/constants/colors';
 import { queryClient } from '@/lib/queryClient';
 
@@ -37,15 +38,23 @@ interface MatchSection {
 
 function MatchRow({
   match,
+  allMatches,
   seasonId,
   onPress,
 }: {
   match: MatchRecord;
+  allMatches: MatchRecord[];
   seasonId: string;
   onPress: () => void;
 }) {
-  const result = getMatchResult(match.myScore, match.opponentScore);
-  const cfg = RESULT_CONFIG[result];
+  const matchResult = getMatchResult(match.myScore, match.opponentScore);
+  const aggregate = getMatchAggregateInfo(match, allMatches);
+  const effectiveResult = aggregate
+    ? aggregate.myTotal > aggregate.opponentTotal ? 'vitoria'
+      : aggregate.myTotal < aggregate.opponentTotal ? 'derrota'
+      : 'empate'
+    : matchResult;
+  const cfg = RESULT_CONFIG[effectiveResult];
   return (
     <TouchableOpacity style={styles.matchRow} onPress={onPress} activeOpacity={0.75}>
       <View style={[styles.resultChip, { backgroundColor: `${cfg.color}20`, borderColor: `${cfg.color}40` }]}>
@@ -56,6 +65,11 @@ function MatchRow({
         <Text style={styles.matchMeta} numberOfLines={1}>
           {match.tournament} • {LOCATION_LABELS[match.location] ?? match.location} • {match.date}
         </Text>
+        {aggregate && (
+          <Text style={[styles.aggregateText, { color: cfg.color }]}>
+            {`Agg: ${aggregate.myTotal}–${aggregate.opponentTotal} · ${aggregate.myTotal > aggregate.opponentTotal ? '✓ Classificado' : aggregate.myTotal < aggregate.opponentTotal ? '✗ Eliminado' : '→ Pênaltis'}`}
+          </Text>
+        )}
       </View>
       <Text style={styles.scoreText}>
         {match.myScore}–{match.opponentScore}
@@ -129,6 +143,7 @@ export default function MatchesScreen() {
   }, [seasonGameData]);
 
   const totalMatches = sections.reduce((s, sec) => s + sec.data.length, 0);
+  const allMatches = useMemo(() => (seasonGameData?.data?.matches ?? []) as MatchRecord[], [seasonGameData]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -189,6 +204,7 @@ export default function MatchesScreen() {
           renderItem={({ item }) => (
             <MatchRow
               match={item}
+              allMatches={allMatches}
               seasonId={currentSeason.id}
               onPress={() =>
                 router.push({
@@ -306,6 +322,7 @@ const styles = StyleSheet.create({
   matchRowBody: { flex: 1 },
   opponentText: { fontSize: 15, fontWeight: '500' as const, color: Colors.foreground, fontFamily: 'Inter_500Medium' },
   matchMeta: { fontSize: 12, color: Colors.mutedForeground, fontFamily: 'Inter_400Regular', marginTop: 2 },
+  aggregateText: { fontSize: 11, fontWeight: '600' as const, fontFamily: 'Inter_600SemiBold', marginTop: 3 },
   scoreText: { fontSize: 15, fontWeight: '700' as const, color: Colors.foreground, fontFamily: 'Inter_700Bold' },
   fab: {
     position: 'absolute',

@@ -146,6 +146,8 @@ export interface MatchRecord {
   formation?: FormationKey;
   createdAt: number;
   playerSnapshot?: Record<number, PlayerSnapshotEntry>;
+  legType?: 'single' | 'first_leg' | 'second_leg';
+  tieId?: string;
 }
 
 export function getMatchResult(myScore: number, opponentScore: number): MatchResult {
