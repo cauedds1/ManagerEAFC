@@ -56,7 +56,6 @@ outputType = "console"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "cd /home/runner/workspace/artifacts/api-server && PORT=8080 NODE_ENV=development MIGRATIONS_PATH=/home/runner/workspace/lib/db/migrations pnpm run dev:tsx"
-waitForPort = 8080
 
 [[workflows.workflow]]
 name = "Expo Mobile App"
